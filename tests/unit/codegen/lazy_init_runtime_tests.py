@@ -20,6 +20,83 @@ class TestsFlextInfraLazyInitRuntime:
     """Exercise generated roots through Python's real import machinery."""
 
     @staticmethod
+    @pytest.mark.parametrize("exports", [False, True])
+    def test_isolated_package_decisions_keep_only_consumed_original_reads(
+        tmp_path: Path,
+        *,
+        exports: bool,
+    ) -> None:
+        """Cold artifact graphs retain negative modules without cross-surface leakage."""
+        repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "service.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                source,
+                "class Published: pass\n__all__ = ['Published']\n",
+            ),
+        )
+        tests = repository / c.Infra.DIR_TESTS
+        tests.mkdir()
+        conftest = tests / "conftest.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                conftest,
+                "class TestProvider: pass\n__all__ = ['TestProvider']\n"
+                if exports
+                else "__all__ = []\n",
+            ),
+        )
+        analysis = tm.ok(u.Tests.create_lazy_init_service(repository).plan_files())
+        production = next(
+            plan for plan in analysis.publications if plan.context.pkg_dir == package
+        )
+        testing = next(
+            plan for plan in analysis.publications if plan.context.pkg_dir == tests
+        )
+        tm.that(source in {state.path for state in production.source_states}, eq=True)
+        tm.that(
+            conftest in {state.path for state in production.source_states}, eq=False
+        )
+        tm.that(conftest in {state.path for state in testing.source_states}, eq=True)
+
+    @staticmethod
+    def test_parent_consumes_original_receipt_of_removed_child(tmp_path: Path) -> None:
+        """A cached negative child decision remains an authenticated parent input."""
+        repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / "service.py",
+                "class Published: pass\n__all__ = ['Published']\n",
+            ),
+        )
+        child = package / "retired"
+        child.mkdir()
+        initializer = child / c.Infra.INIT_PY
+        tm.ok(
+            u.Cli.atomic_write_text_file(initializer, c.Infra.AUTOGEN_HEADER + "\n"),
+        )
+        analysis = tm.ok(u.Tests.create_lazy_init_service(repository).plan_files())
+        child_plan = next(
+            plan for plan in analysis.publications if plan.context.pkg_dir == child
+        )
+        parent_plan = next(
+            plan for plan in analysis.publications if plan.context.pkg_dir == package
+        )
+        tm.that(child_plan.action, eq=c.Infra.LazyInitAction.REMOVE)
+        tm.that("retired" in parent_plan.lazy_map, eq=False)
+        child_original = next(
+            state for state in child_plan.source_states if state.path == initializer
+        )
+        tm.that(
+            next(
+                state
+                for state in parent_plan.source_states
+                if state.path == initializer
+            ),
+            eq=child_original,
+        )
+
+    @staticmethod
     @pytest.mark.parametrize(
         "ownership",
         [

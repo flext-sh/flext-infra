@@ -192,6 +192,12 @@ class FlextInfraEnsureRuffConfigPhase:
                                 sorted(ruff_cfg.lint.select),
                             ),
                         ),
+                        toml.SetOp(
+                            key="extend-select",
+                            value=FlextRuntime.normalize_to_json_value(
+                                list(ruff_cfg.lint.extend_select),
+                            ),
+                        ),
                         # make fix never deletes information: the fix-safety
                         # policy comes from the same SSOT the template renders.
                         toml.SetOp(

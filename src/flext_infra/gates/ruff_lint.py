@@ -103,16 +103,17 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         """Apply Ruff's own fixes, then the declared recipe of each finding left.
 
         The recipe phases are tooling data (``fix-recipe-phases``) applied in
-        order; Ruff re-reads the tree after each phase. A recipe-owned finding
-        that survives every phase is a recipe defect and raises, except for
-        the recipes the tooling declares residual (``fix-recipe-residual``),
-        whose remainder stays a visible check finding.
+        order; Ruff re-reads the tree after each phase. Every remaining finding
+        blocks the final verdict and retains Ruff's diagnostic, whether or not
+        a recipe owns its repair.
 
         Returns:
             The gate execution of Ruff's final pass.
 
         """
         execution = super().fix(project_dir, ctx)
+        if execution.outcome is c.Infra.ToolOutcome.ERROR:
+            return execution
         lint = config.Infra.tooling.tools.ruff.lint
         recipes = lint.fix_recipes
         overridden = self._project_overrides(project_dir, execution.issues, recipes)
@@ -126,13 +127,18 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             )
             if by_file:
                 self._apply_phase(project_dir, by_file, recipes)
-                execution = super().fix(project_dir, ctx)
-        self._reject_recipe_residue(
-            execution.issues,
-            recipes,
-            self._overridden_hooks(execution.issues, recipes, overridden),
-            service_owned=self._service_owned_hooks(execution.issues, recipes),
-        )
+                repaired = super().fix(project_dir, ctx)
+                execution = repaired.model_copy(
+                    update={
+                        "raw_output": "\n".join(
+                            output
+                            for output in (execution.raw_output, repaired.raw_output)
+                            if output
+                        ),
+                    },
+                )
+                if execution.outcome is c.Infra.ToolOutcome.ERROR:
+                    return execution
         return execution
 
     def _project_overrides(
@@ -262,27 +268,6 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         )
 
     @staticmethod
-    def _service_owned_hooks(
-        issues: t.SequenceOf[m.Infra.Issue],
-        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
-    ) -> t.StrSequence:
-        """Locate the static-method findings the recipe leaves to their owner.
-
-        Service operations must stay plain public instance functions (ADR-019;
-        core discovery excludes staticmethods), so the recipe never converts
-        them.
-
-        Returns:
-            ``file:line:code`` of each finding on a service-subclass method.
-
-        """
-        return FlextInfraRuffLintGate._static_hook_keys(
-            issues,
-            recipes,
-            u.Infra.service_operation_findings,
-        )
-
-    @staticmethod
     def _repaired_source(
         project_dir: Path,
         before: m.Cli.AtomicFileState,
@@ -342,54 +327,6 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         if not planned:
             return source
         return u.Infra.apply_lint_recipes(source, planned, path=path, recipes=recipes)
-
-    @staticmethod
-    def _reject_recipe_residue(
-        issues: t.SequenceOf[m.Infra.Issue],
-        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
-        hooks: t.StrSequence,
-        *,
-        service_owned: t.StrSequence = (),
-    ) -> None:
-        """Report owner-left findings and raise on any other recipe-owned one.
-
-        Raises:
-            ValueError: If a recipe-owned finding survives every recipe phase.
-
-        """
-        if hooks:
-            u.Cli.info(
-                f"lint: {len(hooks)} no-self-use finding(s) are on an override "
-                f"chain or read their receiver, left to their owner: "
-                f"{', '.join(hooks)}",
-            )
-        residual = config.Infra.tooling.tools.ruff.lint.fix_recipe_residual
-        kept = sorted(
-            f"{issue.file}:{issue.line}:{issue.code}"
-            for issue in issues
-            if recipes.get(issue.code) in residual
-        )
-        if kept:
-            u.Cli.info(
-                f"lint: {len(kept)} finding(s) stay for manual repair under the "
-                f"import law or the line budget: {', '.join(kept)}",
-            )
-        if service_owned:
-            u.Cli.info(
-                f"lint: {len(service_owned)} no-self-use finding(s) are service "
-                "operations (ADR-019), left to their owner: "
-                f"{', '.join(service_owned)}",
-            )
-        left = sorted(
-            located
-            for issue in issues
-            if issue.code in recipes
-            and recipes[issue.code] not in residual
-            and (located := f"{issue.file}:{issue.line}:{issue.code}") not in hooks
-        )
-        if left:
-            msg = f"lint recipes left their own findings: {', '.join(left)}"
-            raise ValueError(msg)
 
     @staticmethod
     def _overridden_hooks(

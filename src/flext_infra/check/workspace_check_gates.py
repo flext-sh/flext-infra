@@ -301,24 +301,20 @@ class FlextInfraWorkspaceCheckGatesMixin:
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
-        """Run fix-only under ``--apply``; check-only otherwise.
+        """Dispatch repair with native verification, or a read-only check.
 
-        Single-pass verb law: the mutating verb runs exactly one operation per
-        gate — never a check pass before or after the fix. The fix execution
-        already reports what its tool could not repair (the fix execution
-        takes the fixer's exit status as its verdict); enforcing that residue belongs to
-        the read-only ``make check``. Gates without a fix contract fall
-        through to their read-only check, so an ``--apply`` selection over a
-        read-only gate still executes it instead of silently skipping.
+        The gate owns repair and same-scope read-only confirmation, including
+        literal file selections. Check-only contexts never mutate; gates without
+        a repair contract still execute their read-only check.
 
         Returns:
             The resulting ``m.Infra.GateExecution``.
 
         """
-        if ctx.selected_files:
-            return gate_instance.check_files(ctx.selected_files, project_dir, ctx)
         if ctx.apply_fixes and (not ctx.check_only) and gate_instance.can_fix:
             return gate_instance.fix(project_dir, ctx)
+        if ctx.selected_files:
+            return gate_instance.check_files(ctx.selected_files, project_dir, ctx)
         return gate_instance.check(project_dir, ctx)
 
 

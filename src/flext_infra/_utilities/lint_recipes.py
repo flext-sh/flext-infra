@@ -32,6 +32,7 @@ from flext_cli import u
 from flext_infra import c, config, m, p, r, t
 from flext_infra._config import FlextInfraConfig
 from flext_infra._utilities import (
+    FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesPyproject,
 )
@@ -75,6 +76,8 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
         project_root: Path,
         declared: m.Infra.ProjectSpec | None,
         scaffold: m.Infra.ScaffoldProjectSpec,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[t.Triple[str, str, int]]:
         """Resolve the copyright holder, license and year a project declares.
 
@@ -98,6 +101,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
         else:
             metadata = FlextInfraUtilitiesPyproject.read_project_metadata_result(
                 project_root,
+                source_project=source_project,
             )
             if metadata.failure:
                 return result_type.from_failure(metadata)
@@ -109,7 +113,16 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
                 )
             license_id = u.Cli.json_walk_path(
                 FlextInfraUtilitiesPyproject.pyproject_payload(
-                    project_root / c.PYPROJECT_FILENAME,
+                    project_root / c.PYPROJECT_FILENAME
+                )
+                if source_project is None
+                else FlextInfraUtilitiesDocsScope.project_payload(
+                    project_root,
+                    source_states=(
+                        source_project.source_state(
+                            project_root / c.PYPROJECT_FILENAME
+                        ),
+                    ),
                 ),
                 (c.Infra.PROJECT, c.Infra.LICENSE),
             )
@@ -161,7 +174,13 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
         )
 
     @classmethod
-    def copyright_notice(cls, pkg_dir: Path, *, module: Path | None = None) -> str:
+    def copyright_notice(
+        cls,
+        pkg_dir: Path,
+        *,
+        module: Path | None = None,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> str:
         """Render the copyright notice of the project that owns ``pkg_dir``.
 
         The holder, license and year come from the owning repository's
@@ -183,20 +202,40 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
 
         """
         for candidate in (pkg_dir, *pkg_dir.parents):
-            if not (candidate / c.PYPROJECT_FILENAME).is_file():
+            if not (
+                (candidate / c.PYPROJECT_FILENAME).is_file()
+                if source_project is None
+                else source_project.source_query(
+                    candidate / c.PYPROJECT_FILENAME, "isfile"
+                )
+            ):
                 continue
             root = candidate.resolve()
             layers = FlextInfraConfig.config_layer_paths_for_repository(
                 root,
                 filename=c.Infra.CODEGEN_CONFIG_FILENAME,
             )
-            notice = cls._declared_notice_identity(
-                root,
-                tuple(
-                    u.Cli.files_read_binary(path).unwrap() if path.is_file() else None
-                    for path in (*layers[1:], root / c.PYPROJECT_FILENAME)
-                ),
-            )
+            if source_project is None:
+                notice = cls._declared_notice_identity(
+                    root,
+                    tuple(
+                        u.Cli.files_read_binary(path).unwrap()
+                        if path.is_file()
+                        else None
+                        for path in (*layers[1:], root / c.PYPROJECT_FILENAME)
+                    ),
+                )
+            else:
+                declaration = FlextInfraUtilitiesProjectManagedArtifacts.load_repository_declaration_inputs(
+                    root,
+                    source_project=source_project,
+                ).unwrap()
+                notice = cls.project_notice_identity(
+                    root,
+                    declaration.spec.project,
+                    config.Infra.codegen.scaffold.project,
+                    source_project=source_project,
+                )
             if notice.failure:
                 raise ValueError(notice.error)
             holder, license_id, year = notice.value
@@ -418,25 +457,6 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
             rewritten = f"{rewritten[:start]}{text}{rewritten[end:]}"
         return rewritten
 
-    @staticmethod
-    def _docstring_expr(
-        node: ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
-    ) -> ast.Expr | None:
-        """Return the docstring statement of a module, class or function.
-
-        Returns:
-            The docstring statement of a module, class or function.
-
-        """
-        first = node.body[0] if node.body else None
-        if (
-            isinstance(first, ast.Expr)
-            and isinstance(first.value, ast.Constant)
-            and isinstance(first.value.value, str)
-        ):
-            return first
-        return None
-
     @classmethod
     def _summary_edit(
         cls,
@@ -619,7 +639,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
         path: Path,
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
     ) -> t.VariadicTuple[
-        t.Triple[ast.ClassDef, ast.FunctionDef | ast.AsyncFunctionDef]
+        t.Triple[m.Infra.Issue, ast.ClassDef, ast.FunctionDef | ast.AsyncFunctionDef]
     ]:
         """Pair each static-method finding with its owner and method.
 

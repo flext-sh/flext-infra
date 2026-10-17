@@ -100,7 +100,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
                 if materialized.failure:
                     return r[T].from_failure(materialized)
                 current_session, manifest = materialized.value
-                consumed = self._source_runtime_consumer(plan, view_root, runtime_root)
+                consumed = self.consume_source_runtime(plan, view_root, runtime_root)
                 if consumed.failure:
                     return r[T].from_failure(consumed)
                 value = validator(view_root, candidates)
@@ -170,7 +170,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         )
 
     @staticmethod
-    def _source_runtime_consumer(
+    def consume_source_runtime(
         plan: m.Infra.StageSourcePlan,
         view_root: Path,
         runtime_root: Path | None,
@@ -211,6 +211,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
                 for path in (state.path for state in plan.inputs)
                 if path.suffix == c.Infra.EXT_PYTHON
                 and path.is_relative_to(layout.package_dir)
+                and (path not in plan.updates or plan.updates[path] is not None)
             })
         )
         code = (
@@ -340,24 +341,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             One (destination, content, mode) write per existing or desired source input.
 
         """
-        writes: list[tuple[Path, bytes, int]] = []
-        for before in plan.inputs:
-            if not before.path.is_relative_to(plan.workspace):
-                continue
-            content = before.content
-            if before.path in plan.updates:
-                desired = plan.updates[before.path]
-                content = (
-                    None if desired is None else desired.encode(c.DEFAULT_ENCODING)
-                )
-            if content is None:
-                continue
-            writes.append((
-                view_root / before.path.relative_to(plan.workspace),
-                content,
-                before.mode if before.mode is not None else c.Infra.CONFIG_SPEC[1],
-            ))
-        return tuple(writes)
+        return FlextInfraStagedPackage.source_writes(plan, view_root)
 
     @staticmethod
     def capability_roots(

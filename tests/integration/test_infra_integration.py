@@ -390,7 +390,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
     @staticmethod
     @pytest.mark.integration
     def test_markdown_fix_reports_residual_after_repair(tmp_path: Path) -> None:
-        """A fixable finding is repaired; an unfixable one stays reported for check."""
+        """A valid repair survives while an unfixable finding fails the invocation."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-fmt-contract")
         document = project_dir / "README.md"
         document.write_text("not a heading   \n", encoding="utf-8")
@@ -403,13 +403,15 @@ class TestsFlextInfraIntegrationInfraIntegration:
 
         execution = FlextInfraMarkdownGate(tmp_path).fix(project_dir, context)
 
-        # The repair verb fixes what rumdl can fix (trailing spaces) and
-        # completes with the unfixable residual (MD041) reported: the fix
-        # verdict is the repair tool's own status, and the read-only check
-        # gate is what enforces the residual finding.
-        tm.that(execution.result.passed, eq=True)
+        # Valid trailing-space repair remains published; MD041 still fails
+        # this invocation with the same diagnostic as the read-only check.
+        tm.that(execution.result.passed, eq=False)
         tm.that(document.read_text(encoding="utf-8"), eq="not a heading\n")
         tm.that(execution.issues[0].code, eq="MD041")
+        tm.that(
+            execution.issues,
+            eq=FlextInfraMarkdownGate(tmp_path).check(project_dir, context).issues,
+        )
 
     @staticmethod
     @pytest.mark.integration

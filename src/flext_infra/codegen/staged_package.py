@@ -7,15 +7,166 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Callable
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraMiseArtifactsVerification
+from flext_infra.codegen import (
+    FlextInfraMiseArtifactsProcess,
+    FlextInfraMiseArtifactsVerification,
+)
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraStagedPackage:
     """Plan one complete package view and its static workspace import closure."""
+
+    @staticmethod
+    def source_writes(
+        plan: m.Infra.StageSourcePlan,
+        view_root: Path,
+    ) -> t.VariadicTuple[tuple[Path, bytes, int]]:
+        """Materialize the same pinned composition for preparation and admission.
+
+        Returns:
+            Exact candidate paths, bytes and permissions, excluding retirements.
+
+        """
+        writes: list[tuple[Path, bytes, int]] = []
+        for before in plan.inputs:
+            if not before.path.is_relative_to(plan.workspace):
+                continue
+            content = before.content
+            if before.path in plan.updates:
+                desired = plan.updates[before.path]
+                content = (
+                    None if desired is None else desired.encode(c.DEFAULT_ENCODING)
+                )
+            if content is not None:
+                writes.append((
+                    view_root / before.path.relative_to(plan.workspace),
+                    content,
+                    before.mode if before.mode is not None else c.Infra.CONFIG_SPEC[1],
+                ))
+        return tuple(writes)
+
+    @classmethod
+    def prepare_sources(
+        cls,
+        plan: m.Infra.StageSourcePlan,
+        preparer: Callable[[Path, t.MappingKV[Path, Path]], p.Result[bool]],
+    ) -> p.Result[t.MappingKV[Path, str | None]]:
+        """Prepare producer bytes before any publication identity is sealed.
+
+        The preparation tree owns no runtime environment. Only desired source
+        bytes leave it; admission subsequently builds a fresh read-only view.
+
+        Returns:
+            Prepared updates, or the original repair or source-identity failure.
+
+        """
+        result_type = r[t.MappingKV[Path, str | None]]
+        current = cls.source_inputs_current(plan)
+        if current.failure:
+            return result_type.from_failure(current)
+        with TemporaryDirectory(prefix="flext-source-prepare-") as directory:
+            root = Path(directory)
+            writes = cls.source_writes(plan, root)
+            materialized = cls.materialize_sources(plan, root)
+            if materialized.failure:
+                return result_type.from_failure(materialized)
+            candidates = {
+                path: root / path.relative_to(plan.workspace)
+                for path, content in plan.updates.items()
+                if content is not None and path.suffix in {".py", ".pyi"}
+            }
+            prepared = preparer(root, candidates)
+            if prepared.failure:
+                return result_type.from_failure(prepared)
+            if not prepared.value:
+                return result_type.fail("source preparation returned no acceptance")
+            selected = frozenset(candidates.values())
+            for path, content, mode in writes:
+                if path in selected:
+                    continue
+                observed = u.Cli.atomic_read_binary_file_state(path, required=True)
+                if observed.failure:
+                    return result_type.from_failure(observed)
+                if observed.value.content != content or observed.value.mode != mode:
+                    return result_type.fail(
+                        f"source preparation changed an unselected input: {path}"
+                    )
+            updates = dict(plan.updates)
+            for destination, candidate in candidates.items():
+                observed = u.Cli.atomic_read_binary_file_state(candidate, required=True)
+                if observed.failure:
+                    return result_type.from_failure(observed)
+                content = observed.value.content
+                if content is None:
+                    return result_type.fail(
+                        f"prepared source disappeared: {destination}"
+                    )
+                updates[destination] = content.decode(c.DEFAULT_ENCODING)
+            return cls.source_inputs_current(plan).map(lambda _: updates)
+
+    @classmethod
+    def materialize_sources(
+        cls,
+        plan: m.Infra.StageSourcePlan,
+        root: Path,
+    ) -> p.Result[bool]:
+        """Write a pinned composition into an exclusively owned empty stage.
+
+        Returns:
+            Success after guarded writes, or their first original failure.
+
+        """
+        for path, content, mode in cls.source_writes(plan, root):
+            created = u.Cli.ensure_dir(path.parent)
+            if created.failure:
+                return r[bool].from_failure(created)
+            written = FlextInfraMiseArtifactsProcess.write_new(path, content, mode)
+            if written.failure:
+                return r[bool].from_failure(written)
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def consume_sources(
+        cls,
+        plan: m.Infra.StageSourcePlan,
+        consumer: Callable[[Path], p.Result[bool]],
+    ) -> p.Result[bool]:
+        """Consume exact candidates read-only without nesting a live journal.
+
+        Returns:
+            The original consumer result while candidate and source guards hold.
+
+        """
+        current = cls.source_inputs_current(plan)
+        if current.failure:
+            return r[bool].from_failure(current)
+        with TemporaryDirectory(prefix="flext-source-admit-") as directory:
+            root = Path(directory)
+            materialized = cls.materialize_sources(plan, root)
+            if materialized.failure:
+                return r[bool].from_failure(materialized)
+            manifest = u.Cli.atomic_inventory_physical_tree(root)
+            if manifest.failure:
+                return r[bool].from_failure(manifest)
+            consumed = consumer(root)
+            if consumed.failure:
+                return r[bool].from_failure(consumed)
+            if not consumed.value:
+                return r[bool].fail("candidate consumer returned no acceptance")
+            observed = u.Cli.atomic_inventory_physical_tree(root)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            if observed.value != manifest.value:
+                return r[bool].fail(
+                    "source candidate changed during read-only admission"
+                )
+            return cls.source_inputs_current(plan)
 
     @classmethod
     def plan_sources(
@@ -325,6 +476,16 @@ class FlextInfraStagedPackage:
         governed: bool = False,
     ) -> p.Result[list[Path]]:
         paths = [layout.project_root / c.PYPROJECT_FILENAME]
+        if governed:
+            paths.extend(
+                path
+                for path in u.Infra.iter_matching_files(
+                    layout.project_root, includes=()
+                )
+                if not c.Infra.CHECK_EXCLUDED_DIRS.intersection(
+                    path.relative_to(layout.project_root).parts
+                )
+            )
         directories = (
             layout.package_dir,
             layout.project_root / c.Infra.CODEGEN_CONFIG_DIR,

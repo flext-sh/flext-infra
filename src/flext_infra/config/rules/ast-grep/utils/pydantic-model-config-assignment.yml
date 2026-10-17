@@ -1,0 +1,20 @@
+# Reusable guard: an unannotated `model_config` assignment whose value is a
+# ConfigDict call, declared directly in a class body. Pydantic resolves the
+# assignment as a field on the declaring model; the fleet contract requires the
+# `ClassVar` annotation so the config is metadata, never a field.
+id: pydantic-model-config-assignment
+language: Python
+rule:
+  kind: assignment
+  has:
+    field: left
+    kind: identifier
+    regex: "^model_config$"
+  has:
+    field: right
+    kind: call
+    regex: "ConfigDict\\("
+  inside:
+    kind: block
+    inside:
+      kind: class_definition

@@ -34,6 +34,9 @@ class FlextInfraRopeWorkspace(
     _rope_project: t.Infra.RopeProject | None = u.PrivateAttr(
         default_factory=lambda: None,
     )
+    _owns_rope_project: bool = u.PrivateAttr(default=True)
+    _index_receipt: m.Infra.CodegenPhaseAnalysis | None = u.PrivateAttr(default=None)
+    _reused_index: bool = u.PrivateAttr(default=False)
     _workspace_index: m.Infra.RopeWorkspaceIndex | None = u.PrivateAttr(
         default_factory=lambda: None,
     )
@@ -83,6 +86,9 @@ class FlextInfraRopeWorkspace(
         repository_root: Path,
         *,
         rope_repository_root: Path | None = None,
+        source_project: p.Infra.RopeProject | None = None,
+        workspace_index: m.Infra.RopeWorkspaceIndex | None = None,
+        index_receipt: m.Infra.CodegenPhaseAnalysis | None = None,
     ) -> Self:
         """Create one ready-to-use Rope workspace session.
 
@@ -99,6 +105,20 @@ class FlextInfraRopeWorkspace(
             repository_root=repository_root,
             rope_repository_root_override=resolved_rope_root,
         )
+        if source_project is not None:
+            if Path(source_project.root.real_path) != resolved_rope_root.resolve():
+                msg = "Rope source project does not match the declared workspace root"
+                raise ValueError(msg)
+            workspace._rope_project = source_project
+            workspace._owns_rope_project = False
+        if workspace_index is not None:
+            if source_project is None or index_receipt is None:
+                msg = "Rope structural index reuse requires its original source receipt"
+                raise ValueError(msg)
+            source_project.replay_source_consumption(index_receipt)
+            workspace._workspace_index = workspace_index
+            workspace._index_receipt = index_receipt
+            workspace._reused_index = True
         _ = workspace.rope_project
         return workspace
 
@@ -134,10 +154,18 @@ class FlextInfraRopeWorkspace(
             u.Cli.info(
                 f"rope: indexing python workspace at {self._rope_repository_root}",
             )
-            workspace_index = u.Infra.index_rope_workspace(
-                self.rope_project,
-                self._rope_repository_root,
-            )
+            if self.rope_project.authenticated_sources:
+                with self.rope_project.source_consumption() as consumption:
+                    workspace_index = u.Infra.index_rope_workspace(
+                        self.rope_project,
+                        self._rope_repository_root,
+                    )
+                self._index_receipt = consumption.receipt()
+            else:
+                workspace_index = u.Infra.index_rope_workspace(
+                    self.rope_project,
+                    self._rope_repository_root,
+                )
             self._workspace_index = workspace_index
             u.Cli.info(
                 "rope: indexed "
@@ -145,7 +173,17 @@ class FlextInfraRopeWorkspace(
                 f"{len(workspace_index.modules_by_path)} modules in "
                 f"{perf_counter() - started_at:.2f}s",
             )
+        if self._reused_index:
+            self.rope_project.replay_source_consumption(self.source_index_receipt)
         return workspace_index
+
+    @property
+    def source_index_receipt(self) -> m.Infra.CodegenPhaseAnalysis:
+        """Require the original authenticated structural-selection receipt."""
+        if self._index_receipt is None:
+            msg = "Rope structural index has no original source evidence"
+            raise ValueError(msg)
+        return self._index_receipt
 
     @override
     def execute(self) -> p.Result[m.Infra.RopeWorkspaceSession]:
@@ -240,6 +278,8 @@ class FlextInfraRopeWorkspace(
 
         """
         resolved_root = project_root.resolve()
+        if not self._owns_rope_project:
+            return u.Infra.layout(resolved_root, rope_project=self.rope_project)
         cache_key = str(resolved_root)
         if cache_key in self._project_layout_cache:
             return self._project_layout_cache[cache_key]
@@ -271,7 +311,7 @@ class FlextInfraRopeWorkspace(
         package_entry = self.package(resolved_dir)
         init_path = resolved_dir / c.Infra.INIT_PY
         current_pkg = package_entry.package_name if package_entry is not None else ""
-        init_resource = self.resource(init_path) if init_path.is_file() else None
+        init_resource = self.resource(init_path)
         generated_init = init_resource is not None and init_resource.read().startswith(
             c.Infra.AUTOGEN_HEADERS,
         )
@@ -289,6 +329,22 @@ class FlextInfraRopeWorkspace(
         )
         self._package_context_cache[cache_key] = context
         return context
+
+    @override
+    def resource(self, file_path: Path) -> t.Infra.RopeFile | None:
+        """Resolve bound planning resources without a live Path existence test."""
+        if self._owns_rope_project:
+            return super().resource(file_path)
+        path = file_path.absolute()
+        root = self._rope_repository_root.resolve()
+        if not path.is_relative_to(root):
+            return None
+        if not self.rope_project.source_query(path, "isfile"):
+            return None
+        return u.Infra.require_file_resource(
+            self.rope_project.get_resource(path.relative_to(root).as_posix()),
+            path,
+        )
 
     @override
     def policy(
@@ -426,7 +482,8 @@ class FlextInfraRopeWorkspace(
     def close(self) -> None:
         """Close the shared Rope project and clear transient caches."""
         if self._rope_project is not None:
-            self._rope_project.close()
+            if self._owns_rope_project:
+                self._rope_project.close()
             self._rope_project = None
         self._workspace_index = None
         self._codegen_projects = None

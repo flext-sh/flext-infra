@@ -1,0 +1,6 @@
+id: pydantic-model-config-classvar-import
+valid:
+  - "from typing import ClassVar\n\nclass Model:\n    model_config: ClassVar[m.ConfigDict] = m.ConfigDict()\n"
+  - "class Other:\n    model_config = m.ConfigDict()\n"
+invalid:
+  - "from typing import Literal\n\nclass Model:\n    model_config = m.ConfigDict(frozen=True)\n"

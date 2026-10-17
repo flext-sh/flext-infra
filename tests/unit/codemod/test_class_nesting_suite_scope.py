@@ -123,6 +123,7 @@ class TestsFlextInfraClassNestingSuiteScope:
         source = (
             "import pytest\n\n"
             "pytestmark = pytest.mark.usefixtures('session_probe')\n\n"
+            "pytest_plugins = []\n\n"
             "class _Payload:\n    value = 7\n\n"
             "def _value():\n    return _Payload.value\n\n"
             "@pytest.mark.parametrize(\n"
@@ -190,6 +191,7 @@ class TestsFlextInfraClassNestingSuiteScope:
         else:
             tm.that(all("::Tests" in node for node in new_nodes), eq=True)
         tm.that("\npytestmark =" in published, eq=True)
+        tm.that("\npytest_plugins =" in published, eq=True)
         TestsFlextInfraClassNestingSuiteScope._cold_pytest(root, path, "-q")
         tm.that(
             (path.parent / "session.log").read_text().splitlines(),
@@ -201,6 +203,7 @@ class TestsFlextInfraClassNestingSuiteScope:
         "declaration",
         [
             "@pytest.fixture\ndef injected():\n    return 1\n",
+            "from pytest import fixture as fx\n@fx\ndef injected():\n    return 1\n",
             "def pytest_generate_tests(metafunc):\n    pass\n",
             "def setup_function(function):\n    pass\n",
         ],

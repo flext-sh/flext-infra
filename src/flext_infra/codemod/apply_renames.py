@@ -7,10 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Callable
+from contextlib import closing
 from os.path import commonpath
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, config, m, p, r, t, u
+from flext_infra._utilities._rope.project import FlextInfraRopeProject
 from flext_infra.codemod import FlextInfraRenameSources, FlextInfraRenameSymbols
 from flext_infra.transformers import FlextInfraSemanticPublication
 
@@ -24,7 +27,11 @@ class FlextInfraApplyRenames:
         params: m.Infra.ApplyRenamesInput,
         roots: t.SequenceOf[Path],
         pairs: t.SequenceOf[t.Pair[str, str]],
-    ) -> t.Pair[t.VariadicTuple[m.Infra.SemanticFilePlan], int]:
+    ) -> t.Triple[
+        t.VariadicTuple[m.Infra.SemanticFilePlan],
+        int,
+        Callable[[], p.Result[bool]],
+    ]:
 
         inventory = FlextInfraRenameSources.inventory(roots, params)
         sources = {
@@ -40,14 +47,95 @@ class FlextInfraApplyRenames:
         root = Path(commonpath(roots))
         plans: t.MutableSequenceOf[m.Infra.SemanticFilePlan] = []
         occurrences = 0
+        symbols: t.MutableMappingKV[Path, list[m.Infra.SourceRewrite]] = {}
+        guards: list[Callable[[], None]] = []
+        dependencies = list(inventory.values())
+        for consumer in roots:
+            with (
+                u.Infra.open_project(
+                    root,
+                    project_roots=roots,
+                    consumer_root=consumer,
+                ) as live,
+                closing(
+                    FlextInfraRopeProject.from_atomic_reads(
+                        live,
+                        tuple(inventory.values()),
+                        election=m.Infra.RopeProjectElection(
+                            source_folders=tuple(
+                                folder.path for folder in live.get_source_folders()
+                            ),
+                            ignored_resources=tuple(
+                                sorted(config.Infra.codegen.source_scan_ignored)
+                            ),
+                            extension_modules=tuple(
+                                sorted(
+                                    u.type_adapter(set[str]).validate_python(
+                                        live.get_pycore().extension_modules,
+                                        strict=True,
+                                    )
+                                )
+                            ),
+                            python_path_folders=tuple(
+                                folder.real_path
+                                for folder in live.get_python_path_folders()
+                                if folder.is_folder()
+                            ),
+                        ),
+                        sources={},
+                    )
+                ) as project,
+                project.frozen_layout(),
+            ):
+                selected = {
+                    path
+                    for path in python
+                    if path.is_relative_to(consumer)
+                    and not any(
+                        other != consumer
+                        and other.is_relative_to(consumer)
+                        and path.is_relative_to(other)
+                        for other in roots
+                    )
+                }
+                if params.rename_definitions:
+                    for prefix, owners in params.bindings.items():
+                        qualifier = prefix + "." if prefix else ""
+                        for old, _new in pairs:
+                            if not old.startswith(qualifier):
+                                continue
+                            for owner in owners:
+                                binding = FlextInfraRenameSymbols.resolve_member(
+                                    project,
+                                    owner,
+                                    old.removeprefix(qualifier),
+                                )
+                                module, _line = (
+                                    binding.get_definition_location()
+                                    if binding
+                                    else (None, None)
+                                )
+                                resource = module.get_resource() if module else None
+                                if resource is not None:
+                                    selected.add(Path(resource.real_path))
+                changes = FlextInfraRenameSymbols.plan(
+                    project,
+                    python,
+                    pairs,
+                    params.bindings,
+                    rename_definitions=params.rename_definitions,
+                    resource_paths=tuple(sorted(selected)),
+                )
+                for path, edits in changes.items():
+                    merged = symbols.setdefault(path, [])
+                    merged.extend(edit for edit in edits if edit not in merged)
+                dependencies.extend(project.consumed_source_states())
+                guards.append(project.verify_source_states)
+                project.verify_source_states()
+        source_states = m.Infra.CodemodBindingSnapshot(
+            states=tuple(dependencies)
+        ).states
         with u.Infra.open_project(root, project_roots=roots) as project:
-            symbols = FlextInfraRenameSymbols.plan(
-                project,
-                python,
-                pairs,
-                params.bindings,
-                rename_definitions=params.rename_definitions,
-            )
             for path, source in sources.items():
                 edits = list(symbols.get(path, ()))
                 if path in python:
@@ -73,9 +161,16 @@ class FlextInfraApplyRenames:
                         desired_content=desired if edits else None,
                         desired_mode=inventory[path].mode,
                         changes=("CSV campaign",) if edits else (),
+                        source_states=source_states,
                     ),
                 )
-        return tuple(plans), occurrences
+
+        def guard() -> p.Result[bool]:
+            for verify in guards:
+                verify()
+            return r[bool].ok(value=True)
+
+        return tuple(plans), occurrences, guard
 
     @staticmethod
     def _campaign_error(
@@ -101,7 +196,11 @@ class FlextInfraApplyRenames:
         roots: t.SequenceOf[Path],
         state: t.Pair[Path, m.Cli.AtomicFileState],
         pairs: t.SequenceOf[t.Pair[str, str]],
-        planned: t.Pair[t.SequenceOf[m.Infra.SemanticFilePlan], int],
+        planned: t.Triple[
+            t.SequenceOf[m.Infra.SemanticFilePlan],
+            int,
+            Callable[[], p.Result[bool]],
+        ],
     ) -> p.Result[t.Pair[t.SequenceOf[Path], int]]:
         """Publish the campaign atomically and re-plan until the post-scan is clean.
 
@@ -111,7 +210,7 @@ class FlextInfraApplyRenames:
 
         """
         csv_path, driver = state
-        plans, pending = planned
+        plans, pending, source_guard = planned
 
         def verify(candidate_root: Path) -> p.Result[bool]:
             nonlocal pending
@@ -127,7 +226,7 @@ class FlextInfraApplyRenames:
             candidate_roots = tuple(
                 candidate_root / path.relative_to(publication_root) for path in roots
             )
-            _fresh, remaining = cls._plan(params, candidate_roots, pairs)
+            _fresh, remaining, _guard = cls._plan(params, candidate_roots, pairs)
             pending = remaining
             if remaining:
                 return r[bool].fail(
@@ -146,10 +245,17 @@ class FlextInfraApplyRenames:
         publication = FlextInfraSemanticPublication.publish_semantic_file_plans(
             (*plans, driver_plan),
             repository_root=Path(commonpath(roots)),
-            options=m.Infra.SemanticPublicationOptions(validator=verify),
+            options=m.Infra.SemanticPublicationOptions(
+                validator=verify,
+                source_guard=source_guard,
+                projection_roots=tuple(
+                    path for path in roots if u.Infra.layout(path) is not None
+                ),
+                dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+            ),
         )
         if publication.failure:
-            return cls._compensate_refused_campaign(publication, plans)
+            return r[t.Pair[t.SequenceOf[Path], int]].from_failure(publication)
         changed = publication.value
         # Empty transactions do not invoke the publisher's validator.
         if not changed:
@@ -202,7 +308,20 @@ class FlextInfraApplyRenames:
             The resulting ``p.Result[m.Infra.ApplyRenamesReport]``.
 
         """
-        roots = tuple(sorted({Path(value).resolve() for value in params.roots}))
+        roots = (
+            tuple(
+                sorted({
+                    project
+                    for value in params.roots
+                    for project in u.Infra.import_project_roots(
+                        Path(value),
+                        include_consumers=bool(params.bindings),
+                    )
+                })
+            )
+            if params.bindings
+            else tuple(sorted({Path(value).resolve() for value in params.roots}))
+        )
         error = cls._campaign_error(params, roots)
         if error is not None:
             return r[m.Infra.ApplyRenamesReport].fail(error)
@@ -215,7 +334,7 @@ class FlextInfraApplyRenames:
         pairs = FlextInfraRenameSources.pairs(
             driver.content.decode(c.DEFAULT_ENCODING),
         )
-        plans, pending = cls._plan(params, roots, pairs)
+        plans, pending, source_guard = cls._plan(params, roots, pairs)
         changed: t.SequenceOf[Path] = ()
         if params.apply:
             publication = cls._publish(
@@ -223,7 +342,7 @@ class FlextInfraApplyRenames:
                 roots,
                 (csv_path, driver),
                 pairs,
-                (plans, pending),
+                (plans, pending, source_guard),
             )
             if publication.failure:
                 return r[m.Infra.ApplyRenamesReport].from_failure(publication)

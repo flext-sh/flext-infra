@@ -151,6 +151,9 @@ class TestsFlextInfraDepsModernizerPyright:
         root_source = tmp_path / rules.source_dir / "workspace"
         root_source.mkdir(parents=True)
         (root_source / "__init__.py").write_text("VALUE = 1\n", encoding="utf-8")
+        root_modules = ("worker.py", "worker.pyi")
+        for module in root_modules:
+            (tmp_path / module).write_text("VALUE = 1\n", encoding="utf-8")
         (tmp_path / "flext-core" / "tests").mkdir()
         (tmp_path / "flext-core" / "tests" / "test_smoke.py").write_text(
             "VALUE = 1\n",
@@ -182,7 +185,10 @@ class TestsFlextInfraDepsModernizerPyright:
             )
         else:
             tm.that(pyright, lacks="ignore")
-        tm.that(list(u.Tests.toml_strings(pyright["include"])), eq=[rules.source_dir])
+        tm.that(
+            list(u.Tests.toml_strings(pyright["include"])),
+            eq=[rules.source_dir, *root_modules],
+        )
         tm.that(
             pyright["executionEnvironments"],
             eq=[
@@ -402,7 +408,7 @@ class TestsFlextInfraDepsModernizerPyright:
         ("project_name", "authored_root", "planned_root"),
         [
             ("flext-alpha", "automation", "future_checks"),
-            ("flext-beta", "quality_tools", "generated_checks"),
+            ("flext-beta", "quality_tools.py", "generated_checks.pyi"),
         ],
     )
     def test_render_context_retains_actual_and_planned_python_scopes(
@@ -426,6 +432,9 @@ class TestsFlextInfraDepsModernizerPyright:
             directory = project_dir / root / package_name
             directory.mkdir(parents=True, exist_ok=True)
             (directory / "probe.py").write_text("VALUE = 1\n", encoding="utf-8")
+        root_modules = ("worker.py", "worker.pyi")
+        for module in root_modules:
+            (project_dir / module).write_text("VALUE = 1\n", encoding="utf-8")
         historical = project_dir / "historical_guides"
         historical.mkdir()
         (historical / "index.md").write_text("Historical notes.\n", encoding="utf-8")
@@ -466,11 +475,20 @@ class TestsFlextInfraDepsModernizerPyright:
         )
         first_context = tm.ok(modernizer.resolve_tooling_context(request))
         expected_roots = frozenset((*active_roots, planned_root))
-        tm.that(frozenset(first_context.pyright_include), eq=expected_roots)
+        tm.that(
+            frozenset(first_context.pyright_include),
+            eq=expected_roots.union(root_modules),
+        )
         tm.that(
             frozenset(env.root for env in first_context.pyright_execution_environments),
             eq=expected_roots,
         )
+        tm.that(
+            set(root_modules).isdisjoint(first_context.pyright_extra_paths),
+            eq=True,
+        )
+        for environment in first_context.pyright_execution_environments:
+            tm.that(set(root_modules).isdisjoint(environment.extra_paths), eq=True)
         first = tm.ok(
             modernizer.conform_source(
                 path.read_text(encoding="utf-8"),
@@ -545,10 +563,10 @@ class TestsFlextInfraDepsModernizerPyright:
         tmp_path: Path,
         tool_config_document: m.Infra.ToolConfigDocument,
     ) -> None:
-        """The phase emits an environment for every root the analyzer owner selects.
+        """The phase includes modules but emits environments only for directories.
 
-        ``analyzer_python_roots`` is the single owner of "which directories are
-        productive Python roots". A Python file under a directory outside
+        ``analyzer_python_roots`` owns productive directories and root modules.
+        A Python file under a directory outside
         ``env_dirs`` (docs/ here) separates that owner from the env list.
         """
         rules = tool_config_document.tools.pyright.path_rules
@@ -558,6 +576,9 @@ class TestsFlextInfraDepsModernizerPyright:
         outside = tmp_path / "docs" / "tools"
         outside.mkdir(parents=True)
         (outside / "validate_docs.py").write_text("y = 2\n", encoding="utf-8")
+        root_modules = ("worker.py", "worker.pyi")
+        for module in root_modules:
+            (tmp_path / module).write_text("VALUE = 1\n", encoding="utf-8")
         (tmp_path / "pyproject.toml").write_text(
             "[project]\nname='workspace'\nversion='0.1.0'\n",
             encoding="utf-8",
@@ -579,16 +600,17 @@ class TestsFlextInfraDepsModernizerPyright:
             m.Infra.PyprojectAnalyzerContext(is_root=False, project_dir=tmp_path),
         )
 
+        targets = u.Infra.analyzer_python_roots(
+            tmp_path,
+            declared,
+            workspace_excluded_top_dirs=excluded_top_dirs,
+        )
+        tm.that(set(root_modules) <= set(targets), eq=True)
+        tm.that(sorted(u.Tests.toml_strings(pyright["include"])), eq=sorted(targets))
         tm.that(
             sorted(
                 str(u.Tests.toml_mapping(environment)["root"])
                 for environment in u.Tests.toml_list(pyright["executionEnvironments"])
             ),
-            eq=sorted(
-                u.Infra.analyzer_python_roots(
-                    tmp_path,
-                    declared,
-                    workspace_excluded_top_dirs=excluded_top_dirs,
-                ),
-            ),
+            eq=sorted(root for root in targets if not (tmp_path / root).is_file()),
         )

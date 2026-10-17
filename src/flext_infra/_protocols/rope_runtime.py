@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import AbstractContextManager
-from typing import TYPE_CHECKING, ClassVar, Protocol, Self, runtime_checkable
+from typing import TYPE_CHECKING, ClassVar, Literal, Protocol, Self, runtime_checkable
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -423,6 +423,14 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             FlextInfraProtocolsRopeRuntime.RopeSourceConsumption
         ]: ...
 
+        def source_consumer(self) -> AbstractContextManager[Self]: ...
+
+        @property
+        def authenticated_sources(self) -> bool: ...
+
+        @property
+        def source_epoch_failure(self) -> BaseException | None: ...
+
         def replay_source_consumption(
             self, receipt: m.Infra.CodegenPhaseAnalysis
         ) -> None: ...
@@ -430,6 +438,19 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def source_state(
             self, path: Path, *, required: bool = True
         ) -> m.Cli.AtomicFileState: ...
+
+        def source_query(
+            self, path: Path, predicate: Literal["exists", "isfile", "isdir"]
+        ) -> bool: ...
+
+        def source_children(self, path: Path) -> tuple[Path, ...]: ...
+
+        def source_text(self, path: Path) -> str: ...
+
+        def source_walk(
+            self,
+            path: Path,
+        ) -> Iterator[tuple[Path, list[str], list[str]]]: ...
 
     @runtime_checkable
     class RopeLocation(Protocol):
@@ -527,7 +548,12 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """One native Rope matcher for identity-bound matches and source regions."""
 
         def get_matches(
-            self, code: str, args: t.MappingKV[str, str] | None = None
+            self,
+            code: str,
+            args: t.MappingKV[str, str] | None = None,
+            *,
+            start: int = 0,
+            end: int | None = None,
         ) -> Iterator[FlextInfraProtocolsRopeRuntime.RopeContractMatch]: ...
 
         def get_match_regions(

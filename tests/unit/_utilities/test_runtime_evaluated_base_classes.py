@@ -539,28 +539,43 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
     @pytest.mark.parametrize(
         "import_statement",
         [
-            "from binding_contract.parts import document as part",
-            "from .parts import document as part",
-            "import binding_contract.parts.document as part",
+            "from {module}.{parts} import document as part",
+            "from .{parts} import document as part",
+            "import {module}.{parts}.document as part",
+        ],
+    )
+    @pytest.mark.parametrize("initialized", [True, False])
+    @pytest.mark.parametrize(
+        ("package_path", "module", "parts"),
+        [
+            ("src/binding_contract", "binding_contract", "parts"),
+            ("tests/unit", "tests.unit", "_parts"),
         ],
     )
     def test_planned_submodule_import_resolves_its_declared_class(
         self,
         tmp_path: Path,
         import_statement: str,
+        package_path: str,
+        module: str,
+        parts: str,
+        *,
+        initialized: bool,
     ) -> None:
-        """An import-from submodule alias does not require an initializer export."""
-        package = tmp_path / "src" / "binding_contract"
+        """Private and namespace submodules do not require initializer exports."""
+        package = tmp_path / package_path
         planned = {
-            package / "__init__.py": "",
-            package / "parts" / "__init__.py": "",
-            package / "parts" / "document.py": u.Tests.runtime_root_import()
+            package / parts / "document.py": u.Tests.runtime_root_import()
             + "class Document(RuntimeRoot): pass\n",
             package / "facade.py": (
-                f"{import_statement}\nclass Facade(part.Document): pass\n"
+                f"{import_statement.format(module=module, parts=parts)}\n"
+                "class Facade(part.Document): pass\n"
                 "class Consumer(Facade): pass\n"
             ),
         }
+        if initialized:
+            planned[package / "__init__.py"] = ""
+            planned[package / parts / "__init__.py"] = ""
         tm.that(
             u.Infra.runtime_evaluated_base_classes(
                 tmp_path, planned, u.Tests.runtime_evaluated_roots()
@@ -568,13 +583,37 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             eq=tuple(
                 sorted((
                     *u.Tests.runtime_evaluated_roots(),
-                    "binding_contract.parts.document.Document",
-                    "binding_contract.facade.Facade",
+                    f"{module}.{parts}.document.Document",
+                    f"{module}.facade.Facade",
                 )),
             ),
         )
         tm.that(package.exists(), eq=False)
-        tm.that("binding_contract" in sys.modules, eq=False)
+        tm.that(f"{module}.{parts}.document" in sys.modules, eq=False)
+
+    def test_missing_planned_private_module_is_not_a_similarly_named_provider(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """An existing private provider cannot validate an obsolete import path."""
+        package = tmp_path / "tests" / "unit"
+        with pytest.raises(
+            ValueError, match=r"Unresolved planned base: tests\.unit\._retired$"
+        ):
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path,
+                {
+                    package / "__init__.py": "",
+                    package
+                    / "_retired_parts"
+                    / "document.py": "class Document: pass\n",
+                    package / "consumer.py": (
+                        "from tests.unit._retired import document as part\n"
+                        "class Invalid(part.Document): pass\n"
+                    ),
+                },
+                (),
+            )
 
     @pytest.mark.parametrize(
         ("shadow", "diagnostic"),

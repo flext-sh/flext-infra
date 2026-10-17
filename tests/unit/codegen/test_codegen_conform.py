@@ -10,7 +10,7 @@ import os
 import shutil
 import sys
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
 
 import pytest
 
@@ -49,6 +49,11 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConform):
     """Inject one public planning outcome after the real transaction begins."""
 
     __test__ = False
+    _SCENARIOS: ClassVar[t.VariadicTuple[str]] = (
+        "planning-exception",
+        "publication-source-race",
+        "planning-issue-source-race",
+    )
 
     @classmethod
     @override
@@ -79,7 +84,7 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConform):
         if planned.failure:
             return planned
         scenario = request.root.name
-        if scenario in {"planning-exception", "publication-source-race"}:
+        if scenario in self._SCENARIOS:
             selected = tuple(
                 file
                 for file in planned.value.files
@@ -102,21 +107,26 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConform):
             (request.root.parent / ".lifecycle-expected").write_bytes(
                 tm.not_none(expected.desired_content),
             )
+            issues = (
+                (
+                    m.Infra.Issue(
+                        file=str(rejected.path),
+                        line=0,
+                        column=0,
+                        code=c.Infra.ToolOutcome.ERROR.value,
+                        message=str(_LIFECYCLE_EXCEPTION),
+                    ),
+                )
+                if scenario != "publication-source-race"
+                else ()
+            )
             if scenario == "planning-exception":
                 return r[m.Infra.CodegenPlan].ok(
                     planned.value.model_copy(
                         update={
                             "files": independent,
                             "exception": _LIFECYCLE_EXCEPTION,
-                            "issues": (
-                                m.Infra.Issue(
-                                    file=str(rejected.path),
-                                    line=0,
-                                    column=0,
-                                    code=c.Infra.ToolOutcome.ERROR.value,
-                                    message=str(_LIFECYCLE_EXCEPTION),
-                                ),
-                            ),
+                            "issues": (*planned.value.issues, *issues),
                         },
                     ),
                 )
@@ -128,7 +138,10 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConform):
             )
             return r[m.Infra.CodegenPlan].ok(
                 planned.value.model_copy(
-                    update={"files": (rejected, *independent)},
+                    update={
+                        "files": (rejected, *independent),
+                        "issues": (*planned.value.issues, *issues),
+                    },
                 ),
             )
         identity = tm.ok(
@@ -237,7 +250,7 @@ class TestsFlextInfraCodegenConform:
             docs_config.write_text("{invalid", encoding="utf-8")
         if scenario in {"cas", "source-race"}:
             (root / ".lifecycle-cas").write_bytes(b"before\n")
-        if scenario in {"planning-exception", "publication-source-race"}:
+        if scenario in TestsFlextInfraCodegenConformLifecycleProbe._SCENARIOS:
             ignored = root / c.Infra.GITIGNORE
             ignored.write_bytes(ignored.read_bytes() + b"\n# rejected drift\n")
             (root / ".lifecycle-source").write_bytes(b"before\n")
@@ -252,7 +265,7 @@ class TestsFlextInfraCodegenConform:
 
     @pytest.mark.parametrize(
         "scenario",
-        ["planning-exception", "publication-source-race"],
+        TestsFlextInfraCodegenConformLifecycleProbe._SCENARIOS,
     )
     def test_public_generation_preserves_independent_gains_after_failure(
         self,
@@ -303,6 +316,14 @@ class TestsFlextInfraCodegenConform:
         tm.that(receipt.written_files, has=published)
         tm.that(rejected in receipt.written_files, eq=False)
         tm.that(bool(receipt.issues), eq=True)
+        if scenario == "planning-issue-source-race":
+            tm.that(
+                any(
+                    issue.message == str(_LIFECYCLE_EXCEPTION)
+                    for issue in receipt.issues
+                ),
+                eq=True,
+            )
 
     def test_public_planning_reports_exception_only_outcome_as_failed(
         self,

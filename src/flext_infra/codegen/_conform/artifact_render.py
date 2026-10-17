@@ -150,6 +150,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
     ) -> p.Result[m.Infra.CodegenArtifactComposition]:
         """Apply typed project overlays after canonical template rendering.
 
+        Python repairs require the complete planned policy and source context;
+        the staging owner prepares those bytes after composition, never here.
+
         Without ``render_inputs`` the committed project catalog overlays the
         render and no pyproject conformance runs.
 

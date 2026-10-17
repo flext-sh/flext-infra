@@ -211,14 +211,21 @@ class FlextInfraUtilitiesPyproject:
         )
 
     @staticmethod
-    def read_project_metadata_result(project_root: Path) -> p.Result[p.ProjectMetadata]:
+    def read_project_metadata_result(
+        project_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> p.Result[p.ProjectMetadata]:
         """Read retained metadata from the canonical single-document ingress.
 
         Returns:
             The original structural metadata or its causal ingress failure.
 
         """
-        state = FlextInfraUtilitiesPyproject.read_project_metadata_state(project_root)
+        state = FlextInfraUtilitiesPyproject.read_project_metadata_state(
+            project_root,
+            source_project=source_project,
+        )
         if state.failure:
             return r[p.ProjectMetadata].from_failure(state)
         return r[p.ProjectMetadata].ok(state.value.metadata)
@@ -226,6 +233,8 @@ class FlextInfraUtilitiesPyproject:
     @staticmethod
     def read_project_metadata_state(
         project_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[m.Infra.ProjectMetadataState]:
         """Parse metadata and packaging declarations without importing source exports.
 
@@ -234,8 +243,14 @@ class FlextInfraUtilitiesPyproject:
 
         """
         result_type = r[m.Infra.ProjectMetadataState]
-        live = FlextInfraUtilitiesPyproject.live_pyproject_text(
-            project_root / c.PYPROJECT_FILENAME,
+        live = (
+            FlextInfraUtilitiesPyproject.live_pyproject_text(
+                project_root / c.PYPROJECT_FILENAME
+            )
+            if source_project is None
+            else FlextInfraUtilitiesPyproject.recover_live_pyproject_text(
+                source_project.source_text(project_root / c.PYPROJECT_FILENAME),
+            )
         )
         if live.failure:
             return result_type.from_failure(live)
@@ -392,7 +407,11 @@ class FlextInfraUtilitiesPyproject:
         )
 
     @staticmethod
-    def pyproject_payload(pyproject_path: Path) -> t.JsonMapping:
+    def pyproject_payload(
+        pyproject_path: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> t.JsonMapping:
         """Return the shared TOML ingress's validated ``pyproject.toml`` mapping.
 
         The payload is parsed from the live text with managed merge
@@ -406,9 +425,19 @@ class FlextInfraUtilitiesPyproject:
                 payload at.
 
         """
-        if not pyproject_path.is_file():
+        if not (
+            pyproject_path.is_file()
+            if source_project is None
+            else source_project.source_query(pyproject_path, "isfile")
+        ):
             return {}
-        live = FlextInfraUtilitiesPyproject.live_pyproject_text(pyproject_path)
+        live = (
+            FlextInfraUtilitiesPyproject.live_pyproject_text(pyproject_path)
+            if source_project is None
+            else FlextInfraUtilitiesPyproject.recover_live_pyproject_text(
+                source_project.source_text(pyproject_path)
+            )
+        )
         if live.failure:
             msg = f"failed to read pyproject payload at {pyproject_path}: {live.error}"
             raise RuntimeError(msg)
@@ -598,7 +627,11 @@ class FlextInfraUtilitiesPyproject:
         return ""
 
     @staticmethod
-    def project_package_name(project_root: Path) -> str:
+    def project_package_name(
+        project_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> str:
         """Return the primary Python package name for a project root.
 
         Returns:
@@ -607,12 +640,27 @@ class FlextInfraUtilitiesPyproject:
         """
         payload = FlextInfraUtilitiesPyproject.pyproject_payload(
             project_root / c.PYPROJECT_FILENAME,
+            source_project=source_project,
         )
         docs_meta = FlextInfraUtilitiesPyproject.docs_meta_from_payload(payload)
+        source_paths: tuple[Path, ...] | None = None
+        if source_project is not None:
+            src = project_root / c.Infra.DEFAULT_SRC_DIR
+            source_paths = (
+                tuple(
+                    child / c.Infra.INIT_PY
+                    for child in source_project.source_children(src)
+                    if source_project.source_query(child, "isdir")
+                    and source_project.source_query(child / c.Infra.INIT_PY, "isfile")
+                )
+                if source_project.source_query(src, "isdir")
+                else ()
+            )
         return FlextInfraUtilitiesPyproject.package_name_from_payload(
             project_root,
             payload,
             docs_meta,
+            source_paths=source_paths,
         )
 
     @staticmethod

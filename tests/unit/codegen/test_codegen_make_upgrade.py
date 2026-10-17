@@ -582,7 +582,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         order = [
             next(i for i, step in enumerate(steps) if needle in step)
             for needle in (
-                "--what mise-config --scope self",
+                "--what mise-config --scope all",
                 "--what makefile --scope all",
                 "_upg_provision_tools",
                 "deps modernize",

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscoveryShapeMixin,
@@ -27,6 +27,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
         *,
         scan_dirs: frozenset[str] | None = None,
         declarations: t.VariadicTuple[m.Infra.GitSubmoduleDeclaration] | None = None,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> t.SequenceOf[Path]:
         """Elect candidates and exclusions from one current Git declaration read.
 
@@ -42,6 +43,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
         if declarations is None:
             declared = FlextInfraUtilitiesGit.git_submodule_declarations(
                 repository_root,
+                source_project=source_project,
             )
             if declared.failure:
                 raise ValueError(declared.error or "invalid .gitmodules")
@@ -56,12 +58,17 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
         configured_entries: set[Path] = set()
         for project in configured_projects:
             entry = (resolved_repository_root / project).resolve()
-            if entry.is_dir() and entry.is_relative_to(resolved_repository_root):
+            if (
+                entry.is_dir()
+                if source_project is None
+                else source_project.source_query(entry, "isdir")
+            ) and entry.is_relative_to(resolved_repository_root):
                 configured_entries.add(entry)
         if cls._looks_like_project(
             resolved_repository_root,
             effective_scan_dirs=effective_scan_dirs,
             configured_project_set=configured_project_set,
+            source_project=source_project,
         ):
             roots.append(resolved_repository_root)
         if configured_projects:
@@ -72,15 +79,26 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
             roots.extend([
                 entry.resolve()
                 for entry in candidate_entries
-                if entry.is_dir()
+                if (
+                    entry.is_dir()
+                    if source_project is None
+                    else source_project.source_query(entry, "isdir")
+                )
                 and not entry.name.startswith(".")
                 and cls._looks_like_project(
                     entry.resolve(),
                     effective_scan_dirs=effective_scan_dirs,
                     configured_project_set=configured_project_set,
+                    source_project=source_project,
                 )
             ])
-        if not roots and (resolved_repository_root / c.Infra.DEFAULT_SRC_DIR).is_dir():
+        if not roots and (
+            (resolved_repository_root / c.Infra.DEFAULT_SRC_DIR).is_dir()
+            if source_project is None
+            else source_project.source_query(
+                resolved_repository_root / c.Infra.DEFAULT_SRC_DIR, "isdir"
+            )
+        ):
             roots.append(resolved_repository_root)
         if not nonparticipants:
             return roots
@@ -98,6 +116,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
         repository_root: Path,
         *,
         declarations: t.VariadicTuple[m.Infra.GitSubmoduleDeclaration] | None = None,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> frozenset[str]:
         """Derive exclusions from this invocation's Git declarations, never a cache.
 
@@ -108,6 +127,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
         if declarations is None:
             declarations = FlextInfraUtilitiesGit.git_submodule_declarations(
                 repository_root,
+                source_project=source_project,
             ).unwrap()
         return frozenset(
             declaration.path.as_posix()

@@ -9,6 +9,7 @@ from __future__ import annotations
 import stat
 from collections.abc import MutableMapping
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, r, t, u
@@ -25,6 +26,165 @@ class FlextInfraCodegenStaging:
     """Stage generated-file plans beside their live destinations."""
 
     _phases: ClassVar[frozenset[str]] = frozenset(c.Infra.CodegenStagedFilePhase)
+
+    @staticmethod
+    def prepare_python_plans(
+        workspace: Path,
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Prepare joint producer bytes against planned policy before sealing.
+
+        Returns:
+            Prepared plans retaining their original authority and topology.
+
+        """
+        from flext_infra.codegen.codegen_preconditions import (
+            FlextInfraCodegenPreconditions,
+        )
+
+        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        if not any(
+            plan.path.suffix in {".py", ".pyi"} and plan.desired_content is not None
+            for plan in plans
+        ):
+            return result_type.ok(plans)
+        sources = FlextInfraCodegenPreconditions.unique_states((
+            *(state for plan in plans for state in plan.source_states),
+            *(
+                plan.before
+                for plan in plans
+                if isinstance(plan.before, m.Cli.AtomicFileState)
+            ),
+        ))
+        if sources.failure:
+            return result_type.from_failure(sources)
+        prepared = u.Infra.normalize_sources(
+            workspace,
+            {
+                plan.path: (
+                    None
+                    if plan.desired_content is None
+                    else plan.desired_content.decode(c.DEFAULT_ENCODING)
+                )
+                for plan in plans
+            },
+            inputs=sources.value,
+        )
+        if prepared.failure:
+            return result_type.from_failure(prepared)
+        inputs = FlextInfraCodegenPreconditions.unique_states((
+            *sources.value,
+            *prepared.value.inputs,
+        ))
+        if inputs.failure:
+            return result_type.from_failure(inputs)
+        return result_type.ok(
+            tuple(
+                plan.model_copy(
+                    update={
+                        "desired_content": (
+                            None
+                            if (content := prepared.value.updates[plan.path.resolve()])
+                            is None
+                            else content.encode(c.DEFAULT_ENCODING)
+                        ),
+                        "source_states": inputs.value,
+                    }
+                )
+                for plan in plans
+            )
+        )
+
+    @staticmethod
+    def validate_python_plans(
+        session: m.Infra.CodegenTransactionSession,
+        staged_files: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        *,
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        workspace: Path,
+        runtime_root: Path,
+    ) -> p.Result[m.Infra.CodegenTransactionSession]:
+        """Admit exact composed staged bytes with every native default gate.
+
+        Unchanged Python outputs enter the same runtime and read-only checker.
+        Preparation never occurs inside this authenticated consumer.
+
+        Returns:
+            The original session, or the original runtime/checker failure.
+
+        """
+        from flext_infra.check import FlextInfraWorkspaceChecker
+        from flext_infra.codegen.codegen_preconditions import (
+            FlextInfraCodegenPreconditions,
+        )
+        from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
+        from flext_infra.codegen.staged_package import FlextInfraStagedPackage
+
+        result_type = r[m.Infra.CodegenTransactionSession]
+        if not any(plan.path.suffix in {".py", ".pyi"} for plan in plans):
+            return result_type.ok(session)
+        updates = {
+            plan.path: (
+                None
+                if plan.desired_content is None
+                else plan.desired_content.decode(c.DEFAULT_ENCODING)
+            )
+            for plan in plans
+        }
+        for staged in staged_files:
+            replacement = staged.replacement
+            if replacement is not None and replacement.content is not None:
+                updates[staged.before.path] = replacement.content.decode(
+                    c.DEFAULT_ENCODING
+                )
+        inputs = FlextInfraCodegenPreconditions.unique_states(
+            tuple(state for plan in plans for state in plan.source_states)
+        )
+        if inputs.failure:
+            return result_type.from_failure(inputs)
+        planned = FlextInfraStagedPackage.plan_sources(
+            workspace, updates, inputs=inputs.value
+        )
+        if planned.failure:
+            return result_type.from_failure(planned)
+        owned_runtime = u.Infra.runtime_environment_dir(planned.value.workspace).parent
+        if runtime_root.resolve() != owned_runtime.resolve():
+            return result_type.fail(
+                "candidate runtime differs from its original source owner"
+            )
+        projects = tuple(dict.fromkeys(plan.project for plan in plans))
+        with TemporaryDirectory(prefix="flext-source-admission-reports-") as directory:
+
+            def validate(root: Path) -> p.Result[bool]:
+                consumed = FlextInfraCodegenTransaction.consume_source_runtime(
+                    planned.value, root, runtime_root
+                )
+                if consumed.failure:
+                    return r[bool].from_failure(consumed)
+                for project in projects:
+                    candidate = root / project.relative_to(workspace)
+                    checked = FlextInfraWorkspaceChecker(
+                        repository_root=candidate
+                    ).execute_candidate(
+                        m.Infra.RunCommand(
+                            repository_root=candidate,
+                            reports_dir=str(
+                                Path(directory) / project.relative_to(workspace)
+                            ),
+                            check_only=True,
+                        ),
+                        planned.value,
+                    )
+                    if checked.failure:
+                        return r[bool].from_failure(checked)
+                    if not checked.value:
+                        return r[bool].fail(f"candidate check rejected: {project}")
+                return r[bool].ok(value=True)
+
+            checked = FlextInfraStagedPackage.consume_sources(planned.value, validate)
+        if checked.failure:
+            return result_type.from_failure(checked)
+        return result_type.ok(session)
 
     @classmethod
     def stage_file_plans(

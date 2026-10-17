@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import errno
+import os
 from pathlib import Path
 
 import pytest
@@ -225,6 +227,8 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
             path.write_text("value = 1\n", encoding="utf-8")
         stub = live_paths[1].with_suffix(".pyi")
         stub.write_text("value: int\n", encoding="utf-8")
+        root_stub = live_paths[0].with_suffix(".pyi")
+        root_stub.write_text("value: int\n", encoding="utf-8")
         foreign = u.Tests.git_repository(project / "arbitrary", "foreign")
         isolated = project / "arbitrary" / "independent"
         isolated.mkdir()
@@ -279,6 +283,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
 
         tm.that(set(live_paths) <= target_paths, eq=True)
         tm.that(target_paths, has=stub)
+        tm.that(target_paths, has=root_stub)
         tm.that(target_paths, eq=discovered)
         tm.that(set(outsiders).isdisjoint(target_paths), eq=True)
         python_targets = {
@@ -286,15 +291,55 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         }
         tm.that(iterated, eq=python_targets)
         tm.that(set(inventory), eq=target_paths)
-        tm.that(u.Infra.namespace_scan_dirs(project), has="arbitrary")
-        tm.that(
-            u.Infra.analyzer_python_roots(
-                project, ("src",), workspace_excluded_top_dirs=frozenset()
-            ),
-            has="arbitrary",
+        analyzer_roots = u.Infra.analyzer_python_roots(
+            project, ("src",), workspace_excluded_top_dirs=frozenset()
         )
+        tm.that(analyzer_roots[0], eq="src")
+        for target in ("arbitrary", live_paths[0].name, root_stub.name):
+            tm.that(analyzer_roots, has=target)
+            tm.that(u.Infra.namespace_scan_dirs(project), has=target)
         with pytest.raises(ValueError, match="outside governed inventory"):
             u.Infra.ast_grep_scan_targets(project, source_files=(outsiders[0],))
+
+    @staticmethod
+    def test_unreadable_source_subtree_preserves_native_failure(tmp_path: Path) -> None:
+        """Discovery cannot return a partial inventory after a native walk failure."""
+        if os.name != "posix":
+            pytest.skip("NOT EXECUTED: POSIX directory permissions are required")
+        project = u.Tests.mk_project(
+            tmp_path,
+            "unreadable-inventory",
+            pyproject='[project]\nname = "unreadable-inventory"\nversion = "0.1.0"\n',
+        ).resolve()
+        blocked = project / "arbitrary" / "unreadable"
+        blocked.mkdir(parents=True)
+        (blocked / "worker.py").write_text("value = 1\n", encoding="utf-8")
+        original_mode = blocked.stat().st_mode
+        blocked.chmod(0)
+        try:
+            if os.access(blocked, os.R_OK | os.X_OK):
+                pytest.skip(
+                    "NOT EXECUTED: current identity can traverse chmod-inaccessible trees"
+                )
+            with pytest.raises(PermissionError) as discovery_error:
+                u.Infra.discover_python_files(
+                    project, workspace_excluded_top_dirs=frozenset()
+                )
+            tm.that(discovery_error.value.filename, eq=str(blocked))
+            tm.that(discovery_error.value.errno, eq=errno.EACCES)
+            result = u.Infra.iter_python_files(
+                m.Infra.SourceScanRequest(project_roots=(project,))
+            )
+            tm.that(result.failure, eq=True)
+            exception = result.exception
+            assert isinstance(exception, PermissionError)
+            tm.that(exception.filename, eq=str(blocked))
+            tm.that(exception.errno, eq=errno.EACCES)
+            with pytest.raises(RuntimeError) as unwrap_error:
+                result.unwrap()
+            tm.that(unwrap_error.value.__cause__ is exception, eq=True)
+        finally:
+            blocked.chmod(original_mode)
 
     @staticmethod
     def test_namespace_declarations_do_not_suppress_active_source_findings(

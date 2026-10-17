@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t, u
+from flext_infra._config import FlextInfraConfig
 from flext_infra.codegen import FlextInfraCodegenGeneration
 
 if TYPE_CHECKING:
@@ -23,6 +24,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
     """Convert resolved lazy-init decisions into immutable publication plans."""
 
     if TYPE_CHECKING:
+        source_project: p.Infra.RopeProject
 
         def _cleanup_generated_support_file_states(
             self,
@@ -33,6 +35,8 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
     def _snapshot_paths(
         required_paths: AbstractSet[Path],
         optional_paths: AbstractSet[Path],
+        *,
+        source_project: p.Infra.RopeProject,
     ) -> p.Result[MutableMapping[Path, m.Cli.AtomicFileState]]:
         """Capture one descriptor-authenticated state for every planner input.
 
@@ -46,15 +50,10 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         for index, path in enumerate(paths, start=1):
             if index == 1 or index == len(paths) or index % progress_interval == 0:
                 u.Cli.info(f"lazy-init: snapshot inputs {index}/{len(paths)} — {path}")
-            snapshot = u.Cli.atomic_read_binary_file_state(
+            snapshots[path] = source_project.source_state(
                 path,
                 required=path in required_paths,
             )
-            if snapshot.failure:
-                return r[MutableMapping[Path, m.Cli.AtomicFileState]].from_failure(
-                    snapshot,
-                )
-            snapshots[path] = snapshot.value
         return r[MutableMapping[Path, m.Cli.AtomicFileState]].ok(snapshots)
 
     @classmethod
@@ -62,6 +61,8 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         cls,
         index: m.Infra.RopeWorkspaceIndex,
         package_dirs: t.SequenceOf[Path],
+        *,
+        source_project: p.Infra.RopeProject,
     ) -> p.Result[MutableMapping[Path, m.Cli.AtomicFileState]]:
         """Snapshot Python, project, target, and template inputs before planning.
 
@@ -81,6 +82,14 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             for entry in index.packages_by_dir.values()
             if entry.project_root is not None and entry.package_dir in selected_dirs
         }
+        declaration_paths = {
+            path
+            for root in {path.parent for path in project_metadata_paths}
+            for path in FlextInfraConfig.config_layer_paths_for_repository(
+                root,
+                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+            )
+        }
         init_paths = {
             entry.init_path.resolve()
             for entry in index.packages_by_dir.values()
@@ -89,23 +98,32 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         generated_dirs = tuple(
             generated_dir
             for package_dir in selected_dirs
-            for generated_dir in cls._generated_source_dirs(package_dir)
+            for generated_dir in cls._generated_source_dirs(
+                package_dir, source_project=source_project
+            )
         )
         generated_modules = {
             module
             for generated_dir in generated_dirs
-            for module in cls._generated_source_modules(generated_dir)
+            for module in cls._generated_source_modules(
+                generated_dir, source_project=source_project
+            )
         }
         generated_inits = {
             generated_dir / c.Infra.INIT_PY for generated_dir in generated_dirs
         }
         return cls._snapshot_paths(
             module_paths | template_paths | generated_modules,
-            init_paths | project_metadata_paths | generated_inits,
+            init_paths | project_metadata_paths | generated_inits | declaration_paths,
+            source_project=source_project,
         )
 
     @staticmethod
-    def _generated_source_dirs(package_dir: Path) -> t.VariadicTuple[Path]:
+    def _generated_source_dirs(
+        package_dir: Path,
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> t.VariadicTuple[Path]:
         """Return the generated source trees directly inside one package.
 
         The names come from the codegen artifact SSOT (``generated_source``).
@@ -117,18 +135,22 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
 
         """
         names = frozenset(config.Infra.codegen.generated_sources)
-        if not names or not package_dir.is_dir():
+        if not names or not source_project.source_query(package_dir, "isdir"):
             return ()
         return tuple(
             sorted(
                 child.resolve()
-                for child in package_dir.iterdir()
-                if child.name in names and child.is_dir() and not child.is_symlink()
+                for child in source_project.source_children(package_dir)
+                if child.name in names and source_project.source_query(child, "isdir")
             ),
         )
 
     @staticmethod
-    def _generated_source_modules(generated_dir: Path) -> t.VariadicTuple[Path]:
+    def _generated_source_modules(
+        generated_dir: Path,
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> t.VariadicTuple[Path]:
         """Return the generator-owned Python modules of one generated tree.
 
         Returns:
@@ -138,9 +160,168 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         return tuple(
             sorted(
                 module.resolve()
-                for module in generated_dir.glob(f"*{c.Infra.EXT_PYTHON}")
-                if module.name != c.Infra.INIT_PY and module.is_file()
+                for module in source_project.source_children(generated_dir)
+                if module.suffix == c.Infra.EXT_PYTHON
+                and module.name != c.Infra.INIT_PY
+                and source_project.source_query(module, "isfile")
             ),
+        )
+
+    @staticmethod
+    def _verify_original_sources(
+        states: tuple[m.Cli.AtomicFileState, ...],
+        directories: tuple[m.Cli.AtomicDirectoryInventory, ...],
+        topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...],
+    ) -> p.Result[bool]:
+        """Reverify original evidence through the native verifier, never recapture it."""
+        verified = u.Cli.atomic_verify_binary_file_states(states)
+        if verified.failure:
+            return r[bool].from_failure(verified)
+        return u.Cli.atomic_verify_directory_queries(directories, topology)
+
+    @classmethod
+    def _verified_source_analysis(
+        cls,
+        analysis: m.Infra.CodegenPhaseAnalysis,
+        project: p.Infra.RopeProject,
+        cause: BaseException,
+    ) -> m.Infra.CodegenPhaseAnalysis:
+        """Partition an authenticated global conflict using genuine original scopes.
+
+        Every failing global constraint must be represented by scoped evidence.
+        Unknown failures escape unchanged; classification never blesses a new epoch.
+        """
+        scopes = (*analysis.files, *analysis.publications)
+        states = m.Infra.CodemodBindingSnapshot(
+            states=tuple(state for scope in scopes for state in scope.source_states)
+        ).states
+        directories, topology = u.Cli.atomic_merge_directory_query_receipts(
+            tuple(item for scope in scopes for item in scope.source_directories),
+            tuple(item for scope in scopes for item in scope.source_query_topology),
+        )
+        conflicts = 0
+        for original in project.consumed_source_states():
+            if u.Cli.atomic_verify_binary_file_states((original,)).failure:
+                conflicts += 1
+                if original not in states:
+                    raise cause
+        for original_directory in project.consumed_source_directories():
+            if u.Cli.atomic_verify_directory_queries((original_directory,), ()).failure:
+                conflicts += 1
+                covered = next(
+                    (
+                        item
+                        for item in directories
+                        if item.root.path == original_directory.root.path
+                    ),
+                    None,
+                )
+                if (
+                    covered is None
+                    or covered.model_copy(
+                        update={"queries": (), "membership_queried": False}
+                    )
+                    != original_directory.model_copy(
+                        update={"queries": (), "membership_queried": False}
+                    )
+                    or not set(original_directory.queries).issubset(covered.queries)
+                    or (
+                        original_directory.membership_queried
+                        and not covered.membership_queried
+                    )
+                ):
+                    raise cause
+        for original_topology in project.consumed_source_topology():
+            if u.Cli.atomic_verify_directory_queries((), (original_topology,)).failure:
+                conflicts += 1
+                covered_chain = next(
+                    (
+                        item
+                        for item in topology
+                        if item.target == original_topology.target
+                    ),
+                    None,
+                )
+                if (
+                    covered_chain is None
+                    or covered_chain.model_copy(
+                        update={"queries": (), "membership_queried": False}
+                    )
+                    != original_topology.model_copy(
+                        update={"queries": (), "membership_queried": False}
+                    )
+                    or not set(original_topology.queries).issubset(
+                        covered_chain.queries
+                    )
+                    or (
+                        original_topology.membership_queried
+                        and not covered_chain.membership_queried
+                    )
+                ):
+                    raise cause
+        if not conflicts:
+            raise cause
+        accepted: list[m.Infra.CodegenFilePlan] = []
+        affected: set[Path] = set()
+        for file in analysis.files:
+            if cls._verify_original_sources(
+                file.source_states,
+                file.source_directories,
+                file.source_query_topology,
+            ).success:
+                accepted.append(file)
+            else:
+                affected.add(file.path)
+        publications: list[m.Infra.LazyInitPlan] = []
+        for publication in analysis.publications:
+            if (
+                publication.context.init_path in affected
+                or cls._verify_original_sources(
+                    publication.source_states,
+                    publication.source_directories,
+                    publication.source_query_topology,
+                ).failure
+            ):
+                affected.add(publication.context.init_path)
+            else:
+                publications.append(publication)
+        if not affected:
+            raise cause
+        retained = (*accepted, *publications)
+        retained_states = m.Infra.CodemodBindingSnapshot(
+            states=tuple(state for scope in retained for state in scope.source_states)
+        ).states
+        retained_directories, retained_topology = (
+            u.Cli.atomic_merge_directory_query_receipts(
+                tuple(item for scope in retained for item in scope.source_directories),
+                tuple(
+                    item for scope in retained for item in scope.source_query_topology
+                ),
+            )
+        )
+        return analysis.model_copy(
+            update={
+                "files": tuple(accepted),
+                "publications": tuple(publications),
+                "inputs": retained_states,
+                "native_states": retained_states,
+                "source_directories": retained_directories,
+                "source_query_topology": retained_topology,
+                "exception": cause,
+                "issues": (
+                    *analysis.issues,
+                    *(
+                        m.Infra.Issue(
+                            file=str(path),
+                            line=0,
+                            column=0,
+                            code=c.Infra.ToolOutcome.ERROR.value,
+                            message=str(cause),
+                        )
+                        for path in sorted(affected)
+                    ),
+                ),
+            }
         )
 
     @staticmethod
@@ -207,7 +388,10 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 desired_content=None,
             )
         else:
-            rendered = FlextInfraCodegenGeneration.render_init(plan).encode(
+            rendered = FlextInfraCodegenGeneration.render_init(
+                plan,
+                source_project=self.source_project,
+            ).encode(
                 c.DEFAULT_ENCODING,
             )
             init_plan = self._file_plan(
@@ -236,8 +420,12 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
 
         """
         plans: list[m.Infra.CodegenFilePlan] = []
-        for generated_dir in self._generated_source_dirs(plan.context.pkg_dir):
+        for generated_dir in self._generated_source_dirs(
+            plan.context.pkg_dir,
+            source_project=self.source_project,
+        ):
             init_path = generated_dir / c.Infra.INIT_PY
+            self.source_project.source_state(init_path, required=False)
             init_before = snapshots.get(init_path)
             if init_before is None:
                 return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
@@ -248,7 +436,9 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                     f"ownership=authored disposition=retained target={init_path}",
                 )
                 continue
-            if self._generated_source_modules(generated_dir):
+            if self._generated_source_modules(
+                generated_dir, source_project=self.source_project
+            ):
                 generated_plan = m.Infra.LazyInitPlan(
                     context=m.Infra.LazyInitPackageContext(
                         pkg_dir=generated_dir,
@@ -265,6 +455,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 )
                 desired: bytes | None = FlextInfraCodegenGeneration.render_init(
                     generated_plan,
+                    source_project=self.source_project,
                 ).encode(c.DEFAULT_ENCODING)
             elif self._is_generated(init_before.content):
                 desired = None
@@ -285,6 +476,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         *,
         index: m.Infra.RopeWorkspaceIndex,
         snapshots: t.MappingKV[Path, m.Cli.AtomicFileState],
+        source_receipts: t.MappingKV[str, m.Infra.CodegenPhaseAnalysis],
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Build, deduplicate, and source-bind every lazy-init file plan.
 
@@ -293,32 +485,40 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
 
         """
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
-        retired = self._retired_support_plans(plans, index)
+        retired = self._retired_support_plans(plans, index, source_receipts)
         if retired.failure:
             return result_type.from_failure(retired)
         by_path = retired.value
         for plan in plans:
-            artifact_plans = self._package_file_plans(
-                plan,
-                index,
-                snapshots,
-                frozenset(by_path),
-            )
+            with self.source_project.source_consumption() as consumption:
+                self.source_project.replay_source_consumption(
+                    source_receipts[str(plan.context.pkg_dir.resolve())],
+                )
+                artifact_plans = self._package_file_plans(
+                    plan,
+                    index,
+                    snapshots,
+                    frozenset(by_path),
+                )
             if artifact_plans.failure:
                 return result_type.from_failure(artifact_plans)
-            for artifact_plan in artifact_plans.value:
+            for artifact_plan in self._bound_file_plans(
+                artifact_plans.value,
+                consumption.receipt(),
+            ):
                 existing = by_path.get(artifact_plan.path)
                 if existing is not None and existing != artifact_plan:
                     return result_type.fail(
                         f"conflicting lazy-init plans for {artifact_plan.path}",
                     )
                 by_path[artifact_plan.path] = artifact_plan
-        return result_type.ok(self._bound_file_plans(by_path, snapshots))
+        return result_type.ok(tuple(by_path[path] for path in sorted(by_path)))
 
     def _retired_support_plans(
         self,
         plans: t.SequenceOf[m.Infra.LazyInitPlan],
         index: m.Infra.RopeWorkspaceIndex,
+        source_receipts: t.MappingKV[str, m.Infra.CodegenPhaseAnalysis],
     ) -> p.Result[MutableMapping[Path, m.Infra.CodegenFilePlan]]:
         """Plan the generator-owned support files retired before artifact plans.
 
@@ -341,17 +541,24 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                     f"lazy-init package has no physical project owner: "
                     f"{plan.context.pkg_dir}",
                 )
-            support_states = self._cleanup_generated_support_file_states(plan)
+            with self.source_project.source_consumption() as consumption:
+                self.source_project.replay_source_consumption(
+                    source_receipts[str(plan.context.pkg_dir.resolve())],
+                )
+                support_states = self._cleanup_generated_support_file_states(plan)
             if support_states.failure:
                 return r[MutableMapping[Path, m.Infra.CodegenFilePlan]].from_failure(
                     support_states,
                 )
             for state in support_states.value:
-                by_path[state.path] = self._file_plan(
+                file = self._file_plan(
                     project=package_entry.project_root.resolve(),
                     before=state,
                     desired_content=None,
                 )
+                by_path[state.path] = self._bound_file_plans(
+                    (file,), consumption.receipt()
+                )[0]
         return r[MutableMapping[Path, m.Infra.CodegenFilePlan]].ok(by_path)
 
     def _package_file_plans(
@@ -381,6 +588,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             return result_type.fail(
                 f"lazy-init target was not snapshotted: {init_path}",
             )
+        self.source_project.source_state(init_path, required=False)
         artifact_plans = (
             result_type.ok(())
             if init_path in retired_paths
@@ -403,34 +611,31 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
 
     @staticmethod
     def _bound_file_plans(
-        by_path: t.MappingKV[Path, m.Infra.CodegenFilePlan],
-        snapshots: t.MappingKV[Path, m.Cli.AtomicFileState],
+        files: t.SequenceOf[m.Infra.CodegenFilePlan],
+        receipt: m.Infra.CodegenPhaseAnalysis,
     ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
-        """Bind the shared source states onto every planned file.
+        """Bind the sealed genuine native consumption without inferring dependencies.
 
         Returns:
             The planned files with their shared source states bound.
 
         """
-        target_paths = frozenset(by_path)
-        source_states = tuple(
-            state
-            for path in sorted(snapshots)
-            for state in (snapshots[path],)
-            if path not in target_paths and state.content is not None
-        )
+        if not (
+            receipt.inputs
+            or receipt.source_directories
+            or receipt.source_query_topology
+        ):
+            msg = "lazy-init artifact has no original source consumption evidence"
+            raise ValueError(msg)
         return tuple(
-            m.Infra.CodegenFilePlan(
-                project=by_path[path].project,
-                path=by_path[path].path,
-                before=by_path[path].before,
-                desired_content=by_path[path].desired_content,
-                desired_mode=by_path[path].desired_mode,
-                source_states=source_states,
-                owner=by_path[path].owner,
-                policy=by_path[path].policy,
+            file.model_copy(
+                update={
+                    "source_states": receipt.inputs,
+                    "source_directories": receipt.source_directories,
+                    "source_query_topology": receipt.source_query_topology,
+                }
             )
-            for path in sorted(by_path)
+            for file in files
         )
 
 

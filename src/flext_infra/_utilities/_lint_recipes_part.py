@@ -16,6 +16,25 @@ class FlextInfraUtilitiesLintRecipesPart:
     """Source-position primitives composed into the lint repair recipes."""
 
     @staticmethod
+    def _docstring_expr(
+        node: ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
+    ) -> ast.Expr | None:
+        """Return the docstring statement of a module, class or function.
+
+        Returns:
+            The docstring statement of a module, class or function.
+
+        """
+        first = node.body[0] if node.body else None
+        if (
+            isinstance(first, ast.Expr)
+            and isinstance(first.value, ast.Constant)
+            and isinstance(first.value.value, str)
+        ):
+            return first
+        return None
+
+    @staticmethod
     def _utf8_chars(line: str, col_offset: int) -> int:
         """Return the character index of a UTF-8 AST column on ``line``.
 

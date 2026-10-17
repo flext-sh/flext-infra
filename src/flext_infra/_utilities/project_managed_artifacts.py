@@ -64,6 +64,8 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
     def load_repository_declaration_inputs(
         cls,
         repository_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[m.Infra.RepositoryDeclarationInputs]:
         """Validate only repository policy through the same captured YAML layers.
 
@@ -79,6 +81,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         document = cls.load_config_document_inputs(
             repository_root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+            source_project=source_project,
         )
         if document.failure:
             return result_type.from_failure(document)
@@ -94,7 +97,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         )
         if loaded.failure:
             return result_type.from_failure(loaded)
-        verified = cls._verify_unchanged_snapshots(document.value.sources)
+        verified = (
+            cls._verify_unchanged_snapshots(document.value.sources)
+            if source_project is None
+            else r[bool].ok(value=True)
+        )
         if verified.failure:
             return result_type.from_failure(verified)
         return result_type.ok(
@@ -111,6 +118,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         *,
         filename: str,
         projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
+        source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[m.Infra.ConfigDocumentInputs]:
         """Capture and compose one F.yaml through the same strict layer reader.
 
@@ -119,12 +127,16 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         """
         result_type = r[m.Infra.ConfigDocumentInputs]
-        elected = r[tuple[Path, ...]].create_from_callable(
-            partial(
-                FlextInfraConfig.config_sources_for_repository,
-                repository_root,
-                filename=filename,
-            ),
+        elected = (
+            r[tuple[Path, ...]].create_from_callable(
+                partial(
+                    FlextInfraConfig.config_sources_for_repository,
+                    repository_root,
+                    filename=filename,
+                ),
+            )
+            if source_project is None
+            else r[tuple[Path, ...]].ok(())
         )
         if elected.failure:
             return result_type.from_failure(elected)
@@ -140,6 +152,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             return result_type.fail(str(error), exception=error)
         snapshots: list[m.Cli.AtomicFileState] = []
         for path in selected:
+            if source_project is not None:
+                snapshots.append(
+                    source_project.source_state(path, required=path == selected[0])
+                )
+                continue
             observed = u.Cli.atomic_read_binary_file_state(
                 path,
                 required=path == selected[0] or path in elected.value,
@@ -157,7 +174,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         )
         if loaded.failure:
             return result_type.from_failure(loaded)
-        verified = cls._verify_unchanged_snapshots(snapshots)
+        verified = (
+            cls._verify_unchanged_snapshots(snapshots)
+            if source_project is None
+            else r[bool].ok(value=True)
+        )
         if verified.failure:
             return result_type.from_failure(verified)
         return result_type.ok(

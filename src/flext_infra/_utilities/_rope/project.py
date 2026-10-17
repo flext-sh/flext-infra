@@ -14,8 +14,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Generator, Mapping
-from contextlib import AbstractContextManager, contextmanager
-from errno import ENOENT
+from contextlib import AbstractContextManager, closing, contextmanager
+from errno import ELOOP, ENOENT
 from os.path import normpath, realpath
 from pathlib import Path
 from types import MappingProxyType
@@ -43,6 +43,8 @@ class FlextInfraRopeProject(Project):
     # freezes their resource identities and the external Python path.
     _frozen_folders: tuple[list[File | Folder], list[File | Folder]] | None = None
     _snapshot_python_path_folders: list[File | Folder] | None = None
+    _source_election: p.Infra.RopeProjectElection | None = None
+    _source_epoch_failure: BaseException | None = None
 
     @property
     @override
@@ -166,15 +168,24 @@ class FlextInfraRopeProject(Project):
     class SnapshotFiles:
         """Closed, read-only input inventory for a semantic planning project.
 
-        Deliberately exposes no filesystem mutation operations. Missing inputs
-        are errors, never an invitation to consult a newer disk version.
+        Deliberately exposes no filesystem mutation operations. Missing
+        repository inputs are errors, never an invitation to consult a newer
+        disk version. The elected interpreter paths (stdlib and installed
+        distributions) are ambient runtime, not repository state: they stay
+        readable read-only so semantic analysis resolves their identities
+        without importing them into the closed snapshot.
         """
 
         def __init__(
             self,
             sources: Mapping[Path, bytes],
             directories: t.SequenceOf[Path],
+            *,
+            ambient_roots: t.SequenceOf[Path] = (),
         ) -> None:
+            self._ambient_roots = tuple(
+                Path(self.realpath(str(root))) for root in ambient_roots
+            )
             self._sources = MappingProxyType({
                 Path(self.realpath(str(path))): content
                 for path, content in sources.items()
@@ -207,8 +218,24 @@ class FlextInfraRopeProject(Project):
             """
             return normpath(str(Path(path).absolute()))
 
+        def _ambient_identity(self, path: str) -> Path | None:
+            """Return the real path when it belongs to an ambient interpreter root.
+
+            Returns:
+                The normalized real path inside one ambient root, or ``None``
+                for repository-scoped paths the closed inventory owns.
+
+            """
+            resolved = Path(self.realpath(path))
+            if any(
+                root == resolved or root in resolved.parents
+                for root in self._ambient_roots
+            ):
+                return resolved
+            return None
+
         def exists(self, path: str) -> bool:
-            """Report only files and folders captured by this snapshot.
+            """Report captured resources and readable ambient interpreter paths.
 
             Args:
                 path: The path to check for existence within the snapshot.
@@ -218,34 +245,45 @@ class FlextInfraRopeProject(Project):
 
             """
             resolved = Path(self.realpath(path))
-            return resolved in self._sources or resolved in self._directories
+            if resolved in self._sources or resolved in self._directories:
+                return True
+            ambient = self._ambient_identity(path)
+            return ambient is not None and ambient.exists()
 
         def isfile(self, path: str) -> bool:
-            """Recognize only captured source files.
+            """Recognize captured source files and ambient interpreter files.
 
             Args:
-                path: The path to check for being a captured source file.
+                path: The path to check for being a file.
 
             Returns:
                 Whether the specified path is a captured source file.
 
             """
-            return Path(self.realpath(path)) in self._sources
+            resolved = Path(self.realpath(path))
+            if resolved in self._sources:
+                return True
+            ambient = self._ambient_identity(path)
+            return ambient is not None and ambient.is_file()
 
         def isdir(self, path: str) -> bool:
-            """Recognize only declared or captured parent folders.
+            """Recognize captured folders and ambient interpreter folders.
 
             Args:
-                path: The path to check for being a declared or captured parent folder.
+                path: The path to check for being a directory.
 
             Returns:
-                Whether the specified path is a declared or captured parent folder.
+                Whether the specified path is a captured or ambient folder.
 
             """
-            return Path(self.realpath(path)) in self._directories
+            resolved = Path(self.realpath(path))
+            if resolved in self._directories:
+                return True
+            ambient = self._ambient_identity(path)
+            return ambient is not None and ambient.is_dir()
 
         def listdir(self, path: str) -> list[str]:
-            """Enumerate captured direct children without consulting live disk.
+            """Enumerate captured children, then ambient interpreter children.
 
             Args:
                 path: The path to enumerate direct children for.
@@ -254,18 +292,21 @@ class FlextInfraRopeProject(Project):
                 A sorted list of direct child names captured in the snapshot.
 
             Raises:
-                FileNotFoundError: If the specified directory is not captured in the
-                  snapshot.
+                FileNotFoundError: If the specified directory is neither
+                  captured in the snapshot nor ambient interpreter state.
 
             """
             directory = Path(self.realpath(path))
-            if directory not in self._directories:
-                msg = f"Rope snapshot folder is absent: {path}"
-                raise FileNotFoundError(msg)
-            return [child.name for child in self._children[directory]]
+            if directory in self._directories:
+                return [child.name for child in self._children[directory]]
+            ambient = self._ambient_identity(path)
+            if ambient is not None and ambient.is_dir():
+                return sorted(item.name for item in ambient.iterdir())
+            msg = f"Rope snapshot folder is absent: {path}"
+            raise FileNotFoundError(msg)
 
         def read(self, path: str) -> bytes:
-            """Read the exact captured source, including proposed edits.
+            """Read the exact captured source, then ambient interpreter bytes.
 
             Args:
                 path: The path to the captured source file to read.
@@ -273,8 +314,19 @@ class FlextInfraRopeProject(Project):
             Returns:
                 The resulting ``bytes``.
 
+            Raises:
+                FileNotFoundError: If the path is neither captured nor
+                  ambient interpreter state.
+
             """
-            return self._sources[Path(self.realpath(path))]
+            source = Path(self.realpath(path))
+            if source in self._sources:
+                return self._sources[source]
+            ambient = self._ambient_identity(path)
+            if ambient is not None and ambient.is_file():
+                return ambient.read_bytes()
+            msg = f"Rope snapshot source is absent: {path}"
+            raise FileNotFoundError(msg)
 
         def children(self, path: str) -> tuple[Path, ...]:
             """Read direct children from the same closed inventory.
@@ -588,6 +640,11 @@ class FlextInfraRopeProject(Project):
                     and predicate != "isfile"
                 )
             else:
+                if self._query(str(candidate.parent), "exists") and not self._query(
+                    str(candidate.parent),
+                    "isdir",
+                ):
+                    return False
                 inventory = self._inventory(candidate.parent)
                 if inventory is None:
                     witness = self._topology[candidate.parent]
@@ -610,30 +667,36 @@ class FlextInfraRopeProject(Project):
                     )
                     observed = False
                 else:
-                    inventory = inventory.model_copy(
-                        update={
-                            "queries": tuple(
-                                sorted({
-                                    *inventory.queries,
-                                    (candidate.name, predicate),
-                                })
-                            )
-                        }
-                    )
-                    self._inventories[candidate.parent] = inventory
-                    self._record(
-                        directories=(
-                            inventory.model_copy(
-                                update={
-                                    "queries": ((candidate.name, predicate),),
-                                    "membership_queried": False,
-                                }
+                    try:
+                        observed = u.Cli.atomic_directory_query_value(
+                            inventory, candidate.name, predicate
+                        )
+                    except OSError as exc:
+                        if exc.errno != ELOOP:
+                            raise
+                        observed = self._alias_query(candidate, predicate)
+                    else:
+                        inventory = inventory.model_copy(
+                            update={
+                                "queries": tuple(
+                                    sorted({
+                                        *inventory.queries,
+                                        (candidate.name, predicate),
+                                    })
+                                )
+                            }
+                        )
+                        self._inventories[candidate.parent] = inventory
+                        self._record(
+                            directories=(
+                                inventory.model_copy(
+                                    update={
+                                        "queries": ((candidate.name, predicate),),
+                                        "membership_queried": False,
+                                    }
+                                ),
                             ),
-                        ),
-                    )
-                    observed = u.Cli.atomic_directory_query_value(
-                        inventory, candidate.name, predicate
-                    )
+                        )
             if observed:
                 return True
             match predicate:
@@ -646,6 +709,27 @@ class FlextInfraRopeProject(Project):
             if proposed:
                 self._observe_overlay(path)
             return proposed
+
+        def _alias_query(
+            self, candidate: Path, predicate: Literal["exists", "isfile", "isdir"]
+        ) -> bool:
+            """Authenticate one alias observation through its resolved target.
+
+            The alias receipt itself keeps its physical symlink identity; the
+            predicate answer comes from the target's own physical inventory, so
+            no unanswerable query is recorded for later verification.
+
+            Returns:
+                The predicate value answered by the resolved target receipt.
+
+            """
+            try:
+                target = candidate.resolve(strict=True)
+            except OSError:
+                return False
+            if predicate == "exists":
+                return True
+            return self._query(str(target), predicate)
 
         def _observe_overlay(self, path: str) -> None:
             """Bind the exact planned sources contributing a virtual resource."""
@@ -834,6 +918,7 @@ class FlextInfraRopeProject(Project):
                 *(Path(root) / path for path in election.source_folders),
                 *(Path(path) for path in election.python_path_folders),
             ),
+            ambient_roots=tuple(Path(path) for path in election.python_path_folders),
         )
         return cls._from_files(root, files, election)
 
@@ -871,6 +956,12 @@ class FlextInfraRopeProject(Project):
         project._custom_source_folders = [
             project.get_resource(path) for path in election.source_folders
         ]
+        project._source_election = m.Infra.RopeProjectElection(
+            source_folders=tuple(election.source_folders),
+            ignored_resources=tuple(election.ignored_resources),
+            extension_modules=tuple(election.extension_modules),
+            python_path_folders=tuple(election.python_path_folders),
+        )
         return project
 
     @classmethod
@@ -897,6 +988,42 @@ class FlextInfraRopeProject(Project):
         )
         return cls._from_files(live.root.real_path, files, election)
 
+    @contextmanager
+    def source_consumer(self) -> Generator[Self]:
+        """Isolate native semantic caches while sharing the original read authority.
+
+        Yields:
+            A fresh native graph with the same originals, election and receipt issuer.
+
+        Raises:
+            TypeError: The project has no authenticated original read authority.
+
+        """
+        if (
+            not isinstance(self.fscommands, self.AtomicReadFiles)
+            or self._source_election is None
+        ):
+            msg = "Rope source consumer requires an authenticated original election"
+            raise TypeError(msg)
+        with closing(
+            type(self)._from_files(
+                self.root.real_path,
+                self.fscommands,
+                self._source_election,
+            ),
+        ) as consumer:
+            yield consumer
+
+    @property
+    def authenticated_sources(self) -> bool:
+        """Whether all source operations share an authenticated original epoch."""
+        return isinstance(self.fscommands, self.AtomicReadFiles)
+
+    @property
+    def source_epoch_failure(self) -> BaseException | None:
+        """Expose only the original exception raised by the global epoch verifier."""
+        return self._source_epoch_failure
+
     def source_consumption(
         self,
     ) -> AbstractContextManager[p.Infra.RopeSourceConsumption]:
@@ -921,6 +1048,44 @@ class FlextInfraRopeProject(Project):
             msg = "Rope project does not own authenticated live reads"
             raise TypeError(msg)
         return self.fscommands.source_state(path, required=required)
+
+    def source_query(
+        self, path: Path, predicate: Literal["exists", "isfile", "isdir"]
+    ) -> bool:
+        """Elect a direct path through the original native query owner."""
+        if not isinstance(self.fscommands, self.AtomicReadFiles):
+            msg = "Rope project does not own authenticated live reads"
+            raise TypeError(msg)
+        return self.fscommands._query(str(path), predicate)
+
+    def source_children(self, path: Path) -> tuple[Path, ...]:
+        """Enumerate original native membership with its exact query receipt."""
+        if not isinstance(self.fscommands, self.AtomicReadFiles):
+            msg = "Rope project does not own authenticated live reads"
+            raise TypeError(msg)
+        return self.fscommands.children(str(path))
+
+    def source_text(self, path: Path) -> str:
+        """Read local or external planning text through the same original authority."""
+        if not isinstance(self.fscommands, self.AtomicReadFiles):
+            msg = "Rope project does not own authenticated live reads"
+            raise TypeError(msg)
+        return self.fscommands.read(str(path)).decode(c.DEFAULT_ENCODING)
+
+    def source_walk(self, path: Path) -> Generator[tuple[Path, list[str], list[str]]]:
+        """Provide Path.walk's pruning contract over original native membership."""
+        pending = [path]
+        while pending:
+            directory = pending.pop()
+            directories: list[str] = []
+            files: list[str] = []
+            for child in self.source_children(directory):
+                if self.source_query(child, "isdir"):
+                    directories.append(child.name)
+                else:
+                    files.append(child.name)
+            yield directory, directories, files
+            pending.extend(directory / name for name in reversed(directories))
 
     def consumed_source_states(self) -> tuple[m.Cli.AtomicFileState, ...]:
         """Return the actual-read closure, including native external providers.
@@ -977,7 +1142,11 @@ class FlextInfraRopeProject(Project):
         if not isinstance(self.fscommands, self.AtomicReadFiles):
             msg = "Rope project does not own authenticated live reads"
             raise TypeError(msg)
-        self.fscommands.verify()
+        try:
+            self.fscommands.verify()
+        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+            self._source_epoch_failure = exc
+            raise
 
     @contextmanager
     def frozen_layout(self) -> Generator[Self]:

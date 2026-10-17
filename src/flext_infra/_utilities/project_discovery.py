@@ -135,6 +135,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         repository_root: Path,
         *,
         scan_dirs: frozenset[str] | None = None,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> t.SequenceOf[Path]:
         """Discover all project directories under repository root.
 
@@ -155,7 +156,10 @@ class FlextInfraUtilitiesProjectDiscovery(
             ValueError: If ``declared.failure``.
 
         """
-        declared = FlextInfraUtilitiesGit.git_submodule_declarations(repository_root)
+        declared = FlextInfraUtilitiesGit.git_submodule_declarations(
+            repository_root,
+            source_project=source_project,
+        )
         if declared.failure:
             raise ValueError(declared.error or "invalid .gitmodules")
         configured_projects = tuple(item.path.as_posix() for item in declared.value)
@@ -163,6 +167,7 @@ class FlextInfraUtilitiesProjectDiscovery(
             repository_root,
             scan_dirs=scan_dirs,
             declarations=declared.value,
+            source_project=source_project,
         )
         resolved_repository_root = repository_root.resolve()
         if not configured_projects:
@@ -182,7 +187,12 @@ class FlextInfraUtilitiesProjectDiscovery(
         )
 
     @classmethod
-    def discover_rope_project_roots(cls, repository_root: Path) -> t.SequenceOf[Path]:
+    def discover_rope_project_roots(
+        cls,
+        repository_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> t.SequenceOf[Path]:
         """Return every Python project this repository's Rope workspace owns.
 
         A workspace census must index its declared first-party members so
@@ -204,12 +214,14 @@ class FlextInfraUtilitiesProjectDiscovery(
         resolved_root = repository_root.resolve()
         declarations = FlextInfraUtilitiesGit.git_submodule_declarations(
             resolved_root,
+            source_project=source_project,
         )
         if declarations.failure:
             raise ValueError(declarations.error or "invalid .gitmodules")
         declared = cls.discover_project_candidates(
             resolved_root,
             declarations=declarations.value,
+            source_project=source_project,
         )
         nonparticipants = cls.repository_nonparticipant_paths(
             resolved_root,
@@ -217,10 +229,22 @@ class FlextInfraUtilitiesProjectDiscovery(
         )
         direct = tuple(
             child.resolve()
-            for child in sorted(resolved_root.iterdir(), key=attrgetter("name"))
-            if child.is_dir()
+            for child in (
+                sorted(resolved_root.iterdir(), key=attrgetter("name"))
+                if source_project is None
+                else source_project.source_children(resolved_root)
+            )
+            if (
+                child.is_dir()
+                if source_project is None
+                else source_project.source_query(child, "isdir")
+            )
             and not child.name.startswith(".")
-            and (child / c.PYPROJECT_FILENAME).is_file()
+            and (
+                (child / c.PYPROJECT_FILENAME).is_file()
+                if source_project is None
+                else source_project.source_query(child / c.PYPROJECT_FILENAME, "isfile")
+            )
             and not cls._is_nonparticipant(child, resolved_root, nonparticipants)
         )
         return tuple(
@@ -237,6 +261,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         *,
         source_files: t.SequenceOf[Path] | None = None,
         refactor_config: m.Infra.RefactorConfigSpec | None = None,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> t.StrSequence:
         """Return only governed handwritten Python surfaces as scan targets.
 
@@ -252,14 +277,19 @@ class FlextInfraUtilitiesProjectDiscovery(
 
         """
         resolved_root = repository_root.resolve()
-        if refactor_config is None:
-            refactor_config = cls.load_refactor_config(resolved_root)
-        nonparticipants = cls.repository_nonparticipant_paths(resolved_root)
+        del refactor_config
+        nonparticipants = cls.repository_nonparticipant_paths(
+            resolved_root, source_project=source_project
+        )
         eligible = {
             path.relative_to(resolved_root).as_posix()
-            for project in cls.governed_project_roots(resolved_root)
+            for project in cls.governed_project_roots(
+                resolved_root, source_project=source_project
+            )
             for path in cls.discover_python_files(
-                project, workspace_excluded_top_dirs=frozenset()
+                project,
+                workspace_excluded_top_dirs=frozenset(),
+                source_project=source_project,
             )
             if not cls._is_nonparticipant(path, resolved_root, nonparticipants)
             and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
@@ -287,6 +317,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         *,
         workspace_excluded_top_dirs: frozenset[str],
         skip_dirs: frozenset[str] | None = None,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> t.StrSequence:
         """Return owned top-level directories containing active Python sources.
 
@@ -294,24 +325,52 @@ class FlextInfraUtilitiesProjectDiscovery(
             Directory names in deterministic order.
 
         """
-        if not project_dir.is_dir():
+        if not (
+            project_dir.is_dir()
+            if source_project is None
+            else source_project.source_query(project_dir, "isdir")
+        ):
             return []
         effective_skip = (
             c.Infra.PYTHON_DISCOVERY_SKIP_DIRS if skip_dirs is None else skip_dirs
         ) | frozenset(config.Infra.codegen.source_scan_ignored)
-        nonparticipants = cls.repository_nonparticipant_paths(project_dir)
+        nonparticipants = cls.repository_nonparticipant_paths(
+            project_dir, source_project=source_project
+        )
         return [
             subdir.name
-            for subdir in sorted(project_dir.iterdir())
-            if subdir.is_dir()
-            and not subdir.is_symlink()
+            for subdir in (
+                sorted(project_dir.iterdir())
+                if source_project is None
+                else source_project.source_children(project_dir)
+            )
+            if (
+                subdir.is_dir()
+                if source_project is None
+                else source_project.source_query(subdir, "isdir")
+            )
+            and (not subdir.is_symlink() if source_project is None else True)
             and not subdir.name.startswith(".")
             and subdir.name not in effective_skip
             and subdir.name not in workspace_excluded_top_dirs
             and not cls._is_nonparticipant(subdir, project_dir, nonparticipants)
-            and not (subdir / c.PYPROJECT_FILENAME).is_file()
-            and not (subdir / c.Infra.GIT_DIR).exists()
-            and any(cls._walk_python_files(subdir, effective_skip))
+            and not (
+                (subdir / c.PYPROJECT_FILENAME).is_file()
+                if source_project is None
+                else source_project.source_query(
+                    subdir / c.PYPROJECT_FILENAME, "isfile"
+                )
+            )
+            and not (
+                (subdir / c.Infra.GIT_DIR).exists()
+                if source_project is None
+                else source_project.source_query(subdir / c.Infra.GIT_DIR, "exists")
+            )
+            and any(
+                cls._walk_python_files(
+                    subdir, effective_skip, source_project=source_project
+                )
+            )
         ]
 
     @classmethod
@@ -320,6 +379,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         project_dir: Path,
         *,
         workspace_excluded_top_dirs: frozenset[str],
+        source_project: p.Infra.RopeProject | None = None,
     ) -> t.StrSequence:
         """Return owned Python directories and standalone root modules.
 
@@ -327,21 +387,36 @@ class FlextInfraUtilitiesProjectDiscovery(
             Every active source target owned by one project.
 
         """
-        if not project_dir.is_dir():
+        if not (
+            project_dir.is_dir()
+            if source_project is None
+            else source_project.source_query(project_dir, "isdir")
+        ):
             return []
         return [
             *cls.discover_python_dirs(
                 project_dir,
                 workspace_excluded_top_dirs=workspace_excluded_top_dirs,
+                source_project=source_project,
             ),
             *(
                 path.name
-                for path in sorted(project_dir.iterdir())
-                if path.is_file()
-                and not path.is_symlink()
+                for path in (
+                    sorted(project_dir.iterdir())
+                    if source_project is None
+                    else source_project.source_children(project_dir)
+                )
+                if (
+                    path.is_file()
+                    if source_project is None
+                    else source_project.source_query(path, "isfile")
+                )
+                and (not path.is_symlink() if source_project is None else True)
                 and not path.name.startswith(".")
                 and path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
-                and cls._python_file_belongs_to_project(project_dir, path)
+                and cls._python_file_belongs_to_project(
+                    project_dir, path, source_project=source_project
+                )
                 and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
                     project_dir, path
                 )
@@ -354,6 +429,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         project_dir: Path,
         *,
         workspace_excluded_top_dirs: frozenset[str],
+        source_project: p.Infra.RopeProject | None = None,
     ) -> t.SequenceOf[Path]:
         """Expand canonical targets without crossing project or artifact boundaries.
 
@@ -365,21 +441,32 @@ class FlextInfraUtilitiesProjectDiscovery(
         skip_dirs = c.Infra.PYTHON_DISCOVERY_SKIP_DIRS | frozenset(
             config.Infra.codegen.source_scan_ignored
         )
-        nonparticipants = cls.repository_nonparticipant_paths(project_dir)
+        nonparticipants = cls.repository_nonparticipant_paths(
+            project_dir, source_project=source_project
+        )
         return tuple(
             sorted({
                 path.resolve()
                 for target in cls.discover_python_targets(
                     project_dir,
                     workspace_excluded_top_dirs=workspace_excluded_top_dirs,
+                    source_project=source_project,
                 )
                 for candidate in (project_dir / target,)
                 for path in (
-                    cls._walk_python_files(candidate, skip_dirs)
-                    if candidate.is_dir()
+                    cls._walk_python_files(
+                        candidate, skip_dirs, source_project=source_project
+                    )
+                    if (
+                        candidate.is_dir()
+                        if source_project is None
+                        else source_project.source_query(candidate, "isdir")
+                    )
                     else (candidate,)
                 )
-                if cls._python_file_belongs_to_project(project_dir, path)
+                if cls._python_file_belongs_to_project(
+                    project_dir, path, source_project=source_project
+                )
                 and not cls._is_nonparticipant(path, project_dir, nonparticipants)
                 and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
                     project_dir, path.resolve()
@@ -391,6 +478,8 @@ class FlextInfraUtilitiesProjectDiscovery(
     def _walk_python_files(
         directory: Path,
         skip_dirs: frozenset[str],
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> Iterator[Path]:
         """Yield sources while pruning hidden, ignored, and nested repository trees.
 
@@ -398,27 +487,60 @@ class FlextInfraUtilitiesProjectDiscovery(
             Each eligible Python source path.
 
         """
-        for parent, child_dirs, file_names in directory.walk():
+
+        def on_error(error: OSError) -> None:
+            """Propagate the walk's original filesystem failure."""
+            raise error
+
+        walk = (
+            directory.walk(on_error=on_error)
+            if source_project is None
+            else source_project.source_walk(directory)
+        )
+        for parent, child_dirs, file_names in walk:
             child_dirs[:] = [
                 name
                 for name in child_dirs
                 if name not in skip_dirs
                 and not name.startswith(".")
-                and not (parent / name).is_symlink()
-                and not (parent / name / c.PYPROJECT_FILENAME).is_file()
-                and not (parent / name / c.Infra.GIT_DIR).exists()
+                and (
+                    not (parent / name).is_symlink() if source_project is None else True
+                )
+                and not (
+                    (parent / name / c.PYPROJECT_FILENAME).is_file()
+                    if source_project is None
+                    else source_project.source_query(
+                        parent / name / c.PYPROJECT_FILENAME, "isfile"
+                    )
+                )
+                and not (
+                    (parent / name / c.Infra.GIT_DIR).exists()
+                    if source_project is None
+                    else source_project.source_query(
+                        parent / name / c.Infra.GIT_DIR, "exists"
+                    )
+                )
             ]
             for file_name in file_names:
                 if (
                     not file_name.startswith(".")
                     and file_name not in skip_dirs
                     and Path(file_name).suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
-                    and not (parent / file_name).is_symlink()
+                    and (
+                        not (parent / file_name).is_symlink()
+                        if source_project is None
+                        else source_project.source_query(parent / file_name, "isfile")
+                    )
                 ):
                     yield parent / file_name
 
     @staticmethod
-    def _python_file_belongs_to_project(project_dir: Path, source: Path) -> bool:
+    def _python_file_belongs_to_project(
+        project_dir: Path,
+        source: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> bool:
         """Return whether a source resolves inside this project's own boundary.
 
         Returns:
@@ -432,9 +554,17 @@ class FlextInfraUtilitiesProjectDiscovery(
         for parent in source.parents:
             if parent == project_dir:
                 return True
-            if (parent / c.PYPROJECT_FILENAME).is_file() or (
-                parent / c.Infra.GIT_DIR
-            ).exists():
+            if (
+                (parent / c.PYPROJECT_FILENAME).is_file()
+                if source_project is None
+                else source_project.source_query(
+                    parent / c.PYPROJECT_FILENAME, "isfile"
+                )
+            ) or (
+                (parent / c.Infra.GIT_DIR).exists()
+                if source_project is None
+                else source_project.source_query(parent / c.Infra.GIT_DIR, "exists")
+            ):
                 return False
         return False
 
@@ -446,20 +576,25 @@ class FlextInfraUtilitiesProjectDiscovery(
         *,
         workspace_excluded_top_dirs: frozenset[str],
     ) -> t.StrSequence:
-        """Keep declared root order and append every discovered active source root.
+        """Keep declared directory order and append every discovered Python target.
 
         Returns:
-            The Python roots all analyzer surfaces share.
+            Declared directories and discovered Python directories and root modules.
 
         """
-        discovered = cls.discover_python_dirs(
+        discovered = cls.discover_python_targets(
             project_dir,
             workspace_excluded_top_dirs=workspace_excluded_top_dirs,
         )
         return (*declared, *(root for root in discovered if root not in declared))
 
     @classmethod
-    def governed_project_roots(cls, repository_root: Path) -> t.SequenceOf[Path]:
+    def governed_project_roots(
+        cls,
+        repository_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> t.SequenceOf[Path]:
         """Return the repositories a verb run at ``repository_root`` governs.
 
         The workspace owns its declared first-party members. A standalone
@@ -473,7 +608,9 @@ class FlextInfraUtilitiesProjectDiscovery(
         return tuple(
             dict.fromkeys((
                 repository_root.resolve(),
-                *cls.discover_project_roots(repository_root),
+                *cls.discover_project_roots(
+                    repository_root, source_project=source_project
+                ),
             )),
         )
 
@@ -500,7 +637,12 @@ class FlextInfraUtilitiesProjectDiscovery(
         )
 
     @staticmethod
-    def nearest_project_root(repository_root: Path, path: Path) -> Path | None:
+    def nearest_project_root(
+        repository_root: Path,
+        path: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> Path | None:
         """Find the nearest manifest owner inside one governed repository.
 
         Returns:
@@ -509,10 +651,25 @@ class FlextInfraUtilitiesProjectDiscovery(
         """
         boundary = repository_root.resolve()
         candidate = path.resolve()
+        if source_project is not None and source_project.source_query(
+            candidate, "isfile"
+        ):
+            candidate = candidate.parent
         if not candidate.is_relative_to(boundary):
             return None
         for parent in (candidate, *candidate.parents):
-            if (parent / c.PYPROJECT_FILENAME).is_file():
+            is_directory = (
+                parent.is_dir()
+                if source_project is None
+                else source_project.source_query(parent, "isdir")
+            )
+            if is_directory and (
+                (parent / c.PYPROJECT_FILENAME).is_file()
+                if source_project is None
+                else source_project.source_query(
+                    parent / c.PYPROJECT_FILENAME, "isfile"
+                )
+            ):
                 return parent
             if parent == boundary:
                 return None

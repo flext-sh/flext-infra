@@ -38,6 +38,7 @@ class FlextInfraCodegenLazyInit(
     """
 
     _modified_files: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
+    _source_project: p.Infra.RopeProject | None = u.PrivateAttr(default=None)
     project_scope_roots: Annotated[
         t.VariadicTuple[Path] | None,
         m.Field(
@@ -47,6 +48,14 @@ class FlextInfraCodegenLazyInit(
             ),
         ),
     ] = None
+
+    @property
+    def source_project(self) -> p.Infra.RopeProject:
+        """Require the sole original source authority during generation."""
+        if self._source_project is None:
+            msg = "lazy-init generation has no original source authority"
+            raise ValueError(msg)
+        return self._source_project
 
     @property
     def modified_files(self) -> t.StrSequence:
@@ -180,6 +189,17 @@ class FlextInfraCodegenLazyInit(
                 publications=tuple(
                     plan for analysis in analyses for plan in analysis.publications
                 ),
+                issues=tuple(
+                    issue for analysis in analyses for issue in analysis.issues
+                ),
+                exception=next(
+                    (
+                        analysis.exception
+                        for analysis in analyses
+                        if analysis.exception is not None
+                    ),
+                    None,
+                ),
             ),
         )
 
@@ -212,26 +232,45 @@ class FlextInfraCodegenLazyInit(
         target_roots = 0
         for root in roots:
             import_roots = u.Infra.import_project_roots(root)
-            with FlextInfraRopeWorkspace.open_workspace(
-                root,
-                rope_repository_root=import_roots[0],
-            ) as rope:
-                if self.target_module:
-                    targets = self._target_package_dirs(rope.workspace_index, root)
-                    if not targets:
-                        continue
-                    target_roots += 1
-                    if target_roots > 1:
-                        return result_type.fail(
-                            f"lazy-init target module is ambiguous: "
-                            f"{self.target_module}",
-                        )
-                planned = self._plan_open_workspace(rope)
-                if planned.failure:
-                    return result_type.from_failure(planned)
-                analyses.append(planned.value)
-                for state in planned.value.inputs:
-                    inputs[state.path] = state
+            analysis: m.Infra.CodegenPhaseAnalysis | None = None
+            project: p.Infra.RopeProject | None = None
+            try:
+                with (
+                    u.Infra.facade_source_project(import_roots[0]) as binding,
+                    FlextInfraRopeWorkspace.open_workspace(
+                        root,
+                        rope_repository_root=import_roots[0],
+                        source_project=binding[0],
+                    ) as rope,
+                ):
+                    project = binding[0]
+                    if self.target_module:
+                        targets = self._target_package_dirs(rope.workspace_index, root)
+                        if not targets:
+                            continue
+                        target_roots += 1
+                        if target_roots > 1:
+                            return result_type.fail(
+                                f"lazy-init target module is ambiguous: {self.target_module}",
+                            )
+                    planned = self._plan_open_workspace(rope)
+                    if planned.failure:
+                        return result_type.from_failure(planned)
+                    analysis = planned.value
+            except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+                if (
+                    analysis is None
+                    or project is None
+                    or project.source_epoch_failure is not exc
+                ):
+                    raise
+                analysis = self._verified_source_analysis(analysis, project, exc)
+            if analysis is None:
+                msg = "lazy-init planning produced no authenticated analysis"
+                raise ValueError(msg)
+            analyses.append(analysis)
+            for state in analysis.inputs:
+                inputs[state.path] = state
         return result_type.ok((analyses, inputs, target_roots))
 
     def _target_package_dirs(
@@ -271,6 +310,7 @@ class FlextInfraCodegenLazyInit(
             The resulting ``p.Result[m.Infra.CodegenPhaseAnalysis]``.
 
         """
+        self._source_project = rope.rope_project
         workspace_index = rope.workspace_index
         resolved_repository_root = self.repository_root.resolve()
         candidate_entries = tuple(
@@ -313,7 +353,11 @@ class FlextInfraCodegenLazyInit(
             target_package_dir=target.value[0],
             repository_root=resolved_repository_root,
         )
-        snapshots = self._snapshot_planner_inputs(workspace_index, package_dirs)
+        snapshots = self._snapshot_planner_inputs(
+            workspace_index,
+            package_dirs,
+            source_project=rope.rope_project,
+        )
         if snapshots.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(snapshots)
         return self._analyzed_workspace(
@@ -393,6 +437,12 @@ class FlextInfraCodegenLazyInit(
             package_plans.value,
             index=workspace_index,
             snapshots=snapshots,
+            source_receipts={
+                str(plan.context.pkg_dir.resolve()): planner.source_receipt(
+                    plan.context.pkg_dir
+                )
+                for plan in package_plans.value
+            },
         )
         if file_plans.failure:
             return result_type.from_failure(file_plans)

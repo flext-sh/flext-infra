@@ -147,20 +147,3 @@ class TestsFlextInfraPyprojectConformTopologySupport:
 
         """
         return tm.ok(u.Infra.overlay_preserved(source, rendered))
-
-
-def _assert_direct_source(self, rendered: str, ref: m.Infra.RepositoryRef) -> None:
-    """Assert the canonical standalone output: one direct Git requirement."""
-    dependencies = u.Tests.toml_strings_at(rendered, "project", "dependencies")
-    tm.that(dependencies, eq=(self._inline_requirement(ref),))
-    parsed = u.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
-    tool = parsed.get("tool")
-    uv_sources = (
-        u.Tests.toml_mapping(u.Tests.toml_mapping(tool).get("uv")).get("sources")
-        if tool
-        else None
-    )
-    tm.that(
-        uv_sources,
-        eq=None,
-    )

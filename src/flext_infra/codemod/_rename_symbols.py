@@ -12,6 +12,9 @@ from pathlib import Path
 
 from flext_infra import m, p, t, u
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
+)
 
 
 class FlextInfraRenameSymbols:
@@ -452,6 +455,7 @@ class FlextInfraRenameSymbols:
         bindings: t.MappingKV[str, t.StrSequence],
         *,
         rename_definitions: bool = False,
+        resource_paths: t.SequenceOf[Path] | None = None,
     ) -> t.MappingKV[Path, t.VariadicTuple[m.Infra.SourceRewrite]]:
         """Merge non-overlapping Rope previews against one immutable snapshot.
 
@@ -471,6 +475,9 @@ class FlextInfraRenameSymbols:
             path: cls._member_paths(source, path) for path, source in sources.items()
         }
         resources = cls._assert_rope_inputs(project, sources, ordered_paths, root)
+        if resource_paths is not None:
+            resources = {path: resources[path] for path in resource_paths}
+            ordered_paths = tuple(sorted(resources))
         planned: t.MutableMappingKV[
             Path,
             t.MutableSequenceOf[m.Infra.SourceRewrite],
@@ -481,7 +488,7 @@ class FlextInfraRenameSymbols:
                 ((old, new), bindings),
                 (sources, members),
                 (ordered_paths, resources),
-                (planned, rename_definitions),
+                (planned, rename_definitions, resource_paths is None),
             )
             if bindings and not accepted:
                 msg = f"CSV destination has no declared current public owner: {new}"
@@ -527,8 +534,9 @@ class FlextInfraRenameSymbols:
             t.MappingKV[Path, frozenset[tuple[str, ...]]],
         ],
         inventory: t.Pair[t.SequenceOf[Path], t.MappingKV[Path, t.Infra.RopeResource]],
-        plan: t.Pair[
+        plan: t.Triple[
             t.MutableMappingKV[Path, t.MutableSequenceOf[m.Infra.SourceRewrite]],
+            bool,
             bool,
         ],
     ) -> bool:
@@ -574,6 +582,7 @@ class FlextInfraRenameSymbols:
                         (owner, old_suffix, new_suffix),
                         (corpus[0], resources),
                         plan[0],
+                        complete_inventory=plan[2],
                     )
                     accepted = accepted or resolved
                     continue
@@ -610,6 +619,8 @@ class FlextInfraRenameSymbols:
             t.MappingKV[Path, t.Infra.RopeResource],
         ],
         planned: t.MutableMappingKV[Path, t.MutableSequenceOf[m.Infra.SourceRewrite]],
+        *,
+        complete_inventory: bool = True,
     ) -> bool:
         """Plan a declaration rename without weakening its authenticated inventory.
 
@@ -658,7 +669,7 @@ class FlextInfraRenameSymbols:
                         resource.real_path: resource
                         for resource in (
                             *resources.values(),
-                            *project.get_python_files(),
+                            *(project.get_python_files() if complete_inventory else ()),
                         )
                     }.values()
                 ),
@@ -673,6 +684,38 @@ class FlextInfraRenameSymbols:
                 planned=planned,
                 rename_definitions=True,
             )
+        types = FlextInfraUtilitiesSemanticFamilyTypeReferences
+        for path, candidate in resources.items():
+            source = sources[path]
+            module = u.Infra.resolve_pymodule(
+                project,
+                u.Infra.require_file_resource(candidate, candidate.path),
+            )
+            edits = planned.setdefault(path, [])
+            for begin, end, literal, scope in types.quoted_type_regions(
+                source,
+                project,
+                module,
+            ):
+
+                def replacement(
+                    current: p.Infra.RopeScope, expression: str
+                ) -> str | None:
+                    if expression.rpartition(".")[2] != old_suffix:
+                        return None
+                    actual = u.Infra.expression_name(current, expression)
+                    if not u.Infra.same_name(expected, actual):
+                        return None
+                    prefix, separator, _name = expression.rpartition(".")
+                    return f"{prefix}.{new_suffix}" if separator else new_suffix
+
+                changed = types.rewrite_type_source(
+                    literal, project, scope, replacement
+                )
+                if changed != literal:
+                    edits.append(
+                        m.Infra.SourceRewrite(start=begin, end=end, text=repr(changed))
+                    )
         return True
 
     @classmethod

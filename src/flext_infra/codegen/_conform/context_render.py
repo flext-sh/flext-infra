@@ -516,12 +516,10 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 ),
                 packaged_data_files=packaged_data_paths.files,
                 project_declaration_resource=(
-                    (
-                        c.PYPROJECT_FILENAME,
-                        f"{project.package_name}/{c.PYPROJECT_FILENAME}",
+                    FlextInfraEnsurePackagingPhase.declaration_resource(
+                        package_name=project.package_name,
+                        package=repository.package,
                     )
-                    if repository.package
-                    else None
                 ),
                 packaged_data_excludes=(
                     FlextInfraEnsurePackagingPhase.resolve_data_excludes(

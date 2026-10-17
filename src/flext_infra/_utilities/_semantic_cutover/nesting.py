@@ -306,6 +306,14 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     in registered_decorators
                     for decorator in node.decorator_list
                 )
+                or (
+                    test_module
+                    and cls._pytest_name_matches(node.name, pytest_patterns[2])
+                    and any(
+                        not cls._pytest_mark_decorator(decorator, tree)
+                        for decorator in node.decorator_list
+                    )
+                )
             )
         )
         if registered:

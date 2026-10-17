@@ -30,6 +30,7 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext: ...
 
         _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan]
+        _plan_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]
 
         def _add(
             self,
@@ -60,8 +61,10 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         if self._owns_non_init_module_source(package_entry):
             return True
         for entry in self._tree_entries(package_entry):
-            if entry.init_path.is_file():
-                source = entry.init_path.read_text(encoding=c.DEFAULT_ENCODING)
+            if self.rope_workspace.rope_project.source_query(entry.init_path, "isfile"):
+                source = self.rope_workspace.rope_project.source_text(
+                    entry.init_path,
+                )
                 if source.strip() and not source.startswith(c.Infra.AUTOGEN_HEADER):
                     return True
         return False
@@ -201,10 +204,18 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         """
         # Do not merge retired root registries into the
         # inline map that replaces them.
+        resolved_child_dir = child_dir.resolve()
+        child_key = str(resolved_child_dir)
+        child_plan = self._source_plan_cache.get(child_key)
+        if child_plan is not None:
+            receipt = self._plan_receipts.get(child_key)
+            if receipt is None:
+                msg = f"lazy-init child decision lacks original provenance: {child_dir}"
+                raise ValueError(msg)
+            self.rope_workspace.rope_project.replay_source_consumption(receipt)
         retired = child_dir.name in c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES
         if retired or not self.context(child_dir).importable:
             return None
-        resolved_child_dir = child_dir.resolve()
         # Children are planned before their parent (depth
         # descending), so the parent inventory follows the child's plan in
         # the same pass — a planned WRITE counts as a package even before
@@ -212,11 +223,14 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         # example a stdlib-shadowing name) never does. Without a plan the
         # on-disk initializer decides. This keeps check and apply at a
         # fixed point after one run.
-        child_plan = self._source_plan_cache.get(str(resolved_child_dir))
         planned_action = child_plan.action if child_plan is not None else None
         planned_write = planned_action is c.Infra.LazyInitAction.WRITE
         unmergeable = planned_action is c.Infra.LazyInitAction.REMOVE or (
-            not planned_write and not (child_dir / c.Infra.INIT_PY).is_file()
+            not planned_write
+            and not self.rope_workspace.rope_project.source_query(
+                child_dir / c.Infra.INIT_PY,
+                "isfile",
+            )
         )
         if unmergeable:
             return None

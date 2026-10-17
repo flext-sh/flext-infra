@@ -57,7 +57,10 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         surface: str,
     ) -> None:
         """Inherit declared aliases without inventing missing local bindings."""
-        project_root = u.Infra.project_root(pkg_dir)
+        project_root = u.Infra.project_root(
+            pkg_dir,
+            source_project=self.rope_workspace.rope_project,
+        )
         if project_root is None:
             return
         layout = self.rope_workspace.layout(project_root)
@@ -67,7 +70,9 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             return
         local_owners = {
             alias
-            for module_path in sorted(pkg_dir.glob("*.py"))
+            for module_path in self.rope_workspace.rope_project.source_children(pkg_dir)
+            if module_path.suffix == c.Infra.EXT_PYTHON
+            and self.rope_workspace.rope_project.source_query(module_path, "isfile")
             if module_path.name != c.Infra.INIT_PY and module_path.stem.isidentifier()
             if (
                 alias := u.Infra.publication_policy(

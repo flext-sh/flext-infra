@@ -81,6 +81,34 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             name.startswith(pattern) or fnmatch(name, pattern) for pattern in patterns
         )
 
+    @staticmethod
+    def _pytest_mark_decorator(decorator: ast.expr, tree: ast.Module) -> bool:
+        """Prove a decorator comes from pytest.mark, including imported spellings."""
+        expression = decorator.func if isinstance(decorator, ast.Call) else decorator
+        if not isinstance(expression, ast.Attribute):
+            return False
+        mark = expression.value
+        for statement in tree.body:
+            if isinstance(statement, ast.Import):
+                for alias in statement.names:
+                    if (
+                        alias.name == "pytest"
+                        and isinstance(mark, ast.Attribute)
+                        and mark.attr == "mark"
+                        and isinstance(mark.value, ast.Name)
+                        and mark.value.id == (alias.asname or alias.name)
+                    ):
+                        return True
+            elif isinstance(statement, ast.ImportFrom) and statement.module == "pytest":
+                if any(
+                    alias.name == "mark"
+                    and isinstance(mark, ast.Name)
+                    and mark.id == (alias.asname or alias.name)
+                    for alias in statement.names
+                ):
+                    return True
+        return False
+
     @classmethod
     def _test_module_owner(
         cls,

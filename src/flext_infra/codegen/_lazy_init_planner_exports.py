@@ -90,8 +90,8 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 self._add(index, name, target)
         return index
 
-    @staticmethod
     def _enumerated_module_entries(
+        self,
         context: m.Infra.LazyInitPackageContext,
         package_entry: m.Infra.RopePackageIndexEntry | None,
     ) -> t.MutableSequenceOf[t.Pair[Path, str]]:
@@ -131,7 +131,11 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                     if context.current_pkg
                     else child.stem,
                 )
-                for child in sorted(context.pkg_dir.glob("*.py"))
+                for child in self.rope_workspace.rope_project.source_children(
+                    context.pkg_dir,
+                )
+                if child.suffix == c.Infra.EXT_PYTHON
+                and self.rope_workspace.rope_project.source_query(child, "isfile")
                 if child.name != c.Infra.INIT_PY
             ]
         return module_entries

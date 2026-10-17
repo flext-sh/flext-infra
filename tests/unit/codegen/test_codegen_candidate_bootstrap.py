@@ -330,6 +330,26 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             ),
         )
         tm.that(projected.content, ne=before.content)
+        tm.that(
+            u.Tests.toml_strings_at(
+                tm.not_none(projected.content).decode(c.DEFAULT_ENCODING),
+                "tool",
+                "ruff",
+                "lint",
+                "extend-select",
+            ),
+            eq=tuple(config.Infra.tooling.tools.ruff.lint.extend_select),
+        )
+        tm.that(
+            u.Tests.toml_table_at(
+                tm.not_none(projected.content).decode(c.DEFAULT_ENCODING),
+                "tool",
+                "ruff",
+                "lint",
+                "flake8-type-checking",
+            ),
+            has="runtime-evaluated-base-classes",
+        )
         for view in views:
             tm.that(view.path.read_bytes(), eq=view.desired_content)
         tm.ok(infra.bootstrap_candidate(command))

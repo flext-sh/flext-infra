@@ -11,7 +11,7 @@ import textwrap
 from operator import itemgetter
 from pathlib import Path
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesRopeRuntime,
@@ -22,7 +22,11 @@ class FlextInfraUtilitiesRopeSource:
     """Text-oriented helpers shared by Rope-backed refactors."""
 
     @staticmethod
-    def discover_first_party_namespaces(project_dir: Path) -> t.StrSequence:
+    def discover_first_party_namespaces(
+        project_dir: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> t.StrSequence:
         """Discover live regular, namespace, and stub packages under ``src/``.
 
         Returns:
@@ -35,6 +39,7 @@ class FlextInfraUtilitiesRopeSource:
             for name in FlextInfraUtilitiesDiscovery.discover_python_dirs(
                 src_dir,
                 workspace_excluded_top_dirs=frozenset(),
+                source_project=source_project,
             )
             if name.isidentifier()
         ]

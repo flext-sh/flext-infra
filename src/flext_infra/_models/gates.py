@@ -166,6 +166,12 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             populate_by_name=True,
         )
         repository_root: Path = m.Field(description="Repository root directory")
+        runtime_root: Annotated[
+            Path | None,
+            m.Field(
+                description="Explicit physical runtime owner for a staged candidate"
+            ),
+        ] = None
         reports_dir: Annotated[Path, m.Field(description="Reports output directory")]
         apply_fixes: Annotated[
             bool,

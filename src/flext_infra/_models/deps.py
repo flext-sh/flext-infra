@@ -17,6 +17,7 @@ from flext_infra._models import (
     FlextInfraModelsDepsToolConfig,
     FlextInfraModelsMixins,
 )
+from flext_infra._models._config.repository import FlextInfraConfigModelsRepository
 from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
 from flext_infra._models.workspace import FlextInfraModelsWorkspace
 
@@ -477,6 +478,18 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
                 ),
             ),
         ] = ()
+        project_declaration_resource: Annotated[
+            t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None,
+            m.Field(
+                description=(
+                    "Declared producer metadata source and wheel resource destination"
+                ),
+            ),
+        ] = None
+        hatch_build_hook_path: Annotated[
+            Path | None,
+            m.Field(description="Declared project-relative Hatch build hook module"),
+        ] = None
         planned_data_files: Annotated[
             t.StrTuple,
             m.Field(
@@ -510,6 +523,19 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
                 ),
             ),
         ] = None
+
+        @m.field_validator("hatch_build_hook_path")
+        @classmethod
+        def _validate_hatch_build_hook_path(cls, value: Path | None) -> Path | None:
+            """Validate the hook with the project declaration's canonical owner.
+
+            Returns:
+                The validated project-relative hook path.
+
+            """
+            return FlextInfraConfigModelsRepository.validated_hatch_build_hook_path(
+                value
+            )
 
     class PyprojectAnalyzerContext(m.ContractModel):
         """Placement and Python roots of one pyproject the analyzer phases conform.

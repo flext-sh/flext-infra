@@ -449,10 +449,8 @@ class FlextInfraGate:
     ) -> m.Infra.GateExecution:
         """Assemble a gate execution from its native outcome and findings.
 
-        Native outcome and acceptance are separate. A repair breaks only on an
-        error; the findings it leaves keep the ``FINDINGS`` outcome and stay
-        reported for ``check``, whose verdict enforces them (tracker memory
-        ``operator-ruling-2026-10-10-fix-residual-verdict``).
+        Native outcome and acceptance are separate. Remaining findings retain
+        their native diagnostics and block acceptance, including after repair.
 
         Returns:
             The resulting ``m.Infra.GateExecution``.
@@ -754,7 +752,7 @@ class FlextInfraGate:
             yield
 
     def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
-        """Template method: timing + targets + skip + run fix + result.
+        """Repair targets and verify their final state through the native check.
 
         Returns:
             The resulting ``m.Infra.GateExecution``.
@@ -776,38 +774,59 @@ class FlextInfraGate:
             return self._skip_result(project_dir, started)
         cmd = self._build_fix_command(project_dir, ctx, targets)
         with self._mutation_lease(project_dir):
-            result = self._run(cmd, project_dir)
-        # A fixer repairs what it can. The run's outcome decides the verdict:
-        # the findings it reports stay for ``check``, and only an error (a
-        # status the tool does not declare, a timeout, a signal, a findings
-        # status with nothing reported) breaks the verb with its cause.
-        _, issues = self._parse_check_output(result, project_dir, ctx)
-        errors = [issue for issue in issues if issue.code == c.Infra.ToolOutcome.ERROR]
-        outcome = u.Infra.tool_outcome(
-            result.outcome,
-            findings=len(issues) - len(errors),
-            findings_exit_codes=self._findings_exit_codes(),
-        )
-        if outcome is c.Infra.ToolOutcome.ERROR and not errors:
-            issues = (
-                *issues,
-                self._command_error_issue(
-                    result,
-                    tool=self.gate_id,
-                    file=str(project_dir),
-                    line=1,
-                    column=1,
-                ),
+            result = self._run(
+                cmd,
+                project_dir,
+                timeout=self._check_timeout(project_dir, ctx),
+                env=self._check_env(project_dir, ctx),
+                remove_env_keys=self._check_remove_env_keys(project_dir, ctx),
             )
-        return self._build_gate_execution(
-            m.Infra.GateExecutionParams(
-                project_dir=project_dir,
-                verdict=outcome is not c.Infra.ToolOutcome.ERROR,
-                outcome=outcome,
-                issues=tuple(issues),
-                raw_output=self._raw_output(result),
-                started=started,
-            ),
+            # Fix reports may include already-repaired findings. Parse the
+            # report, but only the read-only native pass proves what remains.
+            execution = self._parsed_gate_execution(project_dir, ctx, result, started)
+            native_error = (
+                result.outcome.timed_out
+                or result.outcome.forwarded_signal is not None
+                or (
+                    not u.Cli.process_succeeded(result.outcome)
+                    and result.outcome.raw_return_code
+                    not in self._findings_exit_codes()
+                )
+            )
+            if native_error:
+                issues = execution.issues
+                if not any(issue.code == c.Infra.ToolOutcome.ERROR for issue in issues):
+                    issues = (
+                        *issues,
+                        self._command_error_issue(
+                            result,
+                            tool=self.gate_id,
+                            file=str(project_dir),
+                            line=1,
+                            column=1,
+                        ),
+                    )
+                return self._build_gate_execution(
+                    m.Infra.GateExecutionParams(
+                        project_dir=project_dir,
+                        verdict=False,
+                        outcome=c.Infra.ToolOutcome.ERROR,
+                        issues=issues,
+                        raw_output=execution.raw_output,
+                        started=started,
+                    ),
+                )
+            if self.gate_id == c.Infra.LINT and result.stderr.strip():
+                return execution
+            verified = self._execute_check_command(project_dir, ctx, targets, started)
+        return verified.model_copy(
+            update={
+                "raw_output": "\n".join(
+                    output
+                    for output in (execution.raw_output, verified.raw_output)
+                    if output
+                ),
+            },
         )
 
     @staticmethod
@@ -846,12 +865,17 @@ class FlextInfraGate:
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> t.StrSequence:
-        """Targets for fix. Default: same as check dirs.
+        """Use the validated literal selection, otherwise the project's check dirs.
 
         Returns:
             The resulting ``t.StrSequence``.
 
         """
+        if ctx.selected_files:
+            return tuple(
+                str(path.resolve().relative_to(project_dir.resolve()))
+                for path in ctx.selected_files
+            )
         return self._get_check_dirs(project_dir, ctx)
 
     def _build_fix_command(

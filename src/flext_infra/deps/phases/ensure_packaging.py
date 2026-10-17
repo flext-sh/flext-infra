@@ -25,6 +25,24 @@ class FlextInfraEnsurePackagingPhase:
     """Ensure bounded Hatch wheel and source-distribution targets."""
 
     @staticmethod
+    def declaration_resource(
+        *,
+        package_name: str,
+        package: bool,
+    ) -> t.Pair[str, str] | None:
+        """Derive the metadata resource from the declared packaging identity.
+
+        Returns:
+            The source and installed destination, or no resource for a non-package.
+
+        """
+        return (
+            (c.PYPROJECT_FILENAME, f"{package_name}/{c.PYPROJECT_FILENAME}")
+            if package
+            else None
+        )
+
+    @staticmethod
     def _validate_data_tree(
         root: Path,
         source: Path,
@@ -185,7 +203,7 @@ class FlextInfraEnsurePackagingPhase:
         package_name: str,
         data: m.Infra.PackagedDataSelection,
         data_excludes: t.StrSequence,
-        surfaces: t.Triple[t.StrSequence, t.StrSequence, t.StrSequence],
+        topology: m.Infra.PyprojectDeclaredTopology,
     ) -> m.Infra.DepsToml.PhaseConfig:
         """Build bounded distribution targets for one resolved package name.
 
@@ -193,7 +211,10 @@ class FlextInfraEnsurePackagingPhase:
             The resulting ``m.Infra.DepsToml.PhaseConfig``.
 
         """
-        root_modules, root_packages, repository_namespace_packages = surfaces
+        root_modules = topology.root_modules
+        root_packages = topology.root_packages
+        repository_namespace_packages = topology.repository_namespace_packages
+        project_declaration_resource = topology.project_declaration_resource
         package_path = f"{c.Infra.DEFAULT_SRC_DIR}/{package_name}"
         package_paths = (
             package_path,
@@ -208,11 +229,36 @@ class FlextInfraEnsurePackagingPhase:
             *repository_namespace_packages,
         )
         toml = m.Infra.DepsToml
-        force_include = tuple(
-            (data_dir, f"{package_name}/{data_dir}") for data_dir in data.files
-        ) + tuple(
-            (module_path, f"{module}.py")
-            for module_path, module in zip(module_paths, root_modules, strict=True)
+        force_include = (
+            (
+                (project_declaration_resource,)
+                if project_declaration_resource is not None
+                else ()
+            )
+            + tuple(
+                (data_dir, f"{package_name}/{data_dir}")
+                for data_dir in data.files
+                if (
+                    project_declaration_resource is None
+                    or data_dir != project_declaration_resource[0]
+                )
+            )
+            + tuple(
+                (module_path, f"{module}.py")
+                for module_path, module in zip(module_paths, root_modules, strict=True)
+            )
+        )
+        sdist_force_include = tuple(
+            (source, source) for source, _destination in force_include
+        ) + (
+            (
+                (
+                    topology.hatch_build_hook_path.as_posix(),
+                    topology.hatch_build_hook_path.as_posix(),
+                ),
+            )
+            if topology.hatch_build_hook_path is not None
+            else ()
         )
         return toml.PhaseConfig(
             name="packaging",
@@ -281,10 +327,10 @@ class FlextInfraEnsurePackagingPhase:
                         table_path=("sdist", "force-include"),
                         operations=tuple(
                             toml.SetOp(key=source, value=source)
-                            for source, _destination in force_include
+                            for source, _destination in sdist_force_include
                         ),
                     )
-                    if force_include
+                    if sdist_force_include
                     else toml.PhaseConfig(
                         name="packaging",
                         root_path=(),
@@ -427,11 +473,7 @@ class FlextInfraEnsurePackagingPhase:
                 package_name=package_name,
                 data=data_paths,
                 data_excludes=data_excludes,
-                surfaces=(
-                    topology.root_modules,
-                    topology.root_packages,
-                    topology.repository_namespace_packages,
-                ),
+                topology=topology,
             ),
         )
 

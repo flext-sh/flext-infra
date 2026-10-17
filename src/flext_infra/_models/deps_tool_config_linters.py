@@ -295,17 +295,6 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 ),
             ),
         ]
-        fix_recipe_residual: Annotated[
-            frozenset[c.Infra.LintFixRecipe],
-            m.Field(
-                alias="fix-recipe-residual",
-                description=(
-                    "Recipes whose findings may survive by law: their "
-                    "remainder stays a visible check finding for manual "
-                    "repair instead of failing make fix."
-                ),
-            ),
-        ]
         isort: FlextInfraModelsDepsToolConfigLinters.RuffIsortConfig = m.Field(
             description="Ruff isort configuration",
         )

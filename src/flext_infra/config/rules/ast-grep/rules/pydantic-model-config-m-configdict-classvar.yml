@@ -1,0 +1,23 @@
+# A pydantic model's `model_config` must be declared as a ClassVar; a bare
+# assignment makes pydantic treat the ConfigDict as a model field (flext
+# strict Pydantic law).
+#
+# Idempotent: the rewrite yields an annotated assignment, which the plain
+# assignment pattern never matches. The companion import rules bind `ClassVar`
+# in the same pass.
+id: pydantic-model-config-m-configdict-classvar
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  all:
+    - pattern: "model_config = m.ConfigDict($$$ARGS)"
+    - inside:
+        kind: block
+        inside:
+          kind: class_definition
+fix: "model_config: ClassVar[m.ConfigDict] = m.ConfigDict($$$ARGS)"
+message: >-
+  model_config must be a ClassVar; a bare assignment declares a pydantic
+  field instead of model metadata.

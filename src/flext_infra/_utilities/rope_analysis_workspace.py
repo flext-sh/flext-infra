@@ -329,7 +329,11 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         return sources
 
     @staticmethod
-    def _is_generated_init_stub(file_path: Path) -> bool:
+    def _is_generated_init_stub(
+        file_path: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> bool:
         """Return whether ``file_path`` is a codegen-owned package stub.
 
         Returns:
@@ -338,12 +342,22 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         """
         if file_path.name != c.Infra.INIT_PYI:
             return False
-        return file_path.read_text(encoding=c.DEFAULT_ENCODING).startswith(
+        source = (
+            file_path.read_text(encoding=c.DEFAULT_ENCODING)
+            if source_project is None
+            else source_project.source_text(file_path)
+        )
+        return source.startswith(
             c.Infra.AUTOGEN_HEADERS,
         )
 
     @classmethod
-    def _governed_roots(cls, repository_root: Path) -> frozenset[Path]:
+    def _governed_roots(
+        cls,
+        repository_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> frozenset[Path]:
         """Return every declared governed project root, resolved.
 
         The authority is the same election the Rope opener uses
@@ -358,6 +372,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         return frozenset(
             FlextInfraUtilitiesProjectDiscovery.discover_rope_project_roots(
                 repository_root,
+                source_project=source_project,
             ),
         )
 
@@ -367,6 +382,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         directory: Path,
         repository_root: Path,
         governed_roots: frozenset[Path],
+        source_project: p.Infra.RopeProject | None = None,
     ) -> bool:
         """Memoize Git boundaries by directory for one workspace index.
 
@@ -379,12 +395,17 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         ):
             return False
         return (
-            ((directory / ".git").exists() or (directory / ".git").is_symlink())
+            (
+                ((directory / ".git").exists() or (directory / ".git").is_symlink())
+                if source_project is None
+                else source_project.source_query(directory / ".git", "exists")
+            )
             and directory not in governed_roots
         ) or FlextInfraUtilitiesRopeAnalysisWorkspace._foreign_directory(
             directory.parent,
             repository_root,
             governed_roots,
+            source_project,
         )
 
     @classmethod
@@ -394,6 +415,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         repository_root: Path,
         *,
         governed_roots: frozenset[Path],
+        source_project: p.Infra.RopeProject | None = None,
     ) -> bool:
         """Exclude foreign nested Git checkouts, never declared governed members.
 
@@ -408,7 +430,9 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             The resulting ``bool``.
 
         """
-        return cls._foreign_directory(path.parent, repository_root, governed_roots)
+        return cls._foreign_directory(
+            path.parent, repository_root, governed_roots, source_project
+        )
 
     @classmethod
     def _is_pruned_walk_dir(
@@ -489,11 +513,17 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
 
         """
         rope_root = Path(rope_project.root.real_path).resolve()
-        governed_roots = cls._governed_roots(resolved_root)
+        source_project = rope_project if rope_project.authenticated_sources else None
+        governed_roots = cls._governed_roots(
+            resolved_root, source_project=source_project
+        )
         source_paths = (
             (resolved_root / relative).resolve()
             for relative in (
-                FlextInfraUtilitiesProjectDiscovery.ast_grep_scan_targets(resolved_root)
+                FlextInfraUtilitiesProjectDiscovery.ast_grep_scan_targets(
+                    resolved_root,
+                    source_project=source_project,
+                )
             )
         )
         return tuple(
@@ -509,6 +539,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                         path,
                         resolved_root,
                         governed_roots=governed_roots,
+                        source_project=source_project,
                     )
                 },
                 key=Path.as_posix,
@@ -548,7 +579,12 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             key=str,
         ):
             resolved_file_path = file_path.resolve()
-            if cls._is_generated_init_stub(resolved_file_path):
+            if cls._is_generated_init_stub(
+                resolved_file_path,
+                source_project=rope_project
+                if rope_project.authenticated_sources
+                else None,
+            ):
                 continue
             if not resolved_file_path.is_relative_to(resolved_root):
                 continue
@@ -569,6 +605,9 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             project_root = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
                 resolved_root,
                 resolved_file_path,
+                source_project=rope_project
+                if rope_project.authenticated_sources
+                else None,
             )
             module_name = (
                 cls.module_name_for_file(resolved_file_path, project_root=project_root)

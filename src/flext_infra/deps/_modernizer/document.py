@@ -254,16 +254,33 @@ class FlextInfraPyprojectModernizerDocument:
             manifests = u.Infra.load_workspace_manifest(state.pyproject_path.parent)
             if manifests.failure:
                 return r[t.StrSequence].from_failure(manifests)
-            project = manifests.value[0].project if manifests.value else None
-            topology = (
-                m.Infra.PyprojectDeclaredTopology.model_validate(
+            manifest = manifests.value[0] if manifests.value else None
+            project = manifest.project if manifest is not None else None
+            topology = m.Infra.PyprojectDeclaredTopology.model_validate({
+                **(
                     project.model_dump(
                         include=set(m.Infra.PyprojectDeclaredTopology.model_fields),
-                    ),
-                )
-                if project is not None
-                else m.Infra.PyprojectDeclaredTopology()
-            )
+                    )
+                    if project is not None
+                    else {}
+                ),
+                "project_declaration_resource": (
+                    FlextInfraEnsurePackagingPhase.declaration_resource(
+                        package_name=(
+                            project.package_name
+                            if project is not None
+                            else u.Infra.package_name_from_payload(
+                                state.pyproject_path.parent,
+                                state.payload,
+                                u.Infra.docs_meta_from_payload(state.payload),
+                            )
+                        ),
+                        package=manifest.repository.package,
+                    )
+                    if manifest is not None
+                    else None
+                ),
+            })
             rendered = self._render_document_state(
                 state,
                 self._apply_document_phases(

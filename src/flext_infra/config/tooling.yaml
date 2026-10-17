@@ -148,8 +148,8 @@ Infra:
         - docs/standards/consumption-law.md
         - docs/projects/generated/**
       ruff:
-        # Ruff exits 1 on findings; a repair verb completing with remaining
-        # findings continues under this status while any other failure stops it.
+        # Ruff exits 1 on findings. Remaining findings block repair acceptance;
+        # the gate verifies the repaired state through the native read-only check.
         findings-exit-codes: [ 1 ]
         extend-exclude:
         # Historical evidence trees (.archive/**) hold archived session
@@ -177,14 +177,8 @@ Infra:
         # ruff must not demand an __init__.py (INP001) there.
         namespace-packages: [ tests, examples, scripts ]
         fix: false
-        # Ruff exits 1 when it reports violations (2 on an error): a repair
-        # verb completes with findings under this status; any other fails it.
-        # Operator ruling 2026-10-05: rules the operator never authorized as
-        # blocking are informative only. The lint gate keeps reporting these
-        # in the gate log, the summary, and the SARIF reports, but their
-        # findings never fail the run. Re-measure each entry as the fleet
-        # converges and retire the rule from this list when its census
-        # reaches zero.
+        # Native severity is retained in logs and SARIF; every remaining
+        # finding blocks acceptance, including findings reported as informative.
         informative-rules:
         - too-many-arguments
         - too-many-positional-arguments
@@ -285,12 +279,6 @@ Infra:
           - [ summary-docstring, copyright-notice, static-method ]
           - [ returns-section, yields-section, raises-section ]
           - [ wrap-long-line ]
-          # The import law keeps a reverse import read at runtime in place for
-          # manual repair, and a line holding no splittable literal or comment
-          # keeps its length; those findings stay visible in make check instead
-          # of failing make fix (operator ruling 2026-10-01: fix never fails on
-          # a residual violation).
-          fix-recipe-residual: [ normalize-imports, wrap-long-line ]
           # Pydantic evaluates model field annotations at runtime, so an
           # import used only in a model annotation is runtime, not typing-only.
           # Ruff follows imported bases only by qualified name: codegen derives

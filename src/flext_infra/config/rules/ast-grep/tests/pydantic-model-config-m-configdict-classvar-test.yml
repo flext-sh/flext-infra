@@ -1,0 +1,6 @@
+id: pydantic-model-config-m-configdict-classvar
+valid:
+  - "class Model:\n    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)\n"
+invalid:
+  - "class Model:\n    model_config = m.ConfigDict(frozen=True, extra='forbid')\n"
+  - "class Model:\n    model_config = m.ConfigDict()\n"

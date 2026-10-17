@@ -20,6 +20,76 @@ class TestsFlextInfraFacadeAuthoredRuntime:
     """Exercise preservation through generation and a fresh public consumer."""
 
     @staticmethod
+    def test_isolated_native_consumers_share_original_transitive_receipts(
+        tmp_path: Path,
+    ) -> None:
+        """Warming one PyCore cannot hide provider reads from another artifact."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        provider = package / "provider.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                provider,
+                "class Provider: pass\n__all__ = ['Provider']\n",
+            ),
+        )
+        for name in ("first", "second"):
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    package / f"{name}.py",
+                    f"from {package.name}.provider import Provider\n"
+                    "class Consumer(Provider): pass\n__all__ = ['Consumer']\n",
+                ),
+            )
+        with u.Infra.facade_source_project(root) as (project, _, _):
+            warmed = u.Infra.require_semantic_module(
+                project.get_module(f"{package.name}.first"),
+            )
+            tm.that(
+                len(warmed.get_attribute("Consumer").get_object().get_superclasses()),
+                eq=1,
+            )
+            with project.source_consumption() as first:
+                with project.source_consumer() as consumer:
+                    module = u.Infra.require_semantic_module(
+                        consumer.get_module(f"{package.name}.first"),
+                    )
+                    tm.that(
+                        len(
+                            module
+                            .get_attribute("Consumer")
+                            .get_object()
+                            .get_superclasses()
+                        ),
+                        eq=1,
+                    )
+            with project.source_consumption() as second:
+                with project.source_consumer() as consumer:
+                    module = u.Infra.require_semantic_module(
+                        consumer.get_module(f"{package.name}.second"),
+                    )
+                    tm.that(
+                        len(
+                            module
+                            .get_attribute("Consumer")
+                            .get_object()
+                            .get_superclasses()
+                        ),
+                        eq=1,
+                    )
+            first_provider = tuple(
+                state for state in first.receipt().inputs if state.path == provider
+            )
+            second_provider = tuple(
+                state for state in second.receipt().inputs if state.path == provider
+            )
+            tm.that(len(first_provider), eq=1)
+            tm.that(second_provider, eq=first_provider)
+            with project.source_consumption() as replayed:
+                with project.source_consumer() as consumer:
+                    consumer.replay_source_consumption(first.receipt())
+            tm.that(replayed.receipt().inputs, eq=first.receipt().inputs)
+
+    @staticmethod
     def test_source_scopes_retain_repeated_original_reads(tmp_path: Path) -> None:
         """A cache consumer receives the original bytes, never a cumulative delta."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)

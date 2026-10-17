@@ -36,7 +36,11 @@ class FlextInfraUtilitiesDiscovery(
     ] = {}
 
     @staticmethod
-    def _discover_project_root_from_path(file_path: str) -> str:
+    def _discover_project_root_from_path(
+        file_path: str,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> str:
         """Discover the enclosing project root path cached by file path.
 
         Returns:
@@ -55,7 +59,13 @@ class FlextInfraUtilitiesDiscovery(
             if current.name in c.Infra.ROOT_WRAPPER_SEGMENTS:
                 wrapper_root = current.parent
                 continue
-            if (current / c.Infra.DEFAULT_SRC_DIR).is_dir():
+            if (
+                (current / c.Infra.DEFAULT_SRC_DIR).is_dir()
+                if source_project is None
+                else source_project.source_query(
+                    current / c.Infra.DEFAULT_SRC_DIR, "isdir"
+                )
+            ):
                 relative = candidate.relative_to(current)
                 if (
                     not relative.parts
@@ -141,7 +151,11 @@ class FlextInfraUtilitiesDiscovery(
         ) or file_name.endswith(tuple(c.Infra.NAMESPACE_PYTEST_MODULE_SUFFIXES))
 
     @staticmethod
-    def project_root(file_path: Path) -> Path | None:
+    def project_root(
+        file_path: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> Path | None:
         """Discover the enclosing project root for one file or directory path.
 
         Returns:
@@ -150,6 +164,7 @@ class FlextInfraUtilitiesDiscovery(
         """
         project_root = FlextInfraUtilitiesDiscovery._discover_project_root_from_path(
             str(file_path),
+            source_project=source_project,
         )
         return Path(project_root) if project_root else None
 

@@ -144,12 +144,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             destination = c.Infra.MISE_TOML_FILENAME
         elif contract.destinations == c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS:
             return self._plan_existing_bootstrap(target, workspace, codegen)
-        elif (
-            contract.destinations is not None
-            and c.PYPROJECT_FILENAME in contract.destinations
-            and not contract.templates
-        ):
-            return self._plan_existing_pyproject_bootstrap(target, workspace, codegen)
         else:
             return None
         planned = self._bootstrap_destination_plan(
@@ -158,168 +152,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         if planned.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((planned.value,))
-
-    @staticmethod
-    def _bootstrap_pyproject_source(
-        path: Path,
-    ) -> p.Result[t.Pair[m.Cli.AtomicFileState, str]]:
-        """Recover owned TOML while retaining the exact authenticated before state.
-
-        Returns:
-            The original file identity and its recovered regeneration source.
-
-        """
-        result_type = r[t.Pair[m.Cli.AtomicFileState, str]]
-        before = u.Cli.atomic_read_binary_file_state(path, required=True)
-        if before.failure:
-            return result_type.from_failure(before)
-        if before.value.content is None:
-            return result_type.fail(f"pyproject is absent: {path}")
-        recovered = u.Infra.recover_live_pyproject_text(
-            before.value.content.decode(c.DEFAULT_ENCODING),
-        )
-        if recovered.failure:
-            return result_type.from_failure(recovered)
-        source = u.Infra.pyproject_regeneration_source(recovered.value)
-        if source.failure:
-            return result_type.from_failure(source)
-        return result_type.ok((before.value, source.value))
-
-    @classmethod
-    def _plan_existing_pyproject_bootstrap(
-        cls,
-        target: m.Infra.RepositoryConformTarget,
-        workspace: m.Infra.WorkspaceSpec,
-        codegen: m.Infra.CodegenConfigSpec,
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Publish owned TOML policy before native semantic consumers open it.
-
-        This recovery surface uses the ordinary dependency conformance phases,
-        not the full template context whose runtime-base discovery opens Rope.
-        Complete generation still derives that context after bootstrap.
-
-        Returns:
-            One authenticated pyproject plan, preserving live unowned content.
-
-        """
-        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
-        path = target.root / c.PYPROJECT_FILENAME
-        prepared = cls._bootstrap_pyproject_source(path)
-        if prepared.failure:
-            return result_type.from_failure(prepared)
-        before, source = prepared.value
-        artifacts = u.Infra.snapshot_committed_project_managed_artifacts(target.root)
-        if artifacts.failure:
-            return result_type.from_failure(artifacts)
-        captured = cls._bootstrap_member_sources(
-            target.root,
-            workspace,
-            artifacts.value.sources,
-        )
-        if captured.failure:
-            return result_type.from_failure(captured)
-        sources, declarations = captured.value
-        modernizer = FlextInfraPyprojectModernizer(
-            repository_root=target.root,
-            skip_check=True,
-            managed_artifacts=artifacts.value.resolution,
-        )
-        conformed = cls.conformed_pyproject_source(
-            source,
-            target=target,
-            workspace=workspace,
-            codegen=codegen,
-            member_declarations=declarations,
-        )
-        if conformed.failure:
-            return result_type.from_failure(conformed)
-        rendered = modernizer.conform_source(
-            conformed.value,
-            path=path,
-            format_source=False,
-            topology=m.Infra.PyprojectDeclaredTopology(
-                analysis_exclusions=tuple(
-                    item.as_posix() for item in target.external_dependency_paths
-                ),
-            ),
-        )
-        if rendered.failure:
-            return result_type.from_failure(rendered)
-        return cls._bootstrap_file_plan(
-            target,
-            codegen,
-            (before, rendered.value, sources),
-        )
-
-    @classmethod
-    def _bootstrap_member_sources(
-        cls,
-        root: Path,
-        workspace: m.Infra.WorkspaceSpec,
-        artifact_sources: t.VariadicTuple[m.Cli.AtomicFileState],
-    ) -> p.Result[
-        t.Pair[
-            t.VariadicTuple[m.Cli.AtomicFileState],
-            t.VariadicTuple[m.Cli.AtomicFileState],
-        ]
-    ]:
-        """Combine the authenticated artifact and actual member declarations.
-
-        Returns:
-            The complete source evidence and original member declarations.
-
-        """
-        result = r[
-            t.Pair[
-                t.VariadicTuple[m.Cli.AtomicFileState],
-                t.VariadicTuple[m.Cli.AtomicFileState],
-            ]
-        ]
-        collected = cls._member_declaration_states(root, workspace)
-        if collected.failure:
-            return result.from_failure(collected)
-        sources = FlextInfraCodegenPreconditions.unique_states((
-            *artifact_sources,
-            *collected.value[0],
-        ))
-        if sources.failure:
-            return result.from_failure(sources)
-        return result.ok((sources.value, collected.value[1]))
-
-    @staticmethod
-    def _bootstrap_file_plan(
-        target: m.Infra.RepositoryConformTarget,
-        codegen: m.Infra.CodegenConfigSpec,
-        material: t.Triple[
-            m.Cli.AtomicFileState,
-            str,
-            t.VariadicTuple[m.Cli.AtomicFileState],
-        ],
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Bind the conformed bytes and evidence to their declared managed owner.
-
-        Returns:
-            The complete bootstrap file plan, or an ambiguous-owner failure.
-
-        """
-        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
-        before, source, sources = material
-        managed = tuple(
-            item
-            for item in codegen.managed_file_specs
-            if item.path == Path(c.PYPROJECT_FILENAME)
-        )
-        if len(managed) != 1:
-            return result_type.fail("pyproject bootstrap requires one managed owner")
-        planned = m.Infra.CodegenFilePlan(
-            project=target.root,
-            path=target.root / c.PYPROJECT_FILENAME,
-            before=before,
-            desired_content=source.encode(c.DEFAULT_ENCODING),
-            desired_mode=managed[0].mode,
-            source_states=sources,
-        )
-        return result_type.ok((planned,))
 
     def _plan_existing_managed(
         self,
@@ -1002,7 +834,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             return True
         return managed.path == Path(c.PYPROJECT_FILENAME) and (
             not contract.pyproject
-            or (workspace.project is None and profile is c.Infra.MakeProfile.WORKSPACE)
+            or (
+                workspace.project is None
+                and profile is c.Infra.MakeProfile.WORKSPACE
+                and contract.destinations is None
+            )
         )
 
     @staticmethod

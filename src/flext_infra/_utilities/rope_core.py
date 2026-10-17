@@ -14,9 +14,11 @@ from flext_infra import c, config, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRopeCorePyModuleMixin,
     FlextInfraUtilitiesRopeCoreResourcesMixin,
     FlextInfraUtilitiesRopeRuntime,
+    FlextInfraUtilitiesWorkspaceInventory,
 )
 
 
@@ -68,6 +70,7 @@ class FlextInfraUtilitiesRopeCore(
         resolved_root: Path,
         *,
         project_roots: t.SequenceOf[Path],
+        consumer_root: Path | None = None,
     ) -> t.Infra.RopeProject:
         """Create one Rope project from validated source roots.
 
@@ -80,6 +83,9 @@ class FlextInfraUtilitiesRopeCore(
                 str(scan_path.relative_to(resolved_root))
                 for project_root in project_roots
                 for dir_name in config.Infra.source_scan.roots
+                if consumer_root is None
+                or project_root == consumer_root
+                or dir_name == c.Infra.DEFAULT_SRC_DIR
                 if (scan_path := project_root / dir_name).is_dir()
                 and scan_path.resolve().is_relative_to(resolved_root)
             }
@@ -88,6 +94,9 @@ class FlextInfraUtilitiesRopeCore(
                 if project_root == resolved_root
                 else str(project_root.relative_to(resolved_root))
                 for project_root in project_roots
+                if consumer_root is None
+                or project_root == consumer_root
+                or not (project_root / c.Infra.DEFAULT_SRC_DIR).is_dir()
                 if project_root.is_dir()
                 and project_root.resolve().is_relative_to(resolved_root)
             },
@@ -103,7 +112,11 @@ class FlextInfraUtilitiesRopeCore(
         )
 
     @staticmethod
-    def import_project_roots(source_root: Path) -> t.VariadicTuple[Path]:
+    def import_project_roots(
+        source_root: Path,
+        *,
+        include_consumers: bool = False,
+    ) -> t.VariadicTuple[Path]:
         """Resolve the declared source graph containing one import consumer.
 
         Returns:
@@ -125,11 +138,31 @@ class FlextInfraUtilitiesRopeCore(
                 resolved == parent
                 or any(resolved.is_relative_to(member.resolve()) for member in members)
             ):
-                return (parent, *members)
-        standalone = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
-            Path(resolved.anchor), resolved
+                roots = (parent, *members)
+                break
+        else:
+            standalone = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+                Path(resolved.anchor), resolved
+            )
+            roots = (standalone if standalone is not None else resolved,)
+        if not include_consumers:
+            return roots
+        inputs = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
+            roots[0]
+        ).unwrap()
+        consumers = FlextInfraUtilitiesWorkspaceInventory.discover_external_consumers(
+            roots[0],
+            inputs,
+        ).unwrap()
+        return tuple(
+            dict.fromkeys(
+                project
+                for root in (*roots, *(consumer.root for consumer in consumers))
+                for project in FlextInfraUtilitiesProjectDiscovery.discover_rope_project_roots(
+                    root
+                )
+            )
         )
-        return (standalone if standalone is not None else resolved,)
 
     @staticmethod
     @contextmanager
@@ -155,6 +188,7 @@ class FlextInfraUtilitiesRopeCore(
         repository_root: Path,
         *,
         project_roots: t.SequenceOf[Path] | None = None,
+        consumer_root: Path | None = None,
     ) -> Generator[t.Infra.RopeProject]:
         """Open one Rope project and always close it through the core boundary.
 
@@ -181,6 +215,7 @@ class FlextInfraUtilitiesRopeCore(
         rope_project = FlextInfraUtilitiesRopeCore._new_project(
             resolved,
             project_roots=roots,
+            consumer_root=consumer_root,
         )
         try:
             yield rope_project

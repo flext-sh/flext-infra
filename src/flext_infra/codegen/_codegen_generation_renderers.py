@@ -9,15 +9,15 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraConfig, u
+from flext_infra import FlextInfraConfig, m, u
 from flext_infra.codegen import FlextInfraCodegenGenerationLazyEntriesMixin
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-# Lazy generation delegates
-# exact models to flext-cli and proves every rendered initializer is Ruff-clean.
+# Lazy generation delegates exact models to flext-cli. The composed producer
+# prepares these bytes against the destination policy before publication.
 class FlextInfraCodegenGenerationRenderersMixin(
     FlextInfraCodegenGenerationLazyEntriesMixin,
 ):
@@ -49,8 +49,9 @@ class FlextInfraCodegenGenerationRenderersMixin(
         context: p.Model,
         *,
         target_filename: str,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> str:
-        """Render one deterministic, already-canonical typed Python artifact.
+        """Render one deterministic typed Python input for composed preparation.
 
         Returns:
             The resulting ``str``.
@@ -59,7 +60,18 @@ class FlextInfraCodegenGenerationRenderersMixin(
         template_path = FlextInfraCodegenGenerationRenderersMixin._template_path(
             template_name,
         )
-        rendered = u.Cli.template_render(template_path, context).unwrap()
+        rendered = (
+            u.Cli.template_render(template_path, context).unwrap()
+            if source_project is None
+            else u.Cli
+            .template_render_authenticated(
+                m.Cli.TemplateRenderRequest(template=template_path),
+                context,
+                source_states=(source_project.source_state(template_path),),
+            )
+            .unwrap()
+            .rendered
+        )
         compile(rendered, target_filename, "exec")
         return rendered.rstrip() + "\n"
 

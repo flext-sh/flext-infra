@@ -587,6 +587,10 @@ class TestsFlextInfraDepsModernizerToolTables:
             path=project_dir / "pyproject.toml",
         )
         table = self._table(payload, "ruff")
+        tm.that(
+            u.Tests.toml_strings(self._table(payload, "ruff", "lint")["extend-select"]),
+            eq=tuple(config.Infra.tooling.tools.ruff.lint.extend_select),
+        )
         src_roots = u.Tests.toml_strings(table["src"])
         namespace_packages = u.Tests.toml_strings(table.get("namespace-packages", []))
         tm.that(src_roots, lacks="scripts", has="src")

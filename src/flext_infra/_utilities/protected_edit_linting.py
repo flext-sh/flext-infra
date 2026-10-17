@@ -44,54 +44,86 @@ class FlextInfraUtilitiesProtectedEditLinting:
         *,
         before_source: str | None = None,
     ) -> p.Result[str]:
-        """Normalize candidate imports and format with the destination's policy.
+        """Prepare a candidate through the destination's configured repair owners.
 
         Returns:
-            Normalized source, or the original Ruff subprocess failure.
+            Normalized source, or the original configured repair failure.
 
         """
-        executable = cls._workspace_tool_command(c.Infra.RUFF)[0]
-        project_root = cls._command_cwd(path, repository_root)
         if before_source is not None:
             source = cls.remove_orphaned_imports(before_source, source)
-        checked = u.Cli.run(
-            [
-                executable,
-                "check",
-                *config.Infra.codegen.make.ruff.lint_fix,
-                "--select",
-                "I,W",
-                "--stdin-filename",
-                str(path),
-                "-",
-            ],
-            cwd=project_root,
-            options=m.Cli.ProcessOptions(
-                input_data=source,
-                env=cls._command_env(),
-                remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
-            ),
-            timeout=c.Infra.TIMEOUT_SHORT,
+        prepared = cls.normalize_sources(repository_root, {path: source})
+        if prepared.failure:
+            return r[str].from_failure(prepared)
+        content = prepared.value.updates[path.resolve()]
+        if content is None:
+            return r[str].fail(f"prepared source was retired: {path}")
+        return r[str].ok(content)
+
+    @classmethod
+    def normalize_sources(
+        cls,
+        repository_root: Path,
+        updates: t.MappingKV[Path, str | None],
+        *,
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
+    ) -> p.Result[m.Infra.StageSourcePlan]:
+        """Prepare composed sources before sealing their publication identity.
+
+        Returns:
+            Prepared updates retaining the exact original context they consumed.
+
+        """
+        from flext_infra.codegen.staged_package import FlextInfraStagedPackage
+
+        planned = FlextInfraStagedPackage.plan_sources(
+            repository_root, updates, inputs=inputs
         )
-        return checked.flat_map(
-            lambda output: u.Cli.run(
-                [
-                    executable,
-                    "format",
-                    *config.Infra.codegen.make.ruff.format_apply,
-                    "--stdin-filename",
-                    str(path),
-                    "-",
-                ],
-                cwd=project_root,
-                options=m.Cli.ProcessOptions(
-                    input_data=output.stdout,
-                    env=cls._command_env(),
-                    remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
-                ),
-                timeout=c.Infra.TIMEOUT_SHORT,
-            ).map(lambda formatted: formatted.stdout),
-        )
+        if planned.failure:
+            return r[m.Infra.StageSourcePlan].from_failure(planned)
+        return FlextInfraStagedPackage.prepare_sources(
+            planned.value, cls._repair_staged_sources
+        ).map(lambda prepared: planned.value.model_copy(update={"updates": prepared}))
+
+    @classmethod
+    def _repair_staged_sources(
+        cls,
+        root: Path,
+        candidates: t.MappingKV[Path, Path],
+    ) -> p.Result[bool]:
+        """Delegate every repair phase to the native gates, never copy recipes.
+
+        Returns:
+            Acceptance only when lint and format both confirm the prepared bytes.
+
+        """
+        from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate
+
+        grouped: MutableMapping[Path, list[Path]] = {}
+        for path in candidates.values():
+            project = cls._command_cwd(path, root)
+            grouped.setdefault(project, []).append(path)
+        for project, paths in grouped.items():
+            context = m.Infra.GateContext(
+                repository_root=root,
+                reports_dir=root,
+                apply_fixes=True,
+                selected_files=tuple(paths),
+            )
+            lint = FlextInfraRuffLintGate(root).fix(project, context)
+            if lint.outcome is c.Infra.ToolOutcome.ERROR:
+                return r[bool].fail(lint.raw_output or "configured lint repair failed")
+            formatted = FlextInfraRuffFormatGate(root).fix(project, context)
+            if not formatted.result.passed:
+                return r[bool].fail(
+                    formatted.raw_output or "configured format repair failed"
+                )
+            checked = FlextInfraRuffLintGate(root).check_files(paths, project, context)
+            if not checked.result.passed:
+                return r[bool].fail(
+                    checked.raw_output or "prepared source is not lint clean"
+                )
+        return r[bool].ok(value=True)
 
     @staticmethod
     def remove_orphaned_imports(original: str, proposed: str) -> str:
@@ -150,48 +182,34 @@ class FlextInfraUtilitiesProtectedEditLinting:
         paths: Iterable[Path],
         repository_root: Path,
     ) -> None:
-        """Normalize published imports and whitespace with each destination's policy.
-
-        Published files retain unused imports: the removal planner owns their
-        removal, not this formatting pass.
+        """Prepare touched sources with their complete destination repair policy.
 
         Raises:
             RuntimeError: If a Ruff subprocess rejects the touched files.
 
         """
-        grouped: MutableMapping[Path, list[str]] = {}
-        for path in sorted({path.resolve() for path in paths if path.is_file()}):
-            grouped.setdefault(cls._command_cwd(path, repository_root), []).append(
-                str(path)
-            )
-        if not grouped:
+        states = tuple(
+            u.Cli.atomic_read_binary_file_state(path.resolve(), required=True).unwrap()
+            for path in sorted(set(paths))
+            if path.is_file()
+        )
+        if not states:
             return
-        executable = cls._workspace_tool_command(c.Infra.RUFF)[0]
-        for project_root, existing in grouped.items():
-            for arguments in (
-                (
-                    "check",
-                    *config.Infra.codegen.make.ruff.lint_fix,
-                    "--select",
-                    "I,W",
-                ),
-                ("format", *config.Infra.codegen.make.ruff.format_apply),
-            ):
-                result = u.Cli.run_checked(
-                    [executable, *arguments, *existing],
-                    cwd=project_root,
-                    options=m.Cli.ProcessOptions(
-                        env=cls._command_env(),
-                        remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
-                    ),
-                    timeout=c.Infra.TIMEOUT_SHORT,
-                )
-                if result.failure:
-                    msg = (
-                        f"ruff {arguments[0]} failed for touched files: "
-                        f"{result.error}; files={existing!r}"
-                    )
-                    raise RuntimeError(msg)
+        sources = {
+            state.path: state.content.decode(c.DEFAULT_ENCODING)
+            for state in states
+            if state.content is not None
+        }
+        prepared = cls.normalize_sources(
+            repository_root, sources, inputs=states
+        ).unwrap()
+        originals = {state.path: state for state in prepared.inputs}
+        for path, content in prepared.updates.items():
+            if content is None:
+                msg = f"touched source preparation retired a file: {path}"
+                raise RuntimeError(msg)
+            if content != sources[path]:
+                u.Cli.atomic_write_text_file_guarded(originals[path], content).unwrap()
 
     @staticmethod
     def unified_diff_lines(
