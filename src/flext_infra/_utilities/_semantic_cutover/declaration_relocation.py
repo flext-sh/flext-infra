@@ -117,9 +117,8 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     )
                     if candidate is None:
                         break
-                    outer, node, binding = candidate
-                    outer_name = outer.pyobject.get_name()
-                    node_name = node.pyobject.get_name()
+                    outer_name = candidate[0].pyobject.get_name()
+                    node_name = candidate[1].pyobject.get_name()
                     declaration = f"{outer_name}.{node_name}"
                     resolved = (
                         cls._declaration_target(
@@ -144,7 +143,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     working = cls._relocate_payload(
                         project,
                         working,
-                        (path, node, binding),
+                        (path, candidate[1], candidate[2]),
                         resolved,
                     )
                     # Subsequent candidates bind to the proposed graph and coordinates.

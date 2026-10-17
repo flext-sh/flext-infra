@@ -12,8 +12,6 @@ import pytest
 
 from flext_infra import FlextInfraConfig
 from tests import c, m, tm, u
-from flext_infra import FlextInfraConfig
-from tests import c, m, tm, u
 
 
 class TestsFlextInfraConfigLocalOverrides:

@@ -739,13 +739,11 @@ class FlextInfraRopeProject(Project):
     @classmethod
     def from_atomic_reads(
         cls,
-        root: str,
+        live: p.Infra.RopeProject,
         source_states: tuple[m.Cli.AtomicFileState, ...],
-        source_folders: t.SequenceOf[str],
         ignored_resources: t.SequenceOf[str] = (),
         *,
         sources: t.MappingKV[Path, str],
-        python_path_folders: t.SequenceOf[str] = (),
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> Self:
         """Use native module election with authenticated reads and planned sources.
@@ -755,17 +753,21 @@ class FlextInfraRopeProject(Project):
 
         """
         files = cls.AtomicReadFiles(
-            Path(root),
+            Path(live.root.real_path),
             source_states,
             sources,
             declared_files,
         )
         return cls._from_files(
-            root,
+            live.root.real_path,
             files,
-            source_folders=source_folders,
+            source_folders=[folder.path for folder in live.get_source_folders()],
             ignored_resources=ignored_resources,
-            python_path_folders=python_path_folders,
+            python_path_folders=[
+                folder.real_path
+                for folder in live.get_python_path_folders()
+                if folder.is_folder()
+            ],
         )
 
     def consumed_source_states(self) -> tuple[m.Cli.AtomicFileState, ...]:

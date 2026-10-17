@@ -235,7 +235,8 @@ class FlextInfraCodegenRoutes:
                     ),
                     (
                         "verify-locks",
-                        "Verify committed generated TOML locks parse and repeat no section",
+                        ("Verify committed generated TOML locks parse and repeat no "
+                        "section"),
                         FlextInfraLockIntegrityVerifier,
                     ),
                 )

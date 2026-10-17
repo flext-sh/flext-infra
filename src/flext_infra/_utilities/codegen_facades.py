@@ -116,16 +116,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             FlextInfraUtilitiesRopeCore.open_project(root) as live,
             closing(
                 FlextInfraRopeProject.from_atomic_reads(
-                    live.root.real_path,
+                    live,
                     source_states,
-                    [folder.path for folder in live.get_source_folders()],
                     ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
                     sources=proposed,
-                    python_path_folders=[
-                        folder.real_path
-                        for folder in live.get_python_path_folders()
-                        if folder.is_folder()
-                    ],
                     declared_files=declared_files,
                 )
             ) as project,
