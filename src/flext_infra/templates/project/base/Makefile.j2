@@ -963,7 +963,7 @@ _builtin_test_file_all: _builtin_require_environment
 # Export the raw Make value instead of interpolating operator input into shell code.
 export FLEXT_FILE_GATE_FILE := $(value FILE)
 _builtin_file_gate_all: _builtin_require_environment
-	@{{ check_run("lint,format,pyrefly,mypy,pyright,codemod", ' --file "$$FLEXT_FILE_GATE_FILE"') }}
+	@{{ check_run(gates_csv(make.check_gates_file), ' --file "$$FLEXT_FILE_GATE_FILE"') }}
 
 # fmt is format-only (single-pass verb law): ruff formats Python, the
 # fmt_gates formatters run once through the checker's apply mode, and every

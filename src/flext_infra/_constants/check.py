@@ -35,78 +35,91 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
     GATE_TOOLS_BY_KIND: ClassVar[
         t.MappingKV[
             FlextInfraConfigVocabulary.GateKind,
-            t.MappingKV[str, t.Triple[str, str, bool]],
+            t.MappingKV[str, t.Quad[str, str, bool, bool]],
         ]
     ] = MappingProxyType({
         FlextInfraConfigVocabulary.GateKind.EXTERNAL: MappingProxyType({
-            "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/", True),
+            "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/", True, True),
             "format": (
                 "Ruff Formatter",
                 "https://docs.astral.sh/ruff/formatter/",
                 False,
+                True,
             ),
-            "security": ("Bandit", "https://bandit.readthedocs.io/", False),
-            "markdown": ("rumdl", "https://rumdl.dev/", True),
-            "markdown-format": ("rumdl", "https://rumdl.dev/", False),
-            "markdown-code": ("Ruff", "https://docs.astral.sh/ruff/", True),
-            "duplication": ("jscpd", "https://github.com/kucherenko/jscpd", False),
+            "security": ("Bandit", "https://bandit.readthedocs.io/", False, False),
+            "markdown": ("rumdl", "https://rumdl.dev/", True, False),
+            "markdown-format": ("rumdl", "https://rumdl.dev/", False, False),
+            "markdown-code": ("Ruff", "https://docs.astral.sh/ruff/", True, False),
+            "duplication": (
+                "jscpd",
+                "https://github.com/kucherenko/jscpd",
+                False,
+                False,
+            ),
         }),
         FlextInfraConfigVocabulary.GateKind.TYPE_CHECKER: MappingProxyType({
-            "pyrefly": ("Pyrefly", "https://github.com/facebook/pyrefly", False),
-            "mypy": ("Mypy", "https://mypy.readthedocs.io/", False),
-            "pyright": ("Pyright", "https://github.com/microsoft/pyright", False),
+            "pyrefly": ("Pyrefly", "https://github.com/facebook/pyrefly", False, True),
+            "mypy": ("Mypy", "https://mypy.readthedocs.io/", False, True),
+            "pyright": ("Pyright", "https://github.com/microsoft/pyright", False, True),
         }),
         FlextInfraConfigVocabulary.GateKind.INFRA: MappingProxyType({
             CONFLICT_MARKERS: (
                 "Git Conflict Markers",
                 "internal://flext-infra/conflict-markers",
                 False,
+                False,
             ),
-            "loc-cap": ("scc", "https://github.com/boyter/scc", False),
+            "loc-cap": ("scc", "https://github.com/boyter/scc", False, False),
             "runtime-census": (
                 "Flext Runtime Enforcement Census",
                 "internal://flext-infra/runtime-census",
+                False,
                 False,
             ),
             FRESH_IMPORT: (
                 "Flext Fresh-Process Import Gate",
                 "internal://flext-infra/fresh-import",
                 False,
+                False,
             ),
             DEPS: (
                 "Flext Dependency Declaration Gate",
                 "internal://flext-infra/deps",
                 True,
+                False,
             ),
             "index-declarations": (
                 "Flext Index Declarations Gate",
                 "internal://flext-infra/index-declarations",
+                False,
                 False,
             ),
             SMELLS: (
                 "Flext Code Smell Detector",
                 "internal://flext-infra/smells",
                 False,
+                False,
             ),
-            "codemod": ("ast-grep", AST_GREP_DOCS_URL, False),
+            "codemod": ("ast-grep", AST_GREP_DOCS_URL, False, True),
             "layout": (
                 "Flext Project Layout Gate",
                 "internal://flext-infra/layout",
+                False,
                 False,
             ),
             "direnv": (
                 "Flext Direnv Environment Contract Gate",
                 "internal://flext-infra/direnv",
                 False,
+                False,
             ),
         }),
     })
     """Sole gate registry; each gate is declared once under its catalog owner.
 
-    Each row carries the gate's SARIF tool identity (name, URL) and its
-    ``make fix`` repair policy: the flagged gates are the ones whose
-    findings ``make fix`` repairs — mutating gates whose formatting is
-    not owned by ``make fmt``.
+    Each row carries the gate's SARIF tool identity (name, URL), its
+    ``make fix`` repair policy, and whether the checker accepts one
+    declared file via the file-gate verbs.
     """
     GATE_KINDS: ClassVar[t.MappingKV[str, FlextInfraConfigVocabulary.GateKind]] = (
         MappingProxyType({
@@ -130,6 +143,13 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
         if tool[2]
     )
     """Independent repair policy; formatting remains owned by Make fmt."""
+    CANONICAL_FILE_GATE_IDS: ClassVar[t.VariadicTuple[str]] = tuple(
+        gate
+        for tools in GATE_TOOLS_BY_KIND.values()
+        for gate, tool in tools.items()
+        if tool[3]
+    )
+    """Gates whose checker accepts one declared file via ``make <verb>-file``."""
 
     CHECK_FAIL_FAST_DEFAULT: ClassVar[bool] = False
     """Run every independent quality gate unless fail-fast is requested."""
