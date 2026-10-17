@@ -340,7 +340,12 @@ class TestsFlextInfraDepsGate:
 
     @staticmethod
     def test_development_only_supplier_requires_consumer_rewire(tmp_path: Path) -> None:
-        """Identity stays present while its contract forbids runtime promotion."""
+        """Identity stays present while its contract forbids runtime promotion.
+
+        A development-only supplier cannot become a runtime requirement, so
+        the repair refuses the unresolved import before any publication and
+        the check keeps reporting it until the consumer is rewired.
+        """
         root = TestsFlextInfraDepsGate._project(tmp_path, "", "import requests\n")
         inputs = TestsFlextInfraDepsGate._dependency_inputs(root)
         provider = inputs.providers[0]
@@ -360,10 +365,10 @@ class TestsFlextInfraDepsGate:
             runtime_dependency_inputs=inputs,
         )
 
-        repaired = gate.fix(root, context)
+        with pytest.raises(RuntimeError, match="locked supplier: requests"):
+            gate.fix(root, context)
         checked = gate.check(root, context)
 
-        tm.that(repaired.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
         tm.that(checked.result.passed, eq=False)
         assert any(issue.code.endswith("DEP004") for issue in checked.issues)
         tm.that(pyproject.read_bytes(), eq=before)
@@ -443,7 +448,9 @@ class TestsFlextInfraDepsGate:
             plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
             tm.that(plan.unresolved_modules, has="requests")
             tm.that(plan.dependencies, eq=())
-            tm.that(u.Infra.publish_runtime_dependency_plan(plan).unwrap(), eq=False)
+            rejected = u.Infra.publish_runtime_dependency_plan(plan)
+            tm.that(rejected.failure, eq=True)
+            tm.that(rejected.error, has="locked supplier: requests")
         elif change in {"source", "shipped-source"}:
             plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
             changed = "infra" if change == "shipped-source" else "src"
