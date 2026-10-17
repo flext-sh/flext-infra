@@ -50,6 +50,9 @@ class TestsFlextInfraMiseToolchainProof:
             tm.that(contract.model_validate_json(record.model_dump_json()), eq=record)
             with pytest.raises(m.ValidationError, match="extra_forbidden"):
                 contract.model_validate({**record.model_dump(), "unexpected": True})
+            for field, value in record.model_dump().items():
+                with pytest.raises(m.ValidationError, match="frozen_instance"):
+                    setattr(record, field, value)
 
     @staticmethod
     def _repository_root() -> Path:

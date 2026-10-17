@@ -215,3 +215,14 @@ class TestsFlextInfraRopeRuntimePymodule:
             assert FlextInfraUtilitiesRopeRuntime.pymodule(pymodule)
             assert FlextInfraUtilitiesRopeRuntime.pymodule(pypackage)
             assert pypackage.get_attribute("VALUE") is not None
+            for name, member in (
+                ("plain", "VALUE"),
+                ("pkg", "VALUE"),
+                ("builtins", "len"),
+            ):
+                native = project.get_module(name)
+                admitted = u.Infra.require_semantic_module(native)
+                tm.that(admitted is native)
+                tm.not_none(admitted.get_attributes().get(member))
+            with pytest.raises(TypeError, match="native semantic module"):
+                u.Infra.require_semantic_module(plain_resource)

@@ -389,6 +389,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             analysis = self._collect_declaration_migration_plans(request, selected)
             if analysis.failure:
                 return r[bool].from_failure(analysis)
+            if (
+                not analysis.value.files
+                and not analysis.value.issues
+                and analysis.value.exception is None
+            ):
+                return r[bool].ok(value=True)
             published = transaction.publish_file_phase_locked(
                 scope_root,
                 roots,

@@ -489,7 +489,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         root: Path,
         sources: t.MappingKV[Path, str],
     ) -> p.Infra.RopePyName | None:
-        provider = project.get_module(module_name)
+        provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+            project.get_module(module_name)
+        )
         visited: set[str] = set()
         while True:
             provider_resource = provider.get_resource()
@@ -520,7 +522,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             route = aliases.get(alias_name)
             if route is None:
                 break
-            provider = project.get_module(route)
+            provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                project.get_module(route)
+            )
         return provider.get_attributes().get(alias_name)
 
     @classmethod

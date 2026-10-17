@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableSet
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -23,6 +23,63 @@ from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolConfig
 
 class FlextInfraModelsCodegenRender:
     """Typed render contexts for generated codegen artifacts."""
+
+    class UvResolutionViewState(m.ArbitraryTypesModel):
+        """Mutable accumulator for one native resolution view projection."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid",
+            arbitrary_types_allowed=True,
+        )
+
+        directory: Path = m.Field(
+            description="Generated view root resolving member relative paths.",
+        )
+        policy: FlextInfraConfigModelsMake.MakeUvResolutionSpec = m.Field(
+            description="Declared resolution policy owning member naming.",
+        )
+        native_uv: t.MutableJsonMapping = m.Field(
+            description="Detached root ``[tool.uv]`` table under projection.",
+        )
+        view_project: t.MutableJsonMapping = m.Field(
+            description="Generated virtual project table, empty when absent.",
+        )
+        dependencies: t.MutableJsonList = m.Field(
+            description="Root dependency requests in declaration order.",
+        )
+        member_bindings: t.MutableJsonList = m.Field(
+            description="Member dependency requests in declaration order.",
+        )
+        extras: t.MutableJsonMapping = m.Field(
+            description="View optional-dependency groups by target name.",
+        )
+        groups: t.MutableJsonMapping = m.Field(
+            description="View dependency groups by target name.",
+        )
+        group_metadata: t.MutableJsonMapping = m.Field(
+            description="Renamed group metadata keyed by target name.",
+        )
+        sources: t.MutableJsonMapping = m.Field(
+            description="Context-qualified source entries by dependency name.",
+        )
+        index_entries: t.MutableJsonMapping = m.Field(
+            description="Conflict-checked index declarations by identity.",
+        )
+        constraints: t.MutableJsonList = m.Field(
+            description="Constraints preserving replaced local sources.",
+        )
+        retained_overrides: t.MutableJsonList = m.Field(
+            description="Declared overrides with member requests appended.",
+        )
+        overridden: MutableSet[str] = m.Field(
+            description="Canonical member names already natively bound.",
+        )
+        seen_groups: MutableSet[str] = m.Field(
+            description="Normalized group names already claimed.",
+        )
+        seen_extras: MutableSet[str] = m.Field(
+            description="Normalized extra names already claimed.",
+        )
 
     class UvResolutionProject(FlextInfraConfigModelsContract.ConfigContract):
         """Authenticated project input to the native development resolution view."""

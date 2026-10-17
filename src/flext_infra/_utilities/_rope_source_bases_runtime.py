@@ -581,7 +581,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     self._project,
                     resource,
                 )
-            return module
+            return FlextInfraUtilitiesRopeRuntime.require_semantic_module(module)
 
         def _provider_reference(
             self,
@@ -751,7 +751,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     "." * node.level + (node.module or ""),
                     package,
                 )
-                provider = self._project.get_module(target)
+                provider = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
+                    self._project.get_module(target)
+                )
                 if name in provider.get_attributes():
                     return provider
             return None
@@ -862,7 +864,12 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     self._project,
                     resource,
                 )
-            return self._provider_reference(module, attributes, visiting, depth)
+            return self._provider_reference(
+                FlextInfraUtilitiesRopeRuntime.require_semantic_module(module),
+                attributes,
+                visiting,
+                depth,
+            )
 
         def _resolve(
             self,

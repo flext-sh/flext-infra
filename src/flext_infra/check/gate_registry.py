@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import c, p, r, t
+from flext_infra import p, r, t
 from flext_infra.gates import (
     FlextInfraBanditGate,
     FlextInfraConflictMarkersGate,
@@ -50,16 +50,17 @@ class FlextInfraGateRegistry:
     ) -> None:
         """Build the gate-id to gate-class mapping used by check execution.
 
-        The gate classes and ``c.Infra.SARIF_TOOL_INFO`` are two producers of
-        the same conclusion — the gate vocabulary — keyed by ``gate_id``. They
-        collapse here; any divergence (a registered class the vocabulary does
-        not know, a vocabulary id with no class, or two classes claiming one
-        id) is a defect that fails the registry before a single gate can run,
-        never a gate that silently cannot be reached through ``make check``.
+        ``c.Infra.GATE_TOOLS_BY_KIND`` is the sole gate vocabulary: every
+        registered class declares its ``gate_id`` from those same constants,
+        and the SARIF tool identity, the allowed gate set, and the fixable
+        vocabulary are all derived from that one declaration, so the
+        registry and the vocabulary cannot name different gates. Two classes
+        claiming one id remain a registration defect that fails the registry
+        before a single gate can run, never a gate that silently cannot be
+        reached through ``make check``.
 
         Raises:
-            ValueError: If gate registry declares duplicate gate ids; or if gate
-                registry diverges from c.Infra.SARIF_TOOL_INFO.
+            ValueError: If gate registry declares duplicate gate ids.
 
         """
         classes = self._gate_classes()
@@ -68,14 +69,6 @@ class FlextInfraGateRegistry:
         }
         if len(self._gates) != len(classes):
             msg = "gate registry declares duplicate gate ids"
-            raise ValueError(msg)
-        registered = frozenset(self._gates)
-        if registered != c.Infra.ALLOWED_GATES:
-            msg = (
-                "gate registry diverges from c.Infra.SARIF_TOOL_INFO: "
-                f"unregistered={sorted(c.Infra.ALLOWED_GATES - registered)} "
-                f"unknown={sorted(registered - c.Infra.ALLOWED_GATES)}"
-            )
             raise ValueError(msg)
         self._runners = dict(runners or {})
 

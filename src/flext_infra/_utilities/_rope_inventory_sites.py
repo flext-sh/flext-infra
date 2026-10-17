@@ -19,16 +19,6 @@ class FlextInfraUtilitiesRopeInventorySitesMixin:
     """Reference-site, fingerprint, and facade-tier helpers of the inventory."""
 
     @staticmethod
-    def _location_file_path(location: t.Infra.RopeLocation) -> Path | None:
-        """Location file path.
-
-        Returns:
-            The resulting ``Path | None``.
-
-        """
-        return FlextInfraUtilitiesRopeImports.location_file_path(location)
-
-    @staticmethod
     def _location_line(location: t.Infra.RopeLocation) -> int:
         """Location line.
 
@@ -47,9 +37,7 @@ class FlextInfraUtilitiesRopeInventorySitesMixin:
             The resulting ``m.Infra.ReferenceSite | None``.
 
         """
-        file_path = FlextInfraUtilitiesRopeInventorySitesMixin._location_file_path(
-            location
-        )
+        file_path = FlextInfraUtilitiesRopeImports.location_file_path(location)
         if file_path is None:
             return None
         return m.Infra.ReferenceSite(
@@ -111,9 +99,7 @@ class FlextInfraUtilitiesRopeInventorySitesMixin:
             The resulting ``bool``.
 
         """
-        location_path = FlextInfraUtilitiesRopeInventorySitesMixin._location_file_path(
-            location
-        )
+        location_path = FlextInfraUtilitiesRopeImports.location_file_path(location)
         if (
             definition_path is not None
             and location_path is not None
