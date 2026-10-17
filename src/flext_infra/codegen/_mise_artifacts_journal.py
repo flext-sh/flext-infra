@@ -693,6 +693,8 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
         journal_snapshot: m.Cli.AtomicFileState,
+        *,
+        preserved_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[bool]:
         """Retain journal authority until all journal-authorized cleanup completes.
 
@@ -700,6 +702,12 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             The resulting ``p.Result[bool]``.
 
         """
+        current = FlextInfraMiseArtifactsVerification.states_current((
+            *preserved_states,
+            journal_snapshot,
+        ))
+        if current.failure:
+            return current
         directories = FlextInfraMiseArtifactsState.cleanup_journaled_directories(
             layout,
             journal,
@@ -707,6 +715,9 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         )
         if directories.failure:
             return directories
+        retained = FlextInfraMiseArtifactsVerification.states_current(preserved_states)
+        if retained.failure:
+            return retained
         removed = FlextInfraMiseArtifactsFiles.delete_state(journal_snapshot)
         if removed.failure:
             return r[bool].from_failure(removed)

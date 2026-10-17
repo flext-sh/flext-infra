@@ -174,17 +174,16 @@ class FlextInfraCodegenGenerationPathsMixin:
         if not mod.startswith("."):
             root_pkg = local_package_root.split(".", maxsplit=1)[0]
             first_segment = mod.split(".", maxsplit=1)[0]
-            if first_segment == root_pkg:
-                return mod
             internal_segments = frozenset(local_package_root.split(".")[1:])
-            if (
+            inferred_local = (
+                local_package_root == root_pkg
+                and "." in mod
+                and first_segment in c.Infra.LOCAL_INFERRED_SEGMENTS
+            )
+            if first_segment != root_pkg and (
                 mod.startswith("_")
                 or first_segment in internal_segments
-                or (
-                    local_package_root == root_pkg
-                    and "." in mod
-                    and first_segment in c.Infra.LOCAL_INFERRED_SEGMENTS
-                )
+                or inferred_local
             ):
                 elected = f".{mod}"
         return u.Infra.resolve_import_module(

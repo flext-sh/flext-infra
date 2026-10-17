@@ -101,27 +101,30 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             )
         )
 
-    @staticmethod
+    @classmethod
     def _merge_root_alias_groups(
+        cls,
         collapsed: t.MappingKV[str, t.MutableSequenceOf[t.StrPair]],
     ) -> MutableMapping[str, t.StrPairSequence]:
-        """Group child-module reexports under their absolute package owner.
+        """Fold direct root-child aliases into their absolute parent groups.
+
+        Ruff renders consecutive ``from root import <child> as <child>`` statements
+        as one parent import; separate per-child groups emitted one line
+        each, so every generation diverged from the formatter's canonical form
+        and only a post-generation autofix converged the published initializer.
 
         Returns:
             The resulting ``MutableMapping[str, t.StrPairSequence]``.
 
         """
         merged: MutableMapping[str, t.StrPairSequence] = {}
-        declarations: t.StrPairSequence
         for mod, items in collapsed.items():
-            if FlextInfraCodegenGenerationTypeCheckingMixin._is_root_module_alias_group(
-                mod, items
-            ):
-                owner = mod.rpartition(".")[0]
-                declarations = tuple((name, name) for name, _ in items)
-            else:
-                owner, declarations = mod, items
-            merged[owner] = (*merged.get(owner, ()), *declarations)
+            target = (
+                mod.rpartition(".")[0]
+                if cls._is_root_module_alias_group(mod, items)
+                else mod
+            )
+            merged[target] = (*merged.get(target, ()), *items)
         return merged
 
     @staticmethod
@@ -153,7 +156,11 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         items: t.StrPairSequence,
         lines: t.MutableSequenceOf[str],
     ) -> None:
-        """Emit one TYPE_CHECKING import from its absolute owner."""
+        """Emit one TYPE_CHECKING module import group.
+
+        ``mod`` is the planned owner that decides module-alias exports;
+        ``rendered_mod`` retains its elected absolute import form.
+        """
         alias_exports: t.MutableSequenceOf[str] = []
         parts: t.MutableSequenceOf[str] = []
         module_basename = mod.rsplit(".", maxsplit=1)[-1]
