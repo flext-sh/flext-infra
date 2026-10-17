@@ -43,7 +43,7 @@ class TestsFlextInfraRopeRuntimePymodule:
                     str(tmp_path),
                     ropefolder="",
                     save_objectdb=False,
-                    filter_lists=((), tuple(root.name for root in roots), ()),
+                    filter_lists=((), tuple(root.name for root in roots)),
                 )
             ) as original,
             closing(u.Infra.snapshot_project(original, {})) as captured,
@@ -111,7 +111,7 @@ class TestsFlextInfraRopeRuntimePymodule:
                     str(tmp_path),
                     ropefolder="",
                     save_objectdb=False,
-                    filter_lists=((), (package.name,), ()),
+                    filter_lists=((), (package.name,)),
                 ),
             ) as original,
             closing(

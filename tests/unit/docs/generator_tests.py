@@ -523,7 +523,7 @@ class TestsFlextInfraDocsGenerator:
             apply_fixes=True,
         )
         _ = FlextInfraMarkdownFormatGate(workspace).fix(project, context)
-        assert before == readme.read_text(encoding="utf-8")
+        tm.that(before == readme.read_text(encoding="utf-8"), truth=True)
         assert result.result.passed, result.issues
 
     @staticmethod

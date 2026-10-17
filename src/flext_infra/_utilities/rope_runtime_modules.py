@@ -612,12 +612,13 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         *,
         ropefolder: str,
         save_objectdb: bool,
-        filter_lists: t.Triple[t.SequenceOf[str], t.SequenceOf[str], t.SequenceOf[str]],
+        filter_lists: t.Pair[t.SequenceOf[str], t.SequenceOf[str]],
     ) -> t.Infra.RopeProject:
         """Create one Rope project.
 
         ``filter_lists`` carries the Rope filter sequences in order:
-        ignored resources, source folders, extension modules.
+        ignored resources, source folders. The project itself declares the
+        interpreter's sourceless stdlib modules.
 
         Returns:
             The resulting ``t.Infra.RopeProject``.
@@ -626,7 +627,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             TypeError: If Rope project does not satisfy its project contract.
 
         """
-        ignored_resources, source_folders, extension_modules = filter_lists
+        ignored_resources, source_folders = filter_lists
         project_factory = cls.runtime_callable(
             "flext_infra._utilities._rope.project",
             "FlextInfraRopeProject",
@@ -644,7 +645,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             save_history=False,
             ignored_resources=list(ignored_resources),
             source_folders=list(source_folders),
-            extension_modules=list(extension_modules),
         )
         if not isinstance(project, p.Infra.RopeProject):
             msg = "rope Project does not satisfy p.Infra.RopeProject"

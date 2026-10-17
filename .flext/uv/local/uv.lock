@@ -438,7 +438,7 @@ dependencies = [
 [[package]]
 name = "flext-core"
 version = "0.12.0"
-source = { git = "https://github.com/flext-sh/flext-core.git?rev=upload-20261007#ca20774cbb770a8d06ea3f4812dc68ed040fb2e5" }
+source = { git = "https://github.com/flext-sh/flext-core.git?rev=upload-20261007#5106292ec69f17d139c47eaaa45d68b756bd4fb1" }
 dependencies = [
     { name = "annotated-types" },
     { name = "beartype" },
@@ -456,9 +456,7 @@ name = "flext-infra"
 version = "0.12.0"
 source = { editable = "../../../" }
 dependencies = [
-    { name = "annotated-types" },
     { name = "defusedxml" },
-    { name = "dependency-injector" },
     { name = "flext-cli" },
     { name = "flext-core" },
     { name = "gitdb" },
@@ -467,23 +465,18 @@ dependencies = [
     { name = "libcst" },
     { name = "markdown" },
     { name = "mkdocs" },
+    { name = "mypy" },
     { name = "packaging" },
-    { name = "pydantic" },
-    { name = "pydantic-settings" },
     { name = "pymdown-extensions" },
     { name = "pytest" },
     { name = "pytest-markdown-docs" },
-    { name = "pyyaml" },
     { name = "rope" },
-    { name = "structlog" },
     { name = "typing-extensions" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "annotated-types", specifier = ">=0.8.0" },
     { name = "defusedxml", specifier = ">=0.7.1" },
-    { name = "dependency-injector", specifier = ">=4.49.1" },
     { name = "flext-cli", git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev" },
     { name = "flext-core", git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev" },
     { name = "gitdb", specifier = ">=4.0.12" },
@@ -492,15 +485,12 @@ requires-dist = [
     { name = "libcst", specifier = ">=1.9.0" },
     { name = "markdown", specifier = ">=3.11.1" },
     { name = "mkdocs", specifier = ">=1.6.1" },
+    { name = "mypy", specifier = ">=2.3.1" },
     { name = "packaging", specifier = ">=26.3" },
-    { name = "pydantic", specifier = ">=2.14.1,<3" },
-    { name = "pydantic-settings", specifier = ">=2.15.0" },
     { name = "pymdown-extensions", specifier = ">=11.0.1" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-markdown-docs", specifier = ">=0.9.2" },
-    { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "rope", git = "https://github.com/marlon-costa-dc/rope.git?rev=datacosmos" },
-    { name = "structlog", specifier = ">=25.5.0" },
     { name = "typing-extensions", specifier = ">=4.16.0" },
 ]
 

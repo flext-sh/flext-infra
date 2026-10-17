@@ -11,6 +11,8 @@ from pathlib import Path
 from types import UnionType
 from typing import TypeAliasType, Union, get_args, get_origin, override
 
+from typing_extensions import TypeForm
+
 from flext_infra import FlextInfra, FlextInfraServiceBase, c, m, p, r, t, u
 from flext_infra.codegen import FlextInfraCodegenProtocolModelRender
 
@@ -133,7 +135,7 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
                 workspace.rope_project, resource
             ).get_attribute(owner[1])
             runtime_facades[owner[0]] = u.type_adapter(
-                t.ImportString[t.InstanceOf[p.ModuleOwned]]
+                TypeForm(t.ImportString[t.InstanceOf[p.ModuleOwned]])
             ).validate_python(f"{entry.module_name}:{owner[1]}")
             package_dir = entry.package_dir
         return package_dir, facades, runtime_facades

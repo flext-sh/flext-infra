@@ -79,9 +79,12 @@ class TestsFlextInfraModTextGateEngine:
             eq=True,
         )
         tm.that(isinstance(result.exception, ValueError), eq=True)
-        assert "unsupported input" in str(result.error)
-        assert selected.read_text(encoding=c.DEFAULT_ENCODING) == 'value = "after"\n'
-        assert unsupported.read_bytes() == before
+        tm.that("unsupported input" in str(result.error), truth=True)
+        tm.that(
+            selected.read_text(encoding=c.DEFAULT_ENCODING) == 'value = "after"\n',
+            truth=True,
+        )
+        tm.that(unsupported.read_bytes() == before, truth=True)
         tm.fail(FlextInfraModTextGateEngine.source_paths(mod_workspace))
 
     @staticmethod

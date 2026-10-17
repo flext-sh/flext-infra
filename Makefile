@@ -1525,18 +1525,11 @@ _activated-initialize: _builtin_require_interpreter
 
 
 
-
-project-new: _builtin_require_workspace
+# This operation consumes the declared physical runtime without activating the
+# environment file it may itself regenerate.
+project-new: _builtin_require_workspace _builtin_require_interpreter
 	@printf '==> %s | project=%s | profile=%s\n' 'project-new' "$(PROJECT_ROOT)" 'standalone'
-
-	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-project-new,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-project-new)
-
-.PHONY: _activated-project-new
-
-_activated-project-new: _builtin_require_environment
-
-
-	$(if $(filter Y,$(CI)),+@$(SELF_MAKE) _builtin-project-new,$(call RUN_PUBLIC,project-new))
+	$(call RUN_PUBLIC,project-new)
 
 
 
@@ -2810,8 +2803,8 @@ export FLEXT_NEW_FLEXT_SOURCE := $(value FLEXT_SOURCE)
 export FLEXT_NEW_YEAR := $(value YEAR)
 
 
-_builtin-project-new: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) codegen new --apply --name "$$FLEXT_NEW_NAME" --kind "$$FLEXT_NEW_KIND" --output-root "$$FLEXT_NEW_OUTPUT_ROOT" --provider "$$FLEXT_NEW_PROVIDER" --repository-url "$$FLEXT_NEW_REPOSITORY_URL" --repository-branch "$$FLEXT_NEW_REPOSITORY_BRANCH" --flext-repository-url "$$FLEXT_NEW_FLEXT_REPOSITORY_URL" --flext-repository-ref "$$FLEXT_NEW_FLEXT_REPOSITORY_REF" --license "$$FLEXT_NEW_LICENSE" --author-name "$$FLEXT_NEW_AUTHOR_NAME" --author-email "$$FLEXT_NEW_AUTHOR_EMAIL" --upstream "$$FLEXT_NEW_UPSTREAM" --flext-source "$$FLEXT_NEW_FLEXT_SOURCE" --year "$$FLEXT_NEW_YEAR"
+_builtin-project-new: _builtin_require_interpreter
+	@$(PROJECT_FLEXT_INFRA) codegen new --repository-root "$(PROJECT_ROOT)" --apply --name "$$FLEXT_NEW_NAME" --kind "$$FLEXT_NEW_KIND" --output-root "$$FLEXT_NEW_OUTPUT_ROOT" --provider "$$FLEXT_NEW_PROVIDER" --repository-url "$$FLEXT_NEW_REPOSITORY_URL" --repository-branch "$$FLEXT_NEW_REPOSITORY_BRANCH" --flext-repository-url "$$FLEXT_NEW_FLEXT_REPOSITORY_URL" --flext-repository-ref "$$FLEXT_NEW_FLEXT_REPOSITORY_REF" --license "$$FLEXT_NEW_LICENSE" --author-name "$$FLEXT_NEW_AUTHOR_NAME" --author-email "$$FLEXT_NEW_AUTHOR_EMAIL" --upstream "$$FLEXT_NEW_UPSTREAM" --flext-source "$$FLEXT_NEW_FLEXT_SOURCE" --year "$$FLEXT_NEW_YEAR"
 
 
 _builtin_gen_all: _builtin_require_environment

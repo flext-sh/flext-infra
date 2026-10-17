@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from errno import ENOENT
@@ -908,7 +909,20 @@ class FlextInfraRopeProject(Project):
 
     @override
     def _init_other_parts(self) -> None:
-        """Install captured change observations before initializing resources."""
+        """Declare sourceless stdlib modules, then install captured observations.
+
+        A frozen stdlib module has no source file for Rope to elect
+        (``collections.abc`` binds the frozen ``_collections_abc``), so every
+        project, live or captured, declares the interpreter's frozen stdlib
+        modules as Rope's native extension modules before its core caches them.
+        """
+        for name, module in tuple(sys.modules.items()):
+            if (
+                name.partition(".")[0] in sys.stdlib_module_names
+                and module.__spec__ is not None
+                and module.__spec__.origin == "frozen"
+            ):
+                self.prefs.add("extension_modules", name)
         super()._init_other_parts()
         if isinstance(self.fscommands, self.SnapshotFiles | self.AtomicReadFiles):
             core = self.get_pycore()

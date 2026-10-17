@@ -1448,7 +1448,7 @@ class FlextInfraModGateEngine:
         if receipt.failure:
             return r[m.Infra.ModScanReport].from_failure(receipt)
         cls._report_evidence(receipt.value)
-        if publication.command is c.Infra.ModScanCommand.APPLY:
+        if publication.command == c.Infra.ModScanCommand.APPLY:
             published = cls.apply_report(
                 root,
                 report,
@@ -1464,8 +1464,7 @@ class FlextInfraModGateEngine:
         root: Path,
         *,
         fix: bool,
-        rule_ids: t.StrSequence | None = None,
-        plan: m.Infra.CodemodRulePlan | None = None,
+        selection: t.StrSequence | m.Infra.CodemodRulePlan | None = None,
         source_files: t.SequenceOf[Path] | None = None,
     ) -> p.Result[m.Infra.ModScanReport]:
         """Scan or apply every ruleset elected by the composed rule-plan SSOT.
@@ -1477,16 +1476,18 @@ class FlextInfraModGateEngine:
             The resulting ``p.Result[m.Infra.ModScanReport]``.
 
         """
-        if plan is None:
-            planned = u.Infra.codemod_rule_plan(root, rule_ids=rule_ids)
+        if isinstance(selection, m.Infra.CodemodRulePlan):
+            plan = selection
+            if root.resolve() not in plan.project_rule_ids:
+                return r[m.Infra.ModScanReport].fail(
+                    "precomposed scan plan requires its governed root and owns rule "
+                    "selection"
+                )
+        else:
+            planned = u.Infra.codemod_rule_plan(root, rule_ids=selection)
             if planned.failure:
                 return r[m.Infra.ModScanReport].from_failure(planned)
             plan = planned.value
-        elif rule_ids is not None or root.resolve() not in plan.project_rule_ids:
-            return r[m.Infra.ModScanReport].fail(
-                "precomposed scan plan requires its governed root and owns rule "
-                "selection"
-            )
         rules_by_id = {rule.id: rule for rule in plan.rules}
         targets = u.Infra.ast_grep_scan_targets(root, source_files=source_files)
         source_states = {
@@ -1546,7 +1547,8 @@ class FlextInfraModGateEngine:
                 repositories=tuple(project.name for project in plan.project_rule_ids),
                 rule_ids=tuple(rules_by_id),
             ),
-            exact_replacements=rule_ids is not None,
+            exact_replacements=selection is not None
+            and not isinstance(selection, m.Infra.CodemodRulePlan),
         )
 
     @classmethod

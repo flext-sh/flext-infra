@@ -918,6 +918,10 @@ Private approved plans remain local execution context. Do not collect, project, 
 or link them into published documentation without explicit publication authorization.
 
 `make mod-rules` inspects the full governed source inventory without rewriting it.
+Native `isinstance` and None assertions retain Python's type narrowing. Assertions
+with a message retain its evaluation on failure. Their automatic matcher rewrites
+are retired: unused return values lose narrowing, while generated conditionals
+duplicate language behavior. Explicit matcher calls remain available for observations.
 The text catalog composes Infra's shared rules with each project's local
 `config/rules/mod/sed.yaml`. A domain-specific rule belongs to that project's
 catalog; copying it into the shared catalog creates an ambiguous owner and blocks
@@ -929,6 +933,9 @@ catalogs once, then admits each occurrence against its nearest project's electio
 and semantic facts. A library owner's imports remain within its domain; the same
 imports in a consumer remain violations. Reports retain zero counts for every
 governed repository and elected rule.
+The native scanner takes one `selection`: rule identifiers or an already composed
+rule plan. A composed plan must govern the requested root and remains the only
+selection authority for that invocation.
 
 Generated facades compose declarations published by their current private family.
 Rope resolves existing bases before composition: upstream bases remain, while an
@@ -941,6 +948,12 @@ authenticated source inventory. External providers keep their native Rope
 identity through a snapshot-owned external project and read the captured bytes.
 Physical file changes remain inputs to publication CAS, rather than changing
 the source graph while a plan is being computed.
+
+Every Rope project registers the interpreter's loaded frozen stdlib modules
+through native extension preferences before initializing its core. Live and
+captured projects therefore resolve the same sourceless aliases; callers do not
+maintain a second module list. Registration preserves explicitly declared
+extension modules.
 
 Import normalization treats exception targets and structural pattern captures
 as local bindings. These names do not load a package facade or reintroduce an

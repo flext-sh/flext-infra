@@ -385,7 +385,7 @@ class TestsFlextInfraTypeGates:
         first = gate.check(project, checker_context)
         assert first.result.passed, first
         native_reports = tuple(reports.glob("*-pyrefly.json"))
-        assert len(native_reports) == 1
+        tm.that(len(native_reports) == 1, truth=True)
         assert not m.Infra.PyreflyReport.model_validate_json(
             native_reports[0].read_text(encoding="utf-8"),
             strict=True,
@@ -510,7 +510,7 @@ class TestsFlextInfraTypeGates:
             strict=True,
         )
         assert report.general_diagnostics[0].range is None
-        assert report.summary.information_count == 1
+        tm.that(report.summary.information_count == 1, truth=True)
 
     @staticmethod
     def test_pyright_zero_collection() -> None:
@@ -521,7 +521,7 @@ class TestsFlextInfraTypeGates:
             '"informationCount":0,"timeInSec":0.1}}',
             strict=True,
         )
-        assert report.summary.files_analyzed == 0
+        tm.that(report.summary.files_analyzed == 0, truth=True)
         assert not report.general_diagnostics
 
     @staticmethod

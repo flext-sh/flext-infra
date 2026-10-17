@@ -77,7 +77,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         ast_report = FlextInfraModGateEngine.scan(
             self.repository_root,
             fix=False,
-            plan=planned.value,
+            selection=planned.value,
         ).unwrap()
         if rule_ids is not None:
             return self._selected_scan_outcome(planned.value, ast_report)
@@ -201,7 +201,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"sha256={receipt.sha256}",
             )
         current = (
-            FlextInfraModGateEngine.scan(root, fix=False, rule_ids=rule_ids).unwrap()
+            FlextInfraModGateEngine.scan(root, fix=False, selection=rule_ids).unwrap()
             if rule_ids is not None
             else before
         )
@@ -394,7 +394,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
                 applied.unwrap()
             if applied.failure:
                 return r[t.Cli.ResultValue].from_failure(applied)
-            scanned = FlextInfraModGateEngine.scan(root, fix=False, rule_ids=rule_ids)
+            scanned = FlextInfraModGateEngine.scan(root, fix=False, selection=rule_ids)
             if rule_ids is None:
                 scanned.unwrap()
             if scanned.failure:
