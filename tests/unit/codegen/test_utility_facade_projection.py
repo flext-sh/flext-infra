@@ -168,7 +168,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         layouts: list[m.Infra.RopeProjectLayout] = []
         desired: dict[Path, str] = {}
         scripts: list[str] = []
-        for suffix in (("first", "second") if scope == "independent" else ("first",)):
+        for suffix in ("first", "second") if scope == "independent" else ("first",):
             root, package = u.Tests.create_lazy_init_workspace(
                 tmp_path,
                 project_name=f"flext-{suffix}",
@@ -187,7 +187,7 @@ class TestsFlextInfraUtilityFacadeProjection:
                 f"u = {facade_class}\n"
                 f"__all__ = [{facade_class!r}, 'u']\n",
             )
-            for module in (("first", "second") if scope == "collision" else ("first",)):
+            for module in ("first", "second") if scope == "collision" else ("first",):
                 provider = package / family.directory / f"{module}.py"
                 self._write(
                     provider,

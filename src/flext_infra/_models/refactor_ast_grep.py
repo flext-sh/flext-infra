@@ -62,6 +62,23 @@ class FlextInfraModelsRefactorGrep:
             ),
         ] = ()
 
+        @m.model_validator(mode="after")
+        def _validate_native_owner_reference(self) -> Self:
+            """Require one qualified primitive, never a module waiver table."""
+            if self.predicate in {
+                c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER,
+                c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION,
+            } and (
+                len(self.arg) != 2
+                or any(
+                    not all(part.isidentifier() for part in value.split("."))
+                    for value in self.arg
+                )
+            ):
+                msg = f"{self.predicate} requires one module and native producer"
+                raise ValueError(msg)
+            return self
+
     class CodemodRule(FlextInfraModelsBase.FrozenArbitrary):
         """One validated ast-grep rule document from a composed provider."""
 

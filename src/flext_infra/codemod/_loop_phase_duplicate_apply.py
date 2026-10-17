@@ -82,7 +82,8 @@ class FlextInfraDuplicateApplyPhase:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(captured)
         source_states = captured.value
         planned = FlextInfraCodemodDuplicateApply.plan_census(
-            root, rope_workspace,
+            root,
+            rope_workspace,
             FlextInfraDuplicateApplyPhase._duplicate_groups(rope_workspace),
             sources=sources,
             source_states=source_states,
@@ -96,35 +97,51 @@ class FlextInfraDuplicateApplyPhase:
         files: list[m.Infra.CodegenFilePlan] = []
         for edit in outcome.edits:
             if edit.file_path in declarations:
-                files.append(declarations[edit.file_path].model_copy(update={
-                    "desired_content": edit.updated_source.encode(c.DEFAULT_ENCODING),
-                    "source_states": source_states,
-                    "owner": FlextInfraDuplicateApplyPhase.name,
-                }))
+                files.append(
+                    declarations[edit.file_path].model_copy(
+                        update={
+                            "desired_content": edit.updated_source.encode(
+                                c.DEFAULT_ENCODING
+                            ),
+                            "source_states": source_states,
+                            "owner": FlextInfraDuplicateApplyPhase.name,
+                        }
+                    )
+                )
                 continue
             if edit.file_path not in originals:
                 return r[m.Infra.CodegenPhaseAnalysis].fail(
                     f"duplicate planning source lacks its original receipt: {edit.file_path}"
                 )
             before = originals[edit.file_path]
-            files.append(m.Infra.CodegenFilePlan(
-                project=u.Infra.project_root(edit.file_path) or root,
-                path=edit.file_path,
-                before=before,
-                desired_content=edit.updated_source.encode(c.DEFAULT_ENCODING),
-                desired_mode=before.mode,
-                source_states=source_states,
-                owner=FlextInfraDuplicateApplyPhase.name,
-            ))
-        return r[m.Infra.CodegenPhaseAnalysis].ok(m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-            files=tuple(files),
-            inputs=source_states,
-            issues=tuple(m.Infra.Issue(
-                file=str(plan.owner_file_path), line=plan.owner_line, column=0,
-                code=c.Infra.ToolOutcome.ERROR.value, message=plan.reason,
-            ) for plan in outcome.plans),
-        ))
+            files.append(
+                m.Infra.CodegenFilePlan(
+                    project=u.Infra.project_root(edit.file_path) or root,
+                    path=edit.file_path,
+                    before=before,
+                    desired_content=edit.updated_source.encode(c.DEFAULT_ENCODING),
+                    desired_mode=before.mode,
+                    source_states=source_states,
+                    owner=FlextInfraDuplicateApplyPhase.name,
+                )
+            )
+        return r[m.Infra.CodegenPhaseAnalysis].ok(
+            m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                files=tuple(files),
+                inputs=source_states,
+                issues=tuple(
+                    m.Infra.Issue(
+                        file=str(plan.owner_file_path),
+                        line=plan.owner_line,
+                        column=0,
+                        code=c.Infra.ToolOutcome.ERROR.value,
+                        message=plan.reason,
+                    )
+                    for plan in outcome.plans
+                ),
+            )
+        )
 
     @staticmethod
     def _duplicate_groups(

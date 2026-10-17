@@ -27,17 +27,22 @@ class TestsFlextInfraGateAcceptance:
     """Observe acceptance through real checker and Ruff public boundaries."""
 
     @staticmethod
-    def test_native_formatter_warnings_remain_execution_failures(tmp_path: Path) -> None:
+    def test_native_formatter_warnings_remain_execution_failures(
+        tmp_path: Path,
+    ) -> None:
         """A native incompatibility warning is not hidden behind an exit-zero run."""
         project = u.Tests.mk_project(tmp_path, "native-format-warning", with_src=True)
         source = project / "src" / "sample.py"
         source.write_text("VALUE = 1\n", encoding="utf-8")
         (project / "ruff.toml").write_text(
-            '[lint]\nselect = ["COM812"]\n', encoding="utf-8",
+            '[lint]\nselect = ["COM812"]\n',
+            encoding="utf-8",
         )
         context = m.Infra.GateContext(
-            repository_root=tmp_path, reports_dir=tmp_path / "reports",
-            apply_fixes=True, selected_files=(source,),
+            repository_root=tmp_path,
+            reports_dir=tmp_path / "reports",
+            apply_fixes=True,
+            selected_files=(source,),
         )
         gate = FlextInfraRuffFormatGate(tmp_path)
         for execution in (
@@ -46,7 +51,9 @@ class TestsFlextInfraGateAcceptance:
         ):
             tm.that(execution.result.passed, eq=False)
             tm.that(execution.outcome, eq=c.Infra.ToolOutcome.ERROR)
-            tm.that([issue.code for issue in execution.issues], has=f"{c.Infra.FORMAT}-exec")
+            tm.that(
+                [issue.code for issue in execution.issues], has=f"{c.Infra.FORMAT}-exec"
+            )
             tm.that(execution.raw_output, has="COM812")
         tm.fail(FlextInfraRuffFormatGate.format_files(project, (source,)), has="COM812")
 

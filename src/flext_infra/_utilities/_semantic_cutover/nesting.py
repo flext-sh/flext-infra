@@ -15,16 +15,16 @@ from pathlib import Path
 
 import libcst as cst
 
-from flext_infra import m, p, r, t
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesPrivateImportFacades,
+    FlextInfraUtilitiesRopeAnalysisExports,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeStructure,
-    FlextInfraUtilitiesRopeAnalysisExports,
-    FlextInfraUtilitiesPrivateImportFacades,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverClassScope,
@@ -33,11 +33,11 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverNestingOwner,
     FlextInfraUtilitiesSemanticFamilyFlatten,
 )
-from flext_infra._utilities._semantic_cutover.test_helpers import (
-    FlextInfraUtilitiesSemanticTestHelpers,
-)
 from flext_infra._utilities._semantic_cutover.declaration_payload import (
     FlextInfraUtilitiesDeclarationPayload,
+)
+from flext_infra._utilities._semantic_cutover.test_helpers import (
+    FlextInfraUtilitiesSemanticTestHelpers,
 )
 
 
@@ -198,9 +198,13 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             module.source_code,
         )
         aliases: set[str] = set()
-        singleton = FlextInfraUtilitiesCodegenNamespace.runtime_singleton_export(file_path.name)
+        singleton = FlextInfraUtilitiesCodegenNamespace.runtime_singleton_export(
+            file_path.name
+        )
         for node in tree.body:
-            target, value = FlextInfraUtilitiesPrivateImportFacades._assigned_target_value(node)
+            target, value = (
+                FlextInfraUtilitiesPrivateImportFacades._assigned_target_value(node)
+            )
             if not isinstance(target, ast.Name) or value is None:
                 continue
             if target.id == "__all__":
@@ -214,7 +218,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     raise ValueError(msg)
                 aliases.add(target.id)
                 continue
-            if target.id != policy.expected_alias and target.id != singleton:
+            if target.id not in {policy.expected_alias, singleton}:
                 continue
             declared = FlextInfraUtilitiesPrivateImportFacades._facade_class_name(value)
             name = attributes.get(declared) if declared is not None else None
@@ -222,22 +226,34 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             if (
                 name is None
                 or binding is None
-                or not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(name.get_object())
+                or not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(
+                    name.get_object()
+                )
                 or target.id not in exports
-                or policy.expected_family is not None and declared != policy.expected_family
+                or (
+                    policy.expected_family is not None
+                    and declared != policy.expected_family
+                )
             ):
-                msg = f"unproven canonical module alias: {module.get_name()}.{target.id}"
+                msg = (
+                    f"unproven canonical module alias: {module.get_name()}.{target.id}"
+                )
                 raise ValueError(msg)
             native = binding.get_object()
             if native is name.get_object():
                 aliases.add(target.id)
                 continue
             annotation = (
-                runtime.expression_name(module.get_scope(), ast.unparse(node.annotation))
+                runtime.expression_name(
+                    module.get_scope(), ast.unparse(node.annotation)
+                )
                 if isinstance(node, ast.AnnAssign)
                 else None
             )
-            if runtime.same_name(name, annotation) and native.get_type() is name.get_object():
+            if (
+                runtime.same_name(name, annotation)
+                and native.get_type() is name.get_object()
+            ):
                 aliases.add(target.id)
                 continue
             msg = f"invalid native canonical singleton: {module.get_name()}.{target.id}"
@@ -265,14 +281,23 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                 continue
             for decorator in node.decorator_list:
-                expression = decorator.func if isinstance(decorator, ast.Call) else decorator
-                scope = runtime.scope_at(module, runtime.source_offset(module.source_code, decorator))
+                expression = (
+                    decorator.func if isinstance(decorator, ast.Call) else decorator
+                )
+                scope = runtime.scope_at(
+                    module, runtime.source_offset(module.source_code, decorator)
+                )
                 actual = runtime.expression_name(scope, ast.unparse(expression))
                 owner = actual.get_object().get_module() if actual is not None else None
-                if owner is None or owner.get_name().partition(".")[0] not in {"pytest", "_pytest"}:
+                if owner is None or owner.get_name().partition(".")[0] not in {
+                    "pytest",
+                    "_pytest",
+                }:
                     continue
-                pytest_module = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
-                    project.get_module("pytest"),
+                pytest_module = (
+                    FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                        project.get_module("pytest"),
+                    )
                 )
                 if any(
                     runtime.same_name(pytest_module.get_attribute(name), actual)
@@ -301,28 +326,47 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             return False
         left, right = test.left, test.comparators[0]
         if not (
-            isinstance(left, ast.Name) and left.id == "__name__"
-            and isinstance(right, ast.Constant) and right.value == "__main__"
+            isinstance(left, ast.Name)
+            and left.id == "__name__"
+            and isinstance(right, ast.Constant)
+            and right.value == "__main__"
         ) or any("__name__" in cls._scope_bindings(node) for node in tree.body):
             return False
         if len(statement.body) != 1:
             return False
         body = statement.body[0]
         if any(
-            isinstance(node, ast.NamedExpr | ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
+            isinstance(
+                node,
+                ast.NamedExpr | ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef,
+            )
             for node in ast.walk(body)
         ):
             return False
-        call = body.value if isinstance(body, ast.Expr) else body.exc if isinstance(body, ast.Raise) else None
+        call = (
+            body.value
+            if isinstance(body, ast.Expr)
+            else body.exc
+            if isinstance(body, ast.Raise)
+            else None
+        )
         if not isinstance(call, ast.Call):
             return False
-        resource = project.get_resource(file_path.relative_to(Path(project.root.real_path)).as_posix())
+        resource = project.get_resource(
+            file_path.relative_to(Path(project.root.real_path)).as_posix()
+        )
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         if isinstance(body, ast.Raise):
             actual = runtime.expression_name(module.get_scope(), ast.unparse(call.func))
-            builtin = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(project.get_module("builtins"))
-            if not runtime.same_name(builtin.get_attribute("SystemExit"), actual) or len(call.args) != 1 or call.keywords:
+            builtin = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                project.get_module("builtins")
+            )
+            if (
+                not runtime.same_name(builtin.get_attribute("SystemExit"), actual)
+                or len(call.args) != 1
+                or call.keywords
+            ):
                 return False
             call = call.args[0]
         if not isinstance(call, ast.Call):
@@ -331,7 +375,9 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         if target is None:
             return False
         holder, _line = target.get_definition_location()
-        return holder is module and FlextInfraUtilitiesRopeRuntimeTypes.py_function(target.get_object())
+        return holder is module and FlextInfraUtilitiesRopeRuntimeTypes.py_function(
+            target.get_object()
+        )
 
     @staticmethod
     def _module_declaration_entities(
@@ -343,10 +389,12 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         payloads = FlextInfraUtilitiesDeclarationPayload
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            project.get_resource(file_path.relative_to(Path(project.root.real_path)).as_posix()),
+            project.get_resource(
+                file_path.relative_to(Path(project.root.real_path)).as_posix()
+            ),
         )
         entities: set[str] = set()
-        for name, declaration in classes.items():
+        for name in classes:
             target = module.get_attribute(name).get_object()
             ancestry = payloads.class_ancestry(target)
             if any(
@@ -357,31 +405,51 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 model = payloads.identity_name(project, c.Infra.PYDANTIC_MODEL_IDENTITY)
                 if model is not None and model.get_object() in ancestry:
                     entities.add(name)
-            if payloads.protocol_declaration(
-                project, module, name, declaration.body,
-            ) is not None:
+            if (
+                payloads.protocol_declaration(
+                    project,
+                    file_path,
+                    f"{module.get_name()}.{name}",
+                )
+                is not None
+            ):
                 entities.add(name)
         return frozenset(entities)
 
     @classmethod
     def _canonical_metadata_rebind(
-        cls, project: p.Infra.RopeProject, file_path: Path, tree: ast.Module, node: ast.stmt,
+        cls,
+        project: p.Infra.RopeProject,
+        file_path: Path,
+        tree: ast.Module,
+        node: ast.stmt,
     ) -> bool:
         """Admit Python class provenance metadata only on its native local owner."""
-        target, value = FlextInfraUtilitiesPrivateImportFacades._assigned_target_value(node)
+        target, value = FlextInfraUtilitiesPrivateImportFacades._assigned_target_value(
+            node
+        )
         if not isinstance(target, ast.Attribute) or target.attr != "__module__":
             return False
         if not (
-            isinstance(value, ast.Constant) and isinstance(value.value, str)
-            or isinstance(value, ast.Name) and value.id == "__name__"
-            and not any("__name__" in cls._scope_bindings(item) for item in tree.body)
+            (isinstance(value, ast.Constant) and isinstance(value.value, str))
+            or (
+                isinstance(value, ast.Name)
+                and value.id == "__name__"
+                and not any(
+                    "__name__" in cls._scope_bindings(item) for item in tree.body
+                )
+            )
         ):
             return False
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
-            project, project.get_resource(file_path.relative_to(Path(project.root.real_path)).as_posix()),
+            project,
+            project.get_resource(
+                file_path.relative_to(Path(project.root.real_path)).as_posix()
+            ),
         )
         binding = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
-            module.get_scope(), ast.unparse(target.value),
+            module.get_scope(),
+            ast.unparse(target.value),
         )
         return binding is not None and (
             FlextInfraUtilitiesRopeRuntimeTypes.py_class(binding.get_object())
@@ -416,22 +484,27 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             fnmatch(file_path.name, pattern) for pattern in pytest_patterns[0]
         )
         canonical = cls._canonical_module_bindings(
-            project, file_path, tree, convention.module_policy,
+            project,
+            file_path,
+            tree,
+            convention.module_policy,
         )
         # Full syntactic collection precedes native canonical admission everywhere.
         loose = cls._loose_members(tree, values=True, strict=True)
-        loose = tuple(
-            name
-            for name in loose
-            if name not in canonical
-        )
+        loose = tuple(name for name in loose if name not in canonical)
         unsupported = tuple(
             f"{type(node).__name__}@{node.lineno}"
             for node in tree.body
             if not isinstance(
                 node,
-                ast.Import | ast.ImportFrom | ast.ClassDef | ast.FunctionDef
-                | ast.AsyncFunctionDef | ast.Assign | ast.AnnAssign | ast.TypeAlias,
+                ast.Import
+                | ast.ImportFrom
+                | ast.ClassDef
+                | ast.FunctionDef
+                | ast.AsyncFunctionDef
+                | ast.Assign
+                | ast.AnnAssign
+                | ast.TypeAlias,
             )
             and not (
                 isinstance(node, ast.Expr)
@@ -482,10 +555,17 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         ) or FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
             file_path.parent.name,
         )
-        utility_family = FlextInfraUtilitiesCodegenNamespace.facade_family_of_file(c.Infra.UTILITIES_PY)
-        if family is not None and family != utility_family and any(
-            isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and node.name in loose
-            for node in tree.body
+        utility_family = FlextInfraUtilitiesCodegenNamespace.facade_family_of_file(
+            c.Infra.UTILITIES_PY
+        )
+        if (
+            family is not None
+            and family != utility_family
+            and any(
+                isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                and node.name in loose
+                for node in tree.body
+            )
         ):
             return planned.fail(
                 f"class-nesting requires utility-owner relocation for behavior in "
@@ -734,10 +814,18 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     if defining is None:
                         msg = f"test class has no unique native defining scope: {path}:{declaration.name}"
                         raise ValueError(msg)
-                    if replacement in defining.get_defined_names():
+                    # Rope's scope ``__getitem__`` raises for absent names; the
+                    # native defined-name contract decides presence first.
+                    # ``get_names`` lazily fills function-scope locals, which
+                    # ``get_defined_names`` reports empty.
+                    defined = defining.get_names()
+                    expected = defined.get(declaration.name)
+                    if expected is None:
+                        msg = f"test class has no native defining binding: {path}:{declaration.name}"
+                        raise ValueError(msg)
+                    if replacement in defined:
                         msg = f"test class prefix rename collides: {path}:{replacement}"
                         raise ValueError(msg)
-                    expected = defining.get_defined_names()[declaration.name]
                     offset = (
                         FlextInfraUtilitiesRopeCore.find_identifier_offset_in_lines(
                             working[path].splitlines(keepends=True),
@@ -1019,9 +1107,13 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             previous = merged.get(edit.file_path)
             merged[edit.file_path] = m.Infra.SemanticMigrationEdit(
                 file_path=edit.file_path,
-                original_source=previous.original_source if previous else edit.original_source,
+                original_source=previous.original_source
+                if previous
+                else edit.original_source,
                 updated_source=edit.updated_source,
-                changes=(*previous.changes, *edit.changes) if previous else edit.changes,
+                changes=(*previous.changes, *edit.changes)
+                if previous
+                else edit.changes,
             )
             proposed[edit.file_path] = edit.updated_source
         for edit in cls._test_registration_edits(rope_workspace, proposed):
@@ -1057,23 +1149,36 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     continue
                 tree = ast.parse(source)
                 if path.name == c.Infra.INIT_PY or not cls._is_pytest_module(
-                    project, path, tree, pytest_patterns,
+                    project,
+                    path,
+                    tree,
+                    pytest_patterns,
                 ):
                     continue
                 owners = [node for node in tree.body if isinstance(node, ast.ClassDef)]
-                if not owners and not cls._loose_members(tree, values=True, strict=True):
+                if not owners and not cls._loose_members(
+                    tree, values=True, strict=True
+                ):
                     continue
                 if len(owners) != 1:
                     msg = f"pytest module has no sole root owner: {path}"
                     raise ValueError(msg)
                 resource = project.get_resource(path.relative_to(root).as_posix())
                 updated = cls._publish_test_bindings(
-                    project, resource, source, owners[0].name,
-                    original_bindings=None if path.name == "conftest.py" else frozenset(),
+                    project,
+                    resource,
+                    source,
+                    owners[0].name,
+                    original_bindings=None
+                    if path.name == "conftest.py"
+                    else frozenset(),
                 )
                 final_tree = ast.parse(updated)
                 canonical = cls._canonical_module_bindings(
-                    project, path, final_tree, workspace.convention(path).module_policy,
+                    project,
+                    path,
+                    final_tree,
+                    workspace.convention(path).module_policy,
                 )
                 outside = tuple(
                     type(node).__name__
@@ -1081,9 +1186,12 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     if not isinstance(node, ast.Import | ast.ImportFrom | ast.ClassDef)
                     and not cls._type_checking_import_block(node, final_tree)
                     and not cls._canonical_main_guard(project, path, final_tree, node)
-                    and not cls._canonical_metadata_rebind(project, path, final_tree, node)
+                    and not cls._canonical_metadata_rebind(
+                        project, path, final_tree, node
+                    )
                     and not (
-                        isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant)
+                        isinstance(node, ast.Expr)
+                        and isinstance(node.value, ast.Constant)
                         and isinstance(node.value.value, str)
                     )
                     and not (
@@ -1547,6 +1655,12 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         if not nested_names:
             project.close()
             return planned_edits.ok(())
+        providers_by_module = {
+            module_names[path]: project.get_resource(
+                path.relative_to(Path(project.root.real_path)).as_posix()
+            )
+            for path in definitions_by_file
+        }
         try:
 
             def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
@@ -1565,10 +1679,15 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                         module.is_package_init if module is not None else False,
                     ),
                     bindings_by_module=bindings_by_module,
+                    providers_by_module=providers_by_module,
                     definitions=definitions,
                     sources=sources,
-                    is_pytest=bool(definitions) and cls._is_pytest_module(
-                        project, path, ast.parse(source), pytest_patterns,
+                    is_pytest=bool(definitions)
+                    and cls._is_pytest_module(
+                        project,
+                        path,
+                        ast.parse(source),
+                        pytest_patterns,
                     ),
                 )
                 if definitions and updated == source:

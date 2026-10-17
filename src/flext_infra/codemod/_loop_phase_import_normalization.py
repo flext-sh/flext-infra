@@ -52,13 +52,16 @@ class FlextInfraImportNormalizationPhase:
             if not u.Infra.namespace_enabled(project_root):
                 continue
             selected = tuple(
-                path for path in sources
+                path
+                for path in sources
                 if path.is_relative_to(project_root)
                 and path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
                 and (u.Infra.project_root(path) or project_root) == project_root
             )
             planned = FlextInfraImportNormalization.plan_files(
-                project_root, selected, sources=sources,
+                project_root,
+                selected,
+                sources=sources,
                 source_states=source_states,
                 rope_project=rope_workspace.rope_project,
                 declared_files=declared_files,
@@ -66,10 +69,13 @@ class FlextInfraImportNormalizationPhase:
             if planned.failure:
                 return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
             files.extend(planned.value.files)
-        return r[m.Infra.CodegenPhaseAnalysis].ok(m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-            files=tuple(files), inputs=source_states,
-        ))
+        return r[m.Infra.CodegenPhaseAnalysis].ok(
+            m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                files=tuple(files),
+                inputs=source_states,
+            )
+        )
 
     @staticmethod
     def apply(
@@ -83,9 +89,11 @@ class FlextInfraImportNormalizationPhase:
             The resulting ``p.Result[bool]`` — ``True`` marks changed sources.
 
         """
-        inventory = u.Infra.iter_python_files(m.Infra.SourceScanRequest(
-            project_roots=tuple(u.Infra.governed_project_roots(root)),
-        ))
+        inventory = u.Infra.iter_python_files(
+            m.Infra.SourceScanRequest(
+                project_roots=tuple(u.Infra.governed_project_roots(root)),
+            )
+        )
         if inventory.failure:
             return r[bool].from_failure(inventory)
         states = tuple(
@@ -93,9 +101,14 @@ class FlextInfraImportNormalizationPhase:
             for path in inventory.value
         )
         planned = FlextInfraImportNormalizationPhase.plan(
-            root, preflight, rope_workspace,
-            sources={state.path: state.content.decode(c.DEFAULT_ENCODING)
-                     for state in states if state.content is not None},
+            root,
+            preflight,
+            rope_workspace,
+            sources={
+                state.path: state.content.decode(c.DEFAULT_ENCODING)
+                for state in states
+                if state.content is not None
+            },
             source_states=states,
         )
         if planned.failure:

@@ -621,34 +621,53 @@ class TestsFlextInfraModTextGateEngine:
         }
         working = {**original, first: original[first] + "# prior planned phase\n"}
         frozen = dict(working)
-        _report, analysis = tm.ok(FlextInfraModTextGateEngine.plan(
-            mod_workspace, sources=working, source_states=states,
-        ))
+        _report, analysis = tm.ok(
+            FlextInfraModTextGateEngine.plan(
+                mod_workspace,
+                sources=working,
+                source_states=states,
+            )
+        )
         tm.that(analysis.issues, empty=True)
         targets = {plan.path: plan for plan in analysis.files}
         for path in (first, second):
-            tm.that(targets[path].before, eq=next(state for state in states if state.path == path))
+            tm.that(
+                targets[path].before,
+                eq=next(state for state in states if state.path == path),
+            )
             tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original[path])
-            tm.that(tm.not_none(targets[path].desired_content).decode(c.DEFAULT_ENCODING),
-                    eq=working[path].replace("before", "after"))
+            tm.that(
+                tm.not_none(targets[path].desired_content).decode(c.DEFAULT_ENCODING),
+                eq=working[path].replace("before", "after"),
+            )
         tm.that(working, eq=frozen)
         virtual = first.parent / "planned" / "candidate.py"
         absence = tm.ok(u.Cli.atomic_plan_directory_chain(virtual.parent))
         declaration = m.Infra.CodegenFilePlan(
-            project=mod_workspace, path=virtual, before=absence,
+            project=mod_workspace,
+            path=virtual,
+            before=absence,
             desired_content=original[first].encode(c.DEFAULT_ENCODING),
-            desired_mode=tm.not_none(next(state.mode for state in states if state.path == first)),
+            desired_mode=tm.not_none(
+                next(state.mode for state in states if state.path == first)
+            ),
             source_states=states,
         )
-        _report, candidate = tm.ok(FlextInfraModTextGateEngine.plan(
-            mod_workspace,
-            sources={**working, virtual: original[first]},
-            source_states=states, declared_files=(declaration,),
-        ))
+        _report, candidate = tm.ok(
+            FlextInfraModTextGateEngine.plan(
+                mod_workspace,
+                sources={**working, virtual: original[first]},
+                source_states=states,
+                declared_files=(declaration,),
+            )
+        )
         tm.that(candidate.issues, empty=True)
         virtual_plan = next(plan for plan in candidate.files if plan.path == virtual)
         tm.that(virtual_plan.before, eq=absence)
-        tm.that(virtual_plan.desired_content, eq=original[first].replace("before", "after").encode(c.DEFAULT_ENCODING))
+        tm.that(
+            virtual_plan.desired_content,
+            eq=original[first].replace("before", "after").encode(c.DEFAULT_ENCODING),
+        )
         tm.that(virtual.parent.exists(), eq=False)
         _report, physical = tm.ok(FlextInfraModTextGateEngine.plan(mod_workspace))
         tm.ok(FlextInfraModTextGateEngine.scan(mod_workspace, fix=True))

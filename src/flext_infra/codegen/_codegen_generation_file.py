@@ -17,14 +17,22 @@ class FlextInfraCodegenGenerationFileMixin(FlextInfraCodegenGenerationStandardMi
     """Render canonical initializer artifacts from one validated plan."""
 
     @classmethod
-    def init_template_paths(cls) -> t.VariadicTuple[Path]:
+    def init_template_paths(
+        cls,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> t.VariadicTuple[Path]:
         """Return the closed lazy-init template input set.
 
         Returns:
             The closed lazy-init template input set.
 
         """
-        return (cls._template_path(c.Infra.TEMPLATE_ROOT_INIT),)
+        return (
+            cls._template_path(
+                c.Infra.TEMPLATE_ROOT_INIT, source_project=source_project
+            ),
+        )
 
     @classmethod
     def render_init(

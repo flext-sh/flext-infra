@@ -53,6 +53,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             *,
             scope: t.Pair[str, bool],
             bindings_by_module: t.MappingKV[str, t.StrMapping],
+            providers_by_module: t.MappingKV[str, p.Infra.RopeResource],
             definitions: t.StrMapping,
             native: t.Pair[p.Infra.RopeProject, p.Infra.RopeResource],
             source: str,
@@ -90,7 +91,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             ] = []
             for module, bindings in bindings_by_module.items():
                 provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
-                    self.project.get_module(module),
+                    FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                        self.project,
+                        providers_by_module[module],
+                    ),
                 )
                 self.identities.extend(
                     (provider.get_attribute(name), provider, f"{owner}.{name}")
@@ -647,6 +651,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         module_name: str,
         is_package_init: bool,
         bindings_by_module: t.MappingKV[str, t.StrMapping],
+        providers_by_module: t.MappingKV[str, p.Infra.RopeResource],
         definitions: t.StrMapping,
         sources: t.MappingKV[Path, str],
     ) -> str:
@@ -659,6 +664,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         transformer = cls._NestingTransformer(
             scope=(module_name, is_package_init),
             bindings_by_module=bindings_by_module,
+            providers_by_module=providers_by_module,
             definitions=definitions,
             native=native,
             source=source,

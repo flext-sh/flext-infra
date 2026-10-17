@@ -472,7 +472,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             character = source[cursor]
             if character in closings:
                 opening, closing = finder.code_finder.get_word_parens_range(
-                    max(0, cursor - 1),
+                    cursor,
                     character,
                     closings[character],
                 )

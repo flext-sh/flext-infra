@@ -6,18 +6,147 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from contextlib import ExitStack
+from contextlib import ExitStack, nullcontext
 from pathlib import Path
+from re import escape
+from typing import Literal
 
 import pytest
 
-from flext_infra import c, config
+from flext_infra import c, config, m
 from flext_infra.codegen import FlextInfraCodegenGeneration
 from tests import p, tm, u
 
 
 class TestsFlextInfraFacadeAuthoredRuntime:
     """Exercise preservation through generation and a fresh public consumer."""
+
+    @staticmethod
+    @pytest.mark.parametrize("consume", [False, True])
+    def test_capture_pins_originals_without_promoting_unused_inputs(
+        tmp_path: Path,
+        *,
+        consume: bool,
+    ) -> None:
+        """Prefetch is not consumption; actual readers still get the original epoch."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        text = "__all__ = []\n"
+        source.write_text(text, encoding=c.DEFAULT_ENCODING)
+        expectation = (
+            pytest.raises(ValueError, match=escape(str(source)))
+            if consume
+            else nullcontext()
+        )
+        with expectation, u.Infra.facade_source_project(root) as binding:
+            project = binding[0]
+            with project.source_capture():
+                original = project.source_state(source)
+            tm.that(
+                source in {state.path for state in project.consumed_source_states()},
+                eq=False,
+            )
+            source.write_text(
+                text + "# Changed after capture\n", encoding=c.DEFAULT_ENCODING
+            )
+            with project.source_consumption() as scope:
+                if consume:
+                    tm.that(project.source_text(source), eq=text)
+            tm.that(scope.receipt().inputs, eq=(original,) if consume else ())
+
+    @staticmethod
+    @pytest.mark.parametrize("directory", [False, True])
+    def test_negative_query_below_original_file_uses_native_ancestor_proof(
+        tmp_path: Path,
+        *,
+        directory: bool,
+    ) -> None:
+        """Reject a file-to-directory change, not irrelevant ancestor file bytes."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        source.write_text("__all__ = []\n", encoding=c.DEFAULT_ENCODING)
+        expectation = (
+            pytest.raises(ValueError, match=escape(str(source)))
+            if directory
+            else nullcontext()
+        )
+        with expectation, u.Infra.facade_source_project(root) as binding:
+            project = binding[0]
+            with project.source_consumption() as scope:
+                predicates: tuple[Literal["exists", "isfile", "isdir"], ...] = (
+                    "exists",
+                    "isfile",
+                    "isdir",
+                )
+                for predicate in predicates:
+                    tm.that(
+                        project.source_query(source / "child.py", predicate), eq=False
+                    )
+            tm.that(scope.receipt().inputs, eq=())
+            tm.that(
+                any(
+                    inventory.root.path == package
+                    and (source.name, "isdir") in inventory.queries
+                    for inventory in scope.receipt().source_directories
+                ),
+                eq=True,
+            )
+            if directory:
+                source.unlink()
+                source.mkdir()
+            else:
+                source.write_text(
+                    "# Changed bytes, still not a directory\n",
+                    encoding=c.DEFAULT_ENCODING,
+                )
+
+    @staticmethod
+    def test_declared_retirement_and_binary_reads_keep_original_effect_inputs(
+        tmp_path: Path,
+    ) -> None:
+        """Use the native selected view without restoring retired or binary bytes."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        dependency = package / "dependency.py"
+        binary = package / "opaque.bin"
+        source.write_text("__all__ = []\n", encoding=c.DEFAULT_ENCODING)
+        dependency.write_text("__all__ = []\n", encoding=c.DEFAULT_ENCODING)
+        binary.write_bytes(b"\x00\xff")
+        original = tm.ok(u.Cli.atomic_read_binary_file_state(source))
+        incoming = tm.ok(u.Cli.atomic_read_binary_file_state(dependency))
+        opaque = tm.ok(u.Cli.atomic_read_binary_file_state(binary))
+        plans = (
+            m.Infra.CodegenFilePlan(
+                project=root,
+                path=source,
+                before=original,
+                desired_content=None,
+                source_states=(incoming,),
+            ),
+            m.Infra.CodegenFilePlan(
+                project=root,
+                path=binary,
+                before=opaque,
+                desired_content=b"\xff\x00",
+                source_states=(incoming,),
+            ),
+        )
+        with u.Infra.facade_source_project(
+            root, source_states=(original, incoming, opaque), declared_files=plans
+        ) as binding:
+            project = binding[0]
+            with project.source_consumption() as scope:
+                tm.that(project.source_query(source, "isfile"), eq=False)
+                tm.that(source in project.source_children(package), eq=False)
+                tm.that(project.source_bytes(binary), eq=b"\xff\x00")
+            states = {state.path: state for state in scope.receipt().inputs}
+            tm.that(states[source], eq=original)
+            tm.that(states[dependency], eq=incoming)
+            tm.that(states[binary], eq=opaque)
+            with pytest.raises(FileNotFoundError, match="retired"):
+                project.source_bytes(source)
+        tm.that(binary.read_bytes(), eq=opaque.content)
+        tm.that(source.read_bytes(), eq=original.content)
 
     @staticmethod
     def test_isolated_native_consumers_share_original_transitive_receipts(
@@ -154,13 +283,15 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             with pytest.raises(ValueError, match="active consumer"):
                 project.replay_source_consumption(scope.receipt())
             failure = RuntimeError("consumer failed")
+            scopes: list[p.Infra.RopeSourceConsumption] = []
             with pytest.raises(RuntimeError, match="consumer failed") as caught:
                 with project.source_consumption() as failed:
+                    scopes.append(failed)
                     project.source_state(package / "absent.py", required=False)
                     raise failure
             tm.that(caught.value is failure, eq=True)
             with pytest.raises(ValueError, match="no completed receipt"):
-                failed.receipt()
+                scopes[0].receipt()
 
     @staticmethod
     def test_nested_source_scopes_propagate_original_receipts(tmp_path: Path) -> None:

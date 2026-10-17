@@ -126,7 +126,9 @@ class FlextInfraCodemodSemanticApply:
                 "rename inventory changed during capture"
             )
         bounded = FlextInfraStagedPackage.plan_sources(
-            scopes[0], {}, inputs=inputs,
+            scopes[0],
+            {},
+            inputs=inputs,
             workspaces=scopes if len(scopes) > 1 else (),
         )
         if bounded.failure:
@@ -147,7 +149,11 @@ class FlextInfraCodemodSemanticApply:
                 stack.enter_context(
                     u.Infra.open_project(
                         project,
-                        project_roots=tuple(owner for owner in declared_projects if owner.is_relative_to(project)),
+                        project_roots=tuple(
+                            owner
+                            for owner in declared_projects
+                            if owner.is_relative_to(project)
+                        ),
                         consumer_root=project,
                     )
                 )
@@ -314,21 +320,33 @@ class FlextInfraCodemodSemanticApply:
         epoch = u.Infra.codemod_source_epoch(originals)
         with ExitStack() as stack:
             native_projects = tuple(
-                stack.enter_context(u.Infra.open_project(
-                    owner, project_roots=u.Infra.discover_rope_project_roots(owner),
-                    consumer_root=owner,
-                ))
+                stack.enter_context(
+                    u.Infra.open_project(
+                        owner,
+                        project_roots=u.Infra.discover_rope_project_roots(owner),
+                        consumer_root=owner,
+                    )
+                )
                 for owner in dict.fromkeys((root, *projects))
             )
-            source_folders = tuple(dict.fromkeys(
-                folder.real_path for native in native_projects
-                for folder in native.get_source_folders()
-            ))
-            python_folders = tuple(dict.fromkeys((
-                *source_folders,
-                *(folder.real_path for native in native_projects
-                  for folder in native.get_python_path_folders() if folder.is_folder()),
-            )))
+            source_folders = tuple(
+                dict.fromkeys(
+                    folder.real_path
+                    for native in native_projects
+                    for folder in native.get_source_folders()
+                )
+            )
+            python_folders = tuple(
+                dict.fromkeys((
+                    *source_folders,
+                    *(
+                        folder.real_path
+                        for native in native_projects
+                        for folder in native.get_python_path_folders()
+                        if folder.is_folder()
+                    ),
+                ))
+            )
             live = stack.enter_context(
                 u.Infra.open_project(
                     candidate.workspace,
@@ -503,7 +521,11 @@ class FlextInfraCodemodSemanticApply:
         if authenticated.failure:
             return authenticated
         return cls._publish_authenticated_rename(
-            root, candidate, None, publish=publish, source_analysis=source_analysis,
+            root,
+            candidate,
+            None,
+            publish=publish,
+            source_analysis=source_analysis,
         )
 
     @staticmethod
@@ -524,44 +546,80 @@ class FlextInfraCodemodSemanticApply:
         if analysis.exception is not None:
             raise analysis.exception
         if analysis.issues:
-            return result_type.fail("; ".join(issue.message for issue in analysis.issues))
+            return result_type.fail(
+                "; ".join(issue.message for issue in analysis.issues)
+            )
         originals = {state.path: state for state in candidate.candidate.inputs}
-        known = {state.path: state for state in m.Infra.CodemodBindingSnapshot(states=(
-            *candidate.candidate.inputs, *candidate.source_states,
-        )).states}
+        known = {
+            state.path: state
+            for state in m.Infra.CodemodBindingSnapshot(
+                states=(
+                    *candidate.candidate.inputs,
+                    *candidate.source_states,
+                )
+            ).states
+        }
         updates = dict(candidate.candidate.updates)
         modes = dict(candidate.candidate.modes)
         for effect in analysis.files:
             if effect.before != known.setdefault(effect.path, effect.before):
-                return result_type.fail(f"phase replaced original physical evidence: {effect.path}")
+                return result_type.fail(
+                    f"phase replaced original physical evidence: {effect.path}"
+                )
             originals.setdefault(effect.path, effect.before)
             updates[effect.path] = (
-                None if effect.desired_content is None
+                None
+                if effect.desired_content is None
                 else effect.desired_content.decode(c.DEFAULT_ENCODING)
             )
             if effect.desired_mode is None:
                 modes.pop(effect.path, None)
             else:
                 modes[effect.path] = effect.desired_mode
-        captured = m.Infra.CodemodBindingSnapshot(states=(
-            *candidate.source_states, *analysis.inputs,
-            *(effect.before for effect in analysis.files),
-            *(state for effect in analysis.files for state in effect.source_states),
-        ))
+        captured = m.Infra.CodemodBindingSnapshot(
+            states=(
+                *candidate.source_states,
+                *analysis.inputs,
+                *(effect.before for effect in analysis.files),
+                *(state for effect in analysis.files for state in effect.source_states),
+            )
+        )
         directories, topology = u.Cli.atomic_merge_directory_query_receipts(
-            (*candidate.source_directories, *analysis.source_directories,
-             *(item for effect in analysis.files for item in effect.source_directories)),
-            (*candidate.source_query_topology, *analysis.source_query_topology,
-             *(item for effect in analysis.files for item in effect.source_query_topology)),
+            (
+                *candidate.source_directories,
+                *analysis.source_directories,
+                *(
+                    item
+                    for effect in analysis.files
+                    for item in effect.source_directories
+                ),
+            ),
+            (
+                *candidate.source_query_topology,
+                *analysis.source_query_topology,
+                *(
+                    item
+                    for effect in analysis.files
+                    for item in effect.source_query_topology
+                ),
+            ),
         )
         return FlextInfraStagedPackage.plan_sources(
-            candidate.candidate.workspace, updates,
-            inputs=tuple(originals.values()), workspaces=candidate.candidate.workspaces,
+            candidate.candidate.workspace,
+            updates,
+            inputs=tuple(originals.values()),
+            workspaces=candidate.candidate.workspaces,
             modes=modes,
-        ).map(lambda stage: candidate.model_copy(update={
-            "candidate": stage, "source_states": captured.states,
-            "source_directories": directories, "source_query_topology": topology,
-        }))
+        ).map(
+            lambda stage: candidate.model_copy(
+                update={
+                    "candidate": stage,
+                    "source_states": captured.states,
+                    "source_directories": directories,
+                    "source_query_topology": topology,
+                }
+            )
+        )
 
     @classmethod
     def _load_rename_artifact(
@@ -780,13 +838,16 @@ class FlextInfraCodemodSemanticApply:
         def verify(candidate_root: Path) -> p.Result[bool]:
             with workspace_factory(candidate_root, None) as candidate_workspace:
                 fixed_point = cls.plan_census_constants(
-                    candidate_root, candidate_workspace,
+                    candidate_root,
+                    candidate_workspace,
                     sources=cls.source_inventory(candidate_root, inventory),
                 )
             if fixed_point.failure:
                 return r[bool].from_failure(fixed_point)
             if fixed_point.value:
-                return r[bool].fail("constants census candidate retains corrective edits")
+                return r[bool].fail(
+                    "constants census candidate retains corrective edits"
+                )
             return FlextInfraWorkspaceChecker(
                 repository_root=candidate_root,
             ).execute_payload(
@@ -810,8 +871,11 @@ class FlextInfraCodemodSemanticApply:
 
     @classmethod
     def plan_census_constants(
-        cls, root: Path, rope_workspace: p.Infra.RopeWorkspaceDsl,
-        *, sources: t.MappingKV[Path, str],
+        cls,
+        root: Path,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        *,
+        sources: t.MappingKV[Path, str],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Plan both census owners against one original-to-final source candidate.
 
@@ -827,10 +891,14 @@ class FlextInfraCodemodSemanticApply:
         changed: set[Path] = set()
         result_type = r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]
         if rope_workspace.repository_root.resolve() != root.resolve():
-            return result_type.fail("constants planner target differs from workspace selection")
+            return result_type.fail(
+                "constants planner target differs from workspace selection"
+            )
         for phase in phases:
             planned = u.Infra.plan_semantic_cutover(
-                phase, rope_workspace=rope_workspace, sources=working,
+                phase,
+                rope_workspace=rope_workspace,
+                sources=working,
             )
             if planned.failure:
                 return planned
@@ -841,10 +909,16 @@ class FlextInfraCodemodSemanticApply:
                 return result_type.from_failure(verified)
         u.Infra.preflight_semantic_import_graph(rope_workspace, sources, working)
         return cls._check_definition_time(sources, working, changed).map(
-            lambda _: tuple(m.Infra.SemanticMigrationEdit(
-                file_path=path, original_source=sources[path], updated_source=working[path],
-                changes=("composed constants census",),
-            ) for path in sorted(changed) if sources[path] != working[path])
+            lambda _: tuple(
+                m.Infra.SemanticMigrationEdit(
+                    file_path=path,
+                    original_source=sources[path],
+                    updated_source=working[path],
+                    changes=("composed constants census",),
+                )
+                for path in sorted(changed)
+                if sources[path] != working[path]
+            )
         )
 
     @classmethod

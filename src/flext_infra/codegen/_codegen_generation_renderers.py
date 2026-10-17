@@ -49,7 +49,11 @@ class FlextInfraCodegenGenerationRenderersMixin(
             return self._project.source_text(path), str(path), None
 
     @staticmethod
-    def _template_path(template_name: str) -> Path:
+    def _template_path(
+        template_name: str,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> Path:
         """Resolve one packaged lazy-init template source.
 
         Returns:
@@ -59,10 +63,15 @@ class FlextInfraCodegenGenerationRenderersMixin(
             ValueError: If lazy-init template escapes its source root.
 
         """
-        template_root = (
-            FlextInfraConfig.ssot_config_dir().parent / "templates"
-        ).resolve()
-        template_path = (template_root / template_name).resolve()
+        template_root = FlextInfraConfig.ssot_config_dir().parent / "templates"
+        if source_project is None:
+            template_root = template_root.resolve()
+            template_path = (template_root / template_name).resolve()
+        else:
+            template_root = Path(Path(template_root).resolve())
+            if not source_project.source_query(template_root, "isdir"):
+                raise FileNotFoundError(template_root)
+            template_path = Path(Path(template_root / template_name).resolve())
         if not template_path.is_relative_to(template_root):
             msg = f"lazy-init template escapes its source root: {template_name}"
             raise ValueError(msg)
@@ -84,6 +93,7 @@ class FlextInfraCodegenGenerationRenderersMixin(
         """
         template_path = FlextInfraCodegenGenerationRenderersMixin._template_path(
             template_name,
+            source_project=source_project,
         )
         rendered = (
             u.Cli.template_render(template_path, context).unwrap()

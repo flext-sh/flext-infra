@@ -44,7 +44,9 @@ class FlextInfraUtilitiesRefactorNamespaceFlext(
             if resolved_file.name == c.Infra.PY_TYPED:
                 continue
             source = resolved_file.read_text(encoding=c.DEFAULT_ENCODING)
-            updated = FlextInfraUtilitiesRefactorNamespaceFlext.plan_future_annotations(source)
+            updated = FlextInfraUtilitiesRefactorNamespaceFlext.plan_future_annotations(
+                source
+            )
             if updated == source:
                 continue
             write_result = u.Cli.files_write_text(

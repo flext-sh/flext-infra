@@ -461,9 +461,16 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self, path: Path, predicate: Literal["exists", "isfile", "isdir"]
         ) -> bool: ...
 
-        def source_children(self, path: Path) -> tuple[Path, ...]: ...
+        def source_children(
+            self,
+            path: Path,
+            *,
+            follow_aliases: bool = True,
+        ) -> tuple[Path, ...]: ...
 
         def source_text(self, path: Path) -> str: ...
+
+        def source_bytes(self, path: Path) -> bytes: ...
 
         def source_walk(
             self,

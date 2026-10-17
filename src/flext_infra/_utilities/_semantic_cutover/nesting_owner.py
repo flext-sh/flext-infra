@@ -83,7 +83,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
 
     @classmethod
     def _pytest_class_binding(
-        cls, name: str, binding: p.Infra.RopePyName, patterns: t.StrSequence,
+        cls,
+        name: str,
+        binding: p.Infra.RopePyName,
+        patterns: t.StrSequence,
     ) -> bool:
         """Prove native class selection, including source-owned inherited flags.
 
@@ -105,7 +108,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             raise ValueError(msg)
         for node in ast.walk(ast.parse(provider.source_code)):
             if isinstance(node, ast.Assign | ast.AnnAssign) and node.lineno == line:
-                if isinstance(node.value, ast.Constant) and isinstance(node.value.value, bool):
+                if isinstance(node.value, ast.Constant) and isinstance(
+                    node.value.value, bool
+                ):
                     return node.value.value
         msg = f"pytest class flag requires native collection evidence: {provider.get_name()}.{name}"
         raise ValueError(msg)
@@ -155,7 +160,12 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         prefix = convention.module_policy.project_prefix
         prefix = prefix if prefix.startswith("Tests") else f"Tests{prefix}"
         if composition:
-            stem = file_path.stem.removeprefix("test_").removesuffix("_tests").removesuffix("_test")
+            stem = (
+                file_path.stem
+                .removeprefix("test_")
+                .removesuffix("_tests")
+                .removesuffix("_test")
+            )
             owner = prefix + u.derive_class_stem(stem)
             while owner in classes:
                 owner += u.derive_class_stem("module")

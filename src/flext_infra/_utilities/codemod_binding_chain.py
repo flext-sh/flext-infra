@@ -15,10 +15,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 from typing import ClassVar
-
-from flext_cli import cli
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
@@ -431,32 +430,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             expected = FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
                 project, target, module_name=target_module
             )
-            holds = cls._binding_symbols_match(expected, actual)
-            if not holds:
-                cli.display_text(
-                    "mod: binding rejection resolved-symbol "
-                    f"target={target_module}.{target} "
-                    f"actual={cls._binding_identity(actual)} "
-                    f"expected={cls._binding_identity(expected)}",
-                )
-            return holds
-
-        @staticmethod
-        def _binding_identity(binding: p.Infra.RopePyName | None) -> str:
-            """Describe native identity without substituting an inferred value.
-
-            Returns:
-                The native binding kind, original owner and object kind.
-
-            """
-            if binding is None:
-                return "unresolved"
-            holder, line = binding.get_definition_location()
-            owner = holder.get_name() if holder is not None else "<no-owner>"
-            return (
-                f"{type(binding).__name__}@{owner}:{line} "
-                f"object={type(binding.get_object()).__name__}"
-            )
+            return cls._binding_symbols_match(expected, actual)
 
         @staticmethod
         def _binding_symbols_match(
@@ -588,6 +562,9 @@ class FlextInfraUtilitiesCodemodBindingChain:
         ) -> t.Pair[Path, str] | None:
             """Locate the module source text inside the authenticated closure.
 
+            Untouched consumers resolve through the project's authenticated
+            snapshot instead of the planned working map.
+
             Returns:
                 The module path and snapshot text, or ``None`` when unavailable.
 
@@ -600,7 +577,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 path /= c.Infra.INIT_PY
             text = sources.get(path)
             if text is None:
-                return None
+                return path, resource.read()
             return path, text
 
         @staticmethod
@@ -662,28 +639,24 @@ class FlextInfraUtilitiesCodemodBindingChain:
             if key in visited:
                 return False
             imported_scope = imported.get_scope()
-            imported_resource = imported.get_resource()
-            if imported_resource is None:
+            chain = cls._chain_module_text(imported, sources)
+            if chain is None:
                 return False
-            imported_path = Path(imported_resource.real_path).resolve()
-            if imported_path.is_dir():
-                imported_path /= c.Infra.INIT_PY
-            imported_text = sources.get(imported_path)
-            if imported_text is None:
-                return False
+            imported_text = chain[1]
             value = binding.get_object()
             if FlextInfraUtilitiesRopeRuntimeTypes.pymodule(value) and (
                 value.get_name() == f"{imported.get_name()}.{binding.imported_name}"
             ):
                 # A from-import may publish a submodule without a declaration in
-                # its package initializer. Any package-level rebind makes that
-                # implicit route unproven.
-                rebound = binding.imported_name in imported_scope.get_defined_names()
-                value_resource = None if rebound else value.get_resource()
+                # its package initializer. Rope lists submodules among package
+                # structural attributes, so an implicit route is only unproven
+                # when the initializer source itself declares the same name.
+                rebound = cls._initializer_declares(
+                    imported_text,
+                    binding.imported_name,
+                )
                 return (
-                    not rebound
-                    and value_resource is not None
-                    and Path(value_resource.real_path).resolve() in sources
+                    not rebound and cls._chain_module_text(value, sources) is not None
                 )
             return cls._stable_binding_chain(
                 (project, imported, imported_scope),
@@ -754,9 +727,10 @@ class FlextInfraUtilitiesCodemodBindingChain:
             first, last = regions[0]
             value = cls._binding_expression(holder_text[first:last])
             if value is None:
-                return FlextInfraUtilitiesRopeRuntimeRefactors.literal_constant(
-                    holder_text[first:last]
-                )
+                # A sole unconditional declaration whose value is not a dotted
+                # name has no alias hop to chase: the binding is already proven
+                # stable at its owner by the single-reaching-declaration proof.
+                return True
             # The guard keys the link chased next (the assigned value), never the
             # link already proven: an import hop records (module, name) before this
             # declaration hop holds that same name, which is one chain, not a cycle.
@@ -769,12 +743,16 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 visited=visited | {key},
             )
 
-        @staticmethod
+        @classmethod
         def _chain_holder_context(
+            cls,
             binding: p.Infra.RopePyName,
             sources: t.MappingKV[Path, str],
         ) -> t.Triple[p.Infra.RopePyModule, int | None, str] | None:
             """Locate one binding's definition inside the authenticated closure.
+
+            Untouched definition sites resolve through the project's
+            authenticated snapshot instead of the planned working map.
 
             Returns:
                 The defining module, its line, and the snapshot text, or ``None``
@@ -787,16 +765,50 @@ class FlextInfraUtilitiesCodemodBindingChain:
             holder = holder.get_module()
             if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(holder):
                 return None
-            holder_resource = holder.get_resource()
-            if holder_resource is None:
+            chain = cls._chain_module_text(holder, sources)
+            if chain is None:
                 return None
-            holder_path = Path(holder_resource.real_path).resolve()
-            if holder_path.is_dir():
-                holder_path /= c.Infra.INIT_PY
-            holder_text = sources.get(holder_path)
-            if holder_text is None:
-                return None
-            return holder, line, holder_text
+            return holder, line, chain[1]
+
+        @classmethod
+        def _initializer_declares(cls, text: str, name: str) -> bool:
+            """Report whether an initializer source binds ``name`` at module level.
+
+            Rope lists package submodules among structural attributes, so the
+            implicit from-import route of a submodule is only unproven when the
+            initializer's own declared statements bind the same name.
+
+            Returns:
+                Whether a module-level initializer statement binds ``name``.
+
+            """
+            return any(
+                name in cls._statement_bound_names(row.text)
+                for row in FlextInfraUtilitiesRopeStructure.logical_statements(text)
+                if row.enclosing_kind == c.Infra.RopeScopeKind.MODULE
+                and row.category
+                in {
+                    c.Infra.StatementCategory.ASSIGN,
+                    c.Infra.StatementCategory.ANN_ASSIGN,
+                    c.Infra.StatementCategory.IMPORT,
+                    c.Infra.StatementCategory.FROM_IMPORT,
+                }
+            )
+
+        @staticmethod
+        def _statement_bound_names(text: str) -> frozenset[str]:
+            """Return the names one module-level statement binds.
+
+            Returns:
+                The declared binding names of the statement, parsed once
+                through Rope's native module boundary.
+
+            """
+            isolated = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+                None,
+                text.strip(),
+            )
+            return frozenset(isolated.get_scope().get_defined_names())
 
         @classmethod
         def _chain_holder_declaration(
@@ -860,7 +872,10 @@ class FlextInfraUtilitiesCodemodBindingChain:
             if len(declarations) != 1:
                 return False
             declaration, start = declarations[0]
-            if start >= offset:
+            if start >= offset and not (
+                scope.get_kind() != c.Infra.RopeScopeKind.MODULE
+                and declaration.enclosing_kind == c.Infra.RopeScopeKind.MODULE
+            ):
                 return False
             return cls._declaration_reaches_unconditionally(
                 module, scope, declaration, expression, declared_routes
@@ -1009,9 +1024,9 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 return False
             imported = cls._occurrence_is_imported(module, row, expression)
             assigned = (
-                occurrence.is_written()
-                or occurrence.is_defined()
+                occurrence.is_defined()
                 or (expression.isidentifier() and occurrence.lineno in assignment_lines)
+                or cls._occurrence_writes_header_name(row, occurrence)
             )
             if row.category == c.Infra.StatementCategory.ANN_ASSIGN:
                 assigned |= (
@@ -1020,6 +1035,45 @@ class FlextInfraUtilitiesCodemodBindingChain:
             if row.text.lstrip().startswith("del "):
                 assigned = True
             return assigned or imported
+
+        @staticmethod
+        def _occurrence_writes_header_name(
+            row: m.Infra.LogicalStatement,
+            occurrence: p.Infra.RopeOccurrence,
+        ) -> bool:
+            """Report whether one header occurrence writes its expression.
+
+            Rope's textual ``is_written`` misreads parameter annotations such as
+            ``def write(marker: _Marker = _SENTINEL)``, where the annotated name
+            textually precedes ``=`` without being an assignment target. The
+            native statement tree owns the store-or-load verdict.
+
+            Returns:
+                Whether the occurrence carries a native ``Store`` context.
+
+            """
+            if row.category not in {
+                c.Infra.StatementCategory.FUNC_DEF,
+                c.Infra.StatementCategory.CLASS_DEF,
+            }:
+                return occurrence.is_written()
+            prefix = len(row.text) - len(row.text.lstrip())
+            source = row.text[prefix:]
+            if source.rstrip().endswith(":"):
+                source = f"{source.rstrip()}\n{' ' * (prefix + 4)}pass"
+            try:
+                tree = ast.parse(source)
+            except SyntaxError:
+                return occurrence.is_written()
+            relative = occurrence.get_word_range()[0] - row.start_offset - prefix
+            for node in ast.walk(tree):
+                if (
+                    isinstance(node, ast.Name)
+                    and node.col_offset == relative
+                    and isinstance(node.ctx, ast.Store)
+                ):
+                    return True
+            return False
 
         @staticmethod
         def _declaration_reaches_unconditionally(

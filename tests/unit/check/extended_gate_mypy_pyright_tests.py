@@ -11,13 +11,11 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import c, config, m, main, s
+from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
-from flext_infra._utilities.resource_limits import (
-    FlextInfraUtilitiesResourceLimits,
-)
 from tests import tm, u
 
 if TYPE_CHECKING:

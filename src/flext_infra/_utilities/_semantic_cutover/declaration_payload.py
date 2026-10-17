@@ -133,20 +133,25 @@ class FlextInfraUtilitiesDeclarationPayload:
             module, header.start_offset, declaration_line=scope.get_start()
         )
         subscriptions = tuple(
-            binding
+            item
             for provider, name in (
                 ("pydantic", "BaseModel"),
                 ("typing", "Protocol"),
                 ("typing_extensions", "Protocol"),
             )
-            if module.pycore.project.find_module(provider) is not None
+            if (resource := module.pycore.project.find_module(provider)) is not None
+            if FlextInfraUtilitiesRopeCore.resolvable_module_resource(resource)
             if (
-                binding := cls
-                .identity_name(module.pycore.project, f"{provider}.{name}")
-                .get_object()
+                binding := FlextInfraUtilitiesRopeCore
+                .resolve_pymodule(
+                    module.pycore.project,
+                    resource,
+                )
                 .get_attributes()
-                .get("__class_getitem__")
+                .get(name)
             )
+            is not None
+            if (item := binding.get_object().get_attributes().get("__class_getitem__"))
             is not None
         )
         for argument in arguments:
@@ -437,12 +442,17 @@ class FlextInfraUtilitiesDeclarationPayload:
             return None
         _module, binding = resolved
         bases = cls.direct_bases(binding.get_object())
+        defining = frozenset(
+            declared for base in bases if (declared := base.get_module()) is not None
+        )
         return (
             binding
             if any(
-                cls.identity_name(project, f"{provider}.Protocol").get_object() in bases
+                (resource := project.find_module(provider)) is not None
+                and FlextInfraUtilitiesRopeCore.resolvable_module_resource(resource)
+                and FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
+                in defining
                 for provider in ("typing", "typing_extensions")
-                if project.find_module(provider) is not None
             )
             else None
         )

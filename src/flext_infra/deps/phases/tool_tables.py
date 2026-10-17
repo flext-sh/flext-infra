@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 from pathlib import Path
 
 from flext_core import FlextRuntime
@@ -40,16 +41,21 @@ class FlextInfraToolTablesPhase:
             The sorted namespaces in the declared import-order family.
 
         """
-        return sorted({
-            *FlextInfraToolTablesPhase.deptry_first_party_namespaces(
-                path=path,
-                planned_sources=planned_sources,
-                source_project=source_project,
-            ),
-            *FlextInfraToolTablesPhase._workspace_project_namespaces(
-                path, source_project=source_project
-            ),
-        })
+        with (
+            source_project.source_selection()
+            if source_project is not None
+            else nullcontext()
+        ):
+            return sorted({
+                *FlextInfraToolTablesPhase.deptry_first_party_namespaces(
+                    path=path,
+                    planned_sources=planned_sources,
+                    source_project=source_project,
+                ),
+                *FlextInfraToolTablesPhase._workspace_project_namespaces(
+                    path, source_project=source_project
+                ),
+            })
 
     @staticmethod
     def deptry_first_party_namespaces(

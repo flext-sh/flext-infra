@@ -337,7 +337,17 @@ class FlextInfraRopeProject(Project):
                 A tuple of direct child paths captured in the snapshot.
 
             """
-            return self._children[Path(self.realpath(path))]
+            source = Path(self.realpath(path))
+            if source in self._children:
+                return self._children[source]
+            ambient = self._ambient_identity(path)
+            if ambient is not None and ambient.is_dir():
+                return tuple(
+                    ambient / item.name
+                    for item in sorted(ambient.iterdir(), key=lambda item: item.name)
+                )
+            msg = f"Rope snapshot folder is absent: {path}"
+            raise FileNotFoundError(msg)
 
     class SourceConsumption:
         """Accumulate original receipts for one native consumer, not a set delta."""
@@ -422,6 +432,12 @@ class FlextInfraRopeProject(Project):
             self._topology: t.MutableMappingKV[
                 Path, m.Cli.AtomicDirectoryChainPlan
             ] = {}
+            self._imported_directories: t.MutableMappingKV[
+                Path, m.Cli.AtomicDirectoryInventory
+            ] = {}
+            self._imported_topology: t.MutableMappingKV[
+                Path, m.Cli.AtomicDirectoryChainPlan
+            ] = {}
             for state in source_states:
                 path = Path(state.path)
                 previous = self._originals.get(path)
@@ -432,11 +448,33 @@ class FlextInfraRopeProject(Project):
             self._declared = tuple(
                 plan
                 for plan in declared_files
-                if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
-                or plan.before.content is None
+                if plan.desired_content is not None
+                and (
+                    isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
+                    or plan.before.content is None
+                )
             )
             self._declared_paths = frozenset(plan.path for plan in self._declared)
             self._effects = {plan.path: plan for plan in declared_files}
+            self._consumed_effects: set[Path] = set()
+            for plan in declared_files:
+                if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan):
+                    if (
+                        not plan.before.directories
+                        or plan.before.target != plan.path.parent
+                    ):
+                        msg = f"Rope effect lacks its original destination absence witness: {plan.path}"
+                        raise ValueError(msg)
+                    _, chains = u.Cli.atomic_merge_directory_query_receipts(
+                        (),
+                        (
+                            *self._topology.values(),
+                            plan.before.model_copy(
+                                update={"queries": (), "membership_queried": False}
+                            ),
+                        ),
+                    )
+                    self._topology.update((item.target, item) for item in chains)
             self._retired = frozenset(
                 plan.path for plan in declared_files if plan.desired_content is None
             )
@@ -526,6 +564,7 @@ class FlextInfraRopeProject(Project):
             plan = self._effects.get(path)
             if plan is None:
                 return
+            self._consumed_effects.add(path)
             states = (
                 *plan.source_states,
                 *(
@@ -547,11 +586,13 @@ class FlextInfraRopeProject(Project):
                 ),
             )
             directories, topology = u.Cli.atomic_merge_directory_query_receipts(
-                (*self.directories(), *plan.source_directories),
-                (*self.topology(), *chains),
+                (*self._imported_directories.values(), *plan.source_directories),
+                (*self._imported_topology.values(), *chains),
             )
-            self._inventories.update((item.root.path, item) for item in directories)
-            self._topology.update((item.target, item) for item in topology)
+            self._imported_directories.update(
+                (item.root.path, item) for item in directories
+            )
+            self._imported_topology.update((item.target, item) for item in topology)
             self._record(directories=plan.source_directories, topology=chains)
 
         def exists(self, path: str) -> bool:
@@ -610,7 +651,9 @@ class FlextInfraRopeProject(Project):
             )
             if inventory is not None:
                 if not self._capturing:
-                    self._inventories[directory] = inventory.model_copy(update={"membership_queried": True})
+                    self._inventories[directory] = inventory.model_copy(
+                        update={"membership_queried": True}
+                    )
                 self._record(
                     directories=(
                         inventory.model_copy(
@@ -620,7 +663,9 @@ class FlextInfraRopeProject(Project):
                 )
             else:
                 if not self._capturing:
-                    self._topology[directory] = self._topology[directory].model_copy(update={"membership_queried": True})
+                    self._topology[directory] = self._topology[directory].model_copy(
+                        update={"membership_queried": True}
+                    )
                 self._record(
                     topology=(
                         self._topology[directory].model_copy(
@@ -631,9 +676,8 @@ class FlextInfraRopeProject(Project):
             if self._overlay.isdir(path):
                 physical_names = frozenset(names)
                 for child in self._overlay.children(path):
-                    if (
-                        child.name not in physical_names
-                        and not (self._structural_queries or self._capturing)
+                    if child.name not in physical_names and not (
+                        self._structural_queries or self._capturing
                     ):
                         self._observe_overlay(str(child))
                     names.append(child.name)
@@ -642,7 +686,9 @@ class FlextInfraRopeProject(Project):
                     ENOENT, "Rope source directory was observed absent", path
                 )
             for retired in self._retired:
-                if retired.parent == directory and not (self._structural_queries or self._capturing):
+                if retired.parent == directory and not (
+                    self._structural_queries or self._capturing
+                ):
                     self._consume_effect(retired)
             return sorted(
                 name for name in set(names) if directory / name not in self._retired
@@ -738,9 +784,16 @@ class FlextInfraRopeProject(Project):
                 if inventory is None:
                     witness = self._topology[candidate.parent]
                     if not self._capturing:
-                        self._topology[candidate.parent] = witness.model_copy(update={
-                            "queries": tuple(sorted({*witness.queries, (candidate.name, predicate)})),
-                        })
+                        self._topology[candidate.parent] = witness.model_copy(
+                            update={
+                                "queries": tuple(
+                                    sorted({
+                                        *witness.queries,
+                                        (candidate.name, predicate),
+                                    })
+                                ),
+                            }
+                        )
                     self._record(
                         topology=(
                             witness.model_copy(
@@ -753,15 +806,31 @@ class FlextInfraRopeProject(Project):
                     )
                     observed = False
                 else:
-                    observed = u.Cli.atomic_directory_query_value(inventory, candidate.name, predicate)
-                    inventory = inventory.model_copy(update={
-                        "queries": tuple(sorted({*inventory.queries, (candidate.name, predicate)})),
-                    })
+                    observed = u.Cli.atomic_directory_query_value(
+                        inventory, candidate.name, predicate
+                    )
+                    inventory = inventory.model_copy(
+                        update={
+                            "queries": tuple(
+                                sorted({
+                                    *inventory.queries,
+                                    (candidate.name, predicate),
+                                })
+                            ),
+                        }
+                    )
                     if not self._capturing:
                         self._inventories[candidate.parent] = inventory
-                    self._record(directories=(inventory.model_copy(update={
-                        "queries": ((candidate.name, predicate),), "membership_queried": False,
-                    }),))
+                    self._record(
+                        directories=(
+                            inventory.model_copy(
+                                update={
+                                    "queries": ((candidate.name, predicate),),
+                                    "membership_queried": False,
+                                }
+                            ),
+                        )
+                    )
             if not (self._structural_queries or self._capturing):
                 self._consume_effect(candidate)
             if candidate in self._retired:
@@ -798,9 +867,36 @@ class FlextInfraRopeProject(Project):
             """Return original presence and ancestry witnesses for queried parents."""
             return tuple(self._topology.values())
 
-        def children(self, path: str) -> tuple[Path, ...]:
+        def receipt_directories(self) -> tuple[m.Cli.AtomicDirectoryInventory, ...]:
+            """Return this epoch's inventories plus imported planning receipts."""
+            return (*self.directories(), *self._imported_directories.values())
+
+        def receipt_topology(self) -> tuple[m.Cli.AtomicDirectoryChainPlan, ...]:
+            """Return this epoch's witnesses plus imported planning receipts."""
+            return (*self.topology(), *self._imported_topology.values())
+
+        def children(
+            self, path: str, *, follow_aliases: bool = True
+        ) -> tuple[Path, ...]:
             """Return native direct membership for the change observer."""
-            return tuple(Path(path) / name for name in self.listdir(path))
+            children = tuple(Path(path) / name for name in self.listdir(path))
+            if follow_aliases:
+                return children
+            inventory = self._inventory(Path(path))
+            excluded = (
+                {
+                    entry.name
+                    for entry in inventory.entries
+                    if entry.kind not in {"file", "directory"}
+                }
+                if inventory is not None
+                else set()
+            )
+            return tuple(
+                child
+                for child in children
+                if child.name not in excluded or child in self._effects
+            )
 
         def read(self, path: str) -> bytes:
             """Return the same authenticated bytes recorded as consumed input.
@@ -840,17 +936,36 @@ class FlextInfraRopeProject(Project):
             if state is None:
                 state = self._originals.get(source)
                 if state is None:
-                    state = self.require_value(
-                        u.Cli.atomic_read_binary_file_state(
-                            source,
-                            required=required,
+                    declaration = self._effects.get(source)
+                    if declaration is not None and isinstance(
+                        declaration.before, m.Cli.AtomicDirectoryChainPlan
+                    ):
+                        # The original absent parent proves this file absent too.
+                        state = m.Cli.AtomicFileState(path=source)
+                    else:
+                        state = self.require_value(
+                            u.Cli.atomic_read_binary_file_state(
+                                source, required=required
+                            ),
                         )
-                    )
-                    self._originals = MappingProxyType({**self._originals, source: state})
+                    self._originals[source] = state
                 if not self._capturing:
                     self._verify_declarations(source, check_current=False)
-                    self._consumed[source] = state
-            self._record(states=(state,))
+                    if state.parent_inode is not None:
+                        self._consumed[source] = state
+            if state.parent_inode is None:
+                witness = self._directory_chain(source.parent)
+                if not witness.directories:
+                    msg = f"Rope source lacks its original parent absence: {source}"
+                    raise ValueError(msg)
+                self._record(topology=(witness,))
+            else:
+                self._record(states=(state,))
+            declaration = self._effects.get(source)
+            if declaration is not None and isinstance(
+                declaration.before, m.Cli.AtomicDirectoryChainPlan
+            ):
+                self._record(topology=(declaration.before,))
             if required and state.content is None:
                 msg = f"Rope required source is absent: {source}"
                 raise FileNotFoundError(msg)
@@ -873,10 +988,12 @@ class FlextInfraRopeProject(Project):
                     self.directories(), self.topology()
                 )
             )
-            for path in self._consumed:
+            for path in sorted({*self._consumed, *self._consumed_effects}):
                 self._verify_declarations(path)
 
-        def _verify_declarations(self, path: Path, *, check_current: bool = True) -> None:
+        def _verify_declarations(
+            self, path: Path, *, check_current: bool = True
+        ) -> None:
             """Use the existing owner for every consumed virtual birth witness.
 
             Args:
@@ -893,7 +1010,9 @@ class FlextInfraRopeProject(Project):
                     msg = f"Rope proposed source disagrees with its declaration: {path}"
                     raise ValueError(msg)
                 if check_current:
-                    FlextInfraUtilitiesRopeRuntimeModuleQueries.snapshot_destination(plan.project, plan)
+                    FlextInfraUtilitiesRopeRuntimeModuleQueries.snapshot_destination(
+                        plan.project, plan
+                    )
 
     class SnapshotChangeIndicator(ChangeIndicator):
         """Observe captured content and directory membership by native equality."""
@@ -1156,28 +1275,34 @@ class FlextInfraRopeProject(Project):
             raise TypeError(msg)
         return self.fscommands._query(str(path), predicate)
 
-    def source_children(self, path: Path) -> tuple[Path, ...]:
+    def source_children(
+        self, path: Path, *, follow_aliases: bool = True
+    ) -> tuple[Path, ...]:
         """Enumerate original native membership with its exact query receipt."""
         if not isinstance(self.fscommands, self.AtomicReadFiles):
             msg = "Rope project does not own authenticated live reads"
             raise TypeError(msg)
-        return self.fscommands.children(str(path))
+        return self.fscommands.children(str(path), follow_aliases=follow_aliases)
 
     def source_text(self, path: Path) -> str:
         """Read local or external planning text through the same original authority."""
+        return self.source_bytes(path).decode(c.DEFAULT_ENCODING)
+
+    def source_bytes(self, path: Path) -> bytes:
+        """Read selected payload bytes without changing their original receipts."""
         if not isinstance(self.fscommands, self.AtomicReadFiles):
             msg = "Rope project does not own authenticated live reads"
             raise TypeError(msg)
-        return self.fscommands.read(str(path)).decode(c.DEFAULT_ENCODING)
+        return self.fscommands.read(str(path))
 
     def source_walk(self, path: Path) -> Generator[tuple[Path, list[str], list[str]]]:
-        """Provide Path.walk's pruning contract over original native membership."""
+        """Provide prunable physical source traversal without following aliases."""
         pending = [path]
         while pending:
             directory = pending.pop()
             directories: list[str] = []
             files: list[str] = []
-            for child in self.source_children(directory):
+            for child in self.source_children(directory, follow_aliases=False):
                 if self.source_query(child, "isdir"):
                     directories.append(child.name)
                 else:
@@ -1213,7 +1338,7 @@ class FlextInfraRopeProject(Project):
         if not isinstance(self.fscommands, self.AtomicReadFiles):
             msg = "Rope project does not own authenticated live reads"
             raise TypeError(msg)
-        return self.fscommands.directories()
+        return self.fscommands.receipt_directories()
 
     def consumed_source_topology(self) -> tuple[m.Cli.AtomicDirectoryChainPlan, ...]:
         """Return physical ancestry witnesses for consumed source queries.
@@ -1228,7 +1353,7 @@ class FlextInfraRopeProject(Project):
         if not isinstance(self.fscommands, self.AtomicReadFiles):
             msg = "Rope project does not own authenticated live reads"
             raise TypeError(msg)
-        return self.fscommands.topology()
+        return self.fscommands.receipt_topology()
 
     def verify_source_states(self) -> None:
         """Verify the original input epoch after semantic planning.

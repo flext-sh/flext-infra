@@ -81,7 +81,11 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             for entry in index.modules_by_path.values()
             if entry.package_dir.resolve() in selected_dirs
         }
-        template_paths = set(FlextInfraCodegenGeneration.init_template_paths())
+        template_paths = set(
+            FlextInfraCodegenGeneration.init_template_paths(
+                source_project=source_project
+            )
+        )
         for root in {path.parent for path in tuple(template_paths)}:
             for directory, _, names in source_project.source_walk(root):
                 template_paths.update(
@@ -147,15 +151,17 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
 
         """
         names = frozenset(config.Infra.codegen.generated_sources)
-        if not names or not source_project.source_query(package_dir, "isdir"):
-            return ()
-        return tuple(
-            sorted(
-                child.resolve()
-                for child in source_project.source_children(package_dir)
-                if child.name in names and source_project.source_query(child, "isdir")
-            ),
-        )
+        with source_project.source_selection():
+            if not names or not source_project.source_query(package_dir, "isdir"):
+                return ()
+            return tuple(
+                sorted(
+                    child.resolve()
+                    for child in source_project.source_children(package_dir)
+                    if child.name in names
+                    and source_project.source_query(child, "isdir")
+                )
+            )
 
     @staticmethod
     def _generated_source_modules(
@@ -169,15 +175,16 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             Every module other than the package initializer, sorted.
 
         """
-        return tuple(
-            sorted(
-                module.resolve()
-                for module in source_project.source_children(generated_dir)
-                if module.suffix == c.Infra.EXT_PYTHON
-                and module.name != c.Infra.INIT_PY
-                and source_project.source_query(module, "isfile")
-            ),
-        )
+        with source_project.source_selection():
+            return tuple(
+                sorted(
+                    module.resolve()
+                    for module in source_project.source_children(generated_dir)
+                    if module.suffix == c.Infra.EXT_PYTHON
+                    and module.name != c.Infra.INIT_PY
+                    and source_project.source_query(module, "isfile")
+                )
+            )
 
     @staticmethod
     def _verify_original_sources(
@@ -321,7 +328,6 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 "files": tuple(accepted),
                 "publications": tuple(publications),
                 "inputs": retained_states,
-                "native_states": retained_states,
                 "source_directories": retained_directories,
                 "source_query_topology": retained_topology,
                 "exception": cause,
@@ -341,8 +347,8 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             }
         )
 
-    @staticmethod
     def _file_plan(
+        self,
         *,
         project: Path,
         before: m.Cli.AtomicFileState,
@@ -354,10 +360,26 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             The resulting ``m.Infra.CodegenFilePlan``.
 
         """
+        original: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan = before
+        if before.parent_inode is None:
+            parent = next(
+                (
+                    witness
+                    for witness in self.source_project.consumed_source_topology()
+                    if witness.target == before.path.parent and witness.directories
+                ),
+                None,
+            )
+            if parent is None:
+                msg = f"lazy-init target has no original parent absence witness: {before.path}"
+                raise ValueError(msg)
+            original = parent.model_copy(
+                update={"queries": (), "membership_queried": False}
+            )
         return m.Infra.CodegenFilePlan(
             project=project,
             path=before.path,
-            before=before,
+            before=original,
             desired_content=desired_content,
             desired_mode=(
                 config.Infra.codegen.modes.file_default
