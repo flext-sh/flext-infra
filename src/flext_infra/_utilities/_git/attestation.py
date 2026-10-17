@@ -551,6 +551,19 @@ class FlextInfraUtilitiesGitAttestationMixin(
             f"{context}/{request.expected_gates[0]}"
         )
 
+    @staticmethod
+    def _attestation_paths(
+        request: m.Infra.GateAttestationCreateRequest
+        | m.Infra.GateAttestationVerifyRequest,
+    ) -> p.Result[t.Pair[Path, Path]]:
+        repo_root = Path(request.workspace).expanduser().resolve()
+        allowed = Path(request.allowed_signers).expanduser().resolve()
+        if not allowed.is_file():
+            return r[t.Pair[Path, Path]].fail(
+                f"allowed_signers file not found: {allowed}",
+            )
+        return r[t.Pair[Path, Path]].ok((repo_root, allowed))
+
     @classmethod
     def _attestation_predicate(
         cls,
@@ -703,12 +716,10 @@ class FlextInfraUtilitiesGitAttestationMixin(
             The resulting ``p.Result[m.Infra.GateAttestationReport]``.
 
         """
-        repo_root = Path(request.workspace).expanduser().resolve()
-        allowed = Path(request.allowed_signers).expanduser().resolve()
-        if not allowed.is_file():
-            return r[m.Infra.GateAttestationReport].fail(
-                f"allowed_signers file not found: {allowed}",
-            )
+        paths = cls._attestation_paths(request)
+        if paths.failure:
+            return r[m.Infra.GateAttestationReport].from_failure(paths)
+        repo_root, allowed = paths.value
         predicate_result = cls._attestation_predicate(request, context)
         if predicate_result.failure:
             return r[m.Infra.GateAttestationReport].from_failure(predicate_result)
@@ -800,12 +811,10 @@ class FlextInfraUtilitiesGitAttestationMixin(
             The resulting ``p.Result[m.Infra.GateAttestationReport]``.
 
         """
-        repo_root = Path(request.workspace).expanduser().resolve()
-        allowed = Path(request.allowed_signers).expanduser().resolve()
-        if not allowed.is_file():
-            return r[m.Infra.GateAttestationReport].fail(
-                f"allowed_signers file not found: {allowed}",
-            )
+        paths = cls._attestation_paths(request)
+        if paths.failure:
+            return r[m.Infra.GateAttestationReport].from_failure(paths)
+        repo_root, allowed = paths.value
         identity = cls.git_identity(m.Infra.GitRepoRequest(repo_root=repo_root))
         if identity.failure:
             return r[m.Infra.GateAttestationReport].from_failure(identity)

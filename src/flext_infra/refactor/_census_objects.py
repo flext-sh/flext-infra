@@ -66,10 +66,10 @@ class FlextInfraRefactorCensusObjectsMixin:
 
     @staticmethod
     def unused(item: m.Infra.Object) -> bool:
-        """Classify an unreferenced object from its collected reference evidence.
+        """Report a public object with collected evidence of zero references.
 
         Returns:
-            The resulting ``bool``.
+            Whether the object is proven unused and is no pytest entry point.
 
         """
         return (
