@@ -39,6 +39,10 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     class RopeRoot(RopeResource, Protocol):
         """Folder resource with the SDK's child lookup contract."""
 
+        def get_children(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeResource]: ...
+
         def get_child(
             self,
             name: str,
@@ -345,6 +349,11 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self,
             resource_name: str,
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource: ...
+
+        def get_folder(
+            self,
+            path: str,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
 
         def get_pymodule(
             self,

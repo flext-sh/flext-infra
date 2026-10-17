@@ -10,6 +10,8 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_core import FlextRuntime
+
 from flext_infra import c, m, p, r, u
 from flext_infra.deps import FlextInfraDependencyDetectorRuntimeSteps
 
@@ -139,12 +141,12 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
             "detect-runtime-dev-latest.json",
         )
         report_payload: t.JsonDict = {
-            key: u.normalize_to_json_value(value)
+            key: FlextRuntime.normalize_to_json_value(value)
             for key, value in report_model.model_dump().items()
         }
         report_payload["projects"] = {
             project_name: {
-                key: u.normalize_to_json_value(value)
+                key: FlextRuntime.normalize_to_json_value(value)
                 for key, value in project_payload.items()
             }
             for project_name, project_payload in projects_report.items()

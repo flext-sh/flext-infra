@@ -368,6 +368,8 @@ class FlextInfraConstantsRefactor:
     CODEMOD_ROPE_CONTRACTS_RELPATH: ClassVar[Path] = (
         CODEMOD_ROPE_RULES_RELPATH / "contracts.yaml"
     )
+    # Rope restructure argument that binds a capture to one qualified identity.
+    ROPE_NAME_CONSTRAINT_PREFIX: ClassVar[str] = "name="
     CODEMOD_RULE_DIRS_KEY: ClassVar[str] = "ruleDirs"
     CODEMOD_UTIL_DIRS_KEY: ClassVar[str] = "utilDirs"
     CODEMOD_TEST_CONFIGS_KEY: ClassVar[str] = "testConfigs"

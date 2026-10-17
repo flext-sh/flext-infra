@@ -150,11 +150,11 @@ class TestsFlextInfraConfigLocalOverrides:
             eq=(directory / "codegen.yaml", directory / "codegen.local.yaml"),
         )
 
-    def test_project_toolchain_tools_extend_the_fleet_table_by_name(
+    def test_project_toolchain_tools_extend_the_fleet_table(
         self,
         tmp_path: Path,
     ) -> None:
-        """A layer adds its own tools and refines one by name; fleet tools stay."""
+        """A layer's tools concatenate onto the packaged table; fleet tools stay."""
         root = tmp_path / "consumer"
         directory = root / c.Infra.CODEGEN_CONFIG_DIR
         directory.mkdir(parents=True)
@@ -162,7 +162,6 @@ class TestsFlextInfraConfigLocalOverrides:
             tool.name
             for tool in FlextInfraConfig.fetch_global().Infra.codegen.toolchain.tools
         )
-        refined = fleet[0]
         (directory / "codegen.yaml").write_text(
             "Infra:\n  codegen:\n    toolchain:\n      tools:\n"
             "      - name: demo-tool\n"
@@ -174,18 +173,8 @@ class TestsFlextInfraConfigLocalOverrides:
             "          pattern: '^{version}$'\n",
             encoding="utf-8",
         )
-        (directory / "codegen.local.yaml").write_text(
-            "Infra:\n  codegen:\n    toolchain:\n      tools:\n"
-            f"      - name: {refined}\n"
-            "        version: 9.9.9\n",
-            encoding="utf-8",
-        )
         tools = tm.ok(u.Infra.load_codegen_inputs(root)).spec.toolchain.tools
         tm.that(tuple(tool.name for tool in tools), eq=(*fleet, "demo-tool"))
-        tm.that(
-            next(tool.version for tool in tools if tool.name == refined),
-            eq="9.9.9",
-        )
 
     def test_provider_registry_declaration_fails_validation(
         self,

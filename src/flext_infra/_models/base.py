@@ -16,13 +16,13 @@ from flext_cli import c, m, t
 class FlextInfraModelsBase:
     """Base models for flext-infra project."""
 
-    class FrozenArbitrary(m.ArbitraryTypesModel):
-        """Frozen arbitrary-types preset for immutable internal value models.
+    class FrozenArbitrary(m.ContractModel):
+        """Strict immutable payloads preserving exact text and enum identities."""
 
-        Extends exactly one preset and adds only immutability.
-        """
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            str_strip_whitespace=False,
+            use_enum_values=False,
+        )
 
     class ProcessExit(m.ContractModel):
         """Structured process outcome propagated through a Result failure."""
@@ -67,17 +67,8 @@ class FlextInfraModelsBase:
         skipped: int = m.Field(description="Skipped items")
         elapsed: float = m.Field(description="Elapsed time in seconds")
 
-    class ProtectedSourceWriteRequest(m.ContractModel):
+    class ProtectedSourceWriteRequest(FrozenArbitrary):
         """Validated options for a single protected source write."""
-
-        # Source content must retain its exact bytes (notably the mandatory
-        # trailing newline every FLEXT module requires). ContractModel sets
-        # str_strip_whitespace=True, which would corrupt written files, so the
-        # canonical contract config is inherited with stripping disabled.
-        model_config: ClassVar[m.ConfigDict] = {
-            **m.ContractModel.model_config,
-            "str_strip_whitespace": False,
-        }
 
         workspace: Annotated[
             Path,

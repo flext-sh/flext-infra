@@ -200,6 +200,12 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             generator_modules=session.journal.generator_modules,
             generator_reference=journal.generator_reference,
             source_topology=topology,
+            source_directories=tuple(
+                receipt for _phase, receipt in session.journal.source_directories
+            ),
+            source_query_topology=tuple(
+                receipt for _phase, receipt in session.journal.source_query_topology
+            ),
             scope_roots=session.journal.scope_roots,
             source_scope=session.journal.source_scope,
         )
@@ -495,6 +501,13 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 return r[m.Infra.CodegenTransactionSession].from_failure(record)
             outputs[plan.path] = record.value
         adopted = topology or session.journal
+        native_directories, native_topology = (
+            FlextInfraMiseArtifactsJournal.source_query_records(
+                session.journal,
+                plans,
+                phase=batch_admission.phase if batch_admission is not None else phase,
+            )
+        )
         journal = session.journal.model_copy(
             update={
                 "outputs": tuple(outputs.values()),
@@ -503,6 +516,8 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 "scope_roots": adopted.scope_roots or session.journal.scope_roots,
                 "source_scope": adopted.source_scope or session.journal.source_scope,
                 "phase": phase or session.journal.phase,
+                "source_directories": native_directories,
+                "source_query_topology": native_topology,
             }
         )
         written = self._write_journal(

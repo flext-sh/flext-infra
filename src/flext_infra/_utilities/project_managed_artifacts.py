@@ -332,6 +332,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
     ) -> t.JsonMapping:
         """Merge ordered captured F.yaml bytes and explicitly projected layers.
 
+        Projections replace values within their source layer. Distinct layers
+        use the strict YAML source's recursive mapping and list composition.
+
         Returns:
             The composed document; schema consumers validate their owned section.
 
@@ -349,77 +352,12 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 None,
             )
             values = (
-                owner._layer_merge(dict(payload), dict(projected.values))
+                u.config_merge(dict(payload), dict(projected.values))
                 if projected is not None
                 else dict(payload)
             )
-            merged = owner._layer_merge(merged, values)
+            merged = FlextStrictYamlConfigSource.merge_values(merged, values)
         return merged
-
-    @staticmethod
-    def _layer_merge(base: t.JsonMapping, override: t.JsonMapping) -> t.JsonDict:
-        """Deep-merge one layer, composing keyed sequences by entry key.
-
-        Mappings deep-merge and sequences are replaced, except the sequences
-        ``c.Infra.CONFIG_KEYED_SEQUENCES`` declares: their entries compose by
-        key, so a layer contributes only its own entries.
-
-        Returns:
-            The composed layer document.
-
-        """
-        merged = u.config_merge(base, override)
-        for path, key in c.Infra.CONFIG_KEYED_SEQUENCES.items():
-            added = u.Cli.json_walk_path(override, path)
-            if added is None:
-                continue
-            composed: t.JsonValue = (
-                FlextInfraUtilitiesProjectManagedArtifacts._keyed_entries(
-                    (u.Cli.json_walk_path(base, path), added),
-                    key=key,
-                    path=path,
-                )
-            )
-            for name in reversed(path):
-                composed = {name: composed}
-            merged = u.config_merge(merged, u.Cli.json_as_mapping(composed))
-        return merged
-
-    @staticmethod
-    def _keyed_entries(
-        layers: t.VariadicTuple[t.JsonValue | None],
-        *,
-        key: str,
-        path: t.VariadicTuple[str],
-    ) -> list[t.JsonValue]:
-        """Compose keyed entries in layer order; a repeated key deep-merges.
-
-        Returns:
-            The entries of every layer, first occurrences in their order.
-
-        Raises:
-            ValueError: If a layer is not a sequence or an entry lacks its key.
-
-        """
-        location = ".".join(path)
-        entries: dict[str, t.JsonDict] = {}
-        for layer in layers:
-            if layer is None:
-                continue
-            if not isinstance(layer, list):
-                msg = f"keyed config sequence is not a sequence: {location}"
-                raise ValueError(msg)
-            for entry in layer:
-                name = entry.get(key) if isinstance(entry, dict) else None
-                if not isinstance(entry, dict) or not isinstance(name, str):
-                    msg = f"keyed config sequence entry lacks its {key}: {location}"
-                    raise ValueError(msg)
-                entries[name] = (
-                    u.config_merge(entries[name], entry)
-                    if name in entries
-                    else dict(entry)
-                )
-        return list(entries.values())
 
     @staticmethod
     def compose_ruff_per_file_ignores(

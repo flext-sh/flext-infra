@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import time
 import traceback
-from collections.abc import MutableMapping
+from collections.abc import Callable, MutableMapping
 from functools import partial
 from pathlib import Path
 from typing import Literal
@@ -348,18 +348,25 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             f"elapsed={time.monotonic() - managed_started:.2f}s",
         )
         tooling_started = time.monotonic()
-        custom_result = (
-            self._plan_existing_custom(root, codegen, profile=target.make_profile.value)
-            if contract.custom
-            else r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
-        )
         lazy_result = (
-            custom_result.flat_map(lambda _: self._planned_lazy_init_files(root))
-            if contract.tooling
-            else custom_result.map(lambda _: ())
+            self._planned_lazy_init_files(root)
+            if contract.tooling or contract.custom
+            else r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
         )
         if lazy_result.failure:
             return result_type.from_failure(lazy_result)
+        custom_result = (
+            self._plan_existing_custom(
+                root,
+                codegen,
+                profile=target.make_profile.value,
+                lazy_plans=tuple(lazy_result.value),
+            )
+            if contract.custom
+            else r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
+        )
+        if custom_result.failure:
+            return result_type.from_failure(custom_result)
         tooling_runtime: m.Infra.ToolingRuntimeContext | None = None
         if contract.tooling:
             tooling_context = self._existing_tooling_context(
@@ -407,7 +414,63 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             if final_templates.failure:
                 return result_type.from_failure(final_templates)
             planned = [*final_templates.value, *planned[len(managed_result.value) :]]
-        return result_type.ok(tuple(planned))
+        return self._facade_runtime_plans(
+            root,
+            tuple(planned),
+            custom_result.value,
+            lazy_result.value,
+        )
+
+    @staticmethod
+    def _facade_runtime_plans(
+        root: Path,
+        planned: t.SequenceOf[m.Infra.CodegenFilePlan],
+        custom: t.SequenceOf[m.Infra.CodegenFilePlan],
+        initializers: t.SequenceOf[m.Infra.CodegenFilePlan],
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Publish facade consumers together with their declared family barrels.
+
+        Returns:
+            Independent plans followed by the original dependent runtime plans.
+
+        """
+        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
+        facades = tuple(
+            item for item in custom if item.path.suffix == c.Infra.EXT_PYTHON
+        )
+        packages = {item.path.parent for item in facades}
+        if not packages:
+            return result_type.ok(tuple(planned))
+        families = tuple(
+            package / family.directory
+            for package in packages
+            for family in u.Infra.facade_families().values()
+        )
+        barrels = tuple(
+            item
+            for item in initializers
+            if item.path.name == c.Infra.INIT_PY
+            and (
+                item.path.parent in packages
+                or any(item.path.is_relative_to(family) for family in families)
+            )
+        )
+        by_path = {item.path: item for item in planned}
+        for barrel in barrels:
+            existing = by_path.get(barrel.path)
+            if existing is not None and existing != barrel:
+                return result_type.fail(
+                    f"runtime barrel has competing bootstrap plans: {barrel.path}"
+                )
+        grouped_paths = {item.path for item in (*barrels, *facades)}
+        group = f"{c.Infra.CodegenConformSurface.FACADES.value}:{root}"
+        return result_type.ok((
+            *(item for item in planned if item.path not in grouped_paths),
+            *(
+                item.model_copy(update={"dependency_group": group})
+                for item in (*barrels, *facades)
+            ),
+        ))
 
     @staticmethod
     def _planned_lazy_init_files(
@@ -420,9 +483,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         project. Tooling derivations therefore read the planned initializers,
         never the previous projection on disk: a stale initializer otherwise
         blocks its own regeneration, on every conform surface (a partial
-        surface such as ``dependencies`` derives tooling too). ADR-014: these
-        plans are derivation inputs only; the post-begin lazy-init phase of a
-        full generation remains their single publication owner.
+        surface such as ``dependencies`` derives tooling too). Required runtime
+        barrels join their facade consumers in the bootstrap dependency group;
+        the later lazy-init phase publishes the remaining initializer plans.
 
         Returns:
             The repository's planned lazy-init file plans, or the planning failure.
@@ -965,6 +1028,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         config: m.Infra.CodegenConfigSpec,
         *,
         profile: str | None = None,
+        lazy_plans: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Validate custom Make content and plan utility, protocol and model facades.
 
@@ -994,27 +1058,42 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             if make_plan_present and make_plan_value is not None:
                 plans.append(make_plan_value)
         if root.is_dir():
-            sources = u.Infra.iter_python_files(
-                m.Infra.SourceScanRequest(project_roots=(root,)),
+            states = FlextInfraCodegenPreconditions.unique_states(
+                tuple(state for plan in lazy_plans for state in plan.source_states)
             )
-            if sources.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(sources)
+            if states.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(states)
             families: t.VariadicTuple[Literal["u", "p", "m"]] = ("u", "p", "m")
             layout = u.Infra.layout(root)
-            package_dirs = {
-                path.parent
-                for path in sources.value
-                if (path.parent / c.Infra.INIT_PY).is_file()
-            }
-            if layout is not None and layout.class_stem:
-                package_dirs.add(layout.package_dir)
-            for package_dir in sorted(package_dirs):
-                for family in families:
-                    if (
-                        layout is None or package_dir != layout.package_dir
-                    ) and u.Infra.facade_module_path(package_dir, family) is None:
-                        continue
-                    plans.extend(self._captured_facade_plan(root, package_dir, family))
+            with u.Infra.facade_source_project(
+                root, source_states=states.value, declared_files=lazy_plans
+            ) as binding:
+                project, _, sources = binding
+                package_dirs = {
+                    path.parent
+                    for path in sources
+                    if path.is_relative_to(root)
+                    and path.suffix == c.Infra.EXT_PYTHON
+                    and path.parent / c.Infra.INIT_PY in sources
+                }
+                if layout is not None and layout.class_stem:
+                    package_dirs.add(layout.package_dir)
+                for package_dir in sorted(package_dirs):
+                    for family in families:
+                        if (
+                            layout is None or package_dir != layout.package_dir
+                        ) and u.Infra.facade_module_path(
+                            package_dir,
+                            family,
+                            project=project,
+                            sources=sources,
+                        ) is None:
+                            continue
+                        plans.extend(
+                            self._captured_facade_plan(
+                                root, package_dir, family, binding
+                            )
+                        )
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(plans))
 
     def _captured_facade_plan(
@@ -1022,6 +1101,18 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         root: Path,
         package_dir: Path,
         family: Literal["u", "p", "m"],
+        binding: t.Triple[
+            p.Infra.RopeProject,
+            Callable[
+                [],
+                t.Triple[
+                    tuple[m.Cli.AtomicFileState, ...],
+                    tuple[m.Cli.AtomicDirectoryInventory, ...],
+                    tuple[m.Cli.AtomicDirectoryChainPlan, ...],
+                ],
+            ],
+            t.MappingKV[Path, str],
+        ],
     ) -> t.SequenceOf[m.Infra.CodegenFilePlan]:
         """Retain the original diagnostic while collecting independent plans.
 
@@ -1029,10 +1120,13 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             The declared facade plans, or no effects for a recorded failure.
 
         """
-        facade_path = u.Infra.facade_module_path(package_dir, family)
+        project, _, sources = binding
+        facade_path = u.Infra.facade_module_path(
+            package_dir, family, project=project, sources=sources
+        )
         failure_path = facade_path if facade_path is not None else package_dir
         try:
-            planned = self._utility_facade_plan(root, package_dir, family)
+            planned = self._utility_facade_plan(root, package_dir, family, binding)
         except (OSError, ValueError) as exception:
             self._record_file_failure(
                 failure_path, traceback.format_exc(), exception=exception
@@ -1084,6 +1178,18 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         root: Path,
         package_dir: Path,
         family: Literal["u", "p", "m"],
+        binding: t.Triple[
+            p.Infra.RopeProject,
+            Callable[
+                [],
+                t.Triple[
+                    tuple[m.Cli.AtomicFileState, ...],
+                    tuple[m.Cli.AtomicDirectoryInventory, ...],
+                    tuple[m.Cli.AtomicDirectoryChainPlan, ...],
+                ],
+            ],
+            t.MappingKV[Path, str],
+        ],
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Plan one projected facade for the discovered package layout.
 
@@ -1094,14 +1200,19 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             ValueError: If a rendered facade has no declaring package module.
 
         """
+        project, consumed_states, sources = binding
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         rendered = u.Infra.render_utility_facade(
             package_dir,
             family=family,
+            project=project,
+            sources=sources,
         )
         if rendered is None:
             return result_type.ok(())
-        facade_path = u.Infra.facade_module_path(package_dir, family)
+        facade_path = u.Infra.facade_module_path(
+            package_dir, family, project=project, sources=sources
+        )
         if facade_path is None:
             msg = f"rendered {family} facade has no declaring module"
             raise ValueError(msg)
@@ -1109,7 +1220,22 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         utility_plan = self.file_plan(root, relative.as_posix(), rendered)
         if utility_plan.failure:
             return result_type.from_failure(utility_plan)
-        return result_type.ok((utility_plan.value,))
+        states, directories, topology = consumed_states()
+        inputs = FlextInfraCodegenPreconditions.unique_states((
+            *utility_plan.value.source_states,
+            *states,
+        ))
+        if inputs.failure:
+            return result_type.from_failure(inputs)
+        return result_type.ok((
+            utility_plan.value.model_copy(
+                update={
+                    "source_states": inputs.value,
+                    "source_directories": directories,
+                    "source_query_topology": topology,
+                }
+            ),
+        ))
 
     def _complete_governed_plans(
         self,

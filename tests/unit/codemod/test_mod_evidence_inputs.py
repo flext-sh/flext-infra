@@ -45,6 +45,16 @@ class TestsFlextInfraModEvidenceInputs:
                 ),
                 ((4, 5), (4, 5)),
             ),
+            (
+                (
+                    "def load():\n"
+                    "    message = 'café'; from first_owner import (\n"
+                    "        Value as selected,\n"
+                    "    )\n"
+                    "    import second_owner\n"
+                ),
+                ((4, 7), (7, 8)),
+            ),
         ],
     )
     def test_binding_snapshot_captures_all_native_import_scopes(
@@ -183,6 +193,44 @@ class TestsFlextInfraModEvidenceInputs:
                 ("left-local", "'local'"),
                 ("right-global", "'right'"),
             ],
+        )
+        duplicate_rules = tuple(
+            rule.model_copy(update={"id": rules[0].id})
+            if rule.provider == rules[-1].provider
+            else rule
+            for rule in rules
+        )
+        for index, conflicting in enumerate((
+            m.Infra.CodemodRulePlan(
+                provider_order=plan.provider_order,
+                rules=duplicate_rules,
+                rulesets=plan.rulesets,
+                project_rule_ids=plan.project_rule_ids,
+            ),
+            plan.model_copy(update={"rules": duplicate_rules}),
+        )):
+            destination = tmp_path / f"conflicting-native-{index}"
+            with pytest.raises(ValueError, match="native codemod rule IDs"):
+                u.Infra.codemod_stage_scan_ruleset(conflicting, destination)
+            tm.that(destination.exists(), eq=False)
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+        resource = rules[0].resource
+        declaration = tm.ok(u.Cli.yaml_safe_load(resource))
+        tm.ok(
+            u.Cli.yaml_dump(
+                resource,
+                {**declaration, "rule": {"pattern": repr("changed")}},
+            ),
+        )
+        with pytest.raises(
+            ValueError, match="elected codemod rule changed before projection"
+        ):
+            FlextInfraModGateEngine.scan(
+                mod_workspace, fix=False, plan=plan, source_files=(source,)
+            )
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True)),
+            eq=before,
         )
 
     @staticmethod
@@ -439,7 +487,19 @@ class TestsFlextInfraModEvidenceInputs:
         )
         encoded = receipt.path.read_bytes()
         restored = m.Infra.ModScanEvidence.model_validate_json(encoded)
-        tm.that(encoded.count(b"descriptor evidence sentinel"), eq=1)
+        source_state = tm.not_none(report.entries[0].source_state)
+        strings = u.type_adapter(str)
+        content = strings.dump_json(
+            strings.validate_python(
+                source_state.model_dump(mode="json")["content"],
+                strict=True,
+            ),
+        )
+        tm.that(encoded.count(content), eq=1)
+        tm.that(
+            sum(state.path == source for state in restored.inputs.states),
+            eq=1,
+        )
         tm.that(u.Cli.sha256_bytes(encoded), eq=receipt.sha256)
         tm.that(restored.deferred, eq=1)
         tm.that(

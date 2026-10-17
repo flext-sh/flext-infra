@@ -41,9 +41,7 @@ class TestsFlextInfraRopeContracts:
         tmp_path: Path,
     ) -> None:
         """A repository's own rules extend the universal catalogue, in order."""
-        packaged = tuple(
-            rule.id for rule in u.Infra.declared_contract_rules(tmp_path)
-        )
+        packaged = tuple(rule.id for rule in u.Infra.declared_contract_rules(tmp_path))
         overlay = tmp_path / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
         overlay.parent.mkdir(parents=True)
         overlay.write_text(
@@ -55,9 +53,7 @@ class TestsFlextInfraRopeContracts:
             "      helper: name=consumer.helpers.Helpers.render\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        composed = tuple(
-            rule.id for rule in u.Infra.declared_contract_rules(tmp_path)
-        )
+        composed = tuple(rule.id for rule in u.Infra.declared_contract_rules(tmp_path))
         tm.that(composed, eq=(*packaged, "consumer-own-helper"))
 
     @staticmethod
@@ -87,6 +83,18 @@ class TestsFlextInfraRopeContracts:
             "values: dict[str, list[int]] = Field(default_factory=dict)",
             "values: Meta[list[str], Field(default_factory=list)]",
             "values: Meta[int, Field(default=3)]",
+            "values: set[str] = Field(default_factory=set)",
+            "values: tuple[str, ...] = Field(default_factory=tuple)",
+            "values: list[str] = Field(default_factory=list, description='d')",
+            "values: dict[str, int] = Field(default_factory=dict, description='d')",
+            (
+                "values: Meta[list[str], Field(description='d')] = "
+                "Field(default_factory=list)"
+            ),
+            (
+                "values: Meta[dict[str, int], Field(min_length=0)] = "
+                "Field(default_factory=dict)"
+            ),
         ],
     )
     def test_real_defaults_preserve_runtime_and_converge(
@@ -168,10 +176,9 @@ class TestsFlextInfraRopeContracts:
         u.Tests.prove_contract_migration(rope_contract_consumer, source)
 
     @staticmethod
-    @pytest.mark.parametrize(
-        "namespace",
-        ["flext_tap_ldif", "flext_target_ldif", "flext_dbt_ldif"],
-    )
+    # Outer facades from this project's own declared FLEXT dependencies; a
+    # library test never imports a downstream consumer it does not install.
+    @pytest.mark.parametrize("namespace", ["flext_core", "flext_cli"])
     def test_outer_facades_preserve_nested_contracts(
         rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
         namespace: str,

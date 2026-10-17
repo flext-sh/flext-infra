@@ -570,6 +570,14 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             )
         outputs = FlextInfraMiseArtifactsVerification.publication_outputs_current(
             self._prior_publications,
+            reference=(
+                None if self._producer is None else self._producer.generator_reference
+            ),
+            destinations=(
+                ()
+                if self._producer is None
+                else tuple(source.path for source in self._producer.inputs)
+            ),
         )
         if outputs.failure:
             return r[bool].from_failure(outputs)

@@ -226,7 +226,7 @@ class FlextInfraMiseArtifactsVerification(
         publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
         *,
         reference: m.Infra.NativeImportReference | None = None,
-        destinations: t.SequenceOf[Path] = (),
+        destinations: t.SequenceOf[Path] | None = None,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenJournalSource]]:
         """Authenticate actual prior effects before using them as producer authority.
 
@@ -282,7 +282,7 @@ class FlextInfraMiseArtifactsVerification(
         publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
         *,
         reference: m.Infra.NativeImportReference | None = None,
-        destinations: t.SequenceOf[Path] = (),
+        destinations: t.SequenceOf[Path] | None = None,
     ) -> p.Result[
         t.Pair[
             t.VariadicTuple[m.Infra.CodegenJournalSource],
@@ -305,14 +305,20 @@ class FlextInfraMiseArtifactsVerification(
         if not publications:
             return result_type.ok(((), ()))
         selection: Callable[[Path], bool] | None = None
-        if reference is not None:
+        if reference is not None or destinations is not None:
             files = frozenset((
-                *(state.path for state in reference.source_authority.inputs),
-                *destinations,
+                *(
+                    (state.path for state in reference.source_authority.inputs)
+                    if reference is not None
+                    else ()
+                ),
+                *(destinations if destinations is not None else ()),
             ))
-            directories = {
-                tree.root.path for tree in reference.source_authority.generator_trees
-            }
+            directories = (
+                {tree.root.path for tree in reference.source_authority.generator_trees}
+                if reference is not None
+                else set()
+            )
             roots = tuple(
                 root
                 for root in sorted(directories)
@@ -332,12 +338,22 @@ class FlextInfraMiseArtifactsVerification(
                 frontier,
                 terminal,
                 outcomes,
-                selection,
+                None,
             )
             if history.failure:
                 return result_type.from_failure(history)
-        outputs = tuple(terminal.values())
-        physical = cls._recorded_states_current(tuple(frontier.values()))
+        outputs = tuple(
+            record
+            for path, record in terminal.items()
+            if selection is None or selection(path)
+        )
+        physical = cls._recorded_states_current(
+            tuple(
+                record
+                for path, record in frontier.items()
+                if selection is None or selection(path)
+            )
+        )
         if physical.failure:
             return result_type.from_failure(physical)
         topology = {
@@ -346,6 +362,10 @@ class FlextInfraMiseArtifactsVerification(
             for witness in batch.source_topology
         }
         for batch in outcomes:
+            if selection is not None and not any(
+                selection(output.path) for output in batch.outputs
+            ):
+                continue
             prerequisites = cls._frontier_prerequisites_current(
                 batch, outputs, topology
             )
@@ -407,7 +427,7 @@ class FlextInfraMiseArtifactsVerification(
         cls,
         states: t.VariadicTuple[m.Infra.CodegenJournalSource],
     ) -> p.Result[bool]:
-        """Prove each terminal input or output state still matches its live identity.
+        """Prove each terminal output still matches its recorded physical identity.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -524,6 +544,8 @@ class FlextInfraMiseArtifactsVerification(
                 or outcome.generator_modules
                 or outcome.generator_reference is not None
                 or outcome.source_topology
+                or outcome.source_directories
+                or outcome.source_query_topology
                 or outcome.source_scope is not None
                 or outcome.analysis is not None
                 or outcome.admitted_states
@@ -674,10 +696,10 @@ class FlextInfraMiseArtifactsVerification(
         frontier: t.MutableMappingKV[Path, m.Infra.CodegenJournalSource],
         selection: Callable[[Path], bool] | None,
     ) -> p.Result[t.MutableMappingKV[Path, list[m.Infra.CodegenJournalSource]]]:
-        """Prove consumed data snapshots agree with the frontier and each other.
+        """Prove consumed snapshots agree with prior outputs and each other.
 
-        Native producer inputs belong to the original code epoch and are
-        authenticated separately against its physically proven terminal effects.
+        Read-only inputs remain evidence of their completed batch. Only actual
+        output snapshots advance the frontier re-proven by later publications.
 
         Returns:
             The resulting ``p.Result[t.MutableMappingKV[Path,
@@ -710,7 +732,6 @@ class FlextInfraMiseArtifactsVerification(
                 ].fail(
                     f"generation inputs disagree without an owned write: {path}",
                 )
-            frontier[path] = records[0]
         return r[t.MutableMappingKV[Path, list[m.Infra.CodegenJournalSource]]].ok(
             inputs
         )
@@ -734,13 +755,20 @@ class FlextInfraMiseArtifactsVerification(
                     return r[bool].fail(
                         f"generation output has no authenticated preimage: {path}",
                     )
-            elif path in frontier and (
-                frontier[path].model_dump(exclude={"phase", "role"})
-                != output.model_dump(exclude={"phase", "role"})
-            ):
-                return r[bool].fail(
-                    f"generation output changed without an owned write: {path}",
+            else:
+                previous = frontier.get(path)
+                preimages = (
+                    *inputs.get(path, ()),
+                    *((previous,) if previous is not None else ()),
                 )
+                if any(
+                    preimage.model_dump(exclude={"phase", "role"})
+                    != output.model_dump(exclude={"phase", "role"})
+                    for preimage in preimages
+                ):
+                    return r[bool].fail(
+                        f"generation output changed without an owned write: {path}",
+                    )
             frontier[path] = output
         return r[bool].ok(value=True)
 

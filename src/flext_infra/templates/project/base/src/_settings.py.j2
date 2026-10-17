@@ -5,10 +5,10 @@
 {%- set settings_model_import = settings_model_line if settings_model_line | length <= tooling.tools.ruff.line_length else "from " ~ package_name ~ "._models.settings import (\n    " ~ class_stem ~ "SettingsModels,\n)" -%}
 {%- set settings_protocol_line = "    from " ~ package_name ~ "._protocols.settings import " ~ class_stem ~ "ProtocolsSettings" -%}
 {%- set settings_protocol_import = settings_protocol_line if settings_protocol_line | length <= tooling.tools.ruff.line_length else "    from " ~ package_name ~ "._protocols.settings import (\n        " ~ class_stem ~ "ProtocolsSettings,\n    )" -%}
-{%- set settings_class_line = "class _" ~ class_stem ~ "Settings(FlextSettings, " ~ class_stem ~ "SettingsModels.SettingsRoot):" -%}
-{%- set settings_class_declaration = settings_class_line if settings_class_line | length <= tooling.tools.ruff.line_length else "class _" ~ class_stem ~ "Settings(\n    FlextSettings, " ~ class_stem ~ "SettingsModels.SettingsRoot\n):" -%}
-{%- set settings_singleton_line = "settings: " ~ class_stem ~ "ProtocolsSettings.Settings = _" ~ class_stem ~ "Settings()" -%}
-{%- set settings_singleton_declaration = settings_singleton_line if settings_singleton_line | length <= tooling.tools.ruff.line_length else "settings: " ~ class_stem ~ "ProtocolsSettings.Settings = (\n    _" ~ class_stem ~ "Settings()\n)" -%}
+{%- set settings_class_line = "class _" ~ class_stem ~ "Settings(FlextSettings):" -%}
+{%- set settings_class_declaration = settings_class_line if settings_class_line | length <= tooling.tools.ruff.line_length else "class _" ~ class_stem ~ "Settings(\n    FlextSettings\n):" -%}
+{%- set settings_singleton_line = "settings: " ~ class_stem ~ "ProtocolsSettings.Settings = _" ~ class_stem ~ "Settings.fetch_global()" -%}
+{%- set settings_singleton_declaration = settings_singleton_line if settings_singleton_line | length <= tooling.tools.ruff.line_length else "settings: " ~ class_stem ~ "ProtocolsSettings.Settings = (\n    _" ~ class_stem ~ "Settings.fetch_global()\n)" -%}
 """Direct {{ class_stem }} settings singleton export.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
@@ -17,8 +17,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 # NOTE: measure rendered lines so every project is Ruff-native.
 from flext_core import FlextSettings, m
@@ -30,15 +29,26 @@ if TYPE_CHECKING:
 
 
 {{ settings_class_declaration }}
-    """Private environment loader composed with the validated settings root."""
+    """Private environment loader for the validated settings namespace."""
+
+    {{ ns }}: Annotated[
+        {{ class_stem }}SettingsModels.SettingsNamespace,
+        m.Field(
+            default_factory={{ class_stem }}SettingsModels.SettingsNamespace,
+            description="Validated {{ ns }} project settings.",
+        ),
+    ]
 
     model_config: ClassVar[m.SettingsConfigDict] = m.SettingsConfigDict(
         env_prefix={{ class_stem }}ConstantsSettings.ENV_PREFIX,
         env_nested_delimiter="__",
-        env_file=str(Path(__file__).resolve().parents[2] / ".env"),
+        env_file=FlextSettings.resolve_env_file(
+            {{ dist.removeprefix("flext-") | tojson }},
+        ),
         env_file_encoding="utf-8",
         case_sensitive=False,
         frozen=True,
+        strict=True,
         extra="ignore",
     )
 

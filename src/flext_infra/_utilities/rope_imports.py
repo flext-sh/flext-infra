@@ -28,10 +28,6 @@ from flext_infra._utilities import (
 from flext_infra._utilities.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities.rope_runtime_refactors import (
-    FlextInfraUtilitiesRopeRuntimeRefactors,
-)
-from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
 
 
 class FlextInfraUtilitiesRopeImports:
@@ -43,11 +39,11 @@ class FlextInfraUtilitiesRopeImports:
         project: p.Infra.RopeProject,
         source: str,
     ) -> t.VariadicTuple[p.Infra.RopeImportStatement]:
-        """Collect imports in every lexical scope through native Rope owners.
+        """Collect declared imports from Rope's parsed tree in source order.
 
-        Native token occurrences exclude strings and comments. Native logical
-        regions bound each fragment, and Rope's import tables parse the actual
-        declaration, including inline suites and multiple imports on one line.
+        The parsed import nodes cover every lexical scope and exclude strings
+        and comments. Rope's import tables retain ownership of the resulting
+        records; occurrence inference is not needed to inventory declarations.
 
         Args:
             project: The Rope project instance.
@@ -56,62 +52,39 @@ class FlextInfraUtilitiesRopeImports:
         Returns:
             A tuple of Rope import statements found in the source.
 
+        Raises:
+            ValueError: If a parsed import has no complete source span.
+
         """
         module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
             project,
             source,
         )
-        imports = tuple(
-            occurrence.offset
-            for occurrence in (
-                FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
-                    project, "import"
-                ).find_occurrences(pymodule=module)
-            )
-        )
-        if not imports:
-            return ()
-        froms = tuple(
-            occurrence.offset
-            for occurrence in (
-                FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
-                    project, "from"
-                ).find_occurrences(pymodule=module)
-            )
+        imports = sorted(
+            (
+                node
+                for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
+                    module.get_ast(),
+                )
+                if isinstance(node, ast.Import | ast.ImportFrom)
+            ),
+            key=lambda node: (node.lineno, node.col_offset),
         )
         statements: list[p.Infra.RopeImportStatement] = []
-        position = 0
-        from_position = 0
-        preceding: int | None = None
-        for region in FlextInfraUtilitiesRopeStructure.logical_statements(source):
-            while position < len(imports) and imports[position] < region.start_offset:
-                position += 1
-            if position == len(imports):
-                break
-            offset = imports[position]
-            if offset >= region.end_offset:
-                continue
-            start = offset
-            while from_position < len(froms) and froms[from_position] < offset:
-                preceding = froms[from_position]
-                from_position += 1
-            # Only a dotted import module may stand between `from` and
-            # `import`; `yield from` and exception chaining are not imports.
-            if (
-                preceding is not None
-                and preceding >= region.start_offset
-                and cls._from_import_prefix(source, preceding, offset)
-            ):
-                start = preceding
+        for node in imports:
+            declaration = ast.get_source_segment(source, node)
+            if declaration is None:
+                msg = "Rope import declaration has no complete source span"
+                raise ValueError(msg)
             fragment = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
                 project,
-                source[start : region.end_offset],
+                declaration,
             )
             table = FlextInfraUtilitiesRopeRuntimeModules.module_imports_for_pymodule(
                 project,
                 fragment,
             )
-            line_offset = module.lines.get_line_number(start) - 1
+            line_offset = node.lineno - 1
             for statement in cls.import_statements(table):
                 # Every table owns its fragment records. Preserve the native
                 # import-info object and project the record's coordinates back
@@ -119,24 +92,7 @@ class FlextInfraUtilitiesRopeImports:
                 statement.start_line += line_offset
                 statement.end_line += line_offset
                 statements.append(statement)
-            while position < len(imports) and imports[position] < region.end_offset:
-                position += 1
         return tuple(statements)
-
-    @staticmethod
-    def _from_import_prefix(source: str, start: int, end: int) -> bool:
-        """Recognize the original dotted prefix between two native tokens.
-
-        Returns:
-            Whether the prefix names a relative or absolute import module.
-
-        """
-        target = "".join(
-            source[start + len("from") : end].replace("\\\n", "").split(),
-        )
-        return bool(target) and all(
-            not component or component.isidentifier() for component in target.split(".")
-        )
 
     @staticmethod
     def import_statements(
