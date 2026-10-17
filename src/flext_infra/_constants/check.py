@@ -35,58 +35,79 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
     GATE_TOOLS_BY_KIND: ClassVar[
         t.MappingKV[
             FlextInfraConfigVocabulary.GateKind,
-            t.MappingKV[str, t.StrPair],
+            t.MappingKV[str, t.Triple[str, str, bool]],
         ]
     ] = MappingProxyType({
         FlextInfraConfigVocabulary.GateKind.EXTERNAL: MappingProxyType({
-            "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/"),
-            "format": ("Ruff Formatter", "https://docs.astral.sh/ruff/formatter/"),
-            "security": ("Bandit", "https://bandit.readthedocs.io/"),
-            "markdown": ("rumdl", "https://rumdl.dev/"),
-            "markdown-format": ("rumdl", "https://rumdl.dev/"),
-            "markdown-code": ("Ruff", "https://docs.astral.sh/ruff/"),
-            "duplication": ("jscpd", "https://github.com/kucherenko/jscpd"),
+            "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/", True),
+            "format": (
+                "Ruff Formatter",
+                "https://docs.astral.sh/ruff/formatter/",
+                False,
+            ),
+            "security": ("Bandit", "https://bandit.readthedocs.io/", False),
+            "markdown": ("rumdl", "https://rumdl.dev/", True),
+            "markdown-format": ("rumdl", "https://rumdl.dev/", False),
+            "markdown-code": ("Ruff", "https://docs.astral.sh/ruff/", True),
+            "duplication": ("jscpd", "https://github.com/kucherenko/jscpd", False),
         }),
         FlextInfraConfigVocabulary.GateKind.TYPE_CHECKER: MappingProxyType({
-            "pyrefly": ("Pyrefly", "https://github.com/facebook/pyrefly"),
-            "mypy": ("Mypy", "https://mypy.readthedocs.io/"),
-            "pyright": ("Pyright", "https://github.com/microsoft/pyright"),
+            "pyrefly": ("Pyrefly", "https://github.com/facebook/pyrefly", False),
+            "mypy": ("Mypy", "https://mypy.readthedocs.io/", False),
+            "pyright": ("Pyright", "https://github.com/microsoft/pyright", False),
         }),
         FlextInfraConfigVocabulary.GateKind.INFRA: MappingProxyType({
             CONFLICT_MARKERS: (
                 "Git Conflict Markers",
                 "internal://flext-infra/conflict-markers",
+                False,
             ),
-            "loc-cap": ("scc", "https://github.com/boyter/scc"),
+            "loc-cap": ("scc", "https://github.com/boyter/scc", False),
             "runtime-census": (
                 "Flext Runtime Enforcement Census",
                 "internal://flext-infra/runtime-census",
+                False,
             ),
             FRESH_IMPORT: (
                 "Flext Fresh-Process Import Gate",
                 "internal://flext-infra/fresh-import",
+                False,
             ),
             DEPS: (
                 "Flext Dependency Declaration Gate",
                 "internal://flext-infra/deps",
+                True,
             ),
             "index-declarations": (
                 "Flext Index Declarations Gate",
                 "internal://flext-infra/index-declarations",
+                False,
             ),
-            SMELLS: ("Flext Code Smell Detector", "internal://flext-infra/smells"),
-            "codemod": ("ast-grep", AST_GREP_DOCS_URL),
+            SMELLS: (
+                "Flext Code Smell Detector",
+                "internal://flext-infra/smells",
+                False,
+            ),
+            "codemod": ("ast-grep", AST_GREP_DOCS_URL, False),
             "layout": (
                 "Flext Project Layout Gate",
                 "internal://flext-infra/layout",
+                False,
             ),
             "direnv": (
                 "Flext Direnv Environment Contract Gate",
                 "internal://flext-infra/direnv",
+                False,
             ),
         }),
     })
-    """Sole gate registry; each gate is declared once under its catalog owner."""
+    """Sole gate registry; each gate is declared once under its catalog owner.
+
+    Each row carries the gate's SARIF tool identity (name, URL) and its
+    ``make fix`` repair policy: the flagged gates are the ones whose
+    findings ``make fix`` repairs — mutating gates whose formatting is
+    not owned by ``make fmt``.
+    """
     GATE_KINDS: ClassVar[t.MappingKV[str, FlextInfraConfigVocabulary.GateKind]] = (
         MappingProxyType({
             gate: kind for kind, tools in GATE_TOOLS_BY_KIND.items() for gate in tools
@@ -96,17 +117,17 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
         GATE_TOOLS_BY_KIND[FlextInfraConfigVocabulary.GateKind.TYPE_CHECKER],
     )
     SARIF_TOOL_INFO: ClassVar[t.MappingKV[str, t.StrPair]] = MappingProxyType({
-        gate: tool
+        gate: (tool[0], tool[1])
         for tools in GATE_TOOLS_BY_KIND.values()
         for gate, tool in tools.items()
     })
     ALLOWED_GATES: ClassVar[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     CANONICAL_GATE_IDS: ClassVar[t.VariadicTuple[str]] = tuple(SARIF_TOOL_INFO)
-    CANONICAL_FIXABLE_GATE_IDS: ClassVar[t.VariadicTuple[str]] = (
-        "lint",
-        "markdown",
-        "markdown-code",
-        "deps",
+    CANONICAL_FIXABLE_GATE_IDS: ClassVar[t.VariadicTuple[str]] = tuple(
+        gate
+        for tools in GATE_TOOLS_BY_KIND.values()
+        for gate, tool in tools.items()
+        if tool[2]
     )
     """Independent repair policy; formatting remains owned by Make fmt."""
 
@@ -118,12 +139,6 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
     """Complete CPython code encoding without reference or interning flags."""
     NATIVE_TUPLE_REPEAT_LIMIT: ClassVar[int] = 255
     """Largest literal repeat count read as closed tuple constructor data."""
-    NATIVE_DATACLASS_SDK_CLASSES: ClassVar[tuple[str, ...]] = (
-        "Field",
-        "_DataclassParams",
-        "_FuncBuilder",
-    )
-    """Dataclass SDK classes the closed compiler instantiates during emission."""
 
     PYTEST_SELECTED_COLLECTION_OPTION: ClassVar[str] = "--flext-selected-collection"
     PYTEST_SUITE_STOP_OPTION: ClassVar[str] = "--flext-suite-stop-monotonic"

@@ -120,41 +120,6 @@ class FlextInfraUtilitiesDocsApi:
         )
 
     @classmethod
-    def _assignment_strings(cls, source: str, name: str) -> t.StrSequence:
-        """Collect literal string values from one module-level assignment.
-
-        Returns:
-            The resulting ``t.StrSequence``.
-
-        """
-        return FlextInfraUtilitiesRopeAnalysis.module_assignment_strings_source(
-            source,
-            name,
-        )
-
-    @classmethod
-    def _imported_symbol_binding(
-        cls,
-        source: str,
-        *,
-        current_module: str,
-        symbol_name: str,
-        package_module: bool,
-    ) -> t.Pair[str, str]:
-        """Return the source module and original name for one imported symbol.
-
-        Returns:
-            The source module and original name for one imported symbol.
-
-        """
-        return FlextInfraUtilitiesRopeAnalysis.imported_symbol_binding_source(
-            source,
-            current_module=current_module,
-            symbol_name=symbol_name,
-            package_module=package_module,
-        )
-
-    @classmethod
     def _resolve_assignment_strings(
         cls,
         project_root: Path,
@@ -177,18 +142,23 @@ class FlextInfraUtilitiesDocsApi:
         source = cls._source_text(module_file, sources)
         if source is None:
             return []
-        values = cls._assignment_strings(source, symbol_name)
+        values = FlextInfraUtilitiesRopeAnalysis.module_assignment_strings_source(
+            source,
+            symbol_name,
+        )
         if values:
             return values
         # Resolve through import aliases to the
         # ORIGINAL symbol — lazy __unit__ contracts bind PUBLIC_EXPORTS as
         # _PUBLIC_EXPORTS; resolving the alias in the target module yielded
         # an empty contract (root cause of the flext-infra validate FAIL).
-        imported_module, original_name = cls._imported_symbol_binding(
-            source,
-            current_module=module_name,
-            symbol_name=symbol_name,
-            package_module=module_file.name == c.Infra.INIT_PY,
+        imported_module, original_name = (
+            FlextInfraUtilitiesRopeAnalysis.imported_symbol_binding_source(
+                source,
+                current_module=module_name,
+                symbol_name=symbol_name,
+                package_module=module_file.name == c.Infra.INIT_PY,
+            )
         )
         if not imported_module:
             return []
@@ -284,11 +254,13 @@ class FlextInfraUtilitiesDocsApi:
         )
         next_visited = visited | frozenset({key})
         if not entries and not refs:
-            imported_module, imported_symbol = cls._imported_symbol_binding(
-                source,
-                current_module=module_name,
-                symbol_name=symbol_name,
-                package_module=module_file.name == c.Infra.INIT_PY,
+            imported_module, imported_symbol = (
+                FlextInfraUtilitiesRopeAnalysis.imported_symbol_binding_source(
+                    source,
+                    current_module=module_name,
+                    symbol_name=symbol_name,
+                    package_module=module_file.name == c.Infra.INIT_PY,
+                )
             )
             if not imported_module:
                 return {}
@@ -313,11 +285,13 @@ class FlextInfraUtilitiesDocsApi:
             if local_targets:
                 targets.update(local_targets)
                 continue
-            imported_module, imported_symbol = cls._imported_symbol_binding(
-                source,
-                current_module=module_name,
-                symbol_name=ref_name,
-                package_module=module_file.name == c.Infra.INIT_PY,
+            imported_module, imported_symbol = (
+                FlextInfraUtilitiesRopeAnalysis.imported_symbol_binding_source(
+                    source,
+                    current_module=module_name,
+                    symbol_name=ref_name,
+                    package_module=module_file.name == c.Infra.INIT_PY,
+                )
             )
             if imported_module:
                 targets.update(
@@ -379,16 +353,23 @@ class FlextInfraUtilitiesDocsApi:
         if literal_values:
             return literal_values
         if export_name:
-            local_values = cls._assignment_strings(source, export_name)
+            local_values = (
+                FlextInfraUtilitiesRopeAnalysis.module_assignment_strings_source(
+                    source,
+                    export_name,
+                )
+            )
             if local_values:
                 return local_values
             # Alias-aware binding — see
             # _resolve_assignment_strings for the root-cause note.
-            imported_module, original_name = cls._imported_symbol_binding(
-                source,
-                current_module=package_name,
-                symbol_name=export_name,
-                package_module=True,
+            imported_module, original_name = (
+                FlextInfraUtilitiesRopeAnalysis.imported_symbol_binding_source(
+                    source,
+                    current_module=package_name,
+                    symbol_name=export_name,
+                    package_module=True,
+                )
             )
             if imported_module:
                 return cls._resolve_assignment_strings(
@@ -397,7 +378,10 @@ class FlextInfraUtilitiesDocsApi:
                     symbol_name=original_name,
                     sources=sources,
                 )
-        return cls._assignment_strings(source, "__all__")
+        return FlextInfraUtilitiesRopeAnalysis.module_assignment_strings_source(
+            source,
+            "__all__",
+        )
 
     @staticmethod
     def _assignment_docstrings(source: str) -> set[str]:
@@ -452,12 +436,14 @@ class FlextInfraUtilitiesDocsApi:
             base_symbol = base_name.split(".")[-1]
             if not base_symbol or base_symbol in {"ABC", "Generic", "Protocol", "Self"}:
                 continue
-            imported_module, imported_symbol = cls._imported_symbol_binding(
-                source,
-                current_module=module_name,
-                symbol_name=base_symbol,
-                package_module=cls._module_file(project_root, module_name).name
-                == c.Infra.INIT_PY,
+            imported_module, imported_symbol = (
+                FlextInfraUtilitiesRopeAnalysis.imported_symbol_binding_source(
+                    source,
+                    current_module=module_name,
+                    symbol_name=base_symbol,
+                    package_module=cls._module_file(project_root, module_name).name
+                    == c.Infra.INIT_PY,
+                )
             )
             if imported_module:
                 if cls._has_exported_symbol_docstring(
@@ -557,11 +543,13 @@ class FlextInfraUtilitiesDocsApi:
         )
         if directly is not None:
             return directly
-        imported_module, imported_symbol = cls._imported_symbol_binding(
-            source,
-            current_module=module_name,
-            symbol_name=symbol_name,
-            package_module=module_file.name == c.Infra.INIT_PY,
+        imported_module, imported_symbol = (
+            FlextInfraUtilitiesRopeAnalysis.imported_symbol_binding_source(
+                source,
+                current_module=module_name,
+                symbol_name=symbol_name,
+                package_module=module_file.name == c.Infra.INIT_PY,
+            )
         )
         if not imported_module:
             return False

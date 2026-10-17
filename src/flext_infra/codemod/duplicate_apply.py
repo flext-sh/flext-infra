@@ -392,7 +392,9 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             and statement.start_offset <= row.start_offset < statement.end_offset
             and u.Infra.target_name(row)
         )
-        builtins = project.get_module("builtins").get_attributes()
+        builtins = u.Infra.require_semantic_module(
+            project.get_module("builtins")
+        ).get_attributes()
         for start, stop in u.Infra.semantic_regions(
             module,
             "${duplicate_expression}",

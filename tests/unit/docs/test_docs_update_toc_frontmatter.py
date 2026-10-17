@@ -1,4 +1,4 @@
-"""update_toc must preserve YAML frontmatter and real H1 headings.
+"""TOC normalization must preserve YAML frontmatter and real H1 headings.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,7 +10,7 @@ from tests import tm, u
 
 
 class TestsFlextInfraDocsUpdateTocFrontmatter:
-    """update_toc must preserve YAML frontmatter and real H1 headings."""
+    """TOC normalization must preserve YAML frontmatter and real H1 headings."""
 
     @staticmethod
     def test_docs_contract_update_toc_inserts_after_h1_beyond_frontmatter() -> None:
@@ -18,7 +18,7 @@ class TestsFlextInfraDocsUpdateTocFrontmatter:
         content = (
             "---\ntitle: ADR-001\n---\n\n# ADR-001 — Example\n\n## Context\n\nBody.\n"
         )
-        updated, changed = u.Infra.update_toc(content)
+        updated, changed = u.Infra.docs_contract_update_toc(content)
         tm.that(changed, eq=1)
         tm.that(updated.startswith("---\n"), eq=True)
         tm.that("# Documentation" in updated, eq=False)
@@ -48,7 +48,7 @@ class TestsFlextInfraDocsUpdateTocFrontmatter:
             "\n"
             "Body.\n"
         )
-        updated, changed = u.Infra.update_toc(mangled)
+        updated, changed = u.Infra.docs_contract_update_toc(mangled)
         tm.that(changed, eq=1)
         tm.that(updated.startswith("---\n"), eq=True)
         tm.that(updated.startswith("# Documentation"), eq=False)
@@ -62,7 +62,7 @@ class TestsFlextInfraDocsUpdateTocFrontmatter:
     def test_docs_contract_update_toc_still_invents_h1_for_headingless_stub() -> None:
         """Test docs contract update toc still invents h1 for headingless stub."""
         content = "<!-- AUTO-GENERATED -->\n\nStub body.\n"
-        updated, changed = u.Infra.update_toc(content)
+        updated, changed = u.Infra.docs_contract_update_toc(content)
         tm.that(changed, eq=1)
         tm.that(updated.startswith("# Documentation\n"), eq=True)
         tm.that("<!-- TOC START -->" in updated, eq=True)
