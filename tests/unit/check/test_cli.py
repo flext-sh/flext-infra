@@ -294,9 +294,10 @@ class TestsFlextInfraWorkspaceCheckCli:
 
         # Ruff completes and reports the syntax error as a finding of the
         # code: the verb does not break, and the module is never rewritten.
-        # The residual-fix verdict is deliberately RED (flext-itpd1.13.1):
-        # a fix run that leaves findings exits 1.
-        tm.that(exit_code, eq=1)
+        # A repair fails only on an ERROR outcome; residual findings keep the
+        # typed FINDINGS outcome and stay for the read-only check (tracker
+        # memory operator-ruling-2026-10-10-fix-residual-verdict).
+        tm.that(exit_code, eq=0)
         tm.that(
             module_path.read_text(encoding="utf-8"),
             eq='"""Fixture module."""\n\ndef broken(:\n',
@@ -345,9 +346,10 @@ class TestsFlextInfraWorkspaceCheckCli:
             "flext-core",
         ])
 
-        # The residual-fix verdict is deliberately RED (flext-itpd1.13.1):
-        # an unparsable neighbour leaves findings, so the fix run exits 1.
-        tm.that(exit_code, eq=1)
+        # The unparsable neighbour leaves findings for the read-only check; a
+        # repair fails only on an ERROR outcome (tracker memory
+        # operator-ruling-2026-10-10-fix-residual-verdict).
+        tm.that(exit_code, eq=0)
         tm.that(
             sample.read_text(encoding="utf-8"),
             has="    @staticmethod\n    def value() -> int:\n",
