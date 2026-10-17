@@ -279,10 +279,9 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             msg = "testmon selected node IDs outside the complete collection inventory"
             raise RuntimeError(msg)
         inventory_count = len(inventory.node_ids)
-        # Deselection is what pytest observably skipped. An empty selection of a
-        # declared file runs under --testmon-forceselect, so an unchanged file
-        # is a complete deselection (a typed cache hit); the complete phase of
-        # the same verb then executes the whole file.
+        # Deselection follows the centrally enforced manifest. An empty
+        # incremental suite selection deselects the complete inventory; declared
+        # file and full requests execute their complete in-scope inventory.
         return (inventory_count - len(selected.node_ids), inventory_count)
 
     def _diagnostics(self, report_dir: Path) -> p.Result[m.Infra.PytestDiagnostics]:

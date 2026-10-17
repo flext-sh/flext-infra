@@ -578,7 +578,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
         transaction = FlextInfraCodegenTransaction(mise_owner)
         root = request.root.expanduser().resolve()
-        roots = FlextInfraCodegenTransaction.capability_roots(
+        roots = transaction.capability_roots(
             "bootstrap",
             tuple(
                 (root / repository.path).resolve() for repository in plan.repositories
@@ -600,20 +600,16 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 m.Infra.CodegenResult(plan=plan, written_files=written.value),
             )
 
-        published = transaction.run_files_locked(roots, publish)
-        if published.failure:
-            return published
-        qualified = transaction.publish_operation_receipt(
-            request,
-            tuple(receipts),
-            scope_roots=tuple(roots.values()),
-            completed=True,
-        )
-        if qualified.failure:
-            return r[m.Infra.CodegenResult].from_failure(qualified)
-        return r[m.Infra.CodegenResult].ok(
-            published.value.model_copy(
-                update={"publication_receipt": qualified.value},
+        return transaction.run_files_locked(roots, publish).flat_map(
+            lambda result: transaction.publish_operation_receipt(
+                request,
+                tuple(receipts),
+                scope_roots=tuple(roots.values()),
+                completed=True,
+            ).map(
+                lambda receipt: result.model_copy(
+                    update={"publication_receipt": receipt},
+                ),
             ),
         )
 
@@ -669,6 +665,16 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
             files=plan.files,
             inputs=tuple(inputs.values()),
+            source_directories=tuple(
+                directory
+                for file in plan.files
+                for directory in file.source_directories
+            ),
+            source_query_topology=tuple(
+                topology
+                for file in plan.files
+                for topology in file.source_query_topology
+            ),
             issues=plan.issues,
             exception=plan.exception,
         )
@@ -690,9 +696,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                     else partial(self._validate_pyproject_stage, plans=plan.files)
                     if surface is c.Infra.CodegenConformSurface.PYPROJECT
                     else None
-                )
-                if changed
-                else None,
+                ),
             ),
             publication_receipts=publication_receipts,
         )
@@ -950,26 +954,34 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         ).flat_map(lambda _: self._prepare_managed_plan(request))
         if planned.failure:
             return r[m.Infra.CodegenResult].from_failure(planned)
-        batches: list[m.Infra.CodegenPhaseOutcome] = []
-        published = transaction.run_locked(
-            prepare=True,
-            operation=lambda scope_root: self._execute_managed_locked_prepared(
-                planned.value,
-                scope_root,
-                transaction,
-                batches,
+        operation = transaction.publish_operation_receipt(
+            request,
+            (),
+            scope_roots=tuple(
+                (request.root / repository.path).resolve()
+                for repository in planned.value.repositories
             ),
         )
-        if published.failure:
-            return published
-        lazy_published = self._publish_lazy_batch(
-            planned.value,
+        if operation.failure:
+            return r[m.Infra.CodegenResult].from_failure(operation)
+        batches: list[m.Infra.CodegenPhaseOutcome] = []
+        published = self._publish_generation_batches(
+            request,
+            self._managed_bootstrap_analysis(planned.value),
             policy,
             batches,
+            operation.value,
+        ).flat_map(
+            lambda bootstrap: self._publish_lazy_batch(
+                planned.value,
+                policy,
+                batches,
+                operation.value,
+            ).map(lambda lazy: (*bootstrap, *lazy)),
         )
-        if lazy_published.failure:
-            return r[m.Infra.CodegenResult].from_failure(lazy_published)
-        written = (*published.value.written_files, *lazy_published.value)
+        if published.failure:
+            return r[m.Infra.CodegenResult].from_failure(published)
+        written = published.value
         repaired = (
             r[bool].ok(value=True)
             if self.generation_only
@@ -980,8 +992,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         return repaired.flat_map(
             lambda _: self._publish_docs_batches(
                 request,
-                published.value.model_copy(update={"written_files": written}),
+                m.Infra.CodegenResult(plan=planned.value, written_files=written),
                 tuple(batches),
+                operation.value,
             ),
         )
 
@@ -990,6 +1003,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         plan: m.Infra.CodegenPlan,
         policy: m.Infra.CodegenParticipantPolicy,
         batches: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
+        operation: m.Infra.CodegenPhaseOutcome,
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Plan after bootstrap and lease only the next publication batch.
 
@@ -1018,40 +1032,15 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                     exception=lazy.value.exception,
                 )
             return result_type.ok(())
-        inputs = FlextInfraCodegenPreconditions.unique_states(
-            tuple(source for file in files for source in file.source_states),
-        )
-        if inputs.failure:
-            return result_type.from_failure(inputs)
         analysis = lazy.value.model_copy(
-            update={"files": files, "inputs": inputs.value},
+            update={"files": files, "inputs": ()},
         )
-        transaction = FlextInfraCodegenTransaction(
-            FlextInfraCodegenMiseArtifacts(repository_root=plan.request.root),
-            participant_policy=policy,
-            prior_publications=tuple(batches),
-        )
-        projects = frozenset(file.project for file in files)
-        roots = transaction.capability_roots(
-            "lazy-init",
-            tuple(
-                project
-                for project in (
-                    (plan.request.root / repository.path).resolve()
-                    for repository in plan.repositories
-                )
-                if project in projects
-            ),
-        )
-        return transaction.run_files_locked(
-            roots,
-            lambda scope_root: transaction.publish_file_phase_locked(
-                scope_root,
-                roots,
-                analysis,
-                m.Infra.CodegenPhasePublicationPolicy(directories=()),
-                publication_receipts=batches,
-            ),
+        return self._publish_generation_batches(
+            plan.request,
+            analysis,
+            policy,
+            batches,
+            operation,
         )
 
     def _managed_policy(
@@ -1252,74 +1241,358 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             self.docs_planner = planner
         return planned
 
-    def _execute_managed_locked_prepared(
-        self,
+    @classmethod
+    def _managed_bootstrap_analysis(
+        cls,
         plan: m.Infra.CodegenPlan,
-        scope_root: Path,
-        transaction: FlextInfraCodegenTransaction,
-        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
-    ) -> p.Result[m.Infra.CodegenResult]:
-        """Reauthenticate the captured plan and publish one locked generation cycle.
+    ) -> m.Infra.CodegenPhaseAnalysis:
+        """Retain completeness failures beside independently publishable plans.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
+            The batch candidates and first planning cause, before local admission.
 
         """
-        config_plans = self.mise_config_plans(plan)
-        if config_plans.failure:
-            return r[m.Infra.CodegenResult].from_failure(config_plans)
-        session = transaction.begin_locked(scope_root, config_plans.value, plan.files)
-        if session.failure:
-            return r[m.Infra.CodegenResult].from_failure(session)
-        recorded = transaction.record_publication(
-            session.value.model_copy(
-                update={
-                    "issues": (*session.value.issues, *plan.issues),
-                    "exception": session.value.exception or plan.exception,
-                },
-            ),
-            phase=c.Infra.CodegenStagedFilePhase.CONFORM,
+        configs = cls.mise_config_plans(plan)
+        issues = plan.issues
+        exception = plan.exception
+        if configs.failure:
+            issues = (
+                *issues,
+                m.Infra.Issue(
+                    file=str(plan.request.root),
+                    line=0,
+                    column=0,
+                    code=c.Infra.ToolOutcome.ERROR.value,
+                    message=configs.error
+                    or "generation configuration plan is incomplete",
+                ),
+            )
+            if exception is None:
+                exception = configs.exception
+        return m.Infra.CodegenPhaseAnalysis(
+            phase=c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
+            files=plan.files,
+            inputs=(),
+            issues=issues,
+            exception=exception,
         )
-        if recorded.failure:
-            return r[m.Infra.CodegenResult].from_failure(recorded)
-        return transaction.publish_prepared_locked(
-            recorded.value,
-            lambda current: self._publish_managed_locked(
-                plan,
-                transaction=transaction,
-                session=current,
-                publication_receipts=publication_receipts,
-            ),
-        )
+
+    @classmethod
+    def _generation_connections(
+        cls,
+        files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> t.MutableMappingKV[Path, set[Path]]:
+        """Connect only declared groups and consumed publication destinations.
+
+        Returns:
+            Dependency edges between the actual current plans.
+
+        """
+        connections = {file.path: set[Path]() for file in files}
+        groups: dict[str, Path] = {}
+        for file in files:
+            dependencies = {source.path for source in file.source_states} | set(
+                file.tracking_dependencies
+            )
+            if file.dependency_group is not None:
+                dependencies.add(groups.setdefault(file.dependency_group, file.path))
+            for dependency in dependencies & connections.keys():
+                connections[file.path].add(dependency)
+                connections[dependency].add(file.path)
+        cls._generation_election_connections(files, connections)
+        return connections
 
     @staticmethod
-    def _publish_managed_locked(
-        plan: m.Infra.CodegenPlan,
-        transaction: FlextInfraCodegenTransaction,
-        session: m.Infra.CodegenTransactionSession,
-        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
-    ) -> p.Result[m.Infra.CodegenResult]:
-        """Settle bootstrap publication before planning the lazy phase.
+    def _generation_candidate_owners(
+        files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> t.MutableMappingKV[Path, set[Path]]:
+        """Index only destinations and directory births declared by current plans.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
+            The output owners that can affect each consumed native candidate.
 
         """
-        published = transaction.commit_locked(
-            session,
-            publication_receipts=publication_receipts,
+        owners: dict[Path, set[Path]] = {}
+        for file in files:
+            directories = (
+                file.before.directories
+                if isinstance(file.before, m.Cli.AtomicDirectoryChainPlan)
+                else ()
+            )
+            for candidate in (file.path, *directories):
+                owners.setdefault(candidate, set()).add(file.path)
+        return owners
+
+    @classmethod
+    def _generation_election_connections(
+        cls,
+        files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        connections: t.MutableMappingKV[Path, set[Path]],
+    ) -> None:
+        """Keep publications affecting consumed native elections in one component."""
+        candidates = cls._generation_candidate_owners(files)
+        membership: dict[Path, set[Path]] = {}
+        for candidate, owners in candidates.items():
+            membership.setdefault(candidate.parent, set()).update(owners)
+        for file in files:
+            queried = {
+                directory.root.path / name
+                for directory in file.source_directories
+                for name, _predicate in directory.queries
+            }
+            queried.update(
+                directory
+                for topology in file.source_query_topology
+                for directory in topology.directories
+            )
+            queried.update(
+                topology.target / name
+                for topology in file.source_query_topology
+                for name, _predicate in topology.queries
+            )
+            listed = {
+                directory.root.path
+                for directory in file.source_directories
+                if directory.membership_queried
+            }
+            listed.update(
+                topology.target
+                for topology in file.source_query_topology
+                if topology.membership_queried
+            )
+            dependencies = {
+                owner for path in queried for owner in candidates.get(path, ())
+            }
+            dependencies.update(
+                owner for path in listed for owner in membership.get(path, ())
+            )
+            for dependency in dependencies:
+                connections[file.path].add(dependency)
+                connections[dependency].add(file.path)
+
+    @classmethod
+    def _generation_batches(
+        cls,
+        files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> t.VariadicTuple[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Publish dependent effects before one complete no-op observation.
+
+        Returns:
+            Whole effect components followed by the remaining no-op plans.
+
+        """
+        connections = cls._generation_connections(files)
+        positions = {file.path: index for index, file in enumerate(files)}
+        by_path = {file.path: file for file in files}
+        batches: list[tuple[m.Infra.CodegenFilePlan, ...]] = []
+        unchanged: list[m.Infra.CodegenFilePlan] = []
+        visited: set[Path] = set()
+        for file in files:
+            if file.path in visited:
+                continue
+            component: set[Path] = set()
+            pending = {file.path}
+            while pending:
+                path = pending.pop()
+                component.add(path)
+                pending.update(connections[path] - component)
+            visited.update(component)
+            batch = tuple(
+                by_path[path] for path in sorted(component, key=positions.__getitem__)
+            )
+            if any(u.Infra.codegen_file_requires_effect(plan) for plan in batch):
+                batches.append(batch)
+            else:
+                unchanged.extend(batch)
+        if unchanged:
+            batches.append(tuple(unchanged))
+        return tuple(batches)
+
+    def _publish_generation_batches(
+        self,
+        request: m.Infra.CodegenConformRequest,
+        analysis: m.Infra.CodegenPhaseAnalysis,
+        policy: m.Infra.CodegenParticipantPolicy,
+        receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
+        operation: m.Infra.CodegenPhaseOutcome,
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Lease and authenticate each independent batch, preserving first failure.
+
+        Returns:
+            Every written path or the first original failure after independent work.
+
+        """
+        result_type = r[t.VariadicTuple[Path]]
+        first_failure = (
+            result_type.fail(
+                "\n".join(issue.formatted for issue in analysis.issues)
+                or "generation planning failed",
+                exception=analysis.exception,
+            )
+            if analysis.issues or analysis.exception is not None
+            else None
         )
-        if published.failure:
-            return r[m.Infra.CodegenResult].from_failure(published)
-        return r[m.Infra.CodegenResult].ok(
-            m.Infra.CodegenResult(plan=plan, written_files=published.value),
+        written: list[Path] = []
+        for files in self._generation_batches(analysis.files):
+            published = self._publish_generation_batch(
+                request,
+                analysis.model_copy(
+                    update={"files": files, "issues": (), "exception": None},
+                ),
+                policy,
+                receipts,
+            )
+            if published.failure:
+                if first_failure is None:
+                    first_failure = published
+            else:
+                written.extend(published.value)
+        recorded = FlextInfraCodegenTransaction.publish_operation_receipt(
+            request,
+            tuple(receipts),
+            scope_roots=operation.scope_roots,
+            operation=operation,
         )
+        if recorded.failure:
+            if first_failure is not None:
+                u.Cli.error(
+                    f"generation receipt publication failed: {recorded.error}",
+                )
+                return result_type.from_failure(first_failure)
+            return result_type.from_failure(recorded)
+        if first_failure is not None:
+            return result_type.from_failure(first_failure)
+        return result_type.ok(tuple(written))
+
+    def _publish_generation_batch(
+        self,
+        request: m.Infra.CodegenConformRequest,
+        analysis: m.Infra.CodegenPhaseAnalysis,
+        policy: m.Infra.CodegenParticipantPolicy,
+        receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Use the shared journal publisher for one exact dependent component.
+
+        Returns:
+            Its published paths or the original admission or consumer failure.
+
+        """
+        result_type = r[t.VariadicTuple[Path]]
+        inputs = FlextInfraCodegenPreconditions.unique_states(
+            tuple(source for file in analysis.files for source in file.source_states),
+        )
+        if inputs.failure:
+            return result_type.from_failure(inputs)
+        files = analysis.files
+        if len(files) > 1:
+            group = f"{analysis.phase}:{files[0].path}"
+            files = tuple(
+                file.model_copy(update={"dependency_group": group}) for file in files
+            )
+        analysis = analysis.model_copy(
+            update={
+                "files": files,
+                "inputs": inputs.value,
+                "source_directories": tuple(
+                    directory for file in files for directory in file.source_directories
+                ),
+                "source_query_topology": tuple(
+                    topology
+                    for file in files
+                    for topology in file.source_query_topology
+                ),
+            },
+        )
+        transaction = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=request.root),
+            participant_policy=policy,
+            prior_publications=tuple(receipts),
+        )
+        roots = transaction.capability_roots(
+            analysis.phase,
+            tuple(dict.fromkeys(file.project for file in analysis.files)),
+        )
+        changed = tuple(
+            file
+            for file in analysis.files
+            if u.Infra.codegen_file_requires_effect(file)
+        )
+        validated = any(
+            file.path.name
+            in {
+                c.Infra.MISE_TOML_FILENAME,
+                c.Infra.PYPROJECT_FILENAME,
+            }
+            for file in analysis.files
+        )
+        publication = m.Infra.CodegenPhasePublicationPolicy(
+            directories=tuple(
+                sorted({
+                    file.path.parent
+                    for file in changed
+                    if not file.path.parent.is_dir()
+                })
+            ),
+            staged_validator=(
+                partial(self._validate_generation_stage, plans=analysis.files)
+                if validated
+                else None
+            ),
+        )
+        return transaction.run_files_locked(
+            roots,
+            lambda scope_root: transaction.publish_file_phase_locked(
+                scope_root,
+                roots,
+                analysis,
+                publication,
+                publication_receipts=receipts,
+            ),
+        )
+
+    @classmethod
+    def _validate_generation_stage(
+        cls,
+        session: m.Infra.CodegenTransactionSession,
+        publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        *,
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> p.Result[m.Infra.CodegenTransactionSession]:
+        """Compose existing Mise and Pyproject consumers over exact staged subsets.
+
+        Returns:
+            The unchanged cursor or the first native consumer failure.
+
+        """
+        for plan in plans:
+            if plan.path.name != c.Infra.MISE_TOML_FILENAME:
+                continue
+            checked = cls._validate_mise_stage(
+                session,
+                tuple(item for item in publications if item.before.path == plan.path),
+                plans=(plan,),
+            )
+            if checked.failure:
+                return checked
+            session = checked.value
+        pyprojects = tuple(
+            plan for plan in plans if plan.path.name == c.Infra.PYPROJECT_FILENAME
+        )
+        if pyprojects:
+            paths = {plan.path for plan in pyprojects}
+            return cls._validate_pyproject_stage(
+                session,
+                tuple(item for item in publications if item.before.path in paths),
+                plans=pyprojects,
+            )
+        return r[m.Infra.CodegenTransactionSession].ok(session)
 
     def _publish_docs_batches(
         self,
         request: m.Infra.CodegenConformRequest,
         result: m.Infra.CodegenResult,
         batches: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+        operation: m.Infra.CodegenPhaseOutcome,
     ) -> p.Result[m.Infra.CodegenResult]:
         """Publish only invocation-owned docs after the managed batch releases.
 
@@ -1368,6 +1641,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 (request.root / repository.path).resolve()
                 for repository in result.plan.repositories
             ),
+            operation=operation,
             completed=True,
         )
         if qualified.failure:

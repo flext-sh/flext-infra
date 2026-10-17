@@ -47,7 +47,12 @@ class FlextInfraMisePublication:
             The resulting ``p.Result[bool]``.
 
         """
-        dependencies = cls._source_prerequisites(plan.source_states, {})
+        dependencies = cls._source_prerequisites(
+            plan.source_states,
+            {},
+            directories=plan.source_directories,
+            topology=plan.source_query_topology,
+        )
         if dependencies.failure:
             return dependencies
         publication_before = u.Infra.codegen_file_before_state(plan)
@@ -104,7 +109,12 @@ class FlextInfraMisePublication:
         )
         if staged_publication.failure:
             return r[bool].from_failure(staged_publication)
-        dependencies = cls._source_prerequisites(plan.source_states, {})
+        dependencies = cls._source_prerequisites(
+            plan.source_states,
+            {},
+            directories=plan.source_directories,
+            topology=plan.source_query_topology,
+        )
         if dependencies.failure:
             return dependencies
         published = FlextInfraMiseArtifactsFiles.write_publication(
@@ -139,6 +149,8 @@ class FlextInfraMisePublication:
                     before=before,
                     replacement=None,
                     source_states=plan.source_states,
+                    source_directories=plan.source_directories,
+                    source_query_topology=plan.source_query_topology,
                     tracking=plan.tracking,
                     index_before=plan.index_before,
                     tracking_dependencies=plan.tracking_dependencies,
@@ -171,6 +183,8 @@ class FlextInfraMisePublication:
                 before=before,
                 replacement=staged.value,
                 source_states=plan.source_states,
+                source_directories=plan.source_directories,
+                source_query_topology=plan.source_query_topology,
                 tracking=plan.tracking,
                 index_before=plan.index_before,
                 tracking_dependencies=plan.tracking_dependencies,
@@ -242,7 +256,21 @@ class FlextInfraMisePublication:
         inputs = FlextInfraMisePublication._admission_inputs(analysis)
         if inputs.failure:
             return result_type.from_failure(inputs)
-        current = FlextInfraMisePublication._source_prerequisites(inputs.value, {})
+        directories, topology = u.Cli.atomic_merge_directory_query_receipts(
+            analysis.source_directories, analysis.source_query_topology
+        )
+        analysis = analysis.model_copy(
+            update={
+                "source_directories": directories,
+                "source_query_topology": topology,
+            }
+        )
+        current = FlextInfraMisePublication._source_prerequisites(
+            inputs.value,
+            {},
+            directories=analysis.source_directories,
+            topology=analysis.source_query_topology,
+        )
         if current.failure:
             return result_type.from_failure(current)
         if producer is None:
@@ -265,6 +293,8 @@ class FlextInfraMisePublication:
                 admitted_states=inputs.value,
                 phase=analysis.phase,
                 outputs=outputs.value,
+                source_directories=analysis.source_directories,
+                source_query_topology=analysis.source_query_topology,
             )
         )
 
@@ -287,6 +317,23 @@ class FlextInfraMisePublication:
             return result_type.from_failure(inputs)
         if declared.failure:
             return result_type.from_failure(declared)
+        if u.Cli.atomic_merge_directory_query_receipts(
+            analysis.source_directories, analysis.source_query_topology
+        ) != u.Cli.atomic_merge_directory_query_receipts(
+            tuple(
+                receipt
+                for file in analysis.files
+                for receipt in file.source_directories
+            ),
+            tuple(
+                receipt
+                for file in analysis.files
+                for receipt in file.source_query_topology
+            ),
+        ):
+            return result_type.fail(
+                "batch native source queries differ from publication dependencies"
+            )
         input_states = {item.path: item for item in inputs.value}
         declared_states = {item.path: item for item in declared.value}
         if input_states != declared_states:
@@ -338,6 +385,12 @@ class FlextInfraMisePublication:
                 producer.generator_reference
                 if producer is not None
                 else analysis.generator_reference
+            ),
+            destinations=tuple(
+                dict.fromkeys((
+                    *(state.path for state in analysis.inputs),
+                    *(file.path for file in analysis.files),
+                ))
             ),
         )
         if outputs.failure:
@@ -420,6 +473,16 @@ class FlextInfraMisePublication:
         )
         prior = FlextInfraMiseArtifactsVerification.publication_outputs_current(
             prior_publications,
+            destinations=tuple(
+                dict.fromkeys(
+                    path
+                    for item in publications
+                    for path in (
+                        item.before.path,
+                        *(state.path for state in item.source_states),
+                    )
+                )
+            ),
         )
         if prior.failure:
             return result_type.from_failure(prior)
@@ -432,6 +495,13 @@ class FlextInfraMisePublication:
                 publications,
                 written,
                 published_states,
+                directory_publications=tuple(
+                    item.created
+                    for item in journal.directories
+                    if item.created is not None
+                )
+                if journal is not None
+                else (),
             )
             if blocking is not None:
                 issues.append(blocking)
@@ -556,6 +626,8 @@ class FlextInfraMisePublication:
         published_states: t.MutableMappingKV[
             Path, t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileState]
         ],
+        *,
+        directory_publications: t.VariadicTuple[m.Cli.AtomicDirectoryState] = (),
     ) -> t.Pair[m.Infra.Issue | None, BaseException | None]:
         """Name the first failed publication prerequisite of one target.
 
@@ -579,6 +651,9 @@ class FlextInfraMisePublication:
             ready = FlextInfraMisePublication._source_prerequisites(
                 publication.source_states,
                 published_states,
+                directories=publication.source_directories,
+                topology=publication.source_query_topology,
+                directory_publications=directory_publications,
             )
         if ready.success:
             return None, None
@@ -630,6 +705,8 @@ class FlextInfraMisePublication:
             batch_admission.exception is not None
             or batch_admission.phase != analysis.phase
             or batch_admission.admitted_states != analysis.inputs
+            or batch_admission.source_directories != analysis.source_directories
+            or batch_admission.source_query_topology != analysis.source_query_topology
             or tuple(output.path for output in batch_admission.outputs)
             != tuple(plan.path for plan in analysis.files)
         )
@@ -674,6 +751,10 @@ class FlextInfraMisePublication:
         plans = {item.path: item for item in batch_analysis.files}
         if any(
             item.project != plans[item.before.path].project
+            or item.source_states != plans[item.before.path].source_states
+            or item.source_directories != plans[item.before.path].source_directories
+            or item.source_query_topology
+            != plans[item.before.path].source_query_topology
             or (None if item.replacement is None else item.replacement.content)
             != plans[item.before.path].desired_content
             or (None if item.replacement is None else item.replacement.mode)
@@ -735,6 +816,10 @@ class FlextInfraMisePublication:
         published: t.MappingKV[
             Path, t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileState]
         ],
+        *,
+        directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = (),
+        topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (),
+        directory_publications: t.VariadicTuple[m.Cli.AtomicDirectoryState] = (),
     ) -> p.Result[bool]:
         """Verify this target's inputs, rebinding only this phase's own writes.
 
@@ -755,7 +840,46 @@ class FlextInfraMisePublication:
                 )
                 return r[bool].fail(str(cause), exception=cause)
             expected.append(after)
-        return FlextInfraMiseArtifactsVerification.states_current(tuple(expected))
+        current = FlextInfraMiseArtifactsVerification.states_current(tuple(expected))
+        if current.failure:
+            return current
+        candidates = tuple(
+            inventory.root.path / name
+            for inventory in directories
+            for name, _predicate in inventory.queries
+        ) + tuple(
+            witness.target / name
+            for witness in topology
+            for name, _predicate in witness.queries
+        )
+        relevant = tuple(
+            (before, after)
+            for before, after in published.values()
+            if any(
+                after.path == path or after.path.is_relative_to(path)
+                for path in candidates
+            )
+            or any(
+                inventory.membership_queried
+                and after.path.is_relative_to(inventory.root.path)
+                for inventory in directories
+            )
+            or any(
+                witness.membership_queried and after.path.is_relative_to(witness.target)
+                for witness in topology
+            )
+        )
+        effects = FlextInfraMiseArtifactsVerification.states_current(
+            tuple(after for _before, after in relevant)
+        )
+        if effects.failure:
+            return effects
+        return u.Cli.atomic_verify_directory_queries(
+            directories,
+            topology,
+            publications=relevant,
+            directory_publications=directory_publications,
+        )
 
     @staticmethod
     def _tracking_prerequisites(

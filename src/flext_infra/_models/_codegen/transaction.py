@@ -16,6 +16,7 @@ from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsCodegenToolchain, FlextInfraModelsRope
 from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
 from flext_infra._models._codegen.pipeline import FlextInfraModelsCodegenPipelineModels
+from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra._models.check import FlextInfraModelsCheck
 from flext_infra._models.workspace import FlextInfraModelsWorkspace
 
@@ -145,6 +146,18 @@ class FlextInfraModelsCodegenTransactionModels:
             default=(),
             description="Source-owner directory witnesses for observation",
         )
+        source_directories: t.VariadicTuple[
+            t.Pair[str, m.Cli.AtomicDirectoryInventory]
+        ] = m.Field(
+            default=(), strict=True, description="Native source election query receipts"
+        )
+        source_query_topology: t.VariadicTuple[
+            t.Pair[str, m.Cli.AtomicDirectoryChainPlan]
+        ] = m.Field(
+            default=(),
+            strict=True,
+            description="Historical ancestry inputs of native source queries",
+        )
         scope_roots: t.VariadicTuple[Path] = m.Field(
             default=(),
             description="Source-owner roots for topology observation",
@@ -206,6 +219,17 @@ class FlextInfraModelsCodegenTransactionModels:
             self._validate_staging_authority()
             self._validate_participant_coverage(selectors)
             source_keys = {(source.phase, source.path) for source in self.sources}
+            directory_keys = {
+                (phase, receipt.root.path) for phase, receipt in self.source_directories
+            }
+            topology_keys = {
+                (phase, receipt.target) for phase, receipt in self.source_query_topology
+            }
+            if len(directory_keys) != len(self.source_directories) or len(
+                topology_keys
+            ) != len(self.source_query_topology):
+                msg_0 = "journal native query receipts require unique phase paths"
+                raise ValueError(msg_0)
             for entry in self.entries:
                 if len(set(entry.source_paths)) != len(entry.source_paths):
                     msg = "journal entry source dependencies must be unique"
@@ -216,6 +240,15 @@ class FlextInfraModelsCodegenTransactionModels:
                 ):
                     msg = "journal entry source dependency has no same-phase authority"
                     raise ValueError(msg)
+                if any(
+                    (entry.phase, path) not in directory_keys
+                    for path in entry.source_directory_paths
+                ) or any(
+                    (entry.phase, path) not in topology_keys
+                    for path in entry.source_query_topology_paths
+                ):
+                    msg_0 = "journal native query reference lacks same-phase authority"
+                    raise ValueError(msg_0)
             staging_paths = tuple(intent.before.path for intent in self.staging_intents)
             if len(set(staging_paths)) != len(staging_paths):
                 msg = "staging intention paths must have unique authority"
@@ -360,7 +393,9 @@ class FlextInfraModelsCodegenTransactionModels:
                 raise ValueError(msg)
             return self
 
-    class CodegenTransactionSession(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class CodegenTransactionSession(
+        FlextInfraModelsBase.FrozenArbitrary, strict=True, validate_default=True
+    ):
         """Immutable cursor for one live prepared generation transaction."""
 
         plan: Annotated[
@@ -409,7 +444,9 @@ class FlextInfraModelsCodegenTransactionModels:
                 raise ValueError(msg)
             return self
 
-    class CodegenPhasePublicationPolicy(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class CodegenPhasePublicationPolicy(
+        FlextInfraModelsBase.FrozenArbitrary, strict=True, validate_default=True
+    ):
         """Caller-owned directories and native admission for one publication."""
 
         directories: t.VariadicTuple[Path] = m.Field(

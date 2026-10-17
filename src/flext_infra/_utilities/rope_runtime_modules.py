@@ -849,30 +849,5 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             raise TypeError(msg)
         return normal_import
 
-    @classmethod
-    def import_statement(
-        cls,
-        import_info: t.Infra.RopeFromImport | t.Infra.RopeNormalImport,
-        start_line: int,
-        end_line: int,
-    ) -> t.Infra.RopeImportStatement:
-        """Build Rope's native import statement over 1-based, end-exclusive lines.
-
-        Returns:
-            The native ``ImportStatement`` Rope's module import table records.
-
-        Raises:
-            TypeError: If Rope's record does not satisfy its protocol.
-
-        """
-        statement = cls.runtime_callable(
-            "rope.refactor.importutils.importinfo",
-            "ImportStatement",
-        )(import_info, start_line, end_line)
-        if not isinstance(statement, p.Infra.RopeImportStatement):
-            msg = "rope ImportStatement does not satisfy p.Infra.RopeImportStatement"
-            raise TypeError(msg)
-        return statement
-
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeRuntimeModules"]

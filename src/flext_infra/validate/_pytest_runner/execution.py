@@ -750,10 +750,16 @@ class FlextInfraPytestRunnerExecution(
             )
         )
         self._cache_publication = None
+        lease_started = time.monotonic()
+        sys.stderr.write(f"pytest cache lease: acquiring {self.testmon_db}\n")
         with u.Infra.codegen_transaction_lease(
             self.testmon_db,
             wait_seconds=wait_seconds,
         ):
+            sys.stderr.write(
+                "pytest cache lease: acquired "
+                f"after {time.monotonic() - lease_started:.3f}s\n",
+            )
             result = self._execute_testmon_leased(
                 complete=complete,
                 execution_mode=execution_mode,
@@ -869,8 +875,8 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=execution_mode,
         )
         outcome = self._run_suite(command, report_dir, execution_mode=execution_mode)
-        # A declared file always executes under forceselect, so an empty testmon
-        # selection over a restored cache is never a cache hit for it.
+        # A declared file executes its complete collected inventory, so an empty
+        # incremental suite selection never grants a cache hit to a file request.
         cache_hit = (
             self.target_file is None
             and not complete

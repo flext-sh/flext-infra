@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections import Counter
 from pathlib import Path
-from typing import Annotated, ClassVar, Self
+from typing import Annotated, Self
 
 from flext_cli import m
 
@@ -19,7 +19,7 @@ from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalM
 from flext_infra._models._codegen.lazy_init import FlextInfraModelsCodegenLazyInitModels
 from flext_infra._models._codegen.scaffold import FlextInfraModelsCodegenScaffoldModels
 from flext_infra._models._config.base import FlextInfraConfigModels
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra._models.check import FlextInfraModelsCheck
 from flext_infra._models.workspace import FlextInfraModelsWorkspace
 
@@ -64,7 +64,9 @@ class FlextInfraModelsCodegenPipelineModels:
             m.Field(description="Apply the complete candidate campaign"),
         ] = True
 
-    class CodegenPhaseAnalysis(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class CodegenPhaseAnalysis(
+        FlextInfraModelsBase.FrozenArbitrary, strict=True, validate_default=True
+    ):
         """Immutable planner receipt reused for publication verification."""
 
         phase: Annotated[
@@ -79,6 +81,15 @@ class FlextInfraModelsCodegenPipelineModels:
             t.VariadicTuple[m.Cli.AtomicFileState],
             m.Field(description="Ordered complete authenticated planner inputs"),
         ]
+        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
+            default=(), description="Native source election query receipts"
+        )
+        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
+            m.Field(
+                default=(),
+                description="Physical ancestry of queried source directories",
+            )
+        )
         generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
             default=(), description="Authenticated producer resource membership"
         )
@@ -133,7 +144,9 @@ class FlextInfraModelsCodegenPipelineModels:
                 raise ValueError(msg)
             return self
 
-    class CodegenPhaseOutcome(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class CodegenPhaseOutcome(
+        FlextInfraModelsBase.FrozenArbitrary, strict=True, validate_default=True
+    ):
         """One fleet worker's phase analysis, or its failure as data."""
 
         _publication_birth: t.Pair[int, str] | None = m.PrivateAttr(default=None)
@@ -236,6 +249,15 @@ class FlextInfraModelsCodegenPipelineModels:
             default=(),
             description="Captured source directory ancestry and presence",
         )
+        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
+            default=(), description="Native source election query receipts"
+        )
+        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
+            m.Field(
+                default=(),
+                description="Historical ancestry inputs of native source queries",
+            )
+        )
         scope_roots: t.VariadicTuple[Path] = m.Field(
             default=(),
             description="Roots elected by this receipt's native source owner",
@@ -259,7 +281,7 @@ class FlextInfraModelsCodegenPipelineModels:
             description="Actual completed native scope-batch receipts",
         )
 
-    class CodegenResult(FlextInfraConfigModelsContract.ConfigContract):
+    class CodegenResult(FlextInfraModelsBase.FrozenArbitrary):
         """An actual generation plan or an authenticated observational receipt."""
 
         plan: FlextInfraConfigModels.CodegenPlan | None = m.Field(
@@ -313,19 +335,13 @@ class FlextInfraModelsCodegenPipelineModels:
                     raise ValueError(msg)
             return self
 
-    class CodegenConformPorts(m.ArbitraryTypesModel):
+    class CodegenConformPorts(m.ContractModel):
         """Collaborators the complete conform crosses into, wired by the facade.
 
         Docs rendering is another service family; the composition root binds
         its implementation once and conform only consumes this port. Participant
         authorization is likewise supplied before any journal lease or recovery.
         """
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True,
-            extra="forbid",
-            arbitrary_types_allowed=True,
-        )
 
         docs_planner: Annotated[
             p.Infra.DocsArtifactPlannerFactory,
@@ -337,11 +353,6 @@ class FlextInfraModelsCodegenPipelineModels:
 
     class CodegenPipelineState(m.ArbitraryTypesModel):
         """Typed inter-stage state for the codegen pipeline — Pydantic v2 model."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid",
-            arbitrary_types_allowed=True,
-        )
 
         discovered_projects: Annotated[
             t.SequenceOf[p.Infra.ProjectInfo],

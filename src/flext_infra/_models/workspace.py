@@ -21,6 +21,7 @@ from flext_infra._models import (
 from flext_infra._models._config import FlextInfraConfigModels
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._git import FlextInfraModelsGitIdentity
+from flext_infra._models.base import FlextInfraModelsBase
 
 
 class FlextInfraModelsWorkspace:
@@ -329,7 +330,9 @@ class FlextInfraModelsWorkspace:
         )
         _native_birth: t.Pair[int, str] | None = m.PrivateAttr(default=None)
 
-    class NativeImportRequest(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class NativeImportRequest(
+        FlextInfraModelsBase.FrozenArbitrary, strict=True, validate_default=True
+    ):
         """Loaded producer identities and pinned inputs for source authentication."""
 
         repository_root: Path = m.Field(

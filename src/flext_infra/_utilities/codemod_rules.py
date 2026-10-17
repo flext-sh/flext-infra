@@ -262,7 +262,13 @@ class FlextInfraUtilitiesCodemodRules(
         Returns:
             The staged native scan ruleset and its projected configuration.
 
+        Raises:
+            ValueError: If native rule IDs collide across the elected providers.
+
         """
+        if len({rule.id for rule in plan.rules}) != len(plan.rules):
+            msg = "native codemod rule IDs must be unique across providers"
+            raise ValueError(msg)
         rule_directory = destination / c.Infra.CODEMOD_RULE_DIRS_KEY
         utility_directory = destination / c.Infra.CODEMOD_UTIL_DIRS_KEY
         u.Cli.ensure_dir(rule_directory).unwrap()
@@ -446,16 +452,25 @@ class FlextInfraUtilitiesCodemodRules(
         if runtime_result.failure:
             return r[m.Infra.CodemodRulePlan].from_failure(runtime_result)
         universal, runtime = universal_result.value, runtime_result.value
-        universal_order = cls._provider_order(universal, indexed)
-        runtime_order = cls._provider_order(runtime, indexed)
         providers: list[t.Pair[str, Path]] = []
-        for name in (*universal_order, *runtime_order):
+        for name in (
+            *cls._provider_order(universal, indexed),
+            *cls._provider_order(runtime, indexed),
+        ):
             provider_config = universal.get(name) or runtime.get(name)
             if provider_config is None:
                 return r[m.Infra.CodemodRulePlan].fail(
                     f"codemod provider disappeared from resolved graph: {name}",
                 )
             providers.append((name, provider_config))
+        local_config = root / c.Infra.CODEMOD_CONFIG_RELPATH
+        if local_config.is_file():
+            providers = [
+                (name, local_config if name == root_name else provider_config)
+                for name, provider_config in providers
+            ]
+            if all(name != root_name for name, _config in providers):
+                providers.append((root_name, local_config))
         return cls._compose(tuple(providers), root_name, runtime_closure, root)
 
     @staticmethod
@@ -744,15 +759,16 @@ class FlextInfraUtilitiesCodemodRules(
         """
         if parsed.failure:
             return parsed
-        payload = u.Cli.json_dumps([
-            rule.model_dump(mode="json") for rule in parsed.value
-        ])
-        if payload.failure:
-            return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(payload)
+        payload = u.type_adapter(tuple[m.Infra.CodemodRule, ...]).dump_json(
+            tuple(parsed.value),
+        )
         directory = u.Cli.ensure_dir(cache_file.parent)
         if directory.failure:
             return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(directory)
-        written = u.Cli.atomic_write_text_file(cache_file, payload.value)
+        written = u.Cli.atomic_write_text_file(
+            cache_file,
+            payload.decode(c.DEFAULT_ENCODING),
+        )
         if written.failure:
             return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(written)
         return parsed
@@ -788,18 +804,9 @@ class FlextInfraUtilitiesCodemodRules(
             / f"{u.Cli.sha256_content(identity.value)}.json"
         )
         if cache_file.is_file():
-            loaded = u.Cli.json_loads(
-                cache_file.read_text(encoding=c.DEFAULT_ENCODING),
-            )
-            if loaded.failure:
-                return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(loaded)
-            if not isinstance(loaded.value, list):
-                return r[t.SequenceOf[m.Infra.CodemodRule]].fail(
-                    f"codemod rule cache is not a rule list: {cache_file}",
-                )
             return r[t.SequenceOf[m.Infra.CodemodRule]].ok(
-                tuple(
-                    m.Infra.CodemodRule.model_validate(item) for item in loaded.value
+                u.type_adapter(tuple[m.Infra.CodemodRule, ...]).validate_json(
+                    cache_file.read_text(encoding=c.DEFAULT_ENCODING),
                 ),
             )
         parsed = cls._parse_rules(provider, sources)
@@ -925,26 +932,29 @@ class FlextInfraUtilitiesCodemodRules(
             )
             and not context.value
         )
+        payload = u.Cli.json_dumps({
+            "id": rule_id,
+            "digest": u.Cli.sha256_content(canonical_json),
+            "provider": provider,
+            "resource": str(resource),
+            "fixable": "fix" in parsed_rule,
+            "module_absence": module_absence,
+            "expected": declared_receipt[0] if declared_receipt else None,
+            "owner": declared_metadata.get(
+                c.Infra.CODEMOD_RULE_OWNER_KEY,
+            ),
+            "consumers_of": declared_metadata.get(
+                c.Infra.CODEMOD_RULE_CONSUMERS_OF_KEY,
+            ),
+            "relocation": declared_metadata.get(
+                c.Infra.CODEMOD_RULE_RELOCATION_KEY,
+            ),
+            "context": [item.model_dump(mode="json") for item in context.value],
+        })
+        if payload.failure:
+            return r[m.Infra.CodemodRule].from_failure(payload)
         return r[m.Infra.CodemodRule].ok(
-            m.Infra.CodemodRule.model_validate({
-                "id": rule_id,
-                "digest": u.Cli.sha256_content(canonical_json),
-                "provider": provider,
-                "resource": resource,
-                "fixable": "fix" in parsed_rule,
-                "module_absence": module_absence,
-                "expected": declared_receipt[0] if declared_receipt else None,
-                "owner": declared_metadata.get(
-                    c.Infra.CODEMOD_RULE_OWNER_KEY,
-                ),
-                "consumers_of": declared_metadata.get(
-                    c.Infra.CODEMOD_RULE_CONSUMERS_OF_KEY,
-                ),
-                "relocation": declared_metadata.get(
-                    c.Infra.CODEMOD_RULE_RELOCATION_KEY,
-                ),
-                "context": context.value,
-            }),
+            m.Infra.CodemodRule.model_validate_json(payload.value),
         )
 
     @classmethod
@@ -1044,19 +1054,26 @@ class FlextInfraUtilitiesCodemodRules(
                 verdict = cls._context_verdict(variable, condition, verdicts)
                 if verdict.failure:
                     return conditions.from_failure(verdict)
-                parsed.append(
-                    m.Infra.CodemodContextCondition.model_validate({
-                        "variable": variable,
-                        "predicate": condition[verdict.value],
-                        "holds": verdict.value == c.Infra.CODEMOD_CONTEXT_HOLDS_KEY,
-                        "of": condition.get(c.Infra.CODEMOD_CONTEXT_OF_KEY),
-                        "arg": str(
+                payload = u.Cli.json_dumps({
+                    "variable": variable,
+                    "predicate": condition[verdict.value],
+                    "holds": verdict.value == c.Infra.CODEMOD_CONTEXT_HOLDS_KEY,
+                    "of": condition.get(c.Infra.CODEMOD_CONTEXT_OF_KEY),
+                    "arg": list[t.JsonValue](
+                        str(
                             condition.get(c.Infra.CODEMOD_CONTEXT_ARG_KEY, ""),
                         ).split(),
-                        "as_": str(
+                    ),
+                    "as_": list[t.JsonValue](
+                        str(
                             condition.get(c.Infra.CODEMOD_CONTEXT_AS_KEY, ""),
                         ).split(),
-                    }),
+                    ),
+                })
+                if payload.failure:
+                    return conditions.from_failure(payload)
+                parsed.append(
+                    m.Infra.CodemodContextCondition.model_validate_json(payload.value),
                 )
         return conditions.ok(tuple(parsed))
 

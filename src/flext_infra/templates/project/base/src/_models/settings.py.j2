@@ -13,22 +13,10 @@ from flext_core import m
 class {{ class_stem }}SettingsModels:
     """Field-only Pydantic declarations for the {{ ns }} settings singleton."""
 
-    class SettingsRoot(m.BaseModel):
-        """Validated root loaded by the private settings composition."""
+    class SettingsNamespace(m.ContractModel):
+        """Validated environment-sourced settings for {{ ns }}."""
 
-        model_config = m.ConfigDict(frozen=True, extra="ignore")
-
-        class SettingsNamespace(m.BaseModel):
-            """Validated environment-sourced settings for {{ ns }}."""
-
-            model_config = m.ConfigDict(frozen=True, extra="forbid")
-
-            enabled: bool = {% if scaffold.ping_example.enabled_default %}True{% else %}False{% endif %}
-
-        {{ ns }}: SettingsNamespace = m.Field(
-            default_factory=SettingsNamespace,
-            description="Validated {{ ns }} project settings.",
-        )
+        enabled: bool = {% if scaffold.ping_example.enabled_default %}True{% else %}False{% endif %}
 
 
 __all__: list[str] = ["{{ class_stem }}SettingsModels"]

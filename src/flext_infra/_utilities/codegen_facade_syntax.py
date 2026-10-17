@@ -6,21 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from typing import override
 
 from libcst import (
     Arg,
-    BaseStatement,
     ClassDef,
     Comma,
     CSTTransformer,
-    ImportAlias,
     ImportFrom,
     ImportStar,
     LeftParen,
     MaybeSentinel,
-    Module,
     ParenthesizedWhitespace,
     RightParen,
     SimpleStatementLine,
@@ -28,7 +24,7 @@ from libcst import (
     parse_expression,
     parse_module,
 )
-from libcst.metadata import MetadataWrapper, PositionProvider
+from libcst.metadata import PositionProvider
 
 from flext_infra import config, t
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
@@ -37,11 +33,60 @@ from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 class FlextInfraUtilitiesCodegenFacadeSyntax:
     """Preserve facade syntax while composing declared owners."""
 
+    class WrapImports(CSTTransformer):
+        """Wrap emitted imports using the declared module and line budget."""
+
+        def __init__(self, module: t.Infra.CstModule, line_length: int) -> None:
+            super().__init__()
+            self._module = module
+            self._line_length = line_length
+
+        @override
+        def leave_ImportFrom(
+            self,
+            original_node: t.Infra.CstImport,
+            updated_node: t.Infra.CstImport,
+        ) -> t.Infra.CstImport:
+            """Preserve bindings and wrap only imports exceeding the budget.
+
+            Returns:
+                The original import or its parenthesized equivalent.
+
+            """
+            if (
+                isinstance(updated_node.names, ImportStar)
+                or "\n" in self._module.code_for_node(original_node)
+                or len(self._module.code_for_node(original_node)) <= self._line_length
+            ):
+                return updated_node
+            return updated_node.with_changes(
+                lpar=LeftParen(
+                    whitespace_after=ParenthesizedWhitespace(
+                        last_line=SimpleWhitespace("    "),
+                    ),
+                ),
+                names=tuple(
+                    alias.with_changes(
+                        comma=Comma(
+                            whitespace_after=ParenthesizedWhitespace(
+                                last_line=SimpleWhitespace(
+                                    "    "
+                                    if index < len(updated_node.names) - 1
+                                    else "",
+                                ),
+                            ),
+                        ),
+                    )
+                    for index, alias in enumerate(updated_node.names)
+                ),
+                rpar=RightParen(),
+            )
+
     @staticmethod
     def _mergeable_import(
-        module: Module,
-        statement: BaseStatement,
-    ) -> t.Pair[str, ImportFrom] | None:
+        module: t.Infra.CstModule,
+        statement: t.Infra.CstStatement,
+    ) -> t.Pair[str, t.Infra.CstImport] | None:
         """Return the module name and node of one absolute member import.
 
         Returns:
@@ -79,7 +124,9 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
         """
         module = parse_module(source)
         mergeable = FlextInfraUtilitiesCodegenFacadeSyntax._mergeable_import
-        members: t.MutableMappingKV[str, t.MutableMappingKV[str, ImportAlias]] = {}
+        members: t.MutableMappingKV[
+            str, t.MutableMappingKV[str, t.Infra.CstImportAlias]
+        ] = {}
         for statement in module.body:
             found = mergeable(module, statement)
             if found is None or isinstance(found[1].names, ImportStar):
@@ -88,7 +135,7 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
             for item in tuple(found[1].names):
                 plain = item.with_changes(comma=MaybeSentinel.DEFAULT)
                 bucket.setdefault(module.code_for_node(plain), plain)
-        body: list[BaseStatement] = []
+        body: list[t.Infra.CstStatement] = []
         emitted: set[str] = set()
         for statement in module.body:
             found = mergeable(module, statement)
@@ -139,59 +186,18 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
 
         """
         module = parse_module(source)
-
-        class WrapImports(CSTTransformer):
-            """Wrap each emitted import in a single concrete-syntax traversal."""
-
-            @override
-            def leave_ImportFrom(
-                self,
-                original_node: ImportFrom,
-                updated_node: ImportFrom,
-            ) -> ImportFrom:
-                """Preserve bindings and wrap only imports exceeding the budget.
-
-                Returns:
-                    The original import or its parenthesized equivalent.
-
-                """
-                if (
-                    isinstance(updated_node.names, ImportStar)
-                    or "\n" in module.code_for_node(original_node)
-                    or len(module.code_for_node(original_node))
-                    <= config.Infra.tooling.tools.ruff.line_length
-                ):
-                    return updated_node
-                return updated_node.with_changes(
-                    lpar=LeftParen(
-                        whitespace_after=ParenthesizedWhitespace(
-                            last_line=SimpleWhitespace("    "),
-                        ),
-                    ),
-                    names=tuple(
-                        alias.with_changes(
-                            comma=Comma(
-                                whitespace_after=ParenthesizedWhitespace(
-                                    last_line=SimpleWhitespace(
-                                        "    "
-                                        if index < len(updated_node.names) - 1
-                                        else "",
-                                    ),
-                                ),
-                            ),
-                        )
-                        for index, alias in enumerate(updated_node.names)
-                    ),
-                    rpar=RightParen(),
-                )
-
-        return module.visit(WrapImports()).code
+        return module.visit(
+            FlextInfraUtilitiesCodegenFacadeSyntax.WrapImports(
+                module,
+                config.Infra.tooling.tools.ruff.line_length,
+            ),
+        ).code
 
     @staticmethod
     def _declared_facade_bases(
-        owner: ClassDef,
+        owner: t.Infra.CstClass,
         ordered: t.SequenceOf[str],
-    ) -> tuple[Arg, ...]:
+    ) -> t.VariadicTuple[t.Infra.CstArgument]:
         """Build the reordered base arguments for the facade namespace.
 
         Returns:
@@ -209,9 +215,9 @@ class FlextInfraUtilitiesCodegenFacadeSyntax:
 
     @staticmethod
     def _facade_namespace_cst(
-        wrapper: MetadataWrapper,
-        namespace: ast.ClassDef,
-    ) -> ClassDef:
+        wrapper: t.Infra.CstMetadata,
+        namespace: t.Infra.PythonClassNode,
+    ) -> t.Infra.CstClass:
         """Resolve the unique concrete class span of the projected namespace.
 
         Returns:

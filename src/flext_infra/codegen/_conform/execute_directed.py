@@ -29,22 +29,13 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
     def _observe_publication(
         request: m.Infra.CodegenConformRequest,
     ) -> p.Result[m.Infra.CodegenResult]:
-        """Consume authenticated publication evidence without invoking a planner.
+        """Observe physical publication evidence without a general code audit.
 
         Returns:
             The verified publication result, or the verification failure.
 
         """
-        verifier = FlextInfraValidateFreshImport.capture_producer(
-            request.root,
-            entrypoint=FlextInfraMiseArtifactsVerification.publication_current,
-        )
-        if verifier.failure:
-            return r[m.Infra.CodegenResult].from_failure(verifier)
         with FlextInfraCodegenFileLeases.mutation_lease(request.root):
-            current = FlextInfraCodegenPreconditions.producer_current(verifier.value)
-            if current.failure:
-                return r[m.Infra.CodegenResult].from_failure(current)
             observed = FlextInfraMiseArtifactsVerification.publication_current(
                 request,
             )
@@ -185,7 +176,12 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             if stage_workspace.failure:
                 return r[t.MappingKV[str, Path]].from_failure(stage_workspace)
             if stage_workspace.value != request.root.expanduser().resolve():
-                roots["@stage-inputs-0"] = stage_workspace.value
+                roots = {
+                    **roots,
+                    **FlextInfraCodegenTransaction.capability_roots(
+                        "stage-inputs", (stage_workspace.value,)
+                    ),
+                }
         return r[t.MappingKV[str, Path]].ok(roots)
 
     def _execute_lazy_init_locked(

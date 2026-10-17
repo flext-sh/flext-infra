@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_core import FlextRuntime
+
 from flext_infra import c, config, m, t, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
@@ -149,7 +151,7 @@ class FlextInfraToolTablesPhase:
         operations.append(
             toml.SetOp(
                 key="overrides",
-                value=u.normalize_to_json_value([
+                value=FlextRuntime.normalize_to_json_value([
                     {
                         "module": list(entry.modules),
                         "follow_untyped_imports": entry.follow_untyped_imports,

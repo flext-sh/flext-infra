@@ -73,7 +73,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         def __init__(
             self,
-            project: t.Infra.RopeProject,
+            project: p.Infra.RopeProject,
             sources: t.MappingKV[str, t.Pair[Path, str]],
             roots: t.StrSequence,
             extra_module_aliases: t.MappingKV[str, str] | None,
@@ -190,6 +190,38 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
             for alias_module, captured in self._sources.items():
                 alias_path, alias_source = captured
+                if alias_path.name != c.Infra.INIT_PY:
+                    continue
+                folder = self._project.get_folder(
+                    alias_path.parent.relative_to(
+                        Path(self._project.root.real_path)
+                    ).as_posix()
+                )
+                actual = {
+                    Path(child.real_path)
+                    for child in folder.get_children()
+                    if not child.is_folder()
+                    and Path(child.real_path).suffix == c.Infra.EXT_PYTHON
+                }
+                expected = {
+                    path
+                    for path, _source in self._sources.values()
+                    if path.parent == alias_path.parent
+                    and path.suffix == c.Infra.EXT_PYTHON
+                }
+                if actual != expected:
+                    message = (
+                        f"native lazy alias membership differs: {alias_path.parent}"
+                    )
+                    raise ValueError(message)
+                resource = self._project.get_resource(
+                    alias_path.relative_to(
+                        Path(self._project.root.real_path)
+                    ).as_posix()
+                )
+                alias_source = FlextInfraUtilitiesRopeRuntime.require_file_resource(
+                    resource, alias_path
+                ).read()
                 for alias, binding in (
                     FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
                         alias_module,
@@ -268,6 +300,14 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             """
             path, source = captured
+            if provider is None:
+                resource = self._project.get_resource(
+                    path.relative_to(Path(self._project.root.real_path)).as_posix()
+                )
+                # Derived facade text retains its original file input epoch.
+                FlextInfraUtilitiesRopeRuntime.require_file_resource(
+                    resource, path
+                ).read()
             request = m.Infra.SourceBindingInventoryRequest(
                 project=self._project,
                 module=module,
@@ -1211,7 +1251,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
     @classmethod
     def source_class_order(
         cls,
-        project: t.Infra.RopeProject,
+        project: p.Infra.RopeProject,
         sources: t.MappingKV[str, t.Pair[Path, str]],
         declarations: t.SequenceOf[m.Infra.SourceClassReference],
     ) -> t.StrTuple:

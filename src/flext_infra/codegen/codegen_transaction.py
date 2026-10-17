@@ -359,13 +359,10 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         label: str,
         paths: t.SequenceOf[Path],
     ) -> t.MappingKV[str, Path]:
-        """Key physical roots by their file capability selector.
-
-        The one owner of the ``@<label>-<index>`` grammar the file participant
-        model validates; every ``run_files_locked`` caller builds its roots here.
+        """Key physical roots by the selectors validated by file participants.
 
         Returns:
-            The roots keyed by capability selector, in the given order.
+            The capability root mapping in the supplied order.
 
         """
         return {f"@{label}-{index}": path for index, path in enumerate(paths)}
@@ -573,6 +570,14 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             )
         outputs = FlextInfraMiseArtifactsVerification.publication_outputs_current(
             self._prior_publications,
+            reference=(
+                None if self._producer is None else self._producer.generator_reference
+            ),
+            destinations=(
+                ()
+                if self._producer is None
+                else tuple(source.path for source in self._producer.inputs)
+            ),
         )
         if outputs.failure:
             return r[bool].from_failure(outputs)
