@@ -11,7 +11,9 @@ from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, ClassVar, Protocol, Self, runtime_checkable
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_core import p
+
+    from flext_infra import t
 
 
 @runtime_checkable
@@ -338,9 +340,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     @runtime_checkable
     class RopeProject(RopeModuleFinder, Protocol):
         """Rope project shape used by flext-infra."""
-
-        @property
-        def address(self) -> str: ...
 
         @property
         def root(self) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...

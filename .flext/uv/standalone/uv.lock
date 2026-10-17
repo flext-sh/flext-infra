@@ -12,7 +12,12 @@ supported-markers = [
 
 [manifest]
 constraints = [{ name = "mypy", specifier = "<2.4.0" }]
-overrides = [{ name = "flext-infra", editable = "../../../" }]
+overrides = [
+    { name = "flext-cli", git = "https://github.com/flext-sh/flext-cli.git?rev=upload-20261007" },
+    { name = "flext-core", git = "https://github.com/flext-sh/flext-core.git?rev=upload-20261007" },
+    { name = "flext-infra", editable = "../../../" },
+    { name = "flext-tests", git = "https://github.com/flext-sh/flext-tests.git?rev=upload-20261007" },
+]
 
 [[package]]
 name = "actionlint-py"
@@ -406,7 +411,7 @@ wheels = [
 [[package]]
 name = "flext-cli"
 version = "0.12.1"
-source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#f02a95c8f55908c39b03ea9da8d3531b408ade1c" }
+source = { git = "https://github.com/flext-sh/flext-cli.git?rev=upload-20261007#b9d4f802e7d0d8a53517de923ea96461ccf7db64" }
 dependencies = [
     { name = "annotated-types" },
     { name = "beartype" },
@@ -433,7 +438,7 @@ dependencies = [
 [[package]]
 name = "flext-core"
 version = "0.12.0"
-source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#e85f328650fb67a1093e9ffccc8034ffa83f68e9" }
+source = { git = "https://github.com/flext-sh/flext-core.git?rev=upload-20261007#ca20774cbb770a8d06ea3f4812dc68ed040fb2e5" }
 dependencies = [
     { name = "annotated-types" },
     { name = "beartype" },
@@ -709,7 +714,7 @@ dev = [
 [[package]]
 name = "flext-tests"
 version = "0.12.0"
-source = { git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev#c8a60b38773d82ff7ddfdad5174254e268b4fe4c" }
+source = { git = "https://github.com/flext-sh/flext-tests.git?rev=upload-20261007#a2403c3a1d24c6a63b8c976c30936906ddac49dc" }
 dependencies = [
     { name = "annotated-types" },
     { name = "beartype" },
@@ -1853,7 +1858,7 @@ wheels = [
 [[package]]
 name = "rope"
 version = "1.14.0+dc.3"
-source = { git = "https://github.com/marlon-costa-dc/rope.git?rev=datacosmos#0439e7847ec1b2dedcd9d61f981529b38a6fb8cf" }
+source = { git = "https://github.com/marlon-costa-dc/rope.git?rev=datacosmos#6d41eb4907aa2dce9252137c2a0f9e4d5c813294" }
 dependencies = [
     { name = "pytoolconfig", extra = ["global"] },
 ]
