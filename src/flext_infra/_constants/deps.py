@@ -88,7 +88,7 @@ class FlextInfraConstantsDeps(FlextInfraConfigVocabulary):
     DEPENDENCY_GROUPS: ClassVar[str] = "dependency-groups"
     """PEP 735 dependency-groups table key."""
     MEMBER_DEV_PROVENANCE: ClassVar[str] = "flext: derived member environment"
-    """Per-entry provenance identifying generated member environment requirements."""
+    """Inline TOML comment tagging generated additions to a member's dev group."""
 
 
 __all__: list[str] = ["FlextInfraConstantsDeps"]
