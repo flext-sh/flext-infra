@@ -277,7 +277,7 @@ class TestsFlextInfraExtendedConfigFixer:
         @staticmethod
         def test_to_array_creates_array() -> None:
             """Create a TOML array from typed string items."""
-            items = ["a", "b", "c"]
+            items = ("a", "b", "c")
             arr = u.Cli.toml_array(items)
-            tm.that(len(arr), eq=3)
+            tm.that(len(arr), eq=len(items))
             tm.that(u.Cli.toml_as_string_list(arr), eq=items)
