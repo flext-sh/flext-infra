@@ -266,7 +266,10 @@ the actual consumer captures typed config and resource inputs separately.
 Class cache writes require an unchanged classmethod receiver or an exact global class
 receiver whose native method writes the declared field. Receiver rebinding prevents
 that classification. The writer's executable code remains part of the proof, and
-changes to ordinary constants remain violations. Declared staging-path mappings apply
+changes to ordinary constants remain violations. Supplier functions are identified
+and ordered only after native receiver and field writes prove their relevance;
+unrelated generated functions do not participate in class-state writer capture.
+Declared staging-path mappings apply
 to wrapper storage and nested code units as well as direct function evidence; a
 filename change outside those mappings remains observable.
 

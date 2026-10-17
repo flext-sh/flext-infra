@@ -237,22 +237,15 @@ class FlextInfraWorkspaceNativeReference:
         # prove an external write, never another class's ``cls`` parameter.
         members = (
             *sorted(namespace.items()),
-            *sorted(
-                (
-                    (
-                        FlextInfraWorkspaceNativeReference._symbol(function),
-                        function,
-                    )
-                    for function in supplier_functions
-                    if FlextInfraWorkspaceNativeReference._is_native(
-                        function, FunctionType
-                    )
-                    and id(function) not in own_functions
-                ),
-                key=itemgetter(0),
+            *(
+                (None, function)
+                for function in supplier_functions
+                if FlextInfraWorkspaceNativeReference._is_native(function, FunctionType)
+                and id(function) not in own_functions
             ),
         )
         writers: list[t.Triple[str, p.AttributeProbe, frozenset[str]]] = []
+        supplier_writers: list[t.Triple[str, p.AttributeProbe, frozenset[str]]] = []
         for name, member in members:
             # A plain method writes class state only through the global class
             # name; a class or static method may also write through ``cls``.
@@ -361,8 +354,15 @@ class FlextInfraWorkspaceNativeReference:
                 )
             )
             if fields | augmented:
-                writers.append((name, member, fields | augmented))
-        return tuple(writers)
+                if name is None:
+                    supplier_writers.append((
+                        FlextInfraWorkspaceNativeReference._symbol(function),
+                        member,
+                        fields | augmented,
+                    ))
+                else:
+                    writers.append((name, member, fields | augmented))
+        return (*writers, *sorted(supplier_writers, key=itemgetter(0)))
 
     @classmethod
     def _native_callable_instance(cls, value: t.Infra.NativeOperand) -> bool:

@@ -13,10 +13,10 @@ supported-markers = [
 [manifest]
 constraints = [{ name = "mypy", specifier = "<2.4.0" }]
 overrides = [
-    { name = "flext-cli", git = "https://github.com/flext-sh/flext-cli.git?rev=upload-20261007" },
-    { name = "flext-core", git = "https://github.com/flext-sh/flext-core.git?rev=upload-20261007" },
+    { name = "flext-cli", git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev" },
+    { name = "flext-core", git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev" },
     { name = "flext-infra", editable = "../../../" },
-    { name = "flext-tests", git = "https://github.com/flext-sh/flext-tests.git?rev=upload-20261007" },
+    { name = "flext-tests", git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev" },
 ]
 
 [[package]]
@@ -411,7 +411,7 @@ wheels = [
 [[package]]
 name = "flext-cli"
 version = "0.12.1"
-source = { git = "https://github.com/flext-sh/flext-cli.git?rev=upload-20261007#b9d4f802e7d0d8a53517de923ea96461ccf7db64" }
+source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#6fb81afe5e3984ee4f82e8078f6eeeb5c52efcd3" }
 dependencies = [
     { name = "annotated-types" },
     { name = "beartype" },
@@ -438,7 +438,7 @@ dependencies = [
 [[package]]
 name = "flext-core"
 version = "0.12.0"
-source = { git = "https://github.com/flext-sh/flext-core.git?rev=upload-20261007#13a3e2d41d79c4ea1958df6ff5a09044342d18c0" }
+source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#bc98ce4e1d20ffcc2833089ff38d44a996993576" }
 dependencies = [
     { name = "annotated-types" },
     { name = "beartype" },
@@ -467,6 +467,7 @@ dependencies = [
     { name = "mkdocs" },
     { name = "mypy" },
     { name = "packaging" },
+    { name = "pymdown-extensions" },
     { name = "pytest" },
     { name = "pytest-markdown-docs" },
     { name = "rope" },
@@ -486,6 +487,7 @@ requires-dist = [
     { name = "mkdocs", specifier = ">=1.6.1" },
     { name = "mypy", specifier = ">=2.3.1" },
     { name = "packaging", specifier = ">=26.3" },
+    { name = "pymdown-extensions", specifier = ">=11.0.1" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-markdown-docs", specifier = ">=0.9.2" },
     { name = "rope", git = "https://github.com/marlon-costa-dc/rope.git?rev=datacosmos" },
@@ -702,7 +704,7 @@ dev = [
 [[package]]
 name = "flext-tests"
 version = "0.12.0"
-source = { git = "https://github.com/flext-sh/flext-tests.git?rev=upload-20261007#a5fc54619100922b2044fe1b3b7297b56518ede8" }
+source = { git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev#1cff3e0ac9b27a82a94412e30d8321a8fe575172" }
 dependencies = [
     { name = "annotated-types" },
     { name = "beartype" },
@@ -1846,7 +1848,7 @@ wheels = [
 [[package]]
 name = "rope"
 version = "1.14.0+dc.3"
-source = { git = "https://github.com/marlon-costa-dc/rope.git?rev=datacosmos#f174a13f464a3a41ffc65891df5b3ea488b824dd" }
+source = { git = "https://github.com/marlon-costa-dc/rope.git?rev=datacosmos#e93f35545045a96e96c8c94ddeb1077b29db4edd" }
 dependencies = [
     { name = "pytoolconfig", extra = ["global"] },
 ]
