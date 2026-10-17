@@ -290,6 +290,12 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
         NORMALIZE_IMPORTS = "normalize-imports"
         WRAP_LONG_LINE = "wrap-long-line"
 
+    SERVICE_BASE_ROOTS: ClassVar[frozenset[str]] = frozenset({"FlextService", "s"})
+    """Roots whose service operations remain public instance methods (ADR-019).
+
+    Core discovery excludes static methods, class methods and properties.
+    """
+
     CHECK_REPORT_MARKDOWN_FILENAME: ClassVar[str] = "check-report.md"
     "Human-readable check report written beside the SARIF report."
     CHECK_REPORT_SARIF_FILENAME: ClassVar[str] = "check-report.sarif"
