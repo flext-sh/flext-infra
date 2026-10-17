@@ -199,36 +199,36 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 alias_path, alias_source = captured
                 if alias_path.name != c.Infra.INIT_PY:
                     continue
-                folder = self._project.get_folder(
-                    alias_path.parent.relative_to(
-                        Path(self._project.root.real_path)
-                    ).as_posix()
-                )
-                actual = {
-                    Path(child.real_path)
-                    for child in folder.get_children()
-                    if not child.is_folder()
-                    and Path(child.real_path).suffix == c.Infra.EXT_PYTHON
-                }
-                expected = {
-                    path
-                    for path, _source in self._sources.values()
-                    if path.parent == alias_path.parent
-                    and path.suffix == c.Infra.EXT_PYTHON
-                }
-                if actual != expected:
-                    message = (
-                        f"native lazy alias membership differs: {alias_path.parent}"
-                    )
-                    raise ValueError(message)
-                resource = self._project.get_resource(
-                    alias_path.relative_to(
-                        Path(self._project.root.real_path)
-                    ).as_posix()
-                )
-                alias_source = FlextInfraUtilitiesRopeRuntime.require_file_resource(
-                    resource, alias_path
-                ).read()
+                root = Path(self._project.root.real_path)
+                relative_parent = alias_path.parent.relative_to(root).as_posix()
+                if self._project.root.has_child(relative_parent):
+                    folder = self._project.get_folder(relative_parent)
+                    actual = {
+                        Path(child.real_path)
+                        for child in folder.get_children()
+                        if not child.is_folder()
+                        and Path(child.real_path).suffix == c.Infra.EXT_PYTHON
+                    }
+                    expected = {
+                        path
+                        for path, _source in self._sources.values()
+                        if path.parent == alias_path.parent
+                        and path.suffix == c.Infra.EXT_PYTHON
+                        and self._project.root.has_child(
+                            path.relative_to(root).as_posix()
+                        )
+                    }
+                    if actual != expected:
+                        message = (
+                            f"native lazy alias membership differs: {alias_path.parent}"
+                        )
+                        raise ValueError(message)
+                relative = alias_path.relative_to(root).as_posix()
+                if self._project.root.has_child(relative):
+                    resource = self._project.get_resource(relative)
+                    FlextInfraUtilitiesRopeRuntime.require_file_resource(
+                        resource, alias_path
+                    ).read()
                 for alias, binding in (
                     FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
                         alias_module,
@@ -308,13 +308,15 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
             path, source = captured
             if provider is None:
-                resource = self._project.get_resource(
-                    path.relative_to(Path(self._project.root.real_path)).as_posix()
-                )
-                # Derived facade text retains its original file input epoch.
-                FlextInfraUtilitiesRopeRuntime.require_file_resource(
-                    resource, path
-                ).read()
+                relative = path.relative_to(
+                    Path(self._project.root.real_path)
+                ).as_posix()
+                if self._project.root.has_child(relative):
+                    resource = self._project.get_resource(relative)
+                    # Derived facade text retains its original file input epoch.
+                    FlextInfraUtilitiesRopeRuntime.require_file_resource(
+                        resource, path
+                    ).read()
             request = m.Infra.SourceBindingInventoryRequest(
                 project=self._project,
                 module=module,

@@ -120,6 +120,9 @@ base order declared in their configured private family. Protocol projection keep
 its consumer-based ownership resolution. The utility path delegates directly to
 the declaration planner. Static and runtime consumer checks retain their own
 import-failure verdicts.
+Runtime-base discovery treats supplied planned bytes as authoritative, including
+unpublished packages. Original-file reads and package membership checks retain
+their native project-tree scope; planned initializer bytes own alias analysis.
 Rendering a facade returns source only. Package-form imports require publishing
 the owning family's initializer through the existing lazy-init planner before a
 fresh consumer loads the generated facade.
