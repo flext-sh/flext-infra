@@ -149,7 +149,9 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             )
         ):
             # Module aliases emit from their parent package.
-            return mod.rsplit(".", maxsplit=1)[0] or "."
+            level = len(mod) - len(mod.lstrip("."))
+            parent = mod[level:].rpartition(".")[0]
+            return "." * level + parent or "."
         return mod
 
     @staticmethod
@@ -190,8 +192,8 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
     ) -> None:
         """Emit one TYPE_CHECKING module import group.
 
-        ``mod`` is the planned (possibly package-relative) owner that decides
-        module-alias exports; ``rendered_mod`` is its absolute import form.
+        ``mod`` is the planned owner that decides module-alias exports;
+        ``rendered_mod`` retains its elected relative or external import form.
         """
         alias_exports: t.MutableSequenceOf[str] = []
         parts: t.MutableSequenceOf[str] = []
@@ -305,14 +307,9 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         if flext_types_emitted:
             lines.append("    from flext_core import FlextTypes")
 
-        package = local_package_root or ""
-        rendered_mods = {
-            mod: cls._absolute_import_module(package, mod) for mod in merged_groups
-        }
-
         def type_checking_module_key(mod: str) -> t.StrPair:
             owner = cls._type_checking_sort_owner(
-                rendered_mods[mod],
+                mod,
                 () if mod == "." else merged_groups[mod],
             )
             return cls._type_checking_sort_key(owner, effective_root_names)
@@ -334,7 +331,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                 lines.append("")
             cls._emit_type_checking_module(
                 mod,
-                rendered_mods[mod],
+                mod,
                 merged_groups[mod],
                 root_name,
                 lines,

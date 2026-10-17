@@ -107,6 +107,31 @@ class FlextInfraRopeProject(Project):
         return module
 
     @override
+    def get_relative_module(
+        self,
+        name: str,
+        folder: Folder | p.Infra.RopeRoot,
+        level: int,
+    ) -> t.Infra.RopeNativeParsedModule:
+        """Resolve a relative import from its native declaring resource.
+
+        Returns:
+            The original native package or source module.
+
+        Raises:
+            TypeError: The folder or module violates the native SDK boundary.
+
+        """
+        if not isinstance(folder, Folder):
+            message = "Rope module lookup requires a native folder"
+            raise TypeError(message)
+        module = super().get_relative_module(name, folder, level)
+        if not isinstance(module, PyModule | PyPackage):
+            message = "Rope lookup did not return a native parsed module"
+            raise TypeError(message)
+        return module
+
+    @override
     def find_module(
         self,
         modname: str,
@@ -410,7 +435,7 @@ class FlextInfraRopeProject(Project):
             """
             directory = Path(path)
             inventory = self._inventory(directory)
-            names = (
+            names: list[str] = (
                 [] if inventory is None else [item.name for item in inventory.entries]
             )
             if inventory is not None:

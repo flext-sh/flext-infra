@@ -20,6 +20,7 @@ from libcst import (
 )
 from libcst.metadata import MetadataWrapper
 from rope.base.builtins import BuiltinModule
+from rope.base.pycore import PyCore
 from rope.base.pyobjectsdef import PyModule, PyPackage
 from rope.refactor.restructure import _ChangeComputer
 
@@ -40,6 +41,7 @@ class FlextInfraTypesRope:
     type CstMetadata = MetadataWrapper
 
     type RopeProject = FlextInfraProtocolsRopeRuntime.RopeProject
+    type RopeNativeCore = PyCore
     type RopeNativeParsedModule = PyModule | PyPackage
     type RopeNativeSemanticModule = BuiltinModule | RopeNativeParsedModule
     type RopeResource = FlextInfraProtocolsRopeRuntime.RopeResource

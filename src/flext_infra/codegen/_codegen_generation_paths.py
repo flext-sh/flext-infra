@@ -128,32 +128,6 @@ class FlextInfraCodegenGenerationPathsMixin:
         return "." * (len(current_parts) - common + 1) + ".".join(module_parts[common:])
 
     @staticmethod
-    def _absolute_import_module(package: str, mod: str) -> str:
-        """Resolve a package-relative module path to its absolute import form.
-
-        One leading dot names ``package`` itself, as Python resolves a relative
-        import inside that package's initializer. Generated import statements
-        are always absolute; only lazy-map data keeps the compact form.
-
-        Returns:
-            The resulting ``str``.
-
-        Raises:
-            ValueError: If relative module.
-
-        """
-        if not mod.startswith("."):
-            return mod
-        level = len(mod) - len(mod.lstrip("."))
-        parts = package.split(".")
-        if not package or level > len(parts):
-            msg = f"relative module {mod!r} escapes package {package!r}"
-            raise ValueError(msg)
-        base = parts[: len(parts) - level + 1]
-        tail = mod[level:]
-        return ".".join((*base, tail) if tail else base)
-
-    @staticmethod
     def _compact_lazy_module_path(current_pkg: str, mod: str) -> str:
         """Compact a lazy module path relative to ``current_pkg`` when valid.
 
@@ -197,6 +171,10 @@ class FlextInfraCodegenGenerationPathsMixin:
         if not local_package_root:
             return mod
         if mod.startswith("."):
+            level = len(mod) - len(mod.lstrip("."))
+            if level > len(local_package_root.split(".")):
+                msg = f"relative module {mod!r} escapes package {local_package_root!r}"
+                raise ValueError(msg)
             return mod
         root_pkg = local_package_root.split(".", maxsplit=1)[0]
         first_segment = mod.split(".", maxsplit=1)[0]

@@ -156,7 +156,11 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             **{
                 plan.path: proposed[plan.path]
                 for plan in declared_files
-                if plan.project == root and plan.path in proposed
+                if plan.project == root
+                and plan.path in proposed
+                and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                    root, plan.path
+                )
             },
         }
         parse_root = next(path for path in (root, *root.parents) if path.is_dir())

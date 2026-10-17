@@ -16,9 +16,11 @@ from pathlib import Path
 from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFacades,
+    FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesIterationWorkspace,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
 )
 from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
@@ -194,29 +196,34 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         ``planned_sources`` maps each Python file the active plan publishes to
         its planned content: a scaffold renders the facades its own
         configuration must cover, so the planned bytes, not the tree before
-        publication, decide those files. Every other source is read from disk.
+        publication, decide those files. All consumed sources retain their
+        authenticated native read.
 
         Returns:
             The modules written in the canonical facade-rebind form.
 
         """
         root = project_root.resolve()
-        return tuple(
-            sorted({
-                module
-                for file_path, source in cls._project_sources(
-                    root,
-                    planned_sources,
-                ).items()
-                if (
-                    module := cls.facade_rebind_module(
-                        file_path,
-                        source,
-                        project_root=root,
+        with FlextInfraUtilitiesCodegenFacades.facade_source_project(
+            root, planned_sources=planned_sources
+        ) as (project, _, _):
+            return tuple(
+                sorted({
+                    module
+                    for file_path, source in cls._project_sources(
+                        root,
+                        planned_sources,
+                        source_project=project,
+                    ).items()
+                    if (
+                        module := cls.facade_rebind_module(
+                            file_path,
+                            source,
+                            project_root=root,
+                        )
                     )
-                )
-            }),
-        )
+                }),
+            )
 
     @classmethod
     def runtime_evaluated_base_classes(
@@ -248,7 +255,9 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                     )
                 )
             else:
-                captured = cls._project_sources(root, planned_sources)
+                captured = cls._project_sources(
+                    root, planned_sources, source_project=source_project
+                )
             sources = {
                 cls.module_name_for_file(path, project_root=root): (path, source)
                 for path, source in captured.items()
@@ -284,25 +293,40 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
     def _project_sources(
         root: Path,
         planned_sources: t.MappingKV[Path, str],
+        *,
+        source_project: p.Infra.RopeProject,
     ) -> t.MappingKV[Path, str]:
-        """Read the project's Python sources, the planned bytes overriding disk.
+        """Read elected sources through the native graph before applying plans.
 
         Returns:
             Each source by resolved path.
 
         """
-        sources: MutableMapping[Path, str] = {}
-        if root.is_dir():
-            files = FlextInfraUtilitiesIterationWorkspace.iter_python_files(
+        planned = {path.resolve(): source for path, source in planned_sources.items()}
+        files = (
+            FlextInfraUtilitiesIterationWorkspace.iter_python_files(
                 m.Infra.SourceScanRequest(project_roots=(root,)),
             ).unwrap()
-            for file_path in files:
-                source = file_path.read_text(
-                    encoding=c.DEFAULT_ENCODING,
-                )
-                sources[file_path.resolve()] = source
-        for file_path, source in planned_sources.items():
-            sources[file_path.resolve()] = source
+            if root.is_dir()
+            else ()
+        )
+        native_root = Path(source_project.root.real_path)
+        sources: dict[Path, str] = {}
+        for file_path in dict.fromkeys((*files, *planned)):
+            path = file_path.resolve()
+            if not path.is_relative_to(
+                root
+            ) or FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                root, path
+            ):
+                continue
+            resource = source_project.get_resource(
+                path.relative_to(native_root).as_posix()
+            )
+            source = FlextInfraUtilitiesRopeRuntime.require_file_resource(
+                resource, path
+            ).read()
+            sources[path] = planned.get(path, source)
         return sources
 
     @staticmethod

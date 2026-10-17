@@ -82,6 +82,14 @@ source's list-aware merge. Project tool additions retain the base toolchain.
 A projected edit replaces its selected values inside one layer before those
 layers are composed, so a replacement does not retain the previous declaration.
 
+Layout planning and `.gitignore` publication load the selected consumer's
+codegen layers. Its local declarations supply patterns and file modes; a cohort
+does not borrow its root's overrides for members. Publication retains those
+configuration snapshots alongside the destination snapshot, including for a
+no-op. Workspace rendering also receives the local topology so its member
+whitelist agrees with conform; the initial `.gitmodules` snapshot authenticates
+that input even when absent. Packaged defaults do not enumerate consumers.
+
 `make fix-toolchain` repairs one explicitly selected native installation through
 Mise, using the exact version and checksum authority of the current lock. Set
 `FLEXT_INFRA_TOOLCHAIN_REPAIR_TOOL` to a tool name already declared by the project.
@@ -120,6 +128,11 @@ base order declared in their configured private family. Protocol projection keep
 its consumer-based ownership resolution. The utility path delegates directly to
 the declaration planner. Static and runtime consumer checks retain their own
 import-failure verdicts.
+Runtime-base discovery treats supplied planned bytes as authoritative, including
+unpublished packages. Original-file reads and package membership checks retain
+their native project-tree scope; planned initializer bytes own alias analysis.
+Generated Ruff bases retain the qualified import spelling used by the consumer.
+The provider's declaration identity remains separate from that reexport spelling.
 Rendering a facade returns source only. Package-form imports require publishing
 the owning family's initializer through the existing lazy-init planner before a
 fresh consumer loads the generated facade.
@@ -1407,6 +1420,13 @@ those operations.
 Read-only Make verbs never invoke conform, generation, repairs, formatting, or
 codemod application. Audit checks installed dependency and environment provenance;
 verify-clean checks the documentation and Git state without rendering replacements.
+Installation provenance binds the locked source, installed origin, declared physical
+checkout and committed gitlink; unrelated worktree changes do not invalidate that
+identity. Operation admission separately authenticates the content and epoch of its
+consumed sources and accepts changed inputs only through its actual publisher's
+effects. Persisted publication reports never authorize those changes. The final
+`verify-clean` gate still rejects staged, unstaged and untracked files, including
+generated artifacts, until their integration is complete.
 Generation retains the setup-owned environment policy: local workspace setup binds
 the declared subprojects as editable, and local generation may publish their managed
 artifacts. CI setup installs its locked noneditable dependencies, and generation in

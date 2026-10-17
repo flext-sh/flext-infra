@@ -121,6 +121,7 @@ class TestsFlextInfraUvNativeResolutionWorkspace:
 
         """
         policy = config.Infra.codegen.make.uv_resolution
+        workspace = u.Tests.workspace_spec(root_ref, subprojects=(member_ref,))
         root_input = m.Infra.UvResolutionProject(
             repository=root_ref,
             directory=root,
@@ -136,6 +137,7 @@ class TestsFlextInfraUvNativeResolutionWorkspace:
         local = tm.ok(
             u.Infra.pyproject_native_resolution_view(
                 root_input,
+                workspace=workspace,
                 members=(member_input,),
                 directory=root / policy.local_directory,
                 policy=policy,
@@ -145,6 +147,7 @@ class TestsFlextInfraUvNativeResolutionWorkspace:
         standalone = tm.ok(
             u.Infra.pyproject_native_resolution_view(
                 root_input,
+                workspace=workspace,
                 members=(),
                 directory=standalone_directory,
                 policy=policy,
@@ -263,11 +266,11 @@ class TestsFlextInfraUvNativeResolutionWorkspace:
         standalone_uv = u.Tests.toml_mapping(
             u.Tests.toml_mapping(u.Tests.toml_doc_mapping(standalone)["tool"])["uv"],
         )
-        tm.that(
-            member_ref.distribution
-            in u.Tests.toml_mapping(standalone_uv.get("sources")),
-            eq=False,
+        remote_source = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(standalone_uv["sources"])[member_ref.distribution],
         )
+        tm.that(remote_source["git"], eq=member_ref.url)
+        tm.that(remote_source["branch"], eq=u.Tests.integration().branch)
         local_sources = u.Tests.toml_mapping(
             u.Tests.toml_mapping(u.Tests.toml_doc_mapping(local)["tool"])["uv"],
         )
@@ -289,6 +292,160 @@ class TestsFlextInfraUvNativeResolutionWorkspace:
             has="git",
         )
         tm.that((root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"), eq=conformed)
+
+    @staticmethod
+    def test_standalone_resolution_elects_declared_line_over_stale_group_refs(
+        tmp_path: Path,
+    ) -> None:
+        """Real Git resolution retains declared origins despite stale group refs."""
+        root = tmp_path / "workspace"
+        checkout = root / "member"
+        origin = tmp_path / "member-origin.git"
+        root_ref = u.Tests.repository_ref(
+            "identity-line-root",
+            role=c.Infra.MakeProfile.WORKSPACE,
+        )
+        member_ref = u.Tests.repository_ref("identity-line-member", path=Path("member"))
+        conformed, _ = (
+            TestsFlextInfraUvNativeResolutionWorkspace._conformed_portable_root(
+                root, checkout, root_ref, member_ref, marked=True
+            )
+        )
+        branch = u.Tests.integration().branch
+        previous = f"{branch}-previous"
+        u.Tests.git_bootstrap(origin, ("branch", previous, branch))
+        document = u.Tests.toml_doc(conformed)
+        groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
+        stale = (
+            f"{member_ref.distribution} @ git+{member_ref.url}@{previous}"
+            ' ; python_version >= "0"'
+        )
+        u.Cli.toml_sync_string_list(groups, "previous-environment", (stale,))
+        source = u.Cli.toml_dumps(document)
+        tm.ok(u.Cli.atomic_write_text_file(root / c.PYPROJECT_FILENAME, source))
+        _, standalone, directory = (
+            TestsFlextInfraUvNativeResolutionWorkspace._portable_resolution_views(
+                root, checkout, root_ref, member_ref, source
+            )
+        )
+        checkout.rename(root / "unavailable-member")
+        locator = TestsFlextInfraUvNativeResolutionWorkspace._resolved_portable_member(
+            directory, standalone, origin, member_ref
+        )
+        tm.that(locator["git"], has=branch)
+        tm.that(locator["git"], lacks=previous)
+        tm.that(
+            u.Tests.toml_strings_at(
+                u.Cli.toml_dumps(standalone),
+                c.Infra.DEPENDENCY_GROUPS,
+                "previous-environment",
+            ),
+            eq=(stale,),
+        )
+        tm.that((root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "override",
+        [
+            "true",
+            "17",
+            '{name = "foreign"}',
+            "{package = {name = 17}, dependencies = []}",
+            '{package = {name = "foreign", version = true}, dependencies = []}',
+            '{package = {name = "foreign"}, dependencies = [true]}',
+            '{package = {name = "foreign"}, dependencies = [], unexpected = true}',
+        ],
+    )
+    def test_native_resolution_rejects_non_text_overrides(
+        tmp_path: Path,
+        override: str,
+    ) -> None:
+        """Malformed override elements fail at the typed public ingress."""
+        repository = u.Tests.repository_ref("identity-invalid-override")
+        u.Tests.write_native_resolution_project(
+            tmp_path,
+            repository.distribution,
+            uv=f"[tool.uv]\noverride-dependencies = [{override}]\n",
+        )
+        source = (tmp_path / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
+        with pytest.raises(m.ValidationError):
+            u.Infra.pyproject_native_resolution_view(
+                m.Infra.UvResolutionProject(
+                    repository=repository,
+                    directory=tmp_path,
+                    document=u.Tests.toml_doc(source),
+                ),
+                workspace=u.Tests.workspace_spec(repository),
+                members=(),
+                directory=(
+                    tmp_path
+                    / config.Infra.codegen.make.uv_resolution.standalone_directory
+                ),
+                policy=config.Infra.codegen.make.uv_resolution,
+            )
+        tm.that(
+            (tmp_path / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"), eq=source
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("version", [None, "1.0.0"])
+    def test_native_resolution_retains_scoped_overrides(
+        tmp_path: Path,
+        version: str | None,
+    ) -> None:
+        """Native UV consumes ordered scoped tables without global promotion."""
+        repository = u.Tests.repository_ref("identity-scoped-override")
+        selector: t.JsonDict = {"name": repository.distribution}
+        if version is not None:
+            selector["version"] = version
+        overrides: list[t.JsonValue] = [
+            "not-requested>=1",
+            {
+                "package": selector,
+                "dependencies": ['marker-inactive[feature]>=1 ; python_version < "0"'],
+            },
+        ]
+        policy_source = u.Cli.toml_dumps(
+            u.Cli.toml_document_from_mapping({
+                "tool": {"uv": {"override-dependencies": overrides}}
+            })
+        )
+        u.Tests.write_native_resolution_project(
+            tmp_path, repository.distribution, uv=policy_source
+        )
+        source = (tmp_path / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
+        policy = config.Infra.codegen.make.uv_resolution
+        directory = tmp_path / policy.standalone_directory
+        view = tm.ok(
+            u.Infra.pyproject_native_resolution_view(
+                m.Infra.UvResolutionProject(
+                    repository=repository,
+                    directory=tmp_path,
+                    document=u.Tests.toml_doc(source),
+                ),
+                workspace=u.Tests.workspace_spec(repository),
+                members=(),
+                directory=directory,
+                policy=policy,
+            )
+        )
+        observed = u.Tests.toml_table_at(u.Cli.toml_dumps(view), "tool", "uv")
+        tm.that(
+            u.Tests.toml_list(observed["override-dependencies"])[: len(overrides)],
+            eq=tuple(overrides),
+        )
+        directory.mkdir(parents=True)
+        tm.ok(u.Cli.toml_write_document(directory / c.PYPROJECT_FILENAME, view))
+        process = tm.ok(u.Tests.resolve_native_identity_fixture(directory))
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
+        tm.that(
+            (tmp_path / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"), eq=source
+        )
 
     @staticmethod
     def _member_groups_fixture(
@@ -478,6 +635,7 @@ class TestsFlextInfraUvNativeResolutionWorkspace:
         return tm.ok(
             u.Infra.pyproject_native_resolution_view(
                 inputs[0],
+                workspace=u.Tests.workspace_spec(inputs[0].repository),
                 members=(inputs[1],),
                 directory=root / "resolution",
                 policy=config.Infra.codegen.make.uv_resolution,
