@@ -65,10 +65,9 @@ including aliases and imports inside `TYPE_CHECKING`. The semantic import owner
 still elects the package, family base and sanctioned compose modules; native
 matching preserves the family's declared split-parts imports.
 
-The `pytest-module` context delegates to Infra's existing pytest-module
-classifier. Single-class publication excludes those suites, which retain the
-separate rule forbidding suite exports; importable source classes still declare
-their publication.
+Single-class publication excludes the configured test-suite scopes that forbid
+suite exports. Importable source classes still declare their publication; the
+same native AST command verifies both contracts.
 
 Rule catalogs, fixture staging and snapshot reconciliation consume YAML streams
 through `u.Cli.yaml_parse_documents`. Document separators and literal-block

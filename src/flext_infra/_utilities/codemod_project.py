@@ -35,7 +35,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodemodBindingChain,
     FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesDeclarationPayload,
-    FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesProjectDiscovery,
@@ -1050,7 +1049,6 @@ class FlextInfraUtilitiesCodemodProject(
                 | c.Infra.CodemodContextPredicate.FACADE_MODULE
                 | c.Infra.CodemodContextPredicate.LATER_LAYER
                 | c.Infra.CodemodContextPredicate.CLASS_STEM
-                | c.Infra.CodemodContextPredicate.PYTEST_MODULE
             ):
                 return cls._context_module_holds(
                     root,
@@ -1268,8 +1266,6 @@ class FlextInfraUtilitiesCodemodProject(
                 return cls._later_layer(root, file_path, value, condition)
             case c.Infra.CodemodContextPredicate.CLASS_STEM:
                 return cls._has_class_stem(root, file_path, value)
-            case c.Infra.CodemodContextPredicate.PYTEST_MODULE:
-                return FlextInfraUtilitiesDiscovery.pytest_test_module(file_path)
             case _:
                 message = f"predicate is not module-scoped: {predicate}"
                 raise ValueError(message)

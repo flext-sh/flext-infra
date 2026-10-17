@@ -18,8 +18,7 @@ ignores:
 metadata:
   context:
     NAME:
-      - is: class-stem
-      - not: pytest-module
+      is: class-stem
 utils:
   import:
     any:

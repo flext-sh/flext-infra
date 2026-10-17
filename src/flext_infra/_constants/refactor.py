@@ -210,8 +210,6 @@ class FlextInfraConstantsRefactor:
           class stem as class nesting derives it (``Tests`` + stem under the
           tests tree; ``Examples``/``Scripts`` + stem or the bare stem under
           those surfaces);
-        - ``pytest-module``: the finding's file is a pytest module according
-          to the shared discovery classifier;
         - ``package-layers``: the finding's package provides every layer the
           rule names in ``arg`` (a declared facade letter, a module, a
           private module or a subpackage of that name);
@@ -259,7 +257,6 @@ class FlextInfraConstantsRefactor:
         IMPORT_CYCLE = "import-cycle"
         COMPOSES_FAMILY = "composes-family"
         CLASS_STEM = "class-stem"
-        PYTEST_MODULE = "pytest-module"
         PACKAGE_LAYERS = "package-layers"
         PACKAGE_ROOT_INIT = "package-root-init"
         FAMILY_BASE = "family-base"

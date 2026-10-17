@@ -12,6 +12,8 @@ import pytest
 
 from flext_infra import FlextInfraConfig
 from tests import c, m, tm, u
+from flext_infra import FlextInfraConfig
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraConfigLocalOverrides:
@@ -78,20 +80,13 @@ class TestsFlextInfraConfigLocalOverrides:
             )
 
     @staticmethod
-    def _consumer_config(root: Path) -> Path:
-        """Create one consumer repository's own config directory."""
-        directory = root / c.Infra.CODEGEN_CONFIG_DIR
-        directory.mkdir(parents=True)
-        return directory
-
     def test_absent_repository_layers_keep_the_packaged_policy(
-        self,
         tmp_path: Path,
     ) -> None:
-        """A repository that declares no layer reads exactly the packaged policy.
+        """A repository without layers reads the current packaged policy.
 
-        The expectation is the packaged SSOT read itself (P0): any legitimate
-        config change keeps both reads equal, and only a broken merge diverges.
+        The expectation comes from the packaged SSOT, so a legitimate config
+        change keeps both loads equal.
         """
         baseline = FlextInfraConfig.fetch_global()
         inputs = tm.ok(u.Infra.load_codegen_inputs(tmp_path))
@@ -135,7 +130,7 @@ class TestsFlextInfraConfigLocalOverrides:
         )
 
     @staticmethod
-    def test_local_file_dict_entries_add_beside_tracked_ones(
+    def test_local_layer_dict_entries_add_beside_packaged_ones(
         tmp_path: Path,
     ) -> None:
         """A dict-typed registry gains the local entry and keeps packaged ones."""
@@ -159,7 +154,6 @@ class TestsFlextInfraConfigLocalOverrides:
         )
         inputs = tm.ok(u.Infra.load_codegen_inputs(tmp_path))
         overrides = inputs.spec.layout.project_overrides
-        tm.that("example-project" in overrides, eq=True)
         tm.that(set(overrides), eq={*baseline, "example-project"})
 
     @staticmethod
@@ -267,7 +261,7 @@ class TestsFlextInfraConfigLocalOverrides:
     def test_provider_registry_declaration_fails_validation(
         tmp_path: Path,
     ) -> None:
-        """The exterminated provider registry cannot come back through a merge."""
+        """The exterminated provider registry cannot come back through a layer."""
         _, _, local = FlextInfraConfig.config_layer_paths_for_repository(
             tmp_path,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
