@@ -293,23 +293,26 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         *,
         dependency_projects: t.SequenceOf[Path] = (),
     ) -> p.Result[bool]:
-        """Provision a physical fixture environment and declared local dependencies.
+        """Provision a fixture with the executor's declared physical resolver.
 
         Returns:
             The resulting ``p.Result[bool]``.
 
         """
+        binary = u.Infra.managed_mise_binary(c.Infra.UV, Path.cwd())
+        if binary.failure:
+            return r[bool].from_failure(binary)
         environment = u.Infra.runtime_environment_dir(root)
         environment.parent.mkdir(parents=True, exist_ok=True)
         created = u.Cli.run_checked(
-            ["uv", "venv", "--python", sys.executable, str(environment)],
+            [str(binary.value), "venv", "--python", sys.executable, str(environment)],
             cwd=root,
         )
         if created.failure or not dependency_projects:
             return created
         return u.Cli.run_checked(
             (
-                c.Infra.UV,
+                str(binary.value),
                 "pip",
                 "install",
                 "--python",
@@ -330,9 +333,12 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         created = cls.create_python_environment(root)
         if created.failure:
             return r[bool].from_failure(created)
+        binary = u.Infra.managed_mise_binary(c.Infra.UV, Path.cwd())
+        if binary.failure:
+            return r[bool].from_failure(binary)
         return u.Cli.run_checked(
             (
-                c.Infra.UV,
+                str(binary.value),
                 "pip",
                 "install",
                 "--no-deps",

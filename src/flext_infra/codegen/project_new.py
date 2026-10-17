@@ -233,6 +233,7 @@ class FlextInfraCodegenProjectNew(
             request,
             initial_workspace=workspace,
             ports=self.conform_collaborators,
+            repository_root=self.root,
         )
 
     def _validated_remote_declarations(

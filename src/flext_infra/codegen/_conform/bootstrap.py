@@ -35,9 +35,21 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
             description="Project declared outputs without repairing authored inputs",
         ),
     ] = False
+    provider_plans: Annotated[
+        t.VariadicTuple[m.Infra.CodegenFilePlan] | None,
+        m.Field(
+            default=None,
+            exclude=True,
+            description="Original cohort lazy plans available to native source reads",
+        ),
+    ] = None
     repository_root: Annotated[
         Path,
-        m.Field(default=Path(), exclude=True, description="Conform repository root"),
+        m.Field(
+            default=Path(),
+            exclude=True,
+            description="Repository selected by the generation execution boundary",
+        ),
     ] = Path()
     initial_workspace: Annotated[
         m.Infra.WorkspaceSpec | None,

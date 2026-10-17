@@ -1226,8 +1226,8 @@ _builtin_gen_init:
 export FLEXT_NEW_{{ argument }} := $(value {{ argument }})
 {% endfor %}
 
-_builtin-project-new: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) codegen new --apply{% for argument in project_new.arguments %} --{{ argument | lower | replace("_", "-") }} "$$FLEXT_NEW_{{ argument }}"{% endfor %}
+_builtin-project-new: _builtin_require_interpreter
+	@$(PROJECT_FLEXT_INFRA) codegen new --repository-root "$(PROJECT_ROOT)" --apply{% for argument in project_new.arguments %} --{{ argument | lower | replace("_", "-") }} "$$FLEXT_NEW_{{ argument }}"{% endfor %}
 {% endfor %}
 
 _builtin_gen_all: _builtin_require_environment

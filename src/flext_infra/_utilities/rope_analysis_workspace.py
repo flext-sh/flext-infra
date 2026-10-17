@@ -12,7 +12,7 @@ from collections.abc import MutableMapping
 from functools import lru_cache
 from pathlib import Path
 
-from flext_infra import c, config, m, t
+from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesIterationWorkspace,
     FlextInfraUtilitiesProjectDiscovery,
@@ -222,6 +222,8 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         project_root: Path,
         planned_sources: t.MappingKV[Path, str],
         roots: t.StrSequence,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> t.StrTuple:
         """Return the class bases whose subclasses evaluate annotations at runtime.
 
@@ -268,6 +270,13 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                     f"{init_module}.{alias}",
                     absolute,
                 )
+        if source_project is not None:
+            return FlextInfraUtilitiesRopeSourceBasesRuntime.runtime_bases(
+                source_project,
+                sources,
+                roots,
+                extra_module_aliases=extra_module_aliases,
+            )
         # The analysis root opens with the whole declared workspace's member
         # source roots on the resolution path: member sources legitimately
         # import sibling fleet packages (tests fixtures import flext_tests,

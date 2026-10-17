@@ -70,7 +70,7 @@ class FlextInfraDuplicateApplyPhase:
         """
         project_objects: dict[str, list[m.Infra.Object]] = {}
         for module in rope_workspace.modules():
-            if not FlextInfraRefactorCensusCollectHelpersMixin.is_production_module(
+            if not FlextInfraRefactorCensusCollectHelpersMixin.production_module(
                 module,
             ):
                 continue

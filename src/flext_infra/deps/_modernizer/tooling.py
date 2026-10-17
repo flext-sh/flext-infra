@@ -130,6 +130,8 @@ class FlextInfraPyprojectModernizerTooling:
     def resolve_tooling_context(
         self,
         request: m.Infra.ToolingContextRequest,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Resolve typed Jinja values from the seed conformed to one topology.
 
@@ -229,6 +231,7 @@ class FlextInfraPyprojectModernizerTooling:
                         project_dir,
                         request.planned_sources,
                         config.Infra.tooling.tools.ruff.lint.flake8_type_checking.runtime_evaluated_roots,
+                        source_project=source_project,
                     )
                 ),
                 "pyrefly_search_path": tools.pyrefly_search_path,
