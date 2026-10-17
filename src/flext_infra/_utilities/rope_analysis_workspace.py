@@ -492,7 +492,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             Python and stub sources in the canonical declared source scope.
 
         """
-        rope_root = Path(rope_project.address).resolve()
+        rope_root = Path(rope_project.root.real_path).resolve()
         governed_roots = cls._governed_roots(resolved_root)
         source_paths = (
             (resolved_root / relative).resolve()
