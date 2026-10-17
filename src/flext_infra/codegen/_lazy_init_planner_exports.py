@@ -200,7 +200,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             rope_project=self.rope_workspace.rope_project,
         )
         alias = policy.expected_alias
-        if alias is not None and alias in exports:
+        if alias is not None:
             resource = self.rope_workspace.resource(py_file)
             if resource is None:
                 msg = f"unindexed publication resource: {py_file}"
@@ -210,11 +210,18 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             ).get_module()
             tree = ast.parse(module.source_code)
             body = u.Infra.export_declaration_body(tree)
-            if body is not tree.body and alias not in module.get_attributes():
+            if body is not tree.body:
                 owner = next(
                     node for node in tree.body if isinstance(node, ast.ClassDef)
                 )
-                exports[alias] = (module_path, owner.name)
+                if owner.name in exports or alias in exports:
+                    # Class-owned facades publish the root; layout owns its alias.
+                    exports[alias] = (
+                        module_path,
+                        alias
+                        if alias in exports and alias in module.get_attributes()
+                        else owner.name,
+                    )
         self._module_exports_cache[cache_key] = exports
         return dict(exports)
 

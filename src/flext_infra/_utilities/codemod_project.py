@@ -437,6 +437,7 @@ class FlextInfraUtilitiesCodemodProject(
             c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
             c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION,
             c.Infra.CodemodContextPredicate.PROTOCOL_DECLARATION,
+            c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE,
         }
         selected = tuple(
             rule
@@ -500,6 +501,32 @@ class FlextInfraUtilitiesCodemodProject(
             raise ValueError(msg)
         source = cls.codemod_source_path(root, admission.file_path)
         for condition in rule.context:
+            # Alternative syntax branches bind only their own metavariables.
+            # This also applies before native declaration/binding evaluation.
+            if condition.variable not in captures:
+                continue
+            if (
+                condition.predicate is c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE
+                and project is not None
+            ):
+                if (
+                    admission.snapshot is None
+                    or sources is None
+                    or source not in sources
+                ):
+                    msg = f"{rule.id}: layer-zero context requires its captured source"
+                    raise ValueError(msg)
+                resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                    project.get_resource(source.relative_to(root.resolve()).as_posix()),
+                    source,
+                )
+                module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
+                if (
+                    FlextInfraUtilitiesImportLaw.import_module_role(module.get_name())
+                    == "layer0"
+                ) is not condition.holds:
+                    return False
+                continue
             if condition.predicate in {
                 c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION,
                 c.Infra.CodemodContextPredicate.PROTOCOL_DECLARATION,
@@ -526,11 +553,6 @@ class FlextInfraUtilitiesCodemodProject(
                     is not condition.holds
                 ):
                     return False
-                continue
-            # A condition binds the capture of the branch that matched: a rule
-            # variable the matching branch does not capture leaves it vacuous.
-            # The plan proved every context variable occurs in the rule.
-            if condition.variable not in captures:
                 continue
             value = cls._captured_text(rule, condition.variable, captures, source)
             of = (
@@ -1286,7 +1308,13 @@ class FlextInfraUtilitiesCodemodProject(
             case c.Infra.CodemodContextPredicate.FAMILY_BASE_FILE:
                 return cls._family_base_file(root, file_path)
             case c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE:
-                located = FlextInfraUtilitiesImportLaw.import_namespace(root, file_path)
+                owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+                    root, file_path
+                )
+                if owner is None:
+                    msg = f"project owner is unresolved: {file_path}"
+                    raise ValueError(msg)
+                located = FlextInfraUtilitiesImportLaw.import_namespace(owner, file_path)
                 return located is not None and (
                     FlextInfraUtilitiesImportLaw.import_module_role(located[1])
                     == "layer0"

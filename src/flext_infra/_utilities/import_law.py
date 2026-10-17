@@ -24,6 +24,8 @@ class FlextInfraUtilitiesImportLaw:
         cls,
         project_root: Path,
         file_path: Path,
+        *,
+        sources: t.MappingKV[Path, str] | None = None,
     ) -> t.Pair[Path, str] | None:
         """Return the namespace directory and dotted module of one file.
 
@@ -51,7 +53,8 @@ class FlextInfraUtilitiesImportLaw:
         if not module_parts:
             return None
         namespace_dir = base / namespace_name
-        if not (namespace_dir / c.Infra.INIT_PY).is_file():
+        init = namespace_dir / c.Infra.INIT_PY
+        if not (init.is_file() if sources is None else init in sources):
             return None
         parts = relative.with_suffix("").parts
         if parts[-1] == "__init__":
@@ -140,6 +143,8 @@ class FlextInfraUtilitiesImportLaw:
     def import_lazy_exports(
         project_root: Path,
         package: str,
+        *,
+        sources: t.MappingKV[Path, str] | None = None,
     ) -> t.StrMapping | None:
         """Map each name one owned package ``__init__`` publishes to its module.
 
@@ -162,17 +167,21 @@ class FlextInfraUtilitiesImportLaw:
         top, *rest = package.split(".")
         bases = (project_root / c.Infra.DEFAULT_SRC_DIR, project_root)
         owner = next(
-            (base for base in bases if (base / top / c.Infra.INIT_PY).is_file()),
+            (base for base in bases if (
+                (base / top / c.Infra.INIT_PY).is_file() if sources is None
+                else base / top / c.Infra.INIT_PY in sources
+            )),
             None,
         )
         if owner is None:
             return None
         init = owner.joinpath(top, *rest, c.Infra.INIT_PY)
-        if not init.is_file():
+        if not (init.is_file() if sources is None else init in sources):
             return None
         targets, references = (
             FlextInfraUtilitiesRopeAnalysis.lazy_import_mapping_source(
-                init.read_text(encoding=c.DEFAULT_ENCODING),
+                init.read_text(encoding=c.DEFAULT_ENCODING) if sources is None
+                else sources[init],
             )
         )
         if references:
@@ -185,7 +194,10 @@ class FlextInfraUtilitiesImportLaw:
         }
 
     @staticmethod
-    def import_package_dir(project_root: Path, package: str) -> Path | None:
+    def import_package_dir(
+        project_root: Path, package: str, *,
+        sources: t.MappingKV[Path, str] | None = None,
+    ) -> Path | None:
         """Return the directory of one dotted package the project owns.
 
         Returns:
@@ -195,10 +207,12 @@ class FlextInfraUtilitiesImportLaw:
         """
         top, *rest = package.split(".")
         for base in (project_root / c.Infra.DEFAULT_SRC_DIR, project_root):
-            if not (base / top / c.Infra.INIT_PY).is_file():
+            init = base / top / c.Infra.INIT_PY
+            if not (init.is_file() if sources is None else init in sources):
                 continue
             candidate = base.joinpath(top, *rest)
-            return candidate if (candidate / c.Infra.INIT_PY).is_file() else None
+            init = candidate / c.Infra.INIT_PY
+            return candidate if (init.is_file() if sources is None else init in sources) else None
         return None
 
     @staticmethod

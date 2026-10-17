@@ -16,6 +16,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenPreconditions,
+    FlextInfraCodegenStaging,
     FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsVerification,
 )
@@ -1583,6 +1584,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         result_type = r[t.VariadicTuple[Path]]
+        prepared = FlextInfraCodegenStaging.prepare_python_plans(
+            request.root,
+            analysis.files,
+        )
+        if prepared.failure:
+            return result_type.from_failure(prepared)
+        analysis = analysis.model_copy(update={"files": prepared.value})
         inputs = FlextInfraCodegenPreconditions.unique_states(
             tuple(source for file in analysis.files for source in file.source_states),
         )
@@ -1622,14 +1630,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             for file in analysis.files
             if u.Infra.codegen_file_requires_effect(file)
         )
-        validated = any(
-            file.path.name
-            in {
-                c.Infra.MISE_TOML_FILENAME,
-                c.Infra.PYPROJECT_FILENAME,
-            }
-            for file in analysis.files
-        )
         publication = m.Infra.CodegenPhasePublicationPolicy(
             directories=tuple(
                 sorted({
@@ -1638,10 +1638,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                     if not file.path.parent.is_dir()
                 })
             ),
-            staged_validator=(
-                partial(self._validate_generation_stage, plans=analysis.files)
-                if validated
-                else None
+            staged_validator=partial(
+                self._validate_generation_stage,
+                plans=analysis.files,
+                workspace=request.root,
             ),
         )
         return inputs.flat_map(
@@ -1664,6 +1664,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
         *,
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        workspace: Path,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Compose existing Mise and Pyproject consumers over exact staged subsets.
 
@@ -1687,12 +1688,20 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         )
         if pyprojects:
             paths = {plan.path for plan in pyprojects}
-            return cls._validate_pyproject_stage(
+            checked = cls._validate_pyproject_stage(
                 session,
                 tuple(item for item in publications if item.before.path in paths),
                 plans=pyprojects,
             )
-        return r[m.Infra.CodegenTransactionSession].ok(session)
+            if checked.failure:
+                return checked
+            session = checked.value
+        return FlextInfraCodegenStaging.validate_python_plans(
+            session,
+            publications,
+            plans=plans,
+            workspace=workspace,
+        )
 
     def _publish_docs_batches(
         self,

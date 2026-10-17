@@ -88,6 +88,45 @@ class TestsFlextInfraRuffProjectPolicy:
                     )
 
     @staticmethod
+    @pytest.mark.parametrize("delegate", [False, True])
+    def test_modernization_uses_the_supplied_validated_owner_policy(
+        tmp_path: Path, *, delegate: bool,
+    ) -> None:
+        """Changing explicit policy changes only delegation, never rule selection."""
+        tooling = config.Infra.tooling
+        declared = tooling.tools.ruff.lint
+        lint_payload = declared.model_dump(
+            mode="json", by_alias=True, exclude_computed_fields=True,
+        )
+        owners = dict(declared.rule_owners) if delegate else {}
+        lint_payload["rule-owners"] = owners
+        lint = m.Infra.RuffLintConfig.model_validate_json(
+            tm.ok(u.Cli.json_dumps(lint_payload)),
+        )
+        policy = tooling.model_copy(update={
+            "tools": tooling.tools.model_copy(update={
+                "ruff": tooling.tools.ruff.model_copy(update={"lint": lint}),
+            }),
+        })
+        payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
+            u.Tests.toml_payload('[project]\nname = "changed-owner-policy"\n'),
+        )
+        phase = FlextInfraEnsureRuffConfigPhase(policy)
+        phase.apply_payload(
+            payload, path=tmp_path / c.PYPROJECT_FILENAME, analysis_exclusions=(),
+        )
+        actual = tm.not_none(u.Cli.toml_mapping_path(payload, ("tool", "ruff", "lint")))
+        tm.that(actual["ignore"], eq=sorted(owners))
+        tm.that(actual["select"], eq=sorted(lint.select))
+        tm.that(actual["unfixable"], eq=sorted(lint.unfixable))
+        tm.that(
+            phase.apply_payload(
+                payload, path=tmp_path / c.PYPROJECT_FILENAME, analysis_exclusions=(),
+            ),
+            empty=True,
+        )
+
+    @staticmethod
     def test_modernization_retires_all_rule_suppression_tables(tmp_path: Path) -> None:
         """Retirement preserves full declared rules and converges without exemptions."""
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(

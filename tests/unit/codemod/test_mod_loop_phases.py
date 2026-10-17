@@ -160,7 +160,28 @@ class TestsFlextInfraCodemodLoopPhases:
         with infra.rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
             phase = FlextInfraNamespaceRelocationPhase()
-
+            states = tuple(
+                u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+                for path in u.Infra.iter_python_files(
+                    m.Infra.SourceScanRequest(project_roots=(project,)),
+                ).unwrap()
+            )
+            sources = {state.path: tm.not_none(state.content).decode(c.DEFAULT_ENCODING)
+                       for state in states}
+            frozen = dict(sources)
+            analysis = phase.plan(
+                project, preflight, rope, sources=sources, source_states=states,
+            ).unwrap()
+            tm.that(analysis.files, empty=False)
+            tm.that(analysis.issues, empty=True)
+            tm.that(sources, eq=frozen)
+            for state in states:
+                tm.that(state.path.read_bytes(), eq=state.content)
+            for plan in analysis.files:
+                if plan.path in sources:
+                    tm.that(plan.before, eq=next(state for state in states if state.path == plan.path))
+                else:
+                    tm.that(plan.path.exists(), eq=False)
             changed = phase.apply(project, preflight, rope)
 
         tm.that(changed.failure, eq=False)

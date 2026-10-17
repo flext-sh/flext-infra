@@ -69,7 +69,8 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         candidates = tuple(
             path
             for path in sorted(editable)
-            if c.Infra.DIR_TESTS in path.parts
+            if path.is_relative_to(workspace.repository_root)
+            and c.Infra.DIR_TESTS in path.parts
             and (
                 workspace.convention(path).module_policy.is_fixture_module
                 or (path.stem.startswith("_") and path.stem != "__init__")

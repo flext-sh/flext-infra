@@ -154,9 +154,7 @@ class FlextInfraModelsRefactor(
         """JSON input carrying explicit decisions, not a lexical naming policy."""
 
         decisions: t.VariadicTuple[FlextInfraModelsRefactor.SemanticRenameSelection] = (
-            m.Field(
-                min_length=1, description="Explicit domain names for inventoried owners"
-            )
+            m.Field(description="Explicit domain names for inventoried owners")
         )
         consumer_roots: t.VariadicTuple[Path] = m.Field(
             default=(),
@@ -168,7 +166,8 @@ class FlextInfraModelsRefactor(
 
         decisions: t.VariadicTuple[FlextInfraModelsRefactor.SemanticRenameDecision] = (
             m.Field(
-                description="Resolved declarations and their domain naming decisions"
+                min_length=1,
+                description="Resolved declarations and their domain naming decisions",
             )
         )
         edits: t.VariadicTuple[FlextInfraModelsTransformers.SemanticMigrationEdit] = (

@@ -48,9 +48,12 @@ class TestsFlextInfraLazyInitRuntime:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("imported_alias", [False, True])
+    @pytest.mark.parametrize(
+        ("imported_alias", "published_alias"),
+        [(False, False), (True, False), (True, True)],
+    )
     def test_public_generation_owns_test_initialization_in_one_class(
-        tmp_path: Path, imported_alias: bool
+        tmp_path: Path, imported_alias: bool, published_alias: bool
     ) -> None:
         """Class metadata publishes precise lazy aliases without module assignments."""
         repository, package = u.Tests.create_lazy_init_workspace(
@@ -72,8 +75,12 @@ class TestsFlextInfraLazyInitRuntime:
         declaration.write_text(
             ("from flext_owned_tests.constants import c\n" if imported_alias else "")
             + "class TestsFlextOwnedTestsConstants:\n"
-            "    __all__ = ('TestsFlextOwnedTestsConstants', 'c')\n"
-            "    value = 'local'\n",
+            + (
+                "    __all__ = ('TestsFlextOwnedTestsConstants', 'c')\n"
+                if published_alias
+                else "    __all__ = ('TestsFlextOwnedTestsConstants',)\n"
+            )
+            + "    value = 'local'\n",
             encoding=c.DEFAULT_ENCODING,
         )
         nested = testing / "unit"
@@ -130,7 +137,7 @@ class TestsFlextInfraLazyInitRuntime:
             tm.that(bool(u.Infra.public_export_names_source(source)), eq=True)
         initializer = testing / c.Infra.INIT_PY
         source = initializer.read_text(encoding=c.DEFAULT_ENCODING)
-        expected_target = "c" if imported_alias else "TestsFlextOwnedTestsConstants"
+        expected_target = "c" if published_alias else "TestsFlextOwnedTestsConstants"
         tm.that(
             any(
                 item.level == 0
@@ -148,7 +155,7 @@ class TestsFlextInfraLazyInitRuntime:
         )
         base = (
             "flext_owned_tests.constants.ParentConstants"
-            if imported_alias
+            if published_alias
             else "tests.constants.TestsFlextOwnedTestsConstants"
         )
         tm.that(
@@ -158,7 +165,7 @@ class TestsFlextInfraLazyInitRuntime:
             ),
             eq=True,
         )
-        if imported_alias:
+        if published_alias:
             planned_source = source.replace(
                 '"c": ".constants"',
                 '"c": (".constants", "TestsFlextOwnedTestsConstants")',
@@ -184,7 +191,7 @@ class TestsFlextInfraLazyInitRuntime:
                 "from tests.constants import TestsFlextOwnedTestsConstants\n"
                 + (
                     "from flext_owned_tests.constants import c as expected\n"
-                    if imported_alias
+                    if published_alias
                     else "expected = TestsFlextOwnedTestsConstants\n"
                 )
                 + "print(generated.c is expected)\n"

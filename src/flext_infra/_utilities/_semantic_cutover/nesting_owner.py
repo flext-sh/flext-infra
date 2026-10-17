@@ -16,13 +16,13 @@ import pytest
 from _pytest.config.findpaths import determine_setup
 from flext_cli import u
 
-from flext_infra import r, t
+from flext_infra import p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, p
+    from flext_infra import m
 
 
 class FlextInfraUtilitiesSemanticCutoverNestingOwner:
@@ -81,6 +81,35 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             name.startswith(pattern) or fnmatch(name, pattern) for pattern in patterns
         )
 
+    @classmethod
+    def _pytest_class_binding(
+        cls, name: str, binding: p.Infra.RopePyName, patterns: t.StrSequence,
+    ) -> bool:
+        """Prove native class selection, including source-owned inherited flags.
+
+        The suite need not define test methods itself: native pytest also visits
+        inherited tests and custom method collectors on the original class object.
+        """
+        if not cls._pytest_name_matches(name, patterns):
+            return False
+        definition = binding.get_object()
+        scope = definition.get_scope()
+        if scope is None or scope.get_kind() != "Class":
+            return False
+        flag = definition.get_attributes().get("__test__")
+        if flag is None:
+            return True
+        provider, line = flag.get_definition_location()
+        if not isinstance(provider, p.Infra.RopePyModule):
+            msg = f"pytest class flag has no captured source: {name}"
+            raise ValueError(msg)
+        for node in ast.walk(ast.parse(provider.source_code)):
+            if isinstance(node, ast.Assign | ast.AnnAssign) and node.lineno == line:
+                if isinstance(node.value, ast.Constant) and isinstance(node.value.value, bool):
+                    return node.value.value
+        msg = f"pytest class flag requires native collection evidence: {provider.get_name()}.{name}"
+        raise ValueError(msg)
+
     @staticmethod
     def _pytest_mark_decorator(decorator: ast.expr, tree: ast.Module) -> bool:
         """Prove a decorator comes from pytest.mark, including imported spellings."""
@@ -119,9 +148,18 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         function_patterns: t.StrSequence,
         *,
         require_collection: bool,
+        composition: bool = False,
     ) -> p.Result[str]:
         """Elect an existing collected suite, otherwise derive Tests<Unit>."""
         elected = r[str]
+        prefix = convention.module_policy.project_prefix
+        prefix = prefix if prefix.startswith("Tests") else f"Tests{prefix}"
+        if composition:
+            stem = file_path.stem.removeprefix("test_").removesuffix("_tests").removesuffix("_test")
+            owner = prefix + u.derive_class_stem(stem)
+            while owner in classes:
+                owner += u.derive_class_stem("module")
+            return elected.ok(owner)
         suites = [
             name
             for name, node in classes.items()
@@ -137,8 +175,6 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
                 f"class-nesting requires exactly one collected suite for "
                 f"{convention.module_name}: {', '.join(suites)}",
             )
-        prefix = convention.module_policy.project_prefix
-        prefix = prefix if prefix.startswith("Tests") else f"Tests{prefix}"
         if suites and suites[0].startswith(prefix):
             return elected.ok(suites[0])
         if suites:

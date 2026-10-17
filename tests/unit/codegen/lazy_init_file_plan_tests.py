@@ -7,18 +7,141 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from re import escape
 from pathlib import Path
 
 import pytest
 
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenLazyInit
+from flext_infra.codegen import codegen_transaction as transaction
+from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraCodegenLazyInitFilePlans:
     """Prove lazy-init describes effects without owning publication."""
+
+    @staticmethod
+    @pytest.mark.parametrize("exported", [False, True])
+    def test_original_epoch_conflict_keeps_independent_production_publication(
+        tmp_path: Path, *, exported: bool,
+    ) -> None:
+        """Keep the original error red while an independently proved initializer lands."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        (package / "service.py").write_text(
+            "class Published: pass\n__all__ = ['Published']\n", encoding=c.DEFAULT_ENCODING,
+        )
+        tests = root / c.Infra.DIR_TESTS
+        tests.mkdir()
+        conftest = tests / "conftest.py"
+        source = (
+            "class FixtureProvider: pass\n__all__ = ['FixtureProvider']\n"
+            if exported else "__all__ = []\n"
+        )
+        conftest.write_text(source, encoding=c.DEFAULT_ENCODING)
+        phase = c.Infra.CodegenStagedFilePhase.LAZY_INIT
+        owner = transaction.FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        roots = owner.capability_roots(phase.value, (root,))
+        retained: list[m.Infra.CodegenPhaseAnalysis] = []
+
+        def publish(scope_root: Path) -> p.Result[tuple[Path, ...]]:
+            service = u.Tests.create_lazy_init_service(root)
+            with pytest.raises(ValueError, match=escape(str(conftest))) as caught:
+                with u.Infra.facade_source_project(root, project_roots=(root,)) as binding:
+                    analysis = tm.ok(service.plan_files(source_project=binding[0]))
+                    original = next(file for file in analysis.files if file.path == package / c.Infra.INIT_PY)
+                    tm.that(conftest in {state.path for state in original.source_states}, eq=False)
+                    conftest.write_text(source + "# Concurrent source edit\n", encoding=c.DEFAULT_ENCODING)
+            classified = service.classify_source_conflict(analysis, binding[0], caught.value)
+            retained.append(classified)
+            tm.that(classified.exception is caught.value, eq=True)
+            tm.that(package / c.Infra.INIT_PY in {file.path for file in classified.files}, eq=True)
+            tm.that(tests / c.Infra.INIT_PY in {file.path for file in classified.files}, eq=False)
+            tm.that(any(issue.file == str(tests / c.Infra.INIT_PY) for issue in classified.issues), eq=True)
+            return owner.publish_file_phase_locked(
+                scope_root, roots, classified, m.Infra.CodegenPhasePublicationPolicy(directories=()),
+            )
+
+        outcome = owner.run_files_locked(roots, publish)
+        tm.that(outcome.failure, eq=True)
+        tm.that(outcome.exception is retained[0].exception, eq=True)
+        tm.that(conftest.read_text(encoding=c.DEFAULT_ENCODING), eq=source + "# Concurrent source edit\n")
+        production = next(file for file in retained[0].files if file.path == package / c.Infra.INIT_PY)
+        tm.that(production.path.read_bytes(), eq=production.desired_content)
+        tm.that(u.Tests.run_lazy_init_probe(
+            f"from {package.name} import Published\nprint(Published.__name__)",
+            python_paths=(str(package.parent),), cwd=root,
+        ), eq=["Published"])
+
+    @staticmethod
+    @pytest.mark.parametrize("change", ["direct", "transitive", "negative", "absent", "metadata"])
+    def test_consumed_original_sources_reject_publication(tmp_path: Path, change: str) -> None:
+        """Refuse changed direct, transitive, negative, absent and metadata inputs."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        provider_root, provider_package = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="upstream-provider", package_name="upstream_provider",
+        )
+        provider = provider_package / "provider.py"
+        provider.write_text("class Published: pass\n__all__ = ['Published']\n", encoding=c.DEFAULT_ENCODING)
+        source = package / "service.py"
+        source.write_text(
+            f"from {provider_package.name}.provider import Published\n__all__ = ['Published']\n"
+            if change == "transitive" else "class Published: pass\n__all__ = ['Published']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        negative = package / "hidden.py"
+        negative.write_text("__all__ = []\n", encoding=c.DEFAULT_ENCODING)
+        absent = package / f"{c.Infra.DUNDER_VERSION}{c.Infra.EXT_PYTHON}"
+        target = package / c.Infra.INIT_PY
+        before = target.read_bytes()
+        phase = c.Infra.CodegenStagedFilePhase.LAZY_INIT
+        owner = transaction.FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        roots = owner.capability_roots(phase.value, (root,))
+
+        def publish(scope_root: Path) -> p.Result[tuple[Path, ...]]:
+            inputs = tuple(
+                tm.ok(u.Cli.atomic_read_binary_file_state(path))
+                for path in (source, negative, target, root / c.PYPROJECT_FILENAME,
+                             provider, provider_package / c.Infra.INIT_PY,
+                             provider_root / c.PYPROJECT_FILENAME)
+            )
+            with u.Infra.facade_source_project(
+                tmp_path, source_states=inputs, project_roots=(root, provider_root),
+            ) as binding:
+                analysis = tm.ok(u.Tests.create_lazy_init_service(root).plan_files(source_project=binding[0]))
+            planned = next(file for file in analysis.files if file.path == target)
+            changed = {
+                "direct": source, "transitive": provider, "negative": negative,
+                "absent": absent, "metadata": root / c.PYPROJECT_FILENAME,
+            }[change]
+            if change == "absent":
+                tm.that(any(
+                    inventory.root.path == package and (absent.name, "isfile") in inventory.queries
+                    for inventory in planned.source_directories
+                ), eq=True)
+                absent.write_text(f"{c.Infra.DUNDER_VERSION} = 'changed'\n", encoding=c.DEFAULT_ENCODING)
+            else:
+                original = next(state for state in planned.source_states if state.path == changed)
+                changed.write_bytes(tm.not_none(original.content) + b"\n# Changed original input\n")
+            return owner.publish_file_phase_locked(
+                scope_root, roots,
+                m.Infra.CodegenPhaseAnalysis(
+                    phase=phase, files=(planned,), inputs=planned.source_states,
+                    source_directories=planned.source_directories,
+                    source_query_topology=planned.source_query_topology,
+                ),
+                m.Infra.CodegenPhasePublicationPolicy(directories=()),
+            )
+
+        outcome = owner.run_files_locked(roots, publish)
+        tm.that(outcome.failure, eq=True)
+        tm.that(target.read_bytes(), eq=before)
 
     @staticmethod
     def test_authored_initializer_keeps_executable_declarations_after_generation(

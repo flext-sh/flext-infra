@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Generator, Mapping
 from contextlib import AbstractContextManager, closing, contextmanager, nullcontext
-from errno import ELOOP, ENOENT
+from errno import ENOENT
 from os.path import normpath, realpath
 from pathlib import Path
 from types import MappingProxyType
@@ -411,6 +411,7 @@ class FlextInfraRopeProject(Project):
             self._root = root
             self.epoch_failure: BaseException | None = None
             self._structural_queries = 0
+            self._capturing = 0
             self._scopes: list[FlextInfraRopeProject.SourceConsumption] = []
             self._receipts: list[m.Infra.CodegenPhaseAnalysis] = []
             self._originals: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
@@ -439,10 +440,18 @@ class FlextInfraRopeProject(Project):
             self._retired = frozenset(
                 plan.path for plan in declared_files if plan.desired_content is None
             )
-            self._sources = MappingProxyType({
+            proposed = {
                 path: source.encode(c.DEFAULT_ENCODING)
                 for path, source in sources.items()
-            })
+            }
+            for plan in declared_files:
+                if plan.desired_content is not None:
+                    supplied = proposed.get(plan.path)
+                    if supplied is not None and supplied != plan.desired_content:
+                        msg = f"Rope proposed source disagrees with its declared effect: {plan.path}"
+                        raise ValueError(msg)
+                    proposed[plan.path] = plan.desired_content
+            self._sources = MappingProxyType(proposed)
             if self._retired.intersection(self._sources):
                 msg = "Rope retired source has competing proposed bytes"
                 raise ValueError(msg)
@@ -454,6 +463,15 @@ class FlextInfraRopeProject(Project):
                     msg = f"Rope proposed source lacks its original input: {path}"
                     raise ValueError(msg)
             self._overlay = FlextInfraRopeProject.SnapshotFiles(self._sources, ())
+
+        @contextmanager
+        def capture(self) -> Generator[None]:
+            """Pin originals before planning without claiming they were consumed."""
+            self._capturing += 1
+            try:
+                yield
+            finally:
+                self._capturing -= 1
 
         @contextmanager
         def selection(self) -> Generator[None]:
@@ -496,11 +514,15 @@ class FlextInfraRopeProject(Project):
             topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = (),
         ) -> None:
             """Attribute the exact event to every enclosing consumer."""
+            if self._capturing:
+                return
             for scope in self._scopes:
                 scope.record(states, directories, topology)
 
         def _consume_effect(self, path: Path) -> None:
             """Attribute a declared overlay effect's original proof to its consumer."""
+            if self._capturing:
+                return
             plan = self._effects.get(path)
             if plan is None:
                 return
@@ -587,9 +609,8 @@ class FlextInfraRopeProject(Project):
                 [] if inventory is None else [item.name for item in inventory.entries]
             )
             if inventory is not None:
-                self._inventories[directory] = inventory.model_copy(
-                    update={"membership_queried": True}
-                )
+                if not self._capturing:
+                    self._inventories[directory] = inventory.model_copy(update={"membership_queried": True})
                 self._record(
                     directories=(
                         inventory.model_copy(
@@ -598,9 +619,8 @@ class FlextInfraRopeProject(Project):
                     ),
                 )
             else:
-                self._topology[directory] = self._topology[directory].model_copy(
-                    update={"membership_queried": True}
-                )
+                if not self._capturing:
+                    self._topology[directory] = self._topology[directory].model_copy(update={"membership_queried": True})
                 self._record(
                     topology=(
                         self._topology[directory].model_copy(
@@ -613,7 +633,7 @@ class FlextInfraRopeProject(Project):
                 for child in self._overlay.children(path):
                     if (
                         child.name not in physical_names
-                        and not self._structural_queries
+                        and not (self._structural_queries or self._capturing)
                     ):
                         self._observe_overlay(str(child))
                     names.append(child.name)
@@ -622,7 +642,7 @@ class FlextInfraRopeProject(Project):
                     ENOENT, "Rope source directory was observed absent", path
                 )
             for retired in self._retired:
-                if retired.parent == directory and not self._structural_queries:
+                if retired.parent == directory and not (self._structural_queries or self._capturing):
                     self._consume_effect(retired)
             return sorted(
                 name for name in set(names) if directory / name not in self._retired
@@ -697,6 +717,17 @@ class FlextInfraRopeProject(Project):
                     not self._directory_chain(candidate).directories
                     and predicate != "isfile"
                 )
+            elif not candidate.is_relative_to(self._root):
+                # Ambient interpreter trees and foreign ancestry end the
+                # repository's authenticated scope: their membership is a
+                # plain native fact, never an atomic inventory input, so the
+                # election walk can ascend past mount boundaries without
+                # inventorying hosts' ancestor directories.
+                observed = {
+                    "exists": candidate.exists,
+                    "isfile": candidate.is_file,
+                    "isdir": candidate.is_dir,
+                }[predicate]()
             else:
                 if self._query(str(candidate.parent), "exists") and not self._query(
                     str(candidate.parent),
@@ -706,13 +737,10 @@ class FlextInfraRopeProject(Project):
                 inventory = self._inventory(candidate.parent)
                 if inventory is None:
                     witness = self._topology[candidate.parent]
-                    self._topology[candidate.parent] = witness.model_copy(
-                        update={
-                            "queries": tuple(
-                                sorted({*witness.queries, (candidate.name, predicate)})
-                            )
-                        }
-                    )
+                    if not self._capturing:
+                        self._topology[candidate.parent] = witness.model_copy(update={
+                            "queries": tuple(sorted({*witness.queries, (candidate.name, predicate)})),
+                        })
                     self._record(
                         topology=(
                             witness.model_copy(
@@ -725,73 +753,34 @@ class FlextInfraRopeProject(Project):
                     )
                     observed = False
                 else:
-                    try:
-                        observed = u.Cli.atomic_directory_query_value(
-                            inventory, candidate.name, predicate
-                        )
-                    except OSError as exc:
-                        if exc.errno != ELOOP:
-                            raise
-                        observed = self._alias_query(candidate, predicate)
-                    else:
-                        inventory = inventory.model_copy(
-                            update={
-                                "queries": tuple(
-                                    sorted({
-                                        *inventory.queries,
-                                        (candidate.name, predicate),
-                                    })
-                                )
-                            }
-                        )
+                    observed = u.Cli.atomic_directory_query_value(inventory, candidate.name, predicate)
+                    inventory = inventory.model_copy(update={
+                        "queries": tuple(sorted({*inventory.queries, (candidate.name, predicate)})),
+                    })
+                    if not self._capturing:
                         self._inventories[candidate.parent] = inventory
-                        self._record(
-                            directories=(
-                                inventory.model_copy(
-                                    update={
-                                        "queries": ((candidate.name, predicate),),
-                                        "membership_queried": False,
-                                    }
-                                ),
-                            ),
-                        )
-            if not self._structural_queries:
+                    self._record(directories=(inventory.model_copy(update={
+                        "queries": ((candidate.name, predicate),), "membership_queried": False,
+                    }),))
+            if not (self._structural_queries or self._capturing):
                 self._consume_effect(candidate)
             if candidate in self._retired:
                 return False
-            if observed:
-                return True
-            match predicate:
-                case "exists":
-                    proposed = self._overlay.exists(path)
-                case "isfile":
-                    proposed = self._overlay.isfile(path)
-                case "isdir":
-                    proposed = self._overlay.isdir(path)
-            if proposed and not self._structural_queries:
-                self._observe_overlay(path)
-            return proposed
-
-        def _alias_query(
-            self, candidate: Path, predicate: Literal["exists", "isfile", "isdir"]
-        ) -> bool:
-            """Authenticate one alias observation through its resolved target.
-
-            The alias receipt itself keeps its physical symlink identity; the
-            predicate answer comes from the target's own physical inventory, so
-            no unanswerable query is recorded for later verification.
-
-            Returns:
-                The predicate value answered by the resolved target receipt.
-
-            """
-            try:
-                target = candidate.resolve(strict=True)
-            except OSError:
-                return False
-            if predicate == "exists":
-                return True
-            return self._query(str(target), predicate)
+            if candidate in self._sources:
+                if not observed and not (self._structural_queries or self._capturing):
+                    self._observe_overlay(path)
+                return predicate != "isdir"
+            if self._overlay.isdir(path):
+                if not observed and not (self._structural_queries or self._capturing):
+                    self._observe_overlay(path)
+                return predicate != "isfile"
+            original = self._originals.get(candidate)
+            if original is not None:
+                expected = original.content is not None and predicate != "isdir"
+                if expected != observed:
+                    self.source_state(candidate, required=False)
+                return expected
+            return observed
 
         def _observe_overlay(self, path: str) -> None:
             """Bind the exact planned sources contributing a virtual resource."""
@@ -857,10 +846,10 @@ class FlextInfraRopeProject(Project):
                             required=required,
                         )
                     )
-                else:
-                    self.require_value(u.Cli.atomic_verify_binary_file_states((state,)))
-                self._verify_declarations(source)
-                self._consumed[source] = state
+                    self._originals = MappingProxyType({**self._originals, source: state})
+                if not self._capturing:
+                    self._verify_declarations(source, check_current=False)
+                    self._consumed[source] = state
             self._record(states=(state,))
             if required and state.content is None:
                 msg = f"Rope required source is absent: {source}"
@@ -887,7 +876,7 @@ class FlextInfraRopeProject(Project):
             for path in self._consumed:
                 self._verify_declarations(path)
 
-        def _verify_declarations(self, path: Path) -> None:
+        def _verify_declarations(self, path: Path, *, check_current: bool = True) -> None:
             """Use the existing owner for every consumed virtual birth witness.
 
             Args:
@@ -900,15 +889,11 @@ class FlextInfraRopeProject(Project):
             for plan in self._declared:
                 if plan.path != path:
                     continue
-                _, content = (
-                    FlextInfraUtilitiesRopeRuntimeModuleQueries.snapshot_destination(
-                        plan.project,
-                        plan,
-                    )
-                )
-                if self._sources.get(path) != content:
+                if self._sources.get(path) != plan.desired_content:
                     msg = f"Rope proposed source disagrees with its declaration: {path}"
                     raise ValueError(msg)
+                if check_current:
+                    FlextInfraUtilitiesRopeRuntimeModuleQueries.snapshot_destination(plan.project, plan)
 
     class SnapshotChangeIndicator(ChangeIndicator):
         """Observe captured content and directory membership by native equality."""
@@ -1138,6 +1123,13 @@ class FlextInfraRopeProject(Project):
             msg = "Rope project does not own authenticated live reads"
             raise TypeError(msg)
         return self.fscommands.selection()
+
+    def source_capture(self) -> AbstractContextManager[None]:
+        """Pin potential originals once without claiming prefetch was consumption."""
+        if not isinstance(self.fscommands, self.AtomicReadFiles):
+            msg = "Rope project does not own authenticated live reads"
+            raise TypeError(msg)
+        return self.fscommands.capture()
 
     def replay_source_consumption(self, receipt: m.Infra.CodegenPhaseAnalysis) -> None:
         """Attribute an authentic cached result's original dependencies."""

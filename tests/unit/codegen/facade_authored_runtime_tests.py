@@ -202,6 +202,50 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 tm.that(consumer.receipt().inputs, eq=(original,))
 
     @staticmethod
+    def test_identical_in_place_rewrite_keeps_source_epoch_valid(
+        tmp_path: Path,
+    ) -> None:
+        """A byte-identical same-inode rewrite is not a divergent source change."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        content = "__all__ = []\n"
+        tm.ok(u.Cli.atomic_write_text_file(source, content))
+        inode_before = source.stat().st_ino
+        with u.Infra.facade_source_project(root) as (project, _, _):
+            with project.source_consumption() as provider:
+                original = project.source_state(source)
+            with source.open("wb") as handle:
+                handle.write(content.encode(c.DEFAULT_ENCODING))
+            tm.that(source.stat().st_ino, eq=inode_before)
+            with project.source_consumption() as consumer:
+                project.replay_source_consumption(provider.receipt())
+            tm.that(project.source_state(source), eq=original)
+            tm.that(consumer.receipt().inputs, eq=(original,))
+
+    @staticmethod
+    def test_divergent_in_place_rewrite_fails_source_epoch(
+        tmp_path: Path,
+    ) -> None:
+        """A genuinely divergent same-inode rewrite fails with content evidence."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        tm.ok(u.Cli.atomic_write_text_file(source, "__all__ = []\n"))
+
+        def diverge() -> None:
+            with u.Infra.facade_source_project(root) as (project, _, _):
+                with project.source_consumption() as provider:
+                    expected = project.source_state(source)
+                with source.open("wb") as handle:
+                    handle.write(b"__all__ = ['diverged']\n")
+                tm.that(source.stat().st_ino, eq=expected.inode)
+                with project.source_consumption():
+                    project.replay_source_consumption(provider.receipt())
+
+        with pytest.raises(ValueError, match="atomic source changed") as rejected:
+            diverge()
+        tm.that("content_changed=True" in str(rejected.value), eq=True)
+
+    @staticmethod
     def test_negative_query_receipts_keep_original_absent_topology(
         tmp_path: Path,
     ) -> None:

@@ -105,7 +105,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ),
         ).states
         proposed = {
-            plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
+            plan.path: plan.desired_content
             for plan in declared_files
             if plan.desired_content is not None
         }
@@ -129,9 +129,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 )
             },
             **{
-                plan.path: proposed[plan.path]
+                plan.path: proposed[plan.path].decode(c.DEFAULT_ENCODING)
                 for plan in declared_files
-                if plan.project == root
+                if plan.path.is_relative_to(root)
+                and plan.path.suffix == c.Infra.EXT_PYTHON
                 and plan.path in proposed
                 and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
                     root, plan.path
@@ -188,7 +189,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                             if folder.is_folder()
                         ),
                     ),
-                    sources=proposed,
+                    sources={},
                     declared_files=declared_files,
                 )
             ) as project,

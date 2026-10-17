@@ -17,14 +17,7 @@ id: ban-settings-config-own-facade-import
 language: python
 severity: error
 files:
-- "**/_settings*.py"
-- "**/_config*.py"
-- "**/settings*.py"
-- "**/config*.py"
-- "**/_settings*/**/*.py"
-- "**/_config*/**/*.py"
-ignores:
-- "**/__init__.py"
+- "**/*.py"
 metadata:
   context:
     MODULE:
@@ -45,14 +38,7 @@ id: ban-settings-config-own-module-import
 language: python
 severity: error
 files:
-- "**/_settings*.py"
-- "**/_config*.py"
-- "**/settings*.py"
-- "**/config*.py"
-- "**/_settings*/**/*.py"
-- "**/_config*/**/*.py"
-ignores:
-- "**/__init__.py"
+- "**/*.py"
 metadata:
   context:
     MODULE:

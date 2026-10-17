@@ -25,6 +25,9 @@ from flext_infra._utilities._semantic_cutover import (
 from flext_infra._utilities._semantic_cutover.contracts import (
     FlextInfraUtilitiesSemanticContracts,
 )
+from flext_infra._utilities._semantic_cutover.model_aliases import (
+    FlextInfraUtilitiesSemanticModelAliases,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -164,8 +167,8 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION: lambda: (
                 cls._plan_rope_contracts(rope_workspace, sources)
             ),
-            c.Infra.SemanticCutoverPhase.COMPAT_ALIAS: lambda: cls._plan_api_aliases(
-                root, sources, selected
+            c.Infra.SemanticCutoverPhase.COMPAT_ALIAS: lambda: cls._plan_alias_cutover(
+                rope_workspace, sources, selected
             ),
             c.Infra.SemanticCutoverPhase.PRIVATE_IMPORT: lambda: (
                 cls._plan_private_imports(root, sources, selected)
@@ -182,6 +185,30 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             message = f"unsupported semantic cutover phase: {phase}"
             raise ValueError(message)
         return factory()
+
+    @classmethod
+    def _plan_alias_cutover(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+        selected: t.SequenceOf[m.Infra.ModOccurrence],
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        """Compose model-alias retirement with existing API-alias policy."""
+        aliases = FlextInfraUtilitiesSemanticModelAliases.plan_model_aliases(workspace, sources)
+        if aliases.failure:
+            return aliases
+        working = dict(sources)
+        working.update((edit.file_path, edit.updated_source) for edit in aliases.value)
+        api = cls._plan_api_aliases(workspace.repository_root, working, selected)
+        if api.failure:
+            return api
+        working.update((edit.file_path, edit.updated_source) for edit in api.value)
+        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(tuple(
+            m.Infra.SemanticMigrationEdit(
+                file_path=path, original_source=source, updated_source=working[path],
+                changes=("composed native alias retirement",),
+            ) for path, source in sources.items() if working[path] != source
+        ))
 
     @classmethod
     def _plan_ordered_phase(

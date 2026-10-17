@@ -191,6 +191,26 @@ class TestsFlextInfraCodemodDuplicateApply:
                 self._objects(rope, (core, side), "SHARED_LIMIT"),
                 value_identical=True,
             )
+            sources = {
+                Path(resource.real_path).resolve(): resource.read()
+                for resource in rope.rope_project.get_python_files()
+            }
+            frozen = dict(sources)
+            states = tuple(tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+                           for path in sources)
+            planned, deletions = tm.ok(FlextInfraCodemodDuplicateApply.plan_census(
+                root, rope, (group,), sources=sources, source_states=states,
+            ))
+            tm.that(planned.edits, empty=False)
+            tm.that(deletions, empty=False)
+            tm.that(sources, eq=frozen)
+            for edit in planned.edits:
+                tm.that(edit.file_path.read_text(encoding=c.DEFAULT_ENCODING),
+                        eq=edit.original_source)
+            preview = tm.ok(FlextInfraCodemodDuplicateApply.census_duplicates(
+                root, rope, (group,), apply=False,
+            ))
+            tm.that(preview.edits, eq=planned.edits)
             outcome = tm.ok(
                 FlextInfraCodemodDuplicateApply.census_duplicates(
                     root,

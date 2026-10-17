@@ -73,7 +73,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
             The run's verdict and one finding per file left unformatted.
 
         """
-        _ = project_dir, ctx
+        _ = ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         if not u.Cli.process_succeeded(result.outcome) and result.stdout.strip():
             seen: t.Infra.StrSet = set()
@@ -98,7 +98,9 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
                             message="Would be reformatted",
                         ),
                     )
-        return u.Cli.process_succeeded(result.outcome), issues
+        if result.stderr.strip():
+            issues.append(self._native_error_issue(project_dir, result.stderr))
+        return u.Cli.process_succeeded(result.outcome) and not issues, issues
 
     @override
     def _build_fix_command(
@@ -150,8 +152,8 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         run = u.Cli.run_raw(command, cwd=repository_root)
         if run.failure:
             return r[bool].from_failure(run)
-        if not u.Cli.process_succeeded(run.value.outcome):
-            return r[bool].fail(run.value.stdout)
+        if not u.Cli.process_succeeded(run.value.outcome) or run.value.stderr.strip():
+            return r[bool].fail(cls._raw_output(run.value))
         return r[bool].ok(value=True)
 
 

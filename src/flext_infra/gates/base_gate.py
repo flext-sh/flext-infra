@@ -816,7 +816,7 @@ class FlextInfraGate:
                         started=started,
                     ),
                 )
-            if self.gate_id == c.Infra.LINT and result.stderr.strip():
+            if any(issue.code == f"{self.gate_id}-exec" for issue in execution.issues):
                 return execution
             verified = self._execute_check_command(project_dir, ctx, targets, started)
         return verified.model_copy(

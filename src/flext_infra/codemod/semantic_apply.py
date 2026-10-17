@@ -107,14 +107,6 @@ class FlextInfraCodemodSemanticApply:
             )
             for scope in scopes
         }
-        for scope in scopes:
-            with u.Infra.open_project(
-                scope, project_roots=project_roots[scope]
-            ) as project:
-                for resource in project.get_python_files():
-                    inventories[scope].setdefault(
-                        Path(resource.real_path).resolve(), resource.read()
-                    )
         original = dict(
             sorted(
                 (path, source)
@@ -133,8 +125,16 @@ class FlextInfraCodemodSemanticApply:
             return r[m.Infra.SemanticRenamePlan].fail(
                 "rename inventory changed during capture"
             )
+        bounded = FlextInfraStagedPackage.plan_sources(
+            scopes[0], {}, inputs=inputs,
+            workspaces=scopes if len(scopes) > 1 else (),
+        )
+        if bounded.failure:
+            return r[m.Infra.SemanticRenamePlan].from_failure(bounded)
+        inputs = bounded.value.inputs
         captured = m.Infra.CodemodBindingSnapshot(states=inputs)
         epoch = u.Infra.codemod_source_epoch(captured)
+        original = dict(epoch.sources)
         with ExitStack() as stack:
             declared_projects = tuple(
                 dict.fromkeys(
@@ -147,7 +147,7 @@ class FlextInfraCodemodSemanticApply:
                 stack.enter_context(
                     u.Infra.open_project(
                         project,
-                        project_roots=declared_projects,
+                        project_roots=tuple(owner for owner in declared_projects if owner.is_relative_to(project)),
                         consumer_root=project,
                     )
                 )
@@ -313,6 +313,22 @@ class FlextInfraCodemodSemanticApply:
         )
         epoch = u.Infra.codemod_source_epoch(originals)
         with ExitStack() as stack:
+            native_projects = tuple(
+                stack.enter_context(u.Infra.open_project(
+                    owner, project_roots=u.Infra.discover_rope_project_roots(owner),
+                    consumer_root=owner,
+                ))
+                for owner in dict.fromkeys((root, *projects))
+            )
+            source_folders = tuple(dict.fromkeys(
+                folder.real_path for native in native_projects
+                for folder in native.get_source_folders()
+            ))
+            python_folders = tuple(dict.fromkeys((
+                *source_folders,
+                *(folder.real_path for native in native_projects
+                  for folder in native.get_python_path_folders() if folder.is_folder()),
+            )))
             live = stack.enter_context(
                 u.Infra.open_project(
                     candidate.workspace,
@@ -326,7 +342,8 @@ class FlextInfraCodemodSemanticApply:
                         originals.states,
                         election=m.Infra.RopeProjectElection(
                             source_folders=tuple(
-                                folder.path for folder in live.get_source_folders()
+                                Path(folder).relative_to(candidate.workspace).as_posix()
+                                for folder in source_folders
                             ),
                             ignored_resources=tuple(
                                 u.type_adapter(list[str]).validate_python(
@@ -342,11 +359,7 @@ class FlextInfraCodemodSemanticApply:
                                     )
                                 )
                             ),
-                            python_path_folders=tuple(
-                                folder.real_path
-                                for folder in live.get_python_path_folders()
-                                if folder.is_folder()
-                            ),
+                            python_path_folders=python_folders,
                         ),
                         sources={
                             **{
@@ -475,6 +488,7 @@ class FlextInfraCodemodSemanticApply:
         candidate: m.Infra.SemanticRenamePlan,
         *,
         publish: bool = True,
+        source_analysis: m.Infra.CodegenPhaseAnalysis | None = None,
     ) -> p.Result[bool]:
         """Publish one rule-composed native candidate under its original source epoch.
 
@@ -488,7 +502,66 @@ class FlextInfraCodemodSemanticApply:
         authenticated = u.Cli.atomic_verify_binary_file_states(candidate.source_states)
         if authenticated.failure:
             return authenticated
-        return cls._publish_authenticated_rename(root, candidate, None, publish=publish)
+        return cls._publish_authenticated_rename(
+            root, candidate, None, publish=publish, source_analysis=source_analysis,
+        )
+
+    @staticmethod
+    def compose_candidate(
+        candidate: m.Infra.SemanticRenamePlan,
+        analysis: m.Infra.CodegenPhaseAnalysis,
+    ) -> p.Result[m.Infra.SemanticRenamePlan]:
+        """Fold an existing phase's effects without replacing its physical originals.
+
+        Returns:
+            The updated staged view with the union of original source witnesses.
+
+        Raises:
+            BaseException: The first original planning exception, unchanged.
+
+        """
+        result_type = r[m.Infra.SemanticRenamePlan]
+        if analysis.exception is not None:
+            raise analysis.exception
+        if analysis.issues:
+            return result_type.fail("; ".join(issue.message for issue in analysis.issues))
+        originals = {state.path: state for state in candidate.candidate.inputs}
+        known = {state.path: state for state in m.Infra.CodemodBindingSnapshot(states=(
+            *candidate.candidate.inputs, *candidate.source_states,
+        )).states}
+        updates = dict(candidate.candidate.updates)
+        modes = dict(candidate.candidate.modes)
+        for effect in analysis.files:
+            if effect.before != known.setdefault(effect.path, effect.before):
+                return result_type.fail(f"phase replaced original physical evidence: {effect.path}")
+            originals.setdefault(effect.path, effect.before)
+            updates[effect.path] = (
+                None if effect.desired_content is None
+                else effect.desired_content.decode(c.DEFAULT_ENCODING)
+            )
+            if effect.desired_mode is None:
+                modes.pop(effect.path, None)
+            else:
+                modes[effect.path] = effect.desired_mode
+        captured = m.Infra.CodemodBindingSnapshot(states=(
+            *candidate.source_states, *analysis.inputs,
+            *(effect.before for effect in analysis.files),
+            *(state for effect in analysis.files for state in effect.source_states),
+        ))
+        directories, topology = u.Cli.atomic_merge_directory_query_receipts(
+            (*candidate.source_directories, *analysis.source_directories,
+             *(item for effect in analysis.files for item in effect.source_directories)),
+            (*candidate.source_query_topology, *analysis.source_query_topology,
+             *(item for effect in analysis.files for item in effect.source_query_topology)),
+        )
+        return FlextInfraStagedPackage.plan_sources(
+            candidate.candidate.workspace, updates,
+            inputs=tuple(originals.values()), workspaces=candidate.candidate.workspaces,
+            modes=modes,
+        ).map(lambda stage: candidate.model_copy(update={
+            "candidate": stage, "source_states": captured.states,
+            "source_directories": directories, "source_query_topology": topology,
+        }))
 
     @classmethod
     def _load_rename_artifact(
@@ -601,6 +674,7 @@ class FlextInfraCodemodSemanticApply:
         driver: m.Cli.AtomicFileState | None,
         *,
         publish: bool,
+        source_analysis: m.Infra.CodegenPhaseAnalysis | None = None,
     ) -> p.Result[bool]:
         """Publish the authenticated candidate through the guarded transaction.
 
@@ -648,6 +722,7 @@ class FlextInfraCodemodSemanticApply:
         return FlextInfraSemanticPublication.publish_semantic_artifact_plans(
             plans,
             inputs=dependencies,
+            source_analysis=source_analysis,
             repository_root=u.Infra.import_project_roots(root)[0].resolve(),
             projection_roots=tuple(
                 sorted({
@@ -679,40 +754,14 @@ class FlextInfraCodemodSemanticApply:
             m.Infra.ModOccurrenceReport(files=frozenset(), entries=())
         )
         original = cls.source_inventory(root, inventory)
-        phases = (
-            c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
-            c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
-        )
+        planned = cls.plan_census_constants(root, rope_workspace, sources=original)
+        if planned.failure:
+            return planned
         working = dict(original)
         changed: set[Path] = set()
-        constant_edits: t.VariadicTuple[m.Infra.SemanticMigrationEdit] = ()
-        for phase in phases:
-            planned = u.Infra.plan_semantic_cutover(
-                phase,
-                rope_workspace=rope_workspace,
-                sources=working,
-            )
-            if planned.failure:
-                return planned
-            cls._apply_plan(working, planned.value, changed)
-            constant_edits = planned.value
-
-        # Empty plans already prove both phases on the same authenticated input.
-        # Edits invalidate that proof; staged and published runtime checks remain.
-        if changed:
-            verified = cls._verify_census_phases(working, rope_workspace, phases)
-            if verified.failure:
-                return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].from_failure(
-                    verified,
-                )
-        u.Infra.preflight_semantic_import_graph(rope_workspace, original, working)
-        definition_time = cls._check_definition_time(original, working, changed)
-        if definition_time.failure:
-            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].from_failure(
-                definition_time,
-            )
+        cls._apply_plan(working, planned.value, changed)
         if not apply:
-            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(constant_edits)
+            return planned
         # A no-op candidate still verifies its planned inventory. A nonempty
         # candidate keeps the exact union, even when normalization writes no bytes.
         project_roots = {u.Infra.project_root(path) for path in changed or original}
@@ -730,13 +779,14 @@ class FlextInfraCodemodSemanticApply:
 
         def verify(candidate_root: Path) -> p.Result[bool]:
             with workspace_factory(candidate_root, None) as candidate_workspace:
-                fixed_point = cls._verify_census_phases(
-                    cls.source_inventory(candidate_root, inventory),
-                    candidate_workspace,
-                    phases,
+                fixed_point = cls.plan_census_constants(
+                    candidate_root, candidate_workspace,
+                    sources=cls.source_inventory(candidate_root, inventory),
                 )
             if fixed_point.failure:
-                return fixed_point
+                return r[bool].from_failure(fixed_point)
+            if fixed_point.value:
+                return r[bool].fail("constants census candidate retains corrective edits")
             return FlextInfraWorkspaceChecker(
                 repository_root=candidate_root,
             ).execute_payload(
@@ -756,7 +806,46 @@ class FlextInfraCodemodSemanticApply:
             {path: working[path] for path in changed},
             source_preview=source_preview,
             validator=verify,
-        ).map(lambda _: constant_edits)
+        ).map(lambda _: planned.value)
+
+    @classmethod
+    def plan_census_constants(
+        cls, root: Path, rope_workspace: p.Infra.RopeWorkspaceDsl,
+        *, sources: t.MappingKV[Path, str],
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        """Plan both census owners against one original-to-final source candidate.
+
+        Returns:
+            Combined declaration and consumer edits, never just the last phase.
+
+        """
+        phases = (
+            c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
+            c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
+        )
+        working = dict(sources)
+        changed: set[Path] = set()
+        result_type = r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]
+        if rope_workspace.repository_root.resolve() != root.resolve():
+            return result_type.fail("constants planner target differs from workspace selection")
+        for phase in phases:
+            planned = u.Infra.plan_semantic_cutover(
+                phase, rope_workspace=rope_workspace, sources=working,
+            )
+            if planned.failure:
+                return planned
+            cls._apply_plan(working, planned.value, changed)
+        if changed:
+            verified = cls._verify_census_phases(working, rope_workspace, phases)
+            if verified.failure:
+                return result_type.from_failure(verified)
+        u.Infra.preflight_semantic_import_graph(rope_workspace, sources, working)
+        return cls._check_definition_time(sources, working, changed).map(
+            lambda _: tuple(m.Infra.SemanticMigrationEdit(
+                file_path=path, original_source=sources[path], updated_source=working[path],
+                changes=("composed constants census",),
+            ) for path in sorted(changed) if sources[path] != working[path])
+        )
 
     @classmethod
     def _verify_census_phases(

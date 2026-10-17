@@ -100,6 +100,8 @@ class TestsFlextInfraSemanticPublication:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.provision_checkout(root)
         u.Tests.provision_runtime_environment(root)
+        driver = root / c.Infra.REPORTS_DIR_NAME / "native" / "rename.artifact"
+        driver.parent.mkdir(parents=True, exist_ok=True)
         notice = u.Infra.copyright_notice(root)
         source = package / "service.py"
         source.write_text(
@@ -168,7 +170,6 @@ class TestsFlextInfraSemanticPublication:
                 )
             )
         tm.that(consumer in artifact.candidate.updates, eq=True)
-        driver = root / "rename.artifact"
         tm.ok(u.Cli.atomic_write_text_file(driver, artifact.model_dump_json()))
         captured = tm.ok(u.Cli.atomic_read_binary_file_state(driver, required=True))
         tm.that(

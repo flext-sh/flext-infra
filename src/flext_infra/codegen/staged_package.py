@@ -183,6 +183,7 @@ class FlextInfraStagedPackage:
         inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
         workspaces: t.VariadicTuple[Path] = (),
         modes: t.MappingKV[Path, int] | None = None,
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.StageSourcePlan]:
         """Pin real project inputs for preview without writing live source.
 
@@ -192,6 +193,7 @@ class FlextInfraStagedPackage:
             inputs: Original caller snapshots, never replaced by a fresh observation.
             workspaces: Explicit non-overlapping composition roots for a joint view.
             modes: Desired file-effect modes derived from captured module move sources.
+            declared_files: Original native file/absence witnesses for current virtual effects.
 
         Returns:
             A result wrapping the planned stage source or the first failure encountered.
@@ -199,6 +201,20 @@ class FlextInfraStagedPackage:
         """
         result_type = r[m.Infra.StageSourcePlan]
         workspace = workspace.resolve()
+        if len({plan.path for plan in declared_files}) != len(declared_files):
+            return result_type.fail("candidate has competing declared file effects")
+        if any(plan.path not in updates for plan in declared_files):
+            return result_type.fail("declared file has no desired source effect")
+        effect_modes = {
+            plan.path: plan.desired_mode for plan in declared_files
+            if plan.desired_mode is not None
+        }
+        if modes is not None:
+            effect_modes.update(modes)
+        modes = effect_modes
+        for plan in declared_files:
+            if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan) and u.Cli.atomic_plan_directory_chain(plan.before.target) != plan.before:
+                return result_type.fail(f"virtual source ancestry changed: {plan.path}")
         if modes is not None and not set(modes).issubset(updates):
             return result_type.fail("candidate mode has no declared file effect")
         if workspaces:
@@ -233,6 +249,7 @@ class FlextInfraStagedPackage:
                         for path, mode in modes.items()
                         if path.is_relative_to(root)
                     },
+                    declared_files=tuple(file for file in declared_files if file.path.is_relative_to(root)),
                 )
                 if planned.failure:
                     return result_type.from_failure(planned)
@@ -267,6 +284,7 @@ class FlextInfraStagedPackage:
                         for plan in plans
                         for path, mode in plan.modes.items()
                     },
+                    declared_files=tuple(file for plan in plans for file in plan.declared_files),
                     layouts=tuple(layout for plan in plans for layout in plan.layouts),
                     workspace_packages=tuple(
                         sorted({
@@ -322,7 +340,6 @@ class FlextInfraStagedPackage:
                 selected,
                 states,
                 updates=normalized,
-                modes={} if modes is None else modes,
             )
             if pinned.failure:
                 return result_type.from_failure(pinned)
@@ -332,6 +349,23 @@ class FlextInfraStagedPackage:
         verified = cls._verified_input_originals(states, inputs, normalized)
         if verified.failure:
             return result_type.from_failure(verified)
+        declared = {plan.path: plan for plan in declared_files}
+        effects: list[m.Infra.CodegenFilePlan] = []
+        for path, source in normalized.items():
+            content = None if source is None else source.encode(c.DEFAULT_ENCODING)
+            mode = None if content is None else modes.get(
+                path, states[path].mode if states[path].mode is not None else c.Infra.CONFIG_SPEC[1],
+            )
+            if path in declared:
+                effects.append(declared[path].model_copy(update={
+                    "desired_content": content, "desired_mode": mode,
+                }))
+            else:
+                effects.append(m.Infra.CodegenFilePlan(
+                    project=u.Infra.project_root(path) or workspace,
+                    path=path, before=states[path], desired_content=content,
+                    desired_mode=mode, source_states=tuple(states.values()),
+                ))
         return result_type.ok(
             m.Infra.StageSourcePlan(
                 workspace=workspace,
@@ -343,6 +377,8 @@ class FlextInfraStagedPackage:
                 ),
                 inputs=tuple(states.values()),
                 updates=normalized,
+                modes={} if modes is None else modes,
+                declared_files=tuple(effects),
                 layouts=tuple(selected),
                 workspace_packages=tuple(sorted(layouts)),
             )
@@ -495,6 +531,9 @@ class FlextInfraStagedPackage:
             if metadata.failure:
                 return r[bool].from_failure(metadata)
             actual.update(path for path in metadata.value if path.is_file())
+        for effect in plan.declared_files:
+            if isinstance(effect.before, m.Cli.AtomicDirectoryChainPlan) and u.Cli.atomic_plan_directory_chain(effect.before.target) != effect.before:
+                return r[bool].fail(f"virtual source ancestry changed: {effect.path}")
         expected = {item.path for item in plan.inputs if item.content is not None}
         if actual != expected:
             return r[bool].fail("candidate original source inventory changed")

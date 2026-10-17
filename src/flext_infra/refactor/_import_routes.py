@@ -8,9 +8,13 @@ from __future__ import annotations
 
 import ast
 from collections.abc import MutableMapping
+from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
 from flext_infra.refactor import FlextInfraImportNormalizationAstMixin
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraImportNormalizationRoutesMixin(
@@ -67,6 +71,8 @@ class FlextInfraImportNormalizationRoutesMixin(
         cls,
         state: m.Infra.ImportLawPass,
         lines: t.StrSequence,
+        *,
+        sources: t.MappingKV[Path, str] | None = None,
     ) -> t.SequenceOf[tuple[int, int, t.StrSequence]]:
         """Rewrite each ``from`` import onto its canonical lazy source.
 
@@ -95,7 +101,7 @@ class FlextInfraImportNormalizationRoutesMixin(
                     # to the published letter.
                     routed.setdefault(root, []).append(alias.asname or alias.name)
                     continue
-                source = cls._lazy_source(state.scope, node.module, alias.name)
+                source = cls._lazy_source(state.scope, node.module, alias.name, sources=sources)
                 routed.setdefault(source or node.module, []).append(
                     cls._clause(alias),
                 )
@@ -377,6 +383,8 @@ class FlextInfraImportNormalizationRoutesMixin(
         scope: m.Infra.ImportLawScope,
         module: str,
         name: str,
+        *,
+        sources: t.MappingKV[Path, str] | None = None,
     ) -> str | None:
         """Return the nearest package that lazily publishes one leaf object.
 
@@ -386,14 +394,14 @@ class FlextInfraImportNormalizationRoutesMixin(
 
         """
         package = module.rpartition(".")[0]
-        directory = u.Infra.import_package_dir(scope.project_root, module)
+        directory = u.Infra.import_package_dir(scope.project_root, module, sources=sources)
         if directory is not None:
-            return cls._declared_subpackage_source(scope, module, name)
+            return cls._declared_subpackage_source(scope, module, name, sources=sources)
         if not package or module == scope.module:
             return None
-        if u.Infra.import_lazy_exports(scope.project_root, module) is not None:
+        if u.Infra.import_lazy_exports(scope.project_root, module, sources=sources) is not None:
             return None
-        exports = u.Infra.import_lazy_exports(scope.project_root, package)
+        exports = u.Infra.import_lazy_exports(scope.project_root, package, sources=sources)
         if exports is None or exports.get(name) != module:
             return None
         return package
@@ -404,6 +412,8 @@ class FlextInfraImportNormalizationRoutesMixin(
         scope: m.Infra.ImportLawScope,
         module: str,
         name: str,
+        *,
+        sources: t.MappingKV[Path, str] | None = None,
     ) -> str | None:
         """Discover a unique source declaration published by its own package.
 
@@ -414,14 +424,16 @@ class FlextInfraImportNormalizationRoutesMixin(
             ValueError: When independent declarations publish the same name.
 
         """
-        directory = u.Infra.import_package_dir(scope.project_root, module)
+        directory = u.Infra.import_package_dir(scope.project_root, module, sources=sources)
         if directory is None:
             return None
         candidates: t.MutableMappingKV[str, str] = {}
         due = 0.0
         scanned = 0
         for source_path in sorted(
-            directory.rglob("*.py"),
+            directory.rglob("*.py") if sources is None else (
+                path for path in sources if path.is_relative_to(directory) and path.suffix == c.Infra.EXT_PYTHON
+            ),
             key=lambda path: (len(path.parts), path),
         ):
             due = u.Infra.codemod_progress(
@@ -433,7 +445,7 @@ class FlextInfraImportNormalizationRoutesMixin(
             scanned += 1
             if source_path.name == c.Infra.INIT_PY:
                 continue
-            source = source_path.read_text(encoding=c.DEFAULT_ENCODING)
+            source = source_path.read_text(encoding=c.DEFAULT_ENCODING) if sources is None else sources[source_path]
             if name not in u.Infra.public_export_names_source(source):
                 continue
             declaration = cls._module_bindings(ast.parse(source)).get(name)
@@ -449,6 +461,7 @@ class FlextInfraImportNormalizationRoutesMixin(
                 f"{owner}.{source_path.stem}",
                 name,
                 frozenset(),
+                sources=sources,
             )
             candidates.setdefault(identity, owner)
         u.Infra.codemod_progress(
@@ -457,7 +470,7 @@ class FlextInfraImportNormalizationRoutesMixin(
             f"scanned={scanned} candidates={len(candidates)}",
             due,
         )
-        ancestors = cls._declared_ancestors(scope, tuple(candidates))
+        ancestors = cls._declared_ancestors(scope, tuple(candidates), sources=sources)
         candidates = {
             identity: owner
             for identity, owner in candidates.items()
@@ -476,6 +489,8 @@ class FlextInfraImportNormalizationRoutesMixin(
         cls,
         scope: m.Infra.ImportLawScope,
         identities: t.StrTuple,
+        *,
+        sources: t.MappingKV[Path, str] | None = None,
     ) -> frozenset[str]:
         """Find explicit source ancestors of the published declarations.
 
@@ -489,14 +504,12 @@ class FlextInfraImportNormalizationRoutesMixin(
             parent = u.Infra.import_package_dir(
                 scope.project_root,
                 provider.rpartition(".")[0],
+                sources=sources,
             )
             if parent is None:
                 continue
-            tree = ast.parse(
-                (parent / f"{provider.rpartition('.')[2]}.py").read_text(
-                    encoding=c.DEFAULT_ENCODING,
-                ),
-            )
+            path = parent / f"{provider.rpartition('.')[2]}.py"
+            tree = ast.parse(path.read_text(encoding=c.DEFAULT_ENCODING) if sources is None else sources[path])
             declaration = cls._module_bindings(tree).get(symbol)
             if not isinstance(declaration, ast.ClassDef):
                 continue
@@ -534,6 +547,7 @@ class FlextInfraImportNormalizationRoutesMixin(
                                 if isinstance(base, ast.Attribute)
                                 else imported.name,
                                 frozenset(),
+                                sources=sources,
                             ),
                         )
         return frozenset(ancestors)
@@ -574,6 +588,8 @@ class FlextInfraImportNormalizationRoutesMixin(
         module: str,
         name: str,
         seen: frozenset[str],
+        *,
+        sources: t.MappingKV[Path, str] | None = None,
     ) -> str:
         """Follow explicit reexports to their source, rejecting cyclic bindings.
 
@@ -589,26 +605,28 @@ class FlextInfraImportNormalizationRoutesMixin(
         if identity in seen:
             msg = f"Cyclic declared public import: {identity}"
             raise ValueError(msg)
-        exports = u.Infra.import_lazy_exports(scope.project_root, module)
+        exports = u.Infra.import_lazy_exports(scope.project_root, module, sources=sources)
         if exports is not None and name in exports:
             return cls._declaration_identity(
                 scope,
                 exports[name],
                 name,
                 seen | {identity},
+                sources=sources,
             )
         parent = u.Infra.import_package_dir(
             scope.project_root,
             module.rpartition(".")[0],
+            sources=sources,
         )
         if parent is None:
             return identity
         path = parent / f"{module.rpartition('.')[2]}.py"
-        if not path.is_file():
+        if not (path.is_file() if sources is None else path in sources):
             msg = f"Missing declared public import: {identity}"
             raise ValueError(msg)
         binding = cls._module_bindings(
-            ast.parse(path.read_text(encoding=c.DEFAULT_ENCODING)),
+            ast.parse(path.read_text(encoding=c.DEFAULT_ENCODING) if sources is None else sources[path]),
         ).get(name)
         if isinstance(binding, ast.ImportFrom):
             alias = next(
@@ -628,6 +646,7 @@ class FlextInfraImportNormalizationRoutesMixin(
                     target,
                     alias.name,
                     seen | {identity},
+                    sources=sources,
                 )
         if isinstance(binding, ast.Assign) and isinstance(binding.value, ast.Name):
             # A module-level alias such as ``t = FlextTypes`` re-exports the
@@ -638,6 +657,7 @@ class FlextInfraImportNormalizationRoutesMixin(
                 module,
                 binding.value.id,
                 seen | {identity},
+                sources=sources,
             )
         if not isinstance(
             binding,

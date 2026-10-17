@@ -186,10 +186,13 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...],
     ) -> p.Result[bool]:
         """Reverify original evidence through the native verifier, never recapture it."""
-        verified = u.Cli.atomic_verify_binary_file_states(states)
-        if verified.failure:
-            return r[bool].from_failure(verified)
-        return u.Cli.atomic_verify_directory_queries(directories, topology)
+        try:
+            verified = u.Cli.atomic_verify_binary_file_states(states)
+            if verified.failure:
+                return r[bool].from_failure(verified)
+            return u.Cli.atomic_verify_directory_queries(directories, topology)
+        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+            return r[bool].fail(str(exc), exception=exc)
 
     @classmethod
     def classify_source_conflict(
@@ -215,12 +218,12 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         )
         conflicts = 0
         for original in project.consumed_source_states():
-            if u.Cli.atomic_verify_binary_file_states((original,)).failure:
+            if cls._verify_original_sources((original,), (), ()).failure:
                 conflicts += 1
                 if original not in states:
                     raise cause
         for original_directory in project.consumed_source_directories():
-            if u.Cli.atomic_verify_directory_queries((original_directory,), ()).failure:
+            if cls._verify_original_sources((), (original_directory,), ()).failure:
                 conflicts += 1
                 covered = next(
                     (
@@ -246,7 +249,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 ):
                     raise cause
         for original_topology in project.consumed_source_topology():
-            if u.Cli.atomic_verify_directory_queries((), (original_topology,)).failure:
+            if cls._verify_original_sources((), (), (original_topology,)).failure:
                 conflicts += 1
                 covered_chain = next(
                     (

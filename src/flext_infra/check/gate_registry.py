@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import p, r, t
+from flext_infra import c, p, r, t
 from flext_infra.gates import (
     FlextInfraBanditGate,
     FlextInfraConflictMarkersGate,

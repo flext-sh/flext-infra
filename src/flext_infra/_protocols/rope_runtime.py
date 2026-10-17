@@ -425,6 +425,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def source_selection(self) -> AbstractContextManager[None]: ...
 
+        def source_capture(self) -> AbstractContextManager[None]: ...
+
         def source_consumer(
             self,
             *,
@@ -543,6 +545,18 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """Rope change set shape."""
 
         changes: list[p.AttributeProbe]
+
+    @runtime_checkable
+    class RopeInlineVariable(Protocol):
+        """Native assigned-name inlining without publishing its changes."""
+
+        def get_changes(
+            self,
+            *,
+            remove: bool,
+            resources: list[FlextInfraProtocolsRopeRuntime.RopeResource],
+            docs: bool,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeChangeSet: ...
 
     @runtime_checkable
     class RopeChangeContents(Protocol):

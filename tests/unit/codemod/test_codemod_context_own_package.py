@@ -239,6 +239,188 @@ class TestsFlextInfraCodemodContextOwnPackage:
         )
         tm.that(verdict, eq=admitted)
 
+    @pytest.mark.parametrize("name", ["flext-role-probe", "external-role-probe"])
+    @pytest.mark.parametrize("surface", ["src", "tests", "scripts", "examples"])
+    @pytest.mark.parametrize("attached", [False, True])
+    def test_layer_zero_role_uses_the_actual_member_namespace(
+        self, tmp_path: Path, name: str, surface: str, *, attached: bool
+    ) -> None:
+        """Identical roles retain their verdict across names and entry roots."""
+        workspace = u.Tests.mk_project(
+            tmp_path,
+            "role-workspace",
+            pyproject='[project]\nname = "role-workspace"\nversion = "1.0.0"\n',
+            with_src=True,
+        )
+        member = u.Tests.mk_project(
+            workspace if attached else tmp_path,
+            name,
+            pyproject=f'[project]\nname = "{name}"\nversion = "1.0.0"\n',
+            with_src=True,
+        )
+        for root in (workspace, member):
+            u.Tests.initialize_git_repo(root)
+            u.Tests.write_workspace_manifest(
+                root,
+                root.name,
+                role=(
+                    c.Infra.MakeProfile.WORKSPACE
+                    if root == workspace
+                    else c.Infra.MakeProfile.STANDALONE
+                ),
+            )
+        if attached:
+            u.Tests.declare_workspace_projects(workspace, (member.name,))
+        namespace = u.Infra.project_package_name(member)
+        package = (
+            member / c.Infra.DEFAULT_SRC_DIR / namespace
+            if surface == c.Infra.DEFAULT_SRC_DIR
+            else member / surface
+        )
+        package.mkdir(parents=True, exist_ok=True)
+        (package / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
+        rule = self._private_import_rule().model_copy(
+            update={
+                "context": (
+                    m.Infra.CodemodContextCondition(
+                        variable="MOD",
+                        predicate=c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE,
+                        holds=True,
+                    ),
+                ),
+            }
+        )
+        for relative, expected in (
+            ("_config.py", True),
+            ("_settings/part.py", True),
+            ("_config/__init__.py", True),
+            ("_models/_config.py", False),
+            ("_utilities/_settings.py", False),
+            ("consumer.py", False),
+        ):
+            source = package / relative
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_text("import os\n", encoding=c.DEFAULT_ENCODING)
+            for root in ((workspace, member) if attached else (member,)):
+                tm.that(
+                    u.Infra.codemod_context_admits(
+                        m.Infra.CodemodAdmission(
+                            root=root,
+                            rule=rule,
+                            file_path=source,
+                            captures={"MOD": {"text": "os"}},
+                            facts=u.Infra.codemod_project_facts(root, (rule,)),
+                        ),
+                    ),
+                    eq=expected,
+                    msg=f"{root}: {surface}/{relative}",
+                )
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize("surface", ["src", "tests", "scripts", "examples"])
+    def test_library_boundary_scans_owned_code_without_filename_waivers(
+        mod_workspace: Path, surface: str
+    ) -> None:
+        """Layer-zero imports are valid; family homonyms and consumers remain visible."""
+        namespace = u.Infra.project_package_name(mod_workspace)
+        package = (
+            mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace
+            if surface == c.Infra.DEFAULT_SRC_DIR
+            else mod_workspace / surface
+        )
+        package.mkdir(parents=True, exist_ok=True)
+        (package / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
+        sources: t.MutableSequenceOf[Path] = []
+        expected: set[Path] = set()
+        original: t.MutableMappingKV[Path, str] = {}
+        for relative, source, finding in (
+            ("_config.py", "from pydantic import BaseModel\n", False),
+            ("_settings/part.py", "from pydantic import BaseModel\n", False),
+            ("_models/_config.py", "from pydantic import BaseModel\n", True),
+            ("_utilities/_settings.py", "from pydantic import BaseModel\n", True),
+            ("consumer.py", "from pydantic import BaseModel\n", True),
+            ("ordinary.py", 'message = "from pydantic import BaseModel"\n', False),
+        ):
+            path = package / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(source, encoding=c.DEFAULT_ENCODING)
+            sources.append(path)
+            original[path] = source
+            if finding:
+                expected.add(path.resolve())
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                mod_workspace,
+                fix=False,
+                selection=("ban-direct-pydantic-import",),
+                source_files=tuple(sources),
+            ),
+        )
+        tm.that(
+            {
+                u.Infra.codemod_source_path(mod_workspace, entry.file)
+                for entry in report.entries
+            },
+            eq=expected,
+        )
+        for path, source in original.items():
+            tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    def test_bound_layer_zero_role_uses_original_native_module_identity(
+        self, mod_workspace: Path
+    ) -> None:
+        """A new live nested manifest cannot change an original semantic role."""
+        namespace = u.Infra.project_package_name(mod_workspace)
+        package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace
+        boundary = package / "_config"
+        boundary.mkdir()
+        initializer = boundary / c.Infra.INIT_PY
+        initializer.write_text("", encoding=c.DEFAULT_ENCODING)
+        source = boundary / "part.py"
+        source.write_text("import os\n", encoding=c.DEFAULT_ENCODING)
+        rule = self._private_import_rule().model_copy(
+            update={
+                "context": (
+                    m.Infra.CodemodContextCondition(
+                        variable="MOD",
+                        predicate=c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE,
+                        holds=True,
+                    ),
+                ),
+            }
+        )
+        snapshot = u.Infra.codemod_binding_snapshot(
+            mod_workspace,
+            tuple(
+                tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+                for path in (package / c.Infra.INIT_PY, initializer, source)
+            ),
+        )
+        facts = u.Infra.codemod_project_facts(mod_workspace, (rule,))
+        with u.Infra.codemod_binding_project(
+            mod_workspace, u.Infra.codemod_source_epoch(snapshot)
+        ) as (project, sources):
+            (boundary / c.PYPROJECT_FILENAME).write_text(
+                '[project]\nname = "new-unrelated-owner"\nversion = "1.0.0"\n',
+                encoding=c.DEFAULT_ENCODING,
+            )
+            tm.that(
+                u.Infra.codemod_context_admits(
+                    m.Infra.CodemodAdmission(
+                        root=mod_workspace,
+                        rule=rule,
+                        file_path=source,
+                        captures={"MOD": {"text": "os"}},
+                        facts=facts,
+                        snapshot=snapshot,
+                    ),
+                    project=project,
+                    sources=sources,
+                ),
+                eq=True,
+            )
+
     @staticmethod
     def _private_import_rule() -> m.Infra.CodemodRule:
         return m.Infra.CodemodRule(
@@ -429,6 +611,7 @@ class TestsFlextInfraCodemodContextOwnPackage:
             f"from {namespace}.definer import Public, u\n"
             "note = 'é'\n"
             'template = f"${{UNSET_FOR_THIS_TEST:-{note}}}"\n'
+            "label = 'Public'\n"
             "value = Public\n"
             "def independent(Public):\n"
             "    return Public\n"
@@ -468,6 +651,12 @@ class TestsFlextInfraCodemodContextOwnPackage:
                         arg=("u",),
                         holds=True,
                     ),
+                    m.Infra.CodemodContextCondition(
+                        variable="ALTERNATIVE_BRANCH",
+                        predicate=c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+                        arg=(module_name, "Independent"),
+                        holds=True,
+                    ),
                 ),
             }
         )
@@ -484,6 +673,7 @@ class TestsFlextInfraCodemodContextOwnPackage:
         ):
             for start, captured, expected in (
                 (source.index("Public", source.index("value =")), "Public", True),
+                (source.index("Public", source.index("label =")), "Public", False),
                 (
                     source.index("Public", source.index("return Public")),
                     "Public",

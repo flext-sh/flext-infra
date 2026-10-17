@@ -444,11 +444,10 @@ class FlextInfraCodegenLazyInit(
             target_package_dir=target.value[0],
             repository_root=resolved_repository_root,
         )
-        snapshots = self._snapshot_planner_inputs(
-            workspace_index,
-            package_dirs,
-            source_project=rope.rope_project,
-        )
+        with rope.rope_project.source_capture():
+            snapshots = self._snapshot_planner_inputs(
+                workspace_index, package_dirs, source_project=rope.rope_project,
+            )
         if snapshots.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(snapshots)
         return self._analyzed_workspace(

@@ -17,6 +17,7 @@ from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsCodegenToolchain, FlextInfraModelsRope
 from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
 from flext_infra._models._codegen.pipeline import FlextInfraModelsCodegenPipelineModels
+from flext_infra._models._config.base import FlextInfraConfigModels
 from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra._models.check import FlextInfraModelsCheck
 from flext_infra._models.workspace import FlextInfraModelsWorkspace
@@ -68,6 +69,10 @@ class FlextInfraModelsCodegenTransactionModels:
         modes: t.MappingKV[Path, int] = m.Field(
             default_factory=lambda: MappingProxyType[Path, int]({}),
             description="Desired file-effect modes derived from original move sources",
+        )
+        declared_files: t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan] = m.Field(
+            default=(),
+            description="Original file/absence witnesses with the current desired effects",
         )
         layouts: t.VariadicTuple[FlextInfraModelsRope.RopeProjectLayout] = m.Field(
             description="Original project layouts in the desired import closure",

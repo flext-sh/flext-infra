@@ -125,7 +125,7 @@ class FlextInfraCodegenStaging:
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Admit exact composed staged bytes with every native default gate.
 
-        Unchanged Python outputs enter the same runtime and read-only checker.
+        Unchanged outputs enter the same runtime and read-only checker.
         Preparation never occurs inside this authenticated consumer.
 
         Returns:
@@ -140,7 +140,7 @@ class FlextInfraCodegenStaging:
         from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 
         result_type = r[m.Infra.CodegenTransactionSession]
-        if not any(plan.path.suffix in {".py", ".pyi"} for plan in plans):
+        if not plans:
             return result_type.ok(session)
         updates = {
             plan.path: (

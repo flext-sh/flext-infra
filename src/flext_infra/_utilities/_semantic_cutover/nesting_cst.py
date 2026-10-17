@@ -11,6 +11,7 @@ from pathlib import Path
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -37,7 +38,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         bindings_by_module: t.MappingKV[str, t.StrMapping],
         definitions: t.StrMapping,
         sources: t.MappingKV[Path, str],
-        strict: bool = False,
+        is_pytest: bool = False,
     ) -> str:
         project, resource = native
         module_name, is_package_init = scope
@@ -51,7 +52,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             sources=sources,
         )
         return cls._nest_definitions(
-            project, resource, rewritten, definitions, strict=strict
+            project, resource, rewritten, definitions, is_pytest=is_pytest
         )
 
     @classmethod
@@ -358,7 +359,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         source: str,
         definitions: t.StrMapping,
         *,
-        strict: bool = False,
+        is_pytest: bool = False,
     ) -> str:
         if not definitions:
             return source
@@ -367,6 +368,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             msg = f"class-nesting file has multiple owners: {sorted(owners)}"
             raise ValueError(msg)
         owner_name = next(iter(owners))
+        composition = is_pytest and not any(
+            isinstance(node, ast.ClassDef) and node.name == owner_name
+            for node in ast.parse(source).body
+        )
         module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
             project, source, resource=resource
         )
@@ -412,14 +417,13 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             (owner_name, nested, indentation),
             edits,
         )
-        if not strict:
-            edits.extend(
-                cls._nesting_export_edits(source, facts, owner_name, definitions)
-            )
+        edits.extend(
+            cls._nesting_export_edits(source, facts, owner_name, definitions)
+        )
         nested_source = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
             resource, source, edits
         ).new_contents
-        if not strict:
+        if not is_pytest:
             return nested_source
         return cls._publish_test_bindings(
             project,
@@ -429,16 +433,19 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             original_bindings=None
             if Path(resource.real_path).name == "conftest.py"
             else frozenset(definitions),
+            composition=composition,
         )
 
-    @staticmethod
+    @classmethod
     def _publish_test_bindings(
+        cls,
         project: p.Infra.RopeProject,
         resource: p.Infra.RopeResource,
         source: str,
         owner_name: str,
         *,
         original_bindings: frozenset[str] | None = None,
+        composition: bool = False,
     ) -> str:
         """Keep pytest's original module registration while owning every declaration."""
         tree = ast.parse(source)
@@ -474,8 +481,17 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         }
         bindings: dict[str, str] = {}
         metadata: list[str] = []
+        patterns = cls._pytest_collection_patterns(Path(project.root.real_path))
+        original = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
         for node in owner.body:
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            if isinstance(node, ast.ClassDef):
+                if (
+                    composition
+                    and (original_bindings is None or node.name in original_bindings)
+                    and cls._pytest_class_binding(node.name, original.get_attribute(node.name), patterns[1])
+                ):
+                    bindings[node.name] = node.name
+            elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                 if original_bindings is not None and node.name not in original_bindings:
                     continue
                 decorators = [
@@ -492,8 +508,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
                 }
                 if (
                     node.name.startswith("pytest_")
-                    or node.name in {"setup_module", "teardown_module"}
+                    or node.name in {"setup_module", "teardown_module", "setup_function", "teardown_function"}
                     or tails & fixtures
+                    or composition and cls._pytest_name_matches(node.name, patterns[2])
                 ):
                     if "staticmethod" not in tails:
                         msg = f"pytest publication requires staticmethod outside fixture/hook decorators: {resource.path}:{node.name}"
@@ -519,8 +536,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
                             continue
                         bindings[target.id] = target.id
                         metadata.append(target.id)
-        if not bindings:
-            return source
+        bindings["__all__"] = repr((owner_name,))
         module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
             project, source, resource=resource
         )
@@ -545,7 +561,11 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         insertion = min(module.lines.get_line_end(scope.get_end()) + 1, len(source))
         rendered = ", ".join(f"{name!r}: {value}" for name, value in bindings.items())
         bootstrap = f"\n    {publisher}.publish(module_globals=globals(), bindings={{{rendered}}})\n"
-        if metadata:
+        if composition:
+            # Only this ordinary composition root is hidden. Original suite and
+            # free-function objects remain children of their original module.
+            bootstrap += "    __test__ = False\n"
+        elif metadata:
             # Module marks must not also become inherited class marks.
             bootstrap += "    del " + ", ".join(metadata) + "\n"
         return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(

@@ -27,6 +27,30 @@ class TestsFlextInfraGateAcceptance:
     """Observe acceptance through real checker and Ruff public boundaries."""
 
     @staticmethod
+    def test_native_formatter_warnings_remain_execution_failures(tmp_path: Path) -> None:
+        """A native incompatibility warning is not hidden behind an exit-zero run."""
+        project = u.Tests.mk_project(tmp_path, "native-format-warning", with_src=True)
+        source = project / "src" / "sample.py"
+        source.write_text("VALUE = 1\n", encoding="utf-8")
+        (project / "ruff.toml").write_text(
+            '[lint]\nselect = ["COM812"]\n', encoding="utf-8",
+        )
+        context = m.Infra.GateContext(
+            repository_root=tmp_path, reports_dir=tmp_path / "reports",
+            apply_fixes=True, selected_files=(source,),
+        )
+        gate = FlextInfraRuffFormatGate(tmp_path)
+        for execution in (
+            gate.check_files((source,), project, context),
+            gate.fix(project, context),
+        ):
+            tm.that(execution.result.passed, eq=False)
+            tm.that(execution.outcome, eq=c.Infra.ToolOutcome.ERROR)
+            tm.that([issue.code for issue in execution.issues], has=f"{c.Infra.FORMAT}-exec")
+            tm.that(execution.raw_output, has="COM812")
+        tm.fail(FlextInfraRuffFormatGate.format_files(project, (source,)), has="COM812")
+
+    @staticmethod
     def test_tooling_contract_rejects_retired_residual_policy() -> None:
         """The live typed owner round-trips without accepting residual exemptions."""
         lint = config.Infra.tooling.tools.ruff.lint
@@ -248,12 +272,16 @@ class TestsFlextInfraGateAcceptance:
             repository_root=tmp_path,
             reports_dir=tmp_path / "reports",
             apply_fixes=True,
-            ruff_args=("--preview", "--select", rule, "--line-length", str(limit)),
+            ruff_args=("--select", rule, "--line-length", str(limit)),
         )
         gate = FlextInfraRuffLintGate(tmp_path)
         execution = gate.fix(project, context)
         tm.that(execution.result.passed, eq=False)
-        tm.that(execution.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
+        tm.that(
+            execution.outcome,
+            eq=c.Infra.ToolOutcome.FINDINGS,
+            msg=execution.raw_output,
+        )
         tm.that(execution.issues, eq=gate.check(project, context).issues)
         tm.that([issue.code for issue in execution.issues], has=rule)
         tm.that(source.read_text(encoding="utf-8"), eq=content)

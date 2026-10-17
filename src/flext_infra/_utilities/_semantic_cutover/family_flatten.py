@@ -40,7 +40,8 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         candidates = tuple(
             path
             for path in sources
-            if FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
+            if path.is_relative_to(workspace.repository_root)
+            and FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
                 path.parent.name,
             )
             is not None

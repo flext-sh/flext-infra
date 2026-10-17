@@ -274,6 +274,33 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         return change
 
     @classmethod
+    def inline_variable_changes(
+        cls,
+        project: p.Infra.RopeProject,
+        resource: p.Infra.RopeResource,
+        offset: int,
+        *,
+        resources: t.SequenceOf[p.Infra.RopeResource],
+        remove: bool = True,
+    ) -> p.Infra.RopeChangeSet:
+        """Plan assigned-name inlining with native occurrence and import handling.
+
+        Returns:
+            The SDK's unapplied content changes, with literal payloads untouched.
+
+        Raises:
+            TypeError: If the installed SDK violates the inlining contract.
+
+        """
+        inline = cls.runtime_callable("rope.refactor.inline", "InlineVariable")(
+            project, resource, offset,
+        )
+        if not isinstance(inline, p.Infra.RopeInlineVariable):
+            message = "Rope InlineVariable does not satisfy its native contract"
+            raise TypeError(message)
+        return inline.get_changes(remove=remove, resources=list(resources), docs=False)
+
+    @classmethod
     def restructure_changes(
         cls,
         rope_project: p.Infra.RopeProject,
