@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from difflib import unified_diff
 from pathlib import Path
 
 import pytest
@@ -165,7 +166,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
         )
         first = u.Tests.repository_ref("flext-tests")
         second = u.Tests.repository_ref("flext-other")
-        sources: list[t.JsonValue] = [
+        sources: t.JsonValueList = [
             {"distribution": first.distribution, "url": first.url, "commit": "a" * 40},
             {
                 "distribution": (
@@ -180,14 +181,16 @@ class TestsFlextInfraPyprojectConformTopologySources(
         layer = FlextInfraConfig.config_layer_paths_for_repository(
             root, filename=c.Infra.CODEGEN_CONFIG_FILENAME
         )[-1]
-        repository_overlay: dict[str, t.JsonValue] = {
-            "candidate_dependencies": sources,
-        }
-        codegen_overlay: dict[str, t.JsonValue] = {
-            "repository": repository_overlay,
-        }
-        overlay: dict[str, t.JsonValue] = {"Infra": codegen_overlay}
-        tm.ok(u.Cli.yaml_dump(layer, overlay))
+        tm.ok(
+            u.Cli.yaml_dump(
+                layer,
+                {
+                    "Infra": {
+                        "codegen": {"repository": {"candidate_dependencies": sources}}
+                    }
+                },
+            )
+        )
 
         loaded = u.Infra.load_codegen_inputs(root)
 
@@ -232,7 +235,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
             ),
         )
         marker = 'implementation_name == "cpython"'
-        request = f"{member.distribution} @ git+{member.url}@{source_line}; {marker}"
+        request = f"{member.distribution} @ git+{member.url}@{source_line} ; {marker}"
         source = (
             "[project]\n"
             f'name = "{workspace.repository.distribution}"\n'
@@ -335,14 +338,6 @@ class TestsFlextInfraPyprojectConformTopologySources(
         )
         parsed = u.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
         uv = u.Tests.toml_mapping(u.Tests.toml_mapping(parsed.get("tool")).get("uv"))
-        tm.that(
-            u.Tests.toml_mapping(uv.get("sources")),
-            eq={},
-        )
-        tm.that(
-            u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies"),
-            eq=(),
-        )
         if package:
             tm.that(
                 u.Tests.toml_mapping(uv.get("sources")),

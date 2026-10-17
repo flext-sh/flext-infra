@@ -971,6 +971,9 @@ Physical file changes remain inputs to publication CAS, rather than changing
 the source graph while a plan is being computed.
 Rope owns module, regular-package and namespace precedence; Infra validates the
 native resource it returns without maintaining another election algorithm.
+Absolute and relative lookups share one native-folder validation boundary.
+Absent relative context remains `None`: resource lookup reports absence and
+module lookup raises Rope's native missing-module exception.
 Import capture retains one typed lookup keyed by native root, module and relative
 level; it does not transport unused copies of the SDK's search roots.
 
