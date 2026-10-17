@@ -137,69 +137,19 @@ class FlextInfraRopeProject(Project):
         modname: str,
         folder: p.Infra.RopeRoot | Folder | None = None,
     ) -> File | Folder | None:
-        """Resolve native resources without shadowing packages by namespaces.
-
-        Rope's folder query accepts namespace portions before regular packages.
-        Keep its resource and snapshot machinery, but elect a regular package
-        or module before an otherwise matching namespace portion, as Python does.
+        """Admit the resource elected by Rope's native module finder.
 
         Returns:
             The native module resource, or no matching module.
 
         Raises:
-            TypeError: The supplied folder is not a native Rope folder.
+            TypeError: The supplied folder is not native.
 
         """
         if folder is not None and not isinstance(folder, Folder):
             message = "Rope module lookup requires a native folder"
             raise TypeError(message)
-        return self._elect_module(
-            self,
-            modname,
-            (
-                *self.get_source_folders(),
-                *self.get_python_path_folders(),
-                *((folder,) if folder is not None else ()),
-            ),
-        )
-
-    @staticmethod
-    def _elect_module(
-        finder: p.Infra.RopeModuleFinder,
-        modname: str,
-        roots: t.SequenceOf[File | Folder],
-    ) -> File | Folder | None:
-        """Elect a regular package or module before a namespace portion.
-
-        Returns:
-            The native module resource, or no matching module.
-
-        Raises:
-            TypeError: The SDK elected a resource that is neither file nor folder.
-
-        """
-        namespace: Folder | None = None
-        for root in roots:
-            if not isinstance(root, Folder):
-                continue
-            resource = finder.find_relative_module(modname, root, 1)
-            if resource is None:
-                continue
-            if isinstance(resource, File):
-                return resource
-            if not isinstance(resource, Folder):
-                message = "Rope module lookup elected a non-native resource"
-                raise TypeError(message)
-            if resource.has_child(c.Infra.INIT_PY):
-                return resource
-            module = f"{resource.name}{c.Infra.EXT_PYTHON}"
-            if resource.parent.has_child(module):
-                sibling = resource.parent.get_child(module)
-                if isinstance(sibling, File):
-                    return sibling
-            if namespace is None:
-                namespace = resource
-        return namespace
+        return super().find_module(modname, folder)
 
     class SnapshotFiles:
         """Closed, read-only input inventory for a semantic planning project.
@@ -704,25 +654,15 @@ class FlextInfraRopeProject(Project):
         cls,
         root: str,
         sources: Mapping[Path, bytes],
-        source_folders: t.SequenceOf[str],
-        ignored_resources: t.SequenceOf[str] = (),
-        *,
-        extension_modules: t.SequenceOf[str],
-        python_path_folders: t.SequenceOf[str] = (),
+        election: p.Infra.RopeProjectElection,
     ) -> Self:
         """Construct a fresh Rope identity graph without persistent state.
 
         Args:
             root: The snapshot root directory.
             sources: The closed source inventory Rope may read.
-            source_folders: The declared importable source folders.
-            ignored_resources: The scan-ignore SSOT patterns; without them
-                Rope enumerates real disk files the closed inventory does not
-                hold (tool hooks under ignored resources) and every such
-                read dies in the snapshot mapping.
-            extension_modules: Native modules elected by the original project.
-            python_path_folders: Authenticated native import roots whose resources
-                must read the same captured inventory as project modules.
+            election: The exact native import roots, extension modules and
+                scan-ignore policy sharing the closed source inventory.
 
         Returns:
             A native project of the requested snapshot owner.
@@ -738,18 +678,11 @@ class FlextInfraRopeProject(Project):
             sources,
             (
                 Path(root),
-                *(Path(root) / path for path in source_folders),
-                *(Path(path) for path in python_path_folders),
+                *(Path(root) / path for path in election.source_folders),
+                *(Path(path) for path in election.python_path_folders),
             ),
         )
-        return cls._from_files(
-            root,
-            files,
-            source_folders,
-            ignored_resources=ignored_resources,
-            extension_modules=extension_modules,
-            python_path_folders=python_path_folders,
-        )
+        return cls._from_files(root, files, election)
 
     @classmethod
     def _from_files(
@@ -758,11 +691,7 @@ class FlextInfraRopeProject(Project):
         files: (
             FlextInfraRopeProject.SnapshotFiles | FlextInfraRopeProject.AtomicReadFiles
         ),
-        source_folders: t.SequenceOf[str],
-        *,
-        ignored_resources: t.SequenceOf[str],
-        extension_modules: t.SequenceOf[str],
-        python_path_folders: t.SequenceOf[str],
+        election: p.Infra.RopeProjectElection,
     ) -> Self:
         """Compose the native project and external resolver over one read owner.
 
@@ -771,7 +700,7 @@ class FlextInfraRopeProject(Project):
 
         """
         external = NoProject(fscommands=files)
-        external.prefs.extension_modules = list(extension_modules)
+        external.prefs.extension_modules = list(election.extension_modules)
         project = cls(
             root,
             fscommands=files,
@@ -779,15 +708,15 @@ class FlextInfraRopeProject(Project):
             ropefolder=None,
             save_objectdb=False,
             save_history=False,
-            ignored_resources=list(ignored_resources),
-            extension_modules=list(extension_modules),
-            source_folders=source_folders,
+            ignored_resources=list(election.ignored_resources),
+            extension_modules=list(election.extension_modules),
+            source_folders=list(election.source_folders),
         )
         project._snapshot_python_path_folders = [
-            external.get_folder(path) for path in python_path_folders
+            external.get_folder(path) for path in election.python_path_folders
         ]
         project._custom_source_folders = [
-            project.get_resource(path) for path in source_folders
+            project.get_resource(path) for path in election.source_folders
         ]
         return project
 
@@ -796,9 +725,8 @@ class FlextInfraRopeProject(Project):
         cls,
         live: p.Infra.RopeProject,
         source_states: tuple[m.Cli.AtomicFileState, ...],
-        ignored_resources: t.SequenceOf[str] = (),
         *,
-        source_folders: t.SequenceOf[str],
+        election: p.Infra.RopeProjectElection,
         sources: t.MappingKV[Path, str],
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> Self:
@@ -814,18 +742,7 @@ class FlextInfraRopeProject(Project):
             sources,
             declared_files,
         )
-        return cls._from_files(
-            live.root.real_path,
-            files,
-            source_folders=source_folders,
-            ignored_resources=ignored_resources,
-            extension_modules=sorted(live.get_pycore().extension_modules),
-            python_path_folders=[
-                folder.real_path
-                for folder in live.get_python_path_folders()
-                if folder.is_folder()
-            ],
-        )
+        return cls._from_files(live.root.real_path, files, election)
 
     def consumed_source_states(self) -> tuple[m.Cli.AtomicFileState, ...]:
         """Return the actual-read closure, including native external providers.

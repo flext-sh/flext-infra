@@ -335,14 +335,20 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         snapshot = factory(
             project.root.real_path,
             contents,
-            [folder.path for folder in project.get_source_folders()],
-            ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
-            extension_modules=sorted(project.get_pycore().extension_modules),
-            python_path_folders=[
-                folder.real_path
-                for folder in project.get_python_path_folders()
-                if folder.is_folder()
-            ],
+            m.Infra.RopeProjectElection(
+                source_folders=tuple(
+                    folder.path for folder in project.get_source_folders()
+                ),
+                ignored_resources=tuple(
+                    sorted(config.Infra.codegen.source_scan_ignored)
+                ),
+                extension_modules=tuple(sorted(project.get_pycore().extension_modules)),
+                python_path_folders=tuple(
+                    folder.real_path
+                    for folder in project.get_python_path_folders()
+                    if folder.is_folder()
+                ),
+            ),
         )
         if not isinstance(snapshot, p.Infra.RopeProject):
             msg = "Rope snapshot does not satisfy its project contract"

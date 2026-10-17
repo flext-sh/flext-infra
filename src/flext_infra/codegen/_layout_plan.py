@@ -29,6 +29,9 @@ class FlextInfraCodegenLayoutPlanMixin:
         saw the repository layers while this gate read packaged defaults is
         what dropped standalone repositories' canonical declarations.
 
+        Returns:
+            The selected project's validated layered layout policy.
+
         """
         layered = u.Infra.load_codegen_inputs(project_dir)
         return layered.map(lambda inputs: inputs.spec.layout).unwrap()

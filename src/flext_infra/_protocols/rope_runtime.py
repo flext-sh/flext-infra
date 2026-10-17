@@ -21,6 +21,22 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     """Rope object contracts used instead of importing untyped Rope classes."""
 
     @runtime_checkable
+    class RopeProjectElection(Protocol):
+        """Readonly native import roots and source-selection policy."""
+
+        @property
+        def source_folders(self) -> t.StrTuple: ...
+
+        @property
+        def ignored_resources(self) -> t.StrTuple: ...
+
+        @property
+        def extension_modules(self) -> t.StrTuple: ...
+
+        @property
+        def python_path_folders(self) -> t.StrTuple: ...
+
+    @runtime_checkable
     class RopeResource(Protocol):
         """Rope project resource shape shared by files and folders."""
 

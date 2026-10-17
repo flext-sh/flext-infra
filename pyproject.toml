@@ -480,6 +480,7 @@ runtime-evaluated-base-classes = [
   "flext_core.m.ArbitraryTypesModel",
   "flext_core.m.ContractModel",
   "flext_core.m.FrozenModel",
+  "flext_core.m.RootModel",
   "flext_core.m.StrictBoundaryModel",
   "flext_infra.FlextInfraProjectSelectionServiceBase",
   "flext_infra.FlextInfraServiceBase",

@@ -54,8 +54,10 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         if managed.failure:
             return r[t.Infra.LayoutStatus].from_failure(managed)
         profile = managed.value
-        gitignore_path = project_dir / c.Infra.GITIGNORE
-        before = u.Cli.atomic_read_binary_file_state(gitignore_path, required=False)
+        before = u.Cli.atomic_read_binary_file_state(
+            project_dir / c.Infra.GITIGNORE,
+            required=False,
+        )
         if before.failure:
             return r[t.Infra.LayoutStatus].from_failure(before)
         current = (
@@ -85,7 +87,7 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             ).map(lambda _: noop_status)
         planned = m.Infra.CodegenFilePlan(
             project=project_dir,
-            path=gitignore_path,
+            path=before.value.path,
             before=before.value,
             desired_content=desired.encode(c.DEFAULT_ENCODING),
             desired_mode=inputs.spec.modes.file_default,

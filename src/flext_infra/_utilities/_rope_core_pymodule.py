@@ -133,15 +133,10 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
                 non-source module.
 
         """
-        if not FlextInfraUtilitiesRopeRuntime.file_resource(resource):
-            path = Path(resource.real_path)
-            if (
-                not (path / "__init__.py").is_file()
-                and path.with_suffix(".py").is_file()
-            ):
-                resource = resource.parent.get_child(f"{path.name}.py")
         pymodule = FlextInfraUtilitiesRopeRuntime.require_parsed_module(
-            rope_project.get_pymodule(resource),
+            rope_project.get_pymodule(resource)
+            if FlextInfraUtilitiesRopeRuntime.file_resource(resource)
+            else rope_project.get_relative_module(resource.name, resource.parent, 1),
         )
         if FlextInfraUtilitiesRopeRuntime.file_resource(
             resource
