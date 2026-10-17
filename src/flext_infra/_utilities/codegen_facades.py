@@ -122,6 +122,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ) as project,
             project.frozen_layout(),
         ):
+
             def consumed() -> t.Triple[
                 tuple[m.Cli.AtomicFileState, ...],
                 tuple[m.Cli.AtomicDirectoryInventory, ...],

@@ -183,11 +183,9 @@ class FlextInfraUtilitiesPyprojectOverlay:
         )
         groups = dict(rendered_groups)
         for name, entries in live_groups.items():
-            authored_name = (
-                FlextInfraUtilitiesPyproject.dependency_group_name(
-                    tuple(live_groups),
-                    name,
-                )
+            authored_name = FlextInfraUtilitiesPyproject.dependency_group_name(
+                tuple(live_groups),
+                name,
             )
             previous = FlextInfraUtilitiesPyproject.dependency_group_name(
                 tuple(groups),
@@ -222,19 +220,15 @@ class FlextInfraUtilitiesPyprojectOverlay:
                 )
                 if required.failure:
                     return r[bool].from_failure(required)
-                groups[selected] = (
-                    FlextInfraUtilitiesPyproject.dependency_group_wire(
-                        FlextInfraUtilitiesPyprojectRequirements.merge_dependency_group_entries(
-                            required.value.root,
-                            custom.value,
-                        ),
-                    )
+                groups[selected] = FlextInfraUtilitiesPyproject.dependency_group_wire(
+                    FlextInfraUtilitiesPyprojectRequirements.merge_dependency_group_entries(
+                        required.value.root,
+                        custom.value,
+                    ),
                 )
             else:
-                groups[selected] = (
-                    FlextInfraUtilitiesPyproject.dependency_group_wire(
-                        custom.value,
-                    )
+                groups[selected] = FlextInfraUtilitiesPyproject.dependency_group_wire(
+                    custom.value,
                 )
         validated = u.validate_value(
             m.Infra.DependencyGroupDeclarations,

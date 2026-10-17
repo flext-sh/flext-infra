@@ -160,7 +160,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
             '[project]\nname = "consumer"\nversion = "0.1.0"\n'
             f'dependencies = ["{requirement}@{branch}"]\n'
             "[dependency-groups]\n"
-            f'{group} = [\n'
+            f"{group} = [\n"
             f'    "{stale}", # flext: derived member environment\n'
             '    {include-group = "authored"},\n'
             "]\n"
@@ -177,6 +177,42 @@ class TestsFlextInfraCodegenCatalogExtensions:
         )
 
         tm.that((line.base_url, line.branch), eq=(provider.base_url, branch))
+        admitted = tm.ok(u.Infra.declared_dependency_payload(path))
+        tm.that(
+            admitted[c.Infra.DEPENDENCY_GROUPS],
+            eq={
+                group: [{"include-group": "authored"}],
+                "authored": [f"{requirement}@{branch}"],
+            },
+        )
+        tm.that(
+            admitted[c.Infra.PROJECT],
+            eq={
+                "name": "consumer",
+                "version": "0.1.0",
+                "dependencies": [f"{requirement}@{branch}"],
+            },
+        )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "groups",
+        ["", "[dependency-groups]\n", '[dependency-groups]\nqa = ["authored>=1"]\n'],
+    )
+    def test_dependency_admission_preserves_absent_native_groups(
+        tmp_path: Path,
+        groups: str,
+    ) -> None:
+        """Reading provenance never invents dev/codegen groups or a root table."""
+        source = '[project]\nname = "consumer"\nversion = "0.1.0"\n' + groups
+        path = tmp_path / c.PYPROJECT_FILENAME
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+
+        tm.that(
+            tm.ok(u.Infra.declared_dependency_payload(path)),
+            eq=tm.not_none(u.Cli.toml_mapping_from_text(source)),
+        )
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
@@ -205,7 +241,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
             '[project]\nname = "consumer"\nversion = "0.1.0"\n'
             f'dependencies = ["{requirement}@{branch}"]\n'
             "[dependency-groups]\n"
-            f'{group} = [\n'
+            f"{group} = [\n"
             f'    # "{stale}", # flext: derived member environment\n'
             f'    "{stale}", # flext: derived member environment\n'
             f'    "{stale}", {comment}\n'

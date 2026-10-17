@@ -714,7 +714,9 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
             """
             holder_context = cls._chain_holder_context(binding, project, sources)
-            if holder_context is None or isinstance(binding, p.Infra.RopeImportedModule):
+            if holder_context is None or isinstance(
+                binding, p.Infra.RopeImportedModule
+            ):
                 return holder_context is not None
             holder, line, holder_text = holder_context
             chased = cls._chain_holder_declaration(

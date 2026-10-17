@@ -479,9 +479,8 @@ class FlextInfraUtilitiesRopeClassMove:
                 cls._resource(project, root, path),
             ).get_name()
             published = (
-                FlextInfraUtilitiesRopeRuntime.require_semantic_module(
-                    project.get_module(module_name)
-                )
+                FlextInfraUtilitiesRopeRuntime
+                .require_semantic_module(project.get_module(module_name))
                 .get_attributes()
                 .get(name)
             )

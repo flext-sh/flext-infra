@@ -113,9 +113,8 @@ class FlextInfraRopeRestructure(Restructure):
         if isinstance(self.import_policy, Mapping):
             project: p.Infra.RopeProject = self.project
             names = (
-                FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
-                    project, resource
-                )
+                FlextInfraUtilitiesRopeCorePyModuleMixin
+                .resolve_pymodule(project, resource)
                 .get_scope()
                 .get_defined_names()
             )

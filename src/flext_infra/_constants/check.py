@@ -40,7 +40,11 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
     ] = MappingProxyType({
         FlextInfraConfigVocabulary.GateKind.EXTERNAL: MappingProxyType({
             "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/", True),
-            "format": ("Ruff Formatter", "https://docs.astral.sh/ruff/formatter/", False),
+            "format": (
+                "Ruff Formatter",
+                "https://docs.astral.sh/ruff/formatter/",
+                False,
+            ),
             "security": ("Bandit", "https://bandit.readthedocs.io/", False),
             "markdown": ("rumdl", "https://rumdl.dev/", True),
             "markdown-format": ("rumdl", "https://rumdl.dev/", False),
@@ -79,7 +83,11 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
                 "internal://flext-infra/index-declarations",
                 False,
             ),
-            SMELLS: ("Flext Code Smell Detector", "internal://flext-infra/smells", False),
+            SMELLS: (
+                "Flext Code Smell Detector",
+                "internal://flext-infra/smells",
+                False,
+            ),
             "codemod": ("ast-grep", AST_GREP_DOCS_URL, False),
             "layout": (
                 "Flext Project Layout Gate",

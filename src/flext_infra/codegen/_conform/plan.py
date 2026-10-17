@@ -785,7 +785,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                                 "files": (),
                                 "environment": None,
                                 "error": (
-                                    extended.error or "native resolution planning failed"
+                                    extended.error
+                                    or "native resolution planning failed"
                                 ),
                                 "exception": extended.exception,
                             }

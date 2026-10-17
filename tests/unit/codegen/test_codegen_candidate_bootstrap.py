@@ -186,7 +186,9 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             path = independent / relative
             tm.that(path in planned_paths, eq=True)
             tm.that(
-                any(path == file.path for item in report.outcomes for file in item.files),
+                any(
+                    path == file.path for item in report.outcomes for file in item.files
+                ),
                 eq=True,
             )
         for relative in inputs.spec.uv_resolution_pyprojects:
