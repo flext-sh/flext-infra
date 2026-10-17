@@ -174,16 +174,17 @@ class FlextInfraCodegenGenerationPathsMixin:
         if not mod.startswith("."):
             root_pkg = local_package_root.split(".", maxsplit=1)[0]
             first_segment = mod.split(".", maxsplit=1)[0]
+            if first_segment == root_pkg:
+                return mod
             internal_segments = frozenset(local_package_root.split(".")[1:])
-            inferred_local = (
-                local_package_root == root_pkg
-                and "." in mod
-                and first_segment in c.Infra.LOCAL_INFERRED_SEGMENTS
-            )
-            if first_segment != root_pkg and (
+            if (
                 mod.startswith("_")
                 or first_segment in internal_segments
-                or inferred_local
+                or (
+                    local_package_root == root_pkg
+                    and "." in mod
+                    and first_segment in c.Infra.LOCAL_INFERRED_SEGMENTS
+                )
             ):
                 elected = f".{mod}"
         return u.Infra.resolve_import_module(
@@ -200,8 +201,9 @@ class FlextInfraCodegenGenerationPathsMixin:
     ) -> None:
         """Reject a relative TYPE_CHECKING import with no local package context.
 
-        Relative input requires a package context before the native resolver
-        can produce the absolute import emitted in Python source.
+        Relative inputs require a package context for native resolution.
+        Static declarations emit absolute owners; only runtime lazy lookup
+        strings retain the compact relative form.
 
         Raises:
             ValueError: If relative TYPE_CHECKING import.

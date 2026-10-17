@@ -318,14 +318,13 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             package_name="provider_package",
         )
         family = u.Infra.facade_family_declared_by(c.Infra.PROTOCOLS_PY)
-        private_package = provider / family.directory
-        private_package.mkdir()
-        barrel = private_package / c.Infra.INIT_PY
+        barrel = provider / family.directory / c.Infra.INIT_PY
+        barrel.parent.mkdir()
         tm.ok(u.Cli.atomic_write_text_file(barrel, ""))
         public_name = "ProviderBase" if declared else "OtherProviderBase"
         tm.ok(
             u.Cli.atomic_write_text_file(
-                private_package / "base.py",
+                barrel.parent / "base.py",
                 u.Tests.runtime_root_import() + f"class {public_name}(RuntimeRoot):\n"
                 '    """Explicitly published empty protocol owner."""\n'
                 f"__all__ = [{public_name!r}]\n",
