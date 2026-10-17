@@ -136,13 +136,13 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             scope=c.Infra.CodegenConformScope.ALL,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        baseline = tm.ok(
+        plan = tm.ok(
             FlextInfraCodegenConform(
                 repository_root=root,
                 initial_workspace=workspace,
             ).plan(request),
         )
-        tm.that(baseline.issues, empty=True)
+        tm.that(plan.issues, empty=True)
         failed = root if failure.startswith("root-") else member
         inputs = tm.ok(u.Infra.load_codegen_inputs(failed))
         if failure == "root-source":
@@ -155,11 +155,10 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             package = member / "src" / u.Infra.project_package_name(member)
             (package / c.Infra.INIT_PY).unlink()
         else:
-            view = failed / inputs.spec.uv_resolution_pyprojects[0]
-            foreign = tmp_path / "foreign"
-            foreign.mkdir()
-            view.parent.parent.mkdir(parents=True, exist_ok=True)
-            view.parent.symlink_to(foreign, target_is_directory=True)
+            projection = failed / inputs.spec.uv_resolution_pyprojects[0]
+            (tmp_path / "foreign").mkdir()
+            projection.parent.parent.mkdir(parents=True, exist_ok=True)
+            projection.parent.symlink_to(tmp_path / "foreign", target_is_directory=True)
         before = tuple(
             item
             for item in TestsFlextInfraConformSupport.project_tree(root)
@@ -174,28 +173,29 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
 
         tm.that(bool(plan.issues), eq=True)
-        planned_paths = {file.path for file in plan.files}
         report = m.Infra.CodegenPlanningReport.model_validate_json(
             (root / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH).read_bytes(),
         )
         failed_outcome = next(item for item in report.outcomes if item.root == failed)
         tm.that(bool(failed_outcome.error or failed_outcome.issues), eq=True)
         tm.that(failed_outcome.files, empty=True)
-        independent_inputs = tm.ok(u.Infra.load_codegen_inputs(independent))
-        for relative in independent_inputs.spec.uv_resolution_pyprojects:
+        for relative in inputs.spec.uv_resolution_pyprojects:
+            tm.that(failed / relative in {file.path for file in plan.files}, eq=False)
+        inputs = tm.ok(u.Infra.load_codegen_inputs(independent))
+        for relative in inputs.spec.uv_resolution_pyprojects:
             path = independent / relative
-            tm.that(path in planned_paths, eq=True)
+            tm.that(path in {file.path for file in plan.files}, eq=True)
             tm.that(
                 any(
                     path == file.path for item in report.outcomes for file in item.files
                 ),
                 eq=True,
             )
-        for relative in inputs.spec.uv_resolution_pyprojects:
-            tm.that(failed / relative in planned_paths, eq=False)
         if failure == "member-package":
-            root_outcome = next(item for item in report.outcomes if item.root == root)
-            tm.that(root_outcome.error, has="no successful selected plan")
+            tm.that(
+                next(item for item in report.outcomes if item.root == root).error,
+                has="no successful selected plan",
+            )
             tm.that(str(tm.not_none(plan.exception)), has="cannot resolve package name")
         tm.that(
             tuple(

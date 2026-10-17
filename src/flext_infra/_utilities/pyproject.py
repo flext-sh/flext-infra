@@ -10,7 +10,6 @@ import shutil
 from collections.abc import Mapping
 from functools import cache, lru_cache
 from pathlib import Path
-from typing import ClassVar
 
 from flext_cli import u
 from packaging.utils import canonicalize_name
@@ -24,8 +23,6 @@ from flext_infra._utilities import (
 
 class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
-
-    MEMBER_DEV_PROVENANCE: ClassVar[str] = "flext: derived member environment"
 
     @classmethod
     def declared_dependency_payload(
@@ -138,8 +135,7 @@ class FlextInfraUtilitiesPyproject:
                 value
                 for value, comment in zip(entries, comments.value, strict=True)
                 if not isinstance(value, str)
-                or comment.removeprefix("#").strip()
-                != FlextInfraUtilitiesPyproject.MEMBER_DEV_PROVENANCE
+                or comment.removeprefix("#").strip() != c.Infra.MEMBER_DEV_PROVENANCE
             ),
         )
 

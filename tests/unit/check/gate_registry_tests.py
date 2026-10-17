@@ -1,7 +1,8 @@
 """Gate vocabulary contract: one SSOT, every gate reachable.
 
-``c.Infra.SARIF_TOOL_INFO`` owns the gate ids; the registry classes and the
-`make check` vocabulary are derived from it and must never diverge.
+``c.Infra.GATE_TOOLS_BY_KIND`` owns the gate ids; the registry classes
+declare their ids from the same constants and the `make check` vocabulary
+is derived from it, so the surfaces cannot diverge.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

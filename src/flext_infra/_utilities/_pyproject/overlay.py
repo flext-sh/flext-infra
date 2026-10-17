@@ -157,7 +157,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
                 comment=(
                     None
                     if not isinstance(value, str) or value in custom_values
-                    else FlextInfraUtilitiesPyproject.MEMBER_DEV_PROVENANCE
+                    else c.Infra.MEMBER_DEV_PROVENANCE
                 ),
             )
         generated.add_line(indent="")

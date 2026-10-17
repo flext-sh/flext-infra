@@ -673,6 +673,7 @@ class TestsFlextInfraLazyInitHelpers:
             package_name="ai_hub",
         )
         package_root.joinpath(c.Infra.INIT_PY).write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n"
             '__all__: tuple[str, ...] = ("AiHubModels", "m")\n',
             encoding=c.DEFAULT_ENCODING,
         )
@@ -695,9 +696,15 @@ class TestsFlextInfraLazyInitHelpers:
         has_all, public_exports = u.Tests.extract_lazy_init_exports(generated)
 
         tm.that(has_all, eq=True)
-        for alias_name in ("c", "d", "e", "h", "m", "p", "r", "s", "t", "u", "x"):
+        for alias_name in c.Infra.ALIAS_NAMES:
             tm.that(public_exports, has=alias_name)
-        tm.that(generated, has="from flext_infra import d, e, h, p, r, s, t, u, x")
+        tm.that(
+            generated,
+            has=(
+                "from flext_infra import "
+                + ", ".join(sorted(c.Infra.ALIAS_NAMES - {"c", "m"}))
+            ),
+        )
 
     def test_root_keeps_declared_public_git_and_work_services(
         self,

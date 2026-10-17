@@ -147,11 +147,6 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         """
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         policy = inputs.spec.make.uv_resolution
-        layout = u.Infra.git_repository_root(
-            m.Infra.GitRepoRequest(repo_root=root),
-        )
-        if layout.failure:
-            return result_type.from_failure(layout)
         catalogue = {item.path: item for item in inputs.spec.managed_file_specs}
         owner, *members = projects
         files: list[m.Infra.CodegenFilePlan] = []
@@ -174,7 +169,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
                 owner,
                 selected,
                 path.parent,
-                layout.value.repository_root,
+                self.repository_root,
                 inputs,
             )
             if formatted.failure:

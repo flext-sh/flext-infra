@@ -1270,7 +1270,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
     @classmethod
     def runtime_bases(
         cls,
-        project: t.Infra.RopeProject,
+        project: p.Infra.RopeProject,
         sources: t.MappingKV[str, t.Pair[Path, str]],
         roots: t.StrSequence,
         extra_module_aliases: t.MappingKV[str, str] | None = None,

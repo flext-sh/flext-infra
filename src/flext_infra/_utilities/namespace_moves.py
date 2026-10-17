@@ -729,7 +729,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             raise RuntimeError(msg)
         source_module, target_module = (
             FlextInfraUtilitiesRopeAnalysisWorkspace.module_name_for_file(
-                path, project_root=Path(rope_project.address)
+                path, project_root=Path(rope_project.root.real_path)
             )
             for path in (source_file, target_file)
         )

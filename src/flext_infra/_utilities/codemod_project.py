@@ -1124,7 +1124,11 @@ class FlextInfraUtilitiesCodemodProject(
             if owner is None:
                 message = f"project owner is unresolved: {file_path}"
                 raise ValueError(message)
-            own = FlextInfraUtilitiesPyproject.project_package_name(owner)
+            namespace = FlextInfraUtilitiesImportLaw.import_namespace(owner, file_path)
+            if namespace is None:
+                # Root-level files retain the existing project-package scope.
+                return FlextInfraUtilitiesPyproject.project_package_name(owner)
+            own = cls._top_module(namespace[1])
         return own
 
     @classmethod

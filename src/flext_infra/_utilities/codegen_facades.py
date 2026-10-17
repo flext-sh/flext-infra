@@ -77,9 +77,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
                 for path in paths
             )
-        source_states = m.Infra.CodemodBindingSnapshot(
+        original_states = m.Infra.CodemodBindingSnapshot(
             states=(
                 *source_states,
+                *(state for plan in declared_files for state in plan.source_states),
                 *(
                     plan.before
                     for plan in declared_files
@@ -107,14 +108,18 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     root, state.path
                 )
             },
-            **proposed,
+            **{
+                plan.path: proposed[plan.path]
+                for plan in declared_files
+                if plan.project == root and plan.path in proposed
+            },
         }
         with (
             FlextInfraUtilitiesRopeCore.open_project(root) as live,
             closing(
                 FlextInfraRopeProject.from_atomic_reads(
                     live,
-                    source_states,
+                    original_states,
                     ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
                     sources=proposed,
                     declared_files=declared_files,

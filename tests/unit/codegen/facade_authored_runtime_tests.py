@@ -145,3 +145,98 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 {state.path.resolve() for state in consumed()[0]},
                 has=(installed / c.Infra.UTILITIES_PY).resolve(),
             )
+
+    @staticmethod
+    @pytest.mark.parametrize("declared", [False, True])
+    def test_planned_provider_export_precedes_native_consumer(
+        native_consumer: p.Tests.NativeConsumer,
+        installed_dependency_path: Path,
+        tmp_path: Path,
+        *,
+        declared: bool,
+    ) -> None:
+        """A stale live barrel never replaces the provider's planned export."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        provider_root, provider = u.Tests.create_lazy_init_workspace(
+            installed_dependency_path,
+            project_name="provider_project",
+            package_name="provider_package",
+        )
+        family = u.Infra.facade_family_declared_by(c.Infra.PROTOCOLS_PY)
+        provider_namespace = (
+            f"{provider_root.name}.{c.Infra.DEFAULT_SRC_DIR}.{provider.name}"
+        )
+        private_package = provider / family.directory
+        private_package.mkdir()
+        barrel = private_package / c.Infra.INIT_PY
+        tm.ok(u.Cli.atomic_write_text_file(barrel, ""))
+        declaration = private_package / "base.py"
+        public_name = "ProviderBase" if declared else "OtherProviderBase"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                declaration,
+                u.Tests.runtime_root_import() + f"class {public_name}(RuntimeRoot):\n"
+                '    """Explicitly published empty protocol owner."""\n'
+                f"__all__ = [{public_name!r}]\n",
+            ),
+        )
+        consumer = package / "consumer.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                consumer,
+                f"from {provider_namespace}.{family.directory} "
+                "import ProviderBase\n"
+                "class Consumer(ProviderBase):\n"
+                '    """Consumer of the generated provider barrel."""\n'
+                "__all__ = ['Consumer']\n",
+            ),
+        )
+        provider_service = u.Tests.create_lazy_init_service(provider_root)
+        provider_analysis = tm.ok(provider_service.plan_files())
+        original_barrel = tm.ok(
+            u.Cli.atomic_read_binary_file_state(barrel, required=True)
+        )
+        with ExitStack() as stack:
+            if not declared:
+                stack.enter_context(
+                    pytest.raises(
+                        u.Infra.rope_attribute_not_found_error_types(),
+                        match="Attribute ProviderBase not found",
+                    )
+                )
+            project, consumed, sources = stack.enter_context(
+                u.Infra.facade_source_project(
+                    root,
+                    declared_files=provider_analysis.files,
+                )
+            )
+            roots = u.Infra.runtime_evaluated_base_classes(
+                root,
+                sources,
+                u.Tests.runtime_evaluated_roots(),
+                source_project=project,
+            )
+            tm.that(
+                roots,
+                has=f"{provider_namespace}.{family.directory}.base.ProviderBase",
+            )
+            tm.that(
+                {state.path for state in consumed()[0]},
+                has=barrel.resolve(),
+            )
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(barrel, required=True)),
+            eq=original_barrel,
+        )
+        if declared:
+            tm.ok(u.Tests.materialize_lazy_init(provider_service))
+            tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+            native_consumer(
+                f"sys.path.insert(0, {str(installed_dependency_path)!r})\n"
+                f"sys.path.insert(0, {str(package.parent)!r})\n"
+                f"from {provider_namespace}.{family.directory} "
+                "import ProviderBase\n"
+                f"from {package.name} import Consumer\n"
+                "assert issubclass(Consumer, ProviderBase)\n",
+                cwd=root,
+            )
