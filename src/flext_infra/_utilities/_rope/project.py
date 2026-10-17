@@ -16,7 +16,7 @@ from __future__ import annotations
 from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from errno import ENOENT
-from os.path import normpath
+from os.path import normpath, realpath
 from pathlib import Path
 from types import MappingProxyType
 from typing import Literal, Self, override
@@ -304,8 +304,17 @@ class FlextInfraRopeProject(Project):
     class AtomicReadFiles:
         """Authenticate only sources actually read by the native semantic graph."""
 
-        realpath = staticmethod(FileSystemCommands.realpath)
         stat = staticmethod(FileSystemCommands.stat)
+
+        @staticmethod
+        def realpath(path: str) -> str:
+            """Return the physical identity Rope's native filesystem commands use.
+
+            Returns:
+                The user-expanded, symlink-resolved absolute path.
+
+            """
+            return realpath(Path(path).expanduser())
 
         def __init__(
             self,
@@ -315,10 +324,14 @@ class FlextInfraRopeProject(Project):
             declared_files: tuple[m.Infra.CodegenFilePlan, ...],
         ) -> None:
             self._root = root
-            self._originals: dict[Path, m.Cli.AtomicFileState] = {}
-            self._consumed: dict[Path, m.Cli.AtomicFileState] = {}
-            self._inventories: dict[Path, m.Cli.AtomicDirectoryInventory] = {}
-            self._topology: dict[Path, m.Cli.AtomicDirectoryChainPlan] = {}
+            self._originals: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
+            self._consumed: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
+            self._inventories: t.MutableMappingKV[
+                Path, m.Cli.AtomicDirectoryInventory
+            ] = {}
+            self._topology: t.MutableMappingKV[
+                Path, m.Cli.AtomicDirectoryChainPlan
+            ] = {}
             for state in source_states:
                 path = Path(state.path)
                 previous = self._originals.get(path)
