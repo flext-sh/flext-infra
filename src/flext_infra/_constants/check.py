@@ -290,6 +290,87 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
         NORMALIZE_IMPORTS = "normalize-imports"
         WRAP_LONG_LINE = "wrap-long-line"
 
+    SERVICE_BASE_ROOTS: ClassVar[frozenset[str]] = frozenset({"FlextService", "s"})
+    "Root names whose base declares a FLEXT service subclass (the family letter ``s`` aliases ``FlextService``, ADR-019). A service operation must stay a plain public instance function - core discovery excludes staticmethods, classmethods and properties - so the static-method recipe leaves such findings to their owner."
+
+    AST_GREP_DOCS_URL: ClassVar[str] = "https://ast-grep.github.io/"
+    "Canonical ast-grep documentation URL for gate metadata."
+    # Quality gate identifiers shared with the tool-name vocabulary.
+    LINT: ClassVar[str] = "lint"
+    FORMAT: ClassVar[str] = "format"
+    MARKDOWN: ClassVar[str] = "markdown"
+    MARKDOWN_FORMAT: ClassVar[str] = "markdown-format"
+    MARKDOWN_CODE: ClassVar[str] = "markdown-code"
+    SMELLS: ClassVar[str] = "smells"
+    RUNTIME_CENSUS: ClassVar[str] = "runtime-census"
+    "Gate id whose census rule families no other gate owns."
+    FRESH_IMPORT: ClassVar[str] = "fresh-import"
+    "Gate id of the fresh-process import proof over the provisioned runtime."
+    GATE_TOOLS_BY_KIND: ClassVar[t.MappingKV[GateKind, t.MappingKV[str, t.StrPair]]] = (
+        MappingProxyType({
+            GateKind.EXTERNAL: MappingProxyType({
+                "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/"),
+                "format": ("Ruff Formatter", "https://docs.astral.sh/ruff/formatter/"),
+                "security": ("Bandit", "https://bandit.readthedocs.io/"),
+                "markdown": ("rumdl", "https://rumdl.dev/"),
+                "markdown-format": ("Prettier", "https://prettier.io/"),
+                "markdown-code": ("Ruff", "https://docs.astral.sh/ruff/"),
+                "duplication": ("jscpd", "https://github.com/kucherenko/jscpd"),
+            }),
+            GateKind.TYPE_CHECKER: MappingProxyType({
+                "pyrefly": ("Pyrefly", "https://github.com/facebook/pyrefly"),
+                "mypy": ("Mypy", "https://mypy.readthedocs.io/"),
+                "pyright": ("Pyright", "https://github.com/microsoft/pyright"),
+            }),
+            GateKind.INFRA: MappingProxyType({
+                "loc-cap": ("scc", "https://github.com/boyter/scc"),
+                "runtime-census": (
+                    "Flext Runtime Enforcement Census",
+                    "internal://flext-infra/runtime-census",
+                ),
+                FRESH_IMPORT: (
+                    "Flext Fresh-Process Import Gate",
+                    "internal://flext-infra/fresh-import",
+                ),
+                "index-declarations": (
+                    "Flext Index Declarations Gate",
+                    "internal://flext-infra/index-declarations",
+                ),
+                SMELLS: ("Flext Code Smell Detector", "internal://flext-infra/smells"),
+                "codemod": ("ast-grep", AST_GREP_DOCS_URL),
+                "layout": (
+                    "Flext Project Layout Gate",
+                    "internal://flext-infra/layout",
+                ),
+                "direnv": (
+                    "Flext Direnv Environment Contract Gate",
+                    "internal://flext-infra/direnv",
+                ),
+            }),
+        })
+    )
+    """The gate registry: each gate is declared once, under its kind.
+
+    ``loc-cap`` and ``codemod`` drive an external engine (scc, ast-grep) over a
+    rule catalog this package owns, so they are ``INFRA``. Every other gate
+    vocabulary below is derived from this declaration.
+    """
+    GATE_KINDS: ClassVar[t.MappingKV[str, GateKind]] = MappingProxyType({
+        gate: kind for kind, tools in GATE_TOOLS_BY_KIND.items() for gate in tools
+    })
+    "Gate id -> kind, derived from the registry declaration."
+    TYPE_CHECKER_GATES: ClassVar[frozenset[str]] = frozenset(
+        GATE_TOOLS_BY_KIND[GateKind.TYPE_CHECKER],
+    )
+    "Native type-checker gates, derived from the registry declaration."
+    SARIF_TOOL_INFO: ClassVar[t.MappingKV[str, t.StrPair]] = MappingProxyType({
+        gate: tool
+        for tools in GATE_TOOLS_BY_KIND.values()
+        for gate, tool in tools.items()
+    })
+    "Gate id -> (tool name, tool url), derived from the registry declaration."
+    ALLOWED_GATES: ClassVar[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
+    "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."
     CHECK_REPORT_MARKDOWN_FILENAME: ClassVar[str] = "check-report.md"
     "Human-readable check report written beside the SARIF report."
     CHECK_REPORT_SARIF_FILENAME: ClassVar[str] = "check-report.sarif"
