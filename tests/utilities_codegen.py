@@ -300,6 +300,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         (repository_root / c.PYPROJECT_FILENAME).write_text(
             (
                 f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n'
+                f'license = "{project.license}"\n'
                 f'authors = [{{name = "{project.author_name}", '
                 f'email = "{project.author_email}"}}]\n\n'
                 + TestsFlextInfraUtilitiesCodegenMixin.ruff_per_file_ignores_toml()
