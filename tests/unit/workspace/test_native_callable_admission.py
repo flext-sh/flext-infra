@@ -11,8 +11,64 @@ import pytest
 from tests import t, u
 
 
-class TestsNativeCallableAdmission:
+class TestsFlextInfraNativeCallableAdmission:
     """Inherited dict and slots callables preserve behavior and binding evidence."""
+
+    @staticmethod
+    @pytest.mark.parametrize("expression", ["value", "Consumer.offset + value"])
+    def test_unrelated_generated_function_is_not_a_class_state_writer(
+        real_python_package: t.DirectoryPath,
+        expression: t.StrictStr,
+    ) -> None:
+        """Inapplicable generated callables cannot block real writer observation."""
+        root = real_python_package / "src"
+        u.Tests.write_package_init(
+            root / "test_pkg",
+            """from types import FunctionType
+class Consumer:
+    offset = 3
+    mode = 'original'
+    @staticmethod
+    def execute(value: int) -> int:
+        return Consumer.offset + value
+def prototype(value: int) -> int:
+"""
+            f"    return {expression}\n"
+            """generated = FunctionType(prototype.__code__, {'Consumer': Consumer})
+def update_consumer(value: int) -> None:
+    Consumer.offset = value
+def replacement(value: int) -> None:
+    Consumer.offset = value + 1
+""",
+        )
+        u.Tests.run_lazy_init_probe(
+            """from flext_infra import m
+from flext_infra.workspace.native_reference import (
+    FlextInfraWorkspaceNativeReference as native,
+)
+import test_pkg as module
+assert module.generated.__module__ is None
+assert module.generated(4) == module.prototype(4)
+assert module.Consumer.execute(4) == 7
+selection = (m.Infra.SourceClassReference(
+    target=module.__name__, attributes=('Consumer',)
+),)
+before = native.capture(selection).unwrap()
+repeated = native.capture(selection).unwrap()
+assert native.compare(before, repeated).unwrap() is True
+module.update_consumer(11)
+after = native.capture(selection).unwrap()
+assert native.compare(before, after).unwrap() is True
+assert module.Consumer.execute(4) == 15
+module.Consumer.mode = 'changed'
+assert native.compare(before, native.capture(selection).unwrap()).failure
+module.Consumer.mode = 'original'
+module.update_consumer.__code__ = module.replacement.__code__
+assert native.compare(before, native.capture(selection).unwrap()).failure
+""",
+            python_paths=(str(root),),
+            cwd=real_python_package,
+        )
 
     @staticmethod
     def test_git_resolution_preserves_native_producer_identity(
