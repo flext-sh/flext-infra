@@ -432,8 +432,7 @@ export FLEXT_INFRA_PYTHON UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH RUN
 # variables.
 TOOL_BOOTSTRAP_LIFECYCLE := _setup_lifecycle
 TOOL_BOOTSTRAP_RESOLVE :=
-{{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(PROJECT_ROOT)", toolchain, mise_install_tools, "$(SELF_MAKE) $(TOOL_BOOTSTRAP_LIFECYCLE)", make) }}
-_bootstrap_setup_tools: _builtin_require_network_auth
+{{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(PROJECT_ROOT)", toolchain, mise_install_tools, "$(SELF_MAKE) $(TOOL_BOOTSTRAP_LIFECYCLE)", make, bootstrap_report_shell_literal, bootstrap_report_relative_path, true) }}
 
 # UV, not Git attachment or runtime environment selection, owns lock discovery.
 .PHONY: _builtin_require_upg_lock_owner
@@ -442,20 +441,6 @@ _builtin_require_upg_lock_owner:
 	if [ "$$owner" != "$(PROJECT_ROOT)" ]; then \
 		printf 'ERROR[upg] UV lock owner is %s, not %s; regenerate the independent-project topology before upgrading.\n' "$$owner" "$(PROJECT_ROOT)" >&2; \
 		exit 2; \
-	fi
-
-.PHONY: _builtin_require_network_auth
-_builtin_require_network_auth:
-	@$(GITHUB_AUTH_DIAGNOSTICS)
-	@if [ "$(GITHUB_AUTH_SOURCE)" = gh ]; then \
-		if [ "$(GITHUB_AUTH_STATUS)" != 0 ]; then \
-			printf 'ERROR: selected gh auth token failed (exit %s); refusing anonymous provisioning\n' '$(GITHUB_AUTH_STATUS)' >&2; \
-			exit "$(GITHUB_AUTH_STATUS)"; \
-		fi; \
-		if [ "$(GITHUB_AUTH_PRESENT)" != yes ]; then \
-			printf 'ERROR: selected gh auth token returned no credential; refusing anonymous provisioning\n' >&2; \
-			exit 2; \
-		fi; \
 	fi
 
 # Every repository evaluates only itself: a workspace root consumes its members
@@ -840,6 +825,18 @@ endif
 # finishes it. A second change inside the hand-off is a gen fixed-point
 # defect and fails loud.
 .PHONY: _upg_lifecycle _upg_converge
+{% for verb in profile.verbs if verb.name == "upg-sources" %}
+_builtin-upg-sources: _builtin_require_environment
+{% for argument in verb.arguments %}
+	@if [ -z "$(strip $({{ argument }}))" ]; then \
+		printf 'ERROR[upg-sources]: {{ argument }} is required\n' >&2; \
+		exit 2; \
+	fi
+{% endfor %}
+	@$(PROJECT_FLEXT_INFRA) deps modernize --repository-root "$(SOURCE_ROOT)" \
+		--projects . --apply --git-source-url-prefix "$(SOURCE_URL_PREFIX)" \
+		--git-source-ref-from "$(SOURCE_REF_FROM)" --git-source-ref-to "$(SOURCE_REF_TO)"
+{% endfor %}
 _upg_lifecycle: _builtin_setup_submodules
 	@$(SELF_MAKE) _builtin_require_upg_lock_owner
 	@set -eu; \

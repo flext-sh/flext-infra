@@ -183,6 +183,15 @@ class FlextInfraModelsDuplication:
                 ),
             ),
         ] = False
+        kind: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "jscpd clone classification; the field is absent from some "
+                    "jscpd report versions and defaults to 'exact'"
+                ),
+            ),
+        ] = "exact"
         lines: Annotated[
             t.PositiveInt,
             m.Field(description="Duplicated logical line count"),

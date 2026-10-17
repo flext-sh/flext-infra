@@ -87,8 +87,8 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
         root: Path,
         sources: t.MappingKV[Path, str],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        selected: dict[Path, set[str]] = {}
-        declarations: dict[Path, set[str]] = {}
+        selected: t.MutableMappingKV[Path, set[str]] = {}
+        declarations: t.MutableMappingKV[Path, set[str]] = {}
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         for path, source in sources.items():
             classified = cls._classify_source(root, path, source, order)

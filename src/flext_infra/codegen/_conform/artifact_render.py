@@ -650,6 +650,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             m.Infra.GithubWorkflowRenderSpec(
                 dist=dist,
                 gate_original_receipt_filename=c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME,
+                setup_operations_report_directory=(
+                    c.Infra.WORKSPACE_OPERATION_REPORT_DIRECTORY
+                ),
                 make_profile=target.make_profile,
                 gascity_enabled=target.gascity_enabled,
                 repository_branch=branch,
@@ -749,13 +752,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             The resulting ``p.Result[m.Infra.MakefileRenderSpec]``.
 
         """
-        gitlinks = self._managed_gitlinks(
-            workspace,
-            codegen,
-            repository_root=target.root,
-        )
-        if gitlinks.failure:
-            return r[m.Infra.MakefileRenderSpec].from_failure(gitlinks)
         pytest = config.Infra.tooling.tools.pytest
         run_timeout_seconds = pytest.run_timeout_overrides.get(
             target.canonical_project_name,
@@ -763,6 +759,12 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         )
         return r[m.Infra.MakefileRenderSpec].ok(
             m.Infra.MakefileRenderSpec(
+                bootstrap_report_shell_literal=(
+                    u.Infra.bootstrap_operation_report_shell_literal()
+                ),
+                bootstrap_report_relative_path=(
+                    c.Infra.WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH
+                ),
                 pytest=pytest,
                 dist=target.repository.distribution,
                 infra_cli=config.Infra.name,
@@ -778,7 +780,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 workspace_subprojects=tuple(
                     item.path.as_posix() for item in workspace.subprojects
                 ),
-                workspace_gitlinks=gitlinks.value,
                 uv_link_mode=self.link_mode(target.repository, codegen.toolchain),
                 mise_selector=codegen.toolchain.mise_selector,
                 mise_version=codegen.toolchain.mise_version,

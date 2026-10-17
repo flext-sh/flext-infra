@@ -81,7 +81,7 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             path=gitignore_path,
             before=before.value,
             desired_content=rendered.value.encode(c.DEFAULT_ENCODING),
-            desired_mode=0o644,
+            desired_mode=config.Infra.codegen.modes.file_default,
             owner="codegen",
             policy="full",
         )
@@ -136,7 +136,7 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             path=gitignore_path,
             before=before.value,
             desired_content=text.encode(c.DEFAULT_ENCODING),
-            desired_mode=0o644,
+            desired_mode=config.Infra.codegen.modes.file_default,
             owner="codegen",
             policy="merge",
         )

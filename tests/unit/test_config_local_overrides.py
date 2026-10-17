@@ -13,7 +13,7 @@ import pytest
 
 from flext_core import e
 from flext_infra import FlextInfraConfig, c
-from tests import tm
+from tests import tm, u
 
 
 class TestsFlextInfraConfigLocalOverrides:
@@ -124,52 +124,28 @@ class TestsFlextInfraConfigLocalOverrides:
         finally:
             FlextInfraConfig.reset_for_testing()
 
-    def test_org_layer_from_governed_repository_resolves(
+    def test_target_and_local_layers_use_explicit_repository_root(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """The governed repository's tracked org layer merges last in its cwd.
-
-        CI runs the generator from the governed repository root, where no
-        operator-local file exists: the org layer is what lets a private
-        organization declare its own doc checkouts on a runner. A provider
-        registry is not part of that surface — provider identity is detected
-        from each repository's own workspace manifest, and a org-layer
-        ``providers`` block now fails validation loudly.
-        """
-        self._copy_tracked_configs(tmp_path)
-        org_root = tmp_path / "org-repo"
-        (org_root / c.Infra.CODEGEN_CONFIG_DIR).mkdir(parents=True)
-        (
-            org_root
-            / c.Infra.CODEGEN_CONFIG_DIR
-            / c.Infra.CODEGEN_ORG_OVERRIDES_FILENAME
-        ).write_text(
-            "Infra:\n"
-            "  codegen:\n"
-            "    make:\n"
-            "      docs:\n"
-            "        github_repos:\n"
-            "          - organization: example-org\n"
-            "            repository: example-docs\n"
-            "            branch: main\n"
-            "            local_checkout: ~/example-docs\n",
+        """Explicit target layers merge independently of the ambient directory."""
+        root = tmp_path / "consumer"
+        directory = root / c.Infra.CODEGEN_CONFIG_DIR
+        directory.mkdir(parents=True)
+        (directory / "codegen.yaml").write_text(
+            "Infra:\n  codegen:\n    make:\n      docs:\n        overview_preview_limits:\n          aliases: 23\n",
             encoding="utf-8",
         )
-        monkeypatch.setenv("FLEXT_INFRA_CONFIG_DIR", str(tmp_path))
-        monkeypatch.chdir(org_root)
-        FlextInfraConfig.reset_for_testing()
-        try:
-            fresh = FlextInfraConfig.fetch_global()
-            orgs = [
-                entry.organization
-                for entry in fresh.Infra.codegen.make.docs.github_repos
-            ]
-            tm.that("example-org" in orgs, eq=True)
-            tm.that("flext-sh" in orgs, eq=True)
-        finally:
-            FlextInfraConfig.reset_for_testing()
+        (directory / "codegen.local.yaml").write_text(
+            "Infra:\n  codegen:\n    make:\n      docs:\n        overview_preview_limits:\n          aliases: 31\n",
+            encoding="utf-8",
+        )
+        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
+        tm.that(inputs.spec.make.docs.overview_preview_limits.aliases, eq=31)
+        tm.that(
+            tuple(state.path for state in inputs.sources)[-2:],
+            eq=(directory / "codegen.yaml", directory / "codegen.local.yaml"),
+        )
 
     def test_provider_registry_declaration_fails_validation(
         self,

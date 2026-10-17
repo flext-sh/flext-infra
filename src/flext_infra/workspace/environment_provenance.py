@@ -147,16 +147,16 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         repository: m.Infra.RepositoryRef,
         distribution: Distribution,
         expected_root: Path,
-    ) -> p.Result[bool]:
+    ) -> p.Result[int]:
         """Prove the installed file inventory yields exactly one editable .pth.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            The resulting ``p.Result[int]``.
 
         """
         files = distribution.files
         if files is None:
-            return r[bool].fail(
+            return r[int].fail(
                 "editable provenance has no installed file inventory: "
                 f"distribution={repository.distribution}",
             )
@@ -172,7 +172,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             if str(file).endswith(".pth")
         )
         if len(pth_files) != 1:
-            return r[bool].fail(
+            return r[int].fail(
                 "editable provenance pth count mismatch: "
                 f"distribution={repository.distribution} expected=1 "
                 f"actual={len(pth_files)}",
@@ -377,7 +377,8 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         descriptor = namespace.get(attribute)
         outer = (
             descriptor.__func__
-            if isinstance(descriptor, classmethod | staticmethod)
+            if descriptor is not None
+            and type(descriptor) in {classmethod, staticmethod}
             else descriptor
         )
         if not isfunction(outer) or id(outer) != definition_identity:
@@ -404,23 +405,10 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return r[int].from_failure(document)
         # TOML arrays are wire arrays; JSON mode preserves the strict tuple contract.
         locked = m.Infra.LockedEnvironment.model_validate_json(dumps(document.value))
-        manifests = u.Infra.load_workspace_manifest(repository_root)
-        if manifests.failure:
-            return r[int].from_failure(manifests)
-        if len(manifests.value) != 1:
-            return r[int].fail(
-                "locked provenance needs one declared workspace manifest",
-            )
-        manifest = manifests.value[0]
-        workspace = m.Infra.WorkspaceSpec(
-            name=manifest.name,
-            repository=manifest.repository,
-            subprojects=(
-                manifest.members
-                if manifest.repository.role is c.Infra.MakeProfile.WORKSPACE
-                else ()
-            ),
-        )
+        observed = FlextInfraWorkspaceDetector.load_workspace_spec(repository_root)
+        if observed.failure:
+            return r[int].from_failure(observed)
+        workspace = observed.value
         members = {
             repository.distribution: repository
             for repository in workspace.subprojects

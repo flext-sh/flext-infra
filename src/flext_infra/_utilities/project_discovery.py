@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from functools import lru_cache
 from operator import attrgetter
 from pathlib import Path
 from typing import TYPE_CHECKING, override
@@ -18,7 +17,7 @@ from flext_infra import c, config, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
-    FlextInfraUtilitiesWorkspaceManifest,
+    FlextInfraUtilitiesProjectManagedArtifacts,
 )
 
 if TYPE_CHECKING:
@@ -88,13 +87,13 @@ class FlextInfraUtilitiesProjectDiscovery(
             return result_type.fail(
                 f"required operation root is missing: {target.root}",
             )
-        loaded = FlextInfraUtilitiesWorkspaceManifest.load_workspace_manifest(
+        loaded = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
             target.root,
         )
         if loaded.failure:
             return result_type.from_failure(loaded)
-        for manifest in loaded.value:
-            repository = manifest.repository
+        repository = loaded.value.spec.repository
+        if repository is not None:
             if repository.codegen == c.Infra.CodegenKind.NONE:
                 return result_type.ok(
                     m.Infra.WorkspaceOperationApplicability(
@@ -112,7 +111,6 @@ class FlextInfraUtilitiesProjectDiscovery(
         return result_type.ok(m.Infra.WorkspaceOperationApplicability(applicable=True))
 
     @classmethod
-    @lru_cache(maxsize=1)
     def load_refactor_config(cls, repository_root: Path) -> m.Infra.RefactorConfigSpec:
         """Load declared refactor configuration, propagating invalid manifests.
 
@@ -120,19 +118,16 @@ class FlextInfraUtilitiesProjectDiscovery(
             The resulting ``m.Infra.RefactorConfigSpec``.
 
         """
-        manifest_path = FlextInfraUtilitiesWorkspaceManifest.workspace_manifest_path(
-            repository_root,
-        )
         packaged = m.Infra.RefactorConfigSpec(
             project_scan_dirs=config.Infra.source_scan.roots,
         )
-        if not manifest_path.is_file():
+        loaded = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
+            repository_root,
+        ).unwrap()
+        repository = loaded.spec.repository
+        if repository is None or repository.refactor is None:
             return packaged
-        loaded = u.Cli.config_load(manifest_path, expand_env=False).unwrap()
-        manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.data)
-        if manifest.refactor is None:
-            return packaged
-        return manifest.refactor
+        return repository.refactor
 
     @classmethod
     def repository_nonparticipant_paths(cls, repository_root: Path) -> frozenset[str]:

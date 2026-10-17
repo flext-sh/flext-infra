@@ -10,13 +10,112 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config
+from flext_infra import config, m
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, tm, u
 
 
 class TestsFlextInfraDetectorOwnsNoProjectRegistry:
     """Prove derivation never consults a flext-infra-owned project catalog."""
+
+    @pytest.mark.parametrize(
+        ("path", "managed"),
+        [
+            (Path(), True),
+            (Path("/outside"), True),
+            (Path("..") / "outside", True),
+            (Path("member"), False),
+        ],
+    )
+    def test_pending_declarations_cannot_escape_or_exclude_the_workspace(
+        self,
+        path: Path,
+        *,
+        managed: bool,
+    ) -> None:
+        """The public payload rejects invalid pending topology before effects."""
+        repository = u.Tests.repository_ref("pending-owner")
+        declaration = m.Infra.GitSubmoduleDeclaration(
+            path=path,
+            url=repository.url,
+            branch=c.Infra.FOLLOW_SUPERPROJECT_BRANCH,
+            managed=managed,
+        )
+
+        with pytest.raises(
+            ValueError,
+            match="pending subprojects require managed workspace-relative paths",
+        ):
+            m.Infra.WorkspaceSpec(
+                name=repository.name,
+                repository=repository,
+                pending_subprojects=(declaration,),
+            )
+
+    @pytest.mark.parametrize("directory_exists", [False, True])
+    def test_missing_managed_checkout_retains_only_its_git_declaration(
+        self,
+        tmp_path: Path,
+        *,
+        directory_exists: bool,
+    ) -> None:
+        """Setup sees a pending participant; strict discovery retains its cause."""
+        root = u.Tests.WorktreeFixture.self_named_project(
+            tmp_path / "pending-workspace",
+            "pending-workspace",
+        )
+        relative = Path("nested") / "unprovisioned"
+        repository = u.Tests.repository_ref(relative.name)
+        branch = config.Infra.codegen.branch_policy.integration_branch_preference[0]
+        tm.ok(
+            u.Cli.files_write_text(
+                root / c.Infra.GITMODULES,
+                f'[submodule "{relative.as_posix()}"]\n'
+                f"    path = {relative.as_posix()}\n"
+                f"    url = {repository.url}\n"
+                f"    branch = {branch}\n",
+            ),
+        )
+        declaration = m.Infra.RepositoryDeltaSpec(
+            integration=m.Infra.WorkspaceIntegrationSpec(
+                provider=repository.provider,
+                branch=branch,
+            ),
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": declaration.model_dump(
+                                mode="json",
+                                exclude_none=True,
+                                exclude_defaults=True,
+                            ),
+                        },
+                    },
+                },
+            ),
+        )
+        if directory_exists:
+            (root / relative).mkdir(parents=True)
+
+        strict = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+        pending = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(
+                root,
+                allow_unprovisioned_members=True,
+            ),
+        )
+        declarations = tm.ok(u.Infra.git_submodule_declarations(root))
+
+        tm.that(strict.failure, eq=True)
+        tm.that(isinstance(strict.exception, FileNotFoundError), eq=True)
+        tm.that(pending.pending_subprojects, eq=declarations)
+        tm.that(pending.subprojects, empty=True)
+        tm.that(pending.external_dependency_paths, empty=True)
+        tm.that(pending.repository.role, eq=c.Infra.MakeProfile.WORKSPACE)
 
     @pytest.mark.parametrize(
         ("value", "managed"),

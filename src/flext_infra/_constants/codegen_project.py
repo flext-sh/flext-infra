@@ -256,6 +256,7 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     TEMPLATE_TEST_MODULE_SKELETON: ClassVar[str] = "test_module_skeleton.py.j2"
     "Scaffold template for canonical test c/t/p/m/u facades."
     CODEGEN_CONFIG_FILENAME: ClassVar[str] = "codegen.yaml"
+    INFRA_CONFIG_FILENAME: ClassVar[str] = "infra.yaml"
     CODEGEN_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.yaml"
     CODEGEN_GEN_FILENAME: ClassVar[str] = "codegen.gen.yaml"
     CODEGEN_GEN_SUFFIX: ClassVar[str] = ".gen.yaml"

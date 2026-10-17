@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import IO, cast
 
 from flext_cli import u as cli_u
 from git import GitCommandError, HookExecutionError, InvalidGitRepositoryError, Repo
-from git.util import LockedFD
+from gitdb.util import LockedFD
 
 from flext_infra import m, p, r
 from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticPublishMixin
@@ -70,7 +71,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         entry = entries[0]
         return m.Infra.GitIndexFileState(
             entry=entry,
-            content=repo.odb.stream(bytes.fromhex(entry.oid)).read(),
+            content=cast("IO[bytes]", repo.odb.stream(bytes.fromhex(entry.oid))).read(),
         )
 
     @classmethod
@@ -129,7 +130,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         lock = LockedFD(index_path)
         committed = False
         try:
-            descriptor = lock.open(write=True, stream=False)
+            descriptor = cast("int", lock.open(write=True, stream=False))
             FlextInfraUtilitiesGitSemanticPathsMixin._write_index_replacement(
                 request,
                 index_path,

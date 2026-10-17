@@ -589,13 +589,25 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         failure: str,
         *,
         exception: BaseException | None = None,
+        error_code: str | None = None,
+        error_data: t.JsonMapping | None = None,
     ) -> p.Result[bool]:
-        recovered = self._recover_prepared(layout)
+        try:
+            recovered = self._recover_prepared(layout)
+        except Exception as cleanup_exception:
+            recovered = r[bool].fail_op(
+                "finalize failed generation publication",
+                cleanup_exception,
+            )
+        if recovered.failure and exception is not None:
+            exception.add_note(f"generation recovery failed: {recovered.error}")
         return r[bool].fail(
             failure,
             exception=exception,
+            error_code=error_code,
             error_data={
-                "cleanup_error": recovered.error if recovered.failure else None
+                **(error_data or {}),
+                "cleanup_error": recovered.error if recovered.failure else None,
             },
         )
 

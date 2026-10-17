@@ -293,12 +293,6 @@ class FlextInfraConfigModelsArtifact:
                 ),
             ),
         ]
-        uv_exclude_dependencies: Annotated[
-            t.VariadicTuple[
-                FlextInfraConfigModelsRender.UvScopedDependencyExclusionSpec
-            ],
-            m.Field(description="Project-scoped official uv dependency exclusions"),
-        ] = ()
         sonarcloud: Annotated[
             FlextInfraConfigModelsRender.SonarcloudSpec,
             m.Field(description="Fleet SonarCloud automatic-analysis scope policy"),
@@ -589,6 +583,18 @@ class FlextInfraConfigModelsArtifact:
                 msg = f"GitHub artifacts must be full-managed: {non_full}"
                 raise ValueError(msg)
             return self
+
+    class RepositoryDeclarationInputs(FlextInfraConfigModelsContract.ConfigContract):
+        """Self-owned topology policy and the exact consulted configuration states."""
+
+        spec: Annotated[
+            FlextInfraConfigModelsWorkspace.RepositoryDeltaSpec,
+            m.Field(description="Validated repository declaration subsection"),
+        ]
+        sources: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(exclude=True, description="Exact consulted configuration input states"),
+        ] = ()
 
     class CodegenInputs(FlextInfraConfigModelsContract.ConfigContract):
         """Full effective codegen policy and its ordered consulted snapshots."""
@@ -888,6 +894,14 @@ class FlextInfraConfigModelsArtifact:
     class CodegenRepositoryPlanTask(FlextInfraConfigModelsContract.ConfigContract):
         """One repository's read-only planning inputs sent to a fleet worker."""
 
+        selected_inputs: Annotated[
+            FlextInfraConfigModelsArtifact.CodegenInputs | None,
+            m.Field(
+                default=None,
+                exclude=True,
+                description="Invoking repository's already captured configuration",
+            ),
+        ]
         root: Annotated[Path, m.Field(description="Generation scope root")]
         workspace: Annotated[
             FlextInfraConfigModelsWorkspace.WorkspaceSpec,

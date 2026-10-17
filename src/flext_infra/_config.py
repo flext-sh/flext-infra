@@ -35,38 +35,13 @@ class FlextInfraConfig(FlextCliConfig):
     @classmethod
     @override
     def _config_files(cls) -> list[Path]:
-        """Elect the existing whole-namespace sources for the global singleton.
+        """Elect only packaged namespace defaults for the library singleton.
 
         Returns:
             The resulting ``list[Path]``.
 
         """
-        project_directory = Path.cwd() / FlextInfraConfigVocabulary.CODEGEN_CONFIG_DIR
-        user_directory = cls._user_config_dir()
-        inherited = super()._config_files()
-        reserved = {
-            FlextInfraConfigVocabulary.CODEGEN_LOCAL_OVERRIDES_FILENAME,
-            FlextInfraConfigVocabulary.CODEGEN_ORG_OVERRIDES_FILENAME,
-        }
-        files = [
-            item
-            for item in inherited
-            if item.name not in reserved and not item.is_relative_to(user_directory)
-        ]
-        org = (
-            project_directory
-            / FlextInfraConfigVocabulary.CODEGEN_ORG_OVERRIDES_FILENAME
-        )
-        if org.is_file():
-            files.append(org)
-        files.extend(item for item in inherited if item.is_relative_to(user_directory))
-        local = (
-            project_directory
-            / FlextInfraConfigVocabulary.CODEGEN_LOCAL_OVERRIDES_FILENAME
-        )
-        if local.is_file():
-            files.append(local)
-        return list(dict.fromkeys(files))
+        return cls._yaml_files_in(cls.ssot_config_dir())
 
     @classmethod
     def config_sources_for_repository(
@@ -125,9 +100,13 @@ class FlextInfraConfig(FlextCliConfig):
             msg = f"config requires an absolute root and one YAML filename: {filename}"
             raise ValueError(msg)
         directory = repository_root / FlextInfraConfigVocabulary.CODEGEN_CONFIG_DIR
+        library = cls.ssot_config_dir() / relative
+        project = directory / relative
+        if project.resolve() == library.resolve():
+            project = directory / relative.with_name(f"{relative.stem}.project.yaml")
         return (
-            cls.ssot_config_dir() / relative,
-            directory / relative,
+            library,
+            project,
             directory / relative.with_name(f"{relative.stem}.local.yaml"),
         )
 

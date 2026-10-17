@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import flext_core
-from flext_infra import c, infra, m, u as fleet_u
+from flext_infra import c, infra, m
+from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.codemod import (
     FlextInfraCodemodDuplicateApply,
     FlextInfraDuplicateApplyPhase,
@@ -27,6 +28,60 @@ _SIDE_CONSTANT = "SHARED_LIMIT = 42\n"
 
 class TestsFlextInfraCodemodDuplicateApply:
     """Cure identity-proven duplicates; plan every structural clone."""
+
+    def test_cure_models_preserve_native_definition_identity(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Census cure contracts retain native syntax during validated transport."""
+        path = tmp_path / "definition.py"
+        path.write_text(_CORE_CONSTANT, encoding=c.DEFAULT_ENCODING)
+        statement = ast.parse(_CORE_CONSTANT, filename=str(path)).body[0]
+        item = m.Infra.Object(
+            file_path=str(path),
+            line=1,
+            project="fixture",
+            name="SHARED_LIMIT",
+            kind="constant",
+        )
+        definition = m.Infra.DuplicateDefinition(
+            item=item,
+            path=path,
+            source=_CORE_CONSTANT,
+            statement=statement,
+            body=_CORE_CONSTANT,
+            consumers=0,
+            layer=0,
+        )
+        copy = m.Infra.DuplicateCopyCure(
+            definition=definition,
+            consumer_files=(),
+            in_module_uses=0,
+        )
+        planned = m.Infra.DuplicateGroupCure(
+            owner=copy,
+            copies=(),
+            edits=(),
+        )
+        transported = m.Infra.DuplicateGroupCure.model_validate(
+            planned.model_dump(),
+        )
+        assert transported.owner.definition.statement is statement
+        assert transported.owner.definition.source == path.read_text(
+            encoding=c.DEFAULT_ENCODING,
+        )
+        deletion = m.Infra.DuplicateDeletion(
+            path=path,
+            name=item.name,
+            line=item.line,
+            project=item.project,
+        )
+        assert (
+            m.Infra.DuplicateDeletion.model_validate_json(
+                deletion.model_dump_json(),
+            )
+            == deletion
+        )
 
     @staticmethod
     def _module(summary: str) -> str:
@@ -46,42 +101,38 @@ class TestsFlextInfraCodemodDuplicateApply:
     def _workspace(tmp_path: Path) -> tuple[Path, Path]:
         """One governed fixture workspace with a provisioned interpreter.
 
-        The regenerated lazy initializer imports ``flext_core``, so the
-        fixture environment also receives the running interpreter's installed
-        package; otherwise the fresh-import gate fails on the fixture's bare
-        virtual environment, not on the published sources.
+        The fixture resolves its declared dependency sources and provisions its
+        physical environment through the generated native Make lifecycle.
 
         Returns:
             The repository root and its source package.
 
         """
-        root, package = u.Tests.create_lazy_init_workspace(
+        root = u.Tests.WorktreeFixture.governed_workspace(
             tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
+            "flext-demo",
+            distribution="flext-demo",
         )
-        tm.ok(u.Tests.create_python_environment(root))
-        site = Path(
-            tm.ok(
-                fleet_u.Cli.run(
-                    [
-                        str(fleet_u.Infra.runtime_python(root)),
-                        "-c",
-                        "import sysconfig; print(sysconfig.get_paths()['purelib'])",
-                    ],
-                ),
-            ).stdout.strip(),
+        request = u.Tests.conform_request(
+            root,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+            scope=c.Infra.CodegenConformScope.ALL,
+            mode=c.Infra.CodegenConformMode.APPLY,
         )
-        # The regenerated lazy initializer imports flext_core and its real
-        # dependency set: a path file exposes the running interpreter's
-        # installed packages to the fixture environment, so the fresh-import
-        # probe judges the published sources, never the bare fixture virtual
-        # environment.
-        (site / "fixture_dependency_set.pth").write_text(
-            f"{Path(flext_core.__file__).parent.parent}\n",
-            encoding=c.DEFAULT_ENCODING,
+        tm.ok(
+            FlextInfraCodegenConform(
+                repository_root=root,
+                request=request,
+            ).execute(request),
         )
-        return root, package
+        for verb in ("upg", "setup"):
+            provisioned = tm.ok(u.Tests.run_isolated_make([verb], cwd=root))
+            tm.that(
+                u.Cli.process_succeeded(provisioned.outcome),
+                eq=True,
+                msg=provisioned.stdout + provisioned.stderr,
+            )
+        return root, root / c.Infra.DEFAULT_SRC_DIR / "flext_demo"
 
     @staticmethod
     def _objects(
@@ -337,7 +388,9 @@ class TestsFlextInfraCodemodDuplicateApply:
         tm.that(outcome.plans, length=1)
         plan = outcome.plans[0]
         tm.that(plan.origin, eq="jscpd")
-        tm.that(plan.reason, has="never auto-unified")
+        assert plan.reason
+        assert plan.edits[0].action == c.Infra.DUPLICATE_KEEP_ACTION
+        assert plan.edits[1].action == c.Infra.DUPLICATE_DELETE_ACTION
         tm.that(plan.owner_file_path, eq=owner)
         tm.that(
             (owner.read_bytes(), clone.read_bytes()),

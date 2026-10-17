@@ -81,6 +81,16 @@ class FlextInfraModTextGateEngine:
             elected = cls._elected_rules(project)
             if elected.failure:
                 return r[t.VariadicTuple[Path]].from_failure(elected)
+            issues = cls._include_issues(project, elected.value[2])
+            if issues:
+                error = ValueError(issues[0].message)
+                return r[t.VariadicTuple[Path]].fail(
+                    "\n".join(issue.formatted for issue in issues),
+                    exception=error,
+                    error_data={
+                        "issues": tuple(issue.model_dump() for issue in issues)
+                    },
+                )
             sources = cls._source_paths(project, elected.value[2])
             if sources.failure:
                 return sources
@@ -469,6 +479,30 @@ class FlextInfraModTextGateEngine:
                 f"text rule requires a non-empty id in {source}",
             )
         return r[m.Infra.ModTextRule].ok(rule)
+
+    @classmethod
+    def _include_issues(
+        cls,
+        root: Path,
+        rules: t.VariadicTuple[m.Infra.ModTextRule],
+    ) -> t.VariadicTuple[m.Infra.Issue]:
+        """Report declared formats outside this phase's existing source contract.
+
+        Returns:
+            Central issues for unsupported explicit input declarations. A scope
+            glob without a suffix still selects the canonical Python inventory.
+        """
+        return tuple(
+            cls._source_issue(
+                root / pattern,
+                f"text rule {rule.rule_id} declares an unsupported input: {pattern}",
+            )
+            for rule in rules
+            for pattern in rule.include
+            if Path(pattern).suffix
+            and Path(pattern).suffix != c.Infra.EXT_PYTHON
+            and Path(pattern).suffix != ".md"
+        )
 
     @staticmethod
     def _source_paths(
@@ -889,6 +923,7 @@ class FlextInfraModTextGateEngine:
                 ]
             ].from_failure(context)
         catalogues, identity, rules = context.value
+        include_issues = cls._include_issues(root, rules)
         sources = cls._source_paths(root, rules)
         if sources.failure:
             return r[
@@ -907,6 +942,17 @@ class FlextInfraModTextGateEngine:
         if scanned.failure:
             return scanned
         report, analysis = scanned.value
+        if include_issues:
+            analysis = analysis.model_copy(
+                update={
+                    "issues": (*include_issues, *analysis.issues),
+                    "exception": ValueError(include_issues[0].message),
+                }
+            )
+            scanned = r[t.Pair[m.Infra.ModTextReport, m.Infra.CodegenPhaseAnalysis]].ok((
+                report,
+                analysis,
+            ))
         if validate_receipts:
             failed_rules: set[str] = set()
             receipt_issues: list[m.Infra.Issue] = []

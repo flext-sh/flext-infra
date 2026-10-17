@@ -61,6 +61,18 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
     class MakefileRenderSpec(MakeCommandContext):
         """Field-only render input for an existing repository Makefile."""
 
+        bootstrap_report_shell_literal: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="Shell-quoted elected operation report scalar transport"
+            ),
+        ]
+        bootstrap_report_relative_path: Annotated[
+            Path,
+            m.Field(
+                description="Repository-relative early bootstrap evidence destination"
+            ),
+        ]
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
         make_profile: Annotated[
             c.Infra.MakeProfile,
@@ -77,10 +89,6 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         workspace_subprojects: Annotated[
             t.VariadicTuple[str],
             m.Field(description="Declared workspace subproject paths"),
-        ] = ()
-        workspace_gitlinks: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsContexts.ManagedGitlinkSpec],
-            m.Field(description="Provider-resolved governed Git submodules"),
         ] = ()
         uv_link_mode: Annotated[
             t.NonEmptyStr,
@@ -224,10 +232,6 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         workspace_subprojects: Annotated[
             t.VariadicTuple[str],
             m.Field(description="Ordered workspace subproject paths"),
-        ] = ()
-        workspace_gitlinks: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsContexts.ManagedGitlinkSpec],
-            m.Field(description="Provider-resolved governed Git submodules"),
         ] = ()
         extra_verbs: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsMake.MakeVerbSpec],

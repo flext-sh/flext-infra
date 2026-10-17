@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from collections.abc import MutableSet
 from pathlib import Path
 from typing import Annotated, ClassVar
@@ -245,6 +246,71 @@ class FlextInfraModelsCensus:
             MutableSet[str],
             m.Field(description="Projects whose modules produced a census outcome"),
         ]
+
+    class DuplicateDefinition(m.ArbitraryTypesModel):
+        """One verified duplicate definition and its native syntax node."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        item: Annotated[
+            FlextInfraModelsCensus.Object,
+            m.Field(description="Canonical census object"),
+        ]
+        path: Annotated[Path, m.Field(description="Definition source path")]
+        source: Annotated[str, m.Field(description="Captured module source")]
+        statement: Annotated[
+            ast.stmt | None,
+            m.Field(description="Original parsed definition node"),
+        ]
+        body: Annotated[str, m.Field(description="Definition source span")]
+        consumers: Annotated[int, m.Field(description="Proven consumer count")]
+        layer: Annotated[int, m.Field(description="Discovered project layer")]
+
+    class DuplicateCopyCure(m.ArbitraryTypesModel):
+        """One duplicate removal and its proven consumer rebindings."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        definition: Annotated[
+            FlextInfraModelsCensus.DuplicateDefinition,
+            m.Field(description="Verified duplicate definition"),
+        ]
+        consumer_files: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Consumers requiring import rebindings"),
+        ]
+        in_module_uses: Annotated[
+            int,
+            m.Field(description="References within the definition module"),
+        ]
+
+    class DuplicateGroupCure(m.ArbitraryTypesModel):
+        """One elected owner and the complete duplicate publication plan."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        owner: Annotated[
+            FlextInfraModelsCensus.DuplicateCopyCure,
+            m.Field(description="Elected definition and its bindings"),
+        ]
+        copies: Annotated[
+            t.VariadicTuple[FlextInfraModelsCensus.DuplicateCopyCure],
+            m.Field(description="Copies with proven removal contracts"),
+        ]
+        edits: Annotated[
+            t.VariadicTuple[FlextInfraModelsTransformers.SemanticMigrationEdit],
+            m.Field(description="Complete proposed source edits"),
+        ]
+
+    class DuplicateDeletion(m.ContractModel):
+        """One duplicate definition scheduled for removal."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        path: Annotated[Path, m.Field(description="Copy source path")]
+        name: Annotated[str, m.Field(description="Duplicate object name")]
+        line: Annotated[int, m.Field(description="Copy definition line")]
+        project: Annotated[str, m.Field(description="Discovered project identity")]
 
     class DuplicateGroup(m.ArbitraryTypesModel):
         """Cross-project duplicate object cluster."""

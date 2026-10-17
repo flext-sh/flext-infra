@@ -207,7 +207,6 @@ class TestsFlextInfraCodegenRuntimeProfiles:
                 uv_resolution=m.Infra.UvResolutionSpec(
                     link_mode=toolchain.uv_link_mode,
                     constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
-                    exclude_dependencies=(),
                     environments=tuple(toolchain.uv_environments),
                 ),
             ),

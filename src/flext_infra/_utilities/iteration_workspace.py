@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import multiprocessing
+import shlex
 import time
 from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor
@@ -25,6 +26,44 @@ from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
 
 class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirectory):
     """Static helpers for discovering Python files across workspace projects."""
+
+    @staticmethod
+    def bootstrap_operation_report_shell_literal() -> str:
+        """Project the elected report schema for the interpreter-free Make boundary.
+
+        Roots are relative to the repository containing the published report.
+        Only closed stage/outcome labels, a validated Git OID and native scalar
+        completion facts replace tokens in the original shell's EXIT handler.
+        """
+        report = m.Infra.WorkspaceOperationReport(
+            root=Path("."),
+            operation="tool-bootstrap",
+            scope=(Path("."),),
+            receipts=(
+                m.Infra.WorkspaceOperationReceipt(
+                    root=Path("."),
+                    executed=True,
+                    outcome=None,
+                ),
+            ),
+        )
+        serialized = report.model_dump_json(round_trip=True)
+        replacements = (
+            ('"candidate_sha":null', '"candidate_sha":@@SHA@@'),
+            (
+                '"candidate_read_exit_code":null',
+                '"candidate_read_exit_code":@@GIT_EXIT@@',
+            ),
+            ('"native_exit_code":null', '"native_exit_code":@@EXIT@@'),
+            ('"stage":null', '"stage":"@@STAGE@@"'),
+            ('"completed":null', '"completed":@@COMPLETE@@'),
+        )
+        for original, replacement in replacements:
+            if serialized.count(original) != 1:
+                msg = f"bootstrap report requires one elected scalar field: {original}"
+                raise ValueError(msg)
+            serialized = serialized.replace(original, replacement, 1)
+        return shlex.quote(serialized)
 
     @staticmethod
     def repository_operation_batch(

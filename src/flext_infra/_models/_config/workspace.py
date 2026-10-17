@@ -22,6 +22,36 @@ from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
 class FlextInfraConfigModelsWorkspace:
     """Workspace manifest, integration, and policy models."""
 
+    class GitSubmoduleDeclaration(m.ContractModel):
+        """One Git configuration section parsed by its canonical owner."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid",
+            frozen=True,
+        )
+
+        path: Annotated[
+            Path,
+            m.Field(description="Submodule path relative to the superproject root"),
+        ]
+        url: Annotated[
+            str,
+            m.Field(description="Declared URL; empty when undeclared"),
+        ]
+        branch: Annotated[
+            str,
+            m.Field(description="Declared branch; empty when undeclared"),
+        ]
+        managed: Annotated[
+            bool | None,
+            m.Field(
+                description=(
+                    "Native Git boolean: absent inherits participation; "
+                    "true participates and false does not"
+                ),
+            ),
+        ]
+
     class RefactorConfigSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Refactor file-selection configuration."""
 
@@ -61,6 +91,15 @@ class FlextInfraConfigModelsWorkspace:
         namespace_scan_dirs: Annotated[
             t.StrSequence,
             m.Field(description="Own namespace analysis roots"),
+        ] = ()
+        workspace_inventory_command: Annotated[
+            t.StrSequence,
+            m.Field(
+                description=(
+                    "Own public host inventory argv; empty leaves host discovery "
+                    "unselected, with no external participant catalogue"
+                ),
+            ),
         ] = ()
         refactor: Annotated[
             FlextInfraConfigModelsWorkspace.RefactorConfigSpec | None,
@@ -471,6 +510,39 @@ class FlextInfraConfigModelsWorkspace:
         url: Annotated[t.NonEmptyStr, m.Field(description="Infrastructure Git URL")]
         ref: Annotated[t.NonEmptyStr, m.Field(description="Infrastructure Git ref")]
 
+    class HostWorkspaceInventoryEntry(FlextInfraConfigModelsContract.ConfigContract):
+        """One checkout identity received from the public host inventory."""
+
+        project_id: Annotated[
+            t.NonEmptyStr, m.Field(description="Forge project identity")
+        ]
+        owner: Annotated[t.NonEmptyStr, m.Field(description="Resolved forge owner")]
+        path: Annotated[Path, m.Field(description="Physical checkout root")]
+        checkout_id: Annotated[t.NonEmptyStr, m.Field(description="Checkout identity")]
+        governing_checkout_id: Annotated[
+            t.NonEmptyStr, m.Field(description="Project's governing checkout identity")
+        ]
+        project_profile: Annotated[
+            FlextInfraConfigVocabulary.ProjectKind | Literal["unclassified"],
+            m.Field(description="Host's declared governance and architecture profile"),
+        ]
+        upstream_project_id: Annotated[
+            str | None, m.Field(description="Declared fork upstream identity")
+        ]
+        effective_ref: Annotated[
+            str | None, m.Field(description="Host's resolved checkout reference")
+        ]
+
+    class HostWorkspaceInventory(FlextInfraConfigModelsContract.ConfigContract):
+        """Exact public host inventory envelope parsed once at ingress."""
+
+        entries: Annotated[
+            t.VariadicTuple[
+                FlextInfraConfigModelsWorkspace.HostWorkspaceInventoryEntry
+            ],
+            m.Field(description="Canonical discovered checkout identities"),
+        ]
+
     class ExternalConsumerSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One out-of-workspace repository propagation adjusts as a guest.
 
@@ -587,6 +659,12 @@ class FlextInfraConfigModelsWorkspace:
             t.VariadicTuple[FlextInfraConfigModelsContexts.RepositoryRef],
             m.Field(description="Direct governed repositories from local .gitmodules"),
         ] = ()
+        pending_subprojects: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsWorkspace.GitSubmoduleDeclaration],
+            m.Field(
+                description="Managed Git declarations awaiting checkout provisioning",
+            ),
+        ] = ()
         external_dependency_paths: Annotated[
             t.VariadicTuple[Path],
             m.Field(description="Observed external or fork Git submodule paths"),
@@ -642,6 +720,29 @@ class FlextInfraConfigModelsWorkspace:
                     "external dependencies cannot also be governed subprojects: "
                     f"{', '.join(sorted(path.as_posix() for path in overlap))}"
                 )
+                raise ValueError(msg)
+            pending_paths = {item.path for item in self.pending_subprojects}
+            invalid_pending_paths = tuple(
+                item.path
+                for item in self.pending_subprojects
+                if item.path.is_absolute()
+                or not item.path.parts
+                or ".." in item.path.parts
+                or item.managed is False
+            )
+            if invalid_pending_paths:
+                msg = (
+                    "pending subprojects require managed workspace-relative paths: "
+                    + ", ".join(path.as_posix() for path in invalid_pending_paths)
+                )
+                raise ValueError(msg)
+            if len(pending_paths) != len(self.pending_subprojects):
+                msg = "pending subproject paths must be unique"
+                raise ValueError(msg)
+            if pending_paths.intersection(
+                subproject_paths | set(self.external_dependency_paths),
+            ):
+                msg = "pending subprojects cannot also have resolved identities"
                 raise ValueError(msg)
             consumer_names = [item.name for item in self.external_consumers]
             if len(set(consumer_names)) != len(consumer_names):

@@ -117,13 +117,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             if profile is c.Infra.MakeProfile.WORKSPACE
             else ()
         )
-        gitlinks = self._managed_gitlinks(
-            workspace,
-            codegen,
-            repository_root=repository_root,
-        )
-        if gitlinks.failure:
-            return r[m.Infra.MakeRenderContext].from_failure(gitlinks)
         extra_verbs = self._merge_extra_verbs(
             repository.extra_verbs,
             (
@@ -162,7 +155,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 environment_imports=self._declared_environment_imports(
                     target, workspace
                 ),
-                workspace_gitlinks=gitlinks.value,
                 extra_verbs=extra_verbs,
                 script_dispatch=repository.script_dispatch,
             ),
@@ -531,54 +523,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 year=project.year,
             ),
         )
-
-    @staticmethod
-    def _managed_gitlinks(
-        workspace: m.Infra.WorkspaceSpec,
-        codegen: m.Infra.CodegenConfigSpec,
-        *,
-        repository_root: Path,
-    ) -> p.Result[t.VariadicTuple[m.Infra.ManagedGitlinkSpec]]:
-        """Resolve detected member baselines only for mutable governed subprojects.
-
-        Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.ManagedGitlinkSpec]]``.
-
-        """
-        resolved: list[m.Infra.ManagedGitlinkSpec] = []
-        for repository in workspace.subprojects:
-            ci = codegen.make.ci
-            if u.Infra.env_value(ci.variable).strip() == ci.value:
-                if workspace.integration is None:
-                    return r[t.VariadicTuple[m.Infra.ManagedGitlinkSpec]].fail(
-                        "CI member topology requires the root integration declaration",
-                    )
-                resolved.append(
-                    m.Infra.ManagedGitlinkSpec(
-                        repository=repository,
-                        branch=workspace.integration.branch,
-                    ),
-                )
-                continue
-            # A governed member follows its workspace's declared line unless
-            # its own manifest declares otherwise (the ``.`` gitmodule branch).
-            branch = u.Infra.resolve_integration_branch(
-                repository_root / repository.path,
-                preference=codegen.branch_policy.integration_branch_preference,
-                declared=(
-                    workspace.integration.branch
-                    if workspace.integration is not None
-                    else None
-                ),
-            )
-            if branch.failure:
-                return r[t.VariadicTuple[m.Infra.ManagedGitlinkSpec]].from_failure(
-                    branch,
-                )
-            resolved.append(
-                m.Infra.ManagedGitlinkSpec(repository=repository, branch=branch.value),
-            )
-        return r[t.VariadicTuple[m.Infra.ManagedGitlinkSpec]].ok(tuple(resolved))
 
     @staticmethod
     def _repository_root_rel(workspace: m.Infra.WorkspaceSpec) -> str:

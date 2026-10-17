@@ -190,7 +190,7 @@ class FlextInfraGate:
         return self._parsed_gate_execution(project_dir, ctx, result, started)
 
     @classmethod
-    def _resolve_binary(cls) -> str | None:
+    def resolve_binary(cls) -> str | None:
         """Locate the provisioned scanner on PATH; None when absent.
 
         Returns:
