@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraConfig, c
-from tests import tm, u
+from flext_infra import FlextInfraConfig
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraConfigLocalOverrides:
@@ -78,39 +78,69 @@ class TestsFlextInfraConfigLocalOverrides:
             )
 
     @staticmethod
-    def _consumer_config(root: Path) -> Path:
-        """Create one consumer repository's own config directory."""
-        directory = root / c.Infra.CODEGEN_CONFIG_DIR
-        directory.mkdir(parents=True)
-        return directory
-
     def test_absent_repository_layers_keep_the_packaged_policy(
-        self,
         tmp_path: Path,
     ) -> None:
-        """A repository that declares no layer reads exactly the packaged policy.
+        """A repository without layers reads the current packaged policy.
 
-        The expectation is the packaged SSOT read itself (P0): any legitimate
-        config change keeps both reads equal, and only a broken merge diverges.
+        The expectation comes from the packaged SSOT, so a legitimate config
+        change keeps both loads equal.
         """
-        root = tmp_path / "consumer"
-        self._consumer_config(root)
-        spec = tm.ok(u.Infra.load_codegen_inputs(root)).spec
+        baseline = FlextInfraConfig.fetch_global()
+        inputs = tm.ok(u.Infra.load_codegen_inputs(tmp_path))
         tm.that(
-            spec.loc_cap.max_lines,
-            eq=FlextInfraConfig.fetch_global().Infra.codegen.loc_cap.max_lines,
+            inputs.spec.loc_cap.max_lines,
+            eq=baseline.Infra.codegen.loc_cap.max_lines,
         )
 
+    @staticmethod
+    def test_empty_mypy_overlay_keeps_selected_global_policy(
+        tmp_path: Path,
+    ) -> None:
+        """Empty local lists cannot remove policy supplied by the YAML owner."""
+        baseline = FlextInfraConfig.fetch_global().Infra.tooling
+        _, _, local = FlextInfraConfig.config_layer_paths_for_repository(
+            tmp_path,
+            filename="tooling.yaml",
+        )
+        local.parent.mkdir(parents=True)
+        local.write_text(
+            "Infra:\n  tooling:\n    tools:\n      mypy:\n"
+            "        plugins: []\n        disable-error-code: []\n",
+            encoding="utf-8",
+        )
+        document = tm.ok(
+            u.Infra.load_config_document_inputs(
+                tmp_path,
+                filename="tooling.yaml",
+            ),
+        )
+        tooling = type(baseline).model_validate(
+            u.Cli.json_walk_path(document.values, ("Infra", "tooling")),
+        )
+        tm.that(
+            tuple(tooling.tools.mypy.plugins),
+            eq=tuple(baseline.tools.mypy.plugins),
+        )
+        tm.that(
+            tuple(tooling.tools.mypy.disable_error_code),
+            eq=tuple(baseline.tools.mypy.disable_error_code),
+        )
+
+    @staticmethod
     def test_local_layer_dict_entries_add_beside_packaged_ones(
-        self,
         tmp_path: Path,
     ) -> None:
         """A dict-typed registry gains the local entry and keeps packaged ones."""
         baseline = (
             FlextInfraConfig.fetch_global().Infra.codegen.layout.project_overrides
         )
-        root = tmp_path / "consumer"
-        (self._consumer_config(root) / "codegen.local.yaml").write_text(
+        _, _, local = FlextInfraConfig.config_layer_paths_for_repository(
+            tmp_path,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        local.parent.mkdir()
+        local.write_text(
             "Infra:\n"
             "  codegen:\n"
             "    layout:\n"
@@ -120,13 +150,12 @@ class TestsFlextInfraConfigLocalOverrides:
             "            - example\n",
             encoding="utf-8",
         )
-        overrides = tm.ok(
-            u.Infra.load_codegen_inputs(root)
-        ).spec.layout.project_overrides
+        inputs = tm.ok(u.Infra.load_codegen_inputs(tmp_path))
+        overrides = inputs.spec.layout.project_overrides
         tm.that(set(overrides), eq={*baseline, "example-project"})
 
+    @staticmethod
     def test_target_and_local_layers_use_explicit_repository_root(
-        self,
         tmp_path: Path,
     ) -> None:
         """Explicit target layers merge independently of the ambient directory."""
@@ -150,39 +179,93 @@ class TestsFlextInfraConfigLocalOverrides:
             eq=(directory / "codegen.yaml", directory / "codegen.local.yaml"),
         )
 
-    def test_project_toolchain_tools_extend_the_fleet_table(
-        self,
+    @staticmethod
+    def test_captured_tool_layers_preserve_additions_and_projected_replacement(
         tmp_path: Path,
     ) -> None:
-        """A layer's tools concatenate onto the packaged table; fleet tools stay."""
-        root = tmp_path / "consumer"
-        directory = root / c.Infra.CODEGEN_CONFIG_DIR
-        directory.mkdir(parents=True)
-        fleet = tuple(
-            tool.name
-            for tool in FlextInfraConfig.fetch_global().Infra.codegen.toolchain.tools
+        """Captured layers share the strict source's additive list contract."""
+        baseline = FlextInfraConfig.fetch_global().Infra.codegen.toolchain.tools
+        seed = next(iter(baseline))
+        project_tool, local_tool, replacement_tool = (
+            m.Infra.MiseToolEntry.model_validate(
+                seed.model_dump(round_trip=True)
+                | {"name": f"{seed.name}-{suffix}", "selector": None},
+            )
+            for suffix in ("project", "local", "replacement")
         )
-        (directory / "codegen.yaml").write_text(
-            "Infra:\n  codegen:\n    toolchain:\n      tools:\n"
-            "      - name: demo-tool\n"
-            "        selector: pypi:demo-tool\n"
-            "        version: 1.2.3\n"
-            "        version_probe:\n"
-            "          binary: demo-tool\n"
-            "          arguments: [ --version ]\n"
-            "          pattern: '^{version}$'\n",
-            encoding="utf-8",
+        _, project_path, local_path = (
+            FlextInfraConfig.config_layer_paths_for_repository(
+                tmp_path,
+                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+            )
         )
-        tools = tm.ok(u.Infra.load_codegen_inputs(root)).spec.toolchain.tools
-        tm.that(tuple(tool.name for tool in tools), eq=(*fleet, "demo-tool"))
+        project_path.parent.mkdir()
+        for path, tool in (
+            (project_path, project_tool),
+            (local_path, local_tool),
+        ):
+            tm.ok(
+                u.Cli.yaml_dump(
+                    path,
+                    {
+                        "Infra": {
+                            "codegen": {
+                                "toolchain": {
+                                    "tools": [
+                                        tool.model_dump(mode="json", round_trip=True),
+                                    ],
+                                },
+                            },
+                        },
+                    },
+                ),
+            )
+        captured = tm.ok(u.Infra.load_codegen_inputs(tmp_path))
+        tm.that(
+            captured.spec.toolchain.tools,
+            eq=(*baseline, project_tool, local_tool),
+        )
+        projected = tm.ok(
+            u.Infra.project_codegen_inputs(
+                tmp_path,
+                captured,
+                projections=(
+                    m.Infra.CodegenLayerProjection(
+                        path=project_path,
+                        values={
+                            "Infra": {
+                                "codegen": {
+                                    "toolchain": {
+                                        "tools": [
+                                            replacement_tool.model_dump(
+                                                mode="json",
+                                                round_trip=True,
+                                            ),
+                                        ],
+                                    },
+                                },
+                            },
+                        },
+                    ),
+                ),
+            ),
+        )
+        tm.that(
+            projected.spec.toolchain.tools,
+            eq=(*baseline, replacement_tool, local_tool),
+        )
 
+    @staticmethod
     def test_provider_registry_declaration_fails_validation(
-        self,
         tmp_path: Path,
     ) -> None:
         """The exterminated provider registry cannot come back through a layer."""
-        root = tmp_path / "consumer"
-        (self._consumer_config(root) / "codegen.local.yaml").write_text(
+        _, _, local = FlextInfraConfig.config_layer_paths_for_repository(
+            tmp_path,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        local.parent.mkdir()
+        local.write_text(
             "Infra:\n"
             "  codegen:\n"
             "    providers:\n"
@@ -192,4 +275,6 @@ class TestsFlextInfraConfigLocalOverrides:
             "        branch: main\n",
             encoding="utf-8",
         )
-        tm.fail(u.Infra.load_codegen_inputs(root), has="providers")
+        inputs = u.Infra.load_codegen_inputs(tmp_path)
+        tm.fail(inputs)
+        tm.that(inputs.error, has="providers")

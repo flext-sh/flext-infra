@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, r, settings, t, u
 from flext_infra.codegen.staged_package import FlextInfraStagedPackage
@@ -23,6 +23,7 @@ class FlextInfraAccessorMigrationReportMixin:
     """Compose a complete accessor candidate before any shared-source write."""
 
     if TYPE_CHECKING:
+        _AUTOMATED_RULES: ClassVar[t.VariadicTuple[m.Infra.AccessorMigrationRule]]
 
         def _apply_automated_rewrites(
             self,
@@ -32,15 +33,6 @@ class FlextInfraAccessorMigrationReportMixin:
             *,
             resolver: FlextInfraAccessorOriginResolver,
         ) -> t.Pair[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]: ...
-
-        def _collect_manual_warnings(
-            self,
-            rope_project: t.Infra.RopeProject,
-            py_file: Path,
-            source: str,
-            *,
-            resolver: FlextInfraAccessorOriginResolver,
-        ) -> t.SequenceOf[m.Infra.AccessorMigrationChange]: ...
 
     @staticmethod
     def _accumulate_lint_totals(
@@ -110,8 +102,8 @@ class FlextInfraAccessorMigrationReportMixin:
             )
             automated = tuple(change for change in changes if change.automated)
             warnings = (
-                *self._collect_manual_warnings(
-                    rope_project, py_file, source, resolver=resolver
+                *resolver.collect_manual_warnings(
+                    rope_project, py_file, source, rules=self._AUTOMATED_RULES
                 ),
                 *(change for change in changes if not change.automated),
             )

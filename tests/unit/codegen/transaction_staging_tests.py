@@ -145,14 +145,16 @@ class TestsFlextInfraTransactionStaging:
         )
         before = receiver.read_bytes()
         provider_before = (provider_root / c.PYPROJECT_FILENAME).read_bytes()
+        desired = receiver.read_text(encoding=c.DEFAULT_ENCODING) + "\n"
 
         planned = tm.ok(
             FlextInfraStagedPackage.plan_sources(
                 root,
-                {receiver: receiver.read_text(encoding=c.DEFAULT_ENCODING) + "\n"},
+                {receiver: desired},
             ),
         )
 
+        tm.that(planned.updates[receiver], eq=desired)
         tm.that(
             {layout.package_name for layout in planned.layouts},
             eq={"preview_receiver", "preview_provider"},

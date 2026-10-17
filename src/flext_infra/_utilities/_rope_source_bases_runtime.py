@@ -190,6 +190,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             (cosmos-docgen tests/unit re-exports a `dcdoc` subpackage; class
             bases declared as `from dcdoc import DcdocServiceBase` mean the
             project one).
+
+            Raises:
+                ValueError: Native package membership differs from captured sources.
+
             """
             for alias_module, captured in self._sources.items():
                 alias_path, alias_source = captured

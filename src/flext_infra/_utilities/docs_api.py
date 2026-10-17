@@ -400,34 +400,6 @@ class FlextInfraUtilitiesDocsApi:
         return cls._assignment_strings(source, "__all__")
 
     @staticmethod
-    def _export_target_map(
-        source: str,
-        package_name: str,
-        exports: t.StrSequence,
-    ) -> t.StrMapping:
-        """Resolve exported symbols to their defining import modules when possible.
-
-        Returns:
-            The resulting ``t.StrMapping``.
-
-        """
-        return FlextInfraUtilitiesRopeAnalysis.export_target_modules_source(
-            source,
-            package_name,
-            exports,
-        )
-
-    @staticmethod
-    def _has_module_docstring(source: str) -> bool:
-        """Return whether source starts with a module docstring.
-
-        Returns:
-            Whether source starts with a module docstring.
-
-        """
-        return FlextInfraUtilitiesRopeAnalysis.module_has_docstring_source(source)
-
-    @staticmethod
     def _assignment_docstrings(source: str) -> set[str]:
         """Return assignment names followed by a literal docstring expression.
 
@@ -681,7 +653,7 @@ class FlextInfraUtilitiesDocsApi:
             ),
         )
         target_map = dict(
-            FlextInfraUtilitiesDocsApi._export_target_map(
+            FlextInfraUtilitiesRopeAnalysis.export_target_modules_source(
                 source,
                 package_name,
                 all_exports,
@@ -949,7 +921,7 @@ class FlextInfraUtilitiesDocsApi:
             results.append((
                 module_file.relative_to(project_root).as_posix(),
                 message,
-                FlextInfraUtilitiesDocsApi._has_module_docstring(source),
+                FlextInfraUtilitiesRopeAnalysis.module_has_docstring_source(source),
             ))
         export_docstring_checks = [
             (export_name, target_map[export_name]) for export_name in symbol_exports

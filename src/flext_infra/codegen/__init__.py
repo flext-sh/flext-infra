@@ -187,6 +187,9 @@ if TYPE_CHECKING:
     from flext_infra.codegen.mise_toolchain_proof import (
         FlextInfraCodegenMiseToolchainProof,
     )
+    from flext_infra.codegen.mise_toolchain_repair import (
+        FlextInfraCodegenMiseToolchainRepair,
+    )
     from flext_infra.codegen.pipeline import FlextInfraCodegenPipeline
     from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
     from flext_infra.codegen.protocol_models import FlextInfraCodegenProtocolModels
@@ -250,6 +253,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenMakeBootstrap",
     "FlextInfraCodegenMiseArtifacts",
     "FlextInfraCodegenMiseToolchainProof",
+    "FlextInfraCodegenMiseToolchainRepair",
     "FlextInfraCodegenPipeline",
     "FlextInfraCodegenPipelineStagesMixin",
     "FlextInfraCodegenPreconditions",
@@ -355,6 +359,7 @@ install_lazy_exports(
         "FlextInfraCodegenMakeBootstrap": ".make_bootstrap",
         "FlextInfraCodegenMiseArtifacts": ".mise_artifacts",
         "FlextInfraCodegenMiseToolchainProof": ".mise_toolchain_proof",
+        "FlextInfraCodegenMiseToolchainRepair": ".mise_toolchain_repair",
         "FlextInfraCodegenPipeline": ".pipeline",
         "FlextInfraCodegenPipelineStagesMixin": "._pipeline_stages",
         "FlextInfraCodegenPreconditions": ".codegen_preconditions",

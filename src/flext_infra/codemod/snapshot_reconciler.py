@@ -240,7 +240,7 @@ class FlextInfraCodemodSnapshotReconciler:
         """
         cases: MutableMapping[str, frozenset[str]] = {}
         for test_file in sorted(test_dir.glob(f"*{c.Infra.CODEMOD_RULE_SUFFIX}")):
-            documents = u.Infra.parse_yaml_documents(
+            documents = u.Cli.yaml_parse_documents(
                 u.Cli.files_read_text(test_file).unwrap()
             ).unwrap()
             if not documents:

@@ -21,7 +21,7 @@ from flext_infra._models.base import FlextInfraModelsBase
 class FlextInfraModelsCodemod:
     """Typed contracts for native codemod scans and mutation reports."""
 
-    class AstGrepCapture(m.ContractModel):
+    class AstGrepCapture(FlextInfraModelsBase.FrozenArbitrary):
         """Authenticate an occurrence against native UTF-8 capture coordinates."""
 
         text: Annotated[str, m.Field(description="Exact captured source text")]

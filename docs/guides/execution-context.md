@@ -60,12 +60,48 @@ declaration/dependency owner, not through local-import demotion, fallback,
 compatibility exports or suppressions. Generated surfaces change only through
 their source and canonical regeneration.
 
+Family-base import enforcement covers both `from` imports and module imports,
+including aliases and imports inside `TYPE_CHECKING`. The semantic import owner
+still elects the package, family base and sanctioned compose modules; native
+matching preserves the family's declared split-parts imports.
+
+Single-class publication excludes the configured test-suite scopes that forbid
+suite exports. Importable source classes still declare their publication; the
+same native AST command verifies both contracts.
+
+Rule catalogs, fixture staging and snapshot reconciliation consume YAML streams
+through `u.Cli.yaml_parse_documents`. Document separators and literal-block
+chomping belong to that shared parser; Infra does not split or normalize their
+source text before parsing.
+
+Captured library, project and local configuration layers use the strict YAML
+source's list-aware merge. Project tool additions retain the base toolchain.
+A projected edit replaces its selected values inside one layer before those
+layers are composed, so a replacement does not retain the previous declaration.
+
+`make fix-toolchain` repairs one explicitly selected native installation through
+Mise, using the exact version and checksum authority of the current lock. Set
+`FLEXT_INFRA_TOOLCHAIN_REPAIR_TOOL` to a tool name already declared by the project.
+Missing or undeclared selections fail before installation. The operation
+revalidates its captured configuration and lock, streams the native installer
+output, then invokes the existing complete toolchain reality proof. Normal
+setup, upgrade and generation do not force reinstallation.
+
 Before accepting a phase, retain evidence of complete consumer rewiring and
 superseded-path removal, domain-correct reuse and net-negative simplification
 without functional reduction. Global make-check/verification-loop own runtime,
 native gates and receipt requirements. A successful publication is not proof of
 lint/type/test success or idempotence: run the applicable gates and repeated
 gen/fix/fmt on the unchanged candidate, and report failed or unexecuted scopes.
+
+Configuration vocabulary belongs to the bootstrap-safe `_constants/config.py`
+owner, exposed through `c.Infra`; schema modules validate that vocabulary rather
+than redeclaring it. Configurable values still come from the effective config or
+settings spec. Conform surface groups share their canonical declarations, and
+already validated request enums pass through planning without reconstruction.
+Dependency-only APPLY is rejected before target initialization; CHECK remains an
+observation of published evidence. YAML rule streams use the shared CLI parser
+so document separators never change multiline fixture contents.
 
 Protected-edit snapshots reobserve the native checker on every call. They do not
 reuse Python-level receipts keyed only by source bytes and gate names: those keys

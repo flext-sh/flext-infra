@@ -132,10 +132,12 @@ class TestsFlextInfraCodegenConfigLifecycle:
                     cwd=root,
                     env={
                         config.Infra.codegen.make.ci.variable: (
-                            config.Infra.codegen.make.ci.value
+                            "" if verb == "upg" else config.Infra.codegen.make.ci.value
                         ),
                         config.Infra.codegen.make.uv_resolution.hosted_variable: (
-                            config.Infra.codegen.make.uv_resolution.hosted_value
+                            ""
+                            if verb == "upg"
+                            else config.Infra.codegen.make.uv_resolution.hosted_value
                         ),
                     },
                 ),
@@ -329,7 +331,7 @@ print(
                     cwd=root,
                     env={
                         config.Infra.codegen.make.ci.variable: (
-                            config.Infra.codegen.make.ci.value
+                            config.Infra.codegen.make.ci.value if verb == "gen" else ""
                         ),
                         config.Infra.codegen.make.uv_resolution.hosted_variable: (
                             config.Infra.codegen.make.uv_resolution.hosted_value

@@ -19,7 +19,6 @@ from flext_infra import c, t
 from flext_infra._models import (
     FlextInfraModelsCodemod,
     FlextInfraModelsMixins,
-    FlextInfraModelsNamespaceEnforcer,
     FlextInfraModelsRefactorGrep,
 )
 from flext_infra._models.base import FlextInfraModelsBase
@@ -46,36 +45,6 @@ class FlextInfraModelsScan:
         rule_ids: Annotated[
             t.StrSequence, m.Field(description="Actual elected rule inventory")
         ] = ()
-
-    class DetectorContext(m.ArbitraryTypesModel):
-        """Bundles common parameters passed to every detect_file classmethod."""
-
-        file_path: Path = m.Field(
-            description="Filesystem path of the file being scanned.",
-        )
-        rope_project: t.Infra.RopeProject = m.Field(
-            description="Initialized Rope project for semantic metadata.",
-        )
-        parse_failures: Annotated[
-            (
-                t.MutableSequenceOf[
-                    FlextInfraModelsNamespaceEnforcer.ParseFailureViolation
-                ]
-                | None
-            ),
-            m.SkipValidation,
-            m.Field(
-                description="Shared parse-failure collector across detector passes.",
-            ),
-        ] = None
-        project_name: Annotated[
-            str,
-            m.Field(description="Optional project name for the scanned file."),
-        ] = ""
-        project_root: Annotated[
-            Path | None,
-            m.Field(description="Optional project root containing the scanned file."),
-        ] = None
 
     class ScanViolation(FlextInfraModelsMixins.PositiveLineMixin, m.ContractModel):
         """A single violation found during file scanning."""
