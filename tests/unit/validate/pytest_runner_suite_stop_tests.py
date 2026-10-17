@@ -233,7 +233,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         batch_size = literal.value
         assert isinstance(batch_size, int)
         assert not isinstance(batch_size, bool)
-        assert batch_size > 0
+        tm.that(batch_size > 0, truth=True)
         target = config.Infra.codegen.make.testmon_cache.target_directory
         (cached_runner_project / target / "test_budget.py").write_text(
             "from runner_sample import answer\n\n"

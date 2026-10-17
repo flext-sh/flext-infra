@@ -185,7 +185,9 @@ class FlextInfraUtilitiesSemanticTestHelpers(
                 continue
             target = cls._test_utilities_owner(workspace, path, sources)
             target_resource = project.get_resource(target.relative_to(root).as_posix())
-            target_module = project.get_pymodule(target_resource)
+            target_module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+                project, target_resource
+            )
             if name in target_module.get_attributes() and not (
                 cls._destination_imports_moving_declaration(
                     project,
@@ -225,7 +227,9 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         ):
             return False
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        expected = project.get_pymodule(source).get_attribute(name)
+        expected = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+            project, source
+        ).get_attribute(name)
         return runtime.same_name(expected, bound) and (
             runtime.imported_module_path(project, bound)
             == Path(source.real_path).resolve()

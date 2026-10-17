@@ -3022,6 +3022,22 @@ class FlextInfraWorkspaceNativeReference:
             for name in ("__dataclass_fields__", "__dataclass_params__")
             if name in namespace
         )
+        # Publication is another observed input, compared with the independent
+        # import; factory-local classes may legitimately have no lexical binding.
+        publication: t.Infra.NativeOperand = sys.modules[supplier]
+        publication_present = True
+        for component in qualname.split("."):
+            publication_scope: t.MappingKV[str, t.Infra.NativeOperand] = (
+                cls._module_namespace(publication)
+                if type(publication) is ModuleType
+                else cls._class_namespace(publication)
+                if cls._is_class(publication)
+                else {}
+            )
+            if component not in publication_scope:
+                publication_present = False
+                break
+            publication = publication_scope[component]
         context.evidence.append(
             m.Infra.NativeBindingEvidence(
                 binding=binding,
@@ -3030,6 +3046,13 @@ class FlextInfraWorkspaceNativeReference:
                 name=cls._type_attr("__name__", value, type(value)),
                 qualname=qualname,
                 operands=(
+                    (
+                        "supplier_publication",
+                        dumps((
+                            publication_present,
+                            publication_present and publication is value,
+                        )),
+                    ),
                     ("metaclass", cls._symbol(type(value))),
                     (
                         "bases",
@@ -4863,3 +4886,6 @@ class FlextInfraWorkspaceNativeReference:
         if not admitted:
             return r[bool].fail("cold producer authority has no authored driver code")
         return r[bool].ok(value=True)
+
+
+__all__: list[str] = ["FlextInfraWorkspaceNativeReference"]

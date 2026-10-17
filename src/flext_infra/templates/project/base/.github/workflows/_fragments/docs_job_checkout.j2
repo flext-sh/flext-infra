@@ -1,0 +1,13 @@
+{% macro docs_job_checkout() %}
+    env:
+      {{ make.ci.variable }}: {{ make.ci.value }}
+      GITHUB_TOKEN: {% raw %}${{ github.token }}{% endraw %}
+    steps:
+      - name: Checkout
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
+        with:
+          submodules: {{ checkout_submodules }}
+          fetch-depth: 0
+{%- include "_fragments/private_submodules_init.j2" %}
+{%- include "_fragments/private_dependency_auth.j2" %}
+{%- endmacro %}

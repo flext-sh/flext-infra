@@ -515,7 +515,9 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             source,
             "quoted types require native Rope delimiters",
         )
-        typing = project.get_module("typing")
+        typing = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+            project.get_module("typing")
+        )
         protected: set[t.Pair[int, int]] = set()
         for begin, end in cls.reference_regions(source):
             cursor = end

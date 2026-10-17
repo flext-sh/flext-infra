@@ -60,6 +60,9 @@ declaration/dependency owner, not through local-import demotion, fallback,
 compatibility exports or suppressions. Generated surfaces change only through
 their source and canonical regeneration.
 
+Shared TOML ingress owns Pydantic mapping validation. Pyproject, documentation and
+text-rule consumers reuse its validated output directly.
+
 Family-base import enforcement covers both `from` imports and module imports,
 including aliases and imports inside `TYPE_CHECKING`. The semantic import owner
 still elects the package, family base and sanctioned compose modules; native
@@ -79,13 +82,23 @@ source's list-aware merge. Project tool additions retain the base toolchain.
 A projected edit replaces its selected values inside one layer before those
 layers are composed, so a replacement does not retain the previous declaration.
 
+Layout planning and `.gitignore` publication load the selected consumer's
+codegen layers. Its local declarations supply patterns and file modes; a cohort
+does not borrow its root's overrides for members. Publication retains those
+configuration snapshots alongside the destination snapshot, including for a
+no-op. Workspace rendering also receives the local topology so its member
+whitelist agrees with conform; the initial `.gitmodules` snapshot authenticates
+that input even when absent. Packaged defaults do not enumerate consumers.
+
 `make fix-toolchain` repairs one explicitly selected native installation through
 Mise, using the exact version and checksum authority of the current lock. Set
 `FLEXT_INFRA_TOOLCHAIN_REPAIR_TOOL` to a tool name already declared by the project.
 Missing or undeclared selections fail before installation. The operation
 revalidates its captured configuration and lock, streams the native installer
 output, then invokes the existing complete toolchain reality proof. Normal
-setup, upgrade and generation do not force reinstallation.
+setup, upgrade and generation do not force reinstallation. The CLI inherits the
+shared codegen execution modes: `--dry-run` and `--check` run the complete proof
+without replacing an installation.
 
 Before accepting a phase, retain evidence of complete consumer rewiring and
 superseded-path removal, domain-correct reuse and net-negative simplification
@@ -115,6 +128,14 @@ base order declared in their configured private family. Protocol projection keep
 its consumer-based ownership resolution. The utility path delegates directly to
 the declaration planner. Static and runtime consumer checks retain their own
 import-failure verdicts.
+Generated Python imports use their absolute native package owner. The planner
+selects exports once; rendering groups those declarations without another
+name-based exclusion policy. Compact lazy-loader targets remain loader data.
+Runtime-base discovery treats supplied planned bytes as authoritative, including
+unpublished packages. Original-file reads and package membership checks retain
+their native project-tree scope; planned initializer bytes own alias analysis.
+Generated Ruff bases retain the qualified import spelling used by the consumer.
+The provider's declaration identity remains separate from that reexport spelling.
 Rendering a facade returns source only. Package-form imports require publishing
 the owning family's initializer through the existing lazy-init planner before a
 fresh consumer loads the generated facade.
@@ -392,6 +413,11 @@ uses the derived `<stem>.project.yaml` file beside that default. The local layer
 remains `<stem>.local.yaml`. This keeps project editor declarations separate from
 the library defaults while preserving the same ordered configuration layers.
 
+When the checkout owns the distributed configuration file, its project declaration
+uses the derived `<stem>.project.yaml` file beside that default. The local layer
+remains `<stem>.local.yaml`. This keeps project editor declarations separate from
+the library defaults while preserving the same ordered configuration layers.
+
 The `flext_core.lazy` loader imports its implementation from root-level source
 modules, never through a generated child initializer. This keeps generation's
 own loader available before child projections are repaired. Recovery uses the
@@ -601,8 +627,10 @@ all execution therefore remain failures even when the native findings array is
 empty.
 Repairs receive the elected interpreter's import suppliers and its native lock
 through typed injection. Missing or ambiguous suppliers remain native findings;
-installed package names never establish applicability. The existing requirement
-strings retain their markers, extras and sources when promoted from development.
+installed package names never establish applicability. Metadata election uses the
+distribution's native installation location; vendored `.dist-info` payloads do not
+compete with its own metadata identity. The existing requirement strings retain
+their markers, extras and sources when promoted from development.
 The target's explicit contract also identifies development-only suppliers. Their
 metadata remains in the index and their native findings stay visible; an illegal
 production import requires a consumer rewire instead of a runtime declaration.
@@ -908,6 +936,10 @@ Private approved plans remain local execution context. Do not collect, project, 
 or link them into published documentation without explicit publication authorization.
 
 `make mod-rules` inspects the full governed source inventory without rewriting it.
+Native `isinstance` and None assertions retain Python's type narrowing. Assertions
+with a message retain its evaluation on failure. Their automatic matcher rewrites
+are retired: unused return values lose narrowing, while generated conditionals
+duplicate language behavior. Explicit matcher calls remain available for observations.
 The text catalog composes Infra's shared rules with each project's local
 `config/rules/mod/sed.yaml`. A domain-specific rule belongs to that project's
 catalog; copying it into the shared catalog creates an ambiguous owner and blocks
@@ -919,6 +951,12 @@ catalogs once, then admits each occurrence against its nearest project's electio
 and semantic facts. A library owner's imports remain within its domain; the same
 imports in a consumer remain violations. Reports retain zero counts for every
 governed repository and elected rule.
+The native scanner takes one `selection`: rule identifiers or an already composed
+rule plan. A composed plan must govern the requested root and remains the only
+selection authority for that invocation.
+Catalog election and staging share the same YAML ingress. Validated streams are
+memoized by their exact text as immutable JSON; each caller receives fresh mappings.
+Current file reads and canonical rule digests still detect drift before publication.
 
 Generated facades compose declarations published by their current private family.
 Rope resolves existing bases before composition: upstream bases remain, while an
@@ -931,10 +969,27 @@ authenticated source inventory. External providers keep their native Rope
 identity through a snapshot-owned external project and read the captured bytes.
 Physical file changes remain inputs to publication CAS, rather than changing
 the source graph while a plan is being computed.
+Rope owns module, regular-package and namespace precedence; Infra validates the
+native resource it returns without maintaining another election algorithm.
+Import capture retains one typed lookup keyed by native root, module and relative
+level; it does not transport unused copies of the SDK's search roots.
+
+Rope owns loaded frozen stdlib aliases through its existing extension cache and
+`import_dynload_stdmods` preference. Its native module election preserves explicit
+extension precedence and searches source resources, including the supplied folder,
+before returning a frozen alias. A cached alias cannot shadow a source created
+later. Live and captured projects consume that same SDK contract without copying
+loaded module names into extension preferences.
+Blocked-import sentinels in `sys.modules` remain blocked.
 
 Import normalization treats exception targets and structural pattern captures
 as local bindings. These names do not load a package facade or reintroduce an
 unused import removed by `make fix`.
+Static facade imports group symbols and module reexports by their emitted
+absolute owner. Module reexports retain their explicit same-name binding;
+ordinary symbols keep their published names. The rename rule distinguishes
+that static reexport from a changed local name in both runtime and
+`TYPE_CHECKING` imports.
 Imports with the same bound name but different lexical providers cannot be
 hoisted into one global binding. Normalization rejects that collision before
 publishing the candidate.
@@ -1330,6 +1385,10 @@ Binding inference captures the source files and symbol owners required by
 rules with actual occurrences. Syntax-only findings need no import closure.
 The check gate and the mod scanner share this input election, deduplicating
 source reads without reducing the rule inventory or its diagnostic evidence.
+Native module queries use the shared parsed and semantic module admission
+owners, retaining SDK object identity while exposing their declared protocols.
+Matcher patterns give captured expressions a parenthesized grammar context;
+their authenticated source bytes and original coordinate checks stay intact.
 
 Facade consumer discovery resolves each native Rope `ImportedModule` once within
 the current source file. Repeated occurrences retain their binding and owner checks;
@@ -1396,6 +1455,13 @@ those operations.
 Read-only Make verbs never invoke conform, generation, repairs, formatting, or
 codemod application. Audit checks installed dependency and environment provenance;
 verify-clean checks the documentation and Git state without rendering replacements.
+Installation provenance binds the locked source, installed origin, declared physical
+checkout and committed gitlink; unrelated worktree changes do not invalidate that
+identity. Operation admission separately authenticates the content and epoch of its
+consumed sources and accepts changed inputs only through its actual publisher's
+effects. Persisted publication reports never authorize those changes. The final
+`verify-clean` gate still rejects staged, unstaged and untracked files, including
+generated artifacts, until their integration is complete.
 Generation retains the setup-owned environment policy: local workspace setup binds
 the declared subprojects as editable, and local generation may publish their managed
 artifacts. CI setup installs its locked noneditable dependencies, and generation in

@@ -6,20 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Annotated, override
+from typing import override
 
-from flext_infra import c, m, p, r, s, settings, u
-from flext_infra.codegen import FlextInfraCodegenMiseToolchainProof
+from flext_infra import c, m, p, r, settings, u
+from flext_infra.codegen import (
+    FlextInfraCodegenExecutionBase,
+    FlextInfraCodegenMiseToolchainProof,
+)
 
 
-class FlextInfraCodegenMiseToolchainRepair(s[bool]):
+class FlextInfraCodegenMiseToolchainRepair(FlextInfraCodegenExecutionBase[bool]):
     """Reinstall the selected locked tool, then use the existing reality proof."""
-
-    repository_root: Annotated[
-        Path,
-        m.Field(description="Repository owning the selected tool and lock."),
-    ]
 
     def _prepare(self, requested: str) -> m.Infra.MiseToolchainRepairPlan:
         """Bind the requested declaration and every required input before effects.
@@ -78,22 +75,23 @@ class FlextInfraCodegenMiseToolchainRepair(s[bool]):
             )
         plan = self._prepare(requested)
         u.Cli.atomic_verify_binary_file_states(plan.source_states).unwrap()
-        installed = u.Cli.run_live(
-            (
-                str(plan.mise_executable),
-                "-C",
-                str(plan.repository_root),
-                "install",
-                "--locked",
-                "--yes",
-                "--force",
-                plan.tool,
-            ),
-            cwd=plan.repository_root,
-            timeout=c.Infra.TIMEOUT_LONG,
-        )
-        if installed.failure:
-            return r[bool].from_failure(installed)
+        if not self.effective_dry_run:
+            installed = u.Cli.run_live(
+                (
+                    str(plan.mise_executable),
+                    "-C",
+                    str(plan.repository_root),
+                    "install",
+                    "--locked",
+                    "--yes",
+                    "--force",
+                    plan.tool,
+                ),
+                cwd=plan.repository_root,
+                timeout=c.Infra.TIMEOUT_LONG,
+            )
+            if installed.failure:
+                return r[bool].from_failure(installed)
         u.Cli.atomic_verify_binary_file_states(plan.source_states).unwrap()
         return FlextInfraCodegenMiseToolchainProof(
             repository_root=plan.repository_root,

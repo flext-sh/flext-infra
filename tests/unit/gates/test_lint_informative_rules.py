@@ -21,14 +21,14 @@ class TestsFlextInfraLintInformativeRules:
     def test_ssot_declares_the_complexity_family() -> None:
         """Test ssot declares the complexity family."""
         declared = config.Infra.tooling.tools.ruff.informative_rules
-        assert "too-many-arguments" in declared
-        assert "too-many-positional-arguments" in declared
-        assert "too-many-locals" in declared
-        assert "too-many-return-statements" in declared
-        assert "too-many-branches" in declared
-        assert "too-many-public-methods" in declared
-        assert "too-many-statements" in declared
-        assert "complex-structure" in declared
+        tm.that("too-many-arguments" in declared, truth=True)
+        tm.that("too-many-positional-arguments" in declared, truth=True)
+        tm.that("too-many-locals" in declared, truth=True)
+        tm.that("too-many-return-statements" in declared, truth=True)
+        tm.that("too-many-branches" in declared, truth=True)
+        tm.that("too-many-public-methods" in declared, truth=True)
+        tm.that("too-many-statements" in declared, truth=True)
+        tm.that("complex-structure" in declared, truth=True)
 
     @staticmethod
     def test_advisory_rules_report_at_warning_severity() -> None:

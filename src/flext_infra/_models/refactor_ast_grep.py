@@ -11,39 +11,12 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsCodemod
 
 
 class FlextInfraModelsRefactorGrep:
     """Mixin containing migration/reporting contracts for refactor orchestration."""
-
-    class CodemodImportResources(m.ArbitraryTypesModel):
-        """One frozen-layout invocation's native module elections."""
-
-        modules: Annotated[
-            t.MutableMappingKV[
-                t.Triple[str, str | None, int],
-                t.Infra.RopeResource | None,
-            ],
-            m.Field(
-                description=(
-                    "Elected native module resources keyed by invocation identity"
-                ),
-            ),
-        ] = m.Field(default_factory=dict)
-        source_folders: Annotated[
-            tuple[p.Infra.RopeRoot, ...],
-            m.Field(description="Project-owned roots in the native search order"),
-        ]
-        python_folders: Annotated[
-            tuple[p.Infra.RopeRoot, ...],
-            m.Field(description="Native shared Python path roots in search order"),
-        ]
-        python_modules: Annotated[
-            t.MutableMappingKV[t.Pair[str, str], t.Infra.RopeResource | None],
-            m.Field(description="Shared native Python-root elections for this capture"),
-        ]
 
     class CodemodContextCondition(FlextInfraModelsBase.FrozenArbitrary):
         """One project-context condition over a captured metavariable."""

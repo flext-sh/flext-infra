@@ -247,8 +247,10 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         for relative in inputs.spec.uv_resolution_pyprojects:
             tm.that(failed / relative in planned_paths, eq=False)
         if failure == "member-package":
-            root_outcome = next(item for item in report.outcomes if item.root == root)
-            tm.that(root_outcome.error, has="no successful selected plan")
+            tm.that(
+                next(item for item in report.outcomes if item.root == root).error,
+                has="no successful selected plan",
+            )
             tm.that(str(tm.not_none(plan.exception)), has="cannot resolve package name")
         tm.that(
             TestsFlextInfraCodegenCandidateBootstrap._tree_without_plan_report(root),

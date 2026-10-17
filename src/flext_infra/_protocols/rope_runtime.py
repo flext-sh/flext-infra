@@ -11,7 +11,9 @@ from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, ClassVar, Protocol, Self, runtime_checkable
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_core import p
+
+    from flext_infra import t
 
 
 @runtime_checkable
@@ -340,9 +342,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """Rope project shape used by flext-infra."""
 
         @property
-        def address(self) -> str: ...
-
-        @property
         def root(self) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
 
         def get_resource(
@@ -361,6 +360,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             *,
             force_errors: bool = False,
         ) -> t.Infra.RopeNativeParsedModule: ...
+
+        def get_pycore(self) -> t.Infra.RopeNativeCore: ...
 
         def get_source_folders(
             self,
@@ -381,6 +382,13 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             name: str,
             folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
         ) -> t.Infra.RopeNativeSemanticModule: ...
+
+        def get_relative_module(
+            self,
+            name: str,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot,
+            level: int,
+        ) -> t.Infra.RopeNativeParsedModule: ...
 
         def get_python_files(
             self,

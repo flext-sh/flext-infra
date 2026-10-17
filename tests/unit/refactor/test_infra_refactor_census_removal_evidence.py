@@ -102,7 +102,7 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
         tm.that(service.impact_map_output_path, eq=impact_map_output)
         tm.that(service.options.include_local_scopes, eq=options.include_local_scopes)
         for name, expected in m.Infra.CensusOptions.model_config.items():
-            assert name in service.model_config
+            tm.that(name in service.model_config, truth=True)
             tm.that(service.model_config.get(name), eq=expected)
 
     @staticmethod

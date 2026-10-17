@@ -98,9 +98,9 @@ class TestsFlextInfraPytestCollectionPolicy:
         )
         tm.that(outcome.raw_return_code != 0, eq=finding == "module-error")
         if finding == "module-error":
-            assert outcome.raw_return_code == pytest.ExitCode.INTERRUPTED
+            tm.that(outcome.raw_return_code == pytest.ExitCode.INTERRUPTED, truth=True)
         profile = events.parent / "testmon-selection.pstats"
-        assert profile.is_file() == profile_collection
+        tm.that(profile.is_file() == profile_collection, truth=True)
         if profile_collection:
             assert pstats.Stats(str(profile)).get_stats_profile().func_profiles
             parent = cached_runner_project / ".reports" / "profiles" / "pytest.pstats"

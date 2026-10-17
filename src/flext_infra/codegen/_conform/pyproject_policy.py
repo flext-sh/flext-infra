@@ -51,11 +51,11 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         if authenticated.failure:
             return result_type.from_failure(authenticated)
         return self._planned_resolution_files(
-            root,
             projects.value,
             authenticated.value,
             inputs,
             rendered_by,
+            workspace=workspace,
         )
 
     @staticmethod
@@ -126,20 +126,21 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
 
     def _planned_resolution_files(
         self,
-        root: Path,
         projects: t.SequenceOf[m.Infra.UvResolutionProject],
         authenticated: t.VariadicTuple[m.Cli.AtomicFileState],
         inputs: m.Infra.CodegenInputs,
         rendered_by: str,
+        *,
+        workspace: m.Infra.WorkspaceSpec,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Plan both managed native resolution views.
 
         Args:
-            root: Resolved repository root of the workspace.
             projects: The owner-first resolution projects of the workspace.
             authenticated: Authenticated source states binding both views.
             inputs: Loaded codegen inputs owning the resolution policy.
             rendered_by: Render-provenance line of the running generator.
+            workspace: Authenticated composition electing remote member sources.
 
         Returns:
             The managed resolution view plans, or the first planning failure.
@@ -147,13 +148,9 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         """
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
         policy = inputs.spec.make.uv_resolution
-        layout = u.Infra.git_repository_root(
-            m.Infra.GitRepoRequest(repo_root=root),
-        )
-        if layout.failure:
-            return result_type.from_failure(layout)
         catalogue = {item.path: item for item in inputs.spec.managed_file_specs}
         owner, *members = projects
+        root = owner.directory
         files: list[m.Infra.CodegenFilePlan] = []
         for relative, selected in (
             (policy.local_directory, tuple(members)),
@@ -174,8 +171,8 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
                 owner,
                 selected,
                 path.parent,
-                layout.value.repository_root,
                 inputs,
+                workspace=workspace,
             )
             if formatted.failure:
                 return result_type.from_failure(formatted)
@@ -199,13 +196,14 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             )
         return result_type.ok(tuple(files))
 
-    @staticmethod
     def _rendered_resolution_source(
+        self,
         owner: m.Infra.UvResolutionProject,
         members: t.VariadicTuple[m.Infra.UvResolutionProject],
         directory: Path,
-        toolchain_root: Path,
         inputs: m.Infra.CodegenInputs,
+        *,
+        workspace: m.Infra.WorkspaceSpec,
     ) -> p.Result[str]:
         """Render and format one native resolution view's TOML source.
 
@@ -213,8 +211,8 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             owner: The workspace owner resolution project.
             members: The member resolution projects rendered into the view.
             directory: Destination directory of the view.
-            toolchain_root: Repository root owning the toolchain formatting.
             inputs: Loaded codegen inputs owning the resolution policy.
+            workspace: Authenticated composition electing remote member sources.
 
         Returns:
             The formatted view source, or the first render or format failure.
@@ -222,6 +220,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         """
         rendered = u.Infra.pyproject_native_resolution_view(
             owner,
+            workspace=workspace,
             members=members,
             directory=directory,
             policy=inputs.spec.make.uv_resolution,
@@ -231,7 +230,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         return u.Infra.format_toml_source(
             u.Cli.toml_dumps(rendered.value),
             path=directory / c.PYPROJECT_FILENAME,
-            toolchain_root=toolchain_root,
+            toolchain_root=self.repository_root,
             taplo_version=inputs.spec.toolchain.tool_versions["taplo"],
         )
 
@@ -316,7 +315,11 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         return u.Infra.pyproject_conform(
             source,
             workspace=workspace,
-            required_dev_dependencies=codegen.scaffold.project.dev,
+            required_dev_dependencies=u.Infra.project_development_requirements(
+                codegen.scaffold.project,
+                distribution=target.repository.distribution,
+                kind=target.repository.kind,
+            ),
             uv_resolution=m.Infra.UvResolutionSpec(
                 link_mode=cls.link_mode(target.repository, codegen.toolchain),
                 constraint_dependencies=tuple(

@@ -111,7 +111,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
                 current = FlextInfraModGateEngine.scan(
                     project_root,
                     fix=False,
-                    rule_ids=relocation_ids,
+                    selection=relocation_ids,
                     source_files=py_files,
                 ).unwrap()
                 cascade.run(

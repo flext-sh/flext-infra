@@ -66,7 +66,9 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
 
         """
         if "." in mod and mod != ".":
-            parent_mod, _, child_name = mod.rpartition(".")
+            level = len(mod) - len(mod.lstrip("."))
+            parent_mod, _, child_name = mod[level:].rpartition(".")
+            parent_mod = "." * level + parent_mod
             compact = (
                 f"{indent}from {parent_mod or '.'} import {child_name} as {export_name}"
             )
