@@ -406,7 +406,7 @@ wheels = [
 [[package]]
 name = "flext-cli"
 version = "0.12.1"
-source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#67fcba13ccced2d50cbcf6d1fd709c55d964ad56" }
+source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#f02a95c8f55908c39b03ea9da8d3531b408ade1c" }
 dependencies = [
     { name = "annotated-types" },
     { name = "beartype" },
@@ -433,7 +433,7 @@ dependencies = [
 [[package]]
 name = "flext-core"
 version = "0.12.0"
-source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#1e3ae014bb0d787bc3372bf0d4e40ffe2e8e3c09" }
+source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#e85f328650fb67a1093e9ffccc8034ffa83f68e9" }
 dependencies = [
     { name = "annotated-types" },
     { name = "beartype" },
@@ -1853,7 +1853,7 @@ wheels = [
 [[package]]
 name = "rope"
 version = "1.14.0+dc.3"
-source = { git = "https://github.com/marlon-costa-dc/rope.git?rev=datacosmos#4bd033e3291e2f97e55142a4e066288f262cd6af" }
+source = { git = "https://github.com/marlon-costa-dc/rope.git?rev=datacosmos#0439e7847ec1b2dedcd9d61f981529b38a6fb8cf" }
 dependencies = [
     { name = "pytoolconfig", extra = ["global"] },
 ]

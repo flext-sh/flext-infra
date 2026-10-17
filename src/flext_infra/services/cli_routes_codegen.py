@@ -196,7 +196,7 @@ class FlextInfraCodegenRoutes:
                         ),
                         FlextInfraCodegenMiseToolchainRepair,
                         FlextInfraCodegenMiseToolchainRepair.execute,
-                        "Selected tool repaired and complete toolchain proven",
+                        "Selected tool installation and complete toolchain verified",
                     ),
                     (
                         "version-file",

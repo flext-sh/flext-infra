@@ -19,6 +19,46 @@ class TestsFlextInfraMiseToolchainRepair:
     """Exercise process-start settings through the actual public CLI."""
 
     @staticmethod
+    def test_dry_run_verifies_without_replacing_the_native_installation() -> None:
+        """The shared execution mode retains the selected binary's identity."""
+        root = tm.ok(
+            u.Infra.git_repository_root(
+                m.Infra.GitRepoRequest(repo_root=Path(__file__).parent),
+            ),
+        ).repository_root
+        binary = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
+        before = tm.ok(u.Cli.atomic_inventory_physical_directory(binary.parent))
+        name = u.type_adapter(str).validate_python(
+            type(settings.Infra)
+            .model_fields["toolchain_repair_tool"]
+            .validation_alias,
+        )
+        result = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-m",
+                    "flext_infra",
+                    "codegen",
+                    "mise-repair",
+                    "--repository-root",
+                    str(root),
+                    "--dry-run",
+                ),
+                cwd=root,
+                timeout=c.Infra.TIMEOUT_SHORT,
+                options=m.Cli.ProcessOptions(env={name: c.Infra.UV}),
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(result.outcome),
+            eq=True,
+            msg=result.stdout + result.stderr,
+        )
+        after = tm.ok(u.Cli.atomic_inventory_physical_directory(binary.parent))
+        tm.that(after, eq=before)
+
+    @staticmethod
     @pytest.mark.parametrize("selected", [False, True])
     def test_invalid_selection_fails_before_installation(
         tmp_path: Path,

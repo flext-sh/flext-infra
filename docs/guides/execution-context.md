@@ -85,7 +85,9 @@ Mise, using the exact version and checksum authority of the current lock. Set
 Missing or undeclared selections fail before installation. The operation
 revalidates its captured configuration and lock, streams the native installer
 output, then invokes the existing complete toolchain reality proof. Normal
-setup, upgrade and generation do not force reinstallation.
+setup, upgrade and generation do not force reinstallation. The CLI inherits the
+shared codegen execution modes: `--dry-run` and `--check` run the complete proof
+without replacing an installation.
 
 Before accepting a phase, retain evidence of complete consumer rewiring and
 superseded-path removal, domain-correct reuse and net-negative simplification
