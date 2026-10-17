@@ -338,6 +338,16 @@ metadata:
       not: local-alias
 rule:
   kind: aliased_import
+  not:
+    all:
+      - has:
+          field: name
+          pattern: $NAME
+      - has:
+          field: alias
+          pattern: $NAME
+      - inside:
+          kind: import_from_statement
   any:
     - not:
         matches: inside-type-checking-guard
