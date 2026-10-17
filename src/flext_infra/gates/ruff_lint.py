@@ -255,7 +255,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             f"{issue.file}:{issue.line}:{issue.code}"
             for path, found in by_file.items()
             for issue in u.Infra.service_operation_findings(
-                path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+                path.read_text(encoding=c.DEFAULT_ENCODING),
                 found,
                 path=path,
                 recipes=recipes,
