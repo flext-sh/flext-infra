@@ -998,6 +998,9 @@ native resource it returns without maintaining another election algorithm.
 Absolute and relative lookups share one native-folder validation boundary.
 Absent relative context remains `None`: resource lookup reports absence and
 module lookup raises Rope's native missing-module exception.
+Restructuring overrides use the SDK's native input types. The existing module
+admission exposes semantic capabilities to filters, and identity alternatives
+share one injected default matcher.
 Import capture retains one typed lookup keyed by native root, module and relative
 level; it does not transport unused copies of the SDK's search roots.
 
