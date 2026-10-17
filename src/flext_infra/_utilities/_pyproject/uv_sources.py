@@ -448,7 +448,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @staticmethod
     def _resolution_override_wire(
         entries: t.SequenceOf[str | m.Infra.UvScopedOverride],
-    ) -> t.JsonList:
+    ) -> t.JsonValueList:
         """Serialize the ordered native override variants through their model.
 
         Returns:
@@ -456,8 +456,10 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
         """
         parsed = m.Infra.UvOverrideEntries.model_validate(list(entries), strict=True)
-        return t.Cli.JSON_LIST_ADAPTER.validate_python(
-            parsed.model_dump(mode="json", exclude_none=True),
+        return list(
+            t.Cli.JSON_LIST_ADAPTER.validate_python(
+                parsed.model_dump(mode="json", exclude_none=True),
+            )
         )
 
     @classmethod
@@ -555,31 +557,31 @@ class FlextInfraUtilitiesPyprojectUvSources(
         name: str,
         *,
         root: bool,
-    ) -> p.Result[dict[str, str]]:
+    ) -> p.Result[t.StrMapping]:
         """Rename the declared groups and refuse target collisions.
 
         Returns:
             The declared groups mapped to their view-level target names.
 
         """
-        renamed: dict[str, str] = {
+        renamed: t.StrMapping = {
             canonicalize_name(group): (
                 group if root else f"{name}{state.policy.member_group_separator}{group}"
             )
             for group in declared_groups
         }
         if len(renamed) != len(declared_groups):
-            return r[dict[str, str]].fail(
+            return r[t.StrMapping].fail(
                 f"resolution project has colliding normalized group names: {name}",
             )
         for target in renamed.values():
             normalized = canonicalize_name(target)
             if normalized in state.seen_groups:
-                return r[dict[str, str]].fail(
+                return r[t.StrMapping].fail(
                     f"resolution dependency-group names collide: {target}",
                 )
             state.seen_groups.add(normalized)
-        return r[dict[str, str]].ok(renamed)
+        return r[t.StrMapping].ok(renamed)
 
     @classmethod
     def _resolution_root_project_sources(
@@ -617,7 +619,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         name: str,
         *,
         root: bool,
-    ) -> p.Result[dict[str, t.Pair[str, set[str]]]]:
+    ) -> p.Result[t.DictKV[str, t.Pair[str, set[str]]]]:
         """Rewrite the project's extras into view-level target groups.
 
         Returns:
@@ -625,8 +627,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
             dependency names it selects.
 
         """
-        resolved: dict[str, t.Pair[str, set[str]]] = {}
-        failure = r[dict[str, t.Pair[str, set[str]]]]
+        resolved: t.DictKV[str, t.Pair[str, set[str]]] = {}
+        failure = r[t.DictKV[str, t.Pair[str, set[str]]]]
         for extra, raw_requirements in optional.items():
             target = (
                 extra if root else f"{name}{state.policy.member_group_separator}{extra}"
