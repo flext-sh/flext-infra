@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import FlextInfraCli
-from flext_infra._utilities import FlextInfraRopeProject
 from flext_infra.transformers import FlextInfraSemanticPublication
 from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import c, m, tm, u
@@ -156,45 +155,41 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
     def test_snapshot_external_provider_reads_captured_source_after_live_change(
         cls,
         tmp_path: Path,
+        installed_dependency_path: Path,
     ) -> None:
         """External module resolution preserves captured declarations after drift."""
-        root, package, source, _target = cls._module_move_workspace(tmp_path)
-        provider_root = tmp_path / "external_provider"
-        provider_root.mkdir()
-        provider = provider_root / "external_contract.py"
+        root, _package, _source, _target = cls._module_move_workspace(tmp_path)
+        provider = installed_dependency_path / "external_contract.py"
         original = "class CapturedProvider:\n    pass\n"
         newer = "class NewerProvider:\n    pass\n"
         provider.write_text(original, encoding=c.DEFAULT_ENCODING)
         provider_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(provider, required=True),
         )
-        provider.write_text(newer, encoding=c.DEFAULT_ENCODING)
-        snapshot = FlextInfraRopeProject.from_snapshot(
-            str(root),
-            {
-                source: source.read_bytes(),
-                provider: tm.not_none(provider_state.content),
-            },
-            source_folders=(package.relative_to(root).as_posix(),),
-            python_path_folders=(str(provider_root),),
-        )
-        try:
-            resource = u.Infra.require_file_resource(
-                tm.not_none(snapshot.find_module(provider.stem)), provider
+        with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
+            sources, states = cls._module_move_inputs(workspace.rope_project)
+            provider.write_text(newer, encoding=c.DEFAULT_ENCODING)
+            snapshot = u.Infra.snapshot_project(
+                workspace.rope_project,
+                {**sources, provider: original},
+                captured=u.Infra.codemod_source_epoch(
+                    m.Infra.CodemodBindingSnapshot(states=(*states, provider_state))
+                ),
             )
-            tm.that(resource.read(), eq=original)
-            tm.that(
-                snapshot
-                .get_pymodule(resource)
-                .get_attribute("CapturedProvider")
-                .get_object()
-                .get_name(),
-                eq="CapturedProvider",
-            )
-            snapshot.validate()
-            tm.that(resource.read(), eq=original)
-        finally:
-            snapshot.close()
+            try:
+                resource = u.Infra.require_file_resource(
+                    tm.not_none(snapshot.find_module(provider.stem)), provider
+                )
+                tm.that(resource.read(), eq=original)
+                module = u.Infra.resolve_pymodule(snapshot, resource)
+                tm.that(
+                    module.get_attribute("CapturedProvider").get_object().get_name(),
+                    eq="CapturedProvider",
+                )
+                snapshot.validate()
+                tm.that(resource.read(), eq=original)
+            finally:
+                snapshot.close()
         tm.that(provider.read_text(encoding=c.DEFAULT_ENCODING), eq=newer)
 
     @classmethod

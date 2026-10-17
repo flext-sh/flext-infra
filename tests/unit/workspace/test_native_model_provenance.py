@@ -13,7 +13,6 @@ import pytest
 from flext_core import m
 from pydantic import RootModel
 from ruamel.yaml import YAML
-from ruamel.yaml.error import YAMLError
 from typing_inspection.introspection import AnnotationSource, inspect_annotation
 
 from flext_infra.codegen import FlextInfraMiseArtifactsFiles
@@ -28,10 +27,8 @@ class TestsFlextInfraNativeModelProvenance:
     @staticmethod
     def test_real_namespace_provider_retains_authenticated_native_sources() -> None:
         """An installed namespace is not duplicated by the cold import roots."""
-        consumer = YAML(typ="safe")
-        tm.that(consumer.load("a\n"), eq="a")
-        with pytest.raises(YAMLError):
-            consumer.load("\0")
+        tm.that(tm.ok(u.Cli.yaml_parse("a: 1\n")), eq={"a": 1})
+        tm.fail(u.Cli.yaml_parse("\0"))
         admission = tm.ok(
             FlextInfraValidateFreshImport.capture_producer(Path.cwd(), entrypoint=YAML)
         )

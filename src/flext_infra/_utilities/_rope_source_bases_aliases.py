@@ -137,7 +137,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         if not isinstance(words, p.Infra.RopeWorder):
             message = "Lazy aliases require Rope's native parameter reader"
             raise TypeError(message)
-        aliases: dict[str, m.Infra.SourceClassReference] = {}
+        aliases: t.MutableMappingKV[str, m.Infra.SourceClassReference] = {}
         for occurrence in finder.find_occurrences(pymodule=parsed):
             mapping = cls._call_alias_source(source, words, occurrence.offset)
             if mapping is None:
@@ -235,7 +235,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         source = source.strip()
         if not (source.startswith("{") and source.endswith("}")):
             return {}
-        result: dict[str, t.StrPair] = {}
+        result: t.MutableMappingKV[str, t.StrPair] = {}
         split = FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments
         for begin, end in split(source, 1, len(source) - 1, ","):
             match split(source, begin, end, ":"):
@@ -252,18 +252,23 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             if provider is not None:
                 result[key] = (provider, key)
                 continue
-            if expression.startswith("(") and expression.endswith(")"):
-                match tuple(
+            pair = (
+                tuple(
                     refactors.literal_string(expression[start:stop])
                     for start, stop in split(expression, 1, len(expression) - 1, ",")
-                ):
-                    case (str() as provider, str() as attribute):
-                        result[key] = (provider, attribute)
-                        continue
-            message = (
-                f"Lazy export requires a provider or provider/attribute pair: {key}"
+                )
+                if expression.startswith("(") and expression.endswith(")")
+                else ()
             )
-            raise ValueError(message)
+            match pair:
+                case (str() as provider, str() as attribute):
+                    result[key] = (provider, attribute)
+                case _:
+                    message = (
+                        "Lazy export requires a provider or provider/attribute "
+                        f"pair: {key}"
+                    )
+                    raise ValueError(message)
         return result
 
 

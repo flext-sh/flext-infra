@@ -64,9 +64,9 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
         directory = (
             package_dir / u.Infra.facade_families()["p"].directory
         ).relative_to(workspace.repository_root)
-        models: dict[str, p.ModelType] = {}
-        declarations: dict[str, p.Infra.RopePyName] = {}
-        aliases: dict[str, tuple[str, ...]] = {}
+        models: t.MutableMappingKV[str, t.ModelClass[m.BaseModel]] = {}
+        declarations: t.MutableMappingKV[str, p.Infra.RopePyName] = {}
+        aliases: t.MutableMappingKV[str, t.StrSequence] = {}
         base = (
             workspace.rope_project
             .get_module("pydantic")
@@ -120,8 +120,8 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
         t.DictKV[str, p.Infra.RopePyName],
         t.DictKV[str, p.ModuleOwned],
     ]:
-        facades: dict[str, p.Infra.RopePyName] = {}
-        runtime_facades: dict[str, p.ModuleOwned] = {}
+        facades: t.DictKV[str, p.Infra.RopePyName] = {}
+        runtime_facades: t.DictKV[str, p.ModuleOwned] = {}
         package_dir: Path | None = None
         for entry in workspace.modules():
             if entry.package_name != project.package_name:
@@ -149,9 +149,17 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
         base: p.Infra.RopePyObject,
         name: str,
         candidate: p.ModuleOwned,
-    ) -> p.Result[t.VariadicTuple[t.Triple[str, p.ModelType, p.Infra.RopePyName]]]:
-        result_type = r[t.VariadicTuple[t.Triple[str, p.ModelType, p.Infra.RopePyName]]]
-        routes: list[t.Triple[str, p.ModelType, p.Infra.RopePyName]] = []
+    ) -> p.Result[
+        t.VariadicTuple[t.Triple[str, t.ModelClass[m.BaseModel], p.Infra.RopePyName]]
+    ]:
+        result_type = r[
+            t.VariadicTuple[
+                t.Triple[str, t.ModelClass[m.BaseModel], p.Infra.RopePyName]
+            ]
+        ]
+        routes: t.ListOf[
+            t.Triple[str, t.ModelClass[m.BaseModel], p.Infra.RopePyName]
+        ] = []
         value = (
             candidate.__value__ if isinstance(candidate, TypeAliasType) else candidate
         )

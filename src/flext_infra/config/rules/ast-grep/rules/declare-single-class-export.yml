@@ -2,15 +2,23 @@
 # propagates it. The existing project context proves the canonical class stem.
 # Multi-class modules, explicit exports, loose behavior and module bindings
 # require their existing semantic ownership phase; this rule never elects them.
-# Pytest suites retain their no-export contract and are not publication owners.
+#
+# Test-suite modules publish nothing (ban-test-suite-module-all): they are
+# pytest collection targets, never import sources, so this rule must not ask
+# them for the `__all__` that rule deletes. The ignores mirror its suite scope.
 id: declare-single-class-export
 language: python
 severity: error
+ignores:
+  - "tests/unit/**/*.py"
+  - "tests/integration/**/*.py"
+  - "tests/e2e/**/*.py"
+  - "tests/performance/**/*.py"
+  - "tests/benchmark/**/*.py"
 metadata:
   context:
     NAME:
-      - is: class-stem
-      - not: pytest-module
+      is: class-stem
 utils:
   import:
     any:

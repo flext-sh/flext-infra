@@ -26,9 +26,14 @@
 id: ban-loose-module-object
 language: python
 severity: error
+# Generator law p.11 binds every module and p.4 makes every non-src root
+# folder an internal namespace tier: scripts/ and examples/ are scanned with
+# the same contract (tests/ keep their own test-suite rules).
 files:
   - "src/**/*.py"
   - "**/src/**/*.py"
+  - "scripts/**/*.py"
+  - "examples/**/*.py"
 ignores:
   - "**/tests/**"
   - "**/__init__.py"

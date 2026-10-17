@@ -35,7 +35,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodemodBindingChain,
     FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesDeclarationPayload,
-    FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesProjectDiscovery,
@@ -678,6 +677,43 @@ class FlextInfraUtilitiesCodemodProject(
             contents=MappingProxyType(contents),
         )
 
+    @classmethod
+    def identity_source_epoch(
+        cls,
+        root: Path,
+        source_paths: t.SequenceOf[Path],
+        identities: t.StrSequence,
+    ) -> m.Infra.CodemodSourceEpoch:
+        """Capture sources plus every module a resolved identity needs, once.
+
+        A semantic planning snapshot is a closed inventory: an identity such as
+        ``pydantic.BaseModel`` resolves only when its module closure was
+        captured before planning. Every dotted prefix of each identity is
+        offered; a prefix that is not a module resolves to nothing and captures
+        nothing. The sources' own import closure is captured with them.
+
+        Returns:
+            The immutable epoch every snapshot of one planning pass shares.
+
+        """
+        modules = tuple(
+            dict.fromkeys(
+                ".".join(parts[:end])
+                for parts in (identity.split(".") for identity in identities)
+                for end in range(1, len(parts) + 1)
+            )
+        )
+        return cls.codemod_source_epoch(
+            cls.codemod_binding_snapshot(
+                root,
+                projects=(
+                    m.Infra.CodemodBindingProject(
+                        root=root, source_paths=tuple(source_paths), modules=modules
+                    ),
+                ),
+            )
+        )
+
     @staticmethod
     @contextmanager
     def codemod_binding_project(
@@ -1013,7 +1049,6 @@ class FlextInfraUtilitiesCodemodProject(
                 | c.Infra.CodemodContextPredicate.FACADE_MODULE
                 | c.Infra.CodemodContextPredicate.LATER_LAYER
                 | c.Infra.CodemodContextPredicate.CLASS_STEM
-                | c.Infra.CodemodContextPredicate.PYTEST_MODULE
             ):
                 return cls._context_module_holds(
                     root,
@@ -1231,8 +1266,6 @@ class FlextInfraUtilitiesCodemodProject(
                 return cls._later_layer(root, file_path, value, condition)
             case c.Infra.CodemodContextPredicate.CLASS_STEM:
                 return cls._has_class_stem(root, file_path, value)
-            case c.Infra.CodemodContextPredicate.PYTEST_MODULE:
-                return FlextInfraUtilitiesDiscovery.pytest_test_module(file_path)
             case _:
                 message = f"predicate is not module-scoped: {predicate}"
                 raise ValueError(message)
