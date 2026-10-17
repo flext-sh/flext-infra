@@ -248,6 +248,70 @@ class TestsFlextInfraUtilityFacadeProjection:
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
         tm.that(result.stdout.strip(), eq="service-value")
 
+    def test_owner_inheriting_a_sourceless_stdlib_module_orders_natively(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """An owner based on a frozen stdlib alias keeps its native C3 order.
+
+        ``collections.abc`` has no source file on the supported interpreter;
+        the planning project must resolve it like the live project does.
+        """
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        directory = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY).directory
+        facade = package / c.Infra.UTILITIES_PY
+        sources = {
+            package / "__init__.py": (
+                f"from {package.name}.utilities import Utilities, u\n"
+                "__all__ = ['Utilities', 'u']\n"
+            ),
+            package / directory / "__init__.py": (
+                f"from {package.name}.{directory}.registry import RegistryOwner\n"
+                "__all__ = ['RegistryOwner']\n"
+            ),
+            package / directory / "registry.py": (
+                "from collections.abc import Iterator, Mapping\n"
+                "class RegistryOwner(Mapping):\n"
+                "    def __getitem__(self, key: str) -> str:\n"
+                "        return key\n"
+                "    def __iter__(self) -> Iterator[str]:\n"
+                "        return iter(('registry-value',))\n"
+                "    def __len__(self) -> int:\n"
+                "        return 1\n"
+                "__all__ = ['RegistryOwner']\n"
+            ),
+            facade: (
+                f"from {package.name}.{directory} import RegistryOwner\n"
+                "class Utilities(RegistryOwner):\n"
+                "    pass\n"
+                "u = Utilities\n__all__ = ['Utilities', 'u']\n"
+            ),
+        }
+        for path, source in sources.items():
+            self._write(path, source)
+        rendered = tm.not_none(u.Infra.render_utility_facade(package))
+        self._write(facade, rendered)
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        result = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from collections.abc import Mapping; "
+                        f"from {package.name} import u; "
+                        "assert issubclass(u, Mapping); "
+                        "print(list(u()))"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+        tm.that(result.stdout.strip(), eq="['registry-value']")
+
     @staticmethod
     def _behavior_package(
         package: Path,

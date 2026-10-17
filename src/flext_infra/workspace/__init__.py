@@ -30,6 +30,9 @@ if TYPE_CHECKING:
     from flext_infra.workspace.lock_completeness import (
         FlextInfraWorkspaceLockCompleteness,
     )
+    from flext_infra.workspace.native_reference import (
+        FlextInfraWorkspaceNativeReference,
+    )
     from flext_infra.workspace.propagation import FlextInfraWorkspacePropagation
     from flext_infra.workspace.rope import FlextInfraRopeWorkspace
     from flext_infra.workspace.runtime_dependencies import (
@@ -51,6 +54,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraWorkspaceGovernanceMixin",
     "FlextInfraWorkspaceLifecycle",
     "FlextInfraWorkspaceLockCompleteness",
+    "FlextInfraWorkspaceNativeReference",
     "FlextInfraWorkspacePropagation",
 )
 
@@ -71,6 +75,7 @@ install_lazy_exports(
         "FlextInfraWorkspaceGovernanceMixin": "._governance",
         "FlextInfraWorkspaceLifecycle": ".lifecycle",
         "FlextInfraWorkspaceLockCompleteness": ".lock_completeness",
+        "FlextInfraWorkspaceNativeReference": ".native_reference",
         "FlextInfraWorkspacePropagation": ".propagation",
     }),
     public_exports=__all__,

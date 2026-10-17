@@ -190,25 +190,29 @@ class TestsFlextInfraGithubGateAttestation:
         )
         assert first.receipt is not None
         assert second.receipt is not None
-        assert first.receipt != second.receipt
+        tm.that(first.receipt != second.receipt, truth=True)
         first_evidence = m.Infra.GateCommandEvidence.model_validate_json(
             first.receipt.read_bytes(),
         )
         second_evidence = m.Infra.GateCommandEvidence.model_validate_json(
             second.receipt.read_bytes(),
         )
-        assert first_evidence.process == first.process
-        assert second_evidence.process == second.process
-        assert first_evidence.context_digest == second_evidence.context_digest
-        assert first_evidence.native_outcome == c.Infra.ToolOutcome.FINDINGS
-        assert first.process.raw_return_code != 0
+        tm.that(first_evidence.process == first.process, truth=True)
+        tm.that(second_evidence.process == second.process, truth=True)
+        tm.that(
+            first_evidence.context_digest == second_evidence.context_digest, truth=True
+        )
+        tm.that(
+            first_evidence.native_outcome == c.Infra.ToolOutcome.FINDINGS, truth=True
+        )
+        tm.that(first.process.raw_return_code != 0, truth=True)
         assert not first.issues
         for report in first_evidence.reports:
             assert report.path.is_relative_to(
                 first.receipt.parent.relative_to(tmp_path)
             )
             digest = cli_u.Cli.sha256_bytes((tmp_path / report.path).read_bytes())
-            assert report.digest == f"sha256:{digest}"
+            tm.that(report.digest == f"sha256:{digest}", truth=True)
 
     @pytest.mark.parametrize("literal_prefix", [None, "", "key::"])
     def test_signing_identity_reads_only_native_public_references(
@@ -260,11 +264,11 @@ class TestsFlextInfraGithubGateAttestation:
         for item in report.observations:
             tm.that(item.scope, eq="local")
             assert item.origin is not None
-            assert item.origin.startswith("file:")
+            tm.that(item.origin.startswith("file:"), truth=True)
             tm.that(item.process.raw_return_code, eq=0)
         encoded = report.model_dump_json(round_trip=True)
         tm.that(encoded, lacks=["BEGIN OPENSSH PRIVATE KEY", '"value"'])
-        assert public not in encoded
+        tm.that(public not in encoded, truth=True)
         restored = m.Infra.GitSigningIdentityReport.model_validate_json(encoded)
         tm.that(restored.key_path, eq=report.key_path)
         tm.that(restored.allowed_signers_path, eq=report.allowed_signers_path)
@@ -313,7 +317,7 @@ class TestsFlextInfraGithubGateAttestation:
         tm.fail(failed)
         assert failed.error is not None
         if payload:
-            assert payload not in failed.error
+            tm.that(payload not in failed.error, truth=True)
 
     @pytest.mark.parametrize(
         "declarations",
@@ -364,26 +368,37 @@ class TestsFlextInfraGithubGateAttestation:
         )
         assert cli_u.Cli.process_succeeded(process), native.stderr
         report = m.Infra.GitSigningIdentityReport.model_validate_json(native.stdout)
-        assert tuple(item.key for item in report.observations) == (
-            c.Infra.GIT_SIGNING_CONFIGURATION_KEYS
+        tm.that(
+            tuple(item.key for item in report.observations)
+            == (c.Infra.GIT_SIGNING_CONFIGURATION_KEYS),
+            truth=True,
         )
         for observation in report.observations:
             declared = next(
                 (value for key, value in declarations if key == observation.key),
                 None,
             )
-            assert observation.process.raw_return_code == (1 if declared is None else 0)
-            assert observation.scope == (None if declared is None else "local")
+            tm.that(
+                observation.process.raw_return_code == (1 if declared is None else 0),
+                truth=True,
+            )
+            tm.that(
+                observation.scope == (None if declared is None else "local"), truth=True
+            )
             assert (observation.origin is None) == (declared is None)
-        assert report.signing_format == next(
-            (value for key, value in declarations if key == "gpg.format"),
-            None,
+        tm.that(
+            report.signing_format
+            == next(
+                (value for key, value in declarations if key == "gpg.format"),
+                None,
+            ),
+            truth=True,
         )
         assert report.key_path is None
         assert report.allowed_signers_path is None
         assert report.public_fingerprint is None
         assert not report.inline_public_key
-        assert '"value"' not in native.stdout
+        tm.that('"value"' not in native.stdout, truth=True)
         assert not isolated.read_bytes()
 
     @pytest.mark.parametrize("key", c.Infra.GIT_SIGNING_CONFIGURATION_KEYS)
@@ -417,7 +432,7 @@ class TestsFlextInfraGithubGateAttestation:
         )
         tm.fail(failed)
         assert failed.error is not None
-        assert "bad config" in failed.error
+        tm.that("bad config" in failed.error, truth=True)
 
     def test_signing_identity_rejects_unsupported_native_format(
         self,
@@ -480,7 +495,7 @@ class TestsFlextInfraGithubGateAttestation:
             )
             observed.append(evidence)
         assert len({item.context_digest for item in observed}) == len(observed)
-        assert len({item.commit_sha for item in observed}) == 1
+        tm.that(len({item.commit_sha for item in observed}) == 1, truth=True)
 
     def test_signing_identity_does_not_open_missing_key_or_trust_files(
         self,
@@ -531,7 +546,7 @@ class TestsFlextInfraGithubGateAttestation:
         )
         tm.fail(failed)
         assert failed.error is not None
-        assert str(unavailable) in failed.error
+        tm.that(str(unavailable) in failed.error, truth=True)
         assert not unavailable.exists()
         if missing == "trust":
             verification = u.Infra.git_verify_gate_attestation(
@@ -548,7 +563,7 @@ class TestsFlextInfraGithubGateAttestation:
             )
             tm.fail(verification)
             assert verification.error is not None
-            assert str(unavailable) in verification.error
+            tm.that(str(unavailable) in verification.error, truth=True)
 
     def test_dirty_candidate_still_executes_without_reusable_receipt(
         self,
@@ -569,7 +584,7 @@ class TestsFlextInfraGithubGateAttestation:
                 read_runtime_identity=self._runtime_identity,
             )
         )
-        assert captured.process.raw_return_code != 0
+        tm.that(captured.process.raw_return_code != 0, truth=True)
         assert captured.receipt is None
         assert captured.issues
         assert tuple(tmp_path.rglob(c.Infra.CHECK_REPORT_SARIF_FILENAME))
@@ -591,7 +606,7 @@ class TestsFlextInfraGithubGateAttestation:
         published = (
             set(receipts.rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME)) - previous
         )
-        assert len(published) == 1
+        tm.that(len(published) == 1, truth=True)
         receipt = published.pop()
         evidence = m.Infra.GateCommandEvidence.model_validate_json(receipt.read_bytes())
         return m.Infra.GateAttestationCreateRequest(
@@ -626,7 +641,7 @@ class TestsFlextInfraGithubGateAttestation:
             ).commit_sha
             == commit_sha
         )
-        assert len(evidence) == 1
+        tm.that(len(evidence) == 1, truth=True)
         return u.Infra.git_verify_gate_attestation(
             m.Infra.GateAttestationVerifyRequest(
                 workspace=str(root),

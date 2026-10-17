@@ -196,7 +196,7 @@ class TestsFlextInfraPytestRunner:
         ):
             env_index = command.index("--testmon-env")
             names.append(command[env_index + 1])
-        assert len(set(names)) == 1
+        tm.that(len(set(names)) == 1, truth=True)
         (name,) = {name.strip("'") for name in names}
         tm.that(
             name,
@@ -213,7 +213,9 @@ class TestsFlextInfraPytestRunner:
             ne=name,
         )
         # The coverage verb owns no testmon plugin, so it never names one.
-        assert "--testmon-env" not in runner.build_coverage_command(report)
+        tm.that(
+            "--testmon-env" not in runner.build_coverage_command(report), truth=True
+        )
         # Rebuilding any argv reuses the same cached fingerprint.
         assert (
             runner.build_command(report)[suite_command.index("--testmon-env") + 1]
@@ -241,29 +243,34 @@ class TestsFlextInfraPytestRunner:
         )
         runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         database = runner.testmon_db
-        assert tm.ok(runner.execute()) == 0
+        tm.that(tm.ok(runner.execute()) == 0, truth=True)
         reports = cached_runner_project / runner.reports
-        assert "executed=1" in u.Tests.PytestRunner.summary(reports)
+        tm.that("executed=1" in u.Tests.PytestRunner.summary(reports), truth=True)
         warm = u.Tests.PytestRunner.runner_for(cached_runner_project)
-        assert tm.ok(warm.execute()) == 0
-        assert "outcome=cache_hit" in u.Tests.PytestRunner.summary(reports)
+        tm.that(tm.ok(warm.execute()) == 0, truth=True)
+        tm.that(
+            "outcome=cache_hit" in u.Tests.PytestRunner.summary(reports), truth=True
+        )
         warm_latest = (reports / "latest.txt").read_text().strip()
         warm_accounting = m.Infra.TestmonRunAccounting.model_validate_json(
             (reports / warm_latest / "run-accounting.json").read_text(),
         )
         assert warm_accounting.cache_restored
-        assert warm_accounting.executed_count == 0
-        assert warm_accounting.deselected_count == warm_accounting.inventory_count
+        tm.that(warm_accounting.executed_count == 0, truth=True)
+        tm.that(
+            warm_accounting.deselected_count == warm_accounting.inventory_count,
+            truth=True,
+        )
         source.write_text("value: changed\n", encoding="utf-8")
         changed = u.Tests.PytestRunner.runner_for(cached_runner_project)
-        assert changed.testmon_db == database
-        assert tm.ok(changed.execute()) == 0
-        assert "executed=1" in u.Tests.PytestRunner.summary(reports)
+        tm.that(changed.testmon_db == database, truth=True)
+        tm.that(tm.ok(changed.execute()) == 0, truth=True)
+        tm.that("executed=1" in u.Tests.PytestRunner.summary(reports), truth=True)
         latest = (reports / "latest.txt").read_text().strip()
         accounting = m.Infra.TestmonRunAccounting.model_validate_json(
             (reports / latest / "run-accounting.json").read_text(),
         )
-        assert accounting.executed_count == accounting.reported_count
+        tm.that(accounting.executed_count == accounting.reported_count, truth=True)
         assert (
             accounting.executed_count + accounting.deselected_count
             == accounting.inventory_count
@@ -277,7 +284,10 @@ class TestsFlextInfraPytestRunner:
         policy = config.Infra.tooling.tools.pytest
         # A tree without ``[project].name`` takes the fleet-wide run wall.
         undeclared = u.Tests.PytestRunner.runner_for(cached_runner_project)
-        assert undeclared.run_timeout_seconds(policy) == policy.run_timeout_seconds
+        tm.that(
+            undeclared.run_timeout_seconds(policy) == policy.run_timeout_seconds,
+            truth=True,
+        )
         declared_name = next(iter(policy.run_timeout_overrides), config.Infra.name)
         expected = policy.run_timeout_overrides.get(
             declared_name,
@@ -288,7 +298,7 @@ class TestsFlextInfraPytestRunner:
         )
         report = cached_runner_project / runner.reports
 
-        assert runner.run_timeout_seconds(policy) == expected
+        tm.that(runner.run_timeout_seconds(policy) == expected, truth=True)
         command = runner.build_command(report)
         tm.that(
             command, has=f"--timeout={c.Infra.PYTEST_CASE_TIMEOUT_DISABLED_SECONDS}"
@@ -339,7 +349,7 @@ class TestsFlextInfraPytestRunner:
         warm_name = tm.ok(u.Cli.files_read_text(reports_root / "latest.txt")).strip()
         for phase in ("testmon-selection", "testmon-inventory"):
             profile = reports_root / warm_name / f"{phase}.pstats"
-            assert profile.is_file() == profile_collection
+            tm.that(profile.is_file() == profile_collection, truth=True)
             if profile_collection:
                 assert pstats.Stats(str(profile)).get_stats_profile().func_profiles
         for receipt in ("cache-before.json", "cache-after.json"):
@@ -468,13 +478,13 @@ class TestsFlextInfraPytestRunner:
         )
         reports_root = cached_runner_project / cache.reports_directory
         if omit_case:
-            assert exit_code != 0
+            tm.that(exit_code != 0, truth=True)
             logs = [path.read_text() for path in reports_root.glob("*/pytest.log")]
             assert any(
                 "Runner collection differs from selection" in log for log in logs
             )
             return
-        assert exit_code == 0
+        tm.that(exit_code == 0, truth=True)
         tm.that(
             u.Tests.PytestRunner.summary(reports_root),
             has=["executed=3", "cache_restored=True", "errors=0", "exit=0"],

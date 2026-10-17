@@ -342,7 +342,13 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
                 ignored_resources=tuple(
                     sorted(config.Infra.codegen.source_scan_ignored)
                 ),
-                extension_modules=tuple(sorted(project.get_pycore().extension_modules)),
+                extension_modules=tuple(
+                    sorted(
+                        u.type_adapter(set[str]).validate_python(
+                            project.get_pycore().extension_modules, strict=True
+                        )
+                    )
+                ),
                 python_path_folders=tuple(
                     folder.real_path
                     for folder in project.get_python_path_folders()

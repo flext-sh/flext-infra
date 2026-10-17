@@ -248,10 +248,11 @@ class TestsFlextInfraUvNativeResolutionWorkspace:
             )
         )
         actual_uv = u.Tests.toml_table_at(conformed, "tool", "uv")
-        actual = u.Tests.toml_doc(conformed)
         member_requirements = tuple(
             Requirement(line)
-            for line in tm.ok(u.Infra.document_requirement_lines(actual))
+            for line in tm.ok(
+                u.Infra.document_requirement_lines(u.Tests.toml_doc(conformed))
+            )
             if Requirement(line).name == member_ref.distribution
         )
         tm.that(bool(member_requirements), eq=True)
@@ -315,12 +316,15 @@ class TestsFlextInfraUvNativeResolutionWorkspace:
         previous = f"{branch}-previous"
         u.Tests.git_bootstrap(origin, ("branch", previous, branch))
         document = u.Tests.toml_doc(conformed)
-        groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
         stale = (
             f"{member_ref.distribution} @ git+{member_ref.url}@{previous}"
             ' ; python_version >= "0"'
         )
-        u.Cli.toml_sync_string_list(groups, "previous-environment", (stale,))
+        u.Cli.toml_sync_string_list(
+            u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS),
+            "previous-environment",
+            (stale,),
+        )
         source = u.Cli.toml_dumps(document)
         tm.ok(u.Cli.atomic_write_text_file(root / c.PYPROJECT_FILENAME, source))
         _, standalone, directory = (

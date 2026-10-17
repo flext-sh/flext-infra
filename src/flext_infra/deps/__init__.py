@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_infra.deps import _modernizer as _modernizer, phases as phases
     from flext_infra.deps._detection_runners import (
         FlextInfraDependencyDetectionRunnersMixin,
     )
@@ -20,7 +21,6 @@ if TYPE_CHECKING:
         FlextInfraDependencyDetectorRuntimeSteps,
     )
     from flext_infra.deps._extra_paths_sync import FlextInfraExtraPathsSyncMixin
-    from flext_infra.deps import _modernizer as _modernizer
     from flext_infra.deps._modernizer import (
         FlextInfraPyprojectModernizerBase,
         FlextInfraPyprojectModernizerDocument,
@@ -38,7 +38,6 @@ if TYPE_CHECKING:
     from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
     from flext_infra.deps.lock_integrity import FlextInfraLockIntegrityVerifier
     from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-    from flext_infra.deps import phases as phases
     from flext_infra.deps.phases import (
         FlextInfraConsolidateGroupsPhase,
         FlextInfraEnsurePackagingPhase,

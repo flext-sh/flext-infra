@@ -409,7 +409,7 @@ class FlextInfraRopeProject(Project):
             return sorted(set(names))
 
         @staticmethod
-        def _required_value[ValueT](result: p.Result[ValueT]) -> ValueT:
+        def require_value[ValueT](result: p.Result[ValueT]) -> ValueT:
             """Preserve the original native cause at this read-only IO boundary.
 
             Returns:
@@ -434,7 +434,7 @@ class FlextInfraRopeProject(Project):
 
             """
             if directory not in self._topology:
-                self._topology[directory] = self._required_value(
+                self._topology[directory] = self.require_value(
                     u.Cli.atomic_plan_directory_chain(directory)
                 )
             return self._topology[directory]
@@ -449,7 +449,7 @@ class FlextInfraRopeProject(Project):
             if self._directory_chain(directory).directories:
                 return None
             if directory not in self._inventories:
-                self._inventories[directory] = self._required_value(
+                self._inventories[directory] = self.require_value(
                     u.Cli.atomic_inventory_physical_directory(directory)
                 )
             return self._inventories[directory]
@@ -547,16 +547,14 @@ class FlextInfraRopeProject(Project):
             if state is None:
                 state = self._originals.get(source)
                 if state is None:
-                    state = self._required_value(
+                    state = self.require_value(
                         u.Cli.atomic_read_binary_file_state(
                             source,
                             required=source not in self._declared_paths,
                         )
                     )
                 else:
-                    self._required_value(
-                        u.Cli.atomic_verify_binary_file_states((state,))
-                    )
+                    self.require_value(u.Cli.atomic_verify_binary_file_states((state,)))
                 self._verify_declarations(source)
                 self._consumed[source] = state
             proposed = self._sources.get(source)
@@ -578,8 +576,8 @@ class FlextInfraRopeProject(Project):
 
         def verify(self) -> None:
             """Reprove original inputs and absence witnesses without replacing them."""
-            self._required_value(u.Cli.atomic_verify_binary_file_states(self.states()))
-            self._required_value(
+            self.require_value(u.Cli.atomic_verify_binary_file_states(self.states()))
+            self.require_value(
                 u.Cli.atomic_verify_directory_queries(
                     self.directories(), self.topology()
                 )
@@ -657,6 +655,9 @@ class FlextInfraRopeProject(Project):
         election: p.Infra.RopeProjectElection,
     ) -> Self:
         """Construct a fresh Rope identity graph without persistent state.
+
+        The snapshot applies its typed election's scan-ignore policy, so ignored
+        tool resources never enter the closed source inventory.
 
         Args:
             root: The snapshot root directory.
@@ -858,7 +859,7 @@ class FlextInfraRopeProject(Project):
 
     @override
     def _init_other_parts(self) -> None:
-        """Install captured change observations before initializing resources."""
+        """Initialize the native core and captured resource observations."""
         super()._init_other_parts()
         if isinstance(self.fscommands, self.SnapshotFiles | self.AtomicReadFiles):
             core = self.get_pycore()

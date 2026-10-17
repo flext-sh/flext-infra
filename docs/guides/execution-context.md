@@ -128,6 +128,9 @@ base order declared in their configured private family. Protocol projection keep
 its consumer-based ownership resolution. The utility path delegates directly to
 the declaration planner. Static and runtime consumer checks retain their own
 import-failure verdicts.
+Generated Python imports use their absolute native package owner. The planner
+selects exports once; rendering groups those declarations without another
+name-based exclusion policy. Compact lazy-loader targets remain loader data.
 Runtime-base discovery treats supplied planned bytes as authoritative, including
 unpublished packages. Original-file reads and package membership checks retain
 their native project-tree scope; planned initializer bytes own alias analysis.
@@ -404,6 +407,11 @@ Import dependency discovery uses the shared import maps; class-lineage validatio
 with the queries that request class information. Namespace packages contribute
 their physical portions to source authority without requiring an executable
 initializer.
+
+When the checkout owns the distributed configuration file, its project declaration
+uses the derived `<stem>.project.yaml` file beside that default. The local layer
+remains `<stem>.local.yaml`. This keeps project editor declarations separate from
+the library defaults while preserving the same ordered configuration layers.
 
 When the checkout owns the distributed configuration file, its project declaration
 uses the derived `<stem>.project.yaml` file beside that default. The local layer
@@ -928,6 +936,10 @@ Private approved plans remain local execution context. Do not collect, project, 
 or link them into published documentation without explicit publication authorization.
 
 `make mod-rules` inspects the full governed source inventory without rewriting it.
+Native `isinstance` and None assertions retain Python's type narrowing. Assertions
+with a message retain its evaluation on failure. Their automatic matcher rewrites
+are retired: unused return values lose narrowing, while generated conditionals
+duplicate language behavior. Explicit matcher calls remain available for observations.
 The text catalog composes Infra's shared rules with each project's local
 `config/rules/mod/sed.yaml`. A domain-specific rule belongs to that project's
 catalog; copying it into the shared catalog creates an ambiguous owner and blocks
@@ -939,6 +951,12 @@ catalogs once, then admits each occurrence against its nearest project's electio
 and semantic facts. A library owner's imports remain within its domain; the same
 imports in a consumer remain violations. Reports retain zero counts for every
 governed repository and elected rule.
+The native scanner takes one `selection`: rule identifiers or an already composed
+rule plan. A composed plan must govern the requested root and remains the only
+selection authority for that invocation.
+Catalog election and staging share the same YAML ingress. Validated streams are
+memoized by their exact text as immutable JSON; each caller receives fresh mappings.
+Current file reads and canonical rule digests still detect drift before publication.
 
 Generated facades compose declarations published by their current private family.
 Rope resolves existing bases before composition: upstream bases remain, while an
@@ -951,6 +969,18 @@ authenticated source inventory. External providers keep their native Rope
 identity through a snapshot-owned external project and read the captured bytes.
 Physical file changes remain inputs to publication CAS, rather than changing
 the source graph while a plan is being computed.
+Rope owns module, regular-package and namespace precedence; Infra validates the
+native resource it returns without maintaining another election algorithm.
+Import capture retains one typed lookup keyed by native root, module and relative
+level; it does not transport unused copies of the SDK's search roots.
+
+Rope owns loaded frozen stdlib aliases through its existing extension cache and
+`import_dynload_stdmods` preference. Its native module election preserves explicit
+extension precedence and searches source resources, including the supplied folder,
+before returning a frozen alias. A cached alias cannot shadow a source created
+later. Live and captured projects consume that same SDK contract without copying
+loaded module names into extension preferences.
+Blocked-import sentinels in `sys.modules` remain blocked.
 
 Import normalization treats exception targets and structural pattern captures
 as local bindings. These names do not load a package facade or reintroduce an

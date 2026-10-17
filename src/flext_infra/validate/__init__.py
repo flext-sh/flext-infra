@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.validate._pytest_diag_xml import FlextInfraPytestDiagXmlMixin
     from flext_infra.validate import _pytest_runner as _pytest_runner
+    from flext_infra.validate._pytest_diag_xml import FlextInfraPytestDiagXmlMixin
     from flext_infra.validate._pytest_runner import (
         FlextInfraPytestRunnerBase,
         FlextInfraPytestRunnerCommand,

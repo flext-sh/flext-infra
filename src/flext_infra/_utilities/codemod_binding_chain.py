@@ -710,8 +710,10 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
             """
             holder_context = cls._chain_holder_context(binding, sources)
-            if holder_context is None or isinstance(
-                binding, p.Infra.RopeImportedModule
+            if (
+                holder_context is None
+                or isinstance(binding, p.Infra.RopeImportedModule)
+                or FlextInfraUtilitiesRopeRuntimeTypes.parameter_name(binding)
             ):
                 return holder_context is not None
             holder, line, holder_text = holder_context
@@ -980,6 +982,13 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
             """
             module, scope = frame
+            binding = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
+                scope, expression
+            )
+            parameter = (
+                binding is not None
+                and FlextInfraUtilitiesRopeRuntimeTypes.parameter_name(binding)
+            )
             found_scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
                 module,
                 occurrence.offset,
@@ -990,6 +999,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                         c.Infra.StatementCategory.CLASS_DEF,
                         c.Infra.StatementCategory.FUNC_DEF,
                     }
+                    and not parameter
                     else None
                 ),
             )

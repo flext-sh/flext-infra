@@ -13,7 +13,11 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._models import _codegen as _codegen
+    from flext_infra._models import (
+        _codegen as _codegen,
+        _config as _config,
+        _git as _git,
+    )
     from flext_infra._models._codegen import (
         FlextInfraCodegen,
         FlextInfraModelsCodegenFixModels,
@@ -23,13 +27,13 @@ if TYPE_CHECKING:
         FlextInfraModelsCodegenScaffoldModels,
         FlextInfraModelsCodegenTransactionModels,
     )
-    from flext_infra._models import _config as _config
     from flext_infra._models._config import (
         FlextInfraConfigModels,
         FlextInfraConfigModelsArtifact,
         FlextInfraConfigModelsBeads,
         FlextInfraConfigModelsContexts,
         FlextInfraConfigModelsContract,
+        FlextInfraConfigModelsMake,
         FlextInfraConfigModelsMakeClean,
         FlextInfraConfigModelsMakeDocs,
         FlextInfraConfigModelsProvider,
@@ -39,13 +43,13 @@ if TYPE_CHECKING:
         FlextInfraConfigModelsRepository,
         FlextInfraConfigModelsRoot,
         FlextInfraConfigModelsScaffold,
+        FlextInfraConfigModelsSonarcloud,
         FlextInfraConfigModelsStatic,
         FlextInfraConfigModelsTemplates,
         FlextInfraConfigModelsWorkspace,
         FlextInfraConfigVocabulary,
         FlextInfraExternalCacheDirectorySpec,
     )
-    from flext_infra._models import _git as _git
     from flext_infra._models._git import (
         FlextInfraModelsGitIdentity,
         FlextInfraModelsGitWorktreeFacts,
@@ -121,6 +125,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraConfigModelsBeads",
     "FlextInfraConfigModelsContexts",
     "FlextInfraConfigModelsContract",
+    "FlextInfraConfigModelsMake",
     "FlextInfraConfigModelsMakeClean",
     "FlextInfraConfigModelsMakeDocs",
     "FlextInfraConfigModelsProvider",
@@ -130,6 +135,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraConfigModelsRepository",
     "FlextInfraConfigModelsRoot",
     "FlextInfraConfigModelsScaffold",
+    "FlextInfraConfigModelsSonarcloud",
     "FlextInfraConfigModelsStatic",
     "FlextInfraConfigModelsTemplates",
     "FlextInfraConfigModelsWorkspace",
@@ -202,6 +208,7 @@ install_lazy_exports(
         "FlextInfraConfigModelsBeads": "._config.beads",
         "FlextInfraConfigModelsContexts": "._config.contexts",
         "FlextInfraConfigModelsContract": "._config.contract",
+        "FlextInfraConfigModelsMake": "._config.make",
         "FlextInfraConfigModelsMakeClean": "._config.make_clean",
         "FlextInfraConfigModelsMakeDocs": "._config.make_docs",
         "FlextInfraConfigModelsProvider": "._config.provider",
@@ -211,6 +218,7 @@ install_lazy_exports(
         "FlextInfraConfigModelsRepository": "._config.repository",
         "FlextInfraConfigModelsRoot": "._config.root",
         "FlextInfraConfigModelsScaffold": "._config.scaffold",
+        "FlextInfraConfigModelsSonarcloud": "._config.sonarcloud",
         "FlextInfraConfigModelsStatic": "._config.static",
         "FlextInfraConfigModelsTemplates": "._config.templates",
         "FlextInfraConfigModelsWorkspace": "._config.workspace",

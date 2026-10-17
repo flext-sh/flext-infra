@@ -129,9 +129,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 )
             },
         }
-        parse_root = next(path for path in (root, *root.parents) if path.is_dir())
         with (
-            FlextInfraUtilitiesRopeCore.open_project(parse_root) as live,
+            FlextInfraUtilitiesRopeCore.open_project(
+                next(path for path in (root, *root.parents) if path.is_dir())
+            ) as live,
             closing(
                 FlextInfraRopeProject.from_atomic_reads(
                     live,
@@ -145,8 +146,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                                 *(folder.path for folder in live.get_source_folders()),
                                 *(
                                     ""
-                                    if folder == parse_root
-                                    else folder.relative_to(parse_root).as_posix()
+                                    if folder == Path(live.root.real_path)
+                                    else folder.relative_to(
+                                        live.root.real_path
+                                    ).as_posix()
                                     for folder in (
                                         root,
                                         *(
@@ -232,26 +235,17 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 continue
             original = originals.get(path)
             if original is None:
-                captured = u.Cli.atomic_read_binary_file_state(path)
-                if captured.failure:
-                    if captured.exception is not None:
-                        raise captured.exception
-                    raise ValueError(captured.error)
-                original = captured.value
+                original = FlextInfraRopeProject.AtomicReadFiles.require_value(
+                    u.Cli.atomic_read_binary_file_state(path)
+                )
                 originals[path] = original
-            captured_chain = u.Cli.atomic_plan_directory_chain(path.parent)
-            if captured_chain.failure:
-                if captured_chain.exception is not None:
-                    raise captured_chain.exception
-                raise ValueError(captured_chain.error)
+            chain = FlextInfraRopeProject.AtomicReadFiles.require_value(
+                u.Cli.atomic_plan_directory_chain(path.parent)
+            )
             declarations[path] = m.Infra.CodegenFilePlan(
                 project=root,
                 path=path,
-                before=(
-                    captured_chain.value
-                    if captured_chain.value.directories
-                    else original
-                ),
+                before=chain if chain.directories else original,
                 desired_content=content,
                 desired_mode=(
                     original.mode

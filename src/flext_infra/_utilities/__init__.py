@@ -13,6 +13,14 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_infra._utilities import (
+        _git as _git,
+        _promoted as _promoted,
+        _pyproject as _pyproject,
+        _rope as _rope,
+        _rope_analysis as _rope_analysis,
+        _semantic_cutover as _semantic_cutover,
+    )
     from flext_infra._utilities._codemod_rules_distributions import (
         FlextInfraUtilitiesCodemodRulesDistributionsMixin,
     )
@@ -59,7 +67,6 @@ if TYPE_CHECKING:
     from flext_infra._utilities._docs_scope_state import (
         FlextInfraUtilitiesDocsScopeStateMixin,
     )
-    from flext_infra._utilities import _git as _git
     from flext_infra._utilities._git import (
         FlextInfraUtilitiesGitAttestationEvidenceMixin,
         FlextInfraUtilitiesGitAttestationMixin,
@@ -101,7 +108,6 @@ if TYPE_CHECKING:
     from flext_infra._utilities._project_discovery_shape import (
         FlextInfraUtilitiesProjectDiscoveryShapeMixin,
     )
-    from flext_infra._utilities import _promoted as _promoted
     from flext_infra._utilities._promoted import (
         FlextInfraUtilitiesPromotedCommands,
         FlextInfraUtilitiesPromotedExecution,
@@ -109,7 +115,6 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesPromotedRendering,
         FlextInfraUtilitiesPromotedWorkspace,
     )
-    from flext_infra._utilities import _pyproject as _pyproject
     from flext_infra._utilities._pyproject import (
         FlextInfraUtilitiesPyprojectConformBase,
         FlextInfraUtilitiesPyprojectDocument,
@@ -119,12 +124,10 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesPyprojectTomlPhases,
         FlextInfraUtilitiesPyprojectUvSources,
     )
-    from flext_infra._utilities import _rope as _rope
     from flext_infra._utilities._rope import (
         FlextInfraRopeProject,
         FlextInfraRopeRestructure,
     )
-    from flext_infra._utilities import _rope_analysis as _rope_analysis
     from flext_infra._utilities._rope_analysis import (
         FlextInfraUtilitiesRopeAnalysisAstHelpers,
         FlextInfraUtilitiesRopeAnalysisBase,
@@ -156,7 +159,6 @@ if TYPE_CHECKING:
     from flext_infra._utilities._rope_source_bases_runtime import (
         FlextInfraUtilitiesRopeSourceBasesRuntime,
     )
-    from flext_infra._utilities import _semantic_cutover as _semantic_cutover
     from flext_infra._utilities._semantic_cutover import (
         FlextInfraUtilitiesDeclarationPayload,
         FlextInfraUtilitiesSemanticConstantConsumers,

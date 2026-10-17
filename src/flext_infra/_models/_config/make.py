@@ -1207,3 +1207,6 @@ class FlextInfraConfigModelsMake(
             default=None,
             description="Permit toolchain declarations",
         )
+
+
+__all__: list[str] = ["FlextInfraConfigModelsMake"]

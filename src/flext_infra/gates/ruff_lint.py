@@ -131,6 +131,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             execution.issues,
             recipes,
             self._overridden_hooks(execution.issues, recipes, overridden),
+            service_owned=self._service_owned_hooks(execution.issues, recipes),
         )
         return execution
 
@@ -232,6 +233,36 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                 u.Cli.atomic_write_text_file_guarded(before, repaired).unwrap()
 
     @staticmethod
+    def _service_owned_hooks(
+        issues: t.SequenceOf[m.Infra.Issue],
+        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
+    ) -> t.StrSequence:
+        """Locate the static-method findings the recipe leaves to their owner.
+
+        Service operations must stay plain public instance functions (ADR-019;
+        core discovery excludes staticmethods), so the recipe never converts
+        them.
+
+        Returns:
+            ``file:line:code`` of each finding on a service-subclass method.
+
+        """
+        by_file: MutableMapping[Path, list[m.Infra.Issue]] = {}
+        for issue in issues:
+            if recipes.get(issue.code) is c.Infra.LintFixRecipe.STATIC_METHOD:
+                by_file.setdefault(Path(issue.file), []).append(issue)
+        return sorted(
+            f"{issue.file}:{issue.line}:{issue.code}"
+            for path, found in by_file.items()
+            for issue in u.Infra.service_operation_findings(
+                path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+                found,
+                path=path,
+                recipes=recipes,
+            )
+        )
+
+    @staticmethod
     def _repaired_source(
         project_dir: Path,
         before: m.Cli.AtomicFileState,
@@ -297,8 +328,10 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         issues: t.SequenceOf[m.Infra.Issue],
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
         hooks: t.StrSequence,
+        *,
+        service_owned: t.StrSequence = (),
     ) -> None:
-        """Report retained receivers and raise on any other recipe-owned finding.
+        """Report owner-left findings and raise on any other recipe-owned one.
 
         Raises:
             ValueError: If a recipe-owned finding survives every recipe phase.
@@ -320,6 +353,12 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             u.Cli.info(
                 f"lint: {len(kept)} finding(s) stay for manual repair under the "
                 f"import law or the line budget: {', '.join(kept)}",
+            )
+        if service_owned:
+            u.Cli.info(
+                f"lint: {len(service_owned)} no-self-use finding(s) are service "
+                "operations (ADR-019), left to their owner: "
+                f"{', '.join(service_owned)}",
             )
         left = sorted(
             located

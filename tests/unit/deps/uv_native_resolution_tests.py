@@ -100,7 +100,7 @@ class TestsFlextInfraUvNativeResolution:
         The separate first-party-profile scenario qualifies the SSOT floor set.
         """
         root = tmp_path / "project"
-        root_name = "native-alias-root"
+        repository = u.Tests.repository_ref("native-alias-root")
         leaves = {
             tier: tmp_path / tier
             for tier in ("runtime", "development", "examples", "extra")
@@ -116,7 +116,7 @@ class TestsFlextInfraUvNativeResolution:
         extra_name = "feature"
         u.Tests.write_native_resolution_project(
             root,
-            root_name,
+            repository.distribution,
             dependencies=(requirements["runtime"],),
             groups=(
                 "[project.optional-dependencies]\n"
@@ -128,7 +128,6 @@ class TestsFlextInfraUvNativeResolution:
                 f"{json.dumps(requirements['examples'])}]\n"
             ),
         )
-        repository = u.Tests.repository_ref(root_name)
         conformed = TestsFlextInfraUvNativeResolution._conformed_alias_document(
             root,
             repository,
@@ -166,13 +165,15 @@ class TestsFlextInfraUvNativeResolution:
             view,
         )
         tm.that(
-            {root_name, *names.values()}.issubset(
+            {repository.distribution, *names.values()}.issubset(
                 {package.name for package in locked.package},
             ),
             eq=True,
         )
         package = next(
-            package for package in locked.package if package.name == root_name
+            package
+            for package in locked.package
+            if package.name == repository.distribution
         )
         tm.that(
             {dependency.name for dependency in package.dependencies},
@@ -780,11 +781,10 @@ class TestsFlextInfraUvNativeResolution:
         revision = tm.ok(
             u.Cli.capture([c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=remote),
         ).strip()
-        backedge = f"{root_name} @ git+{remote.as_uri()}@{revision}"
         u.Tests.write_native_resolution_project(
             provider,
             provider_name,
-            dependencies=(backedge,),
+            dependencies=(f"{root_name} @ git+{remote.as_uri()}@{revision}",),
         )
         u.Tests.initialize_git_repo(provider)
         provider_revision = tm.ok(

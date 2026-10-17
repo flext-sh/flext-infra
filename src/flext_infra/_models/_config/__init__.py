@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from flext_infra._models._config.external_cache import (
         FlextInfraExternalCacheDirectorySpec,
     )
+    from flext_infra._models._config.make import FlextInfraConfigModelsMake
     from flext_infra._models._config.make_clean import FlextInfraConfigModelsMakeClean
     from flext_infra._models._config.make_docs import FlextInfraConfigModelsMakeDocs
     from flext_infra._models._config.provider import FlextInfraConfigModelsProvider
@@ -32,6 +33,7 @@ if TYPE_CHECKING:
     from flext_infra._models._config.repository import FlextInfraConfigModelsRepository
     from flext_infra._models._config.root import FlextInfraConfigModelsRoot
     from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
+    from flext_infra._models._config.sonarcloud import FlextInfraConfigModelsSonarcloud
     from flext_infra._models._config.static import FlextInfraConfigModelsStatic
     from flext_infra._models._config.templates import FlextInfraConfigModelsTemplates
     from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
@@ -44,6 +46,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraConfigModelsBeads",
     "FlextInfraConfigModelsContexts",
     "FlextInfraConfigModelsContract",
+    "FlextInfraConfigModelsMake",
     "FlextInfraConfigModelsMakeClean",
     "FlextInfraConfigModelsMakeDocs",
     "FlextInfraConfigModelsProvider",
@@ -53,6 +56,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraConfigModelsRepository",
     "FlextInfraConfigModelsRoot",
     "FlextInfraConfigModelsScaffold",
+    "FlextInfraConfigModelsSonarcloud",
     "FlextInfraConfigModelsStatic",
     "FlextInfraConfigModelsTemplates",
     "FlextInfraConfigModelsWorkspace",
@@ -69,6 +73,7 @@ install_lazy_exports(
         "FlextInfraConfigModelsBeads": ".beads",
         "FlextInfraConfigModelsContexts": ".contexts",
         "FlextInfraConfigModelsContract": ".contract",
+        "FlextInfraConfigModelsMake": ".make",
         "FlextInfraConfigModelsMakeClean": ".make_clean",
         "FlextInfraConfigModelsMakeDocs": ".make_docs",
         "FlextInfraConfigModelsProvider": ".provider",
@@ -78,6 +83,7 @@ install_lazy_exports(
         "FlextInfraConfigModelsRepository": ".repository",
         "FlextInfraConfigModelsRoot": ".root",
         "FlextInfraConfigModelsScaffold": ".scaffold",
+        "FlextInfraConfigModelsSonarcloud": ".sonarcloud",
         "FlextInfraConfigModelsStatic": ".static",
         "FlextInfraConfigModelsTemplates": ".templates",
         "FlextInfraConfigModelsWorkspace": ".workspace",

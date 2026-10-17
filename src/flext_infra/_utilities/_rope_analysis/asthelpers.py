@@ -215,10 +215,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         """
         if not isinstance(root, ast.AST):
             return []
-        return [
-            FlextInfraUtilitiesRopeAnalysisAstHelpers.ensure_ast_node(node)
-            for node in ast.walk(root)
-        ]
+        return tuple(ast.walk(root))
 
     @staticmethod
     def ast_parent_map(

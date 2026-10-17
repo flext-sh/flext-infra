@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, MutableMapping, Sequence
-from functools import lru_cache
+from functools import cache, lru_cache
 from pathlib import Path
 
 from flext_cli import u
@@ -127,7 +127,7 @@ class FlextInfraUtilitiesCodemodRules(
         if observed.content is None:
             msg = f"codemod utility input is absent: {path}"
             raise ValueError(msg)
-        for document in u.Cli.yaml_parse_documents(
+        for document in FlextInfraUtilitiesCodemodRules.parse_yaml_documents(
             observed.content.decode(c.DEFAULT_ENCODING)
         ).unwrap():
             identity = document.get("id")
@@ -224,7 +224,7 @@ class FlextInfraUtilitiesCodemodRules(
             if observed.content is None:
                 msg = f"codemod rule input is absent: {path}"
                 raise ValueError(msg)
-            documents[path] = u.Cli.yaml_parse_documents(
+            documents[path] = cls.parse_yaml_documents(
                 observed.content.decode(c.DEFAULT_ENCODING)
             ).unwrap()
         elected = [
@@ -957,6 +957,25 @@ class FlextInfraUtilitiesCodemodRules(
             m.Infra.CodemodRule.model_validate_json(payload.value),
         )
 
+    @staticmethod
+    @cache
+    def _yaml_documents_json(text: str) -> p.Result[str]:
+        """Memoize immutable canonical documents from the shared YAML ingress.
+
+        Returns:
+            Serialized validated documents or the original parsing failure.
+
+        """
+        parsed = u.Cli.yaml_parse_documents(text)
+        if parsed.failure:
+            return r[str].from_failure(parsed)
+        return r[str].ok(
+            u
+            .type_adapter(tuple[t.JsonMapping, ...])
+            .dump_json(tuple(parsed.value))
+            .decode(c.DEFAULT_ENCODING)
+        )
+
     @classmethod
     def parse_yaml_documents(
         cls,
@@ -968,7 +987,12 @@ class FlextInfraUtilitiesCodemodRules(
             The resulting ``p.Result[t.SequenceOf[t.JsonMapping]]``.
 
         """
-        return u.Cli.yaml_parse_documents(text)
+        parsed = cls._yaml_documents_json(text)
+        if parsed.failure:
+            return r[t.SequenceOf[t.JsonMapping]].from_failure(parsed)
+        return r[t.SequenceOf[t.JsonMapping]].ok(
+            u.type_adapter(tuple[t.JsonMapping, ...]).validate_json(parsed.value)
+        )
 
     @classmethod
     def _parse_rules(
@@ -984,7 +1008,7 @@ class FlextInfraUtilitiesCodemodRules(
         """
         rules: list[m.Infra.CodemodRule] = []
         for resource, text in sources:
-            documents = u.Cli.yaml_parse_documents(text)
+            documents = cls.parse_yaml_documents(text)
             if documents.failure:
                 return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(documents)
             for payload in documents.value:
