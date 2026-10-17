@@ -87,8 +87,7 @@ class FlextInfraDocAuditor(
             The resulting ``m.Infra.DocsPhaseReport``.
 
         """
-        checks = sorted(self.resolve_checks(params.check))
-        issues = self._collect_issues(scope, checks)
+        checks, issues = self._collect_issues(scope, params.check)
         docstring_coverage = (
             u.Infra.docs_public_docstring_coverage(scope)
             if "docstrings" in checks or params.docstring_min is not None

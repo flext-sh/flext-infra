@@ -383,18 +383,14 @@ class FlextInfraCodegenLazyInit(
             lazy_init=config.Infra.tooling.lazy_init,
         )
         u.Cli.info(f"lazy-init: planning {len(package_dirs)} package dirs")
-        package_plans = self._plan_all_inits(
+        package_plans = planner.plan_all_inits(
             package_dirs,
-            planner=planner,
             target_package_dir=target_package_dir,
         )
-        if planner.collision_count:
-            return result_type.fail(
-                "lazy-init public export ownership is ambiguous: "
-                f"{planner.collision_count} collision(s)",
-            )
+        if package_plans.failure:
+            return result_type.from_failure(package_plans)
         file_plans = self._build_file_plans(
-            package_plans,
+            package_plans.value,
             index=workspace_index,
             snapshots=snapshots,
         )
@@ -406,7 +402,7 @@ class FlextInfraCodegenLazyInit(
                 phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
                 files=all_plans,
                 inputs=tuple(snapshots[path] for path in sorted(snapshots)),
-                publications=tuple(package_plans),
+                publications=package_plans.value,
             ),
         )
 

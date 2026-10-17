@@ -92,10 +92,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The complete repository plan or its first planning failure.
 
         """
-        if request.what in {
-            c.Infra.CodegenConformSurface.LAZY_INIT,
-            c.Infra.CodegenConformSurface.FACADES,
-        }:
+        if request.what in c.Infra.FILE_ONLY_SURFACES:
             return self._plan_single_surface(request, inputs=inputs).map(
                 itemgetter(0),
             )
@@ -248,12 +245,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             update={
                 "files": self._bind_codegen_sources(analyzed.value.files, inputs),
                 "inputs": (*analyzed.value.inputs, *inputs.sources),
-            },
-        )
-        analysis = analysis.model_copy(
-            update={
-                "issues": (*analysis.issues, *self.planning_issues),
-                "exception": analysis.exception or self.planning_exception,
+                "issues": (*analyzed.value.issues, *self.planning_issues),
+                "exception": analyzed.value.exception or self.planning_exception,
             },
         )
         plan = m.Infra.CodegenPlan(
@@ -541,12 +534,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     inputs,
                 ),
                 "inputs": (*planned.value.inputs, *inputs.sources),
-            },
-        )
-        analysis = analysis.model_copy(
-            update={
-                "issues": (*analysis.issues, *self.planning_issues),
-                "exception": analysis.exception or self.planning_exception,
+                "issues": (*planned.value.issues, *self.planning_issues),
+                "exception": planned.value.exception or self.planning_exception,
             },
         )
         plan = m.Infra.CodegenPlan(
@@ -594,26 +583,17 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 root,
                 inputs=inputs,
                 allow_unprovisioned_members=(
-                    request.what
-                    in {
-                        c.Infra.CodegenConformSurface.MAKEFILE,
-                        c.Infra.CodegenConformSurface.DOCS_CONFIG,
-                        c.Infra.CodegenConformSurface.ENVRC,
-                        c.Infra.CodegenConformSurface.PYPROJECT,
-                        c.Infra.CodegenConformSurface.MISE_CONFIG,
-                    }
+                    request.what in c.Infra.ALLOW_UNPROVISIONED_SURFACES
                 ),
             )
             if workspace_result.failure:
                 return result_type.from_failure(workspace_result)
             workspace = workspace_result.value
         current_repository = workspace.repository
-        if self.initial_workspace is None and request.what not in {
-            c.Infra.CodegenConformSurface.MAKEFILE,
-            c.Infra.CodegenConformSurface.ENVRC,
-            c.Infra.CodegenConformSurface.PYPROJECT,
-            c.Infra.CodegenConformSurface.MISE_CONFIG,
-        }:
+        if (
+            self.initial_workspace is None
+            and request.what not in c.Infra.DECLARED_TARGET_SURFACES
+        ):
             current_target_result = FlextInfraWorkspaceDetector.conform_target(
                 root,
                 workspace,
@@ -1071,35 +1051,24 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The resulting ``p.Result[m.Infra.WorkspaceSpec]``.
 
         """
-        if repository.path != Path():
-            declared_member = FlextInfraWorkspaceDetector.load_workspace_spec(
-                repository_root,
-                inputs=inputs,
-            )
-            if declared_member.failure:
-                return r[m.Infra.WorkspaceSpec].from_failure(declared_member)
-            local_repository = repository.model_copy(update={"path": Path()})
-            # The parent owns topology and selection; the member owns its
-            # project metadata, including the runtime dependency profile
-            # and the namespace production scope it declares.
-            return r[m.Infra.WorkspaceSpec].ok(
-                m.Infra.WorkspaceSpec(
-                    name=repository.name,
-                    docs_audit=declared_member.value.docs_audit,
-                    beads=workspace.beads,
-                    repository=local_repository,
-                    project=declared_member.value.project,
-                    namespace_scan_dirs=(declared_member.value.namespace_scan_dirs),
-                    candidate_dependencies=workspace.candidate_dependencies,
-                ),
-            )
-        local_workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
+        declared_member = FlextInfraWorkspaceDetector.load_workspace_spec(
             repository_root,
             inputs=inputs,
         )
-        if local_workspace_result.failure:
-            return r[m.Infra.WorkspaceSpec].from_failure(local_workspace_result)
-        return r[m.Infra.WorkspaceSpec].ok(local_workspace_result.value)
+        if declared_member.failure or repository.path == Path():
+            return declared_member
+        # The parent owns topology; the member owns its local project metadata.
+        return r[m.Infra.WorkspaceSpec].ok(
+            m.Infra.WorkspaceSpec(
+                name=repository.name,
+                docs_audit=declared_member.value.docs_audit,
+                beads=workspace.beads,
+                repository=repository.model_copy(update={"path": Path()}),
+                project=declared_member.value.project,
+                namespace_scan_dirs=declared_member.value.namespace_scan_dirs,
+                candidate_dependencies=workspace.candidate_dependencies,
+            ),
+        )
 
     def _governed_repository_plans(
         self,

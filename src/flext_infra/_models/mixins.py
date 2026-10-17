@@ -196,11 +196,6 @@ class FlextInfraModelsMixins:
 
     # ═══════════════════ VIOLATION/DETAIL MIXINS ═══════════════════
 
-    class ViolationDetailMixin(m.BaseModel):
-        """Shared violation detail field."""
-
-        detail: Annotated[str, m.Field(description="Violation detail")] = ""
-
     class ErrorDetailMixin(m.BaseModel):
         """Shared error detail field."""
 
@@ -234,9 +229,7 @@ class FlextInfraModelsMixins:
     class ProjectNamesListMixin(m.BaseModel):
         """Shared concrete project-name collection."""
 
-        project_names: Annotated[t.StrSequence, m.Field(default_factory=tuple)] = (
-            m.Field(default_factory=tuple)
-        )
+        project_names: t.StrSequence = m.Field(default_factory=tuple)
 
 
 __all__: list[str] = ["FlextInfraModelsMixins"]

@@ -396,29 +396,29 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         )
         if managed_result.failure:
             return result_type.from_failure(managed_result)
-        planned = list(managed_result.value)
-        planned.extend(custom_result.value)
         final_inputs = (
             self.planned_source_render_inputs(
                 render_inputs,
-                [*lazy_result.value, *planned],
+                [*lazy_result.value, *managed_result.value, *custom_result.value],
             )
             if contract.pyproject
             else render_inputs
         )
-        if contract.pyproject and final_inputs is not render_inputs:
-            final_templates = self._plan_existing_templates(
+        final_templates = (
+            self._plan_existing_templates(
                 render_inputs=final_inputs,
                 contract=contract,
             )
-            if final_templates.failure:
-                return result_type.from_failure(final_templates)
-            planned = [*final_templates.value, *planned[len(managed_result.value) :]]
-        return self._facade_runtime_plans(
-            root,
-            tuple(planned),
-            custom_result.value,
-            lazy_result.value,
+            if contract.pyproject and final_inputs is not render_inputs
+            else managed_result
+        )
+        return final_templates.flat_map(
+            lambda templates: self._facade_runtime_plans(
+                root,
+                (*templates, *custom_result.value),
+                custom_result.value,
+                lazy_result.value,
+            ),
         )
 
     @staticmethod

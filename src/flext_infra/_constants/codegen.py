@@ -20,6 +20,7 @@ from flext_infra._constants import (
     FlextInfraConstantsCodegenRenderNames,
     FlextInfraConstantsWorkspace,
 )
+from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -31,6 +32,37 @@ class FlextInfraConstantsCodegen(
     FlextInfraConstantsCodegenRenderNames,
 ):
     """Namespace for all codegen-related constants."""
+
+    FILE_ONLY_SURFACES: ClassVar[
+        frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
+    ] = frozenset((
+        FlextInfraConfigVocabulary.CodegenConformSurface.LAZY_INIT,
+        FlextInfraConfigVocabulary.CodegenConformSurface.FACADES,
+    ))
+    "Surfaces planned for one exact module destination, never repository fans."
+
+    SELF_SCOPE_SURFACES: ClassVar[
+        frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
+    ] = frozenset((
+        FlextInfraConfigVocabulary.CodegenConformSurface.ENVRC,
+        FlextInfraConfigVocabulary.CodegenConformSurface.MISE_CONFIG,
+    ))
+    "Surfaces restricted to the self repository scope."
+
+    DECLARED_TARGET_SURFACES: ClassVar[
+        frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
+    ] = SELF_SCOPE_SURFACES | frozenset((
+        FlextInfraConfigVocabulary.CodegenConformSurface.MAKEFILE,
+        FlextInfraConfigVocabulary.CodegenConformSurface.PYPROJECT,
+    ))
+    "Self-owned configuration is planned against the declared repository target."
+
+    ALLOW_UNPROVISIONED_SURFACES: ClassVar[
+        frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
+    ] = DECLARED_TARGET_SURFACES | frozenset((
+        FlextInfraConfigVocabulary.CodegenConformSurface.DOCS_CONFIG,
+    ))
+    "Declared configuration and docs can be rendered before member provisioning."
 
     MISE_ARTIFACTS_STATE_DIRECTORY: ClassVar[Path] = Path(".state") / "mise-artifacts"
 
@@ -73,14 +105,16 @@ class FlextInfraConstantsCodegen(
         ("utilities.py", "Utilities", "FlextUtilities", "Utility functions"),
     )
     "Base module definitions for src/: (filename, class_suffix, base_class, docstring)."
-    TESTS_MODULES: ClassVar[t.VariadicTuple[t.Quad[str, str, str, str]]] = (
-        ("constants.py", "Constants", "FlextTestsConstants", "Test constants"),
-        ("typings.py", "Types", "FlextTestsTypes", "Test type aliases"),
-        ("protocols.py", "Protocols", "FlextTestsProtocols", "Test protocols"),
-        ("models.py", "Models", "FlextTestsModels", "Test models"),
-        ("utilities.py", "Utilities", "FlextTestsUtilities", "Test utilities"),
+    TESTS_MODULES: ClassVar[t.VariadicTuple[t.Quad[str, str, str, str]]] = tuple(
+        (
+            filename,
+            suffix,
+            base_class.replace("Flext", "FlextTests", 1),
+            f"Test {description.lower()}",
+        )
+        for filename, suffix, base_class, description in SRC_MODULES
     )
-    "Base module definitions for tests/: (filename, class_suffix, base_class, doc)."
+    "Test modules inherit the source family shape through the test foundation."
     # Canonical root config/settings pair: a
     # private `_config.py`/`_settings.py` module exporting the singleton.
     # Consumed by the scaffold generator.
@@ -122,18 +156,8 @@ class FlextInfraConstantsCodegen(
         LAZY_INIT = "lazy_init"
         CENSUS_AFTER = "census_after"
 
-    PIPELINE_STAGE_ORDER: ClassVar[t.VariadicTuple[PipelineStage]] = (
-        PipelineStage.DISCOVER,
-        PipelineStage.TOOLCHAIN,
-        PipelineStage.PY_TYPED,
-        PipelineStage.CENSUS_BEFORE,
-        PipelineStage.SCAFFOLD,
-        PipelineStage.AUTO_FIX,
-        PipelineStage.DEPS,
-        PipelineStage.LAZY_INIT,
-        PipelineStage.CENSUS_AFTER,
-    )
-    "Ordered sequence of pipeline stage identifiers."
+    PIPELINE_STAGE_ORDER: ClassVar[t.VariadicTuple[PipelineStage]] = tuple(PipelineStage)
+    "Stage execution follows the canonical enumeration's declaration order."
     PIPELINE_KEY_DRY_RUN: ClassVar[str] = "dry_run"
     "Config key for pipeline dry-run mode."
 

@@ -844,9 +844,12 @@ class TestsFlextInfraLazyInitHelpers:
         captured = capsys.readouterr()
         tm.that(captured.out + captured.err, lacks="WARN:")
 
+    @pytest.mark.parametrize("export_names", [("Shared",), ("Shared", "Other")])
     def test_duplicate_public_export_fails_before_generation(
         self,
         tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        export_names: t.StrSequence,
     ) -> None:
         """Two owners of one public name stop the phase before any file plan.
 
@@ -857,21 +860,30 @@ class TestsFlextInfraLazyInitHelpers:
         """
         repository_root, package_root = self._workspace(tmp_path)
         before = self._generated_init(package_root)
-        (package_root / "api.py").write_text(
-            "from __future__ import annotations\n\nclass Shared:\n    pass\n\n"
-            '__all__: list[str] = ["Shared"]\n',
-            encoding=c.DEFAULT_ENCODING,
-        )
-        (package_root / "service.py").write_text(
-            "from __future__ import annotations\n\nclass Shared:\n    pass\n\n"
-            '__all__: list[str] = ["Shared"]\n',
-            encoding=c.DEFAULT_ENCODING,
-        )
+        for index, name in enumerate(export_names):
+            owner_dir = package_root if index == 0 else package_root / name.lower()
+            if owner_dir != package_root:
+                owner_dir.mkdir()
+                (owner_dir / c.Infra.INIT_PY).write_bytes(b"")
+            for module_name in ("api", "service"):
+                (owner_dir / f"{module_name}.py").write_text(
+                    "from __future__ import annotations\n\n"
+                    f"class {name}:\n    pass\n\n"
+                    f"__all__: list[str] = [{name!r}]\n",
+                    encoding=c.DEFAULT_ENCODING,
+                )
+        initializers = tuple(package_root.rglob(c.Infra.INIT_PY))
+        original_bytes = tuple(path.read_bytes() for path in initializers)
 
         planned = u.Tests.plan_lazy_init(repository_root)
 
         tm.that(planned.failure, eq=True)
         tm.that(planned.error, has="ambiguous")
+        tm.that(planned.error, has=f"{len(export_names)} collision(s)")
+        captured = capsys.readouterr()
+        for name in export_names:
+            tm.that(captured.out + captured.err, has=f"export collision for {name!r}")
+        tm.that(tuple(path.read_bytes() for path in initializers), eq=original_bytes)
         # The refusal is PRE-EFFECT: the facade on disk is untouched and never
         # gained the contested name.
         after = self._generated_init(package_root)

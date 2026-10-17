@@ -8,12 +8,42 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from flext_infra import c
 from tests import p, tm, u
 
 
 class TestsFlextInfraFacadeAuthoredRuntime:
     """Exercise preservation through generation and a fresh public consumer."""
+
+    @staticmethod
+    @pytest.mark.parametrize("consumer_fails", [False, True])
+    def test_source_epoch_failure_preserves_consumer_exception(
+        tmp_path: Path,
+        *,
+        consumer_fails: bool,
+    ) -> None:
+        """Changed inputs reject success but never replace a consumer's exception."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / c.Infra.INIT_PY
+        tm.ok(u.Cli.atomic_write_text_file(path, ""))
+        failure = RuntimeError("consumer failed before source verification")
+        with (
+            pytest.raises(
+                RuntimeError if consumer_fails else ValueError,
+                match="consumer failed|atomic source changed",
+            ) as caught,
+            u.Infra.facade_source_project(root) as (project, _, _),
+        ):
+            project.get_pymodule(project.get_resource(path.relative_to(root).as_posix()))
+            tm.ok(u.Cli.atomic_write_text_file(path, "# Changed source epoch\n"))
+            if consumer_fails:
+                raise failure
+        if consumer_fails:
+            tm.that(caught.value is failure)
+        else:
+            tm.that(caught.value is not failure)
 
     @staticmethod
     def test_declared_projection_preserves_authored_bindings(
@@ -99,12 +129,17 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             for path in files
         )
         with u.Infra.facade_source_project(root, source_states=states) as binding:
-            _, consumed, sources = binding
+            project, consumed, sources = binding
+            project.get_pymodule(
+                project.get_resource(
+                    (installed / c.Infra.UTILITIES_PY).relative_to(root).as_posix()
+                )
+            )
             tm.that(
                 {path.resolve() for path in sources},
                 eq={(package / c.Infra.INIT_PY).resolve()},
             )
             tm.that(
-                {state.path.resolve() for state in consumed()},
+                {state.path.resolve() for state in consumed()[0]},
                 has=(installed / c.Infra.UTILITIES_PY).resolve(),
             )

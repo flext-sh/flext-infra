@@ -91,6 +91,32 @@ class TestsFlextInfraAuditor:
         tm.ok(result)
 
     @staticmethod
+    @pytest.mark.parametrize("check", ["", " , , ", "links, all, unknown", "all,all"])
+    def test_all_selection_preserves_reports(
+        auditor: FlextInfraDocAuditor,
+        tmp_path: Path,
+        check: str,
+    ) -> None:
+        """Implicit and mixed all selections preserve the full public audit output."""
+        workspace = u.Tests.create_docs_workspace(tmp_path)
+        scope = m.Infra.DocScope(
+            name="root",
+            path=workspace,
+            report_dir=workspace / ".reports/docs",
+        )
+        baseline = auditor.audit_scope(scope, params=m.Infra.AuditScopeParams())
+        summary_path = scope.report_dir / c.Infra.DOCS_AUDIT_SUMMARY_FILENAME
+        report_path = scope.report_dir / c.Infra.DOCS_AUDIT_REPORT_FILENAME
+        summary = summary_path.read_text(encoding=c.DEFAULT_ENCODING)
+        markdown = report_path.read_text(encoding=c.DEFAULT_ENCODING)
+
+        report = auditor.audit_scope(scope, params=m.Infra.AuditScopeParams(check=check))
+
+        tm.that(report.model_dump(), eq=baseline.model_dump())
+        tm.that(summary_path.read_text(encoding=c.DEFAULT_ENCODING), eq=summary)
+        tm.that(report_path.read_text(encoding=c.DEFAULT_ENCODING), eq=markdown)
+
+    @staticmethod
     def test_issue_structure() -> None:
         """Test issue structure."""
         issue = m.Infra.AuditIssue(

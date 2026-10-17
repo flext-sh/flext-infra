@@ -689,10 +689,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             bool,
             m.Field(description="Whether every governed output is represented"),
         ] = False
-        dependencies_only: Annotated[
-            bool,
-            m.Field(description="Whether planning is dependency-only"),
-        ] = False
         runtime_bindings: Annotated[
             bool,
             m.Field(description="Select only declared checkout-local runtime bindings"),
@@ -747,10 +743,7 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 ValueError: If the module or repository selector is incompatible.
 
             """
-            file_only = self.what in {
-                c.Infra.CodegenConformSurface.LAZY_INIT,
-                c.Infra.CodegenConformSurface.FACADES,
-            }
+            file_only = self.what in c.Infra.FILE_ONLY_SURFACES
             facades = self.what == c.Infra.CodegenConformSurface.FACADES
             if self.module is not None and not file_only:
                 msg = "--module belongs only to lazy-init or facades"
@@ -766,11 +759,7 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 msg = "an exact module requires the self repository scope"
                 raise ValueError(msg)
             if (
-                self.what
-                in {
-                    c.Infra.CodegenConformSurface.MISE_CONFIG,
-                    c.Infra.CodegenConformSurface.ENVRC,
-                }
+                self.what in c.Infra.SELF_SCOPE_SURFACES
                 and self.scope != c.Infra.CodegenConformScope.SELF
             ):
                 msg = f"{self.what} requires the self repository scope"

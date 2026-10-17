@@ -79,11 +79,6 @@ class FlextInfraAccessorOriginResolver:
         module = u.Infra.module_name_for_file(path, project_root=project_root)
         return module.split(".", 1)[0] == origin
 
-    @property
-    def rope_project(self) -> p.Infra.RopeProject:
-        """The one project whose original bindings this resolver authenticates."""
-        return self._rope_project
-
     def module(self, py_file: Path) -> p.Infra.RopePyModule:
         """Return the original module snapshot or fail on an unknown source.
 
@@ -305,19 +300,65 @@ class FlextInfraAccessorOriginResolver:
         self._bindings[str(py_file)] = bindings
         self._introduced[str(py_file)] = tuple(introduced)
 
-    def introduced_methods(self, py_file: Path) -> tuple[m.Infra.Object, ...]:
-        """Return actual class introducers, including names outside the rename catalog.
+    def collect_manual_warnings(
+        self,
+        rope_project: t.Infra.RopeProject,
+        py_file: Path,
+        source: str,
+        *,
+        rules: t.SequenceOf[m.Infra.AccessorMigrationRule],
+    ) -> tuple[m.Infra.AccessorMigrationChange, ...]:
+        """Authenticate the snapshot and report selected introducing accessors.
 
         Returns:
-            Existing canonical object records for selected direct introductions.
+            Manual review findings from the resolver's captured prefix policy.
+
+        Raises:
+            ValueError: If the source/project differs from the original Rope snapshot.
 
         """
+        if (
+            rope_project is not self._rope_project
+            or source != self.module(py_file).source_code
+        ):
+            msg = f"accessor discovery source differs from Rope snapshot: {py_file}"
+            raise ValueError(msg)
         self._index(py_file)
-        return tuple(
-            item
-            for item in self._introduced[str(py_file)]
-            if self._declaration_selected(py_file, item)
-        )
+        warnings: list[m.Infra.AccessorMigrationChange] = []
+        for declaration in self._introduced[str(py_file)]:
+            if not self._declaration_selected(py_file, declaration):
+                continue
+            name = declaration.name
+            prefix = next(
+                (
+                    prefix
+                    for prefix in self._policy.forbidden_prefixes
+                    if name.startswith(prefix)
+                ),
+                None,
+            )
+            if prefix is None or name.startswith("_"):
+                continue
+            rule = next((rule for rule in rules if rule.source_name == name), None)
+            if rule is not None and self.within_origin(str(py_file), origin=rule.origin):
+                continue
+            warnings.append(
+                m.Infra.AccessorMigrationChange(
+                    file=str(py_file),
+                    line=declaration.line,
+                    original_name=name,
+                    replacement_name="",
+                    automated=False,
+                    reason=(
+                        "Owned introducing method "
+                        f"{declaration.module_name}.{declaration.scope_path} "
+                        "violates no_accessor_methods; "
+                        f"{self._policy.forbidden_prefixes[prefix]}; "
+                        "an explicit domain rename decision is required."
+                    ),
+                ),
+            )
+        return tuple(warnings)
 
     def _declaration_selected(self, path: Path, item: m.Infra.Object) -> bool:
         """Select declaring identities while retaining all their consumers.

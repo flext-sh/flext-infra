@@ -67,6 +67,15 @@ native gates and receipt requirements. A successful publication is not proof of
 lint/type/test success or idempotence: run the applicable gates and repeated
 gen/fix/fmt on the unchanged candidate, and report failed or unexecuted scopes.
 
+Configuration vocabulary belongs to the bootstrap-safe `_constants/config.py`
+owner, exposed through `c.Infra`; schema modules validate that vocabulary rather
+than redeclaring it. Configurable values still come from the effective config or
+settings spec. Conform surface groups share their canonical declarations, and
+already validated request enums pass through planning without reconstruction.
+Dependency-only APPLY is rejected before target initialization; CHECK remains an
+observation of published evidence. YAML rule streams use the shared CLI parser
+so document separators never change multiline fixture contents.
+
 Protected-edit snapshots reobserve the native checker on every call. They do not
 reuse Python-level receipts keyed only by source bytes and gate names: those keys
 cannot authenticate effective configuration, tool runtime or imported dependencies.

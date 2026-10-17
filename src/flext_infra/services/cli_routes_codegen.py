@@ -197,35 +197,38 @@ class FlextInfraCodegenRoutes:
                 )
             ),
         ),
-        c.Infra.CLI_GROUP_DEPS: tuple(
+        c.Infra.CLI_GROUP_DEPS: (
             m.Cli.ResultCommandRoute(
-                name=route_name,
-                help_text=help_text,
-                model_cls=model_cls,
-                handler=model_cls.execute,
-            )
-            for route_name, help_text, model_cls in (
-                (
-                    "detect",
-                    "Detect runtime vs dev dependencies",
-                    FlextInfraRuntimeDevDependencyDetector,
-                ),
-                (
-                    "extra-paths",
-                    "Synchronize pyright/mypy extraPaths",
-                    FlextInfraExtraPathsManager,
-                ),
-                (
-                    "modernize",
-                    "Modernize workspace pyproject files",
-                    FlextInfraPyprojectModernizer,
-                ),
-                (
-                    "verify-locks",
-                    "Verify committed generated TOML locks parse and repeat no section",
-                    FlextInfraLockIntegrityVerifier,
-                ),
-            )
+                name="detect",
+                help_text="Detect runtime vs dev dependencies",
+                model_cls=m.Infra.DetectCommand,
+                handler=FlextInfraRuntimeDevDependencyDetector.execute,
+            ),
+            *(
+                m.Cli.ResultCommandRoute(
+                    name=route_name,
+                    help_text=help_text,
+                    model_cls=model_cls,
+                    handler=model_cls.execute,
+                )
+                for route_name, help_text, model_cls in (
+                    (
+                        "extra-paths",
+                        "Synchronize pyright/mypy extraPaths",
+                        FlextInfraExtraPathsManager,
+                    ),
+                    (
+                        "modernize",
+                        "Modernize workspace pyproject files",
+                        FlextInfraPyprojectModernizer,
+                    ),
+                    (
+                        "verify-locks",
+                        "Verify committed generated TOML locks parse and repeat no section",
+                        FlextInfraLockIntegrityVerifier,
+                    ),
+                )
+            ),
         ),
     }
 

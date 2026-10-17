@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, infra, m, main
+from flext_infra import c, infra, m, main, t
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import tm, u
 
@@ -107,7 +107,7 @@ class TestsFlextInfraModEvidenceInputs:
         """One invocation keeps provider bindings and local utilities separate."""
         rules: list[m.Infra.CodemodRule] = []
         rulesets: list[m.Infra.CodemodRuleset] = []
-        for provider, literal in (("left", "left"), ("right", "right")):
+        for provider in ("left", "right"):
             catalog = tmp_path / "providers" / provider
             rule_directory = catalog / c.Infra.CODEMOD_RULE_DIRS_KEY
             utility_directory = catalog / c.Infra.CODEMOD_UTIL_DIRS_KEY
@@ -129,7 +129,7 @@ class TestsFlextInfraModEvidenceInputs:
                     {
                         "id": "shared",
                         "language": "Python",
-                        "rule": {"pattern": repr(literal)},
+                        "rule": {"pattern": repr(provider)},
                     },
                 )
             )
@@ -488,9 +488,8 @@ class TestsFlextInfraModEvidenceInputs:
         encoded = receipt.path.read_bytes()
         restored = m.Infra.ModScanEvidence.model_validate_json(encoded)
         source_state = tm.not_none(report.entries[0].source_state)
-        strings = u.type_adapter(str)
-        content = strings.dump_json(
-            strings.validate_python(
+        content = t.Infra.STR_ADAPTER.dump_json(
+            t.Infra.STR_ADAPTER.validate_python(
                 source_state.model_dump(mode="json")["content"],
                 strict=True,
             ),
