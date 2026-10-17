@@ -798,6 +798,7 @@ _bootstrap_setup_tools:
 	"$${mise_bootstrap_bin}" -C "$(PROJECT_ROOT)" install --locked --yes "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "node" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza"; \
 	bootstrap_stage=shims; \
 	"$${mise_bootstrap_bin}" reshim; \
+	if [ -n "$${GITHUB_PATH:-}" ]; then printf '%s\n' "$${MISE_SHIMS_DIR}" >> "$${GITHUB_PATH}"; fi; \
 	printf 'setup: mise %s provisioning complete\n' "$${mise_receipt}"; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
 	bootstrap_stage=lifecycle; \
@@ -2809,8 +2810,8 @@ export FLEXT_NEW_FLEXT_SOURCE := $(value FLEXT_SOURCE)
 export FLEXT_NEW_YEAR := $(value YEAR)
 
 
-_builtin-project-new: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) codegen new --apply --name "$$FLEXT_NEW_NAME" --kind "$$FLEXT_NEW_KIND" --output-root "$$FLEXT_NEW_OUTPUT_ROOT" --provider "$$FLEXT_NEW_PROVIDER" --repository-url "$$FLEXT_NEW_REPOSITORY_URL" --repository-branch "$$FLEXT_NEW_REPOSITORY_BRANCH" --flext-repository-url "$$FLEXT_NEW_FLEXT_REPOSITORY_URL" --flext-repository-ref "$$FLEXT_NEW_FLEXT_REPOSITORY_REF" --license "$$FLEXT_NEW_LICENSE" --author-name "$$FLEXT_NEW_AUTHOR_NAME" --author-email "$$FLEXT_NEW_AUTHOR_EMAIL" --upstream "$$FLEXT_NEW_UPSTREAM" --flext-source "$$FLEXT_NEW_FLEXT_SOURCE" --year "$$FLEXT_NEW_YEAR"
+_builtin-project-new: _builtin_require_interpreter
+	@$(PROJECT_FLEXT_INFRA) codegen new --repository-root "$(PROJECT_ROOT)" --apply --name "$$FLEXT_NEW_NAME" --kind "$$FLEXT_NEW_KIND" --output-root "$$FLEXT_NEW_OUTPUT_ROOT" --provider "$$FLEXT_NEW_PROVIDER" --repository-url "$$FLEXT_NEW_REPOSITORY_URL" --repository-branch "$$FLEXT_NEW_REPOSITORY_BRANCH" --flext-repository-url "$$FLEXT_NEW_FLEXT_REPOSITORY_URL" --flext-repository-ref "$$FLEXT_NEW_FLEXT_REPOSITORY_REF" --license "$$FLEXT_NEW_LICENSE" --author-name "$$FLEXT_NEW_AUTHOR_NAME" --author-email "$$FLEXT_NEW_AUTHOR_EMAIL" --upstream "$$FLEXT_NEW_UPSTREAM" --flext-source "$$FLEXT_NEW_FLEXT_SOURCE" --year "$$FLEXT_NEW_YEAR"
 
 
 _builtin_gen_all: _builtin_require_environment

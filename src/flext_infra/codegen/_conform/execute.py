@@ -79,7 +79,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 repository_root=request.root,
                 ports=ports,
                 generation_only=generation_only,
-            )._execute_plan(request)
+            ).execute_plan(request)
         root = request.root.expanduser().resolve()
         operation = "generate" if generation_only else "conform"
         u.Cli.info(
@@ -337,15 +337,15 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if surface is c.Infra.CodegenConformSurface.ALL:
             return self._execute_managed(request)
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY:
-            if surface in c.Infra.CODEGEN_PARTIAL_PLAN_SURFACES:
-                return self._execute_plan(request)
+            if surface in c.Infra.PARTIAL_PLAN_SURFACES:
+                return self.execute_plan(request)
             mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
             transaction = FlextInfraCodegenTransaction(mise_owner)
             return transaction.run_locked(
                 prepare=False,
-                operation=lambda _scope_root: self._execute_plan(request),
+                operation=lambda _scope_root: self.execute_plan(request),
             )
-        return self._execute_plan(request)
+        return self.execute_plan(request)
 
     def _migrate_repository_declarations(
         self,
@@ -389,6 +389,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             analysis = self._collect_declaration_migration_plans(request, selected)
             if analysis.failure:
                 return r[bool].from_failure(analysis)
+            if (
+                not analysis.value.files
+                and not analysis.value.issues
+                and analysis.value.exception is None
+            ):
+                return r[bool].ok(value=True)
             published = transaction.publish_file_phase_locked(
                 scope_root,
                 roots,
@@ -527,7 +533,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             self.planning_exception = published.exception
         return r[bool].ok(value=True)
 
-    def _execute_plan(
+    def execute_plan(
         self,
         request: m.Infra.CodegenConformRequest,
     ) -> p.Result[m.Infra.CodegenResult]:
@@ -561,7 +567,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 exception=plan.exception,
             )
         surface = c.Infra.CodegenConformSurface(request.what)
-        if surface not in c.Infra.CODEGEN_PARTIAL_PLAN_SURFACES:
+        if surface not in c.Infra.PARTIAL_PLAN_SURFACES:
             return r[m.Infra.CodegenResult].fail(
                 "partial codegen apply is prohibited; use the complete all surface",
             )

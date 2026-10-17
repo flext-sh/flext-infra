@@ -198,6 +198,11 @@ mise -C "{{ project_root }}" install --locked --yes{% for tool in install_tools 
 	"$${mise_bootstrap_bin}" -C "$(PROJECT_ROOT)" install --locked --yes{% for tool in install_tools %} "{{ tool }}"{% endfor %}; \
 	bootstrap_stage=shims; \
 	"$${mise_bootstrap_bin}" reshim; \
+{#- A hosted runner gives every later step only the PATH entries recorded in
+    GITHUB_PATH. The release-scoped farm is the only farm setup writes, so the
+    scanner gates of later verbs (jscpd, qlty) resolve through it there; the
+    host farm the runner image lists stays without project tools. #}
+	if [ -n "$${GITHUB_PATH:-}" ]; then printf '%s\n' "$${MISE_SHIMS_DIR}" >> "$${GITHUB_PATH}"; fi; \
 	printf 'setup: mise %s provisioning complete\n' "$${mise_receipt}"; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
 	bootstrap_stage=lifecycle; \

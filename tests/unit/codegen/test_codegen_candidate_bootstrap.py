@@ -18,6 +18,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenTransaction,
 )
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
@@ -93,6 +94,117 @@ def _declared_candidate_campaign(
 
 class TestsFlextInfraCodegenCandidateBootstrap:
     """A declared campaign publishes all recovery projections or none."""
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize(
+        "failure",
+        ["root-source", "member-package", "root-view", "member-view"],
+    )
+    def test_repository_failure_preserves_independent_native_view_plans(
+        tmp_path: Path,
+        failure: str,
+    ) -> None:
+        """Public plans account for each repository without reading failed metadata."""
+        root = tmp_path / "workspace"
+        member = u.Tests.WorktreeFixture.governed_workspace_with_member(
+            root,
+            workspace=f"{c.Infra.PKG_PREFIX_HYPHEN}plan-workspace",
+            member=f"{c.Infra.PKG_PREFIX_HYPHEN}plan-member",
+        )
+        independent = root / "independent-member"
+        beads = u.Tests.beads_project(root.name)
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            independent,
+            independent.name,
+            beads=u.Tests.BeadsIdentity(
+                workspace=beads.workspace,
+                database=beads.database,
+                issue_prefix=beads.issue_prefix,
+            ),
+        )
+        u.Tests.WorktreeFixture.attach_submodule(
+            root,
+            independent,
+            distribution=independent.name,
+            relative_path=independent.relative_to(root).as_posix(),
+        )
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        request = u.Tests.conform_request(
+            root,
+            what=c.Infra.CodegenConformSurface.PYPROJECT,
+            scope=c.Infra.CodegenConformScope.ALL,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        baseline = tm.ok(
+            FlextInfraCodegenConform(
+                repository_root=root,
+                initial_workspace=workspace,
+            ).plan(request),
+        )
+        tm.that(baseline.issues, empty=True)
+        failed = root if failure.startswith("root-") else member
+        inputs = tm.ok(u.Infra.load_codegen_inputs(failed))
+        if failure == "root-source":
+            projection = failed / c.PYPROJECT_FILENAME
+            projection.write_text(
+                projection.read_text(encoding=c.DEFAULT_ENCODING) + "\n[project]\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        elif failure == "member-package":
+            package = member / "src" / u.Infra.project_package_name(member)
+            (package / c.Infra.INIT_PY).unlink()
+        else:
+            view = failed / inputs.spec.uv_resolution_pyprojects[0]
+            foreign = tmp_path / "foreign"
+            foreign.mkdir()
+            view.parent.parent.mkdir(parents=True, exist_ok=True)
+            view.parent.symlink_to(foreign, target_is_directory=True)
+        before = tuple(
+            item
+            for item in TestsFlextInfraConformSupport.project_tree(root)
+            if item[0] != c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH.as_posix()
+        )
+
+        plan = tm.ok(
+            FlextInfraCodegenConform(
+                repository_root=root,
+                initial_workspace=workspace,
+            ).plan(request),
+        )
+
+        tm.that(bool(plan.issues), eq=True)
+        planned_paths = {file.path for file in plan.files}
+        report = m.Infra.CodegenPlanningReport.model_validate_json(
+            (root / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH).read_bytes(),
+        )
+        failed_outcome = next(item for item in report.outcomes if item.root == failed)
+        tm.that(bool(failed_outcome.error or failed_outcome.issues), eq=True)
+        tm.that(failed_outcome.files, empty=True)
+        independent_inputs = tm.ok(u.Infra.load_codegen_inputs(independent))
+        for relative in independent_inputs.spec.uv_resolution_pyprojects:
+            path = independent / relative
+            tm.that(path in planned_paths, eq=True)
+            tm.that(
+                any(
+                    path == file.path for item in report.outcomes for file in item.files
+                ),
+                eq=True,
+            )
+        for relative in inputs.spec.uv_resolution_pyprojects:
+            tm.that(failed / relative in planned_paths, eq=False)
+        if failure == "member-package":
+            root_outcome = next(item for item in report.outcomes if item.root == root)
+            tm.that(root_outcome.error, has="no successful selected plan")
+            tm.that(str(tm.not_none(plan.exception)), has="cannot resolve package name")
+        tm.that(
+            tuple(
+                item
+                for item in TestsFlextInfraConformSupport.project_tree(root)
+                if item[0] != c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH.as_posix()
+            ),
+            eq=before,
+        )
 
     @staticmethod
     @pytest.mark.slow

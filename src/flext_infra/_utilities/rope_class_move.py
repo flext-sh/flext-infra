@@ -478,7 +478,12 @@ class FlextInfraUtilitiesRopeClassMove:
                 project,
                 cls._resource(project, root, path),
             ).get_name()
-            published = project.get_module(module_name).get_attributes().get(name)
+            published = (
+                FlextInfraUtilitiesRopeRuntime
+                .require_semantic_module(project.get_module(module_name))
+                .get_attributes()
+                .get(name)
+            )
             if published is not None and FlextInfraUtilitiesRopeRuntime.same_name(
                 expected,
                 published,

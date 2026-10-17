@@ -117,9 +117,8 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     )
                     if candidate is None:
                         break
-                    outer, node, binding = candidate
-                    outer_name = outer.pyobject.get_name()
-                    node_name = node.pyobject.get_name()
+                    outer_name = candidate[0].pyobject.get_name()
+                    node_name = candidate[1].pyobject.get_name()
                     declaration = f"{outer_name}.{node_name}"
                     resolved = (
                         cls._declaration_target(
@@ -144,7 +143,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     working = cls._relocate_payload(
                         project,
                         working,
-                        (path, node, binding),
+                        (path, candidate[1], candidate[2]),
                         resolved,
                     )
                     # Subsequent candidates bind to the proposed graph and coordinates.
@@ -490,7 +489,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         root: Path,
         sources: t.MappingKV[Path, str],
     ) -> p.Infra.RopePyName | None:
-        provider = project.get_module(module_name)
+        provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+            project.get_module(module_name)
+        )
         visited: set[str] = set()
         while True:
             provider_resource = provider.get_resource()
@@ -521,7 +522,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             route = aliases.get(alias_name)
             if route is None:
                 break
-            provider = project.get_module(route)
+            provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                project.get_module(route)
+            )
         return provider.get_attributes().get(alias_name)
 
     @classmethod

@@ -1,4 +1,4 @@
-"""Contract for the gitignored per-clone local config override file.
+"""Contract for a repository's own config layers over the packaged policy.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -15,7 +15,7 @@ from tests import c, m, tm, u
 
 
 class TestsFlextInfraConfigLocalOverrides:
-    """Prove the local override file merges last through the public surface."""
+    """Prove repository and local layers merge over packaged defaults."""
 
     @staticmethod
     def test_make_election_preserves_selection_contract() -> None:

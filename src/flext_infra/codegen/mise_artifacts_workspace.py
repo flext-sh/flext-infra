@@ -39,7 +39,7 @@ class FlextInfraMiseWorkspacePlanner:
         physical = self._physical_directory(requested)
         if physical.failure:
             return r[m.Infra.GitIdentityReport].from_failure(physical)
-        identity = self._exact_git_identity(requested)
+        identity = u.Infra.exact_worktree_root(requested)
         if identity.failure or not identity.value.is_attached_submodule:
             return identity
         return self._submodule_scope_identity(requested, identity.value)
@@ -73,7 +73,7 @@ class FlextInfraMiseWorkspacePlanner:
         physical_scope = self._physical_directory(scope_root)
         if physical_scope.failure:
             return r[m.Infra.GitIdentityReport].from_failure(physical_scope)
-        return self._exact_git_identity(scope_root)
+        return u.Infra.exact_worktree_root(scope_root)
 
     def scope_root(self) -> p.Result[Path]:
         """Return the authenticated generation coordination root.
@@ -86,20 +86,6 @@ class FlextInfraMiseWorkspacePlanner:
         if identity.failure:
             return r[Path].from_failure(identity)
         return r[Path].ok(identity.value.repo_root)
-
-    @staticmethod
-    def _exact_git_identity(requested: Path) -> p.Result[m.Infra.GitIdentityReport]:
-        """Reject Git parent discovery when the requested path is not its root.
-
-        # Why: delegates to the promoted `u.Infra.exact_worktree_root` owner
-        # (codegen `init` reuses the same exact-root contract) instead of
-        # duplicating the check locally.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.GitIdentityReport]``.
-
-        """
-        return u.Infra.exact_worktree_root(requested)
 
     def layout(
         self,
@@ -163,7 +149,7 @@ class FlextInfraMiseWorkspacePlanner:
             The resulting ``p.Result[m.Infra.MiseToolchainWorkspaceLayout]``.
 
         """
-        identity = self._exact_git_identity(scope_root)
+        identity = u.Infra.exact_worktree_root(scope_root)
         if identity.failure:
             return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(identity)
         return self._layout_from_identity(
@@ -198,7 +184,7 @@ class FlextInfraMiseWorkspacePlanner:
 
         """
         result_type = r[m.Infra.MiseToolchainWorkspaceLayout]
-        identity = self._exact_git_identity(scope_root)
+        identity = u.Infra.exact_worktree_root(scope_root)
         if identity.failure:
             return result_type.from_failure(identity)
         return self.file_layout_from_identity(

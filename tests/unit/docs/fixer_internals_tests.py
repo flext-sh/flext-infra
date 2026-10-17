@@ -46,9 +46,9 @@ class TestsFlextInfraFixerInternals:
     @staticmethod
     def test_anchorize_and_build_toc_are_public_helpers() -> None:
         """Test anchorize and build toc are public helpers."""
-        tm.that(u.Infra.anchorize("Hello World"), eq="hello-world")
+        tm.that(u.Infra.docs_contract_anchorize("Hello World"), eq="hello-world")
         tm.that(
-            u.Infra.build_toc("# Main\n\nNo sections here.\n"),
+            u.Infra.docs_contract_build_toc("# Main\n\nNo sections here.\n"),
             eq=f"{c.Infra.TOC_START}\n\n{c.Infra.TOC_END}",
         )
 
