@@ -96,22 +96,13 @@ class TestsFlextInfraCodegenCandidateBootstrap:
     """A declared campaign publishes all recovery projections or none."""
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
-        "failure",
-        ["root-source", "member-package", "root-view", "member-view"],
-    )
-    def test_repository_failure_preserves_independent_native_view_plans(
-        tmp_path: Path,
-        failure: str,
-    ) -> None:
-        """Public plans account for each repository without reading failed metadata."""
-        root = tmp_path / "workspace"
-        member = u.Tests.WorktreeFixture.governed_workspace_with_member(
-            root,
-            workspace=f"{c.Infra.PKG_PREFIX_HYPHEN}plan-workspace",
-            member=f"{c.Infra.PKG_PREFIX_HYPHEN}plan-member",
-        )
+    def _attach_independent_member(root: Path) -> Path:
+        """Attach one governed member that shares no state with the failed one.
+
+        Returns:
+            The independent member root.
+
+        """
         independent = root / "independent-member"
         beads = u.Tests.beads_project(root.name)
         u.Tests.WorktreeFixture.initialize_governed_project(
@@ -129,22 +120,16 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             distribution=independent.name,
             relative_path=independent.relative_to(root).as_posix(),
         )
-        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        request = u.Tests.conform_request(
-            root,
-            what=c.Infra.CodegenConformSurface.PYPROJECT,
-            scope=c.Infra.CodegenConformScope.ALL,
-            mode=c.Infra.CodegenConformMode.CHECK,
-        )
-        plan = tm.ok(
-            FlextInfraCodegenConform(
-                repository_root=root,
-                initial_workspace=workspace,
-            ).plan(request),
-        )
-        tm.that(plan.issues, empty=True)
-        failed = root if failure.startswith("root-") else member
-        inputs = tm.ok(u.Infra.load_codegen_inputs(failed))
+        return independent
+
+    @staticmethod
+    def _break_repository(
+        failed: Path,
+        resolution_pyprojects: t.SequenceOf[Path],
+        foreign: Path,
+        failure: str,
+    ) -> None:
+        """Corrupt exactly the input one parametrized failure names."""
         if failure == "root-source":
             projection = failed / c.PYPROJECT_FILENAME
             projection.write_text(
@@ -152,17 +137,91 @@ class TestsFlextInfraCodegenCandidateBootstrap:
                 encoding=c.DEFAULT_ENCODING,
             )
         elif failure == "member-package":
-            package = member / "src" / u.Infra.project_package_name(member)
+            package = failed / "src" / u.Infra.project_package_name(failed)
             (package / c.Infra.INIT_PY).unlink()
         else:
-            projection = failed / inputs.spec.uv_resolution_pyprojects[0]
-            (tmp_path / "foreign").mkdir()
-            projection.parent.parent.mkdir(parents=True, exist_ok=True)
-            projection.parent.symlink_to(tmp_path / "foreign", target_is_directory=True)
-        before = tuple(
+            view = failed / resolution_pyprojects[0]
+            foreign.mkdir()
+            view.parent.parent.mkdir(parents=True, exist_ok=True)
+            view.parent.symlink_to(foreign, target_is_directory=True)
+
+    @staticmethod
+    def _tree_without_plan_report(root: Path) -> t.VariadicTuple[t.Pair[str, bytes]]:
+        """Return the project tree minus the planning report every plan rewrites.
+
+        Returns:
+            The tree entries outside the planning report path.
+
+        """
+        return tuple(
             item
             for item in TestsFlextInfraConformSupport.project_tree(root)
             if item[0] != c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH.as_posix()
+        )
+
+    @staticmethod
+    def _assert_independent_views_planned(
+        independent: Path,
+        plan: m.Infra.CodegenPlan,
+        report: m.Infra.CodegenPlanningReport,
+    ) -> None:
+        """Require every independent resolution view in the plan and its report."""
+        planned_paths = {file.path for file in plan.files}
+        reported_paths = {
+            file.path for item in report.outcomes for file in item.files
+        }
+        for relative in tm.ok(
+            u.Infra.load_codegen_inputs(independent)
+        ).spec.uv_resolution_pyprojects:
+            tm.that(independent / relative in planned_paths, eq=True)
+            tm.that(independent / relative in reported_paths, eq=True)
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize(
+        "failure",
+        ["root-source", "member-package", "root-view", "member-view"],
+    )
+    def test_repository_failure_preserves_independent_native_view_plans(
+        tmp_path: Path,
+        failure: str,
+    ) -> None:
+        """Public plans account for each repository without reading failed metadata."""
+        root = tmp_path / "workspace"
+        member = u.Tests.WorktreeFixture.governed_workspace_with_member(
+            root,
+            workspace=f"{c.Infra.PKG_PREFIX_HYPHEN}plan-workspace",
+            member=f"{c.Infra.PKG_PREFIX_HYPHEN}plan-member",
+        )
+        independent = TestsFlextInfraCodegenCandidateBootstrap._attach_independent_member(
+            root,
+        )
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        request = u.Tests.conform_request(
+            root,
+            what=c.Infra.CodegenConformSurface.PYPROJECT,
+            scope=c.Infra.CodegenConformScope.ALL,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        tm.that(
+            tm.ok(
+                FlextInfraCodegenConform(
+                    repository_root=root,
+                    initial_workspace=workspace,
+                ).plan(request),
+            ).issues,
+            empty=True,
+        )
+        failed = root if failure.startswith("root-") else member
+        inputs = tm.ok(u.Infra.load_codegen_inputs(failed))
+        TestsFlextInfraCodegenCandidateBootstrap._break_repository(
+            failed,
+            inputs.spec.uv_resolution_pyprojects,
+            tmp_path / "foreign",
+            failure,
+        )
+        before = TestsFlextInfraCodegenCandidateBootstrap._tree_without_plan_report(
+            root,
         )
 
         plan = tm.ok(
@@ -179,18 +238,14 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         failed_outcome = next(item for item in report.outcomes if item.root == failed)
         tm.that(bool(failed_outcome.error or failed_outcome.issues), eq=True)
         tm.that(failed_outcome.files, empty=True)
+        TestsFlextInfraCodegenCandidateBootstrap._assert_independent_views_planned(
+            independent,
+            plan,
+            report,
+        )
+        planned_paths = {file.path for file in plan.files}
         for relative in inputs.spec.uv_resolution_pyprojects:
-            tm.that(failed / relative in {file.path for file in plan.files}, eq=False)
-        inputs = tm.ok(u.Infra.load_codegen_inputs(independent))
-        for relative in inputs.spec.uv_resolution_pyprojects:
-            path = independent / relative
-            tm.that(path in {file.path for file in plan.files}, eq=True)
-            tm.that(
-                any(
-                    path == file.path for item in report.outcomes for file in item.files
-                ),
-                eq=True,
-            )
+            tm.that(failed / relative in planned_paths, eq=False)
         if failure == "member-package":
             tm.that(
                 next(item for item in report.outcomes if item.root == root).error,
@@ -198,11 +253,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             )
             tm.that(str(tm.not_none(plan.exception)), has="cannot resolve package name")
         tm.that(
-            tuple(
-                item
-                for item in TestsFlextInfraConformSupport.project_tree(root)
-                if item[0] != c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH.as_posix()
-            ),
+            TestsFlextInfraCodegenCandidateBootstrap._tree_without_plan_report(root),
             eq=before,
         )
 

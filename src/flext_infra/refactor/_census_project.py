@@ -86,7 +86,7 @@ class FlextInfraRefactorCensusProjectMixin:
         unused_count = 0
         removal_candidates: list[m.Infra.RemovalCandidate] = []
         for item in objects:
-            is_unused = self.unused(item)
+            unused = self.unused(item)
             if include_duplicate and self._object_key(item) in duplicate_keys:
                 violations.append(
                     self._violation(
@@ -95,7 +95,7 @@ class FlextInfraRefactorCensusProjectMixin:
                         description="Duplicate definition in workspace",
                     ),
                 )
-            if is_unused and include_unused:
+            if unused and include_unused:
                 unused_count += 1
                 violations.append(
                     self._violation(
