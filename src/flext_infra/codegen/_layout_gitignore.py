@@ -10,7 +10,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import Literal
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen import (
@@ -42,8 +44,9 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             return self._apply_gitignore_managed(project_dir, profile)
         return self._apply_gitignore_append(project_dir, patterns)
 
-    @staticmethod
+    @classmethod
     def _apply_gitignore_managed(
+        cls,
         project_dir: Path,
         profile: c.Infra.MakeProfile,
     ) -> p.Result[t.Infra.LayoutStatus]:
@@ -63,39 +66,13 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         )
         if rendered.failure:
             return r[t.Infra.LayoutStatus].from_failure(rendered)
-        gitignore_path = project_dir / c.Infra.GITIGNORE
-        current = ""
-        if gitignore_path.is_file():
-            read = u.Cli.files_read_text(gitignore_path)
-            if read.failure:
-                return r[t.Infra.LayoutStatus].from_failure(read)
-            current = read.value
-        if rendered.value == current:
-            noop_status: t.Infra.LayoutStatus = "noop"
-            return r[t.Infra.LayoutStatus].ok(noop_status)
-        before = u.Cli.atomic_read_binary_file_state(gitignore_path, required=False)
-        if before.failure:
-            return r[t.Infra.LayoutStatus].from_failure(before)
-        planned = m.Infra.CodegenFilePlan(
-            project=project_dir,
-            path=gitignore_path,
-            before=before.value,
-            desired_content=rendered.value.encode(c.DEFAULT_ENCODING),
-            desired_mode=config.Infra.codegen.modes.file_default,
-            owner="codegen",
-            policy="full",
+        return cls._converge_gitignore(
+            project_dir, "full", lambda _current: rendered.value
         )
-        written = FlextInfraMisePublication.publish_file_plan(
-            planned,
-            phase=c.Infra.CodegenStagedFilePhase.LAYOUT,
-        )
-        if written.failure:
-            return r[t.Infra.LayoutStatus].from_failure(written)
-        applied_status: t.Infra.LayoutStatus = "applied"
-        return r[t.Infra.LayoutStatus].ok(applied_status)
 
-    @staticmethod
+    @classmethod
     def _apply_gitignore_append(
+        cls,
         project_dir: Path,
         patterns: t.StrSequence,
     ) -> p.Result[t.Infra.LayoutStatus]:
@@ -105,6 +82,38 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             The resulting ``p.Result[t.Infra.LayoutStatus]``.
 
         """
+
+        def appended(current: str) -> str:
+            covered = {line.strip() for line in current.splitlines()}
+            missing = tuple(
+                pattern
+                for pattern in patterns
+                if pattern not in covered and pattern.rstrip("/") not in covered
+            )
+            if not missing:
+                return current
+            text = current
+            if text and not text.endswith("\n"):
+                text += "\n"
+            if text:
+                text += "\n"
+            text += f"# {c.Infra.GITIGNORE_LAYOUT_SECTION_NAME}\n"
+            return text + "\n".join(missing) + "\n"
+
+        return cls._converge_gitignore(project_dir, "merge", appended)
+
+    @staticmethod
+    def _converge_gitignore(
+        project_dir: Path,
+        policy: Literal["full", "merge"],
+        desired: Callable[[str], str],
+    ) -> p.Result[t.Infra.LayoutStatus]:
+        """Publish the desired gitignore text when it differs from the current one.
+
+        Returns:
+            ``noop`` when the file already holds the desired text, else ``applied``.
+
+        """
         gitignore_path = project_dir / c.Infra.GITIGNORE
         current = ""
         if gitignore_path.is_file():
@@ -112,36 +121,23 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             if read.failure:
                 return r[t.Infra.LayoutStatus].from_failure(read)
             current = read.value
-        covered = {line.strip() for line in current.splitlines()}
-        missing = tuple(
-            pattern
-            for pattern in patterns
-            if pattern not in covered and pattern.rstrip("/") not in covered
-        )
-        if not missing:
+        text = desired(current)
+        if text == current:
             noop_status: t.Infra.LayoutStatus = "noop"
             return r[t.Infra.LayoutStatus].ok(noop_status)
-        text = current
-        if text and not text.endswith("\n"):
-            text += "\n"
-        if text:
-            text += "\n"
-        text += f"# {c.Infra.GITIGNORE_LAYOUT_SECTION_NAME}\n"
-        text += "\n".join(missing) + "\n"
         before = u.Cli.atomic_read_binary_file_state(gitignore_path, required=False)
         if before.failure:
             return r[t.Infra.LayoutStatus].from_failure(before)
-        planned = m.Infra.CodegenFilePlan(
-            project=project_dir,
-            path=gitignore_path,
-            before=before.value,
-            desired_content=text.encode(c.DEFAULT_ENCODING),
-            desired_mode=config.Infra.codegen.modes.file_default,
-            owner="codegen",
-            policy="merge",
-        )
         written = FlextInfraMisePublication.publish_file_plan(
-            planned,
+            m.Infra.CodegenFilePlan(
+                project=project_dir,
+                path=gitignore_path,
+                before=before.value,
+                desired_content=text.encode(c.DEFAULT_ENCODING),
+                desired_mode=config.Infra.codegen.modes.file_default,
+                owner="codegen",
+                policy=policy,
+            ),
             phase=c.Infra.CodegenStagedFilePhase.LAYOUT,
         )
         if written.failure:

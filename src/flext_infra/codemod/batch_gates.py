@@ -90,17 +90,7 @@ class FlextInfraModGateEngine:
                     temp_root=temp_root,
                     owner_rules=owner_rules,
                 )
-                tested = cls._run_tool(
-                    temp_root,
-                    (
-                        c.Infra.SG,
-                        c.Infra.TEST,
-                        c.Infra.SG_CONFIG_FLAG,
-                        str(temp_root / c.Infra.CODEMOD_CONFIG_FILENAME),
-                    ),
-                    streams=(Path(temp_dir) / "stdout", Path(temp_dir) / "stderr"),
-                    artifact_root=root,
-                )
+                tested = cls._sg_test(temp_root, root)
                 if tested.failure:
                     remedy = (
                         c.Infra.CODEMOD_SNAPSHOT_REFRESH_HINT
@@ -155,29 +145,8 @@ class FlextInfraModGateEngine:
                     temp_root=temp_root,
                     owner_rules=owner_rules,
                 )
-                cls._run_tool(
-                    temp_root,
-                    (
-                        c.Infra.SG,
-                        c.Infra.TEST,
-                        c.Infra.SG_UPDATE_ALL,
-                        c.Infra.SG_CONFIG_FLAG,
-                        str(temp_root / c.Infra.CODEMOD_CONFIG_FILENAME),
-                    ),
-                    streams=(Path(temp_dir) / "stdout", Path(temp_dir) / "stderr"),
-                    artifact_root=root,
-                ).unwrap()
-                cls._run_tool(
-                    temp_root,
-                    (
-                        c.Infra.SG,
-                        c.Infra.TEST,
-                        c.Infra.SG_CONFIG_FLAG,
-                        str(temp_root / c.Infra.CODEMOD_CONFIG_FILENAME),
-                    ),
-                    streams=(Path(temp_dir) / "stdout", Path(temp_dir) / "stderr"),
-                    artifact_root=root,
-                ).unwrap()
+                cls._sg_test(temp_root, root, c.Infra.SG_UPDATE_ALL).unwrap()
+                cls._sg_test(temp_root, root).unwrap()
                 changes.extend(
                     cls._publish_regenerated_snapshots(
                         config_root=config_root,
@@ -409,6 +378,32 @@ class FlextInfraModGateEngine:
                 if apply:
                     u.Cli.atomic_write_text_file(target, content).unwrap()
         return tuple(changes)
+
+    @classmethod
+    def _sg_test(
+        cls,
+        temp_root: Path,
+        artifact_root: Path,
+        *flags: str,
+    ) -> p.Result[p.Cli.ProcessOutcome]:
+        """Run ``sg test`` against one staged rule-fixture root.
+
+        Returns:
+            The fully reaped ``sg test`` outcome.
+
+        """
+        return cls._run_tool(
+            temp_root,
+            (
+                c.Infra.SG,
+                c.Infra.TEST,
+                *flags,
+                c.Infra.SG_CONFIG_FLAG,
+                str(temp_root / c.Infra.CODEMOD_CONFIG_FILENAME),
+            ),
+            streams=(temp_root.parent / "stdout", temp_root.parent / "stderr"),
+            artifact_root=artifact_root,
+        )
 
     @staticmethod
     def _run_tool(
@@ -1299,7 +1294,7 @@ class FlextInfraModGateEngine:
             state.path for state in report.source_states
         ):
             return r[bool].fail("native scan source membership changed")
-        current: dict[tuple[str, str], m.Infra.CodemodRule] = {}
+        current: t.MutableMappingKV[t.StrPair, m.Infra.CodemodRule] = {}
         for ruleset in plan.rulesets:
             catalog = u.Infra.codemod_catalog_rules(ruleset.provider, ruleset.config)
             if catalog.failure:
@@ -1602,7 +1597,7 @@ class FlextInfraModGateEngine:
         )
         logical = {state.path: state for state in states}
         entries: list[m.Infra.ModScanFinding] = []
-        artifacts: dict[Path, m.Cli.AtomicFileReceipt] = {}
+        artifacts: t.MutableMappingKV[Path, m.Cli.AtomicFileReceipt] = {}
         u.Cli.ensure_dir(settings.work_dir).unwrap()
         with tempfile.TemporaryDirectory(
             prefix="mod-native-catalog-", dir=settings.work_dir
