@@ -14,7 +14,7 @@ from functools import lru_cache, partial
 from pathlib import Path
 
 from flext_cli import u
-from flext_core import FlextStrictYamlConfigSource
+from flext_core.config_sources import FlextStrictYamlConfigSource
 
 from flext_infra import c, m, p, r, t
 from flext_infra._config import FlextInfraConfig
@@ -35,6 +35,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         Returns:
             The effective codegen declaration and exact consulted file snapshots.
+
         """
         result_type = r[m.Infra.CodegenInputs]
         document = cls.load_config_document_inputs(
@@ -44,9 +45,8 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         )
         if document.failure:
             return result_type.from_failure(document)
-        loaded = u.validate_value(
-            m.Infra.CodegenConfigSpec,
-            u.Cli.json_walk_path(document.value.values, ("Infra", "codegen")),
+        loaded = r[m.Infra.CodegenConfigSpec].create_from_callable(
+            partial(cls._repository_codegen_spec, document.value.values),
         )
         if loaded.failure:
             return result_type.from_failure(loaded)
@@ -73,6 +73,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         Returns:
             Strict repository policy with current consulted source snapshots.
+
         """
         result_type = r[m.Infra.RepositoryDeclarationInputs]
         document = cls.load_config_document_inputs(
@@ -115,6 +116,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         Returns:
             The typed document and ordered snapshots, with no ambient source lookup.
+
         """
         result_type = r[m.Infra.ConfigDocumentInputs]
         elected = r[tuple[Path, ...]].create_from_callable(
@@ -137,10 +139,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             )
             return result_type.fail(str(error), exception=error)
         snapshots: list[m.Cli.AtomicFileState] = []
-        for path in elected.value:
-            if path not in selected:
-                continue
-            observed = u.Cli.atomic_read_binary_file_state(path, required=True)
+        for path in selected:
+            observed = u.Cli.atomic_read_binary_file_state(
+                path,
+                required=path == selected[0] or path in elected.value,
+            )
             if observed.failure:
                 return result_type.from_failure(observed)
             snapshots.append(observed.value)
@@ -175,7 +178,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         """
         for before in snapshots:
-            observed = u.Cli.atomic_read_binary_file_state(before.path, required=True)
+            observed = u.Cli.atomic_read_binary_file_state(
+                before.path,
+                required=before.content is not None,
+            )
             if observed.failure:
                 return r[bool].from_failure(observed)
             if observed.value != before:
@@ -194,6 +200,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         Returns:
             The validated campaign declaration; generic defaults own an empty set.
+
         """
         document = cls.load_config_document_inputs(
             repository_root,
@@ -222,6 +229,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         Returns:
             A validated preview retaining the original input identities.
+
         """
         result_type = r[m.Infra.CodegenInputs]
         layers = FlextInfraConfig.config_layer_paths_for_repository(
@@ -247,11 +255,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             )
             return result_type.fail(str(error), exception=error)
         loaded = r[m.Infra.CodegenConfigSpec].create_from_callable(
-            partial(
-                cls._repository_codegen_spec,
-                selected,
-                captured.sources,
-                projections,
+            lambda: cls._repository_codegen_spec(
+                cls._repository_config_document(
+                    selected, captured.sources, projections
+                ),
             ),
         )
         return loaded.map(
@@ -264,6 +271,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         Returns:
             A mapping, including the source's defined empty-document representation.
+
         """
         return r[t.JsonMapping].create_from_callable(
             partial(
@@ -278,6 +286,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         Returns:
             Validated configuration values from immutable source bytes.
+
         """
         return deepcopy(
             FlextInfraUtilitiesProjectManagedArtifacts._parsed_config_content(content),
@@ -293,6 +302,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         Returns:
             The validated document owned by this content memo.
+
         """
         parsed = FlextStrictYamlConfigSource.unique_key_load(
             content.decode(c.DEFAULT_ENCODING),
@@ -303,62 +313,46 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
     @staticmethod
     def _repository_codegen_spec(
-        sources: tuple[Path, ...],
-        snapshots: t.VariadicTuple[m.Cli.AtomicFileState],
-        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection],
+        document: t.JsonMapping,
     ) -> m.Infra.CodegenConfigSpec:
-        """Compose ordered original and projected layers with the public merge owner.
+        """Validate composed policy with its model's already-compiled schema.
 
         Returns:
             The validated full repository codegen policy.
 
-        Raises:
-            ValueError: If a captured configuration input has no bytes.
         """
-        document = (
-            FlextInfraUtilitiesProjectManagedArtifacts._repository_config_document(
-                sources,
-                snapshots,
-                projections,
-            )
-        )
         codegen = u.Cli.json_walk_path(document, ("Infra", "codegen"))
         return m.Infra.CodegenConfigSpec.model_validate(codegen)
 
-    @staticmethod
+    @classmethod
     def _repository_config_document(
+        cls,
         sources: tuple[Path, ...],
         snapshots: t.VariadicTuple[m.Cli.AtomicFileState],
         projections: t.VariadicTuple[m.Infra.CodegenLayerProjection],
     ) -> t.JsonMapping:
         """Merge ordered captured F.yaml bytes and explicitly projected layers.
 
+        Projections replace values within their source layer. Distinct layers
+        use the strict YAML source's recursive mapping and list composition.
+
         Returns:
             The composed document; schema consumers validate their owned section.
+
         """
         merged: t.JsonDict = {}
-        parse_document = (
-            FlextInfraUtilitiesProjectManagedArtifacts._parse_codegen_config_document
-        )
         for path in sources:
             captured = next((item for item in snapshots if item.path == path), None)
-            if captured is None:
+            if captured is None or captured.content is None:
                 payload: t.JsonMapping = {}
             else:
-                content = captured.content
-                if content is None:
-                    msg = f"captured config input has no bytes: {path}"
-                    raise ValueError(msg)
-                payload = parse_document(content)
+                payload = cls._parse_codegen_config_document(captured.content)
             projected = next(
                 (item for item in projections if item.path == path),
                 None,
             )
             values = (
-                FlextStrictYamlConfigSource.merge_values(
-                    dict(payload),
-                    dict(projected.values),
-                )
+                u.config_merge(dict(payload), dict(projected.values))
                 if projected is not None
                 else dict(payload)
             )

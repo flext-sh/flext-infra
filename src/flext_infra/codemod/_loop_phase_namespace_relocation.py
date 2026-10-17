@@ -10,9 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, r, u
-from flext_infra.refactor.namespace_relocations import (
-    FlextInfraNamespaceRelocationCascade,
-)
+from flext_infra.refactor import FlextInfraNamespaceRelocationCascade
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -45,6 +43,7 @@ class FlextInfraNamespaceRelocationPhase:
                 project_root,
                 py_files,
                 preflight.entries,
+                scan_root=root,
             )
             if not findings:
                 continue

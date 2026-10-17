@@ -21,6 +21,7 @@ class FlextInfraUtilitiesManagedConflicts:
 
         Returns:
             The delimiter of an open string, or None outside a string.
+
         """
         index = 0
         while index < len(line):
@@ -59,6 +60,7 @@ class FlextInfraUtilitiesManagedConflicts:
 
         Returns:
             Custom source bytes, or the original ownership declaration failure.
+
         """
         spec = cls.pyproject_managed_file()
         if spec.failure:
@@ -86,6 +88,7 @@ class FlextInfraUtilitiesManagedConflicts:
 
         Returns:
             The resulting ``p.Result[str]``.
+
         """
         if u.Cli.toml_mapping_from_text(content) is not None:
             return r[str].ok(content)
@@ -149,7 +152,7 @@ class FlextInfraUtilitiesManagedConflicts:
             The pyproject ManagedFileSpec. Missing declaration is a bug.
 
         """
-        for item in config.Infra.codegen.managed_files:
+        for item in config.Infra.codegen.managed_file_specs:
             if item.path.as_posix() == c.PYPROJECT_FILENAME:
                 return r[m.Infra.ManagedFileSpec].ok(item)
         return r[m.Infra.ManagedFileSpec].fail(

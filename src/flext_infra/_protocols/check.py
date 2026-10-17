@@ -12,12 +12,38 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from flext_infra import m
+    from flext_cli import p
+
+    from flext_infra import m, t
 
 
 @runtime_checkable
 class FlextInfraProtocolsCheck(Protocol):
     """Check-domain protocol definitions."""
+
+    @runtime_checkable
+    class NativeStorageSlot[ValueT](Protocol):
+        """Read one interpreter-owned slot with its precise native result."""
+
+        def __get__(
+            self,
+            instance: t.Infra.NativeOperand,
+            owner: t.Infra.NativeType,
+            /,
+        ) -> ValueT: ...
+
+    @runtime_checkable
+    class NativeModuleSpec(Protocol):
+        """Physical source fields supplied by the native import finder."""
+
+        @property
+        def origin(self) -> str | None: ...
+
+        @property
+        def loader(self) -> p.AttributeProbe | None: ...
+
+        @property
+        def submodule_search_locations(self) -> t.SequenceOf[str] | None: ...
 
     @runtime_checkable
     class PytestRunContextReceiver(Protocol):

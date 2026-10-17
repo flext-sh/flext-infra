@@ -10,7 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, main
+from flext_infra import config, m, main
+from flext_infra.deps import FlextInfraRuntimeDevDependencyDetector
 from tests import c, tm, u
 
 # The fixture resolves and installs a real consumer environment from Git/index
@@ -22,18 +23,28 @@ class TestsFlextInfraDepsDetectorMain:
     """Tests for ``FlextInfraDepsDetectorMain``."""
 
     @staticmethod
+    @pytest.mark.parametrize("entrypoint", ["cli", "request"])
     def test_run_without_typings_skips_typings_detection(
         real_detector_project: Path,
+        entrypoint: str,
     ) -> None:
-        """Test run without typings skips typings detection."""
+        """CLI and typed service requests retain the same report behavior."""
         root = real_detector_project
         before = (root / "pyproject.toml").read_bytes()
-        outcome = tm.ok(u.Tests.run_real_detector(root, "--no-pip-check"))
-        tm.that(
-            u.Cli.process_succeeded(outcome.outcome),
-            eq=True,
-            msg=f"{outcome.stdout}\n{outcome.stderr}",
-        )
+        if entrypoint == "request":
+            params = m.Infra.DetectCommand(repository_root=root, no_pip_check=True)
+            before_request = params.model_dump()
+            tm.that(
+                tm.ok(FlextInfraRuntimeDevDependencyDetector.execute(params)), eq=True
+            )
+            tm.that(params.model_dump(), eq=before_request)
+        else:
+            outcome = tm.ok(u.Tests.run_real_detector(root, "--no-pip-check"))
+            tm.that(
+                u.Cli.process_succeeded(outcome.outcome),
+                eq=True,
+                msg=f"{outcome.stdout}\n{outcome.stderr}",
+            )
         tm.that((root / "pyproject.toml").read_bytes(), eq=before)
         report = tm.ok(
             u.Cli.json_read(
@@ -100,7 +111,7 @@ class TestsFlextInfraDepsDetectorMain:
     @staticmethod
     @pytest.mark.parametrize(
         "real_detector_project",
-        [("requests", "pytz"), ("requests", "pytz", "six")],
+        c.Tests.DETECTOR_MODULE_SCENARIOS[1:],
         indirect=True,
     )
     def test_apply_typings_follows_governed_policy_and_preserves_source(
@@ -120,7 +131,7 @@ class TestsFlextInfraDepsDetectorMain:
                 u.Tests.toml_mapping(before["dependency-groups"])["dev"],
             )
         }
-        tm.that(declared_dev & set(expected.values()), eq=set())
+        tm.that(declared_dev & set(expected.values()), empty=True)
         outcome = tm.ok(
             u.Tests.run_real_detector(
                 root,
@@ -142,7 +153,9 @@ class TestsFlextInfraDepsDetectorMain:
             for item in u.Infra.project_dependency_names_from_payload(before)
             if item in expected
         ]
-        added = set() if followed else {expected[item] for item in requirements}
+        added: set[str] = (
+            set() if followed else {expected[item] for item in requirements}
+        )
         typing_specs = u.Tests.toml_strings(
             u.Tests.toml_mapping(
                 u.Tests.toml_mapping(after["project"])["optional-dependencies"],

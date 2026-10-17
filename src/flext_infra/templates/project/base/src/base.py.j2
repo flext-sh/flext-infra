@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations{# NOTE:base is composition-only; behavior belongs in services/*. #}
 
-from {{ upstream }} import s
+from flext_core import s
 
 
 class {{ class_stem }}Service(s):

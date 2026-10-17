@@ -10,8 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, m, r, u
-from flext_infra.codegen import FlextInfraCodegenExecutionBase
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenExecutionBase
 
 # New file per operator live
 # order (ULW). ctx via u.derive_class_stem (no parallel detection, ADR-005 §9);
@@ -234,6 +233,7 @@ class FlextInfraCodegenProjectNew(
             request,
             initial_workspace=workspace,
             ports=self.conform_collaborators,
+            repository_root=self.root,
         )
 
     def _validated_remote_declarations(

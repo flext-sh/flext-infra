@@ -15,33 +15,36 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 from typing import ClassVar
+
+from flext_cli import cli
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodemodRules,
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
 from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesSemanticCutoverBindings,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
 
-class FlextInfraFlextUtilitiesCodemodBindingChain:
+class FlextInfraUtilitiesCodemodBindingChain:
     """Canonical namespace owner."""
 
     class FlextInfraUtilitiesCodemodBindingChain(FlextInfraUtilitiesCodemodRules):
         """Prove an occurrence's binding: one stable reaching declaration per link."""
 
-        _RESOLVED_SYMBOL_OPERAND_COUNT: ClassVar[int] = 2
+        RESOLVED_SYMBOL_OPERAND_COUNT: ClassVar[int] = 2
 
         @classmethod
         def _occurrence_binding_holds(
@@ -58,8 +61,16 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             are not executable migration candidates. Missing coordinates are a rule
             defect, not permission to resolve at module scope.
 
+
+            Args:
+                frame: A triple containing the root path, source path, and Rope project.
+                condition: The codemod context condition to evaluate.
+                captures: A mapping of captured variables.
+                sources: A mapping of source file paths to their content.
+
             Returns:
                 The resulting ``bool``.
+
             """
             root, source, project = frame
             capture = m.Infra.AstGrepCapture.model_validate(
@@ -67,26 +78,30 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             )
             content = sources[source].encode("utf-8")
             text, start, end = cls._validated_capture_span(source, capture, content)
-            tree = ast.parse(text, filename=str(source))
-            if not any(
-                isinstance(node, ast.expr | ast.Import | ast.ImportFrom)
-                and FlextInfraUtilitiesRopeRuntimeModules.source_offset(text, node)
-                == start
-                and ast.get_source_segment(text, node) == capture.text
-                for node in ast.walk(tree)
-            ):
-                return False
+            resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                project.get_resource(source.relative_to(root.resolve()).as_posix()),
+                source,
+            )
+            module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
             if (
                 condition.predicate
                 is c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT
             ):
-                return cls._unreferenced_import_holds(tree, capture.text)
-            resource = project.get_resource(
-                source.relative_to(root.resolve()).as_posix()
-            )
-            module = project.get_pymodule(resource)
+                return cls._unreferenced_import_holds(
+                    project, module, capture.text, (start, end)
+                )
+            if (start, end) not in (
+                FlextInfraUtilitiesRopeRuntimeRefactors.semantic_regions(
+                    module,
+                    f"(\n{capture.text}\n)",
+                    arguments={},
+                    start=start,
+                    end=end,
+                )
+            ):
+                return False
             scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, start)
-            if cls._type_payload_occurrence(project, module, text, start, end):
+            if cls._type_payload_occurrence(module, text, start, end):
                 return False
             if condition.predicate in {
                 c.Infra.CodemodContextPredicate.SAME_BINDING,
@@ -95,15 +110,100 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 project, module, text, (start, end), sources
             ):
                 return False
+            return cls._predicate_binding_verdict(
+                (project, module, scope),
+                condition,
+                capture.text,
+                start,
+                sources,
+            )
+
+        @classmethod
+        def _predicate_binding_verdict(
+            cls,
+            frame: t.Triple[
+                p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope
+            ],
+            condition: m.Infra.CodemodContextCondition,
+            capture_text: str,
+            start: int,
+            sources: t.MappingKV[Path, str],
+        ) -> bool:
+            """Grade one admitted occurrence through its configured predicate.
+
+            Args:
+                frame: Rope project, module and lexical scope of the occurrence.
+                condition: The codemod context condition to evaluate.
+                capture_text: Exact captured expression text.
+                start: Occurrence start offset inside its source.
+                sources: Mapping of source file paths to their content.
+
+            Returns:
+                Whether the occurrence satisfies its binding predicate.
+
+            """
             if (
                 condition.predicate
                 is c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE
             ):
                 return True
+            if condition.predicate is c.Infra.CodemodContextPredicate.EMITTED_SYMBOL:
+                return cls._emitted_symbol_holds(
+                    frame,
+                    condition,
+                    start,
+                    sources,
+                )
             return cls._resolved_expression_holds(
-                (project, module, scope),
+                frame,
                 condition,
-                capture.text,
+                capture_text,
+                start,
+                sources,
+            )
+
+        @classmethod
+        def _emitted_symbol_holds(
+            cls,
+            frame: t.Triple[
+                p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope
+            ],
+            condition: m.Infra.CodemodContextCondition,
+            start: int,
+            sources: t.MappingKV[Path, str],
+        ) -> bool:
+            """Resolve an emitted-symbol predicate through its module target.
+
+            Returns:
+                Whether the rewritten expression keeps a stable binding chain.
+
+            Raises:
+                ValueError: If emitted-symbol lacks a lexical expression, module
+                    and target.
+
+            """
+            if len(condition.arg) != cls.RESOLVED_SYMBOL_OPERAND_COUNT + 1:
+                message = (
+                    "emitted-symbol requires a lexical expression, module and target"
+                )
+                raise ValueError(message)
+            expression = condition.arg[0]
+            if not cls._stable_binding_chain(
+                frame,
+                expression,
+                start,
+                sources,
+            ):
+                return False
+            return cls._resolved_expression_holds(
+                frame,
+                condition.model_copy(
+                    update={
+                        "predicate": c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
+                        "arg": condition.arg[1:],
+                    }
+                ),
+                condition.arg[0],
                 start,
                 sources,
             )
@@ -136,31 +236,62 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             return text, start, end
 
         @staticmethod
-        def _unreferenced_import_holds(tree: ast.Module, capture_text: str) -> bool:
+        def _unreferenced_import_holds(
+            project: p.Infra.RopeProject,
+            module: p.Infra.RopePyModule,
+            capture_text: str,
+            span: t.Pair[int, int],
+        ) -> bool:
             """Report whether an import capture has no load references anywhere.
 
             Returns:
                 Whether the single captured import stays unreferenced.
 
             """
-            declarations = ast.parse(capture_text).body
-            if len(declarations) != 1 or not isinstance(
-                declarations[0], ast.Import | ast.ImportFrom
-            ):
+            start, end = span
+            statements = tuple(
+                row
+                for row in FlextInfraUtilitiesRopeStructure.logical_statements(
+                    module.source_code
+                )
+                if row.start_offset <= start < end <= row.end_offset
+                and row.category
+                in {
+                    c.Infra.StatementCategory.IMPORT,
+                    c.Infra.StatementCategory.FROM_IMPORT,
+                }
+                and row.text.strip() == capture_text.strip()
+            )
+            if len(statements) != 1:
                 return False
-            names = FlextInfraUtilitiesSemanticCutoverBindings.bound_identifiers(
-                declarations[0]
+            isolated = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+                project, capture_text
             )
-            return not any(
-                isinstance(node, ast.Name)
-                and isinstance(node.ctx, ast.Load)
-                and node.id in names
-                for node in ast.walk(tree)
-            )
+            scope = isolated.get_scope()
+            lexical = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, start)
+            names = scope.get_defined_names()
+            if not names:
+                return False
+            for name in names:
+                binding = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
+                    lexical, name
+                )
+                if binding is None:
+                    return False
+                finder = (
+                    FlextInfraUtilitiesRopeRuntimeRefactors.create_occurrence_finder(
+                        project, name, binding, imports=True, in_hierarchy=False
+                    )
+                )
+                if any(
+                    not start <= occurrence.offset < end
+                    for occurrence in finder.find_occurrences(pymodule=module)
+                ):
+                    return False
+            return True
 
         @staticmethod
         def _type_payload_occurrence(
-            project: p.Infra.RopeProject,
             module: p.Infra.RopePyModule,
             text: str,
             start: int,
@@ -177,7 +308,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             )
             return any(
                 left <= start < end <= right
-                for left, right in payload_ranges(text, project, module)
+                for left, right in payload_ranges(text, module)
             )
 
         @classmethod
@@ -196,21 +327,24 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
 
             """
             start, end = span
-            for node in ast.walk(ast.parse(text)):
-                if not isinstance(node, ast.Subscript):
-                    continue
-                left, right = (
-                    FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_range(
-                        text, node
+            finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(module)
+            for match in finder.get_matches(
+                "${subscription_receiver}[${subscription_argument}]", {}
+            ):
+                left, right = match.get_region()
+                receiver = (
+                    FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture_region(
+                        match, "subscription_receiver"
                     )
                 )
+                first, last = receiver
                 if left <= start < end <= right and not cls._stable_binding_chain(
                     (
                         project,
                         module,
                         FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, left),
                     ),
-                    node.value,
+                    text[first:last],
                     left,
                     sources,
                 ):
@@ -243,35 +377,35 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             """
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             project, scope = frame[0], frame[2]
-            expression = ast.parse(capture_text, mode="eval").body
-            if not isinstance(expression, ast.Name | ast.Attribute):
+            expression = cls._binding_expression(capture_text)
+            if expression is None:
                 return False
-            actual = runtime.resolve_symbol(scope, expression)
+            actual = runtime.expression_name(scope, expression)
             if condition.predicate is c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL:
-                return cls._resolved_symbol_matches(project, condition, actual)
+                return cls._resolved_symbol_matches(
+                    project, condition, actual
+                ) and cls._stable_binding_chain(frame, expression, start, sources)
             if len(condition.arg) != 1:
                 msg = "same-binding requires one lexical expression"
                 raise ValueError(msg)
             target = condition.arg[0]
-            target_expression = ast.parse(target, mode="eval").body
+            target_expression = cls._binding_expression(target)
+            if target_expression is None:
+                return False
             if not (
                 cls._stable_binding_chain(frame, expression, start, sources)
                 and cls._stable_binding_chain(frame, target_expression, start, sources)
             ):
                 return False
-            primary = target_expression
-            while isinstance(primary, ast.Attribute):
-                primary = primary.value
-            if not isinstance(primary, ast.Name):
-                return False
+            primary = target_expression.partition(".")[0]
             if (
                 scope.get_kind() != c.Infra.RopeScopeKind.MODULE
-                and primary.id in scope.get_defined_names()
+                and primary in scope.get_defined_names()
             ):
                 # A local assignment/import/parameter can capture the emitted
                 # facade even when Rope infers its current value as a class.
                 return False
-            expected = runtime.resolve_symbol(scope, target_expression)
+            expected = runtime.expression_name(scope, target_expression)
             return cls._binding_symbols_match(expected, actual)
 
         @classmethod
@@ -290,18 +424,39 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 ValueError: If resolved-symbol requires a module and an expression.
 
             """
-            if len(condition.arg) != cls._RESOLVED_SYMBOL_OPERAND_COUNT:
+            if len(condition.arg) != cls.RESOLVED_SYMBOL_OPERAND_COUNT:
                 msg = "resolved-symbol requires a module and an expression"
                 raise ValueError(msg)
             target_module, target = condition.arg
-            scope = project.get_module(target_module).get_scope()
-            if scope is None:
-                return False
-            expected = FlextInfraUtilitiesRopeRuntimeModules.resolve_symbol(
-                scope,
-                ast.parse(target, mode="eval").body,
+            expected = FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+                project, target, module_name=target_module
             )
-            return cls._binding_symbols_match(expected, actual)
+            holds = cls._binding_symbols_match(expected, actual)
+            if not holds:
+                cli.display_text(
+                    "mod: binding rejection resolved-symbol "
+                    f"target={target_module}.{target} "
+                    f"actual={cls._binding_identity(actual)} "
+                    f"expected={cls._binding_identity(expected)}",
+                )
+            return holds
+
+        @staticmethod
+        def _binding_identity(binding: p.Infra.RopePyName | None) -> str:
+            """Describe native identity without substituting an inferred value.
+
+            Returns:
+                The native binding kind, original owner and object kind.
+
+            """
+            if binding is None:
+                return "unresolved"
+            holder, line = binding.get_definition_location()
+            owner = holder.get_name() if holder is not None else "<no-owner>"
+            return (
+                f"{type(binding).__name__}@{owner}:{line} "
+                f"object={type(binding.get_object()).__name__}"
+            )
 
         @staticmethod
         def _binding_symbols_match(
@@ -332,12 +487,25 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             )
 
         @classmethod
+        def _binding_expression(cls, text: str) -> str | None:
+            """Admit the dotted-name grammar before native lexical evaluation.
+
+            Returns:
+                The normalized native binding expression, or ``None``.
+
+            """
+            parts = tuple(part.strip() for part in text.split("."))
+            return (
+                ".".join(parts) if all(part.isidentifier() for part in parts) else None
+            )
+
+        @classmethod
         def _stable_binding_chain(
             cls,
             frame: t.Triple[
                 p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope
             ],
-            expression: ast.expr,
+            expression: str,
             offset: int,
             sources: t.MappingKV[Path, str],
             *,
@@ -350,6 +518,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
 
             Returns:
                 The resulting ``bool``.
+
             """
             project, module, scope = frame
             binding = cls._chain_base_binding(
@@ -357,15 +526,15 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             )
             if binding is None:
                 return False
-            chain = cls._chain_module_text(project, module, sources)
+            chain = cls._chain_module_text(module, sources)
             if chain is None:
                 return False
             path, text = chain
             routes = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
-                module.get_name(), path, text
+                module.get_name(), path, text, project=project, pymodule=module
             )
             if not cls._single_reaching_binding(
-                text, scope, expression, offset, routes
+                module, scope, expression, offset, routes
             ):
                 return False
             if not cls._chain_alias_and_assignment_proven(
@@ -386,7 +555,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             frame: t.Triple[
                 p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope
             ],
-            expression: ast.expr,
+            expression: str,
             offset: int,
             sources: t.MappingKV[Path, str],
             *,
@@ -400,24 +569,24 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
 
             """
             scope = frame[2]
-            if isinstance(expression, ast.Attribute):
-                if not cls._stable_binding_chain(
-                    frame, expression.value, offset, sources, visited=visited
-                ):
-                    return None
-            elif not isinstance(expression, ast.Name):
+            normalized = cls._binding_expression(expression)
+            if normalized is None:
                 return None
-            return FlextInfraUtilitiesRopeRuntimeModules.resolve_symbol(
-                scope, expression
+            receiver, separator, _attribute = normalized.rpartition(".")
+            if separator and not cls._stable_binding_chain(
+                frame, receiver, offset, sources, visited=visited
+            ):
+                return None
+            return FlextInfraUtilitiesRopeRuntimeModules.expression_name(
+                scope, normalized
             )
 
         @staticmethod
         def _chain_module_text(
-            project: p.Infra.RopeProject,
             module: p.Infra.RopePyModule,
             sources: t.MappingKV[Path, str],
         ) -> t.Pair[Path, str] | None:
-            """Locate the module source text inside the closed project.
+            """Locate the module source text inside the authenticated closure.
 
             Returns:
                 The module path and snapshot text, or ``None`` when unavailable.
@@ -429,11 +598,6 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             path = Path(resource.real_path).resolve()
             if path.is_dir():
                 path /= c.Infra.INIT_PY
-            if not path.is_relative_to(Path(project.root.real_path).resolve()):
-                # NoProject-backed foreign modules can read disk outside the closed
-                # project's filesystem commands. Their receipts guard publication,
-                # but cannot establish an immutable inference graph: refuse a fixer.
-                return None
             text = sources.get(path)
             if text is None:
                 return None
@@ -443,7 +607,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
         def _chain_alias_and_assignment_proven(
             project: p.Infra.RopeProject,
             binding: p.Infra.RopePyName,
-            expression: ast.expr,
+            expression: str,
             routes: t.StrMapping,
         ) -> bool:
             """Hold the lazy alias route and the single-assignment contract.
@@ -453,9 +617,11 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 assigned exactly once.
 
             """
-            if isinstance(expression, ast.Name) and expression.id in routes:
-                route = project.get_module(routes[expression.id])
-                target = route.get_attribute(expression.id)
+            if expression.isidentifier() and expression in routes:
+                route = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
+                    project.get_module(routes[expression])
+                )
+                target = route.get_attribute(expression)
                 if not FlextInfraUtilitiesRopeRuntimeModules.same_name(
                     target, binding
                 ) and (
@@ -486,7 +652,8 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
 
             """
             imported = binding.imported_module.get_object()
-            if not FlextInfraUtilitiesRopeRuntimeTypes.pymodule(imported):
+            imported = imported.get_module()
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(imported):
                 return False
             key = (
                 binding.imported_module.importing_module.get_name(),
@@ -496,7 +663,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 return False
             imported_scope = imported.get_scope()
             imported_resource = imported.get_resource()
-            if imported_scope is None or imported_resource is None:
+            if imported_resource is None:
                 return False
             imported_path = Path(imported_resource.real_path).resolve()
             if imported_path.is_dir():
@@ -511,13 +678,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 # A from-import may publish a submodule without a declaration in
                 # its package initializer. Any package-level rebind makes that
                 # implicit route unproven.
-                rebound = any(
-                    binding.imported_name
-                    in FlextInfraUtilitiesSemanticCutoverBindings.bound_identifiers(
-                        node
-                    )
-                    for node in ast.walk(ast.parse(imported_text))
-                )
+                rebound = binding.imported_name in imported_scope.get_defined_names()
                 value_resource = None if rebound else value.get_resource()
                 return (
                     not rebound
@@ -526,7 +687,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 )
             return cls._stable_binding_chain(
                 (project, imported, imported_scope),
-                ast.Name(id=binding.imported_name, ctx=ast.Load()),
+                binding.imported_name,
                 len(imported_text),
                 sources,
                 visited=visited | {key},
@@ -537,7 +698,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             cls,
             project: p.Infra.RopeProject,
             binding: p.Infra.RopePyName,
-            expression: ast.expr,
+            expression: str,
             sources: t.MappingKV[Path, str],
             *,
             visited: frozenset[t.Pair[str, str]],
@@ -548,35 +709,56 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 Whether the binding's single declaration stays stable at its owner.
 
             """
-            holder_context = cls._chain_holder_context(binding, project, sources)
-            if holder_context is None:
-                return False
-            if isinstance(binding, p.Infra.RopeImportedModule):
-                return True
+            holder_context = cls._chain_holder_context(binding, sources)
+            if holder_context is None or isinstance(
+                binding, p.Infra.RopeImportedModule
+            ):
+                return holder_context is not None
             holder, line, holder_text = holder_context
-            name = (
-                expression.attr
-                if isinstance(expression, ast.Attribute)
-                else expression.id
-                if isinstance(expression, ast.Name)
-                else ""
+            chased = cls._chain_holder_declaration(
+                holder, holder_text, line, expression.rpartition(".")[-1]
             )
-            chased = cls._chain_holder_declaration(holder, holder_text, line, name)
             if chased is None:
                 return False
             declaration, holder_offset, holder_scope = chased
             if not (
                 isinstance(binding, p.Infra.RopeAssignedName)
-                and isinstance(declaration, ast.Assign | ast.AnnAssign)
+                and declaration.category
+                in {
+                    c.Infra.StatementCategory.ASSIGN,
+                    c.Infra.StatementCategory.ANN_ASSIGN,
+                }
             ):
                 return True
-            value = declaration.value
-            if not isinstance(value, ast.Name | ast.Attribute):
-                return isinstance(value, ast.Constant)
+            pattern = (
+                "${binding_target}: ${binding_annotation} = ${binding_value}"
+                if declaration.category == c.Infra.StatementCategory.ANN_ASSIGN
+                else "${binding_target} = ${binding_value}"
+            )
+            regions = tuple(
+                FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture_region(
+                    match, "binding_value"
+                )
+                for match in tuple(
+                    FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(
+                        holder
+                    ).get_matches(pattern, {})
+                )
+                if declaration.start_offset <= match.get_region()[0]
+                and match.get_region()[1] <= declaration.end_offset
+            )
+            if len(regions) != 1:
+                return False
+            first, last = regions[0]
+            value = cls._binding_expression(holder_text[first:last])
+            if value is None:
+                return FlextInfraUtilitiesRopeRuntimeRefactors.literal_constant(
+                    holder_text[first:last]
+                )
             # The guard keys the link chased next (the assigned value), never the
             # link already proven: an import hop records (module, name) before this
             # declaration hop holds that same name, which is one chain, not a cycle.
-            key = (holder.get_name(), ast.unparse(value))
+            key = (holder.get_name(), value)
             return key not in visited and cls._stable_binding_chain(
                 (project, holder, holder_scope),
                 value,
@@ -588,25 +770,27 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
         @staticmethod
         def _chain_holder_context(
             binding: p.Infra.RopePyName,
-            project: p.Infra.RopeProject,
             sources: t.MappingKV[Path, str],
         ) -> t.Triple[p.Infra.RopePyModule, int | None, str] | None:
-            """Locate the definition site text of one binding inside the project.
+            """Locate one binding's definition inside the authenticated closure.
 
             Returns:
                 The defining module, its line, and the snapshot text, or ``None``
-                when the definition site is unavailable or foreign.
+                when the definition site is unavailable or uncaptured.
 
             """
             holder, line = binding.get_definition_location()
-            holder_resource = None if holder is None else holder.get_resource()
-            if holder_resource is None or holder is None:
+            if holder is None:
+                return None
+            holder = holder.get_module()
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(holder):
+                return None
+            holder_resource = holder.get_resource()
+            if holder_resource is None:
                 return None
             holder_path = Path(holder_resource.real_path).resolve()
             if holder_path.is_dir():
                 holder_path /= c.Infra.INIT_PY
-            if not holder_path.is_relative_to(Path(project.root.real_path).resolve()):
-                return None
             holder_text = sources.get(holder_path)
             if holder_text is None:
                 return None
@@ -619,7 +803,7 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             holder_text: str,
             line: int | None,
             name: str,
-        ) -> t.Triple[ast.stmt, int, p.Infra.RopeScope] | None:
+        ) -> t.Triple[m.Infra.LogicalStatement, int, p.Infra.RopeScope] | None:
             """Prove the holder's declaration is the single reaching definition.
 
             Returns:
@@ -630,22 +814,24 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             declaration = next(
                 (
-                    node
-                    for node in ast.walk(ast.parse(holder_text))
-                    if isinstance(node, ast.stmt) and node.lineno == line
+                    row
+                    for row in FlextInfraUtilitiesRopeStructure.logical_statements(
+                        holder_text
+                    )
+                    if row.line <= (line or 0) <= row.end_line
                 ),
                 None,
             )
             if declaration is None:
                 return None
-            holder_offset = runtime.source_offset(holder_text, declaration)
+            holder_offset = declaration.start_offset
             holder_scope = runtime.scope_at(
                 holder, holder_offset, declaration_line=line
             )
             if not cls._single_reaching_binding(
-                holder_text,
+                holder,
                 holder_scope,
-                ast.Name(id=name, ctx=ast.Load()),
+                name,
                 len(holder_text),
             ):
                 return None
@@ -654,9 +840,9 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
         @classmethod
         def _single_reaching_binding(
             cls,
-            source: str,
+            module: p.Infra.RopePyModule,
             scope: p.Infra.RopeScope,
-            expression: ast.expr,
+            expression: str,
             offset: int,
             declared_routes: t.StrMapping | None = None,
         ) -> bool:
@@ -664,79 +850,173 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
 
             Returns:
                 The resulting ``bool``.
+
             """
-            tree = ast.parse(source)
-            parents = {
-                child: parent
-                for parent in ast.walk(tree)
-                for child in ast.iter_child_nodes(parent)
-            }
-            declarations = cls._single_reaching_declarations(
-                tree, parents, scope, expression
-            )
-            if isinstance(expression, ast.Attribute):
+            declarations = cls._single_reaching_declarations(module, scope, expression)
+            if "." in expression:
                 return not declarations
             if len(declarations) != 1:
                 return False
-            declaration = declarations[0]
-            if isinstance(declaration, ast.arg):
-                return False
-            start = FlextInfraUtilitiesRopeRuntimeModules.source_offset(
-                source, declaration
-            )
+            declaration, start = declarations[0]
             if start >= offset:
                 return False
             return cls._declaration_reaches_unconditionally(
-                parents, declaration, expression, declared_routes
+                module, scope, declaration, expression, declared_routes
             )
 
-        @staticmethod
+        @classmethod
+        def _occurrence_is_imported(
+            cls,
+            module: p.Infra.RopePyModule,
+            row: m.Infra.LogicalStatement,
+            expression: str,
+        ) -> bool:
+            """Report whether the statement imports the expression into scope.
+
+            Returns:
+                Whether the import statement's module scope defines the
+                expression.
+
+            Raises:
+                TypeError: If the parsed module lacks its native source graph.
+
+            """
+            if row.category not in {
+                c.Infra.StatementCategory.IMPORT,
+                c.Infra.StatementCategory.FROM_IMPORT,
+            }:
+                return False
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+                msg = "native import occurrence has no source-module graph"
+                raise TypeError(msg)
+            runtime = FlextInfraUtilitiesRopeRuntimeModules
+            imported_module = runtime.build_string_module(
+                module.pycore.project, row.text.strip()
+            )
+            imported_scope = imported_module.get_scope()
+            return expression in imported_scope.get_defined_names()
+
+        @classmethod
         def _single_reaching_declarations(
-            tree: ast.Module,
-            parents: t.MappingKV[ast.AST, ast.AST],
+            cls,
+            module: p.Infra.RopePyModule,
             scope: p.Infra.RopeScope,
-            expression: ast.expr,
-        ) -> list[ast.AST]:
+            expression: str,
+        ) -> t.SequenceOf[t.Pair[m.Infra.LogicalStatement, int]]:
             """Collect the frame-local declarations competing with the expression.
 
             Returns:
                 The declarations of the expression's spelling at the scope frame.
 
             """
-            frames = (
-                ast.Module,
-                ast.FunctionDef,
-                ast.AsyncFunctionDef,
-                ast.ClassDef,
-                ast.Lambda,
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+                return ()
+            source = module.source_code
+            runtime = FlextInfraUtilitiesRopeRuntimeModules
+            rows = FlextInfraUtilitiesRopeStructure.logical_statements(source)
+            name = expression.rpartition(".")[-1]
+            binding = runtime.expression_name(scope, expression)
+            assignment_lines: frozenset[int | None] = (
+                frozenset(assignment.get_lineno() for assignment in binding.assignments)
+                if isinstance(binding, p.Infra.RopeAssignedName)
+                else frozenset()
             )
-            spelling = ast.unparse(expression)
-            declarations: list[ast.AST] = []
-            for node in ast.walk(tree):
-                names = FlextInfraUtilitiesSemanticCutoverBindings.bound_identifiers(
-                    node
+            finder = FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
+                module.pycore.project, name
+            )
+            declarations: list[t.Pair[m.Infra.LogicalStatement, int]] = []
+            seen: set[t.Pair[int, int]] = set()
+            for occurrence in finder.find_occurrences(pymodule=module):
+                start, end = occurrence.get_primary_range()
+                if cls._binding_expression(source[start:end]) != expression:
+                    continue
+                row = next(
+                    (
+                        statement
+                        for statement in rows
+                        if statement.start_offset
+                        <= occurrence.offset
+                        < statement.end_offset
+                    ),
+                    None,
                 )
-                attribute = isinstance(node, ast.Attribute) and isinstance(
-                    node.ctx, ast.Store | ast.Del
-                )
-                if spelling not in names and not (
-                    attribute and ast.unparse(node) == spelling
+                if row is None:
+                    continue
+                if not cls._occurrence_redefines(
+                    (module, scope),
+                    occurrence,
+                    row,
+                    expression,
+                    assignment_lines,
                 ):
                     continue
-                parent = parents.get(node)
-                while parent is not None and not isinstance(parent, frames):
-                    parent = parents.get(parent)
-                if parent is not None and (
-                    isinstance(parent, ast.Module) or parent.lineno == scope.get_start()
-                ):
-                    declarations.append(node)
+                key = row.start_offset, occurrence.offset
+                if key not in seen:
+                    seen.add(key)
+                    declarations.append((row, occurrence.offset))
             return declarations
+
+        @classmethod
+        def _occurrence_redefines(
+            cls,
+            frame: t.Pair[p.Infra.RopePyModule, p.Infra.RopeScope],
+            occurrence: p.Infra.RopeOccurrence,
+            row: m.Infra.LogicalStatement,
+            expression: str,
+            assignment_lines: frozenset[int | None],
+        ) -> bool:
+            """Classify one occurrence as a competing frame-local declaration.
+
+            Args:
+                frame: The queried Rope module and lexical scope frame.
+                occurrence: The lexical occurrence of the expression.
+                row: The logical statement containing the occurrence.
+                expression: The full dotted binding expression.
+                assignment_lines: Line numbers of the binding's assignments.
+
+            Returns:
+                Whether the occurrence writes, defines, imports, or deletes the
+                expression inside the queried frame.
+
+            """
+            module, scope = frame
+            found_scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
+                module,
+                occurrence.offset,
+                declaration_line=(
+                    row.line
+                    if row.category
+                    in {
+                        c.Infra.StatementCategory.CLASS_DEF,
+                        c.Infra.StatementCategory.FUNC_DEF,
+                    }
+                    else None
+                ),
+            )
+            if found_scope is not scope and (
+                found_scope.get_kind() != c.Infra.RopeScopeKind.MODULE
+            ):
+                return False
+            imported = cls._occurrence_is_imported(module, row, expression)
+            assigned = (
+                occurrence.is_written()
+                or occurrence.is_defined()
+                or (expression.isidentifier() and occurrence.lineno in assignment_lines)
+            )
+            if row.category == c.Infra.StatementCategory.ANN_ASSIGN:
+                assigned |= (
+                    cls._binding_expression(row.text.partition(":")[0]) == expression
+                )
+            if row.text.lstrip().startswith("del "):
+                assigned = True
+            return assigned or imported
 
         @staticmethod
         def _declaration_reaches_unconditionally(
-            parents: t.MappingKV[ast.AST, ast.AST],
-            declaration: ast.AST,
-            expression: ast.expr,
+            module: p.Infra.RopePyModule,
+            scope: p.Infra.RopeScope,
+            declaration: m.Infra.LogicalStatement,
+            expression: str,
             declared_routes: t.StrMapping | None,
         ) -> bool:
             """Report whether the declaration dominates the queried offset.
@@ -746,27 +1026,43 @@ class FlextInfraFlextUtilitiesCodemodBindingChain:
                 declared lazy-module routes.
 
             """
-            frames = (
-                ast.Module,
-                ast.FunctionDef,
-                ast.AsyncFunctionDef,
-                ast.ClassDef,
-                ast.Lambda,
-            )
-            spelling = ast.unparse(expression)
-            parent = parents.get(declaration)
-            while parent is not None and not isinstance(parent, frames):
-                conditional = isinstance(
-                    parent, ast.If | ast.Try | ast.For | ast.While | ast.With
+            rows = tuple(
+                row
+                for row in FlextInfraUtilitiesRopeStructure.logical_statements(
+                    module.source_code
                 )
-                if conditional and not (
-                    isinstance(parent, ast.If)
-                    and declared_routes is not None
-                    and spelling in declared_routes
-                ):
-                    return False
-                parent = parents.get(parent)
-            return True
+                if (
+                    scope.get_kind() == c.Infra.RopeScopeKind.MODULE
+                    and row.enclosing_kind == c.Infra.RopeScopeKind.MODULE
+                )
+                or (
+                    scope.get_start() < row.line <= scope.get_end()
+                    and row.enclosing_kind == scope.get_kind()
+                    and row.enclosing_name == scope.pyobject.get_name()
+                )
+            )
+            direct_indent = (
+                0
+                if scope.get_kind() == c.Infra.RopeScopeKind.MODULE
+                else min((row.indent for row in rows), default=declaration.indent)
+            )
+            if declaration.indent <= direct_indent:
+                return True
+            if declared_routes is None or expression not in declared_routes:
+                return False
+            guards: list[m.Infra.LogicalStatement] = []
+            for row in rows:
+                if row.start_offset >= declaration.start_offset:
+                    break
+                while guards and row.indent <= guards[-1].indent:
+                    guards.pop()
+                if row.text.rstrip().endswith(":"):
+                    guards.append(row)
+            return bool(guards) and all(
+                row.category == c.Infra.StatementCategory.IF_GUARD
+                or row.text.lstrip().startswith(("else:", "elif "))
+                for row in guards
+            )
 
 
-__all__: list[str] = ["FlextInfraFlextUtilitiesCodemodBindingChain"]
+__all__: list[str] = ["FlextInfraUtilitiesCodemodBindingChain"]

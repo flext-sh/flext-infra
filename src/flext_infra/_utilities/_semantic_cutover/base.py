@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import traceback
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t
@@ -18,11 +17,13 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesSemanticCutoverModuleLayout,
     FlextInfraUtilitiesSemanticCutoverNesting,
     FlextInfraUtilitiesSemanticCutoverPrivateImports,
-    FlextInfraUtilitiesSemanticCutoverSelfFacade,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticConstantConsumers,
     FlextInfraUtilitiesSemanticDeclarationRelocation,
+)
+from flext_infra._utilities._semantic_cutover.contracts import (
+    FlextInfraUtilitiesSemanticContracts,
 )
 
 if TYPE_CHECKING:
@@ -32,6 +33,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraUtilitiesSemanticCutoverBase(
+    FlextInfraUtilitiesSemanticContracts,
     FlextInfraUtilitiesSemanticDeclarationRelocation,
     FlextInfraUtilitiesSemanticConstantConsumers,
     FlextInfraUtilitiesSemanticCutoverNesting,
@@ -39,7 +41,6 @@ class FlextInfraUtilitiesSemanticCutoverBase(
     FlextInfraUtilitiesSemanticCutoverPrivateImports,
     FlextInfraUtilitiesSemanticCutoverFacadeBases,
     FlextInfraUtilitiesSemanticCutoverModelFields,
-    FlextInfraUtilitiesSemanticCutoverSelfFacade,
     FlextInfraUtilitiesSemanticCutoverDynamicEnvironment,
     FlextInfraUtilitiesSemanticCutoverModuleLayout,
 ):
@@ -52,9 +53,9 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         *,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModScanFinding] = (),
+        findings: t.SequenceOf[m.Infra.ModOccurrence] = (),
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        """Plan one phase's edits without effects; every module failure is kept.
+        """Plan one phase without effects; the first exception escapes unchanged.
 
         ``rope_workspace`` supplies the repository root that reported findings
         are relative to and, for class nesting, the module ownership policy.
@@ -63,35 +64,10 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         Returns:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
 
+        Raises:
+            ValueError: If the phase is unsupported.
+
         """
-        try:
-            return cls._plan_dispatch(phase, rope_workspace, sources, findings)
-        except Exception:
-            traceback.print_exc()
-            raise
-
-    @classmethod
-    def _plan_dispatch(
-        cls,
-        phase: c.Infra.SemanticCutoverPhase,
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModScanFinding] = (),
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        try:
-            return cls._plan_phases(phase, rope_workspace, sources, findings)
-        except Exception:
-            traceback.print_exc()
-            raise
-
-    @classmethod
-    def _plan_phases(
-        cls,
-        phase: c.Infra.SemanticCutoverPhase,
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModScanFinding] = (),
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         if not phase:
             message = f"unsupported semantic cutover phase: {phase}"
             raise ValueError(message)
@@ -103,42 +79,24 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION
                 | c.Infra.SemanticCutoverPhase.CLASS_NESTING
                 | c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
+                | c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION
                 | c.Infra.SemanticCutoverPhase.COMPAT_ALIAS
                 | c.Infra.SemanticCutoverPhase.PRIVATE_IMPORT
                 | c.Infra.SemanticCutoverPhase.FACADE_BASE
                 | c.Infra.SemanticCutoverPhase.MODEL_FIELDS
             ):
-                return cls._plan_selected_phase(
+                return cls._plan_selected_phase_dispatch(
                     phase,
                     rope_workspace,
                     sources,
                     selected,
                 )
             case (
-                c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT
-                | c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT
+                c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT
                 | c.Infra.SemanticCutoverPhase.MODULE_END
                 | c.Infra.SemanticCutoverPhase.NOTICE_LAST
             ):
                 return cls._plan_ordered_phase(phase, root, sources, selected)
-
-    @classmethod
-    def _plan_selected_phase(
-        cls,
-        phase: c.Infra.SemanticCutoverPhase,
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-        selected: t.SequenceOf[m.Infra.ModScanFinding],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        """Plan one finding-selected cutover phase.
-
-        Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
-
-        """
-        return cls._plan_selected_phase_dispatch(
-            phase, rope_workspace, sources, selected
-        )
 
     @classmethod
     def _plan_behavior_and_declarations(
@@ -154,6 +112,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
 
         Returns:
             A result containing a tuple of semantic migration edits.
+
         """
         consumers = cls._plan_behavior_consumers(
             rope_workspace.repository_root, sources
@@ -189,7 +148,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         phase: c.Infra.SemanticCutoverPhase,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
-        selected: t.SequenceOf[m.Infra.ModScanFinding],
+        selected: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         root = rope_workspace.repository_root
         dispatch = {
@@ -201,6 +160,9 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             ),
             c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS: lambda: (
                 cls._plan_constant_consumers(rope_workspace, sources)
+            ),
+            c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION: lambda: (
+                cls._plan_rope_contracts(rope_workspace, sources)
             ),
             c.Infra.SemanticCutoverPhase.COMPAT_ALIAS: lambda: cls._plan_api_aliases(
                 root, sources, selected
@@ -227,7 +189,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         phase: c.Infra.SemanticCutoverPhase,
         root: Path,
         sources: t.MappingKV[Path, str],
-        selected: t.SequenceOf[m.Infra.ModScanFinding],
+        selected: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Plan one order-driven cutover phase.
 
@@ -239,8 +201,6 @@ class FlextInfraUtilitiesSemanticCutoverBase(
 
         """
         match phase:
-            case c.Infra.SemanticCutoverPhase.SELF_FACADE_IMPORT:
-                return cls._plan_self_facade_imports(root, sources)
             case c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT:
                 return cls._plan_dynamic_environment(root, sources, selected)
             case c.Infra.SemanticCutoverPhase.MODULE_END:

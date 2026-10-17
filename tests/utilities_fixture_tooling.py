@@ -146,6 +146,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                     options=m.Cli.ProcessOptions(
                         env=u.Cli.process_env(
                             overrides={
+                                c.Infra.PYTEST_ENV_REPOSITORY_ROOT: str(runner.root),
                                 c.Infra.PYTEST_ENV_TARGET: str(runner.target),
                                 c.Infra.PYTEST_ENV_TARGET_FILE: str(
                                     target_file
@@ -287,17 +288,37 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         return m.Infra.MypyInvocation(targets=(source,), config_file=config_file)
 
     @staticmethod
-    def create_python_environment(root: Path) -> p.Result[bool]:
-        """Provision a physical fixture environment with the current interpreter.
+    def create_python_environment(
+        root: Path,
+        *,
+        dependency_projects: t.SequenceOf[Path] = (),
+    ) -> p.Result[bool]:
+        """Provision a fixture with the executor's declared physical resolver.
 
         Returns:
             The resulting ``p.Result[bool]``.
 
         """
+        binary = u.Infra.managed_mise_binary(c.Infra.UV, Path.cwd())
+        if binary.failure:
+            return r[bool].from_failure(binary)
         environment = u.Infra.runtime_environment_dir(root)
         environment.parent.mkdir(parents=True, exist_ok=True)
+        created = u.Cli.run_checked(
+            [str(binary.value), "venv", "--python", sys.executable, str(environment)],
+            cwd=root,
+        )
+        if created.failure or not dependency_projects:
+            return created
         return u.Cli.run_checked(
-            ["uv", "venv", "--python", sys.executable, str(environment)],
+            (
+                str(binary.value),
+                "pip",
+                "install",
+                "--python",
+                str(environment),
+                *(str(project) for project in dependency_projects),
+            ),
             cwd=root,
         )
 
@@ -307,13 +328,17 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
 
         Returns:
             The installation result or the original environment failure.
+
         """
         created = cls.create_python_environment(root)
         if created.failure:
             return r[bool].from_failure(created)
+        binary = u.Infra.managed_mise_binary(c.Infra.UV, Path.cwd())
+        if binary.failure:
+            return r[bool].from_failure(binary)
         return u.Cli.run_checked(
             (
-                c.Infra.UV,
+                str(binary.value),
                 "pip",
                 "install",
                 "--no-deps",
@@ -432,6 +457,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 config_path,
+                f"{c.Infra.CODEMOD_SCOPE_KEY}: {c.Infra.CODEMOD_SCOPE_UNIVERSAL}\n"
                 f"ruleDirs:\n  - {c.Cli.RULES_DIR_NAME}\ntestConfigs: []\n",
             ),
         )

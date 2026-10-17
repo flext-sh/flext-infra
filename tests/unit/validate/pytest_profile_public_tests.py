@@ -30,7 +30,7 @@ class TestsFlextInfraPytestProfile:
         script = (
             c.Infra.PYTEST_PROFILE_BOOTSTRAP + "import os, signal, sys, pstats\n"
             "output = Path(sys.argv[1])\n"
-            "profile.runcall(sum, range(10))\n"
+            "sum(range(10))\n"
             "clock.FlextInfraPytestClock.publish_profile(profile, output)\n"
             "before = output.read_bytes()\n"
             "before_modified = output.stat().st_mtime_ns\n"
@@ -53,7 +53,38 @@ class TestsFlextInfraPytestProfile:
             u.Cli.run_raw(
                 (sys.executable, "-c", script, str(output)),
                 cwd=tmp_path,
-                timeout=config.Infra.tooling.tools.pytest.case_timeout_seconds,
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(result.outcome),
+            eq=True,
+            msg=result.stdout + result.stderr,
+        )
+
+    @staticmethod
+    def test_immutable_profile_is_linked_before_public_replacement(
+        tmp_path: Path,
+    ) -> None:
+        """The invocation-owned inode exists before the shared name is replaced."""
+        output = tmp_path / "shared.pstats"
+        immutable = tmp_path / "owned.pstats"
+        script = (
+            c.Infra.PYTEST_PROFILE_BOOTSTRAP + "import os, pstats\n"
+            "output, immutable = map(Path, sys.argv[1:])\n"
+            "def interleave(event, arguments):\n"
+            "    if event == 'os.rename' and str(arguments[1]) == str(output):\n"
+            "        assert immutable.samefile(Path(arguments[0]))\n"
+            "        output.write_bytes(b'another publisher')\n"
+            "sys.addaudithook(interleave)\n"
+            "clock.FlextInfraPytestClock.publish_profile(\n"
+            "    profile, output, immutable_output=immutable)\n"
+            "assert immutable.samefile(output)\n"
+            "assert pstats.Stats(str(immutable)).get_stats_profile().func_profiles\n"
+        )
+        result = tm.ok(
+            u.Cli.run_raw(
+                (sys.executable, "-c", script, str(output), str(immutable)),
+                cwd=tmp_path,
             ),
         )
         tm.that(
@@ -69,10 +100,7 @@ class TestsFlextInfraPytestProfile:
         interruption: str,
     ) -> None:
         """Preserve native SIGTERM and timeout outcomes alongside measured progress."""
-        deadline = max(
-            1,
-            config.Infra.tooling.tools.pytest.case_timeout_seconds // 4,
-        )
+        deadline = config.Infra.tooling.tools.pytest.termination_grace_seconds
         probe = tmp_path / "termination_probe.py"
         action = (
             "os.kill(os.getpid(), signal.SIGTERM)"
@@ -96,7 +124,7 @@ class TestsFlextInfraPytestProfile:
                     str(output),
                     "-p",
                     probe.stem,
-                    "--version",
+                    "--collect-only",
                 ),
                 cwd=tmp_path,
                 timeout=deadline,
@@ -108,6 +136,75 @@ class TestsFlextInfraPytestProfile:
         measured = pstats.Stats(str(output)).get_stats_profile().func_profiles
         tm.that(
             any(Path(function.file_name) == probe for function in measured.values()),
+            eq=True,
+        )
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_native_profiler_owns_workload_after_startup_handoff(
+        cached_runner_project: Path,
+    ) -> None:
+        """Native cProfile and automatic startup publish distinct real segments."""
+        cache = config.Infra.codegen.make.testmon_cache
+        policy = config.Infra.tooling.tools.pytest
+        workload = cached_runner_project / "native_profile_workload.py"
+        workload.write_text(
+            "import os\n"
+            "def workload():\n    return sum(range(4))\n"
+            "if __name__ == '__main__':\n"
+            "    print(os.getpid())\n    print(workload())\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        native = cached_runner_project / "native-workload.pstats"
+        target = Path(cache.target_directory) / "test_runtime.py"
+        (cached_runner_project / target).write_text(
+            "import os, pstats, subprocess, sys\n"
+            "from pathlib import Path\n"
+            "import pytest\n"
+            f"@pytest.mark.{policy.slow_marker}\n"
+            "def test_runtime():\n"
+            f"    root = Path({str(cached_runner_project)!r})\n"
+            "    completed = subprocess.run((sys.executable, '-m', 'cProfile', "
+            f"'-o', {str(native)!r}, {str(workload)!r}), "
+            "cwd=root, capture_output=True, text=True)\n"
+            "    assert completed.returncode == 0, completed.stderr\n"
+            "    native_pid, value = completed.stdout.splitlines()\n"
+            "    assert value == '6'\n"
+            f"    assert 'workload' in pstats.Stats({str(native)!r})"
+            ".get_stats_profile().func_profiles\n"
+            "    malformed = subprocess.run((sys.executable, '-m', 'cProfile', "
+            "'--flext-invalid-profile-option'), cwd=root, capture_output=True)\n"
+            "    assert malformed.returncode == 2\n"
+            "    ordinary = subprocess.run((sys.executable, '-m', "
+            "'native_profile_workload', '-m', 'cProfile'), cwd=root, "
+            "capture_output=True, text=True)\n"
+            "    assert ordinary.returncode == 0, ordinary.stderr\n"
+            "    ordinary_pid, value = ordinary.stdout.splitlines()\n"
+            "    assert value == '6'\n"
+            "    children = Path(os.environ["
+            f"{c.Infra.PYTEST_PROFILE_CHILD_ROOT_ENV!r}])\n"
+            "    startup = children / f'{native_pid}.pstats'\n"
+            "    assert pstats.Stats(str(startup)).get_stats_profile().func_profiles\n"
+            "    automatic = children / f'{ordinary_pid}.pstats'\n"
+            "    assert 'workload' in pstats.Stats(str(automatic))"
+            ".get_stats_profile().func_profiles\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project,
+            target_file=target,
+        )
+        output = (
+            cached_runner_project
+            / ".reports"
+            / "profiles"
+            / policy.profile_suite_filename
+        )
+        tm.that(
+            u.Tests.PytestRunner.profile_parent(runner, output), eq=pytest.ExitCode.OK
+        )
+        tm.that(
+            "workload" in pstats.Stats(str(native)).get_stats_profile().func_profiles,
             eq=True,
         )
 
@@ -146,6 +243,96 @@ class TestsFlextInfraPytestProfile:
 
     @staticmethod
     @pytest.mark.slow
+    @pytest.mark.parametrize("publication_error", ["receipt", "context", "stderr"])
+    def test_parent_publication_error_preserves_the_child_failure(
+        cached_runner_project: Path,
+        publication_error: str,
+    ) -> None:
+        """A real receipt write error cannot replace a killed suite's exit code."""
+        cache = config.Infra.codegen.make.testmon_cache
+        policy = config.Infra.tooling.tools.pytest
+        target = Path(cache.target_directory) / "test_runtime.py"
+        output = (
+            cached_runner_project
+            / ".reports"
+            / "profiles"
+            / policy.profile_suite_filename
+        )
+        damage = (
+            "    (Path(os.environ["
+            f"{c.Infra.PYTEST_PROFILE_CHILD_ROOT_ENV!r}]).parent / 'run-context.json')"
+            ".write_text('{')\n"
+            if publication_error == "context"
+            else f"    Path({str(output.with_suffix('.pstats.json'))!r}).mkdir()\n"
+        )
+        (cached_runner_project / target).write_text(
+            "import os, signal\nfrom pathlib import Path\n"
+            "def test_runtime():\n"
+            + damage
+            + "    os.kill(os.getpid(), signal.SIGKILL)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project, target_file=target
+        )
+        script = (
+            "import os, runpy, sys\n"
+            "sys.argv = ['flext_infra._pytest_entry', 'profile', sys.argv[1]]\n"
+            "def close_diagnostic(event, arguments):\n"
+            "    if event == 'os.rename' and str(arguments[1]) == "
+            f"{str(output.with_suffix('.pstats.json'))!r}:\n"
+            "        sys.stderr.close()\n"
+            + (
+                "sys.addaudithook(close_diagnostic)\n"
+                if publication_error == "stderr"
+                else ""
+            )
+            + "runpy.run_module('flext_infra._pytest_entry', run_name='__main__')\n"
+        )
+        result = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    script,
+                    str(output),
+                ),
+                cwd=cached_runner_project,
+                timeout=policy.slow_timeout_seconds,
+                options=m.Cli.ProcessOptions(
+                    env=u.Cli.process_env(
+                        overrides={
+                            c.Infra.PYTEST_ENV_REPOSITORY_ROOT: str(runner.root),
+                            c.Infra.PYTEST_ENV_TARGET: str(runner.target),
+                            c.Infra.PYTEST_ENV_TARGET_FILE: str(target),
+                            c.Infra.PYTEST_ENV_REPORTS: str(runner.reports),
+                            cache.database_environment_variable: str(runner.testmon_db),
+                        },
+                    ),
+                ),
+            ),
+        )
+        tm.that(result.outcome.raw_return_code, eq=(-signal.SIGKILL) % 256)
+        tm.that(result.outcome.timed_out, eq=False)
+        tm.that(output.is_file(), eq=True)
+        tm.that(
+            bool(pstats.Stats(str(output)).get_stats_profile().func_profiles),
+            eq=True,
+        )
+        if publication_error != "stderr":
+            tm.that(
+                result.stderr, has=[f"raw_return_code={-signal.SIGKILL}", "Traceback"]
+            )
+        if publication_error == "context":
+            tm.that(output.with_suffix(".pstats.json").exists(), eq=False)
+        processes = output.parent / policy.profile_process_directory
+        tm.that(
+            len(tuple(processes.glob("*.pstats.json"))),
+            eq=0 if publication_error == "context" else 1,
+        )
+
+    @staticmethod
+    @pytest.mark.slow
     def test_focused_profile_keeps_one_run_and_excludes_other_files(
         cached_runner_project: Path,
     ) -> None:
@@ -171,8 +358,9 @@ class TestsFlextInfraPytestProfile:
         tm.that(
             u.Tests.PytestRunner.profile_parent(runner, output), eq=pytest.ExitCode.OK
         )
-        reports = cached_runner_project / runner.reports
-        contexts = list(reports.glob("*/run-context.json"))
+        contexts = list(
+            (cached_runner_project / runner.reports).glob("*/run-context.json"),
+        )
         tm.that(len(contexts), eq=1)
         context = m.Infra.PytestRunContext.model_validate_json(
             contexts[0].read_text(encoding="utf-8"),
@@ -186,6 +374,28 @@ class TestsFlextInfraPytestProfile:
         stats = pstats.Stats(str(output)).get_stats_profile().func_profiles
         tm.that(FlextInfraPytestRunner.__name__ in stats, eq=True)
         tm.that("FlextInfraPytestProfile" in stats, eq=True)
+        processes = (
+            output.parent / config.Infra.tooling.tools.pytest.profile_process_directory
+        )
+        immutable_profiles = tuple(processes.glob("*.pstats"))
+        tm.that(len(immutable_profiles), eq=1)
+        immutable = immutable_profiles[0]
+        receipt = immutable.with_suffix(".pstats.json").read_text(
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.that(
+            receipt,
+            eq=output.with_suffix(".pstats.json").read_text(
+                encoding=c.DEFAULT_ENCODING
+            ),
+        )
+        # Replacing the public destination must leave the per-process evidence intact.
+        replacement = output.with_suffix(".replacement")
+        replacement.write_bytes(b"a later invocation")
+        replacement.replace(output)
+        bound = m.Infra.PytestRunContext.model_validate_json(receipt)
+        tm.that(bound.report_directory, eq=context.report_directory)
+        tm.that(bound.profile_sha256, eq=u.Cli.sha256_bytes(immutable.read_bytes()))
 
     @staticmethod
     @pytest.mark.slow
@@ -517,8 +727,8 @@ class TestsFlextInfraPytestProfile:
         command = tm.ok(
             u.Cli.files_read_text(reports_root / latest_name / "command.txt"),
         )
-        # A complete selection runs the whole target; the collection plugin
-        # enforces exactly the selected node ids in the recorded order.
+        # Selection runs once before workers record dependencies; the collection
+        # plugin enforces exactly the selected node ids in the recorded order.
         tm.that(selection.splitlines(), has="tests/test_runtime.py::test_runtime")
         tm.that(command, has=c.Infra.PYTEST_SELECTED_COLLECTION_OPTION)
         tm.that(command, has="--no-cov")

@@ -1,5 +1,5 @@
 id: typing-list-missing-t-import
-# `valid` MUST NOT match: the module binds `t` (the auto-fixing rule owns it),
+# `valid` MUST NOT match: the module binds canonical `t` (its companion owns it),
 # `List` is not the typing generic, or the occurrence is text rather than code.
 valid:
   - |
@@ -14,6 +14,13 @@ valid:
     from typing import List
 
     HELP = "annotate with List[str] rather than list[str]"
+  - |
+    from typing import List
+    ALIAS = List[str]
+    VALUE = List[str]()
+    def f(factory: type = List[str]): ...
+    field = Field(default_factory=List[str])
+    class Derived(List[str]): ...
 # `invalid` MUST match: a real generic in a module that binds no `t`.
 invalid:
   - |
@@ -23,4 +30,39 @@ invalid:
   - |
     import typing
 
-    ALIAS = typing.List[str]
+    type ALIAS = typing.List[str]
+  - |
+    from typing import List
+    type ALIAS = List[str]
+  - |
+    from typing import List
+    def local():
+        from flext_core import t
+    value: List[str]
+  - |
+    from unrelated import t
+    from typing import List
+    value: List[str]
+  - |
+    from flext_core import u as t
+    from typing import List
+    value: List[str]
+  - |
+    from flext_core import t
+    from typing import List
+    def f(t, value: List[str]): ...
+  - |
+    from flext_core import t
+    from typing import List
+    t = None
+    value: List[str]
+  - |
+    from flext_core import t
+    from unrelated import t
+    from typing import List
+    value: List[str]
+  - |
+    from typing import List, TYPE_CHECKING
+    if TYPE_CHECKING:
+        from flext_core import t
+    value: List[str]

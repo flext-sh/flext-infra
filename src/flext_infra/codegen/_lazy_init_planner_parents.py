@@ -48,7 +48,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
             ValueError: If parent declaration source unavailable.
 
         """
-        seen = visited if visited is not None else set()
+        seen: set[str] = visited if visited is not None else set()
         seen.add(str(module_path.resolve()))
         resource = self.rope_workspace.resource(module_path)
         if resource is None:
@@ -310,6 +310,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
                 declared.update(
                     u.Infra.facade_letter_names_source(
                         module_path.read_text(encoding=c.DEFAULT_ENCODING),
+                        filename=str(module_path),
                     ),
                 )
         names = frozenset(declared)
@@ -336,3 +337,6 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         if u.Infra.declared_package_dir(parts[0]) is not None:
             return parts[0]
         return ""
+
+
+__all__: list[str] = ["FlextInfraCodegenLazyInitPlannerParentsMixin"]

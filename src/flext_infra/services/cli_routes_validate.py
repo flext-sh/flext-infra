@@ -26,9 +26,7 @@ from flext_infra.maintenance import (
     FlextInfraSonarcloudIssues,
     FlextInfraSonarcloudSettingsSync,
 )
-from flext_infra.services.cli_routes_validate_commands import (
-    FlextInfraValidationCommandRoutes,
-)
+from flext_infra.services import FlextInfraValidationCommandRoutes
 
 if TYPE_CHECKING:
     from flext_infra import t

@@ -11,8 +11,6 @@ from enum import IntEnum, StrEnum, unique
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from libcst.metadata import ExpressionContextProvider, ParentNodeProvider, ScopeProvider
-
 if TYPE_CHECKING:
     from flext_infra import t
 
@@ -28,11 +26,6 @@ class FlextInfraConstantsSharedInfra:
         PHASE = "flext_connectivity_prerequisite_phase"
         CAPABILITY = "flext_connectivity_prerequisite_capability"
         NODE = "flext_connectivity_prerequisite_node"
-
-    TYPING_MUTATION_METADATA_DEPENDENCIES: ClassVar[
-        tuple[type[ScopeProvider | ParentNodeProvider | ExpressionContextProvider], ...]
-    ] = (ScopeProvider, ParentNodeProvider, ExpressionContextProvider)
-    "LibCST metadata providers the typing-mutation visitor requires (c.Infra.*)."
 
     @unique
     class ScriptExitCode(IntEnum):
@@ -88,23 +81,6 @@ class FlextInfraConstantsSharedInfra:
         r"Library stubs not installed for ['\"](\S+?)['\"]",
     )
     INTERNAL_PREFIXES: ClassVar[t.VariadicTuple[str]] = ("flext_", "flext-")
-
-    # --- Integration baseline discovery ---
-    # Ordered preference used to derive one repository's integration baseline
-    # from live Git. A provider default is a fallback ordering, never the
-    # answer: repositories under the same provider legitimately integrate on
-    # different branches, so the published remote-tracking branch decides.
-    #
-    # This is the built-in ordering of conventional names only. The governing
-    # value is `codegen.branch_policy.integration_branch_preference`, which a
-    # workspace declares for itself — a fleet that integrates on a versioned
-    # line names it there rather than asking for a constant here. Product- and
-    # release-specific names do not belong in this tuple.
-    INTEGRATION_BRANCH_PREFERENCE: ClassVar[t.VariadicTuple[str]] = (
-        "develop",
-        "dev",
-        "main",
-    )
 
     # --- File names (was: class Files) ---
     PYPROJECT_FILENAME: ClassVar[str] = "pyproject.toml"
@@ -212,6 +188,42 @@ class FlextInfraConstantsSharedInfra:
 
     # --- Path constants (was: class Paths) ---
     DEFAULT_SRC_DIR: ClassVar[str] = "src"
+
+    # --- Fresh-process import probe templates ---
+    FRESH_IMPORT_PRELUDE: ClassVar[str] = (
+        "import importlib, sys\n"
+        "from importlib.metadata import EntryPoint\n"
+        "from pathlib import Path\n"
+    )
+    FRESH_IMPORT_EXPORT_IMPORT_CODE: ClassVar[str] = (
+        "module = importlib.import_module({package!r})\n"
+    )
+    # The origin gate runs between the import and the name resolution: a
+    # module loaded from outside this checkout must fail with the origin
+    # error naming the foreign path, never with a phantom-attribute error
+    # raised while resolving a stale export name.
+    FRESH_IMPORT_EXPORT_RESOLVE_CODE: ClassVar[str] = (
+        "for name in (*{exports!r}, *getattr(module, '__all__', ())):\n"
+        "    getattr(module, name)\n"
+    )
+    # Synthetic concat keeps the placeholder out of one plain literal: the
+    # marker is template text substituted at render time, never an f-string.
+    FRESH_IMPORT_ORIGINS_PLACEHOLDER: ClassVar[str] = "{" + "origins!r}"
+    # The origin gate runs inside the same probe namespace as the export
+    # resolution, so its loop names must never rebind the probed ``module``.
+    FRESH_IMPORT_ORIGIN_CODE: ClassVar[str] = (
+        "from flext_infra.workspace.environment_provenance import "
+        "FlextInfraWorkspaceEnvironmentProvenance as native_origins\n"
+        "for loaded_name in tuple(sys.modules):\n"
+        "    for package, directory in {origins!r}:\n"
+        "        if loaded_name == package or loaded_name.startswith(package + '.'):\n"
+        "            origin = native_origins.module_source(loaded_name).unwrap()\n"
+        "            if not origin.resolve().is_relative_to(Path(directory)):\n"
+        "                raise ImportError(\n"
+        "                    f'{loaded_name}: origin {origin!r} '\n"
+        "                    f'is outside {directory}'\n"
+        "                )\n"
+    )
 
 
 __all__: list[str] = ["FlextInfraConstantsSharedInfra"]

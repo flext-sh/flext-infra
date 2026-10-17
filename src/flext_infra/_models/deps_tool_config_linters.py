@@ -223,6 +223,17 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             t.StrSequence,
             m.Field(description="Ruff lint rule selectors."),
         ] = m.Field(default_factory=tuple)
+        extend_select: Annotated[
+            t.StrSequence,
+            m.Field(
+                alias="extend-select",
+                description=(
+                    "Selectors enabled on top of the baseline selection; "
+                    "explicit selectors take precedence over the pydocstyle "
+                    "convention baseline in Ruff."
+                ),
+            ),
+        ] = m.Field(default_factory=tuple)
         unfixable: Annotated[
             t.StrSequence,
             m.Field(
@@ -329,6 +340,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
 
             Returns:
                 The resulting ``t.StrSequence``.
+
             """
             return tuple(
                 sorted({
@@ -346,6 +358,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
 
             Returns:
                 The resulting ``t.Infra.PerFileIgnores``.
+
             """
             return {
                 pattern: tuple(

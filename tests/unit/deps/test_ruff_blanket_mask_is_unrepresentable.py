@@ -67,7 +67,7 @@ class TestsFlextInfraRuffBlanketMaskIsUnrepresentable:
             if any(rule.strip().upper() == "ALL" for rule in entry.rules)
         }
 
-        tm.that(masked, eq=set())
+        tm.that(masked, empty=True)
 
     @pytest.mark.parametrize("name", ["__basse__", "__init_subclas__", "__custom__"])
     def test_native_descriptor_policy_rejects_unapproved_names(

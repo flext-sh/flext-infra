@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -110,8 +110,8 @@ class FlextInfraCodemodGate(FlextInfraGate):
         if planned.failure:
             failure = planned.error
             if not failure:
-                msg = "codemod rule planning failed without a diagnostic"
-                raise RuntimeError(msg)
+                failure = "codemod rule planning failed without a diagnostic"
+                raise RuntimeError(failure)
             return self._failure_gate_execution(project_dir, failure, started)
 
         rules_by_id = {rule.id: rule for rule in planned.value.rules}
@@ -119,8 +119,8 @@ class FlextInfraCodemodGate(FlextInfraGate):
         if binary.failure:
             failure = binary.error
             if not failure:
-                msg = "managed scanner resolution failed without a diagnostic"
-                raise RuntimeError(msg)
+                failure = "managed scanner resolution failed without a diagnostic"
+                raise RuntimeError(failure)
             return self._failure_gate_execution(project_dir, failure, started)
         findings: list[m.Infra.Issue] = []
         failures: list[m.Infra.Issue] = []
@@ -175,26 +175,45 @@ class FlextInfraCodemodGate(FlextInfraGate):
                 break
             facts = u.Infra.codemod_project_facts(
                 project_dir,
-                tuple(rules_by_id[finding.rule_id] for finding in report.root),
-            )
-            snapshot = u.Infra.codemod_binding_snapshot(
-                project_dir,
                 tuple(
-                    u.Cli.atomic_read_binary_file_state(
-                        u.Infra.codemod_source_path(project_dir, Path(finding.file)),
-                        required=True,
-                    ).unwrap()
-                    for finding in report.root
-                ),
-                tuple(
-                    condition.arg[0]
-                    for finding in report.root
-                    for condition in rules_by_id[finding.rule_id].context
-                    if condition.predicate
-                    is c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL
+                    rules_by_id[rule_id]
+                    for rule_id in dict.fromkeys(
+                        finding.rule_id for finding in report.root
+                    )
                 ),
             )
-            with u.Infra.codemod_binding_project(project_dir, snapshot) as (
+            admissions = tuple(
+                m.Infra.CodemodAdmission(
+                    root=project_dir,
+                    rule=rules_by_id[finding.rule_id],
+                    file_path=Path(finding.file),
+                    captures={**finding.captures, **finding.transformed},
+                    facts=facts,
+                )
+                for finding in report.root
+            )
+            snapshot = (
+                u.Infra.codemod_binding_snapshot(
+                    project_dir,
+                    tuple(
+                        u.Cli.atomic_read_binary_file_state(
+                            path,
+                            required=True,
+                        ).unwrap()
+                        for path in dict.fromkeys(
+                            u.Infra.codemod_source_path(project_dir, Path(finding.file))
+                            for finding in report.root
+                            if finding.rule_id in facts.binding_rule_ids
+                        )
+                    ),
+                    facts.binding_modules,
+                )
+                if facts.binding_rule_ids
+                else m.Infra.CodemodBindingSnapshot(states=())
+            )
+            with u.Infra.codemod_binding_project(
+                project_dir, u.Infra.codemod_source_epoch(snapshot)
+            ) as (
                 project,
                 sources,
             ):
@@ -207,16 +226,9 @@ class FlextInfraCodemodGate(FlextInfraGate):
                         message=finding.message,
                         severity=finding.severity,
                     )
-                    for finding in report.root
+                    for finding, admission in zip(report.root, admissions, strict=True)
                     if u.Infra.codemod_context_admits(
-                        m.Infra.CodemodAdmission(
-                            root=project_dir,
-                            rule=rules_by_id[finding.rule_id],
-                            file_path=Path(finding.file),
-                            captures={**finding.captures, **finding.transformed},
-                            facts=facts,
-                            snapshot=snapshot,
-                        ),
+                        admission.model_copy(update={"snapshot": snapshot}),
                         project=project,
                         sources=sources,
                     )
@@ -356,3 +368,6 @@ class FlextInfraCodemodGate(FlextInfraGate):
             cmd.extend([c.Infra.SG_GLOBS_FLAG, glob])
         cmd.extend(targets)
         return tuple(cmd)
+
+
+__all__: list[str] = ["FlextInfraCodemodGate"]

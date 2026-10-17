@@ -255,6 +255,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
 
         Returns:
             The published SARIF path and the executed project facts.
+
         """
         tm.ok(
             u.Cli.atomic_write_text_file(

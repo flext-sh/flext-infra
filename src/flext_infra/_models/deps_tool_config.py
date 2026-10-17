@@ -46,18 +46,13 @@ class FlextInfraModelsDepsToolConfig(
     class DeptryConfig(m.ArbitraryTypesModel):
         """Deptry namespace and dependency-group policy."""
 
-        known_first_party: Annotated[
+        optional_dependencies_dev_groups: Annotated[
             t.StrTuple,
             m.Field(
-                alias="known-first-party",
-                description="Base first-party namespaces extended by project metadata.",
-            ),
-        ]
-        pep621_dev_dependency_groups: Annotated[
-            t.StrTuple,
-            m.Field(
-                alias="pep621-dev-dependency-groups",
-                description="PEP 735 groups treated as development dependencies.",
+                alias="optional-dependencies-dev-groups",
+                description=(
+                    "PEP 621 optional groups treated as development dependencies."
+                ),
             ),
         ]
 
@@ -138,14 +133,6 @@ class FlextInfraModelsDepsToolConfig(
         """Pytest baseline settings loaded from YAML."""
 
         # Every rendered pytest value is validated config data.
-        case_timeout_seconds: Annotated[
-            int,
-            m.Field(
-                alias="case-timeout-seconds",
-                gt=0,
-                description="Hard maximum runtime for one pytest item.",
-            ),
-        ]
         slow_timeout_seconds: Annotated[
             int,
             m.Field(
@@ -256,10 +243,20 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
         parallel_distribution: Annotated[
-            Literal["load"],
+            Literal["load", "loadscope"],
             m.Field(
                 alias="parallel-distribution",
                 description="Pytest-xdist scheduler for full runs.",
+            ),
+        ]
+        loadscope_reorder: Annotated[
+            bool,
+            m.Field(
+                alias="loadscope-reorder",
+                strict=True,
+                description=(
+                    "Let the native loadscope scheduler reorder scopes by size."
+                ),
             ),
         ]
         parallel_schedule_chunk: Annotated[
@@ -409,30 +406,25 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ] = ()
 
+        @m.computed_field
+        @property
+        def parallel_arguments(self) -> t.StrTuple:
+            """Native scheduler arguments derived from the typed policy."""
+            scheduling = (
+                ("--maxschedchunk", str(self.parallel_schedule_chunk))
+                if self.parallel_distribution == "load"
+                else (
+                    "--loadscope-reorder"
+                    if self.loadscope_reorder
+                    else "--no-loadscope-reorder",
+                )
+            )
+            return ("--dist", self.parallel_distribution, *scheduling)
+
         @property
         def process_timeout_seconds(self) -> int:
             """Derive the fleet-default outer wall without a second config field."""
             return self.run_timeout_seconds + (self.termination_grace_seconds * 2)
-
-        @property
-        def suite_stop_reserve_seconds(self) -> int:
-            """Derive the budgeted-phase reserve kept after the graceful stop.
-
-            xdist keeps every worker at least two items deep (the running item
-            plus one queued) or one schedule chunk, whichever is larger. The
-            budgeted phase never carries slow-marked items, so each in-flight
-            item is bounded by the per-case timeout; the session then needs the
-            termination grace to publish testmon and report evidence.
-            """
-            return (
-                self.xdist_items_per_worker * self.case_timeout_seconds
-                + self.termination_grace_seconds
-            )
-
-        @property
-        def serial_suite_stop_reserve_seconds(self) -> int:
-            """Derive the budgeted serial reserve: one per-case item plus grace."""
-            return self.case_timeout_seconds + self.termination_grace_seconds
 
         @property
         def slow_suite_stop_reserve_seconds(self) -> int:
@@ -454,7 +446,7 @@ class FlextInfraModelsDepsToolConfig(
 
         @m.model_validator(mode="after")
         def _validate_execution_limits(self) -> Self:
-            """Keep item and termination budgets inside the hard invocation cap.
+            """Keep slow-item and termination budgets inside the invocation cap.
 
             Returns:
                 The resulting ``Self``.
@@ -465,39 +457,23 @@ class FlextInfraModelsDepsToolConfig(
             return self
 
         def _validate_timeouts(self) -> None:
-            """Keep item and termination budgets inside the hard invocation cap.
+            """Keep slow-item and termination budgets inside the invocation cap.
 
             Raises:
-                ValueError: If pytest case timeout must be less than run timeout; or
-                    if pytest termination grace must be less than run timeout; or if
-                    pytest slow timeout must exceed the per-case timeout; or if pytest
-                    slow timeout must be less than run timeout; or if pytest run
-                    timeout must exceed the suite stop reserve; or if pytest runtime
-                    policy options are derived from typed fields; or if pytest
-                    progress args must expose verbose item progress.
+                ValueError: If termination or slow budgets exceed the invocation
+                    wall; baseline arguments override execution policy; or
+                    progress arguments hide item names.
 
             """
-            if self.case_timeout_seconds >= self.run_timeout_seconds:
-                msg = "pytest case timeout must be less than run timeout"
-                raise ValueError(msg)
             if self.termination_grace_seconds >= self.run_timeout_seconds:
                 msg = "pytest termination grace must be less than run timeout"
-                raise ValueError(msg)
-            if self.slow_timeout_seconds <= self.case_timeout_seconds:
-                msg = "pytest slow timeout must exceed the per-case timeout"
                 raise ValueError(msg)
             if self.slow_timeout_seconds >= self.run_timeout_seconds:
                 msg = "pytest slow timeout must be less than run timeout"
                 raise ValueError(msg)
-            # Every reserve includes one item bound plus the grace, so this
-            # also keeps a single item and the termination inside each run; a
-            # reserve at or past a run budget would place the stop before the
-            # suite. The single-bound checks above report first: they name the
-            # field. Both phases' reserves bind every declared run budget.
-            reserve = max(
-                self.suite_stop_reserve_seconds,
-                self.slow_suite_stop_reserve_seconds,
-            )
+            # Only the slow phase has a bounded item drain. Ordinary items are
+            # stopped by the aggregate process wall, not a synthetic item cap.
+            reserve = self.slow_suite_stop_reserve_seconds
             if any(
                 timeout <= reserve
                 for timeout in (
@@ -507,7 +483,15 @@ class FlextInfraModelsDepsToolConfig(
             ):
                 msg = "pytest run timeout must exceed the suite stop reserve"
                 raise ValueError(msg)
-            derived_options = ("--timeout", "--session-timeout")
+            derived_options = (
+                "--timeout",
+                "--session-timeout",
+                "--dist",
+                "--loadscope-reorder",
+                "--no-loadscope-reorder",
+                "--maxschedchunk",
+                "-n",
+            )
             if any(
                 option in {"-o", "--override-ini"}
                 or option.startswith(("-o=", "--override-ini=", *derived_options))
@@ -560,6 +544,9 @@ class FlextInfraModelsDepsToolConfig(
                 "-x",
                 "--cov",
                 "--dist",
+                "--loadscope-reorder",
+                "--no-loadscope-reorder",
+                "--maxschedchunk",
                 "--junitxml",
                 "--override-ini",
                 "--timeout",
@@ -864,6 +851,13 @@ class FlextInfraModelsDepsToolConfig(
             t.JsonMapping,
             m.Field(description="Conformed pyrefly table"),
         ]
+        pyrefly_project_includes: Annotated[
+            t.StrTuple,
+            m.Field(
+                validation_alias=m.AliasPath("pyrefly", "project-includes"),
+                description="Conformed Pyrefly analysis scope",
+            ),
+        ]
         pyrefly_search_path: Annotated[
             t.StrTuple,
             m.Field(
@@ -913,6 +907,10 @@ class FlextInfraModelsDepsToolConfig(
         first_party: Annotated[
             t.StrTuple,
             m.Field(description="Resolved first-party namespaces"),
+        ]
+        deptry_first_party: Annotated[
+            t.StrTuple,
+            m.Field(description="Target-owned live and planned production packages"),
         ]
         mypy_path: Annotated[
             t.StrTuple,

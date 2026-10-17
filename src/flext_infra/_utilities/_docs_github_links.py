@@ -13,16 +13,19 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from flext_infra import FlextInfraConfig, c, config, m, t
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities._git.remote import FlextInfraUtilitiesGitRemote
-from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
+from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
 
 # Concrete-owner imports: this module resolves during the root's lazy ``u``
 # export, when the root namespace is still initializing — a root from-import
 # would re-enter the partial namespace and fail.
+
+_GITHUB_REPO_PATH_SEGMENTS = 2
+"""A GitHub repository path is exactly ``<organization>/<repository>``."""
 
 
 class FlextInfraUtilitiesDocsGithubLinks:
@@ -41,6 +44,10 @@ class FlextInfraUtilitiesDocsGithubLinks:
 
         Returns:
             Declared URL, branch and exact local checkout facts.
+
+        Raises:
+            ValueError: If documentation Git declaration has no branch; or if GitHub
+                declaration must name one owner and repository.
 
         """
         root = (
@@ -64,7 +71,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
         ).unwrap()
         integration = FlextInfraUtilitiesRepository.resolve_integration_branch(
             root,
-            preference=inputs.spec.branch_policy.integration_branch_preference,
+            policy_branch=inputs.spec.branch_policy.integration_branch,
             inputs=inputs,
         ).unwrap()
         declarations: list[t.Triple[str, str, Path]] = []
@@ -96,7 +103,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
                     continue
                 path = parsed.path.strip("/")
             pieces = path.removesuffix(".git").split("/")
-            if len(pieces) != 2 or not all(pieces):
+            if len(pieces) != _GITHUB_REPO_PATH_SEGMENTS or not all(pieces):
                 message = (
                     f"GitHub declaration must name one owner and repository: {url}"
                 )

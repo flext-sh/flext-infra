@@ -22,11 +22,16 @@ def _standalone_governed_plan(root: Path) -> m.Infra.CodegenPlan:
         The governed codegen plan for the standalone project.
 
     """
-    project = TestsFlextInfraCodegenBeadsProjection._project(
+    u.Tests.WorktreeFixture.initialize_governed_project(
         root,
-        database="project_database",
-        issue_prefix="project-prefix",
+        "fixture-project",
+        beads=u.Tests.BeadsIdentity(
+            workspace="fixture-workspace",
+            database="project_database",
+            issue_prefix="project-prefix",
+        ),
     )
+    project = root
     u.Tests.write_standalone_workspace_manifest(
         project,
         "fixture-project",

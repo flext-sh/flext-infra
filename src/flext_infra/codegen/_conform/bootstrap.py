@@ -8,14 +8,11 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, assert_never
+from typing import Annotated, assert_never
 
 from typing_extensions import TypeForm
 
-from flext_infra import c, config, m, s, t, u
-
-if TYPE_CHECKING:
-    from flext_infra import p
+from flext_infra import c, m, p, s, t, u
 
 
 class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
@@ -30,9 +27,29 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         m.Infra.CodegenConformRequest | None,
         m.Field(default=None, exclude=True, description="Validated conform request"),
     ] = None
+    generation_only: Annotated[
+        bool,
+        m.Field(
+            default=False,
+            exclude=True,
+            description="Project declared outputs without repairing authored inputs",
+        ),
+    ] = False
+    provider_plans: Annotated[
+        t.VariadicTuple[m.Infra.CodegenFilePlan] | None,
+        m.Field(
+            default=None,
+            exclude=True,
+            description="Original cohort lazy plans available to native source reads",
+        ),
+    ] = None
     repository_root: Annotated[
         Path,
-        m.Field(default=Path(), exclude=True, description="Conform repository root"),
+        m.Field(
+            default=Path(),
+            exclude=True,
+            description="Repository selected by the generation execution boundary",
+        ),
     ] = Path()
     initial_workspace: Annotated[
         m.Infra.WorkspaceSpec | None,
@@ -48,7 +65,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
             default=None,
             exclude=True,
             description=(
-                "Docs planner and fresh-import probe wired by the facade; the "
+                "Docs planner and participant policy wired by the facade; the "
                 "complete surface fails before any effect without them"
             ),
         ),
@@ -65,6 +82,11 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         default=None,
         exclude=True,
         description="First native file planning cause",
+    )
+    docs_planner: p.Infra.DocsArtifactPlanner | None = m.Field(
+        default=None,
+        exclude=True,
+        description="Actual docs planner retained before effects",
     )
 
     def _record_file_failure(
@@ -126,8 +148,8 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         ]
         return tuple(discovered)
 
-    @staticmethod
     def _declared_environment_imports(
+        self,
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
     ) -> t.VariadicTuple[t.Pair[str, Path]]:
@@ -142,10 +164,20 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
             guessing distribution names.
 
         Raises:
-            ValueError: If declared package namespace is unresolved.
+            ValueError: If the initial project declaration or a package namespace
+                is unresolved.
+
         """
         roots: list[t.Pair[str, Path]] = []
         if target.repository.package:
+            if (
+                target.project is None
+                and self.initial_workspace is not None
+                and target.repository.name == self.initial_workspace.repository.name
+                and not (target.root / c.PYPROJECT_FILENAME).exists()
+            ):
+                msg = f"scaffold environment has no project metadata: {target.root}"
+                raise ValueError(msg)
             # The target root is the repository being conformed. At plan time a
             # scaffold's pyproject is planned, not yet on disk, so the declared
             # ProjectSpec owns the import name; reading the pyproject here failed
@@ -212,8 +244,14 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
     def surface_contract(
         cls,
         surface: c.Infra.CodegenConformSurface,
+        *,
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> m.Infra.CodegenConformSurfaceContract:
-        """Resolve a declared surface without defaulting an invalid input.
+        """Resolve one admitted surface into its conformance contract.
+
+        Args:
+            surface: The declared conformance surface.
+            codegen: The codegen configuration owning managed destinations.
 
         Returns:
             The contract owned by the declared conformance surface.
@@ -224,11 +262,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
                 contract = m.Infra.CodegenConformSurfaceContract(complete_governed=True)
             case c.Infra.CodegenConformSurface.RUNTIME_BINDINGS:
                 contract = m.Infra.CodegenConformSurfaceContract(
-                    destinations=frozenset(
-                        item.path.as_posix()
-                        for item in config.Infra.codegen.managed_files
-                        if item.runtime_binding
-                    ),
+                    destinations=cls._runtime_binding_destinations(codegen),
                     runtime_bindings=True,
                     delegates=False,
                     pyproject=False,
@@ -247,44 +281,64 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
                 )
             case c.Infra.CodegenConformSurface.PYPROJECT:
                 contract = m.Infra.CodegenConformSurfaceContract(
-                    destinations=frozenset({c.PYPROJECT_FILENAME}),
+                    destinations=cls._pyproject_destinations(codegen),
                     delegates=False,
                     templates=False,
                     custom=False,
                 )
             case c.Infra.CodegenConformSurface.DEPENDENCIES:
+                # The dependency planner projects the root pyproject and every
+                # uv resolution pyproject, so the surface owns the same derived
+                # destination set as PYPROJECT; a second enumeration refused
+                # the resolution inputs a candidate needs before `make upg`.
                 contract = m.Infra.CodegenConformSurfaceContract(
-                    destinations=frozenset({c.PYPROJECT_FILENAME}),
+                    destinations=cls._pyproject_destinations(codegen),
                     delegates=False,
                     custom=False,
                 )
-            case c.Infra.CodegenConformSurface.MAKEFILE:
+            case (
+                c.Infra.CodegenConformSurface.MAKEFILE
+                | c.Infra.CodegenConformSurface.DOCS_CONFIG
+            ):
                 # The Makefile's bootstrap runs the generated lock publisher, so
                 # a recovered Makefile without it could never finish make upg.
                 contract = m.Infra.CodegenConformSurfaceContract(
-                    destinations=c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS,
+                    destinations=(
+                        c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS
+                        if surface is c.Infra.CodegenConformSurface.MAKEFILE
+                        else frozenset({
+                            (
+                                Path(c.Infra.DIR_DOCS) / c.Infra.DOCS_CONFIG_FILENAME
+                            ).as_posix()
+                        })
+                    ),
                     pyproject=False,
                     custom=False,
                 )
-            case c.Infra.CodegenConformSurface.DOCS_CONFIG:
-                destination = (
-                    Path(c.Infra.DIR_DOCS) / c.Infra.DOCS_CONFIG_FILENAME
-                ).as_posix()
+            case c.Infra.CodegenConformSurface.WORKFLOWS:
                 contract = m.Infra.CodegenConformSurfaceContract(
-                    destinations=frozenset({destination}),
-                    pyproject=False,
-                    custom=False,
-                )
-            case c.Infra.CodegenConformSurface.ENVRC:
-                contract = m.Infra.CodegenConformSurfaceContract(
-                    destinations=frozenset({c.Infra.ENVRC_FILENAME}),
+                    destinations=frozenset(
+                        entry.destination
+                        for entry in codegen.templates.entries
+                        if Path(entry.destination).is_relative_to(
+                            c.Infra.GITHUB_WORKFLOWS_RELATIVE_PATH,
+                        )
+                    ),
                     delegates=False,
                     pyproject=False,
+                    tooling=False,
                     custom=False,
                 )
-            case c.Infra.CodegenConformSurface.MISE_CONFIG:
+            case (
+                c.Infra.CodegenConformSurface.ENVRC
+                | c.Infra.CodegenConformSurface.MISE_CONFIG
+            ):
                 contract = m.Infra.CodegenConformSurfaceContract(
-                    destinations=frozenset({c.Infra.MISE_TOML_FILENAME}),
+                    destinations=frozenset({
+                        c.Infra.ENVRC_FILENAME
+                        if surface is c.Infra.CodegenConformSurface.ENVRC
+                        else c.Infra.MISE_TOML_FILENAME
+                    }),
                     delegates=False,
                     pyproject=False,
                     custom=False,
@@ -292,6 +346,43 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
             case _:
                 assert_never(surface)
         return contract
+
+    @staticmethod
+    def _runtime_binding_destinations(
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> frozenset[str]:
+        """Collect the managed runtime binding destinations.
+
+        Args:
+            codegen: The codegen configuration owning managed file specs.
+
+        Returns:
+            The managed runtime binding paths as POSIX strings.
+
+        """
+        return frozenset(
+            item.path.as_posix()
+            for item in codegen.managed_file_specs
+            if item.runtime_binding
+        )
+
+    @staticmethod
+    def _pyproject_destinations(
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> frozenset[str]:
+        """Collect the managed pyproject destinations.
+
+        Args:
+            codegen: The codegen configuration owning resolution pyprojects.
+
+        Returns:
+            The root and resolution pyproject paths as POSIX strings.
+
+        """
+        return frozenset(
+            path.as_posix()
+            for path in (Path(c.PYPROJECT_FILENAME), *codegen.uv_resolution_pyprojects)
+        )
 
 
 __all__: list[str] = ["FlextInfraCodegenConformBootstrap"]

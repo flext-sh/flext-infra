@@ -12,6 +12,7 @@ from functools import cache, lru_cache
 from pathlib import Path
 
 from flext_cli import u
+from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
@@ -22,6 +23,143 @@ from flext_infra._utilities import (
 
 class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
+
+    @classmethod
+    def declared_dependency_payload(
+        cls,
+        pyproject_path: Path,
+    ) -> p.Result[t.JsonMapping]:
+        """Read owner-recovered TOML without admitting generated group inputs.
+
+        Returns:
+            The parsed mapping with authored dependency-group entries only.
+
+        """
+        text = cls.live_pyproject_text(pyproject_path)
+        if text.failure:
+            return r[t.JsonMapping].from_failure(text)
+        payload = u.Cli.toml_mapping_from_text(text.value)
+        if payload is None:
+            return r[t.JsonMapping].fail(
+                f"pyproject is not valid TOML: {pyproject_path}",
+            )
+        groups = u.Cli.toml_mapping_path(payload, (c.Infra.DEPENDENCY_GROUPS,))
+        if groups is not None:
+            for group in (str(c.Infra.DEV), c.Infra.DependencyGroup.CODEGEN):
+                selected = cls.dependency_group_name(tuple(groups), str(group))
+                if selected not in groups:
+                    continue
+                custom = cls.custom_dev_additions(payload, text.value, group=selected)
+                if custom.failure:
+                    return r[t.JsonMapping].from_failure(custom)
+                groups[selected] = cls.dependency_group_wire(custom.value)
+        return r[t.JsonMapping].ok(payload)
+
+    @staticmethod
+    def dependency_group_name(names: t.IterableOf[str], name: str) -> str:
+        """Elect an existing native spelling using PEP 735 normalized identity.
+
+        Returns:
+            The declared spelling when one matches, else the requested name.
+
+        Raises:
+            ValueError: If dependency group names have colliding normalized
+                identities.
+
+        """
+        matches = tuple(
+            key for key in names if canonicalize_name(key) == canonicalize_name(name)
+        )
+        if len(matches) > 1:
+            msg = "dependency group names have colliding normalized identities"
+            raise ValueError(msg)
+        return matches[0] if matches else name
+
+    @staticmethod
+    def dependency_group_wire(
+        entries: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+    ) -> list[t.JsonValue]:
+        """Serialize native entries without turning inclusion tables into strings.
+
+        Returns:
+            The resulting ``list[t.JsonValue]``.
+
+        """
+        return [
+            entry
+            if isinstance(entry, str)
+            else dict(
+                t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                    entry.model_dump(mode="json", by_alias=True),
+                ),
+            )
+            for entry in entries
+        ]
+
+    @staticmethod
+    def custom_dev_additions(
+        live_payload: t.JsonMapping,
+        live: str | None,
+        *,
+        group: str = str(c.Infra.DEV),
+    ) -> p.Result[t.VariadicTuple[str | m.Infra.DependencyGroupInclude]]:
+        """Remove only entries carrying this generator's explicit provenance.
+
+        Returns:
+            Native ordered CUSTOM entries, or their original parse failure.
+
+        """
+        groups = u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
+        group = FlextInfraUtilitiesPyproject.dependency_group_name(tuple(groups), group)
+        result_type = r[t.VariadicTuple[str | m.Infra.DependencyGroupInclude]]
+        values = u.validate_value(
+            m.Infra.DependencyGroupEntries,
+            groups.get(group, ()),
+        )
+        if values.failure:
+            return result_type.from_failure(values)
+        entries = values.value.root
+        if not entries or live is None:
+            return (
+                result_type.ok(())
+                if not entries
+                else result_type.fail("dev provenance requires its parsed source")
+            )
+        comments = FlextInfraUtilitiesPyproject._dependency_group_comments(live, group)
+        if comments.failure:
+            return result_type.from_failure(comments)
+        if len(comments.value) != len(entries):
+            return result_type.fail("dev provenance occurrence counts differ")
+        return result_type.ok(
+            tuple(
+                value
+                for value, comment in zip(entries, comments.value, strict=True)
+                if not isinstance(value, str)
+                or comment.removeprefix("#").strip() != c.Infra.MEMBER_DEV_PROVENANCE
+            ),
+        )
+
+    @staticmethod
+    def _dependency_group_comments(
+        live: str,
+        group: str,
+    ) -> p.Result[t.StrSequence]:
+        """Read native per-occurrence comments from the parsed dependency group.
+
+        Returns:
+            Ordered array comments or the original missing-source failure.
+
+        """
+        result_type = r[t.StrSequence]
+        document = u.Cli.toml_parse_text(live)
+        if document is None:
+            return result_type.fail("dev provenance source is invalid TOML")
+        group_table = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
+        if group_table is None:
+            return result_type.fail("dev provenance dependency groups are missing")
+        if group not in group_table:
+            return result_type.fail("dev provenance group array is missing")
+        return result_type.ok(u.Cli.toml_array_item_comments(group_table, group))
 
     @staticmethod
     def managed_mise_binary(name: str, owner_root: Path) -> p.Result[Path]:
@@ -35,6 +173,7 @@ class FlextInfraUtilitiesPyproject:
         Returns:
             The absolute executable inside the tool's install root, never a
             PATH shim.
+
         """
         tool = next(
             (
@@ -56,13 +195,13 @@ class FlextInfraUtilitiesPyproject:
         )
         if requested.failure:
             return r[Path].from_failure(requested)
-        if requested.value is None:
+        if not requested.value:
             return r[Path].fail(f"runtime manifest does not declare {selector}")
         return FlextInfraUtilitiesPyproject._managed_mise_path(
             tool.version_probe.binary,
             owner_root,
             Path(reader),
-            f"{selector}@{requested.value}",
+            f"{selector}@{requested.value[0]}",
         )
 
     @staticmethod
@@ -79,6 +218,7 @@ class FlextInfraUtilitiesPyproject:
 
         Returns:
             The installed self-managed executable, never a tool shim.
+
         """
         selected = shutil.which(c.Infra.MISE)
         if selected is None:
@@ -98,20 +238,21 @@ class FlextInfraUtilitiesPyproject:
     def _qualified_mise_reader(
         reader: Path,
         owner_root: Path,
-        declared: str | None,
+        declared: tuple[str] | tuple[()],
     ) -> p.Result[Path]:
         """Authenticate the reader and its installed release against the lock pin.
 
         Returns:
             The installed self-managed executable, or the physical reader when
             the committed manifest declares no self-managed release.
+
         """
-        if declared is None:
+        if not declared:
             return r[Path].ok(reader.resolve(strict=True))
         return FlextInfraUtilitiesPyproject._locked_mise_version(
             owner_root,
             config.Infra.codegen.toolchain.mise_selector,
-            declared,
+            declared[0],
         ).flat_map(
             lambda pinned: (
                 FlextInfraUtilitiesPyproject
@@ -135,7 +276,9 @@ class FlextInfraUtilitiesPyproject:
         )
 
     @staticmethod
-    def _committed_mise_self_release(owner_root: Path) -> p.Result[str | None]:
+    def _committed_mise_self_release(
+        owner_root: Path,
+    ) -> p.Result[tuple[str] | tuple[()]]:
         """Return the self-managed Mise release the committed manifest declares.
 
         The manifest is the ``.mise.toml`` beside the nearest ``mise.lock``.
@@ -143,14 +286,15 @@ class FlextInfraUtilitiesPyproject:
         no self-managed entry, pins no reader release (typed absence).
 
         Returns:
-            The declared release, or None when the tree declares none.
+            One declared release, or an empty tuple when the tree declares none.
+
         """
         lock_path = FlextInfraUtilitiesPyproject._mise_lock_path(owner_root)
         manifest = (
             None if lock_path is None else lock_path.parent / c.Infra.MISE_TOML_FILENAME
         )
         if manifest is None or not manifest.is_file():
-            return r[str | None].ok(None)
+            return r[tuple[str] | tuple[()]].ok(())
         return FlextInfraUtilitiesPyproject._committed_mise_tool_request(
             manifest.parent,
             config.Infra.codegen.toolchain.mise_selector,
@@ -159,11 +303,12 @@ class FlextInfraUtilitiesPyproject:
     @staticmethod
     def _committed_mise_tool_request(
         owner_root: Path, selector: str
-    ) -> p.Result[str | None]:
+    ) -> p.Result[tuple[str] | tuple[()]]:
         """Read the runtime owner's current request, independently of codegen targets.
 
         Returns:
-            The scalar or table version request, or absence of a declaration.
+            One scalar or table version request, or an empty declaration tuple.
+
         """
         manifest = next(
             (
@@ -174,26 +319,28 @@ class FlextInfraUtilitiesPyproject:
             None,
         )
         if manifest is None:
-            return r[str | None].ok(None)
+            return r[tuple[str] | tuple[()]].ok(())
         payload = u.Cli.toml_mapping_from_text(
             manifest.read_text(encoding=c.DEFAULT_ENCODING),
         )
         if payload is None:
-            return r[str | None].fail(f"{manifest} is not valid TOML")
+            return r[tuple[str] | tuple[()]].fail(f"{manifest} is not valid TOML")
         tools = payload.get("tools", {})
         if not isinstance(tools, Mapping):
-            return r[str | None].fail(f"{manifest} has a malformed [tools] table")
+            return r[tuple[str] | tuple[()]].fail(
+                f"{manifest} has a malformed [tools] table",
+            )
         release = tools.get(selector)
         if release is None:
-            return r[str | None].ok(None)
+            return r[tuple[str] | tuple[()]].ok(())
         if isinstance(release, Mapping):
             release = release.get("version")
         if not isinstance(release, str) or not release:
-            return r[str | None].fail(
+            return r[tuple[str] | tuple[()]].fail(
                 f"{manifest} declares a malformed Mise entry for "
                 f"{selector}: {release!r}",
             )
-        return r[str | None].ok(release)
+        return r[tuple[str] | tuple[()]].ok((release,))
 
     @staticmethod
     def _mise_self_identity(
@@ -203,6 +350,7 @@ class FlextInfraUtilitiesPyproject:
 
         Returns:
             The physical executable matching the committed self pin.
+
         """
         binary = binary.resolve(strict=True)
         identity = u.Cli.run_raw(
@@ -250,7 +398,7 @@ class FlextInfraUtilitiesPyproject:
 
         Unconflicted text is returned unchanged. A conflict is resolved only
         inside owner-declared managed TOML sections
-        (``config.Infra.codegen.managed_files``) via
+        (``config.Infra.codegen.managed_file_specs``) via
         ``FlextInfraUtilitiesManagedConflicts.recover_managed_toml``; a
         conflict outside those sections fails loud through that utility's
         own contract. Read-only: no file is written here.
@@ -296,60 +444,73 @@ class FlextInfraUtilitiesPyproject:
 
     @staticmethod
     def read_project_metadata_result(project_root: Path) -> p.Result[p.ProjectMetadata]:
-        """Read one project's metadata through the canonical owner chain.
-
-        flext-core retired its Result-returning compatibility wrapper; this is
-        the consuming project's typed ingress, keeping every metadata reader on
-        one failure contract instead of three ad-hoc try/except blocks. The
-        declared contract is the canonical structural protocol (the producer
-        builds the exact model behind it), matching every ``p.ProjectMetadata``
-        consumer.
-
-        The document is the live text with managed merge conflicts resolved
-        (``live_pyproject_text``); the file is never written here.
+        """Read retained metadata from the canonical single-document ingress.
 
         Returns:
-            The resulting ``p.Result[p.ProjectMetadata]``.
+            The original structural metadata or its causal ingress failure.
 
         """
+        state = FlextInfraUtilitiesPyproject.read_project_metadata_state(project_root)
+        if state.failure:
+            return r[p.ProjectMetadata].from_failure(state)
+        return r[p.ProjectMetadata].ok(state.value.metadata)
+
+    @staticmethod
+    def read_project_metadata_state(
+        project_root: Path,
+    ) -> p.Result[m.Infra.ProjectMetadataState]:
+        """Parse metadata and packaging declarations without importing source exports.
+
+        Returns:
+            Retained typed metadata and packaging facts from one live TOML read.
+
+        """
+        result_type = r[m.Infra.ProjectMetadataState]
         live = FlextInfraUtilitiesPyproject.live_pyproject_text(
             project_root / c.PYPROJECT_FILENAME,
         )
         if live.failure:
-            return r[p.ProjectMetadata].from_failure(live)
+            return result_type.from_failure(live)
         # The facade returns None for unparseable text rather than raising, so
         # the invalid case is named here instead of reaching model_validate as
         # a None that fails with a shape error about the wrong subject.
         payload = u.Cli.toml_mapping_from_text(live.value)
         if payload is None:
-            return r[p.ProjectMetadata].fail(
+            return result_type.fail(
                 f"cannot read project metadata from {project_root}: "
                 f"{c.PYPROJECT_FILENAME} is not valid TOML",
             )
         try:
             document = u.PyprojectDocument.model_validate(payload)
+            packaging = m.Infra.ProjectPackagingDeclaration.model_validate(payload)
             metadata = u.build_project_metadata(project_root, document)
         except (OSError, ValueError) as exc:
-            return r[p.ProjectMetadata].fail(
+            return result_type.fail(
                 f"cannot read project metadata from {project_root}: {exc}",
                 exception=exc,
             )
-        return r[p.ProjectMetadata].ok(metadata)
+        return result_type.ok(
+            m.Infra.ProjectMetadataState(metadata=metadata, packaging=packaging),
+        )
 
     @staticmethod
-    def validate_infra_payload(payload: p.AttributeProbe) -> t.JsonMapping:
-        """Validate one plain mapping through the infra adapter.
+    def project_package_participation(
+        declaration: m.Infra.ProjectPackagingDeclaration,
+    ) -> bool:
+        """Apply native project defaults without consulting directories or exports.
 
-        Centralizes the adapter choice so every caller validates through the
-        same typed boundary; validation failures escape with the precise
-        pydantic error instead of a sentinel.
+        Args:
+            declaration: Packaging declaration read from the project payload.
 
         Returns:
-            The resulting ``t.JsonMapping``.
+            Whether the project participates in packaging under native defaults.
 
         """
-        result: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
-        return result
+        return (
+            declaration.build_backend is not None
+            if declaration.uv_package is None
+            else declaration.uv_package
+        )
 
     @classmethod
     def format_toml_source(
@@ -584,13 +745,13 @@ class FlextInfraUtilitiesPyproject:
 
     @staticmethod
     def pyproject_payload(pyproject_path: Path) -> t.JsonMapping:
-        """Return one parsed ``pyproject.toml`` payload validated against ``t.Infra``.
+        """Return the shared TOML ingress's validated ``pyproject.toml`` mapping.
 
         The payload is parsed from the live text with managed merge
         conflicts resolved (``live_pyproject_text``).
 
         Returns:
-            One parsed ``pyproject.toml`` payload validated against ``t.Infra``.
+            One mapping validated by the shared TOML ingress.
 
         Raises:
             RuntimeError: If failed to read pyproject payload at; or if pyproject
@@ -617,7 +778,7 @@ class FlextInfraUtilitiesPyproject:
         """Parse and validate one manifest text (memoized per exact content).
 
         Returns:
-            The validated ``t.Infra`` payload of ``text``.
+            The validated mapping of ``text``.
 
         Raises:
             RuntimeError: If ``text`` is not valid TOML.
@@ -627,20 +788,20 @@ class FlextInfraUtilitiesPyproject:
         if payload is None:
             msg = f"pyproject payload at {pyproject_path} is not valid TOML"
             raise RuntimeError(msg)
-        return FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
+        return payload
 
     @staticmethod
     def normalized_toml_payload(document: t.Cli.TomlDocument) -> t.JsonMapping:
-        """Return one TOML document normalized through the infra adapter.
+        """Return the shared TOML ingress's validated document mapping.
 
         Returns:
-            One TOML document normalized through the infra adapter.
+            One mapping validated by the shared TOML ingress.
 
         """
         payload = u.Cli.toml_as_mapping(document)
         if not payload:
             return {}
-        return FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
+        return payload
 
     @staticmethod
     def tool_flext_meta(project_root: Path) -> t.JsonMapping:
@@ -742,6 +903,8 @@ class FlextInfraUtilitiesPyproject:
         project_root: Path,
         payload: t.JsonMapping,
         docs_meta: t.JsonMapping,
+        *,
+        source_paths: t.SequenceOf[Path] | None = None,
     ) -> str:
         """Return the primary package name using pre-loaded pyproject payload.
 
@@ -758,7 +921,19 @@ class FlextInfraUtilitiesPyproject:
         wheel_package = FlextInfraUtilitiesPyproject._hatch_wheel_package(payload)
         if wheel_package is not None:
             return wheel_package
-        source_package = FlextInfraUtilitiesPyproject._src_dir_package(project_root)
+        source_package = (
+            next(
+                (
+                    path.parent.name
+                    for path in sorted(source_paths)
+                    if path.name == c.Infra.INIT_PY
+                    and path.parent.parent == project_root / c.Infra.DEFAULT_SRC_DIR
+                ),
+                None,
+            )
+            if source_paths is not None
+            else FlextInfraUtilitiesPyproject._src_dir_package(project_root)
+        )
         if source_package is not None:
             return source_package
         project_name = FlextInfraUtilitiesPyproject.project_name_from_payload(

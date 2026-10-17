@@ -13,6 +13,9 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_infra.refactor._accessor_expression import (
+        FlextInfraAccessorMigrationExpressionMixin,
+    )
     from flext_infra.refactor._accessor_origin import FlextInfraAccessorOriginResolver
     from flext_infra.refactor._accessor_report import (
         FlextInfraAccessorMigrationReportMixin,
@@ -20,8 +23,8 @@ if TYPE_CHECKING:
     from flext_infra.refactor._accessor_rewrite import (
         FlextInfraAccessorMigrationRewriteMixin,
     )
-    from flext_infra.refactor._census_apply_formatting import (
-        FlextInfraRefactorCensusApplyFormattingMixin,
+    from flext_infra.refactor._accessor_warnings import (
+        FlextInfraAccessorMigrationWarningsMixin,
     )
     from flext_infra.refactor._census_collect import (
         FlextInfraRefactorCensusCollectMixin,
@@ -78,9 +81,11 @@ if TYPE_CHECKING:
 
 
 __all__: tuple[str, ...] = (
+    "FlextInfraAccessorMigrationExpressionMixin",
     "FlextInfraAccessorMigrationOrchestrator",
     "FlextInfraAccessorMigrationReportMixin",
     "FlextInfraAccessorMigrationRewriteMixin",
+    "FlextInfraAccessorMigrationWarningsMixin",
     "FlextInfraAccessorOriginResolver",
     "FlextInfraImportNormalization",
     "FlextInfraImportNormalizationAstMixin",
@@ -93,7 +98,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraProjectClassifierDepsMixin",
     "FlextInfraProjectClassifierFamilyMixin",
     "FlextInfraRefactorCensus",
-    "FlextInfraRefactorCensusApplyFormattingMixin",
     "FlextInfraRefactorCensusCollectHelpersMixin",
     "FlextInfraRefactorCensusCollectMixin",
     "FlextInfraRefactorCensusFiltersMixin",
@@ -110,9 +114,11 @@ install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
+        "FlextInfraAccessorMigrationExpressionMixin": "._accessor_expression",
         "FlextInfraAccessorMigrationOrchestrator": ".accessor_migration",
         "FlextInfraAccessorMigrationReportMixin": "._accessor_report",
         "FlextInfraAccessorMigrationRewriteMixin": "._accessor_rewrite",
+        "FlextInfraAccessorMigrationWarningsMixin": "._accessor_warnings",
         "FlextInfraAccessorOriginResolver": "._accessor_origin",
         "FlextInfraImportNormalization": "._import_enforcement",
         "FlextInfraImportNormalizationAstMixin": "._import_ast",
@@ -125,7 +131,6 @@ install_lazy_exports(
         "FlextInfraProjectClassifierDepsMixin": "._project_classifier_deps",
         "FlextInfraProjectClassifierFamilyMixin": "._project_classifier_family",
         "FlextInfraRefactorCensus": ".census",
-        "FlextInfraRefactorCensusApplyFormattingMixin": "._census_apply_formatting",
         "FlextInfraRefactorCensusCollectHelpersMixin": "._census_collect_helpers",
         "FlextInfraRefactorCensusCollectMixin": "._census_collect",
         "FlextInfraRefactorCensusFiltersMixin": "._census_filters",

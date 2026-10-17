@@ -65,8 +65,8 @@ class FlextInfraRefactorCensusObjectsMixin:
         )
 
     @staticmethod
-    def _is_unused(item: m.Infra.Object) -> bool:
-        """Is unused.
+    def unused(item: m.Infra.Object) -> bool:
+        """Classify an unreferenced object from its collected reference evidence.
 
         Returns:
             The resulting ``bool``.
@@ -142,7 +142,7 @@ class FlextInfraRefactorCensusObjectsMixin:
             The resulting ``m.Infra.RemovalCandidate | None``.
 
         """
-        if include_unused and cls._is_unused(item):
+        if include_unused and cls.unused(item):
             reason, suggested_action = "unused", "delete_object_definition"
         else:
             return None

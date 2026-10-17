@@ -34,14 +34,21 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
         Roots are relative to the repository containing the published report.
         Only closed stage/outcome labels, a validated Git OID and native scalar
         completion facts replace tokens in the original shell's EXIT handler.
+
+        Returns:
+            The resulting ``str``.
+
+        Raises:
+            ValueError: If bootstrap report requires one elected scalar field.
+
         """
         report = m.Infra.WorkspaceOperationReport(
-            root=Path("."),
+            root=Path(),
             operation="tool-bootstrap",
-            scope=(Path("."),),
+            scope=(Path(),),
             receipts=(
                 m.Infra.WorkspaceOperationReceipt(
-                    root=Path("."),
+                    root=Path(),
                     executed=True,
                     outcome=None,
                 ),
@@ -78,6 +85,7 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
 
         Returns:
             Original returned paths, or the first causal failure after reporting.
+
         """
         resolved = root.expanduser().resolve()
         discovered = FlextInfraUtilitiesProjectDiscovery.repository_operation_targets(
@@ -238,8 +246,17 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
         if workers <= 1:
             return tuple(task(payload) for payload in payloads)
         context = multiprocessing.get_context("forkserver")
+        started = time.monotonic()
         with ProcessPoolExecutor(max_workers=workers, mp_context=context) as pool:
-            return tuple(pool.map(task, payloads))
+            results = tuple(pool.map(task, payloads))
+            mapped = time.monotonic()
+        finished = time.monotonic()
+        cli_u.Cli.info(
+            f"stage=fleet-map payloads={len(payloads)} workers={workers} "
+            f"map_elapsed={mapped - started:.3f}s "
+            f"shutdown_elapsed={finished - mapped:.3f}s",
+        )
+        return results
 
     @classmethod
     def iter_python_files(
@@ -301,7 +318,6 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
                     source_root,
                 )
             )
-        ignored = frozenset(config.Infra.codegen.source_scan_ignored)
         return tuple(
             file_path
             for file_path in tracked_files
@@ -309,7 +325,9 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
             and any(
                 file_path.is_relative_to(source_root) for source_root in source_roots
             )
-            and not ignored.intersection(file_path.relative_to(project_root).parts)
+            and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                project_root, file_path
+            )
         )
 
 

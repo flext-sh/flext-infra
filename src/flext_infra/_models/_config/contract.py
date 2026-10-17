@@ -14,22 +14,14 @@ from flext_cli import m
 
 from flext_infra import c, t
 from flext_infra._models.mise_toolchain import FlextInfraModelsMiseToolchain
+from flext_infra._models.mise_toolchain_base import FlextInfraModelsMiseToolchainBase
 
 
 class FlextInfraConfigModelsContract(FlextInfraModelsMiseToolchain):
     """Shared config contract base and inherited toolchain declarations."""
 
-    class ConfigContract(m.ContractModel):
+    class ConfigContract(FlextInfraModelsMiseToolchainBase):
         """Public declarative base for schema-loaded codegen records."""
-
-        # Rendered file payloads are
-        # byte contracts; Pydantic must never trim their final newline.
-        model_config = m.ConfigDict(
-            strict=False,
-            frozen=True,
-            extra="forbid",
-            str_strip_whitespace=False,
-        )
 
     class DocsAuditOverridesSpec(ConfigContract):
         """Repository-specific exceptions and stale-symbol declarations."""
@@ -87,3 +79,6 @@ class FlextInfraConfigModelsContract(FlextInfraModelsMiseToolchain):
             for pattern in self.placeholder_patterns:
                 re.compile(pattern)
             return self
+
+
+__all__: list[str] = ["FlextInfraConfigModelsContract"]

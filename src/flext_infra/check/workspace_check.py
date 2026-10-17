@@ -7,13 +7,19 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shlex
+import sys
 from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import FlextInfraServiceBase, c, config, m, p, r, t, u
-from flext_infra.check import FlextInfraWorkspaceCheckReportsMixin
-from flext_infra.check.gate_registry import FlextInfraGateRegistry
-from flext_infra.check.workspace_check_gates import FlextInfraWorkspaceCheckGatesMixin
+from flext_infra.check import (
+    FlextInfraGateRegistry,
+    FlextInfraWorkspaceCheckGatesMixin,
+    FlextInfraWorkspaceCheckReportsMixin,
+)
+from flext_infra.workspace.runtime_dependencies import (
+    FlextInfraRuntimeDependencyCollector,
+)
 
 
 class FlextInfraWorkspaceChecker(
@@ -119,6 +125,10 @@ class FlextInfraWorkspaceChecker(
             ruff_args=tuple(self.parse_tool_args(params.ruff_args)),
             pyright_args=tuple(self.parse_tool_args(params.pyright_args)),
             selected_files=selected_files,
+            runtime_dependency_collector=FlextInfraRuntimeDependencyCollector(
+                python=Path(sys.executable),
+                development_only=(),
+            ),
         )
         run_result = self.run_projects(
             projects=project_targets,
@@ -148,11 +158,12 @@ class FlextInfraWorkspaceChecker(
             return r[t.VariadicTuple[Path]].fail(
                 "--file requires explicit canonical --gates selection"
             )
+        requested = u.Infra.normalize_sequence_values(params.projects)
         if (
             params.apply
             or params.ruff_args is not None
             or params.pyright_args is not None
-            or (params.project_names and tuple(params.project_names) != (".",))
+            or (requested and tuple(requested) != (".",))
         ):
             return r[t.VariadicTuple[Path]].fail(
                 "file-gate requires read-only local selection without tool overrides",
@@ -263,7 +274,7 @@ class FlextInfraWorkspaceChecker(
             return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok((
                 m.Infra.CheckProjectTarget(name=owner.name, path=owner.path),
             ))
-        requested = params.project_names
+        requested = u.Infra.normalize_sequence_values(params.projects)
         if requested:
             return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok(
                 tuple(
@@ -274,15 +285,12 @@ class FlextInfraWorkspaceChecker(
                     for project_name in requested
                 ),
             )
-        resolved = u.Infra.resolve_projects(params.repository_root, ())
-        if resolved.failure:
-            return r[t.SequenceOf[m.Infra.CheckProjectTarget]].from_failure(resolved)
-        return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok(
-            tuple(
-                m.Infra.CheckProjectTarget(name=project.name, path=project.path)
-                for project in resolved.value
+        return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok((
+            m.Infra.CheckProjectTarget(
+                name=params.repository_root.name,
+                path=params.repository_root,
             ),
-        )
+        ))
 
     def format(self, project_dir: Path) -> p.Result[m.Infra.GateResult]:
         """Run format checks for one project.

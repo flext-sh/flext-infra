@@ -7,8 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from functools import lru_cache
 
-from flext_infra import t
+from flext_infra import c, t
 from flext_infra._utilities._rope_analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
@@ -42,7 +43,13 @@ class FlextInfraUtilitiesRopeModulePatch:
         )
 
     @classmethod
-    def facade_letter_names_source(cls, source: str) -> frozenset[str]:
+    @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
+    def facade_letter_names_source(
+        cls,
+        source: str,
+        *,
+        filename: str,
+    ) -> frozenset[str]:
         """Return the exported lower-case names bound directly to a class.
 
         A facade letter (ADR-015 R1a, ADR-018 p.1) is a published alias whose
@@ -56,7 +63,7 @@ class FlextInfraUtilitiesRopeModulePatch:
             The exported lower-case names bound directly to a class.
 
         """
-        tree = ast.parse(source)
+        tree = ast.parse(source, filename=filename)
         class_names = {
             node.name for node in tree.body if isinstance(node, ast.ClassDef)
         } | {

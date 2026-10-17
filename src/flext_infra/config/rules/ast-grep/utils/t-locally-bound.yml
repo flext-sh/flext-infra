@@ -1,12 +1,80 @@
-# Reusable binding guard for codemods that emit ``t.*`` references.
-#
-# A source import aliased away (``t as types``) does not bind ``t``. A bare
-# import or any imported symbol explicitly aliased to ``t`` does. Keeping this
-# structural rule here prevents each typing rewrite from approximating Python
-# import binding independently.
+# Canonical direct facade import, not proof that an abstraction is substitutable.
+# Reject lexical rebinding conservatively across the module: a syntactic guard
+# cannot certify the reference's Rope identity when scopes shadow the facade.
 id: t-locally-bound
 language: python
 rule:
-  any:
-    - pattern: from $$$MODULE import t
-    - pattern: from $$$MODULE import $$$SOURCE as t
+  all:
+    - kind: import_from_statement
+    - has:
+        field: module_name
+        regex: "^flext(?:_[a-z0-9_]+)?$"
+    - has:
+        pattern: t
+        stopBy: end
+    - not:
+        has:
+          kind: aliased_import
+          stopBy: end
+          has:
+            pattern: t
+            stopBy: end
+    - inside:
+        kind: module
+        not:
+          has:
+            stopBy: end
+            any:
+              - all:
+                  - any:
+                      - kind: assignment
+                      - kind: augmented_assignment
+                      - kind: type_alias_statement
+                      - kind: for_statement
+                      - kind: for_in_clause
+                  - has:
+                      field: left
+                      regex: "\\bt\\b"
+              - all:
+                  - any:
+                      - kind: function_definition
+                      - kind: class_definition
+                      - kind: named_expression
+                  - has:
+                      field: name
+                      regex: "^t$"
+              - all:
+                  - any:
+                      - kind: parameters
+                      - kind: lambda_parameters
+                  - regex: "(^|[(,])\\s*\\**t\\s*[:,)=]"
+              - all:
+                  - kind: aliased_import
+                  - has:
+                      field: alias
+                      regex: "^t$"
+              - all:
+                  - any:
+                      - kind: with_item
+                      - kind: except_clause
+                  - regex: "\\bas\\s+t\\b"
+              - all:
+                  - kind: import_from_statement
+                  - has:
+                      pattern: t
+                      stopBy: end
+                  - not:
+                      has:
+                        field: module_name
+                        regex: "^flext(?:_[a-z0-9_]+)?$"
+              - all:
+                  - kind: import_statement
+                  - has:
+                      pattern: t
+                      stopBy: end
+              - all:
+                  - any:
+                      - kind: delete_statement
+                      - kind: case_pattern
+                      - kind: type_parameter
+                  - regex: "\\bt\\b"

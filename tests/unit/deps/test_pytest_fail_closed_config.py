@@ -71,7 +71,7 @@ class TestsFlextInfraPytestFailClosedConfig:
         )
         tm.that(
             set(u.Tests.strings(ini["addopts"])),
-            eq={*policy.standard_addopts, f"--timeout={policy.case_timeout_seconds}"},
+            eq=set(policy.standard_addopts),
         )
         tm.that(
             set(u.Tests.strings(ini["markers"])),

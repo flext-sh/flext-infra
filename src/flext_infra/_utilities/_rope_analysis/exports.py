@@ -10,6 +10,8 @@ import ast
 from collections.abc import MutableMapping
 from typing import ClassVar
 
+from flext_cli import u
+
 from flext_infra import c, m, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
@@ -49,8 +51,6 @@ class FlextInfraUtilitiesRopeAnalysisExports:
 
         """
         root_scope = pymodule.get_scope()
-        if root_scope is None:
-            return ()
         definitions: t.MutableSequenceOf[m.Infra.ScopeDefinition] = []
         FlextInfraUtilitiesRopeAnalysisExports._collect_scope_definitions(
             scope=root_scope,
@@ -124,6 +124,9 @@ class FlextInfraUtilitiesRopeAnalysisExports:
         Returns:
             Module-local export names from Rope metadata.
 
+        Raises:
+            TypeError: The parsed module has no native source text.
+
         """
         resolved_export_options = export_options or m.Infra.ExportOptions()
         cache_key = (
@@ -142,12 +145,20 @@ class FlextInfraUtilitiesRopeAnalysisExports:
         )
         export_names: t.StrSequence
         if cached is not None:
+            if not cached:
+                u.Cli.info(
+                    f"rope: empty cached exports resource={resource.path} "
+                    f"identity={cache_key[:3]}"
+                )
             export_names = cached
         else:
             pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(
                 rope_project,
                 resource,
-            )
+            ).get_module()
+            if not FlextInfraUtilitiesRopeRuntime.source_module(pymodule):
+                message = "Rope export source requires a native source module"
+                raise TypeError(message)
             export_names = FlextInfraUtilitiesRopeAnalysisExports._module_export_names(
                 export_options=resolved_export_options,
                 pymodule=pymodule,
@@ -307,12 +318,25 @@ class FlextInfraUtilitiesRopeAnalysisExports:
             explicit_all_name is None
             or not FlextInfraUtilitiesRopeRuntime.assigned_name(explicit_all_name)
         ):
+            u.Cli.info(
+                f"rope: explicit exports resource={resource.path} "
+                f"binding={type(explicit_all_name).__name__}"
+            )
             return None
         assigned_all: t.Infra.RopeAssignedName = explicit_all_name
         if not FlextInfraUtilitiesRopeAnalysisAstHelpers.local_name(
             assigned_all,
             resource,
         ):
+            origin_module, origin_line = assigned_all.get_definition_location()
+            origin_resource = (
+                origin_module.get_resource() if origin_module is not None else None
+            )
+            u.Cli.info(
+                f"rope: explicit export identity resource={resource.path} "
+                f"origin={origin_resource.path if origin_resource is not None else ''} "
+                f"line={origin_line}"
+            )
             return None
         return FlextInfraUtilitiesRopeAnalysisExports._explicit_all_names(
             assigned_all,
@@ -467,10 +491,17 @@ class FlextInfraUtilitiesRopeAnalysisExports:
             start = getattr(node, "lineno", None)
             end = getattr(node, "end_lineno", None) or start
             if start is None:
+                u.Cli.info("rope: explicit export assignment has no source line")
                 continue
             lines = pymodule.source_code.splitlines()
             slice_text = "\n".join(lines[start - 1 : end])
-            return tuple(dict.fromkeys(c.Infra.STRING_LITERAL_RE.findall(slice_text)))
+            names = tuple(dict.fromkeys(c.Infra.STRING_LITERAL_RE.findall(slice_text)))
+            if not names:
+                u.Cli.info(
+                    f"rope: empty explicit export assignment start={start} end={end}"
+                )
+            return names
+        u.Cli.info("rope: explicit export binding has no located assignment")
         return None
 
     @staticmethod
@@ -738,3 +769,6 @@ class FlextInfraUtilitiesRopeAnalysisExports:
                     for name in self._bound_names(element)
                 )
             return ()
+
+
+__all__: list[str] = ["FlextInfraUtilitiesRopeAnalysisExports"]

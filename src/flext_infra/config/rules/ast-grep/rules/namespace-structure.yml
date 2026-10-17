@@ -170,8 +170,11 @@ message: >-
 # importing module: later layers are imported under TYPE_CHECKING only.
 # Facade letters imported from the own package root are layers; the other
 # runtime aliases it publishes (r, e, x, h, d, s) stand for the base layer.
-# Settings and config modules declare models and read constants: they are
-# governed by ban-reverse-runtime-import-settings.
+# The family compose modules are the sanctioned static surface (bead
+# flext-6e72w): importing a canonical public compose leaf is the consumer
+# form every layer shares, not a layer crossing. Settings and config modules
+# declare models and read constants: they are governed by
+# ban-reverse-runtime-import-settings.
 id: ban-reverse-runtime-import
 language: python
 severity: error
@@ -192,7 +195,8 @@ metadata:
       - is: later-layer
         as: base
     TARGET:
-      is: later-layer
+      - is: later-layer
+      - not: compose-module
 rule:
   not:
     matches: inside-type-checking-guard
@@ -230,7 +234,8 @@ message: >-
 ---
 # Settings and config modules may import the declaration facades through
 # `u` at runtime; later layers stay TYPE_CHECKING-only, and the protocols
-# facade is never a runtime import of a settings layer.
+# facade is never a runtime import of a settings layer. The family compose
+# modules are the same sanctioned static surface here (bead flext-6e72w).
 id: ban-reverse-runtime-import-settings
 language: python
 severity: error
@@ -249,8 +254,9 @@ metadata:
         arg: u
         as: base
     TARGET:
-      is: later-layer
-      arg: u
+      - is: later-layer
+        arg: u
+      - not: compose-module
 rule:
   not:
     matches: inside-type-checking-guard

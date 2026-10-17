@@ -1,0 +1,15 @@
+id: result-journal-native-failure
+valid:
+  - |
+    if result.success:
+        return inspect(layout, result.error or "journal failed")
+  - |
+    if other.failure:
+        return inspect(layout, result.error or "journal failed")
+  - |
+    if result.failure:
+        return inspect(layout, result, context="journal failed")
+invalid:
+  - |
+    if result.failure:
+        return inspect(layout, result.error or "journal failed")

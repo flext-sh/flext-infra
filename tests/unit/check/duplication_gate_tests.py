@@ -111,8 +111,14 @@ def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
                 "  codegen: none\n"
                 "  package: true\n"
                 "  editable: true\n"
-                "  read_only: false\n"
-                "  duplication_trees: [charts]\n",
+                "  read_only: false\n",
+                encoding="utf-8",
+            )
+            (root / "config" / "codegen.yaml").write_text(
+                "Infra:\n"
+                "  codegen:\n"
+                "    repository:\n"
+                "      duplication_trees: [charts]\n",
                 encoding="utf-8",
             )
         return root
@@ -247,19 +253,40 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             (package / "second.py").write_text(block, encoding="utf-8")
         return root
 
-    def test_scope_renders_each_directory_exactly_once(self, tmp_path: Path) -> None:
-        """The resolved scope never hands the same directory to jscpd twice.
+    def test_overlapping_scope_never_reports_a_file_as_its_own_clone(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Overlapping declarations never produce double-scan clone findings.
 
         A duplicated scope entry makes jscpd clone every file against itself,
         which is the false double-scan artifact; the union must be unique.
         """
         root = self._governed_with_declared_trees(tmp_path, declare_trees=True)
+        pyproject = root / "pyproject.toml"
+        pyproject.write_text(
+            f"{pyproject.read_text(encoding='utf-8')}\n"
+            "[tool.flext.project.duplication]\n"
+            'scope = ["src", "charts", "charts"]\n',
+            encoding="utf-8",
+        )
 
-        scope = FlextInfraDuplicationGate(root)._render_scope_dirs(root)
+        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
 
-        tm.that(scope.success, eq=True)
-        directories = tuple(scope.value)
-        tm.that(len(directories), eq=len(set(directories)))
+        tm.that(execution.result.passed, eq=False)
+        tm.that(execution.issues, empty=False)
+        report = m.Infra.JscpdReport.model_validate_json(
+            (
+                root / c.Infra.JSCPD_REPORT_DIRNAME / c.Infra.JSCPD_REPORT_FILENAME
+            ).read_text(encoding="utf-8"),
+        )
+        tm.that(report.duplicates, empty=False)
+        for duplicate in report.duplicates:
+            tm.that(duplicate.first_file == duplicate.second_file, eq=False)
+        tm.that(
+            tuple(issue.file for issue in execution.issues),
+            has="charts/values.yaml",
+        )
 
     def test_cross_file_clone_is_reported(self, tmp_path: Path) -> None:
         """A clone between two distinct files is a blocking finding."""
@@ -288,7 +315,9 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         )
 
     @staticmethod
-    def _governed_with_fleet_members(tmp_path: Path, *, enable_fleet: bool) -> Path:
+    def _governed_with_fleet_members(
+        tmp_path: Path, *, enable_fleet: bool | None
+    ) -> Path:
         """One governed root plus two declared members sharing a Python block.
 
         Returns:
@@ -330,12 +359,12 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             "\turl = https://example.invalid/peer-beta\n",
             encoding="utf-8",
         )
-        if enable_fleet:
+        if enable_fleet is not None:
             pyproject = root / "pyproject.toml"
             pyproject.write_text(
                 f"{pyproject.read_text(encoding='utf-8')}\n"
                 "[tool.flext.project.duplication]\n"
-                "fleet = true\n",
+                f"fleet = {str(enable_fleet).lower()}\n",
                 encoding="utf-8",
             )
         return root
@@ -352,9 +381,21 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         tm.that(text, has="peer-beta")
 
     def test_fleet_disabled_ignores_member_projects(self, tmp_path: Path) -> None:
-        """Without the fleet declaration, member projects stay out of scope."""
+        """An explicit fleet=false keeps member projects out of scope."""
         root = self._governed_with_fleet_members(tmp_path, enable_fleet=False)
 
         execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
 
-        tm.that(execution.result.passed, eq=True)
+        assert execution.result.passed, execution.issues
+
+    def test_default_fleet_scope_follows_typed_overrides(self, tmp_path: Path) -> None:
+        """An omitted fleet declaration follows the canonical typed default."""
+        root = self._governed_with_fleet_members(tmp_path, enable_fleet=None)
+        fleet = m.Infra.ProjectDuplicationOverrides().fleet
+
+        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+
+        tm.that(execution.result.passed, eq=not fleet)
+        text = " ".join(f"{issue.file} {issue.message}" for issue in execution.issues)
+        tm.that("peer-alpha" in text, eq=fleet)
+        tm.that("peer-beta" in text, eq=fleet)

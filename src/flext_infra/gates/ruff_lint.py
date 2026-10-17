@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates import FlextInfraGate
 from flext_infra.refactor import FlextInfraImportNormalization
 
 if TYPE_CHECKING:
@@ -27,6 +27,25 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     # can_fix=False made workspace_check_gates skip it, so `make fix`
     # never applied a single lint fix and the command below was dead code.
     can_fix: ClassVar[bool] = True
+
+    @override
+    def _check_env(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> t.StrMapping:
+        """Keep native cache writes outside authenticated source candidates.
+
+        Returns:
+            The resulting ``t.StrMapping``.
+
+        """
+        return {
+            **(super()._check_env(project_dir, ctx) or {}),
+            c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE: str(
+                u.Infra.ruff_cache_directory(project_dir)
+            ),
+        }
 
     @override
     def _get_check_dirs(
@@ -183,7 +202,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     ) -> None:
         """Repair every module of one phase, computing all before any write."""
         with self._mutation_lease(project_dir):
-            import_graph = (
+            import_graph: t.MappingKV[str, frozenset[str]] = (
                 u.Infra.project_import_graph(project_dir)[0]
                 if any(
                     recipes.get(issue.code) is c.Infra.LintFixRecipe.NORMALIZE_IMPORTS
@@ -232,6 +251,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
         Raises:
             FileNotFoundError: If ``before.content is None``.
+
         """
         if before.content is None:
             raise FileNotFoundError(before.path)
@@ -411,13 +431,9 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             issues,
             c.Infra.RUFF,
         )
-        # A declared findings status reports violations, not a tool failure:
-        # the verdict below is issue-driven, so the parse must not treat the
-        # findings exit code as a crash (errors still exit with another code).
-        return (
-            passed or result.outcome.raw_return_code in self._findings_exit_codes(),
-            parsed,
-        )
+        # Ruff's findings exit is a valid scanner result, but every reported
+        # finding still blocks the lint gate under the current quality baseline.
+        return passed and not parsed, parsed
 
     @staticmethod
     @override

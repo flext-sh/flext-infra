@@ -58,6 +58,33 @@ class TestsFlextInfraCodegenMakeVerbs:
         "profile",
         [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
     )
+    def test_accessor_recipe_preserves_backend_workspace_scope(
+        tmp_path: Path,
+        profile: c.Infra.MakeProfile,
+    ) -> None:
+        """Workspace selection is complete; standalone selection stays local."""
+        project_root, _repository_root = u.Tests.render_make_environment(
+            tmp_path, profile
+        )
+        makefile = (project_root / "Makefile").read_text(encoding="utf-8")
+        recipes = tuple(
+            line
+            for line in makefile.splitlines()
+            if "refactor accessor-migrate" in line
+        )
+        tm.that(recipes, len=1)
+        tm.that(recipes[0], has='--repository-root "$(PROJECT_ROOT)"')
+        tm.that(recipes[0], has="--apply")
+        tm.that(
+            "--projects ." in recipes[0],
+            eq=profile is c.Infra.MakeProfile.STANDALONE,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "profile",
+        [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
+    )
     def test_build_verb_renders_uv_build_for_packaged_repositories(
         tmp_path: Path,
         profile: c.Infra.MakeProfile,
@@ -341,6 +368,7 @@ class TestsFlextInfraCodegenMakeVerbs:
             makefile,
             has="upg: _bootstrap_setup_tools",
         )
+        tm.that(makefile, has="upg: TOOL_BOOTSTRAP_LIFECYCLE := _upg_lifecycle")
         tm.that(makefile, has="_builtin-fmt: _builtin_fmt_all")
         tm.that(makefile, has="_builtin-fix: _builtin_fix_all")
         tm.that(makefile, lacks="fix-enforcement")

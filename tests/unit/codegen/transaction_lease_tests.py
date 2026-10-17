@@ -20,6 +20,7 @@ from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspace
 from tests import tm, u
 
 if TYPE_CHECKING:
+    from multiprocessing.process import BaseProcess
     from multiprocessing.synchronize import Event
 
 
@@ -58,7 +59,6 @@ class TestsFlextInfraTransactionLease:
         output = tm.ok(
             u.Cli.run_raw(
                 (sys.executable, "-c", script, str(tmp_path)),
-                timeout=config.Infra.tooling.tools.pytest.case_timeout_seconds,
             ),
         )
         tm.that(
@@ -134,7 +134,6 @@ class TestsFlextInfraTransactionLease:
         outcome = tm.ok(
             u.Cli.run_raw(
                 [sys.executable, "-c", script, str(root)],
-                timeout=config.Infra.tooling.tools.pytest.case_timeout_seconds,
             ),
         )
         tm.that(
@@ -163,6 +162,7 @@ class TestsFlextInfraTransactionLease:
         """Publish a real prepared phase and commit after the contender finishes."""
         owner = FlextInfraCodegenMiseArtifacts(repository_root=root)
         transaction = FlextInfraCodegenTransaction(owner)
+        roots = transaction.capability_roots("mise", (root,))
 
         def publish(scope_root: Path) -> p.Result[bool]:
             config_path = root / ".mise.toml"
@@ -177,21 +177,23 @@ class TestsFlextInfraTransactionLease:
                 desired_mode=before.mode,
                 owner="mise",
             )
-            session = tm.ok(transaction.begin_locked(scope_root, (plan,), (plan,)))
+            session = tm.ok(transaction.begin_files_locked(scope_root, roots, ()))
+            session = tm.ok(
+                transaction.append_phase_locked(
+                    session, c.Infra.CodegenStagedFilePhase.MISE, (plan,)
+                ),
+            )
             ready.set()
             tm.that(
                 release.wait(config.Infra.tooling.tools.pytest.slow_timeout_seconds),
                 eq=True,
             )
             tm.ok(
-                transaction.commit_locked(
-                    session,
-                    lambda: owner.validate_artifacts(root, scope_root),
-                ),
+                transaction.commit_locked(session),
             )
             return r[bool].ok(value=True)
 
-        tm.ok(transaction.run_locked(prepare=True, operation=publish))
+        tm.ok(transaction.run_files_locked(roots, publish))
 
     @staticmethod
     def _acquire_when_granted(scope: Path, acquired: Event) -> None:
@@ -281,7 +283,7 @@ class TestsFlextInfraTransactionLease:
             args=(member, ready, release),
         )
         holder.start()
-        waiter: multiprocessing.process.BaseProcess | None = None
+        waiter: BaseProcess | None = None
         try:
             tm.that(
                 ready.wait(config.Infra.tooling.tools.pytest.slow_timeout_seconds),

@@ -97,19 +97,6 @@ class FlextInfraUtilitiesRopeSource:
         return position
 
     @staticmethod
-    def index_after_docstring_and_future_imports(lines: t.StrSequence) -> int:
-        """Return insertion index after module docstring and future imports.
-
-        Returns:
-            Insertion index after module docstring and future imports.
-
-        """
-        return FlextInfraUtilitiesRopeSource.find_import_insert_position(
-            lines,
-            past_existing=False,
-        )
-
-    @staticmethod
     def parse_import_names(names_str: str) -> t.StrPairSequence:
         """Parse ``A, B as C`` into ``[(name, bound), ...]``.
 

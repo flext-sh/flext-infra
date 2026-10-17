@@ -15,9 +15,9 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import ClassVar
 
+import flext_core
 from flext_cli import u
 
-import flext_core
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
@@ -37,6 +37,25 @@ class FlextInfraUtilitiesCodegenNamespace:
     _declared_exports_cache: ClassVar[
         MutableMapping[str, t.Pair[int, t.StrSequence]]
     ] = {}
+
+    @staticmethod
+    def isort_member_key(name: str) -> t.Pair[int, str]:
+        """Order an imported member name like Ruff isort (``order-by-type``).
+
+        Constants (all upper case) precede CamelCase classes, which precede
+        lower-case names; within a type group names compare case-insensitively
+        (``TEST_FACADE_BASES`` < ``TESTS_ROOT``). Every generated import block
+        sorts by this one key, so ``make gen`` and ``make fix`` agree.
+
+        Returns:
+            The type group and the case-folded name.
+
+        """
+        if name.isupper():
+            return 0, name.casefold()
+        if name[:1].isupper():
+            return 1, name.casefold()
+        return 2, name.casefold()
 
     @staticmethod
     @cache
@@ -242,11 +261,11 @@ class FlextInfraUtilitiesCodegenNamespace:
         return root
 
     @classmethod
-    def _runtime_aliases(cls, package_dir: Path) -> t.StrSequence:
+    def _runtime_aliases(cls, package_dir: Path) -> t.VariadicTuple[str]:
         """Read root aliases from declarations, never from initializer outputs.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The canonical immutable alias tuple.
 
         """
         return tuple(
@@ -262,7 +281,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
 
     @staticmethod
-    def _literal_exports(
+    def _literal_namespace_exports(
         tree: ast.Module,
         value: ast.expr,
         file_path: Path,
@@ -340,12 +359,12 @@ class FlextInfraUtilitiesCodegenNamespace:
                     isinstance(target, ast.Name) and target.id == c.Infra.DUNDER_ALL
                     for target in targets
                 ):
-                    result = cls._literal_exports(tree, value, file_path)
+                    result = cls._literal_namespace_exports(tree, value, file_path)
                     break
                 case ast.AnnAssign(target=ast.Name(id=name), value=value) if (
                     name == c.Infra.DUNDER_ALL and value is not None
                 ):
-                    result = cls._literal_exports(tree, value, file_path)
+                    result = cls._literal_namespace_exports(tree, value, file_path)
                     break
                 case _:
                     continue
@@ -997,10 +1016,9 @@ class FlextInfraUtilitiesCodegenNamespace:
         lines = source.splitlines()
         if import_line in lines:
             return source
-        insert_at = (
-            FlextInfraUtilitiesRopeSource.index_after_docstring_and_future_imports(
-                lines,
-            )
+        insert_at = FlextInfraUtilitiesRopeSource.find_import_insert_position(
+            lines,
+            past_existing=False,
         )
         before = lines[:insert_at]
         after = lines[insert_at:]

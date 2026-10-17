@@ -49,6 +49,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
             targets=project.targets,
             config_file=project.config_file,
             profile_output=profile,
+            verbose=True,
         )
         result = u.Cli.run_raw(
             u.Infra.mypy_limited_command(invocation),
@@ -60,6 +61,15 @@ class TestsFlextInfraUtilitiesResourceLimits:
             bool(pstats.Stats(str(profile)).get_stats_profile().func_profiles),
             eq=True,
         )
+        # The second profile must analyze the source even after warming its cache.
+        repeated = u.Cli.run_raw(
+            u.Infra.mypy_limited_command(invocation),
+            timeout=u.Infra.mypy_runner_timeout(),
+        )
+        tm.ok(repeated)
+        tm.that(u.Cli.process_succeeded(repeated.value.outcome), eq=True)
+        for output in (result.value, repeated.value):
+            tm.that(output.stderr, has=f"Parsing {project.targets[0]}")
 
     @staticmethod
     def test_mypy_budget_resolves_the_project_tooling_overlay(

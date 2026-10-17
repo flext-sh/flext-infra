@@ -52,7 +52,7 @@ def governed_project(tmp_path: Path) -> Path:
     """Provide the project manifest every scanned package belongs to.
 
     Lazy-init plans a package only inside a physical project, and the
-    generated notice names the manifest's first author.
+    generated notice names the manifest's first author and its license.
 
     Returns:
         The resulting ``Path``.
@@ -60,6 +60,7 @@ def governed_project(tmp_path: Path) -> Path:
     """
     (tmp_path / "pyproject.toml").write_text(
         '[project]\nname = "test-helpers"\nversion = "0.1.0"\n'
+        f'license = "{u.Tests.project_spec("test-helpers").license}"\n'
         'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n',
         encoding="utf-8",
     )

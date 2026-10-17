@@ -1,0 +1,21 @@
+- source_name: project_names
+  replacement_name: u.Infra.normalize_sequence_values
+  operation: normalize-field
+  origin: flext_infra
+  declaring_class: flext_infra._models.mixins.FlextInfraModelsMixins.ScopeMixin
+  field: projects
+  reason: Normalize scope selection at the public utility boundary.
+- source_name: report_path
+  replacement_name: u.Infra.normalize_optional_path
+  operation: normalize-field
+  origin: flext_infra
+  declaring_class: flext_infra._models.mixins.FlextInfraModelsMixins.ReadMixin
+  field: report
+  reason: Resolve optional report paths at the public utility boundary.
+- source_name: output_dir_path
+  replacement_name: u.Infra.normalize_optional_path
+  operation: normalize-field
+  origin: flext_infra
+  declaring_class: flext_infra._models.mixins.FlextInfraModelsMixins.ReadMixin
+  field: output_dir
+  reason: Resolve optional output directories at the public utility boundary.

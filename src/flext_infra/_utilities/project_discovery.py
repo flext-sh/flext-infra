@@ -9,13 +9,12 @@ from __future__ import annotations
 import sys
 from operator import attrgetter
 from pathlib import Path
-from typing import TYPE_CHECKING, override
-
-from flext_cli import u
+from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
@@ -93,21 +92,20 @@ class FlextInfraUtilitiesProjectDiscovery(
         if loaded.failure:
             return result_type.from_failure(loaded)
         repository = loaded.value.spec.repository
-        if repository is not None:
-            if repository.codegen == c.Infra.CodegenKind.NONE:
-                return result_type.ok(
-                    m.Infra.WorkspaceOperationApplicability(
-                        applicable=False,
-                        reason="Repository declaration disables code generation",
-                    ),
-                )
-            if mutating and repository.read_only:
-                return result_type.ok(
-                    m.Infra.WorkspaceOperationApplicability(
-                        applicable=False,
-                        reason="Repository declaration is read-only",
-                    ),
-                )
+        if repository.codegen == c.Infra.CodegenKind.NONE:
+            return result_type.ok(
+                m.Infra.WorkspaceOperationApplicability(
+                    applicable=False,
+                    reason="Repository declaration disables code generation",
+                ),
+            )
+        if mutating and repository.read_only:
+            return result_type.ok(
+                m.Infra.WorkspaceOperationApplicability(
+                    applicable=False,
+                    reason="Repository declaration is read-only",
+                ),
+            )
         return result_type.ok(m.Infra.WorkspaceOperationApplicability(applicable=True))
 
     @classmethod
@@ -125,95 +123,9 @@ class FlextInfraUtilitiesProjectDiscovery(
             repository_root,
         ).unwrap()
         repository = loaded.spec.repository
-        if repository is None or repository.refactor is None:
+        if repository.refactor is None:
             return packaged
         return repository.refactor
-
-    @classmethod
-    def repository_nonparticipant_paths(cls, repository_root: Path) -> frozenset[str]:
-        """Derive external analysis roots from the current Git declarations.
-
-        Git's explicit management flag owns participation. Repository-local
-        paths retain their full relative shape, so similarly named directories
-        cannot exclude one another. Each invocation observes the current input;
-        changing a Git declaration cannot leave a cached exclusion catalog.
-
-        Returns:
-            Every explicitly unmanaged Git submodule path.
-
-        """
-        declared = FlextInfraUtilitiesGit.git_submodule_declarations(
-            repository_root,
-        ).unwrap()
-        return frozenset(
-            declaration.path.as_posix()
-            for declaration in declared
-            if declaration.managed is False
-        )
-
-    @classmethod
-    def _is_nonparticipant(
-        cls,
-        candidate: Path,
-        repository_root: Path,
-        nonparticipants: frozenset[str],
-    ) -> bool:
-        """Return whether one candidate lies at or under a declared non-participant.
-
-        Returns:
-            Whether one candidate lies at or under a declared non-participant.
-
-        """
-        # "Is this candidate inside the root?" is a question, not a failure, so
-        # it is asked instead of caught. relative_to raised ValueError for the
-        # ordinary outside-the-root case, which made an except branch produce a
-        # value and hid any real path error behind the same sentinel.
-        resolved = candidate.resolve()
-        root = repository_root.resolve()
-        if not resolved.is_relative_to(root):
-            return False
-        posix = resolved.relative_to(root).as_posix()
-        if posix in {".", ""}:
-            return False
-        return any(
-            posix == declared or posix.startswith(f"{declared}/")
-            for declared in nonparticipants
-        )
-
-    @classmethod
-    @override
-    def discover_project_candidates(
-        cls,
-        repository_root: Path,
-        *,
-        scan_dirs: frozenset[str] | None = None,
-    ) -> t.SequenceOf[Path]:
-        """Enumerate candidates, dropping every manifest-excluded directory.
-
-        The exclusion is applied at this single shared enumerator rather than in
-        each caller. Every discovery consumer -- docs scope, lazy-init
-        generation, refactor scans -- goes through here, and filtering per
-        caller is what let a declared exclusion be honoured by one stage and
-        ignored by the next: discovery skipped an excluded submodule while
-        lazy-init still planned files inside it and failed with "lazy-init file
-        has no transaction participant".
-
-        Returns:
-            The resulting ``t.SequenceOf[Path]``.
-
-        """
-        candidates = super().discover_project_candidates(
-            repository_root,
-            scan_dirs=scan_dirs,
-        )
-        nonparticipants = cls.repository_nonparticipant_paths(repository_root)
-        if not nonparticipants:
-            return candidates
-        return tuple(
-            candidate
-            for candidate in candidates
-            if not cls._is_nonparticipant(candidate, repository_root, nonparticipants)
-        )
 
     @classmethod
     def discover_project_roots(
@@ -248,12 +160,12 @@ class FlextInfraUtilitiesProjectDiscovery(
         candidates = cls.discover_project_candidates(
             repository_root,
             scan_dirs=scan_dirs,
+            declarations=declared.value,
         )
         resolved_repository_root = repository_root.resolve()
         if not configured_projects:
             return candidates
         configured_order = {name: idx for idx, name in enumerate(configured_projects)}
-        ordered: list[Path] = []
 
         def configured_key(candidate: Path) -> t.Pair[int, str]:
             relative = candidate.relative_to(resolved_repository_root).as_posix()
@@ -262,12 +174,10 @@ class FlextInfraUtilitiesProjectDiscovery(
                 len(configured_projects),
             ), candidate.name
 
-        non_root_candidates = sorted(
+        return sorted(
             (c for c in candidates if c != resolved_repository_root),
             key=configured_key,
         )
-        ordered.extend(non_root_candidates)
-        return ordered
 
     @classmethod
     def discover_rope_project_roots(cls, repository_root: Path) -> t.SequenceOf[Path]:
@@ -286,17 +196,23 @@ class FlextInfraUtilitiesProjectDiscovery(
             Every Python project this repository's Rope workspace owns.
 
         Raises:
-            ValueError: If ``declared_paths.failure``.
+            ValueError: If the current Git declarations are invalid.
 
         """
         resolved_root = repository_root.resolve()
-        declared_paths = FlextInfraUtilitiesGit.git_submodule_declarations(
+        declarations = FlextInfraUtilitiesGit.git_submodule_declarations(
             resolved_root,
         )
-        if declared_paths.failure:
-            raise ValueError(declared_paths.error or "invalid .gitmodules")
-        declared = cls.discover_project_candidates(resolved_root)
-        nonparticipants = cls.repository_nonparticipant_paths(resolved_root)
+        if declarations.failure:
+            raise ValueError(declarations.error or "invalid .gitmodules")
+        declared = cls.discover_project_candidates(
+            resolved_root,
+            declarations=declarations.value,
+        )
+        nonparticipants = cls.repository_nonparticipant_paths(
+            resolved_root,
+            declarations=declarations.value,
+        )
         direct = tuple(
             child.resolve()
             for child in sorted(resolved_root.iterdir(), key=attrgetter("name"))
@@ -313,7 +229,13 @@ class FlextInfraUtilitiesProjectDiscovery(
         )
 
     @classmethod
-    def ast_grep_scan_targets(cls, repository_root: Path) -> t.StrSequence:
+    def ast_grep_scan_targets(
+        cls,
+        repository_root: Path,
+        *,
+        source_files: t.SequenceOf[Path] | None = None,
+        refactor_config: m.Infra.RefactorConfigSpec | None = None,
+    ) -> t.StrSequence:
         """Return only governed handwritten Python surfaces as scan targets.
 
         A workspace root is not itself a Python source surface. Passing ``.`` to
@@ -326,9 +248,13 @@ class FlextInfraUtilitiesProjectDiscovery(
         Returns:
             Only governed handwritten Python surfaces as scan targets.
 
+        Raises:
+            ValueError: If a requested source is outside the governed inventory.
+
         """
         resolved_root = repository_root.resolve()
-        refactor_config = cls.load_refactor_config(resolved_root)
+        if refactor_config is None:
+            refactor_config = cls.load_refactor_config(resolved_root)
         scan_dirs = refactor_config.project_scan_dirs
         targets: set[str] = set()
         for project in cls.governed_project_roots(resolved_root):
@@ -347,13 +273,26 @@ class FlextInfraUtilitiesProjectDiscovery(
                         targets,
                     )
         nonparticipants = cls.repository_nonparticipant_paths(resolved_root)
-        return tuple(
+        eligible = {
             target
-            for target in sorted(targets)
+            for target in targets
             if not cls._is_nonparticipant(
                 resolved_root / target, resolved_root, nonparticipants
             )
-        )
+        }
+        if source_files is not None:
+            selected = {
+                path.resolve().relative_to(resolved_root).as_posix()
+                for path in source_files
+            }
+            if not selected or selected - eligible:
+                msg = (
+                    f"native source scope is outside governed inventory: "
+                    f"{sorted(selected - eligible)}"
+                )
+                raise ValueError(msg)
+            eligible.intersection_update(selected)
+        return tuple(sorted(eligible))
 
     @staticmethod
     def _collect_scan_dir_targets(
@@ -370,10 +309,12 @@ class FlextInfraUtilitiesProjectDiscovery(
         """
         if not scan_dir.exists():
             return
-        ignored = frozenset(config.Infra.codegen.source_scan_ignored)
         for target in scan_dir.rglob(pattern):
-            if target.is_file() and not ignored.intersection(
-                target.relative_to(scan_dir).parts,
+            if (
+                target.is_file()
+                and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                    scan_dir, target
+                )
             ):
                 targets.add(target.relative_to(resolved_root).as_posix())
 

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -286,9 +286,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         if loaded.failure:
             return r[t.StrSequence].from_failure(loaded)
         repository = loaded.value.spec.repository
-        return r[t.StrSequence].ok(
-            repository.duplication_trees if repository is not None else (),
-        )
+        return r[t.StrSequence].ok(repository.duplication_trees)
 
     def _render_config(self, project_dir: Path) -> p.Result[Path]:
         """Materialize the jscpd config from this gate's typed SSOT.
@@ -410,7 +408,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             # The semantic classifier owns the verdict in both scopes: the
             # fleet union only widens WHICH clones are visible, never what
             # counts as one.
-            if not cls.is_semantic_clone(duplicate, first, second):
+            if not cls.semantic_clone(duplicate, first, second):
                 continue
             first_span = cls.side_span_key(first)
             second_span = cls.side_span_key(second)
@@ -531,7 +529,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         )
 
     @classmethod
-    def is_semantic_clone(
+    def semantic_clone(
         cls,
         duplicate: t.JsonMapping,
         first: t.JsonMapping,

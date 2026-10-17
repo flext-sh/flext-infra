@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, m
+from flext_infra import config
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraDetectorOwnsNoProjectRegistry:
@@ -66,7 +66,7 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
         )
         relative = Path("nested") / "unprovisioned"
         repository = u.Tests.repository_ref(relative.name)
-        branch = config.Infra.codegen.branch_policy.integration_branch_preference[0]
+        branch = config.Infra.codegen.branch_policy.integration_branch
         tm.ok(
             u.Cli.files_write_text(
                 root / c.Infra.GITMODULES,
@@ -183,8 +183,12 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
             "declaration-owner",
         )
         relative = Path("external") / "library"
+        member = u.Tests.WorktreeFixture.self_named_project(
+            root / relative,
+            relative.name,
+        )
         repository = u.Tests.repository_ref(relative.name)
-        branch = config.Infra.codegen.branch_policy.integration_branch_preference[0]
+        branch = config.Infra.codegen.branch_policy.integration_branch
         declaration = (
             f'[submodule "{relative.as_posix()}"]\n'
             f"    path = {relative.as_posix()}\n"
@@ -204,6 +208,9 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
         )
 
         tm.that(excluded, eq=frozenset({relative.as_posix()}))
+        tm.that(member in u.Infra.discover_project_candidates(root), eq=False)
+        tm.that(member in u.Infra.discover_rope_project_roots(root), eq=False)
+        tm.that(u.Infra.import_project_roots(member), eq=(root, member))
         tm.that(tuple(target.root for target in targets), eq=(root, root / relative))
         tm.ok(
             u.Cli.files_write_text(
@@ -215,6 +222,9 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
             ),
         )
         tm.that(u.Infra.repository_nonparticipant_paths(root), empty=True)
+        tm.that(member in u.Infra.discover_project_candidates(root), eq=True)
+        tm.that(member in u.Infra.discover_rope_project_roots(root), eq=True)
+        tm.that(u.Infra.import_project_roots(member), eq=(root, member))
 
     def test_unknown_project_derives_its_own_identity(self, tmp_path: Path) -> None:
         """A repository absent from any catalog still derives from itself."""

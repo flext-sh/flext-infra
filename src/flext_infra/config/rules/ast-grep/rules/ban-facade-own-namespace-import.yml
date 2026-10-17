@@ -14,22 +14,20 @@
 # self-dependency even when the resolver tolerates it.
 #
 # The law is per letter, exactly as the operator ciphered it. Importing a
-# DIFFERENT letter from the own root is facade assembly, which remains legal
-# (consumption-law.md:52), and the tooling layer order makes the common
-# cruze forward-legal (`t < m`: `_models/**` importing `t` is family
-# assembly, never a finding). So each letter gets its own document, scoped to
+# DIFFERENT letter is subject to the independent strict layer-direction law
+# (`t < m`: `_models/**` importing `t` is forward family assembly). Layer-zero
+# config/settings cannot import ANY own-namespace object; the companion
+# settings-config-boundary rule enforces that stronger boundary. Each letter
+# gets its own document, scoped to
 # its own producer tree, banning only its own letter; one document per letter
 # in the style of settings-config-boundary.yml, whose per-file-family
 # documents this file mirrors. `ban-infra-utility-module-self-facade-import`
 # keeps its narrower flext-infra utilities scope beside the `u` document.
 #
-# Bound names are matched exactly: `from pkg import carbon` binds a different
-# name and never matches, and an aliased member (`from pkg import t as
-# typings`) binds the alias, not the letter, so it stays outside this law.
+# Imported names are matched exactly, regardless of their local alias.
 # The plain-import form (`import pkg.c`) binds the package but imports the
-# letter as a submodule, which is the same self-letter reach. Imports nested
-# in a function or class body bind nothing at module scope and are the
-# sanctioned late-binding form, so only module-level imports match.
+# letter as a submodule, which is the same self-letter reach. TYPE_CHECKING
+# and function/class-local imports do not authorize a self-facade dependency.
 #
 # Genericity: no document names a package. The imported module's root is
 # captured as $MODULE (or the dotted path as $PATH for the plain-import form)
@@ -52,9 +50,6 @@ files:
   - "**/constants.py"
 ignores:
   - "**/__init__.py"
-  - "**/tests/**"
-  - "**/examples/**"
-  - "**/conftest.py"
 metadata:
   ruling: operator-ruling-2026-10-08-import-law
   description: >-
@@ -68,25 +63,17 @@ metadata:
       is: own-package
 rule:
   any:
-    - kind: dotted_name
+    - matches: root-imported-name
       pattern: $NAME
-      not:
-        inside:
-          kind: import_from_statement
-          field: module_name
       inside:
+        stopBy: end
         kind: import_from_statement
-        inside:
-          kind: module
         has:
           field: module_name
-          kind: dotted_name
           pattern: $MODULE
-          not:
-            regex: "\\."
     - kind: dotted_name
       pattern: $PATH
-      regex: "^[A-Za-z_][A-Za-z0-9_]*\\.c$"
+      regex: "^[A-Za-z_][A-Za-z0-9_]*\\.(c|constants)$"
       any:
         - inside:
             kind: import_statement
@@ -111,9 +98,6 @@ files:
   - "**/typings.py"
 ignores:
   - "**/__init__.py"
-  - "**/tests/**"
-  - "**/examples/**"
-  - "**/conftest.py"
 metadata:
   ruling: operator-ruling-2026-10-08-import-law
   description: >-
@@ -127,25 +111,17 @@ metadata:
       is: own-package
 rule:
   any:
-    - kind: dotted_name
+    - matches: root-imported-name
       pattern: $NAME
-      not:
-        inside:
-          kind: import_from_statement
-          field: module_name
       inside:
+        stopBy: end
         kind: import_from_statement
-        inside:
-          kind: module
         has:
           field: module_name
-          kind: dotted_name
           pattern: $MODULE
-          not:
-            regex: "\\."
     - kind: dotted_name
       pattern: $PATH
-      regex: "^[A-Za-z_][A-Za-z0-9_]*\\.t$"
+      regex: "^[A-Za-z_][A-Za-z0-9_]*\\.(t|typings)$"
       any:
         - inside:
             kind: import_statement
@@ -170,9 +146,6 @@ files:
   - "**/models.py"
 ignores:
   - "**/__init__.py"
-  - "**/tests/**"
-  - "**/examples/**"
-  - "**/conftest.py"
 metadata:
   ruling: operator-ruling-2026-10-08-import-law
   description: >-
@@ -186,25 +159,17 @@ metadata:
       is: own-package
 rule:
   any:
-    - kind: dotted_name
+    - matches: root-imported-name
       pattern: $NAME
-      not:
-        inside:
-          kind: import_from_statement
-          field: module_name
       inside:
+        stopBy: end
         kind: import_from_statement
-        inside:
-          kind: module
         has:
           field: module_name
-          kind: dotted_name
           pattern: $MODULE
-          not:
-            regex: "\\."
     - kind: dotted_name
       pattern: $PATH
-      regex: "^[A-Za-z_][A-Za-z0-9_]*\\.m$"
+      regex: "^[A-Za-z_][A-Za-z0-9_]*\\.(m|models)$"
       any:
         - inside:
             kind: import_statement
@@ -229,9 +194,6 @@ files:
   - "**/protocols.py"
 ignores:
   - "**/__init__.py"
-  - "**/tests/**"
-  - "**/examples/**"
-  - "**/conftest.py"
 metadata:
   ruling: operator-ruling-2026-10-08-import-law
   description: >-
@@ -245,25 +207,17 @@ metadata:
       is: own-package
 rule:
   any:
-    - kind: dotted_name
+    - matches: root-imported-name
       pattern: $NAME
-      not:
-        inside:
-          kind: import_from_statement
-          field: module_name
       inside:
+        stopBy: end
         kind: import_from_statement
-        inside:
-          kind: module
         has:
           field: module_name
-          kind: dotted_name
           pattern: $MODULE
-          not:
-            regex: "\\."
     - kind: dotted_name
       pattern: $PATH
-      regex: "^[A-Za-z_][A-Za-z0-9_]*\\.p$"
+      regex: "^[A-Za-z_][A-Za-z0-9_]*\\.(p|protocols)$"
       any:
         - inside:
             kind: import_statement
@@ -288,9 +242,6 @@ files:
   - "**/utilities.py"
 ignores:
   - "**/__init__.py"
-  - "**/tests/**"
-  - "**/examples/**"
-  - "**/conftest.py"
 metadata:
   ruling: operator-ruling-2026-10-08-import-law
   description: >-
@@ -304,25 +255,17 @@ metadata:
       is: own-package
 rule:
   any:
-    - kind: dotted_name
+    - matches: root-imported-name
       pattern: $NAME
-      not:
-        inside:
-          kind: import_from_statement
-          field: module_name
       inside:
+        stopBy: end
         kind: import_from_statement
-        inside:
-          kind: module
         has:
           field: module_name
-          kind: dotted_name
           pattern: $MODULE
-          not:
-            regex: "\\."
     - kind: dotted_name
       pattern: $PATH
-      regex: "^[A-Za-z_][A-Za-z0-9_]*\\.u$"
+      regex: "^[A-Za-z_][A-Za-z0-9_]*\\.(u|utilities)$"
       any:
         - inside:
             kind: import_statement
@@ -348,9 +291,6 @@ files:
   - "**/config.py"
 ignores:
   - "**/__init__.py"
-  - "**/tests/**"
-  - "**/examples/**"
-  - "**/conftest.py"
 metadata:
   ruling: operator-ruling-2026-10-08-import-law
   description: >-
@@ -364,22 +304,14 @@ metadata:
       is: own-package
 rule:
   any:
-    - kind: dotted_name
+    - matches: root-imported-name
       pattern: $NAME
-      not:
-        inside:
-          kind: import_from_statement
-          field: module_name
       inside:
+        stopBy: end
         kind: import_from_statement
-        inside:
-          kind: module
         has:
           field: module_name
-          kind: dotted_name
           pattern: $MODULE
-          not:
-            regex: "\\."
     - kind: dotted_name
       pattern: $PATH
       regex: "^[A-Za-z_][A-Za-z0-9_]*\\.config$"
@@ -408,9 +340,6 @@ files:
   - "**/settings.py"
 ignores:
   - "**/__init__.py"
-  - "**/tests/**"
-  - "**/examples/**"
-  - "**/conftest.py"
 metadata:
   ruling: operator-ruling-2026-10-08-import-law
   description: >-
@@ -424,22 +353,14 @@ metadata:
       is: own-package
 rule:
   any:
-    - kind: dotted_name
+    - matches: root-imported-name
       pattern: $NAME
-      not:
-        inside:
-          kind: import_from_statement
-          field: module_name
       inside:
+        stopBy: end
         kind: import_from_statement
-        inside:
-          kind: module
         has:
           field: module_name
-          kind: dotted_name
           pattern: $MODULE
-          not:
-            regex: "\\."
     - kind: dotted_name
       pattern: $PATH
       regex: "^[A-Za-z_][A-Za-z0-9_]*\\.settings$"

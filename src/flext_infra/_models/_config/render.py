@@ -1,4 +1,4 @@
-"""Declarative SonarCloud and uv resolution policy.
+"""Declarative SonarCloud policy.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -11,32 +11,11 @@ from typing import Annotated
 from flext_cli import m, t
 
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.sonarcloud import FlextInfraConfigModelsSonarcloud
 
 
-class FlextInfraConfigModelsRender:
+class FlextInfraConfigModelsRender(FlextInfraConfigModelsSonarcloud):
     """Policy declarations consumed by the configuration contract."""
-
-    class SonarcloudIssueExclusionSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """One SonarCloud issue exclusion applied as a server-side project setting.
-
-        SonarCloud automatic analysis ignores ``sonar.issue.ignore.*`` in
-        ``.sonarcloud.properties``; the exclusion lives in each project's
-        SonarCloud settings. This record is its single fleet owner, rendered
-        into the generated file only as documentation.
-        """
-
-        rule_key: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Sonar rule key, e.g. 'text:S8565'"),
-        ]
-        resource_key: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Project-relative resource pattern"),
-        ]
-        reason: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Operator justification and bead"),
-        ]
 
     class SonarcloudSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Fleet SonarCloud automatic-analysis scope policy."""
@@ -67,7 +46,9 @@ class FlextInfraConfigModelsRender:
             m.Field(description="Per-request SonarCloud web API timeout"),
         ]
         issue_exclusions: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsRender.SonarcloudIssueExclusionSpec],
+            t.VariadicTuple[
+                FlextInfraConfigModelsSonarcloud.SonarcloudIssueExclusionSpec
+            ],
             m.Field(
                 description=(
                     "Server-side issue exclusions applied through SonarCloud "
@@ -75,3 +56,6 @@ class FlextInfraConfigModelsRender:
                 ),
             ),
         ] = ()
+
+
+__all__: list[str] = ["FlextInfraConfigModelsRender"]

@@ -42,7 +42,7 @@ class TestsFlextInfraGateAcceptance:
             params.model_dump_json(),
         )
         boundary: p.Infra.GateExecutionParams = restored
-        tm.that(isinstance(restored, p.Infra.GateExecutionParams), eq=True)
+        tm.that(restored.model_dump(), eq=params.model_dump())
         tm.that(boundary.verdict, eq=verdict)
         tm.that(boundary.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
         tm.that(boundary.raw_output, eq=params.raw_output)

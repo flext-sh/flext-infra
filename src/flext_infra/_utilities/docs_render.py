@@ -16,11 +16,7 @@ from flext_cli import u
 
 from flext_infra import c, config, m, t
 from flext_infra._utilities import FlextInfraUtilitiesDocs
-from flext_infra._utilities._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
 from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
 
 
 class FlextInfraUtilitiesDocsRender:
@@ -203,7 +199,7 @@ class FlextInfraUtilitiesDocsRender:
         path: str,
         *,
         is_dir: bool = False,
-        repository_root: Path,
+        governance_source: m.Infra.CodegenBootstrapSource | None,
     ) -> str:
         """Return a resolvable governance link for README or project docs.
 
@@ -220,30 +216,20 @@ class FlextInfraUtilitiesDocsRender:
         """
         if FlextInfraUtilitiesDocs.docs_is_secure_web_url(prefix):
             kind = "tree" if is_dir else "blob"
-            if prefix.rstrip("/") == c.Infra.GITHUB_REPO_URL.rstrip("/"):
-                inputs = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
-                    repository_root,
-                ).unwrap()
-                branch = FlextInfraUtilitiesRepository.resolve_integration_branch(
-                    repository_root,
-                    preference=inputs.spec.branch_policy.integration_branch_preference,
-                    inputs=inputs,
-                ).unwrap()
-                return f"{prefix}/{kind}/{branch}/{path}"
-            branches = tuple(
-                repo.branch
-                for repo in FlextInfraUtilitiesDocsGithubLinks.docs_github_repos(
-                    repository_root,
-                )
-                if prefix.rstrip("/").endswith(
-                    f"/{repo.organization}/{repo.repository}",
-                )
-            )
-            if len(branches) != 1:
-                msg = "documentation repository owner must resolve exactly once"
+            if governance_source is None:
+                msg = "governance link has no captured source and ref"
                 raise ValueError(msg)
-            (branch,) = branches
-            return f"{prefix}/{kind}/{branch}/{path}"
+            normalized = (
+                FlextInfraUtilitiesRepository
+                .validate_git_remote_url(governance_source.url)
+                .unwrap()
+                .rstrip("/")
+                .removesuffix(".git")
+            )
+            if normalized != prefix.rstrip("/"):
+                msg = "governance link differs from its captured owner"
+                raise ValueError(msg)
+            return f"{prefix}/{kind}/{governance_source.ref}/{path}"
         return f"{prefix}/{path}"
 
     @staticmethod
@@ -372,7 +358,7 @@ class FlextInfraUtilitiesDocsRender:
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix,
             "AGENTS.md",
-            repository_root=scope.repository_root,
+            governance_source=scope.governance_source,
         )
         return [
             "## Collection Rules",
@@ -401,7 +387,7 @@ class FlextInfraUtilitiesDocsRender:
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix,
             "AGENTS.md",
-            repository_root=scope.repository_root,
+            governance_source=scope.governance_source,
         )
         return [
             "## Quality Gates",
@@ -430,23 +416,23 @@ class FlextInfraUtilitiesDocsRender:
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix,
             "AGENTS.md",
-            repository_root=scope.repository_root,
+            governance_source=scope.governance_source,
         )
         skills_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix,
             ".agents/skills/",
-            repository_root=scope.repository_root,
+            governance_source=scope.governance_source,
             is_dir=True,
         )
         onboarding_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix,
             "docs/guides/onboarding.md",
-            repository_root=scope.repository_root,
+            governance_source=scope.governance_source,
         )
         governance_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix,
             "docs/GOVERNANCE.md",
-            repository_root=scope.repository_root,
+            governance_source=scope.governance_source,
         )
         return [
             "## Governance Pointer",
@@ -458,6 +444,17 @@ class FlextInfraUtilitiesDocsRender:
         ]
 
     @staticmethod
+    def _declared_or(data: t.JsonMapping, key: str, default: str) -> str:
+        """Return one declared contract string or its explicit default.
+
+        Empty and whitespace-only declarations resolve to the default exactly
+        once, at this boundary; per-call-site ``or`` masks are forbidden so the
+        declared defaults cannot drift between renderers.
+        """
+        declared = str(data.get(key, "")).strip()
+        return declared or default
+
+    @staticmethod
     def docs_project_index(scope: m.Infra.DocScope, contract: t.JsonMapping) -> str:
         """Return the standard ``<project>/docs/index.md`` landing page.
 
@@ -466,8 +463,12 @@ class FlextInfraUtilitiesDocsRender:
 
         """
         data = contract
-        version = str(data.get("version", "")).strip() or "unknown"
-        description = str(data.get("description", "")).strip() or "_not declared_"
+        version = FlextInfraUtilitiesDocsRender._declared_or(data, "version", "unknown")
+        description = FlextInfraUtilitiesDocsRender._declared_or(
+            data,
+            "description",
+            "_not declared_",
+        )
         link_prefix = FlextInfraUtilitiesDocsRender._LINK_PREFIX_DOCS_INDEX
         return FlextInfraUtilitiesDocsRender._generated_page(
             f"{scope.name} Documentation",
@@ -525,8 +526,12 @@ class FlextInfraUtilitiesDocsRender:
 
         """
         data = contract
-        version = str(data.get("version", "")).strip() or "unknown"
-        description = str(data.get("description", "")).strip() or "_not declared_"
+        version = FlextInfraUtilitiesDocsRender._declared_or(data, "version", "unknown")
+        description = FlextInfraUtilitiesDocsRender._declared_or(
+            data,
+            "description",
+            "_not declared_",
+        )
         facades = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades")
         link_prefix = FlextInfraUtilitiesDocsRender._LINK_PREFIX_README
         return FlextInfraUtilitiesDocsRender._render_markdown([
@@ -733,6 +738,8 @@ class FlextInfraUtilitiesDocsRender:
         scope: m.Infra.DocScope,
         contract: t.JsonMapping,
         modules: t.SequenceOf[str],
+        *,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
     ) -> str:
         """Return the managed mkdocs.yml for a project scope.
 
@@ -746,15 +753,26 @@ class FlextInfraUtilitiesDocsRender:
         """
         _ = modules
         data = contract
+        repo_url = FlextInfraUtilitiesDocsRender._declared_or(
+            data,
+            "repo_url",
+            c.Infra.GITHUB_REPO_URL,
+        )
 
         # Preserve one typed context across the sole public template-rendering boundary.
         context = m.Infra.MkdocsProjectRenderContext(
-            site_title=str(data.get("site_title", "")).strip() or scope.name,
-            site_url=str(data.get("site_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
-            repo_url=str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
-            repo_name=FlextInfraUtilitiesDocsRender._repository_name(
-                str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
+            site_title=FlextInfraUtilitiesDocsRender._declared_or(
+                data,
+                "site_title",
+                scope.name,
             ),
+            site_url=FlextInfraUtilitiesDocsRender._declared_or(
+                data,
+                "site_url",
+                c.Infra.GITHUB_REPO_URL,
+            ),
+            repo_url=repo_url,
+            repo_name=FlextInfraUtilitiesDocsRender._repository_name(repo_url),
             scope_name=scope.name,
             exclude_docs_block=FlextInfraUtilitiesDocsRender._render_block(
                 FlextInfraUtilitiesDocsRender._exclude_docs_lines(data),
@@ -772,7 +790,14 @@ class FlextInfraUtilitiesDocsRender:
             / c.Infra.TEMPLATE_MKDOCS_PROJECT
         )
         rendered: str = t.Infra.STR_ADAPTER.validate_python(
-            u.Cli.template_render(template_path, context).unwrap(),
+            u.Cli
+            .template_render_authenticated(
+                template_path,
+                context,
+                source_states=source_states,
+            )
+            .unwrap()
+            .rendered,
         )
         return rendered
 
@@ -812,18 +837,30 @@ class FlextInfraUtilitiesDocsRender:
             )
             or "_none_"
         )
+        site_title = FlextInfraUtilitiesDocsRender._declared_or(
+            data,
+            "site_title",
+            scope.name,
+        )
+        description = FlextInfraUtilitiesDocsRender._declared_or(
+            data,
+            "description",
+            "_not declared_",
+        )
+        doc_summary = FlextInfraUtilitiesDocsRender._declared_or(
+            data,
+            "doc_summary",
+            "_not declared_",
+        )
         return FlextInfraUtilitiesDocsRender._render_markdown([
-            f"# {(data.get('site_title', '') or scope.name)} API Overview",
+            f"# {site_title} API Overview",
             "",
             c.Infra.GENERATED_HEADER,
             "",
             f"- Package: `{scope.package_name}`",
             f"- Version: `{data.get('version', '')}`",
-            f"- Description: {data.get('description', '') or '_not declared_'}",
-            (
-                f"- Doc summary: "
-                f"{str(data.get('doc_summary', '')).strip() or '_not declared_'}"
-            ),
+            f"- Description: {description}",
+            f"- Doc summary: {doc_summary}",
             f"- Classifiers: {classifiers}",
             f"- Project class: `{scope.project_class}`",
             f"- Keywords: {keywords}",
@@ -890,6 +927,8 @@ class FlextInfraUtilitiesDocsRender:
     def docs_root_mkdocs(
         contract: t.JsonMapping,
         src_paths: t.SequenceOf[str] = (),
+        *,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
     ) -> str:
         """Return the managed mkdocs.yml for the repository root.
 
@@ -901,17 +940,24 @@ class FlextInfraUtilitiesDocsRender:
 
         """
         data = contract
+        repo_url = FlextInfraUtilitiesDocsRender._declared_or(
+            data,
+            "repo_url",
+            c.Infra.GITHUB_REPO_URL,
+        )
 
         # Preserve one typed context across the sole public template-rendering boundary.
         # The title falls back to the governed project name — never a fleet
         # brand — so a standalone repository describes itself (ag-q6uo).
         context = m.Infra.MkdocsRenderContext(
             site_title=FlextInfraUtilitiesDocsRender._site_title(data),
-            site_url=str(data.get("site_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
-            repo_url=str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
-            repo_name=FlextInfraUtilitiesDocsRender._repository_name(
-                str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
+            site_url=FlextInfraUtilitiesDocsRender._declared_or(
+                data,
+                "site_url",
+                c.Infra.GITHUB_REPO_URL,
             ),
+            repo_url=repo_url,
+            repo_name=FlextInfraUtilitiesDocsRender._repository_name(repo_url),
             exclude_docs_block=FlextInfraUtilitiesDocsRender._render_block(
                 FlextInfraUtilitiesDocsRender._exclude_docs_lines(data),
             ),
@@ -928,7 +974,14 @@ class FlextInfraUtilitiesDocsRender:
             / c.Infra.TEMPLATE_MKDOCS_ROOT
         )
         rendered: str = t.Infra.STR_ADAPTER.validate_python(
-            u.Cli.template_render(template_path, context).unwrap(),
+            u.Cli
+            .template_render_authenticated(
+                template_path,
+                context,
+                source_states=source_states,
+            )
+            .unwrap()
+            .rendered,
         )
         return rendered
 
@@ -952,16 +1005,19 @@ class FlextInfraUtilitiesDocsRender:
             )
             or "_none_"
         )
+        version = FlextInfraUtilitiesDocsRender._declared_or(data, "version", "unknown")
+        description = FlextInfraUtilitiesDocsRender._declared_or(
+            data,
+            "description",
+            "_not declared_",
+        )
         return FlextInfraUtilitiesDocsRender._render_markdown([
             f"# {FlextInfraUtilitiesDocsRender._site_title(data)} API Overview",
             "",
             c.Infra.GENERATED_HEADER,
             "",
-            f"- Version: `{str(data.get('version', '')).strip() or 'unknown'}`",
-            (
-                f"- Description: "
-                f"{str(data.get('description', '')).strip() or '_not declared_'}"
-            ),
+            f"- Version: `{version}`",
+            f"- Description: {description}",
             f"- Governed projects: `{project_count}`",
             f"- Project classes: {classes}",
             "",

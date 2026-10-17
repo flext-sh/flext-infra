@@ -105,7 +105,7 @@ class TestsFlextInfraCiDeclaredSecretsContract:
         referenced = self._referenced_secret_names(workflow_path)
         referenced.discard("GITHUB_TOKEN")
 
-        tm.that(referenced - set(declared), eq=set())
+        tm.that(referenced - set(declared), empty=True)
         for contract in declared.values():
             specification = t.Cli.JSON_MAPPING_ADAPTER.validate_python(contract)
             tm.that(specification["required"], eq=False)

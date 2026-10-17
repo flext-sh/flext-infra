@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 
 import pytest
+
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, p, t, tm, u
@@ -35,11 +36,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             scope=c.Infra.CodegenConformScope.ALL,
             mode=c.Infra.CodegenConformMode.APPLY,
         )
-        tm.ok(
-            FlextInfraCodegenConform(repository_root=root, request=request).execute(
-                request
-            )
-        )
+        tm.ok(FlextInfraCodegenConform(repository_root=root, request=request).execute())
         for verb in ("upg", "setup"):
             provisioned = tm.ok(u.Tests.run_isolated_make([verb], cwd=root))
             tm.that(

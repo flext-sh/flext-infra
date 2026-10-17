@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from yaml.parser import ParserError
 
 from flext_infra import FlextInfraConfig, c, config, infra, t
 from flext_infra.codegen import FlextInfraCodegenConform
@@ -20,6 +19,63 @@ from tests import m, tm, u
 
 class TestsFlextInfraVscodeOwnerMerge:
     """Prove the vscode owner merge renders canonical settings in conform."""
+
+    @staticmethod
+    def test_shared_editor_defaults_need_no_repository_override(tmp_path: Path) -> None:
+        """An absent or redundant project layer renders the same portable defaults."""
+        root = tmp_path / "standalone"
+        directory = root / c.CONFIG_DIR_NAME
+        directory.mkdir(parents=True)
+        baseline = tm.ok(FlextInfraCodegen.load_vscode_spec(root))
+        inherited = tm.ok(
+            FlextInfraCodegen.render_vscode_settings(
+                root,
+                runtime_root=root,
+                spec=baseline,
+            ),
+        )
+        tm.that(
+            baseline.additional_settings,
+            eq=config.Infra.codegen.vscode.additional_settings,
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                directory / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "vscode": {
+                                "additional_settings": dict(
+                                    baseline.additional_settings
+                                ),
+                            },
+                        },
+                    },
+                },
+            ),
+        )
+        explicit = tm.ok(FlextInfraCodegen.load_vscode_spec(root))
+        tm.that(explicit, eq=baseline)
+        tm.that(
+            tm.ok(
+                FlextInfraCodegen.render_vscode_settings(
+                    root,
+                    runtime_root=root,
+                    spec=explicit,
+                ),
+            ),
+            eq=inherited,
+        )
+        document = tm.ok(FlextInfraCodegen.parse_vscode_settings(inherited))
+        delta = tm.ok(
+            FlextInfraCodegen.vscode_declaration_delta(
+                root,
+                document,
+                spec=baseline,
+                runtime_root=root,
+            ),
+        )
+        tm.that(delta.values, eq={})
 
     @staticmethod
     def test_full_config_loader_binds_policy_and_captured_projection(
@@ -72,25 +128,37 @@ class TestsFlextInfraVscodeOwnerMerge:
     def test_repository_policy_does_not_admit_unrelated_editor_policy(
         tmp_path: Path,
     ) -> None:
-        """Topology validates its own policy while editor rejection retains its cause."""
+        """Topology validates its policy while editor rejection retains its cause."""
         directory = tmp_path / c.CONFIG_DIR_NAME
         directory.mkdir()
         path = directory / c.Infra.CODEGEN_CONFIG_FILENAME
-        tm.ok(u.Cli.yaml_dump(path, {
-            "Infra": {"codegen": {
-                "repository": {"read_only": True},
-                "vscode": {"unrecognized_setting": True},
-            }},
-        }))
+        tm.ok(
+            u.Cli.yaml_dump(
+                path,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": {"read_only": True},
+                            "vscode": {"unrecognized_setting": True},
+                        }
+                    },
+                },
+            )
+        )
         declaration = tm.ok(u.Infra.load_repository_declaration_inputs(tmp_path))
         tm.that(declaration.spec.read_only, eq=True)
         tm.that(path in {state.path for state in declaration.sources}, eq=True)
         complete = u.Infra.load_codegen_inputs(tmp_path)
         tm.that(complete.failure, eq=True)
         tm.that(complete.exception is not None, eq=True)
-        tm.ok(u.Cli.yaml_dump(path, {
-            "Infra": {"codegen": {"repository": {"unknown_policy": True}}},
-        }))
+        tm.ok(
+            u.Cli.yaml_dump(
+                path,
+                {
+                    "Infra": {"codegen": {"repository": {"unknown_policy": True}}},
+                },
+            )
+        )
         invalid = u.Infra.load_repository_declaration_inputs(tmp_path)
         tm.that(invalid.failure, eq=True)
         tm.that(invalid.exception is not None, eq=True)
@@ -102,13 +170,16 @@ class TestsFlextInfraVscodeOwnerMerge:
         first = tm.ok(u.Infra.read_codegen_config_document(original))
         nested = t.Cli.JSON_MAPPING_ADAPTER.validate_python(first["Infra"])
         values = t.Cli.JSON_MAPPING_ADAPTER.validate_python(nested["values"])
-        assert isinstance(first, dict)
-        first["Infra"] = {"values": {"nested": ["changed"]}}
+        mutable = tm.not_none(
+            first if isinstance(first, dict) else None,
+            msg="the parsed document is the caller's own mutable mapping",
+        )
+        mutable["Infra"] = {"values": {"nested": ["changed"]}}
         again = tm.ok(u.Infra.read_codegen_config_document(original))
         tm.that(again, eq={"Infra": {"values": {"nested": ["first"]}}})
         tm.that(values["nested"], eq=["first"])
         malformed = b"Infra: [\n"
-        with pytest.raises(ParserError):
+        with pytest.raises(u.Yaml.YAMLError):
             u.Infra.read_codegen_config_document(malformed)
         corrected = tm.ok(
             u.Infra.read_codegen_config_document(
@@ -204,6 +275,9 @@ class TestsFlextInfraVscodeOwnerMerge:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         published = tm.ok(infra.codegen_conform(request, initial_workspace=workspace))
+        tm.that(published.plan is not None, eq=True)
+        if published.plan is None:
+            pytest.fail("conform did not return its actual plan")
         targets = {
             root / entry.path
             for entry in config.Infra.codegen.managed_files
@@ -230,6 +304,9 @@ class TestsFlextInfraVscodeOwnerMerge:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         first = tm.ok(infra.codegen_conform(request, initial_workspace=workspace))
+        tm.that(first.plan is not None, eq=True)
+        if first.plan is None:
+            pytest.fail("conform did not return its actual plan")
         before = tuple(
             tm.ok(u.Cli.atomic_read_binary_file_state(file.path, required=True))
             for file in first.plan.files
@@ -459,8 +536,10 @@ class TestsFlextInfraVscodeOwnerMerge:
         for stripped in config.Infra.codegen.vscode.stripped_keys:
             tm.that(stripped in doc, eq=False)
         search_paths_key = c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
-        tm.that(search_paths_key in config.Infra.codegen.vscode.list_settings, eq=False)
-        tm.that(search_paths_key in doc, eq=False)
+        tm.that(
+            doc[search_paths_key],
+            eq=config.Infra.codegen.vscode.additional_settings[search_paths_key],
+        )
 
     @staticmethod
     def test_merge_reaches_fixed_point_after_apply(tmp_path: Path) -> None:
@@ -557,7 +636,7 @@ class TestsFlextInfraVscodeOwnerMerge:
             (member / environment.removeprefix("${workspaceFolder}/")).resolve(),
             eq=u.Infra.runtime_environment_dir(member),
         )
-        interpreter_list = u.type_adapter(t.StrSequence).validate_python(
+        interpreter_list: t.StrSequence = u.type_adapter(list[str]).validate_python(
             doc["ruff.interpreter"],
         )
         tm.that(
@@ -628,20 +707,14 @@ class TestsFlextInfraVscodeOwnerMerge:
         declaration = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             migrated.values["additional_settings"],
         )
-        portable_terminal = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-            declaration["terminal.integrated.env.linux"],
-        )
-        tm.that(
-            portable_terminal["VIRTUAL_ENV"],
-            eq=f"${{workspaceFolder}}/{c.Infra.ENVIRONMENT_DIRECTORY}",
-        )
+        tm.that(declaration, eq={"operator.note": doc["operator.note"]})
         standalone = tmp_path / "standalone"
         config_dir = standalone / c.CONFIG_DIR_NAME
         config_dir.mkdir(parents=True)
         tm.ok(
             u.Cli.yaml_dump(
                 config_dir / c.Infra.CODEGEN_CONFIG_FILENAME,
-                {"Infra": {"codegen": {"vscode": migrated.values}}},
+                {"Infra": {"codegen": {"vscode": dict(migrated.values)}}},
             ),
         )
         standalone_rendered = tm.ok(
@@ -655,9 +728,14 @@ class TestsFlextInfraVscodeOwnerMerge:
         )
         tm.that(
             standalone_doc["terminal.integrated.env.linux"],
-            eq=portable_terminal,
+            eq=config.Infra.codegen.vscode.additional_settings[
+                "terminal.integrated.env.linux"
+            ],
         )
-        tm.that(standalone_doc["ruff.interpreter"], eq=declaration["ruff.interpreter"])
+        tm.that(
+            standalone_doc["ruff.interpreter"],
+            eq=config.Infra.codegen.vscode.additional_settings["ruff.interpreter"],
+        )
         tm.that(standalone_doc["operator.note"], eq=doc["operator.note"])
         tm.that(
             path.read_text(encoding=c.DEFAULT_ENCODING),

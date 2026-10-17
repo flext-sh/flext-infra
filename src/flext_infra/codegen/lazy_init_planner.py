@@ -11,7 +11,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import FlextInfraCodegenLazyInitPlannerPublicRootMixin
 from flext_infra.codegen._lazy_init_planner_aliases import (
     FlextInfraCodegenLazyInitPlannerAliasesMixin,
@@ -73,15 +73,75 @@ class FlextInfraCodegenLazyInitPlanner(
     _module_file_by_name: MutableMapping[str, Path] = u.PrivateAttr(
         default_factory=dict[str, Path],
     )
+    _project_layout_cache: MutableMapping[Path, m.Infra.RopeProjectLayout] = (
+        u.PrivateAttr(
+            default_factory=dict[Path, m.Infra.RopeProjectLayout],
+        )
+    )
     _version_module_name: str = u.PrivateAttr(
         default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py",
     )
     _collision_count: int = u.PrivateAttr(default_factory=int)
 
-    @property
-    def collision_count(self) -> int:
-        """Number of unresolved export collisions found so far."""
-        return self._collision_count
+    def plan_all_inits(
+        self,
+        pkg_dirs: t.SequenceOf[Path],
+        *,
+        target_package_dir: Path | None = None,
+    ) -> p.Result[t.VariadicTuple[m.Infra.LazyInitPlan]]:
+        """Resolve selected plans bottom-up and reject ambiguous ownership.
+
+        Returns:
+            The selected plans, or failure after the complete collision inventory.
+
+        """
+        dir_exports: MutableMapping[str, t.LazyAliasMap] = {}
+        planned: list[m.Infra.LazyInitPlan] = []
+        repository_root = self.rope_workspace.repository_root
+        progress_interval = max(1, len(pkg_dirs) // 20) if pkg_dirs else 1
+        for idx, pkg_dir in enumerate(pkg_dirs, start=1):
+            report_progress = (
+                idx == 1 or idx == len(pkg_dirs) or idx % progress_interval == 0
+            )
+            if report_progress:
+                rel_path = (
+                    pkg_dir.relative_to(repository_root)
+                    if repository_root in pkg_dir.parents
+                    else pkg_dir
+                )
+                u.Cli.info(f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}")
+            plan = self.build_plan(pkg_dir, dir_exports=dir_exports)
+            if report_progress:
+                u.Cli.info(
+                    f"lazy-init: resolved {idx}/{len(pkg_dirs)} "
+                    f"package={plan.context.current_pkg} "
+                    f"importable={plan.context.importable} "
+                    f"action={plan.action.value} exports={len(plan.lazy_map)}"
+                )
+            if plan.lazy_map:
+                dir_exports[str(pkg_dir.resolve())] = dict(plan.lazy_map)
+            should_process = (
+                target_package_dir is None
+                or pkg_dir.resolve() == target_package_dir.resolve()
+                or (
+                    target_package_dir.name == c.Infra.DIR_TESTS
+                    and pkg_dir.resolve().is_relative_to(target_package_dir.resolve())
+                )
+            )
+            if should_process:
+                planned.append(plan)
+            if (
+                target_package_dir is not None
+                and pkg_dir.resolve() == target_package_dir.resolve()
+            ):
+                break
+        u.Cli.info(f"lazy-init: resolved {len(planned)} package artifact plans")
+        if self._collision_count:
+            return r[t.VariadicTuple[m.Infra.LazyInitPlan]].fail(
+                "lazy-init public export ownership is ambiguous: "
+                f"{self._collision_count} collision(s)",
+            )
+        return r[t.VariadicTuple[m.Infra.LazyInitPlan]].ok(tuple(planned))
 
     @override
     def build_plan(

@@ -1,0 +1,15 @@
+id: ban-test-recorder-assertions
+valid:
+  - tm.ok(client.connect(), eq=True)
+  - assert result.value == ['a', 'b']
+  - tm.that(writer.bytes_written, eq=12)
+  - |
+    entries = client.search(base_dn)
+    tm.that(entries, len=3)
+invalid:
+  - tm.that(ldap_client.connect_calls, eq=1)
+  - assert writer.plan_requests == expected_rows
+  - tm.that(len(client.search_calls), eq=3)
+  - |
+    entries = stub.plan_requests
+    tm.that(entries, empty=True)

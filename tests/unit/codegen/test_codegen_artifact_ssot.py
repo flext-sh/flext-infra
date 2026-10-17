@@ -20,6 +20,12 @@ class TestsFlextInfraCodegenArtifactSsot:
     """Property contracts that remain valid for arbitrary configured artifacts."""
 
     @staticmethod
+    def test_testmon_policy_cannot_invent_missing_configuration() -> None:
+        """The public boundary rejects absent policy instead of supplying one."""
+        with pytest.raises(c.ValidationError):
+            m.Infra.TestmonCachePolicySpec.model_validate({})
+
+    @staticmethod
     @pytest.fixture(scope="module")
     def codegen() -> m.Infra.CodegenConfigSpec:
         """Return the production configuration consumed by every projection.
@@ -37,6 +43,63 @@ class TestsFlextInfraCodegenArtifactSsot:
         tm.that(bool(names), eq=True)
         tm.that(len(names), eq=len(set(names)))
         tm.that(all(names), eq=True)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "directories",
+        [
+            (Path("resolver/development"), Path("resolver/hosted")),
+            (Path("native/local/project"), Path("native/standalone/project")),
+        ],
+    )
+    def test_native_resolution_registry_follows_path_policy(
+        codegen: m.Infra.CodegenConfigSpec,
+        directories: tuple[Path, Path],
+    ) -> None:
+        """A legitimate directory change reaches ownership, bootstrap and Git."""
+        local, standalone = directories
+        resolution = codegen.make.uv_resolution.model_copy(
+            update={"local_directory": local, "standalone_directory": standalone},
+        )
+        declared = codegen.model_copy(
+            update={
+                "make": codegen.make.model_copy(update={"uv_resolution": resolution})
+            },
+        )
+        manifests = tuple(directory / c.PYPROJECT_FILENAME for directory in directories)
+        owners = {item.path: item for item in declared.managed_file_specs}
+        original = next(
+            item
+            for item in codegen.managed_files
+            if item.path == Path(c.PYPROJECT_FILENAME)
+        )
+        tm.that(declared.managed_files, eq=codegen.managed_files)
+        for path in manifests:
+            tm.that(owners[path].owner, eq=original.owner)
+            tm.that(owners[path].mode, eq=original.mode)
+            tm.that(owners[path].policy, eq="full")
+        contract = FlextInfraCodegenConform.surface_contract(
+            c.Infra.CodegenConformSurface.PYPROJECT,
+            codegen=declared,
+        )
+        tm.that(
+            contract.destinations,
+            eq=frozenset(
+                (c.PYPROJECT_FILENAME, *(path.as_posix() for path in manifests)),
+            ),
+        )
+        rendered = tm.ok(
+            FlextInfraCodegenConform.render_project_gitignore(
+                declared,
+                profile=c.Infra.MakeProfile.STANDALONE,
+                project_name="fixture-project",
+            ),
+        )
+        for path in (
+            *manifests,
+            *(path.with_name(c.Infra.UV_LOCK_FILENAME) for path in manifests),
+        ):
+            tm.that(u.Tests.is_tracked_under(rendered, path.as_posix()), eq=True)
 
     @staticmethod
     def test_vscode_maps_are_exact_projections(

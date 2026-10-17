@@ -6,11 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 from enum import StrEnum, unique
-from typing import ClassVar
-
-from flext_cli import t
 
 
 class FlextInfraConfigVocabulary:
@@ -40,32 +36,40 @@ class FlextInfraConfigVocabulary:
         THIRD_PARTY_FORK = "third_party_fork"
 
     @unique
+    class MakeProfile(StrEnum):
+        """Generated Make profile proven by the repository checkout topology."""
+
+        WORKSPACE = "workspace"
+        STANDALONE = "standalone"
+
+    class PytestCacheEnvironment(StrEnum):
+        """OS and pytest-testmon keys consumed by the Make cache contract."""
+
+        DATA_HOME = "XDG_CACHE_HOME"
+        USER_HOME = "HOME"
+        DATABASE_FILE = "TESTMON_DATAFILE"
+
+    class MypyCacheEnvironment(StrEnum):
+        """Mypy cache and XDG keys consumed by the Make cache contract."""
+
+        CACHE_DIR = "MYPY_CACHE_DIR"
+        DATA_HOME = "XDG_CACHE_HOME"
+        USER_HOME = "HOME"
+
+    @unique
+    class GateKind(StrEnum):
+        """Owner of a gate's rule catalog, independent of its execution engine."""
+
+        EXTERNAL = "external"
+        TYPE_CHECKER = "type-checker"
+        INFRA = "infra"
+
+    @unique
     class GateAcceptancePolicy(StrEnum):
         """Whether evidence claims clean quality or complete diagnostic execution."""
 
         CLEAN = "clean"
         COMPLETE_EXECUTION = "complete_execution"
-
-    RUFF_CACHE_ENVIRONMENT_VARIABLE: ClassVar[str] = "RUFF_CACHE_DIR"
-    """Ruff's immutable external cache-directory environment contract."""
-
-    DEPENDENCY_GROUPS: ClassVar[str] = "dependency-groups"
-    """PEP 735 dependency-groups table key."""
-
-    WORKSPACE_MANIFEST_VERSION: ClassVar[int] = 3
-
-    CODEGEN_CONFIG_DIR: ClassVar[str] = "config"
-    """Directory name for flext-infra config files relative to the package root."""
-
-    CODEGEN_LOCAL_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.local.yaml"
-    """Local operator override file name, excluded from the tracked baseline."""
-
-    CODEGEN_ORG_OVERRIDES_FILENAME: ClassVar[str] = "codegen-org.yaml"
-    """Governed repository org overrides file name."""
-
-    GIT_COMMIT_OID_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$",
-    )
 
     @unique
     class CodegenConformSurface(StrEnum):
@@ -81,3 +85,7 @@ class FlextInfraConfigVocabulary:
         MISE_CONFIG = "mise-config"
         PYPROJECT = "pyproject"
         RUNTIME_BINDINGS = "runtime-bindings"
+        WORKFLOWS = "workflows"
+
+
+__all__: list[str] = ["FlextInfraConfigVocabulary"]

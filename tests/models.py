@@ -1,3 +1,4 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
 """Models for FLEXT infra tests.
 
 Provides TestsFlextInfraModels, extending TestsFlextModels with infra-specific
@@ -12,13 +13,13 @@ from __future__ import annotations
 from flext_tests import FlextTestsModels
 
 from flext_infra import FlextInfraModels
-from tests._models.base import TestsFlextInfraModelsBase
+from tests._models import TestsFlextInfraModelsBase
 
 
 class TestsFlextInfraModels(FlextTestsModels, FlextInfraModels):
     """Infra test models extending flext-tests and production models."""
 
-    class Tests(FlextTestsModels.Tests, TestsFlextInfraModelsBase):
+    class Tests(TestsFlextInfraModelsBase, FlextTestsModels.Tests):
         """Tests use inherited flext-tests and production infra models."""
 
 

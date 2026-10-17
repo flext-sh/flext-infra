@@ -106,6 +106,7 @@ class FlextInfraModTextGateEngine:
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.ModTextRule]]``.
+
         """
         if identity.content is None:
             return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(
@@ -121,8 +122,7 @@ class FlextInfraModTextGateEngine:
             return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(
                 f"text rule project identity is invalid TOML: {identity.path}",
             )
-        validated = u.Infra.validate_infra_payload(payload)
-        distribution = u.Infra.project_name_from_payload(identity.path, validated)
+        distribution = u.Infra.project_name_from_payload(identity.path, payload)
         return r[t.VariadicTuple[m.Infra.ModTextRule]].ok(
             tuple(
                 rule
@@ -491,6 +491,7 @@ class FlextInfraModTextGateEngine:
         Returns:
             Central issues for unsupported explicit input declarations. A scope
             glob without a suffix still selects the canonical Python inventory.
+
         """
         return tuple(
             cls._source_issue(
@@ -704,33 +705,42 @@ class FlextInfraModTextGateEngine:
         for path in sources:
             try:
                 prepared = cls._authenticated_source(root, path)
-                if prepared.failure:
-                    issues.append(cls._source_issue(path, str(prepared.error)))
-                    first_exception = first_exception or prepared.exception
-                    continue
-                before, source, relative = prepared.value
-                updated, target_entries, target_actionable = cls._rewrite_source(
-                    source, relative, rules
-                )
-                entries.extend(target_entries)
-                actionable += target_actionable
-                if target_entries:
-                    files.add(Path(relative))
-                if updated != source:
-                    if source.startswith(c.Infra.AUTOGEN_HEADERS):
-                        issues.append(
-                            cls._source_issue(
-                                path,
-                                "generated findings require canonical generator repair",
-                            )
-                        )
-                        continue
-                    if path.suffix == c.Infra.EXT_PYTHON:
-                        ast.parse(updated, filename=str(path))
             except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
                 first_exception = first_exception or exc
                 issues.append(cls._source_issue(path, str(exc), exception=exc))
                 continue
+            if prepared.failure:
+                issues.append(cls._source_issue(path, str(prepared.error)))
+                first_exception = first_exception or prepared.exception
+                continue
+            before, source, relative = prepared.value
+            try:
+                updated, target_entries, target_actionable = cls._rewrite_source(
+                    source, relative, rules
+                )
+            except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
+                first_exception = first_exception or exc
+                issues.append(cls._source_issue(path, str(exc), exception=exc))
+                continue
+            entries.extend(target_entries)
+            actionable += target_actionable
+            if target_entries:
+                files.add(Path(relative))
+            if updated != source and source.startswith(c.Infra.AUTOGEN_HEADERS):
+                issues.append(
+                    cls._source_issue(
+                        path,
+                        "generated findings require canonical generator repair",
+                    )
+                )
+                continue
+            if updated != source and path.suffix == c.Infra.EXT_PYTHON:
+                try:
+                    ast.parse(updated, filename=str(path))
+                except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
+                    first_exception = first_exception or exc
+                    issues.append(cls._source_issue(path, str(exc), exception=exc))
+                    continue
             if fix and updated != source:
                 plans.append(
                     cls._rewrite_plan(root, path, before, updated, base_states),
@@ -767,7 +777,17 @@ class FlextInfraModTextGateEngine:
     def _source_issue(
         path: Path, message: str, *, exception: BaseException | None = None
     ) -> m.Infra.Issue:
-        """Use the canonical issue contract for one actual source failure."""
+        """Use the canonical issue contract for one actual source failure.
+
+        Args:
+            path: The path to the source file that caused the failure.
+            message: A human-readable message describing the failure.
+            exception: The exception instance that triggered the failure, if any.
+
+        Returns:
+            An instance of `m.Infra.Issue` representing the source failure.
+
+        """
         return m.Infra.Issue(
             file=str(path),
             line=exception.lineno or 0 if isinstance(exception, SyntaxError) else 0,
@@ -815,7 +835,6 @@ class FlextInfraModTextGateEngine:
                 first_exception = first_exception or outcome.exception
                 continue
             report, analysis = outcome.value
-            project_plans, project_inputs = analysis.files, analysis.inputs
             issues.extend(analysis.issues)
             first_exception = first_exception or analysis.exception
             prefix = project.relative_to(root)
@@ -824,34 +843,13 @@ class FlextInfraModTextGateEngine:
                 for entry in report.entries
             )
             files.update(prefix / path for path in report.files)
-            plans.extend(project_plans)
+            plans.extend(analysis.files)
             actionable += report.actionable
-            for state in project_inputs if project_plans else ():
-                previous = inputs.setdefault(state.path, state)
-                if previous != state:
-                    conflicting_dependencies.add(state.path)
+            conflicting_dependencies.update(cls._conflicting_inputs(analysis, inputs))
         if conflicting_dependencies:
-            affected = tuple(
-                plan
-                for plan in plans
-                if any(
-                    state.path in conflicting_dependencies
-                    for state in plan.source_states
-                )
+            plans = cls._without_conflicting_plans(
+                plans, conflicting_dependencies, issues
             )
-            for plan in affected:
-                dependencies = tuple(
-                    str(state.path)
-                    for state in plan.source_states
-                    if state.path in conflicting_dependencies
-                )
-                issues.append(
-                    cls._source_issue(
-                        plan.path,
-                        f"text dependency identity changed during planning: {dependencies}",
-                    )
-                )
-            plans = [plan for plan in plans if plan not in affected]
             inputs = {
                 state.path: state for plan in plans for state in plan.source_states
             }
@@ -894,6 +892,56 @@ class FlextInfraModTextGateEngine:
                 },
             )
         return r[m.Infra.ModTextReport].ok(report)
+
+    @staticmethod
+    def _conflicting_inputs(
+        analysis: m.Infra.CodegenPhaseAnalysis,
+        inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+    ) -> set[Path]:
+        """Register publication inputs and identify inconsistent snapshots.
+
+        Returns:
+            Dependency paths with conflicting authenticated identities.
+
+        """
+        return {
+            state.path
+            for state in analysis.inputs
+            if analysis.files
+            if inputs.setdefault(state.path, state) != state
+        }
+
+    @classmethod
+    def _without_conflicting_plans(
+        cls,
+        plans: list[m.Infra.CodegenFilePlan],
+        conflicting_dependencies: set[Path],
+        issues: list[m.Infra.Issue],
+    ) -> list[m.Infra.CodegenFilePlan]:
+        """Reject plans whose authenticated dependencies changed during scanning.
+
+        Returns:
+            Plans with consistent dependency identities.
+
+        """
+        allowed: list[m.Infra.CodegenFilePlan] = []
+        for plan in plans:
+            dependencies = tuple(
+                str(state.path)
+                for state in plan.source_states
+                if state.path in conflicting_dependencies
+            )
+            if dependencies:
+                issues.append(
+                    cls._source_issue(
+                        plan.path,
+                        "text dependency identity changed during planning: "
+                        f"{dependencies}",
+                    )
+                )
+            else:
+                allowed.append(plan)
+        return allowed
 
     @classmethod
     def _scan_project(
@@ -949,10 +997,12 @@ class FlextInfraModTextGateEngine:
                     "exception": ValueError(include_issues[0].message),
                 }
             )
-            scanned = r[t.Pair[m.Infra.ModTextReport, m.Infra.CodegenPhaseAnalysis]].ok((
-                report,
-                analysis,
-            ))
+            scanned = r[
+                t.Pair[
+                    m.Infra.ModTextReport,
+                    m.Infra.CodegenPhaseAnalysis,
+                ]
+            ].ok((report, analysis))
         if validate_receipts:
             failed_rules: set[str] = set()
             receipt_issues: list[m.Infra.Issue] = []
@@ -1007,25 +1057,24 @@ class FlextInfraModTextGateEngine:
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
         )
-        roots = {
-            f"@mod-text-{index}": project
-            for index, project in enumerate(
-                sorted({plan.project for plan in analysis.files})
-            )
-        }
-
-        def validate_published() -> p.Result[bool]:
-            return transaction.validate_phase_analysis_locked(analysis)
+        roots = transaction.capability_roots(
+            "mod-text",
+            sorted({plan.project for plan in analysis.files}),
+        )
 
         def publish(scope_root: Path) -> p.Result[t.VariadicTuple[Path]]:
-            return transaction.publish_file_phase_locked(
+            published = transaction.publish_file_phase_locked(
                 scope_root,
                 roots,
                 analysis,
-                m.Infra.CodegenPhasePublicationPolicy(
-                    directories=(), validator=validate_published
-                ),
+                m.Infra.CodegenPhasePublicationPolicy(directories=()),
             )
+            if published.failure:
+                return r[t.VariadicTuple[Path]].from_failure(published)
+            verified = transaction.validate_phase_analysis_locked(analysis)
+            if verified.failure:
+                return r[t.VariadicTuple[Path]].from_failure(verified)
+            return published
 
         return transaction.run_files_locked(roots, publish)
 

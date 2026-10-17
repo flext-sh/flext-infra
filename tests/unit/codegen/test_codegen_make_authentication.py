@@ -233,7 +233,7 @@ class TestsFlextInfraCodegenMakeAuthentication:
         tm.that(receipt.native_exit_code, eq=int(extraction_exit))
         tm.that(receipt.completed, eq=False)
         tm.that(receipt.files, eq=())
-        tm.that(receipt.root, eq=Path("."))
+        tm.that(receipt.root, eq=Path())
         tm.that(u.Infra.runtime_environment_dir(project_root).exists(), eq=False)
         for path, content in locks.items():
             tm.that(path.read_bytes(), eq=content)

@@ -21,6 +21,12 @@ if TYPE_CHECKING:
         _rope_analysis,
         _semantic_cutover,
     )
+    from flext_infra._utilities._codemod_rules_distributions import (
+        FlextInfraUtilitiesCodemodRulesDistributionsMixin,
+    )
+    from flext_infra._utilities._dependency_deptry import (
+        FlextInfraUtilitiesDependencyDeptryMixin,
+    )
     from flext_infra._utilities._docs_audit_detectors import (
         FlextInfraUtilitiesDocsAuditDetectorsMixin,
     )
@@ -63,6 +69,9 @@ if TYPE_CHECKING:
     )
     from flext_infra._utilities._git.attestation import (
         FlextInfraUtilitiesGitAttestationMixin,
+    )
+    from flext_infra._utilities._git.attestation_evidence import (
+        FlextInfraUtilitiesGitAttestationEvidenceMixin,
     )
     from flext_infra._utilities._git.lane_hygiene import (
         FlextInfraUtilitiesGitLaneHygieneMixin,
@@ -190,14 +199,30 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesPyprojectUvSources,
     )
     from flext_infra._utilities._rope.project import FlextInfraRopeProject
+    from flext_infra._utilities._rope.restructure import FlextInfraRopeRestructure
+    from flext_infra._utilities._rope_analysis.asthelpers import (
+        FlextInfraUtilitiesRopeAnalysisAstHelpers,
+    )
     from flext_infra._utilities._rope_analysis.base import (
         FlextInfraUtilitiesRopeAnalysisBase,
+    )
+    from flext_infra._utilities._rope_analysis.exports import (
+        FlextInfraUtilitiesRopeAnalysisExports,
+    )
+    from flext_infra._utilities._rope_analysis.importstate import (
+        FlextInfraUtilitiesRopeAnalysisImportState,
+    )
+    from flext_infra._utilities._rope_analysis.sourcescan import (
+        FlextInfraUtilitiesRopeAnalysisSourceScan,
     )
     from flext_infra._utilities._rope_core_pymodule import (
         FlextInfraUtilitiesRopeCorePyModuleMixin,
     )
     from flext_infra._utilities._rope_core_resources import (
         FlextInfraUtilitiesRopeCoreResourcesMixin,
+    )
+    from flext_infra._utilities._rope_inventory_sites import (
+        FlextInfraUtilitiesRopeInventorySitesMixin,
     )
     from flext_infra._utilities._rope_method_order import (
         FlextInfraUtilitiesRopeMethodOrderMixin,
@@ -207,6 +232,9 @@ if TYPE_CHECKING:
     )
     from flext_infra._utilities._rope_source_bases_inventory import (
         FlextInfraUtilitiesRopeSourceBasesInventory,
+    )
+    from flext_infra._utilities._rope_source_bases_inventory_collector import (
+        FlextInfraUtilitiesRopeSourceBindingCollector,
     )
     from flext_infra._utilities._rope_source_bases_runtime import (
         FlextInfraUtilitiesRopeSourceBasesRuntime,
@@ -228,6 +256,9 @@ if TYPE_CHECKING:
     )
     from flext_infra._utilities._semantic_cutover.constant_consumers import (
         FlextInfraUtilitiesSemanticConstantConsumers,
+    )
+    from flext_infra._utilities._semantic_cutover.contracts import (
+        FlextInfraUtilitiesSemanticContracts,
     )
     from flext_infra._utilities._semantic_cutover.declaration_payload import (
         FlextInfraUtilitiesDeclarationPayload,
@@ -301,6 +332,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.base import FlextInfraUtilitiesBase
     from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
     from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
+    from flext_infra._utilities.codegen_facade_syntax import (
+        FlextInfraUtilitiesCodegenFacadeSyntax,
+    )
     from flext_infra._utilities.codegen_facades import FlextInfraUtilitiesCodegenFacades
     from flext_infra._utilities.codegen_file_plan import (
         FlextInfraUtilitiesCodegenFilePlan,
@@ -309,7 +343,7 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesCodegenPathCutover,
     )
     from flext_infra._utilities.codemod_binding_chain import (
-        FlextInfraFlextUtilitiesCodemodBindingChain,
+        FlextInfraUtilitiesCodemodBindingChain,
     )
     from flext_infra._utilities.codemod_project import FlextInfraUtilitiesCodemodProject
     from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
@@ -432,6 +466,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.rope_runtime_base import (
         FlextInfraUtilitiesRopeRuntimeBase,
     )
+    from flext_infra._utilities.rope_runtime_module_queries import (
+        FlextInfraUtilitiesRopeRuntimeModuleQueries,
+    )
     from flext_infra._utilities.rope_runtime_modules import (
         FlextInfraUtilitiesRopeRuntimeModules,
     )
@@ -469,20 +506,24 @@ if TYPE_CHECKING:
 
 
 __all__: tuple[str, ...] = (
-    "FlextInfraFlextUtilitiesCodemodBindingChain",
     "FlextInfraRopeProject",
+    "FlextInfraRopeRestructure",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCodegen",
+    "FlextInfraUtilitiesCodegenFacadeSyntax",
     "FlextInfraUtilitiesCodegenFacades",
     "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
     "FlextInfraUtilitiesCodegenPathCutover",
+    "FlextInfraUtilitiesCodemodBindingChain",
     "FlextInfraUtilitiesCodemodProject",
     "FlextInfraUtilitiesCodemodRules",
+    "FlextInfraUtilitiesCodemodRulesDistributionsMixin",
     "FlextInfraUtilitiesCompatibilityAliasValidation",
     "FlextInfraUtilitiesDeclarationPayload",
     "FlextInfraUtilitiesDeferredSelfReferenceRewrite",
     "FlextInfraUtilitiesDependencies",
+    "FlextInfraUtilitiesDependencyDeptryMixin",
     "FlextInfraUtilitiesDependencyRequirements",
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesDocs",
@@ -513,6 +554,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsScopeStateMixin",
     "FlextInfraUtilitiesDocsValidate",
     "FlextInfraUtilitiesGit",
+    "FlextInfraUtilitiesGitAttestationEvidenceMixin",
     "FlextInfraUtilitiesGitAttestationMixin",
     "FlextInfraUtilitiesGitLaneHygieneMixin",
     "FlextInfraUtilitiesGitMutationScopeMixin",
@@ -595,8 +637,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRepository",
     "FlextInfraUtilitiesResourceLimits",
     "FlextInfraUtilitiesRopeAnalysis",
+    "FlextInfraUtilitiesRopeAnalysisAstHelpers",
     "FlextInfraUtilitiesRopeAnalysisBase",
+    "FlextInfraUtilitiesRopeAnalysisExports",
+    "FlextInfraUtilitiesRopeAnalysisImportState",
     "FlextInfraUtilitiesRopeAnalysisIntrospection",
+    "FlextInfraUtilitiesRopeAnalysisSourceScan",
     "FlextInfraUtilitiesRopeAnalysisWorkspace",
     "FlextInfraUtilitiesRopeClassMove",
     "FlextInfraUtilitiesRopeCore",
@@ -605,10 +651,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeHelpers",
     "FlextInfraUtilitiesRopeImports",
     "FlextInfraUtilitiesRopeInventory",
+    "FlextInfraUtilitiesRopeInventorySitesMixin",
     "FlextInfraUtilitiesRopeMethodOrderMixin",
     "FlextInfraUtilitiesRopeModulePatch",
     "FlextInfraUtilitiesRopeRuntime",
     "FlextInfraUtilitiesRopeRuntimeBase",
+    "FlextInfraUtilitiesRopeRuntimeModuleQueries",
     "FlextInfraUtilitiesRopeRuntimeModules",
     "FlextInfraUtilitiesRopeRuntimeRefactors",
     "FlextInfraUtilitiesRopeRuntimeTypes",
@@ -616,8 +664,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeSourceBasesAliases",
     "FlextInfraUtilitiesRopeSourceBasesInventory",
     "FlextInfraUtilitiesRopeSourceBasesRuntime",
+    "FlextInfraUtilitiesRopeSourceBindingCollector",
     "FlextInfraUtilitiesRopeStructure",
     "FlextInfraUtilitiesSemanticConstantConsumers",
+    "FlextInfraUtilitiesSemanticContracts",
     "FlextInfraUtilitiesSemanticCutover",
     "FlextInfraUtilitiesSemanticCutoverAliasCst",
     "FlextInfraUtilitiesSemanticCutoverAliases",
@@ -666,16 +716,21 @@ install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
-        "FlextInfraFlextUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraRopeProject": "._rope.project",
+        "FlextInfraRopeRestructure": "._rope.restructure",
         "FlextInfraUtilitiesBase": ".base",
         "FlextInfraUtilitiesCodegen": ".codegen",
+        "FlextInfraUtilitiesCodegenFacadeSyntax": ".codegen_facade_syntax",
         "FlextInfraUtilitiesCodegenFacades": ".codegen_facades",
         "FlextInfraUtilitiesCodegenFilePlan": ".codegen_file_plan",
         "FlextInfraUtilitiesCodegenNamespace": ".namespace",
         "FlextInfraUtilitiesCodegenPathCutover": ".codegen_path_cutover",
+        "FlextInfraUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraUtilitiesCodemodProject": ".codemod_project",
         "FlextInfraUtilitiesCodemodRules": ".codemod_rules",
+        "FlextInfraUtilitiesCodemodRulesDistributionsMixin": (
+            "._codemod_rules_distributions"
+        ),
         "FlextInfraUtilitiesCompatibilityAliasValidation": (
             ".compatibility_alias_validation"
         ),
@@ -686,6 +741,7 @@ install_lazy_exports(
             ".deferred_self_reference_rewrite"
         ),
         "FlextInfraUtilitiesDependencies": ".dependencies",
+        "FlextInfraUtilitiesDependencyDeptryMixin": "._dependency_deptry",
         "FlextInfraUtilitiesDependencyRequirements": ".dependency_requirements",
         "FlextInfraUtilitiesDiscovery": ".discovery",
         "FlextInfraUtilitiesDocs": ".docs",
@@ -716,6 +772,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesDocsScopeStateMixin": "._docs_scope_state",
         "FlextInfraUtilitiesDocsValidate": ".docs_validate",
         "FlextInfraUtilitiesGit": ".git",
+        "FlextInfraUtilitiesGitAttestationEvidenceMixin": "._git.attestation_evidence",
         "FlextInfraUtilitiesGitAttestationMixin": "._git.attestation",
         "FlextInfraUtilitiesGitLaneHygieneMixin": "._git.lane_hygiene",
         "FlextInfraUtilitiesGitMutationScopeMixin": "._git.mutation_scope",
@@ -802,8 +859,12 @@ install_lazy_exports(
         "FlextInfraUtilitiesRepository": ".repository",
         "FlextInfraUtilitiesResourceLimits": ".resource_limits",
         "FlextInfraUtilitiesRopeAnalysis": ".rope_analysis",
+        "FlextInfraUtilitiesRopeAnalysisAstHelpers": "._rope_analysis.asthelpers",
         "FlextInfraUtilitiesRopeAnalysisBase": "._rope_analysis.base",
+        "FlextInfraUtilitiesRopeAnalysisExports": "._rope_analysis.exports",
+        "FlextInfraUtilitiesRopeAnalysisImportState": "._rope_analysis.importstate",
         "FlextInfraUtilitiesRopeAnalysisIntrospection": ".rope_analysis_introspection",
+        "FlextInfraUtilitiesRopeAnalysisSourceScan": "._rope_analysis.sourcescan",
         "FlextInfraUtilitiesRopeAnalysisWorkspace": ".rope_analysis_workspace",
         "FlextInfraUtilitiesRopeClassMove": ".rope_class_move",
         "FlextInfraUtilitiesRopeCore": ".rope_core",
@@ -812,10 +873,12 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeHelpers": ".rope_helpers",
         "FlextInfraUtilitiesRopeImports": ".rope_imports",
         "FlextInfraUtilitiesRopeInventory": ".rope_inventory",
+        "FlextInfraUtilitiesRopeInventorySitesMixin": "._rope_inventory_sites",
         "FlextInfraUtilitiesRopeMethodOrderMixin": "._rope_method_order",
         "FlextInfraUtilitiesRopeModulePatch": ".rope_module_patch",
         "FlextInfraUtilitiesRopeRuntime": ".rope_runtime",
         "FlextInfraUtilitiesRopeRuntimeBase": ".rope_runtime_base",
+        "FlextInfraUtilitiesRopeRuntimeModuleQueries": ".rope_runtime_module_queries",
         "FlextInfraUtilitiesRopeRuntimeModules": ".rope_runtime_modules",
         "FlextInfraUtilitiesRopeRuntimeRefactors": ".rope_runtime_refactors",
         "FlextInfraUtilitiesRopeRuntimeTypes": ".rope_runtime_types",
@@ -823,10 +886,14 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeSourceBasesAliases": "._rope_source_bases_aliases",
         "FlextInfraUtilitiesRopeSourceBasesInventory": "._rope_source_bases_inventory",
         "FlextInfraUtilitiesRopeSourceBasesRuntime": "._rope_source_bases_runtime",
+        "FlextInfraUtilitiesRopeSourceBindingCollector": (
+            "._rope_source_bases_inventory_collector"
+        ),
         "FlextInfraUtilitiesRopeStructure": ".rope_structure",
         "FlextInfraUtilitiesSemanticConstantConsumers": (
             "._semantic_cutover.constant_consumers"
         ),
+        "FlextInfraUtilitiesSemanticContracts": "._semantic_cutover.contracts",
         "FlextInfraUtilitiesSemanticCutover": ".semantic_cutover",
         "FlextInfraUtilitiesSemanticCutoverAliasCst": "._semantic_cutover.alias_cst",
         "FlextInfraUtilitiesSemanticCutoverAliases": "._semantic_cutover.aliases",

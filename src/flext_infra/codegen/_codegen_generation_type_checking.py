@@ -102,14 +102,15 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             )
         )
 
-    @staticmethod
+    @classmethod
     def _merge_root_alias_groups(
+        cls,
         collapsed: t.MappingKV[str, t.MutableSequenceOf[t.StrPair]],
     ) -> MutableMapping[str, t.StrPairSequence]:
-        """Fold direct root-child module aliases into one root-relative group.
+        """Fold direct root-child aliases into their absolute parent groups.
 
-        Ruff renders consecutive ``from . import <child> as <child>`` statements
-        as one root-relative import; separate per-child groups emitted one line
+        Ruff renders consecutive ``from root import <child> as <child>`` statements
+        as one parent import; separate per-child groups emitted one line
         each, so every generation diverged from the formatter's canonical form
         and only a post-generation autofix converged the published initializer.
 
@@ -118,17 +119,13 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
 
         """
         merged: MutableMapping[str, t.StrPairSequence] = {}
-        root_items: t.StrPairSequence = ()
         for mod, items in collapsed.items():
-            if FlextInfraCodegenGenerationTypeCheckingMixin._is_root_module_alias_group(
-                mod,
-                items,
-            ):
-                root_items = (*root_items, *items)
-                continue
-            merged[mod] = items
-        if root_items:
-            merged["."] = (*merged.get(".", ()), *root_items)
+            target = (
+                mod.rpartition(".")[0]
+                if cls._is_root_module_alias_group(mod, items)
+                else mod
+            )
+            merged[target] = (*merged.get(target, ()), *items)
         return merged
 
     @staticmethod
@@ -149,7 +146,9 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             )
         ):
             # Module aliases emit from their parent package.
-            return mod.rsplit(".", maxsplit=1)[0] or "."
+            level = len(mod) - len(mod.lstrip("."))
+            parent = mod[level:].rpartition(".")[0]
+            return "." * level + parent or "."
         return mod
 
     @staticmethod
@@ -190,8 +189,8 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
     ) -> None:
         """Emit one TYPE_CHECKING module import group.
 
-        ``mod`` is the planned (possibly package-relative) owner that decides
-        module-alias exports; ``rendered_mod`` is its absolute import form.
+        ``mod`` is the planned owner that decides module-alias exports;
+        ``rendered_mod`` retains its elected absolute import form.
         """
         alias_exports: t.MutableSequenceOf[str] = []
         parts: t.MutableSequenceOf[str] = []
@@ -305,14 +304,9 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         if flext_types_emitted:
             lines.append("    from flext_core import FlextTypes")
 
-        package = local_package_root or ""
-        rendered_mods = {
-            mod: cls._absolute_import_module(package, mod) for mod in merged_groups
-        }
-
         def type_checking_module_key(mod: str) -> t.StrPair:
             owner = cls._type_checking_sort_owner(
-                rendered_mods[mod],
+                mod,
                 () if mod == "." else merged_groups[mod],
             )
             return cls._type_checking_sort_key(owner, effective_root_names)
@@ -334,7 +328,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                 lines.append("")
             cls._emit_type_checking_module(
                 mod,
-                rendered_mods[mod],
+                mod,
                 merged_groups[mod],
                 root_name,
                 lines,

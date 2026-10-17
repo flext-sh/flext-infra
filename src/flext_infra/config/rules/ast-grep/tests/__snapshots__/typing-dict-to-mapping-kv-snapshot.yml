@@ -1,29 +1,182 @@
 id: typing-dict-to-mapping-kv
 snapshots:
   ? |
-    from flext_core import t
-    from typing import Dict
-    ALIAS = Dict[str, int]
+    from flext_core import m, t, u
+    from typing import Annotated, Dict, TypeAliasType, get_args, get_origin
+    from typing_extensions import TypeForm
+    LEGACY = Dict[str, int]
+    FACTORY = dict[str, int]
+    type Contract = Annotated[Dict[str, int], LEGACY]
+    class LegacyBase(Dict[str, int]): ...
+    # The model field obeys the runtime model law (dict origins are rejected in
+    # pydantic fields: MappingKV + u.empty factory); value positions keep the
+    # concrete dict contract this rule preserves.
+    class Payload(m.ArbitraryTypesModel):
+        values: t.MappingKV[str, int] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.MappingKV[str, int])))
+    def make(values: Dict[str, int] = u.empty(TypeForm(t.DictKV[str, int]))()) -> Dict[str, int]:
+        return values
+    assert get_origin(LEGACY) is dict
+    assert FACTORY() == {}
+    assert isinstance(LegacyBase(), dict)
+    annotated_type, metadata = get_args(Contract.__value__)
+    assert metadata is LEGACY
+    assert Payload().values == {}
+    assert Payload().values is not Payload().values
+    payload = Payload()
+    payload.values["example"] = 1
+    assert payload.values["example"] == 1
+    payload.values.update({"updated": 2})
+    assert payload.values.copy() | {"last": 3} == {"example": 1, "updated": 2, "last": 3}
+    payload.values |= {"last": 3}
+    assert payload.values.pop("last") == 3
+    assert Payload.model_validate({"values": {"input": "4"}}, strict=False).values == {"input": 4}
+    assert Payload.model_validate_json(payload.model_dump_json()).values == payload.values
+    assert make() == {}
+    for annotation in (annotated_type, make.__annotations__["values"], make.__annotations__["return"]):
+        origin = get_origin(annotation)
+        # PEP 695 aliases retain identity while their values own concrete origins.
+        while isinstance(origin, TypeAliasType):
+            origin = get_origin(origin.__value__)
+        assert origin is get_origin(LEGACY)
+        assert get_args(annotation) == get_args(LEGACY)
   : fixed: |
-      from flext_core import t
-      from typing import Dict
-      ALIAS = t.MappingKV[str, int]
+      from flext_core import m, t, u
+      from typing import Annotated, Dict, TypeAliasType, get_args, get_origin
+      from typing_extensions import TypeForm
+      LEGACY = Dict[str, int]
+      FACTORY = dict[str, int]
+      type Contract = Annotated[t.DictKV[str, int], LEGACY]
+      class LegacyBase(Dict[str, int]): ...
+      # The model field obeys the runtime model law (dict origins are rejected in
+      # pydantic fields: MappingKV + u.empty factory); value positions keep the
+      # concrete dict contract this rule preserves.
+      class Payload(m.ArbitraryTypesModel):
+          values: t.MappingKV[str, int] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.MappingKV[str, int])))
+      def make(values: Dict[str, int] = u.empty(TypeForm(t.DictKV[str, int]))()) -> Dict[str, int]:
+          return values
+      assert get_origin(LEGACY) is dict
+      assert FACTORY() == {}
+      assert isinstance(LegacyBase(), dict)
+      annotated_type, metadata = get_args(Contract.__value__)
+      assert metadata is LEGACY
+      assert Payload().values == {}
+      assert Payload().values is not Payload().values
+      payload = Payload()
+      payload.values["example"] = 1
+      assert payload.values["example"] == 1
+      payload.values.update({"updated": 2})
+      assert payload.values.copy() | {"last": 3} == {"example": 1, "updated": 2, "last": 3}
+      payload.values |= {"last": 3}
+      assert payload.values.pop("last") == 3
+      assert Payload.model_validate({"values": {"input": "4"}}, strict=False).values == {"input": 4}
+      assert Payload.model_validate_json(payload.model_dump_json()).values == payload.values
+      assert make() == {}
+      for annotation in (annotated_type, make.__annotations__["values"], make.__annotations__["return"]):
+          origin = get_origin(annotation)
+          # PEP 695 aliases retain identity while their values own concrete origins.
+          while isinstance(origin, TypeAliasType):
+              origin = get_origin(origin.__value__)
+          assert origin is get_origin(LEGACY)
+          assert get_args(annotation) == get_args(LEGACY)
     labels:
     - source: Dict[str, int]
       style: primary
-      start: 57
-      end: 71
+      start: 217
+      end: 231
+    - source: from flext_core import m, t, u
+      style: secondary
+      start: 0
+      end: 30
+    - source: |
+        from flext_core import m, t, u
+        from typing import Annotated, Dict, TypeAliasType, get_args, get_origin
+        from typing_extensions import TypeForm
+        LEGACY = Dict[str, int]
+        FACTORY = dict[str, int]
+        type Contract = Annotated[Dict[str, int], LEGACY]
+        class LegacyBase(Dict[str, int]): ...
+        # The model field obeys the runtime model law (dict origins are rejected in
+        # pydantic fields: MappingKV + u.empty factory); value positions keep the
+        # concrete dict contract this rule preserves.
+        class Payload(m.ArbitraryTypesModel):
+            values: t.MappingKV[str, int] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.MappingKV[str, int])))
+        def make(values: Dict[str, int] = u.empty(TypeForm(t.DictKV[str, int]))()) -> Dict[str, int]:
+            return values
+        assert get_origin(LEGACY) is dict
+        assert FACTORY() == {}
+        assert isinstance(LegacyBase(), dict)
+        annotated_type, metadata = get_args(Contract.__value__)
+        assert metadata is LEGACY
+        assert Payload().values == {}
+        assert Payload().values is not Payload().values
+        payload = Payload()
+        payload.values["example"] = 1
+        assert payload.values["example"] == 1
+        payload.values.update({"updated": 2})
+        assert payload.values.copy() | {"last": 3} == {"example": 1, "updated": 2, "last": 3}
+        payload.values |= {"last": 3}
+        assert payload.values.pop("last") == 3
+        assert Payload.model_validate({"values": {"input": "4"}}, strict=False).values == {"input": 4}
+        assert Payload.model_validate_json(payload.model_dump_json()).values == payload.values
+        assert make() == {}
+        for annotation in (annotated_type, make.__annotations__["values"], make.__annotations__["return"]):
+            origin = get_origin(annotation)
+            # PEP 695 aliases retain identity while their values own concrete origins.
+            while isinstance(origin, TypeAliasType):
+                origin = get_origin(origin.__value__)
+            assert origin is get_origin(LEGACY)
+            assert get_args(annotation) == get_args(LEGACY)
+      style: secondary
+      start: 0
+      end: 1890
+  ? |
+    from flext_core import t
+    from typing import Annotated as Metadata, Dict
+    value: Metadata[Dict[str, int], Dict[str, int]]
+  : fixed: |
+      from flext_core import t
+      from typing import Annotated as Metadata, Dict
+      value: Metadata[t.DictKV[str, int], Dict[str, int]]
+    labels:
+    - source: Dict[str, int]
+      style: primary
+      start: 88
+      end: 102
     - source: from flext_core import t
       style: secondary
       start: 0
       end: 24
     - source: |
         from flext_core import t
-        from typing import Dict
-        ALIAS = Dict[str, int]
+        from typing import Annotated as Metadata, Dict
+        value: Metadata[Dict[str, int], Dict[str, int]]
       style: secondary
       start: 0
-      end: 72
+      end: 120
+  ? |
+    from flext_core import t
+    from typing import Annotated, Dict
+    value: Annotated[Dict[str, int], Field(default_factory=Dict[str, int])]
+  : fixed: |
+      from flext_core import t
+      from typing import Annotated, Dict
+      value: Annotated[t.DictKV[str, int], Field(default_factory=Dict[str, int])]
+    labels:
+    - source: Dict[str, int]
+      style: primary
+      start: 77
+      end: 91
+    - source: from flext_core import t
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import t
+        from typing import Annotated, Dict
+        value: Annotated[Dict[str, int], Field(default_factory=Dict[str, int])]
+      style: secondary
+      start: 0
+      end: 132
   ? |
     from flext_core import t
     from typing import Dict
@@ -31,7 +184,7 @@ snapshots:
   : fixed: |
       from flext_core import t
       from typing import Dict
-      ALIAS: t.MappingKV[str, int] = {}
+      ALIAS: t.DictKV[str, int] = {}
     labels:
     - source: Dict[str, int]
       style: primary
@@ -51,11 +204,38 @@ snapshots:
   ? |
     from flext_core import t
     from typing import Dict
+    class Annotated: ...
+    value: Annotated[int, Dict[str, int]]
+  : fixed: |
+      from flext_core import t
+      from typing import Dict
+      class Annotated: ...
+      value: Annotated[int, t.DictKV[str, int]]
+    labels:
+    - source: Dict[str, int]
+      style: primary
+      start: 92
+      end: 106
+    - source: from flext_core import t
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import t
+        from typing import Dict
+        class Annotated: ...
+        value: Annotated[int, Dict[str, int]]
+      style: secondary
+      start: 0
+      end: 108
+  ? |
+    from flext_core import t
+    from typing import Dict
     def f() -> Dict[str, int]: ...
   : fixed: |
       from flext_core import t
       from typing import Dict
-      def f() -> t.MappingKV[str, int]: ...
+      def f() -> t.DictKV[str, int]: ...
     labels:
     - source: Dict[str, int]
       style: primary
@@ -75,11 +255,38 @@ snapshots:
   ? |
     from flext_core import t
     from typing import Dict
+    def f(value: Dict[str, int] = dict[str, int]()) -> Dict[str, int]:
+        return value
+  : fixed: |
+      from flext_core import t
+      from typing import Dict
+      def f(value: t.DictKV[str, int] = dict[str, int]()) -> Dict[str, int]:
+          return value
+    labels:
+    - source: Dict[str, int]
+      style: primary
+      start: 62
+      end: 76
+    - source: from flext_core import t
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import t
+        from typing import Dict
+        def f(value: Dict[str, int] = dict[str, int]()) -> Dict[str, int]:
+            return value
+      style: secondary
+      start: 0
+      end: 133
+  ? |
+    from flext_core import t
+    from typing import Dict
     def f(x: Dict[str, int]) -> None: ...
   : fixed: |
       from flext_core import t
       from typing import Dict
-      def f(x: t.MappingKV[str, int]) -> None: ...
+      def f(x: t.DictKV[str, int]) -> None: ...
     labels:
     - source: Dict[str, int]
       style: primary
@@ -98,12 +305,84 @@ snapshots:
       end: 87
   ? |
     from flext_core import t
+    from typing import Dict
+    type ALIAS = Dict[str, int]
+  : fixed: |
+      from flext_core import t
+      from typing import Dict
+      type ALIAS = t.DictKV[str, int]
+    labels:
+    - source: Dict[str, int]
+      style: primary
+      start: 62
+      end: 76
+    - source: from flext_core import t
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import t
+        from typing import Dict
+        type ALIAS = Dict[str, int]
+      style: secondary
+      start: 0
+      end: 77
+  ? |
+    from flext_core import t
+    from typing import Dict
+    value: tuple[Dict[str, int], ...] | None = None
+  : fixed: |
+      from flext_core import t
+      from typing import Dict
+      value: tuple[t.DictKV[str, int], ...] | None = None
+    labels:
+    - source: Dict[str, int]
+      style: primary
+      start: 62
+      end: 76
+    - source: from flext_core import t
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import t
+        from typing import Dict
+        value: tuple[Dict[str, int], ...] | None = None
+      style: secondary
+      start: 0
+      end: 97
+  ? |
+    from flext_core import t
+    import typing
+    def f(value: typing.Dict[str, int] = typing.Dict[str, int]): ...
+  : fixed: |
+      from flext_core import t
+      import typing
+      def f(value: t.DictKV[str, int] = typing.Dict[str, int]): ...
+    labels:
+    - source: typing.Dict[str, int]
+      style: primary
+      start: 52
+      end: 73
+    - source: from flext_core import t
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import t
+        import typing
+        def f(value: typing.Dict[str, int] = typing.Dict[str, int]): ...
+      style: secondary
+      start: 0
+      end: 104
+  ? |
+    from flext_core import t
     import typing
     def f(y: typing.Dict[str, int]) -> None: ...
   : fixed: |
       from flext_core import t
       import typing
-      def f(y: t.MappingKV[str, int]) -> None: ...
+      def f(y: t.DictKV[str, int]) -> None: ...
     labels:
     - source: typing.Dict[str, int]
       style: primary
@@ -120,3 +399,102 @@ snapshots:
       style: secondary
       start: 0
       end: 84
+  ? |
+    from flext_core import t
+    import typing
+    import typing as hints
+    value: hints.Annotated[typing.Dict[str, int], typing.Dict[str, int]]
+  : fixed: |
+      from flext_core import t
+      import typing
+      import typing as hints
+      value: hints.Annotated[t.DictKV[str, int], typing.Dict[str, int]]
+    labels:
+    - source: typing.Dict[str, int]
+      style: primary
+      start: 85
+      end: 106
+    - source: from flext_core import t
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import t
+        import typing
+        import typing as hints
+        value: hints.Annotated[typing.Dict[str, int], typing.Dict[str, int]]
+      style: secondary
+      start: 0
+      end: 131
+  ? |
+    from flext_core import t
+    import typing
+    type ALIAS = typing.Dict[str, int]
+  : fixed: |
+      from flext_core import t
+      import typing
+      type ALIAS = t.DictKV[str, int]
+    labels:
+    - source: typing.Dict[str, int]
+      style: primary
+      start: 52
+      end: 73
+    - source: from flext_core import t
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import t
+        import typing
+        type ALIAS = typing.Dict[str, int]
+      style: secondary
+      start: 0
+      end: 74
+  ? |
+    from flext_core import t
+    import typing
+    value: typing.Annotated[typing.Dict[str, int], typing.Dict[str, int]]
+  : fixed: |
+      from flext_core import t
+      import typing
+      value: typing.Annotated[t.DictKV[str, int], typing.Dict[str, int]]
+    labels:
+    - source: typing.Dict[str, int]
+      style: primary
+      start: 63
+      end: 84
+    - source: from flext_core import t
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import t
+        import typing
+        value: typing.Annotated[typing.Dict[str, int], typing.Dict[str, int]]
+      style: secondary
+      start: 0
+      end: 109
+  ? |
+    from flext_core import t
+    import typing
+    value: typing.Dict[str, int] = Field(default_factory=dict[str, int])
+  : fixed: |
+      from flext_core import t
+      import typing
+      value: t.DictKV[str, int] = Field(default_factory=dict[str, int])
+    labels:
+    - source: typing.Dict[str, int]
+      style: primary
+      start: 46
+      end: 67
+    - source: from flext_core import t
+      style: secondary
+      start: 0
+      end: 24
+    - source: |
+        from flext_core import t
+        import typing
+        value: typing.Dict[str, int] = Field(default_factory=dict[str, int])
+      style: secondary
+      start: 0
+      end: 108

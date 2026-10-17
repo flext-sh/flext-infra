@@ -58,6 +58,12 @@ class FlextInfraConstantsDeps(FlextInfraConfigVocabulary):
         " Never edit this projection.\n"
         "# @flext-regenerate: make gen\n"
     )
+    # Render provenance: the composition owner appends the running generator's
+    # identity so every emitted artifact names the motor that rendered it.
+    # A skew between this stamp and the consumed motor is drift the fixed-point
+    # verbs detect (conform --mode check); the stamp makes the drift report
+    # name both sides instead of a bare byte diff.
+    RENDERED_BY_MARKER: ClassVar[str] = "# @flext-rendered-by: flext-infra "
     DEV_OPTIONAL_DEPS_MARKER: ClassVar[str] = (
         "# [MANAGED] consolidated development dependencies"
     )
@@ -71,10 +77,18 @@ class FlextInfraConstantsDeps(FlextInfraConfigVocabulary):
     """Packaged dependency-limit configuration resource."""
     DEPTRY_UNUSED_DEPENDENCY_CODE: ClassVar[str] = "DEP002"
     """Deptry rule code for a declared dependency the code never imports."""
+    DEPTRY_SCAN_COVERAGE_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^Scanning (?P<count>[0-9]+) files?\.\.\.$",
+    )
+    """Native deptry import extraction's executed file count."""
     MYPY_FOLLOW_UNTYPED_IMPORTS: ClassVar[str] = "follow_untyped_imports"
     """Mypy option that analyzes installed packages lacking stubs or py.typed."""
     MYPY_FOLLOW_UNTYPED_IMPORTS_DEFAULT: ClassVar[bool] = False
     """Mypy's own default when neither governed policy nor project declares it."""
+    DEPENDENCY_GROUPS: ClassVar[str] = "dependency-groups"
+    """PEP 735 dependency-groups table key."""
+    MEMBER_DEV_PROVENANCE: ClassVar[str] = "flext: derived member environment"
+    """Per-entry provenance identifying generated member environment requirements."""
 
 
 __all__: list[str] = ["FlextInfraConstantsDeps"]

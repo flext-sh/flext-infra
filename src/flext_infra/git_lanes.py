@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -141,7 +141,7 @@ class FlextInfraGitLanes:
         policy = config.Infra.codegen.branch_policy
         base = u.Infra.resolve_integration_branch(
             request.repo_root,
-            preference=policy.integration_branch_preference,
+            policy_branch=policy.integration_branch,
             declared=request.declared,
         )
         if base.failure:
@@ -313,6 +313,10 @@ class FlextInfraGitLanes:
 
         Returns:
             The actual global coordination SSOT; read/validation failures escape.
+
+        Raises:
+            ValueError: If lane governance file must be declared by the selected host or
+                target.
 
         """
         source = (
@@ -590,7 +594,7 @@ class FlextInfraGitLanes:
         repository = captured.value.spec.repository
         declared = (
             repository.integration.branch
-            if repository is not None and repository.integration is not None
+            if repository.integration is not None
             else request.declared
         )
         targets = u.Infra.repository_operation_targets(
@@ -650,7 +654,7 @@ class FlextInfraGitLanes:
         refs = cls._collect_lane_facts(request, inventory, findings, violations)
         base = u.Infra.resolve_integration_branch(
             request.repo_root,
-            preference=config.Infra.codegen.branch_policy.integration_branch_preference,
+            policy_branch=config.Infra.codegen.branch_policy.integration_branch,
             declared=request.declared,
         )
         fresh = cls.fresh_integration(request)

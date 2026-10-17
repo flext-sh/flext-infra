@@ -7,9 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TypeGuard
+from typing import TypeGuard, TypeIs
 
-from flext_infra import p, t
+from flext_infra import c, p, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeBase
 
 
@@ -45,7 +45,7 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         return value
 
     @classmethod
-    def pymodule(cls, value: p.AttributeProbe) -> TypeGuard[t.Infra.RopePyModule]:
+    def pymodule(cls, value: p.AttributeProbe) -> TypeIs[t.Infra.RopeParsedModule]:
         """Accept every rope module-like object: modules and packages.
 
         ``find_module`` resolves an installed third-party package to its
@@ -57,7 +57,8 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         contract.
 
         Returns:
-            The resulting ``TypeGuard[t.Infra.RopePyModule]``.
+            The resulting ``TypeIs[t.Infra.RopeParsedModule]``.
+
         """
         return isinstance(
             value,
@@ -66,6 +67,32 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
                 cls.runtime_type("rope.base.pyobjectsdef", "PyPackage"),
             ),
         )
+
+    @classmethod
+    def source_module(cls, value: p.AttributeProbe) -> TypeIs[p.Infra.RopeSourceModule]:
+        """Recognize the SDK's source-bearing module, including string modules.
+
+        Returns:
+            Whether the value is a native source module rather than a package.
+
+        """
+        return isinstance(value, cls.runtime_type("rope.base.pyobjectsdef", "PyModule"))
+
+    @classmethod
+    def require_parsed_module(cls, value: p.AttributeProbe) -> p.Infra.RopeParsedModule:
+        """Admit native parsed modules through the existing runtime predicate.
+
+        Returns:
+            The original module exposing the parsed-module contract.
+
+        Raises:
+            TypeError: The native result is not a parsed module.
+
+        """
+        if not cls.pymodule(value):
+            msg = "rope resource returned a non-parsed module"
+            raise TypeError(msg)
+        return value
 
     @classmethod
     def from_import_info(
@@ -107,7 +134,7 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         """
         return isinstance(
             value,
-            cls.runtime_type("rope.base.pyobjects", "AbstractClass"),
+            cls.runtime_type(c.Infra.ROPE_PYOBJECTS_MODULE, "AbstractClass"),
         )
 
     @classmethod
@@ -125,7 +152,10 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
             Whether ``value`` is a Rope inferred class instance.
 
         """
-        return type(value) is cls.runtime_type("rope.base.pyobjects", "PyObject")
+        return type(value) is cls.runtime_type(
+            c.Infra.ROPE_PYOBJECTS_MODULE,
+            "PyObject",
+        )
 
     @classmethod
     def py_class(cls, value: t.Infra.RopePyObject) -> bool:

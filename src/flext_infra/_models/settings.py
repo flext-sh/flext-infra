@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Annotated
 
 from flext_cli import m, t
 
@@ -14,7 +15,7 @@ from flext_cli import m, t
 class FlextInfraSettingsModels:
     """Private namespace for validated settings payloads."""
 
-    class Infra(m.BaseSettings):
+    class InfraSettings(m.BaseSettings):
         """Validated process-start settings owned by flext-infra."""
 
         # Validate every external alias before singleton export.
@@ -57,6 +58,16 @@ class FlextInfraSettingsModels:
             validation_alias="UV",
             description="uv launcher path resolved for dependency orchestration.",
         )
+        toolchain_repair_tool: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                validation_alias="FLEXT_INFRA_TOOLCHAIN_REPAIR_TOOL",
+                description=(
+                    "Explicit declared tool selected by fix-toolchain; unset "
+                    "refuses installation repair before effects."
+                ),
+            ),
+        ] = None
         runtime_root: Path | None = m.Field(
             default=None,
             validation_alias="RUNTIME_ROOT",

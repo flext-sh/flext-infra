@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra.maintenance.sonarcloud_client import FlextInfraSonarcloudClient
+from flext_infra.maintenance import FlextInfraSonarcloudClient
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -28,6 +28,7 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
 
         Returns:
             The resulting ``t.VariadicTuple[t.Pair[str, str]]``.
+
         """
         return (
             ("componentKeys", project_key),
@@ -47,6 +48,7 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         token_result = self.optional_token()
         if token_result.failure:
@@ -85,9 +87,9 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
         if credentials.failure:
             return result_type.from_failure(credentials)
         token, key = credentials.value
-        branch = u.Infra.repository_baseline_branch(
+        branch = u.Infra.resolve_integration_branch(
             self.repository_root,
-            preference=config.Infra.codegen.branch_policy.integration_branch_preference,
+            policy_branch=config.Infra.codegen.branch_policy.integration_branch,
         )
         if branch.failure:
             return result_type.from_failure(branch)
@@ -147,7 +149,7 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
                     )
                 seen.add(issue.key)
                 findings.append(issue)
-            if total is not None and len(findings) > total:
+            if len(findings) > total:
                 return r[t.SequenceOf[m.Infra.SonarcloudIssue]].fail(
                     "SonarCloud returned more issues than its total",
                 )

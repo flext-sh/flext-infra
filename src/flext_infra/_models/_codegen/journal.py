@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import stat
+from hashlib import sha256
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
@@ -21,6 +22,15 @@ class FlextInfraModelsCodegenJournalModels:
 
     class CodegenStagedFile(m.ArbitraryTypesModel):
         """One destination state and its optional destination-local replacement."""
+
+        dependency_group: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Invocation-local dependent publication group"),
+        ] = None
+        original_replacement: Annotated[
+            m.Cli.AtomicFileState | None,
+            m.Field(description="Journal-owned physical dependent-group preimage"),
+        ] = None
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
@@ -47,6 +57,18 @@ class FlextInfraModelsCodegenJournalModels:
                 description="Exact dependencies consumed by this destination",
             ),
         ] = ()
+        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
+            default=(),
+            strict=True,
+            description="Native directory queries consumed by this target",
+        )
+        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
+            m.Field(
+                default=(),
+                strict=True,
+                description="Physical ancestry of queried source directories",
+            )
+        )
         tracking: Annotated[
             Literal["versioned", "runtime-local"],
             m.Field(description="Managed artifact persistence policy"),
@@ -247,6 +269,9 @@ class FlextInfraModelsCodegenJournalModels:
             t.NonEmptyStr,
             m.Field(description="Generation phase that consumed source"),
         ]
+        role: (
+            Literal["layer0", "family", "consumer", "resource", "distribution"] | None
+        ) = m.Field(default=None, description="Authenticated producer input role")
         path: Annotated[Path, m.Field(description="Absolute authenticated source path")]
         parent_device: Annotated[
             int | None,
@@ -463,6 +488,71 @@ class FlextInfraModelsCodegenJournalModels:
     class CodegenJournalEntry(m.ArbitraryTypesModel):
         """Recoverable full before/after identity for one generated file."""
 
+        dependency_group: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Invocation-local dependent publication group"),
+        ] = None
+        original_content_hex: Annotated[
+            str | None,
+            m.Field(
+                pattern=r"^(?:[0-9a-f]{2})*$",
+                description="Journal-owned group preimage bytes",
+            ),
+        ] = None
+        original_staging: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Journal-relative physical dependent-group preimage"),
+        ] = None
+        group_admitted: Annotated[
+            bool,
+            m.Field(strict=True, description="Durable dependent-group effect receipt"),
+        ] = False
+        recover_group: Annotated[
+            bool,
+            m.Field(strict=True, description="Durable failed-group recovery selection"),
+        ] = False
+
+        @m.model_validator(mode="after")
+        def _validate_group_preimage(self) -> Self:
+            """Bind group recovery authority to the original authenticated bytes.
+
+            Returns:
+                The resulting ``Self``.
+
+            Raises:
+                ValueError: If independent entry cannot carry group recovery authority;
+                    or if dependent group requires a durable original preimage; or if
+                    dependent group preimage differs from original bytes; or if absent
+                    group original cannot carry a preimage.
+
+            """
+            if self.dependency_group is None:
+                if (
+                    self.original_content_hex is not None
+                    or self.original_staging is not None
+                    or self.group_admitted
+                    or self.recover_group
+                ):
+                    msg = "independent entry cannot carry group recovery authority"
+                    raise ValueError(msg)
+            elif self.original_exists:
+                if self.original_content_hex is None or self.original_staging is None:
+                    msg = "dependent group requires a durable original preimage"
+                    raise ValueError(msg)
+                if (
+                    sha256(bytes.fromhex(self.original_content_hex)).hexdigest()
+                    != self.original_sha256
+                ):
+                    msg = "dependent group preimage differs from original bytes"
+                    raise ValueError(msg)
+            elif (
+                self.original_content_hex is not None
+                or self.original_staging is not None
+            ):
+                msg = "absent group original cannot carry a preimage"
+                raise ValueError(msg)
+            return self
+
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         source_paths: Annotated[
@@ -471,6 +561,16 @@ class FlextInfraModelsCodegenJournalModels:
                 description="Authenticated source identities consumed by this entry"
             ),
         ] = ()
+        source_directory_paths: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            strict=True,
+            description="Phase-bound native directory query receipt references",
+        )
+        source_query_topology_paths: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            strict=True,
+            description="Phase-bound source query ancestry receipt references",
+        )
         tracking: Annotated[
             Literal["versioned", "runtime-local"],
             m.Field(description="Declared persistence policy for this destination"),
@@ -602,6 +702,7 @@ class FlextInfraModelsCodegenJournalModels:
         @m.field_validator(
             "path",
             "desired_staging",
+            "original_staging",
         )
         @classmethod
         def _validate_relative_file_path(cls, value: str | None) -> str | None:

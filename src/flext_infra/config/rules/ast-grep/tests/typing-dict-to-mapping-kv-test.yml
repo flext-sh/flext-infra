@@ -8,6 +8,9 @@ valid:
   - |
     from flext_core import t
     def f(x: t.MappingKV[str, int]) -> None: ...
+  - |
+    from flext_core import t
+    value: t.DictKV[str, int]
   # `Dict` is a locally defined class, not typing.Dict
   - |
     from flext_core import t
@@ -38,7 +41,90 @@ valid:
     from typing import Dict
     # Dict[...] named in a comment stays.
     VALUE = 1
-# `invalid` MUST match and rewrite to t.MappingKV (module binds `t`).
+  # Values remain values even inside statements declaring annotations.
+  - |
+    from flext_core import t
+    from typing import Dict
+    ALIAS = Dict[str, int]
+    VALUE = Dict[str, int]()
+    def f(factory=Dict[str, int]): ...
+    field = Field(default_factory=Dict[str, int])
+    class Derived(Dict[str, int]): ...
+  - |
+    from flext_core import t
+    import typing
+    ALIAS: type = typing.Dict[str, int]
+    def f(factory: type = typing.Dict[str, int]): ...
+    field = Field(default_factory=typing.Dict[str, int])
+    class Derived(typing.Dict[str, int]): ...
+  # An import in another lexical scope does not bind the module annotation.
+  - |
+    from typing import Dict
+    def local():
+        from flext_core import t
+    value: Dict[str, int]
+  - |
+    from typing import Dict, TYPE_CHECKING
+    if TYPE_CHECKING:
+        from flext_core import t
+    value: Dict[str, int]
+  - |
+    from flext_core import t
+    from typing import Annotated, Dict
+    value: Annotated[int, Dict[str, int]]
+  - |
+    from flext_core import t
+    from typing import Dict, Literal
+    value: Literal[Dict[str, int]]
+  - |
+    from flext_core import t
+    import typing
+    value: typing.Annotated[int, typing.Dict[str, int]]
+  - |
+    from flext_core import t
+    import typing
+    value: typing.Literal[typing.Dict[str, int]]
+  - |
+    from flext_core import t
+    from typing import Annotated as Metadata, Dict
+    value: Metadata[int, Dict[str, int]]
+  - |
+    from flext_core import t
+    from typing import Dict, Literal as Value
+    value: Value[Dict[str, int]]
+  - |
+    from flext_core import t
+    import typing
+    import typing as hints
+    value: hints.Annotated[int, tuple[typing.Dict[str, int], ...]]
+  - |
+    from flext_core import t
+    import typing
+    import typing as hints
+    value: hints.Literal[typing.Dict[str, int]]
+  - |
+    from unrelated import t
+    from typing import Dict
+    value: Dict[str, int]
+  - |
+    from flext_core import u as t
+    from typing import Dict
+    value: Dict[str, int]
+  - |
+    from flext_core import t
+    from typing import Dict
+    def f(t, value: Dict[str, int]): ...
+  - |
+    from flext_core import t
+    from typing import Dict
+    t = None
+    value: Dict[str, int]
+  - |
+    from flext_core import t
+    from unrelated import t
+    from typing import Dict
+    value: Dict[str, int]
+# `invalid` MUST match and fix to the exact dict alias, never an abstraction.
 invalid:
   # bare name in a parameter annotation
   - |
@@ -55,13 +141,97 @@ invalid:
     from flext_core import t
     from typing import Dict
     ALIAS: Dict[str, int] = {}
-  # bare name in value position
+  # PEP 695 declares a type, unlike ordinary runtime alias assignment.
   - |
     from flext_core import t
     from typing import Dict
-    ALIAS = Dict[str, int]
+    type ALIAS = Dict[str, int]
   # attribute form needs no typing-import guard
   - |
     from flext_core import t
     import typing
     def f(y: typing.Dict[str, int]) -> None: ...
+  - |
+    from flext_core import t
+    import typing
+    type ALIAS = typing.Dict[str, int]
+  - |
+    from flext_core import t
+    from typing import Dict
+    value: tuple[Dict[str, int], ...] | None = None
+  - |
+    from flext_core import t
+    from typing import Dict
+    def f(value: Dict[str, int] = dict[str, int]()) -> Dict[str, int]:
+        return value
+  - |
+    from flext_core import t
+    import typing
+    value: typing.Dict[str, int] = Field(default_factory=dict[str, int])
+  - |
+    from flext_core import t
+    import typing
+    def f(value: typing.Dict[str, int] = typing.Dict[str, int]): ...
+  - |
+    from flext_core import t
+    from typing import Annotated, Dict
+    value: Annotated[Dict[str, int], Field(default_factory=Dict[str, int])]
+  - |
+    from flext_core import t
+    import typing
+    value: typing.Annotated[typing.Dict[str, int], typing.Dict[str, int]]
+  - |
+    from flext_core import t
+    from typing import Annotated as Metadata, Dict
+    value: Metadata[Dict[str, int], Dict[str, int]]
+  - |
+    from flext_core import t
+    import typing
+    import typing as hints
+    value: hints.Annotated[typing.Dict[str, int], typing.Dict[str, int]]
+  # A same-named user generic is not typing's value-bearing special form.
+  - |
+    from flext_core import t
+    from typing import Dict
+    class Annotated: ...
+    value: Annotated[int, Dict[str, int]]
+  # Executed after native fixes: concrete APIs and runtime values remain intact.
+  - |
+    from flext_core import m, t, u
+    from typing import Annotated, Dict, TypeAliasType, get_args, get_origin
+    from typing_extensions import TypeForm
+    LEGACY = Dict[str, int]
+    FACTORY = dict[str, int]
+    type Contract = Annotated[Dict[str, int], LEGACY]
+    class LegacyBase(Dict[str, int]): ...
+    # The model field obeys the runtime model law (dict origins are rejected in
+    # pydantic fields: MappingKV + u.empty factory); value positions keep the
+    # concrete dict contract this rule preserves.
+    class Payload(m.ArbitraryTypesModel):
+        values: t.MappingKV[str, int] = m.Field(description="test values", default_factory=u.empty(TypeForm(t.MappingKV[str, int])))
+    def make(values: Dict[str, int] = u.empty(TypeForm(t.DictKV[str, int]))()) -> Dict[str, int]:
+        return values
+    assert get_origin(LEGACY) is dict
+    assert FACTORY() == {}
+    assert isinstance(LegacyBase(), dict)
+    annotated_type, metadata = get_args(Contract.__value__)
+    assert metadata is LEGACY
+    assert Payload().values == {}
+    assert Payload().values is not Payload().values
+    payload = Payload()
+    payload.values["example"] = 1
+    assert payload.values["example"] == 1
+    payload.values.update({"updated": 2})
+    assert payload.values.copy() | {"last": 3} == {"example": 1, "updated": 2, "last": 3}
+    payload.values |= {"last": 3}
+    assert payload.values.pop("last") == 3
+    assert Payload.model_validate({"values": {"input": "4"}}, strict=False).values == {"input": 4}
+    assert Payload.model_validate_json(payload.model_dump_json()).values == payload.values
+    assert make() == {}
+    for annotation in (annotated_type, make.__annotations__["values"], make.__annotations__["return"]):
+        origin = get_origin(annotation)
+        # PEP 695 aliases retain identity while their values own concrete origins.
+        while isinstance(origin, TypeAliasType):
+            origin = get_origin(origin.__value__)
+        assert origin is get_origin(LEGACY)
+        assert get_args(annotation) == get_args(LEGACY)

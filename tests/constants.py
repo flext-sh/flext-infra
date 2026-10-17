@@ -36,6 +36,18 @@ class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
     class Tests(TestsFlextInfraConstantsScanMixin, FlextTestsConstants.Tests):
         """Flat constants optimized for data-driven infra tests."""
 
+        DETECTOR_MODULE_SCENARIOS: ClassVar[t.SequenceOf[t.StrTuple]] = (
+            ("requests",),
+            ("requests", "pytz"),
+            ("requests", "pytz", "six"),
+        )
+        """Dependency scenarios whose union provisions the shared consumer."""
+        CONSUMER_MODULES: ClassVar[t.StrTuple] = tuple(
+            dict.fromkeys(
+                module for scenario in DETECTOR_MODULE_SCENARIOS for module in scenario
+            )
+        )
+
         DIRENV_SESSION_ENV_KEYS: ClassVar[t.StrSequence] = (
             "DIRENV_DIFF",
             "DIRENV_DIR",
