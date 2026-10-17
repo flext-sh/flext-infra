@@ -152,7 +152,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 raise ValueError(message)
             lineage = FlextInfraUtilitiesRopeSourceBasesRuntime.merge_class_lineages(
                 (*(self._linearize(identity) for identity in identities),),
-                message="Inconsistent declared facade owner precedence",
+                message=(
+                    "Inconsistent declared facade owner precedence: declarations="
+                    f"{tuple(item.qualified_base for item in declarations)}"
+                ),
             )
             spellings = {
                 identity: item.qualified_base
@@ -187,6 +190,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             (cosmos-docgen tests/unit re-exports a `dcdoc` subpackage; class
             bases declared as `from dcdoc import DcdocServiceBase` mean the
             project one).
+
+            Raises:
+                ValueError: Native package membership differs from captured sources.
+
             """
             for alias_module, captured in self._sources.items():
                 alias_path, alias_source = captured
@@ -562,9 +569,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Returns:
                 The resolved Rope module object.
 
-            Raises:
-                TypeError: The import provider lacks the native module capability.
-
             """
             name = self._provider_module_name(imported)
             module = self._project.get_module(name)
@@ -577,9 +581,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     self._project,
                     resource,
                 )
-            if not FlextInfraUtilitiesRopeRuntime.semantic_module(module):
-                message = "Rope import provider has no semantic module"
-                raise TypeError(message)
             return module
 
         def _provider_reference(
@@ -751,9 +752,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     package,
                 )
                 provider = self._project.get_module(target)
-                if not FlextInfraUtilitiesRopeRuntime.semantic_module(provider):
-                    message = "Rope star-import provider has no semantic module"
-                    raise TypeError(message)
                 if name in provider.get_attributes():
                     return provider
             return None
@@ -843,9 +841,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Returns:
                 The resolved declaration identity.
 
-            Raises:
-                TypeError: The external provider lacks the native module capability.
-
             """
             errors: t.VariadicTuple[type[BaseException]] = (
                 *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
@@ -867,9 +862,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     self._project,
                     resource,
                 )
-            if not FlextInfraUtilitiesRopeRuntime.semantic_module(module):
-                message = "Rope external provider has no semantic module"
-                raise TypeError(message)
             return self._provider_reference(module, attributes, visiting, depth)
 
         def _resolve(

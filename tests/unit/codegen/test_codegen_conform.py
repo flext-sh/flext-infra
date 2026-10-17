@@ -336,6 +336,7 @@ class TestsFlextInfraCodegenConform:
             f"requires-python = "
             f'"{config.Infra.codegen.toolchain.python_required_version}"\n'
             'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+            f'license = "{u.Tests.project_spec(distribution).license}"\n'
             'dependencies = ["flext-cli"]\n',
             encoding="utf-8",
         )
@@ -401,6 +402,7 @@ class TestsFlextInfraCodegenConform:
             f"requires-python = "
             f'"{config.Infra.codegen.toolchain.python_required_version}"\n'
             'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+            f'license = "{u.Tests.project_spec(distribution).license}"\n'
             'dependencies = ["flext-cli"]\n'
             "\n"
             "[tool.pytest.ini_options]\n"

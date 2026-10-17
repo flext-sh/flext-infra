@@ -15,7 +15,7 @@ from base64 import b64decode
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import ClassVar, Protocol
+from typing import ClassVar
 
 from flext_cli import u
 from git import GitCommandError, Tree
@@ -28,30 +28,6 @@ from flext_infra._utilities._git import (
 from flext_infra._utilities._git.attestation_evidence import (
     FlextInfraUtilitiesGitAttestationEvidenceMixin,
 )
-
-
-class GateAttestationRuntimeContext(Protocol):
-    """Read-only elected resolution inputs the toolchain trust anchor hashes.
-
-    The attestation layer never resolves the workspace itself: the caller
-    elects the current runtime context once at the workspace boundary and
-    provides it explicitly, keeping the dependency direction downward.
-    """
-
-    @property
-    def runtime_root(self) -> Path:
-        """Physical runtime owner of the elected resolution input."""
-        ...
-
-    @property
-    def pyproject_path(self) -> Path:
-        """Declaration file the resolver elected."""
-        ...
-
-    @property
-    def lock_path(self) -> Path:
-        """Lock file the resolver elected."""
-        ...
 
 
 class FlextInfraUtilitiesGitAttestationMixin(
@@ -161,6 +137,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
             output.outcome,
             from_attributes=True,
         )
+        scope: str | None
+        origin: str | None
+        value: str | None
         if (
             not process.timed_out
             and process.forwarded_signal is None
@@ -576,7 +555,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
     def _attestation_predicate(
         cls,
         request: m.Infra.GateAttestationCreateRequest,
-        context: GateAttestationRuntimeContext,
+        context: p.Infra.GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationPredicate]:
 
         repo_root = Path(request.workspace).expanduser().resolve()
@@ -659,7 +638,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
     def _toolchain_digest(
         cls,
         repo_root: Path,
-        context: GateAttestationRuntimeContext,
+        context: p.Infra.GateAttestationRuntimeContext,
         commit_sha: str | None = None,
     ) -> str:
         repo = cls._repo(repo_root)
@@ -710,7 +689,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
     def git_create_gate_attestation(
         cls,
         request: m.Infra.GateAttestationCreateRequest,
-        context: GateAttestationRuntimeContext,
+        context: p.Infra.GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationReport]:
         """Create the exact signed tag for a validated HEAD predicate.
 
@@ -759,7 +738,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         request: m.Infra.GateAttestationVerifyRequest,
         predicate: m.Infra.GateAttestationPredicate,
         serialized: str,
-        context: GateAttestationRuntimeContext,
+        context: p.Infra.GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationReport]:
         repo_root = Path(request.workspace).expanduser().resolve()
         allowed = Path(request.allowed_signers).expanduser().resolve()
@@ -807,7 +786,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
     def git_verify_gate_attestation(
         cls,
         request: m.Infra.GateAttestationVerifyRequest,
-        context: GateAttestationRuntimeContext,
+        context: p.Infra.GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationReport]:
         """Verify signature, signer, HEAD identity, and exact gate coverage.
 
@@ -861,7 +840,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         repo_root: Path,
         allowed: Path,
         tag: str,
-        context: GateAttestationRuntimeContext,
+        context: p.Infra.GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationPredicate]:
         """Verify the tag signature and gate coverage against the predicate.
 
@@ -907,7 +886,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         request: m.Infra.GateAttestationVerifyRequest,
         predicate: m.Infra.GateAttestationPredicate,
         output: p.Cli.CommandOutput,
-        context: GateAttestationRuntimeContext,
+        context: p.Infra.GateAttestationRuntimeContext,
     ) -> p.Result[m.Infra.GateAttestationPredicate]:
         repo_root = Path(request.workspace).expanduser().resolve()
         checked = cls._attestation_predicate_from_value(
@@ -1046,7 +1025,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         repo_root: Path,
         predicate: m.Infra.GateAttestationPredicate,
         commit_sha: str,
-        context: GateAttestationRuntimeContext,
+        context: p.Infra.GateAttestationRuntimeContext,
     ) -> p.Result[bool]:
 
         identity = cls.git_identity(m.Infra.GitRepoRequest(repo_root=repo_root))

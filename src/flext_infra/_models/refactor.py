@@ -317,30 +317,6 @@ class FlextInfraModelsRefactor(
             """Whether any project carries a violation."""
             return any(project.has_violations for project in self.projects)
 
-    class ViolationsSweepRequest(m.ContractModel):
-        """Public sweep controls; focus never narrows regression observation."""
-
-        rules: Annotated[
-            str | None,
-            m.Field(
-                description="Comma-separated rule focus; full catalog stays observed"
-            ),
-        ] = None
-        audit_rules: Annotated[
-            bool,
-            m.Field(
-                alias="audit-rules",
-                description="Read-only native rule audit for every governed repository",
-            ),
-        ] = False
-        repair_verbs: Annotated[
-            str | None,
-            m.Field(
-                alias="repair-verbs",
-                description="Ordered Make verbs; default from canonical Make policy",
-            ),
-        ] = None
-
     class ViolationsSweepSources(m.ContractModel):
         """Authenticated inventory shared by full scans and audit observations."""
 

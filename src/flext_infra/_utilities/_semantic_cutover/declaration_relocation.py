@@ -30,13 +30,13 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
-_COMPOSED_REFERENCE_SEGMENTS = 2
-
 
 class FlextInfraUtilitiesSemanticDeclarationRelocation(
     FlextInfraUtilitiesDeclarationPayload,
 ):
     """Relocate payloads and bind config imports to existing permitted owners."""
+
+    _COMPOSED_REFERENCE_SEGMENTS = 2
 
     @classmethod
     def _plan_declaration_relocation(
@@ -117,9 +117,8 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     )
                     if candidate is None:
                         break
-                    outer, node, binding = candidate
-                    outer_name = outer.pyobject.get_name()
-                    node_name = node.pyobject.get_name()
+                    outer_name = candidate[0].pyobject.get_name()
+                    node_name = candidate[1].pyobject.get_name()
                     declaration = f"{outer_name}.{node_name}"
                     resolved = (
                         cls._declaration_target(
@@ -144,7 +143,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     working = cls._relocate_payload(
                         project,
                         working,
-                        (path, node, binding),
+                        (path, candidate[1], candidate[2]),
                         resolved,
                     )
                     # Subsequent candidates bind to the proposed graph and coordinates.
@@ -406,7 +405,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             information = statement.import_info
             if not isinstance(information, p.Infra.RopeFromImport):
                 continue
-            grouped: dict[str, list[t.Pair[str, str | None]]] = {}
+            grouped: t.MutableMappingKV[str, list[t.Pair[str, str | None]]] = {}
             changed = False
             for name, alias in information.names_and_aliases:
                 destination = exports.get(f"{information.module_name}.{name}")
@@ -492,7 +491,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
     ) -> p.Infra.RopePyName | None:
         provider = project.get_module(module_name)
         visited: set[str] = set()
-        while FlextInfraUtilitiesRopeRuntimeTypes.semantic_module(provider):
+        while True:
             provider_resource = provider.get_resource()
             if provider_resource is None:
                 break
@@ -522,9 +521,6 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             if route is None:
                 break
             provider = project.get_module(route)
-        else:
-            message = "declaration provider has no native semantic module"
-            raise TypeError(message)
         return provider.get_attributes().get(alias_name)
 
     @classmethod
@@ -1639,7 +1635,10 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 Path(project.root.real_path),
                 {},
             )
-            if binding is not None and len(segments) == _COMPOSED_REFERENCE_SEGMENTS:
+            if (
+                binding is not None
+                and len(segments) == cls._COMPOSED_REFERENCE_SEGMENTS
+            ):
                 owned = cls._composed_dependency_owner(
                     binding.get_object(), segments[1], target
                 )

@@ -148,10 +148,8 @@ class FlextInfraModelsGit(
             m.Field(description="Exact first failures per native read"),
         ] = ()
 
-    class GitStatusRequest(m.ContractModel):
+    class GitStatusRequest(GitRepoRequest):
         """Request porcelain status for one repository."""
-
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
 
     class GitStatusReport(m.ContractModel):
         """Porcelain status snapshot for one repository."""
@@ -239,25 +237,22 @@ class FlextInfraModelsGit(
             m.Field(description="Raw git worktree list --porcelain output"),
         ]
 
-    class GitBranchRequest(m.ContractModel):
+    class GitBranchRequest(GitRepoRequest):
         """Repository plus branch name for branch-scoped operations."""
 
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         branch: Annotated[t.NonEmptyStr, m.Field(description="Branch name")]
 
-    class GitRefRequest(m.ContractModel):
+    class GitRefRequest(GitRepoRequest):
         """Repository plus exact Git ref name."""
 
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         reference: Annotated[t.NonEmptyStr, m.Field(description="Exact Git ref")]
 
-    class GitCommitishRequest(m.ContractModel):
+    class GitCommitishRequest(GitRepoRequest):
         """Repository plus commit-ish for resolve/ancestor/merge ops."""
 
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         commitish: Annotated[t.NonEmptyStr, m.Field(description="Commit-ish")]
 
-    class GitAncestryRequest(m.ContractModel):
+    class GitAncestryRequest(GitRepoRequest):
         """Repository plus the ancestor and descendant an ancestry proof relates.
 
         ``descendant`` defaults to ``HEAD``, so the HEAD-bound proof every
@@ -267,43 +262,38 @@ class FlextInfraModelsGit(
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         ancestor: Annotated[t.NonEmptyStr, m.Field(description="Candidate ancestor")]
         descendant: Annotated[
             t.NonEmptyStr,
             m.Field(default="HEAD", description="Candidate descendant"),
         ] = "HEAD"
 
-    class GitPathPairRequest(m.ContractModel):
+    class GitPathPairRequest(GitRepoRequest):
         """Repository plus source/target relative paths."""
 
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         source: Annotated[t.NonEmptyStr, m.Field(description="Source path relative")]
         target: Annotated[t.NonEmptyStr, m.Field(description="Target path relative")]
 
-    class GitRelativePathRequest(m.ContractModel):
+    class GitRelativePathRequest(GitRepoRequest):
         """Repository plus one relative path."""
 
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         relative_path: Annotated[
             t.NonEmptyStr,
             m.Field(description="Path relative to repo root"),
         ]
 
-    class GitDeleteRefRequest(m.ContractModel):
+    class GitDeleteRefRequest(GitRepoRequest):
         """Delete a ref when it still points at an expected oid."""
 
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         reference: Annotated[t.NonEmptyStr, m.Field(description="Exact Git ref")]
         expected_oid: Annotated[
             t.NonEmptyStr,
             m.Field(description="Expected tip oid for CAS delete"),
         ]
 
-    class GitPushRequest(m.ContractModel):
+    class GitPushRequest(GitRepoRequest):
         """Push a local commit-ish (HEAD by default) to a remote branch ref."""
 
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         remote: Annotated[t.NonEmptyStr, m.Field(description="Remote name")] = "origin"
         branch: Annotated[t.NonEmptyStr, m.Field(description="Branch to publish")]
         source: Annotated[
@@ -379,7 +369,7 @@ class FlextInfraModelsGit(
                 raise ValueError(msg)
             return self
 
-    class GitRefHeadsRequest(m.ContractModel):
+    class GitRefHeadsRequest(GitRepoRequest):
         """List every ref below one namespace.
 
         Namespaces include ``refs/heads`` and ``refs/remotes/origin``.
@@ -387,7 +377,6 @@ class FlextInfraModelsGit(
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         namespace: Annotated[t.NonEmptyStr, m.Field(description="Ref namespace")]
 
     class GitRefHeadsReport(m.ContractModel):
@@ -403,10 +392,9 @@ class FlextInfraModelsGit(
 
         oids: Annotated[t.StrSequence, m.Field(description="Object ids in order")]
 
-    class GitBranchCreateRequest(m.ContractModel):
+    class GitBranchCreateRequest(GitRepoRequest):
         """Create one branch at a start point, optionally switching to it."""
 
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         branch: Annotated[t.NonEmptyStr, m.Field(description="New branch name")]
         start: Annotated[
             t.NonEmptyStr,
@@ -417,16 +405,14 @@ class FlextInfraModelsGit(
             m.Field(description="Switch the worktree to it, carrying local changes"),
         ] = False
 
-    class GitStashDropRequest(m.ContractModel):
+    class GitStashDropRequest(GitRepoRequest):
         """Drop the stash entry whose commit is exactly ``oid``."""
 
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         oid: Annotated[t.NonEmptyStr, m.Field(description="Stash commit oid")]
 
-    class GitMergeProbeRequest(m.ContractModel):
+    class GitMergeProbeRequest(GitRepoRequest):
         """Ask whether merging ``commitish`` into ``base`` would change nothing."""
 
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         base: Annotated[t.NonEmptyStr, m.Field(description="Merge target commit-ish")]
         commitish: Annotated[t.NonEmptyStr, m.Field(description="Merged commit-ish")]
 
@@ -476,35 +462,31 @@ class FlextInfraModelsGit(
         ]
         head: Annotated[bytes, m.Field(description="HEAD oid bytes or UNBORN")]
 
-    class GitUpdateIndexGitlinkRequest(m.ContractModel):
+    class GitUpdateIndexGitlinkRequest(GitRepoRequest):
         """Stage one gitlink (mode 160000) into the index."""
 
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         oid: Annotated[t.NonEmptyStr, m.Field(description="Gitlink commit oid")]
         relative_path: Annotated[
             t.NonEmptyStr,
             m.Field(description="Gitlink path relative to repo"),
         ]
 
-    class GitPathsRequest(m.ContractModel):
+    class GitPathsRequest(GitRepoRequest):
         """Repository plus multiple relative paths for add/restore operations."""
 
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         paths: Annotated[
             t.SequenceOf[t.NonEmptyStr],
             m.Field(description="Relative paths to operate on"),
         ]
 
-    class GitCommitRequest(m.ContractModel):
+    class GitCommitRequest(GitRepoRequest):
         """Repository plus commit message for staging a commit."""
 
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         message: Annotated[t.NonEmptyStr, m.Field(description="Commit message")]
 
-    class GitRemoteUrlRequest(m.ContractModel):
+    class GitRemoteUrlRequest(GitRepoRequest):
         """Repository plus optional remote name for URL resolution."""
 
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         remote: Annotated[t.NonEmptyStr, m.Field(description="Remote name")] = "origin"
 
     class GitSubmoduleContractRequest(m.ContractModel):
@@ -516,10 +498,9 @@ class FlextInfraModelsGit(
             m.Field(description="Submodule path relative to the superproject root"),
         ]
 
-    class GitLaneRequest(m.ContractModel):
+    class GitLaneRequest(GitRepoRequest):
         """One publication lane: ``branch`` carried from ``base`` to a pull request."""
 
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         branch: Annotated[t.NonEmptyStr, m.Field(description="Lane branch")]
         base: Annotated[
             t.NonEmptyStr,
@@ -537,10 +518,9 @@ class FlextInfraModelsGit(
             ),
         ] = None
 
-    class GitCheckoutPathsRequest(m.ContractModel):
+    class GitCheckoutPathsRequest(GitRepoRequest):
         """Repository plus optional paths for checkout/restore operations."""
 
-        repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         paths: Annotated[
             t.SequenceOf[t.NonEmptyStr],
             m.Field(description="Relative paths to restore; empty restores all"),

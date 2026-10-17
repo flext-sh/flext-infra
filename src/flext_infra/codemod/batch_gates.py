@@ -346,7 +346,7 @@ class FlextInfraModGateEngine:
         for directory in (*directories.rule_dirs, *directories.util_dirs):
             source_rules.update(directory.rglob(f"*{c.Infra.CODEMOD_RULE_SUFFIX}"))
         for rule in sorted(source_rules):
-            documents = u.Infra.parse_yaml_documents(
+            documents = u.Cli.yaml_parse_documents(
                 u.Cli.files_read_text(rule).unwrap()
             ).unwrap()
             if len(documents) <= 1:
@@ -447,7 +447,6 @@ class FlextInfraModGateEngine:
             (str(binary.value), *command[1:]),
             stdout_file,
             cwd=root,
-            timeout=c.Infra.TIMEOUT_SHORT,
             options=m.Cli.ProcessOptions(stderr_file=stderr_file),
         )
         if run.failure:

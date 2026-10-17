@@ -46,12 +46,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         return cls.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=request.root,
-                what=request.what,
-                scope=request.scope,
-                mode=c.Infra.CodegenConformMode.APPLY,
-                module=request.module,
+            m.Infra.CodegenConformRequest.model_validate(
+                request.model_dump() | {"mode": c.Infra.CodegenConformMode.APPLY},
             ),
             ports=ports,
             generation_only=True,
@@ -78,6 +74,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             with FlextInfraWorkspaceNativeReference.compilation_scope():
                 return cls._observe_publication(request)
+        if request.what is c.Infra.CodegenConformSurface.DEPENDENCIES:
+            return cls(
+                repository_root=request.root,
+                ports=ports,
+                generation_only=generation_only,
+            )._execute_plan(request)
         root = request.root.expanduser().resolve()
         operation = "generate" if generation_only else "conform"
         u.Cli.info(
@@ -330,15 +332,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         surface = c.Infra.CodegenConformSurface(request.what)
-        if surface in {
-            c.Infra.CodegenConformSurface.LAZY_INIT,
-            c.Infra.CodegenConformSurface.FACADES,
-        }:
+        if surface in c.Infra.FILE_ONLY_SURFACES:
             return self._execute_lazy_init(request)
         if surface is c.Infra.CodegenConformSurface.ALL:
             return self._execute_managed(request)
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY:
-            if surface in c.Infra.CODEGEN_PARTIAL_PLAN_SURFACES:
+            if surface in c.Infra.PARTIAL_PLAN_SURFACES:
                 return self._execute_plan(request)
             mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
             transaction = FlextInfraCodegenTransaction(mise_owner)
@@ -540,6 +539,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         """
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
+        if request.what is c.Infra.CodegenConformSurface.DEPENDENCIES:
+            return r[m.Infra.CodegenResult].fail(
+                "partial codegen apply is prohibited; use the complete all surface",
+            )
         u.Cli.header(
             "Code generation" if self.generation_only else "Project conformance"
         )
@@ -558,7 +561,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 exception=plan.exception,
             )
         surface = c.Infra.CodegenConformSurface(request.what)
-        if surface not in c.Infra.CODEGEN_PARTIAL_PLAN_SURFACES:
+        if surface not in c.Infra.PARTIAL_PLAN_SURFACES:
             return r[m.Infra.CodegenResult].fail(
                 "partial codegen apply is prohibited; use the complete all surface",
             )

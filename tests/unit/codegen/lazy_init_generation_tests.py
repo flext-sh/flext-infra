@@ -613,6 +613,7 @@ class TestsFlextInfraCodegenGeneration:
         (project_package / c.Infra.INIT_PY).write_text("", encoding="utf-8")
         (project_root / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "demo-worktree-pkg"\nversion = "1.0.0"\n'
+            f'license = "{u.Tests.project_spec("demo-worktree-pkg").license}"\n'
             'authors = [{ name = "Fixture Author" }]\n',
             encoding="utf-8",
         )
@@ -673,6 +674,7 @@ class TestsFlextInfraCodegenGeneration:
         )
         (tmp_path / c.PYPROJECT_FILENAME).write_text(
             f'[project]\nname = "configured-workspace"\nversion = "1.0.0"\n'
+            f'license = "{u.Tests.project_spec("configured-workspace").license}"\n'
             f'authors = [{{ name = "Fixture Author" }}]\n{table}',
             encoding="utf-8",
         )

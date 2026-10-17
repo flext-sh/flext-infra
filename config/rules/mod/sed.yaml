@@ -456,40 +456,53 @@ rules:
     include: [tests/unit/codegen/test_gen_respects_invocation_scope.py]
     find: '(?ms)^    @staticmethod\n    def test_project_selector_resolves_members_from_repository_root\(\n.*?(?=^    (?:@|def )|\Z)'
     replace: ''
-  - id: repository-policy-vocabulary-retire-constant-enums
-    description: Move layer-zero repository policy enums out of the constants family.
-    include: [src/flext_infra/_constants/codegen_project.py]
-    find: '(?ms)^    @unique\n    class (?:RepositoryState|CodegenKind|ProjectKind)\(StrEnum\):\n.*?(?=^    @unique\n|^    [A-Z][A-Z0-9_]*:)'
+  - id: config-vocabulary-use-constants-owner
+    description: Configuration vocabulary belongs to the bootstrap-safe constants family.
+    distributions: [flext-infra]
+    exclude: [src/flext_infra/_models/_config/vocabulary.py]
+    find: '\bflext_infra\._models\._config\.vocabulary\b'
+    replace: flext_infra._constants.config
+  - id: codemod-use-cli-yaml-stream-owner
+    description: YAML document parsing belongs to the shared CLI boundary.
+    distributions: [flext-infra]
+    find: '\bu\.Infra\.parse_yaml_documents\b'
+    replace: u.Cli.yaml_parse_documents
+  - id: codemod-use-cli-yaml-stream-owner-in-rules
+    description: Rule catalog parsing reuses the shared YAML stream parser.
+    distributions: [flext-infra]
+    include: [src/flext_infra/_utilities/codemod_rules.py]
+    find: '\bcls\.parse_yaml_documents\b'
+    replace: u.Cli.yaml_parse_documents
+  - id: codemod-retire-yaml-stream-wrapper
+    description: Remove the superseded parser after consumer cutover.
+    distributions: [flext-infra]
+    include: [src/flext_infra/_utilities/codemod_rules.py]
+    find: '(?ms)^    @classmethod\n    def parse_yaml_documents\(\n.*?(?=^    @classmethod\n    def _parse_rules)'
     replace: ''
-  - id: repository-policy-vocabulary-declare-canonical-enums
-    description: Keep one layer-zero owner inherited by both config models and constants.
-    include: [src/flext_infra/_models/_config/vocabulary.py]
-    find: '^(class FlextInfraConfigVocabulary:\n    """Canonical closed contracts required before project facades initialize\."""\n)(?!\n    @unique\n    class RepositoryState)'
-    flags: [MULTILINE]
-    replace: |-
-      \g<1>
-          @unique
-          class RepositoryState(StrEnum):
-              """Lifecycle state used by repository selection."""
-
-              ACTIVE = "active"
-              EXCLUDED = "excluded"
-
-          @unique
-          class CodegenKind(StrEnum):
-              """Code-generation policy applied to one repository."""
-
-              CONFORM = "conform"
-              PYTHON = "python"
-              NONE = "none"
-
-          @unique
-          class ProjectKind(StrEnum):
-              """Own governance profile; external forks retain upstream contracts."""
-
-              INTERNAL_FLEXT = "internal_flext"
-              INTERNAL = "internal"
-              THIRD_PARTY_FORK = "third_party_fork"
+  - id: config-vocabulary-use-constants-class
+    description: Share one configuration vocabulary through the constants owner.
+    distributions: [flext-infra]
+    exclude: [src/flext_infra/_models/_config/vocabulary.py]
+    find: '\bFlextInfraConfigVocabulary\b'
+    replace: FlextInfraConstantsConfig
+  - id: conform-consume-validated-request-enums
+    description: Model-validated enum fields retain their identity without reconstruction.
+    distributions: [flext-infra]
+    include: [src/flext_infra/codegen/_conform/*.py]
+    find: 'c\.Infra\.CodegenConform(?:Mode|Surface|Scope)\((request\.(?:mode|what|scope))\)'
+    replace: '\g<1>'
+  - id: conform-retire-unused-provider-wrapper
+    description: Repository provider resolution already belongs to the shared utility.
+    distributions: [flext-infra]
+    include: [src/flext_infra/codegen/_conform/plan.py]
+    find: '(?ms)^    @staticmethod\n    def _repository_provider\(\n.*?(?=^__all__)'
+    replace: ''
+  - id: conform-retire-unused-provider-protocol
+    description: Remove the unused service protocol requirement with its wrapper.
+    distributions: [flext-infra]
+    include: [src/flext_infra/_protocols/base.py]
+    find: '(?m)^        @staticmethod\n        def _repository_provider\(\n(?:[^\n]*\n)*?        \) -> p\.Result\[m\.Infra\.ProviderIdentitySpec\]: \.\.\.\n'
+    replace: ''
 
   - id: repository-discovery-retire-manifest-exclusion-name
     description: Name Git-derived participation at its canonical discovery owner and consumers.

@@ -67,6 +67,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
             "workspace",
         )
         source = TestsFlextInfraUtilitiesProjectFixtureMixin.flext_source
+        spec = TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec("workspace")
         (workspace / "pyproject.toml").write_text(
             (
                 "[project]\n"
@@ -74,6 +75,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
                 'description = "Release workflow fixture"\n'
                 f'version = "{version}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+                f'license = "{spec.license}"\n'
                 f'dependencies = ["{source("flext-core")}"]\n'
                 # The FLEXT line is detected from the declared infrastructure
                 # source, never cataloged: a governed checkout declares every

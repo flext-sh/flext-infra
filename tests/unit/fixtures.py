@@ -222,6 +222,7 @@ def _consumer_pyproject_source(distribution: str) -> str:
         f'[project]\nname = "{distribution}"\nversion = "0.1.0"\n'
         f'description = "{distribution} governed fixture"\n'
         'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+        f'license = "{u.Tests.project_spec(distribution).license}"\n'
         f'requires-python = "{python_required}"\n'
         f"dependencies = [{dependencies}]\n"
         '[project.optional-dependencies]\nfeature = ["requests"]\n'
@@ -843,7 +844,7 @@ def real_detector_project(
             if (name := u.Infra.dep_name(requirement)) not in c.Tests.CONSUMER_MODULES
             or name in modules
         ]
-        project_update: dict[str, t.JsonValue] = {
+        project_update: t.JsonDict = {
             **project,
             "dependencies": dependencies,
         }
@@ -1083,6 +1084,14 @@ def mod_workspace(installed_dependency_path: Path) -> Path:
     project = u.build_project_metadata(_PROJECT_ROOT, project_document)
     workspace = installed_dependency_path / "mod_workspace"
     author_name = tm.ok(u.Cli.json_dumps(project.project.authors[0].name))
+    license_id = tm.ok(
+        u.Cli.json_dumps(
+            u.Cli.json_walk_path(
+                u.Infra.pyproject_payload(_PROJECT_ROOT / c.PYPROJECT_FILENAME),
+                (c.Infra.PROJECT, c.Infra.LICENSE),
+            ),
+        ),
+    )
     tm.ok(u.Cli.ensure_dir(workspace))
     metadata = (
         installed_dependency_path
@@ -1104,6 +1113,7 @@ def mod_workspace(installed_dependency_path: Path) -> Path:
                 f'name = "{workspace.name.replace("_", "-")}"\n'
                 f'version = "{project.project.version}"\n'
                 f"authors = [{{name = {author_name}}}]\n"
+                f"license = {license_id}\n"
                 f"{c.Infra.DEPENDENCIES} = []\n"
             ),
         ),

@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast as _ast
-from collections import abc
 from collections.abc import Callable, MutableMapping, MutableSet
 from datetime import date, datetime
 from dis import Instruction
@@ -32,12 +31,14 @@ from jinja2.environment import (
     Template as _JinjaTemplate,
 )
 
+from flext_infra._typings.collections import FlextInfraTypesCollections
+
 # mypy defers a PEP 695 bound written as an attribute path and asserts in
 # the final iteration. Callers bind to this module-level name.
 type CliResultValue = t.Cli.ResultValue
 
 
-class FlextInfraTypesBase:
+class FlextInfraTypesBase(FlextInfraTypesCollections):
     """Base typings for flext-infra project."""
 
     type MutableSetOf[ItemT] = MutableSet[ItemT]
@@ -137,11 +138,6 @@ class FlextInfraTypesBase:
     "Output metric value: scalar (str/int/float/bool/datetime), path, or null."
     type ChangeCallback = Callable[[str], None] | None
     "Optional callback invoked on transformer changes."
-    # Why: upstream flext_core.FlextTypingContainers is an empty stub (no
-    # `Container` alias shipped in the pinned release); flext-infra's own
-    # LibCST residue-matching consumer needs a membership-testable generic.
-    type Container[ItemT] = abc.Container[ItemT]
-    "Generic membership-testable collection (supports ``in``)."
     type PipelineHandler = Callable[
         [p.Cli.PipelineStageContext],
         p.Result[m.Cli.PipelineStageResult],

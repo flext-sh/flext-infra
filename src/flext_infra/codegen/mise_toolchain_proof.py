@@ -38,33 +38,6 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class _DeclaredProofOptions(m.Infra.FrozenArbitrary):
-    """Frozen read-only inputs proving one declared tool against Mise.
-
-    The frozen model is itself the structural read-only contract every proof
-    step consumes; no parallel protocol re-declares its fields.
-    """
-
-    entry: m.Infra.MiseToolEntry = m.Field(
-        description="Declared tool entry currently under proof.",
-    )
-    lock: t.JsonMapping = m.Field(
-        description="Authenticated Mise lock mapping.",
-    )
-    platform_name: str = m.Field(
-        description="Resolved platform identity of the running host.",
-    )
-    mise_binary: Path = m.Field(
-        description="Managed Mise executable answering read-only queries.",
-    )
-    declared: t.SequenceOf[m.Infra.MiseToolEntry] = m.Field(
-        description="All declared tool entries electable as probe owners.",
-    )
-    proven: frozenset[str] = m.Field(
-        description="Selectors already proven before this entry.",
-    )
-
-
 class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
     """Prove every declared fleet tool is the self-contained locked release."""
 
@@ -357,7 +330,10 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
             )
         return r[str].ok(line)
 
-    def _prove_declared(self, options: _DeclaredProofOptions) -> p.Result[str]:
+    def _prove_declared(
+        self,
+        options: m.Infra.MiseToolchainProofOptions,
+    ) -> p.Result[str]:
         """Prove one declared tool against the real Mise resolution.
 
         Returns:
@@ -400,7 +376,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
 
     def _external_probe_context(
         self,
-        options: _DeclaredProofOptions,
+        options: m.Infra.MiseToolchainProofOptions,
         version: str,
     ) -> p.Result[t.Triple[m.Infra.MiseToolEntry, Path | None, str]]:
         """Resolve the declared external probe owner, root and version.
@@ -514,7 +490,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         for key in (key for wave in waves.value for key in wave):
             entry = entries[key]
             receipt = self._prove_declared(
-                _DeclaredProofOptions(
+                m.Infra.MiseToolchainProofOptions(
                     entry=entry,
                     lock=lock,
                     platform_name=platform_name.value,

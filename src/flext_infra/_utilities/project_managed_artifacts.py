@@ -14,7 +14,7 @@ from functools import lru_cache, partial
 from pathlib import Path
 
 from flext_cli import u
-from flext_core import FlextStrictYamlConfigSource
+from flext_core.config_sources import FlextStrictYamlConfigSource
 
 from flext_infra import c, m, p, r, t
 from flext_infra._config import FlextInfraConfig
@@ -340,24 +340,19 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         """
         merged: t.JsonDict = {}
-        parse_document = (
-            FlextInfraUtilitiesProjectManagedArtifacts._parse_codegen_config_document
-        )
+        owner = FlextInfraUtilitiesProjectManagedArtifacts
         for path in sources:
             captured = next((item for item in snapshots if item.path == path), None)
             if captured is None or captured.content is None:
                 payload: t.JsonMapping = {}
             else:
-                payload = parse_document(captured.content)
+                payload = owner._parse_codegen_config_document(captured.content)
             projected = next(
                 (item for item in projections if item.path == path),
                 None,
             )
             values = (
-                u.config_merge(
-                    dict(payload),
-                    dict(projected.values),
-                )
+                u.config_merge(dict(payload), dict(projected.values))
                 if projected is not None
                 else dict(payload)
             )

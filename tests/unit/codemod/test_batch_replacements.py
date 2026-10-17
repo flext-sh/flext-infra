@@ -198,7 +198,7 @@ class TestsFlextInfraBatchReplacements:
             classification=c.Infra.ModScanFindingClass.ACTIONABLE,
             replacement_offsets=m.Infra.ModReplacementOffsets.model_validate(offsets),
         )
-        return m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
+        return m.Infra.ModOccurrenceReport(
             files=frozenset({path}),
             entries=(finding,),
         )
@@ -472,7 +472,7 @@ class TestsFlextInfraBatchReplacements:
         rejected = self._report(bad, bad_before).entries[0]
         result = FlextInfraModReplacements.publish(
             root,
-            m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
+            m.Infra.ModOccurrenceReport(
                 entries=(accepted, rejected),
                 files=frozenset({good, bad}),
             ),
@@ -521,7 +521,7 @@ class TestsFlextInfraBatchReplacements:
             classification=c.Infra.ModScanFindingClass.ACTIONABLE,
             replacement_offsets=m.Infra.ModReplacementOffsets.model_validate(offsets),
         )
-        report = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
+        report = m.Infra.ModOccurrenceReport(
             files=frozenset({path}),
             entries=(finding,),
         )

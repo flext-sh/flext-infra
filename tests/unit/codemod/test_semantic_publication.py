@@ -701,9 +701,11 @@ class TestsFlextInfraSemanticPublication:
         initializer = package / c.Infra.INIT_PY
         initializer.write_text("", encoding="utf-8")
         original = initializer.read_bytes()
-        report = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
-            files=frozenset(),
-            entries=(),
+        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence] = (
+            m.Infra.ModOccurrenceReport(
+                files=frozenset(),
+                entries=(),
+            )
         )
         with infra.rope_workspace(root) as rope:
             result = FlextInfraCodemodSemanticApply.apply(

@@ -67,6 +67,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         Yields:
             The native Rope project, original-state reader and planned sources.
 
+        Raises:
+            TypeError: If the native project lacks its semantic protocol.
+
         """
         root = root.resolve()
         if not source_states:
@@ -113,21 +116,18 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             FlextInfraUtilitiesRopeCore.open_project(root) as live,
             closing(
                 FlextInfraRopeProject.from_atomic_reads(
-                    live.root.real_path,
+                    live,
                     source_states,
-                    [folder.path for folder in live.get_source_folders()],
                     ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
                     sources=proposed,
-                    python_path_folders=[
-                        folder.real_path
-                        for folder in live.get_python_path_folders()
-                        if folder.is_folder()
-                    ],
                     declared_files=declared_files,
                 )
             ) as project,
             project.frozen_layout(),
         ):
+            if not isinstance(project, p.Infra.RopeProject):
+                message = "native facade project lacks its semantic protocol"
+                raise TypeError(message)
 
             def consumed() -> t.Triple[
                 tuple[m.Cli.AtomicFileState, ...],
@@ -141,8 +141,13 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     project.consumed_source_topology(),
                 )
 
-            yield project, consumed, sources
-            project.verify_source_states()
+            completed = False
+            try:
+                yield project, consumed, sources
+                completed = True
+            finally:
+                if completed:
+                    project.verify_source_states()
 
     @classmethod
     def render_type_facade(
@@ -294,6 +299,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
 
         Returns:
             Native source paths matching the captured declaration inventory.
+
+        Raises:
+            ValueError: Native membership differs from captured source paths.
 
         """
         folder = project.get_folder(
@@ -549,18 +557,17 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ValueError: If a consumer requires competing provider declarations.
 
         """
-        project, contents = binding
         facade, namespace = cls._facade_classes(
             ast.parse(source, filename=str(facade_path)),
             facade_path,
         )
-        family = c.Infra.FacadeFamily.P
-        owners_dir = (
-            pkg_dir
-            / FlextInfraUtilitiesCodegenNamespace.facade_families()[family].directory
-        )
         owners, ancestors = cls._facade_protocol_owners(
-            owners_dir, contents, project=project
+            pkg_dir
+            / FlextInfraUtilitiesCodegenNamespace.facade_families()[
+                c.Infra.FacadeFamily.P
+            ].directory,
+            binding[1],
+            project=binding[0],
         )
         reachable = cls._reachable_bases(
             tuple(cls._base_name(base) for base in namespace.bases),
@@ -608,13 +615,13 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 continue
             if len(candidates) != 1:
                 message = (
-                    f"ambiguous {family}.{namespace.name} owner for {method}: "
+                    f"ambiguous {c.Infra.FacadeFamily.P}.{namespace.name} "
+                    f"owner for {method}: "
                     + ", ".join(f"{module}:{name}" for module, name in candidates)
                 )
                 raise ValueError(message)
-            module, class_name = candidates[0]
-            additions.append((module, class_name))
-            reachable.update(cls._reachable_bases((class_name,), ancestors))
+            additions.append(candidates[0])
+            reachable.update(cls._reachable_bases((candidates[0][1],), ancestors))
         if not additions:
             return source
         source = cls._insert_protocol_imports(
@@ -1170,13 +1177,13 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             cls._facade_source_membership(project, parent, contents)
         family = c.Infra.FacadeFamily.P
         methods: set[str] = set()
-        for path, source in sorted(contents.items()):
-            if (
-                path == facade_path
-                or not path.is_relative_to(pkg_dir)
-                or path.suffix != c.Infra.EXT_PYTHON
-            ):
-                continue
+        for path, source in sorted(
+            (path, source)
+            for path, source in contents.items()
+            if path != facade_path
+            and path.is_relative_to(pkg_dir)
+            and path.suffix == c.Infra.EXT_PYTHON
+        ):
             # Generated initializers propagate declarations; they are not
             # authored consumers and may await replacement in this plan.
             if path.name == c.Infra.INIT_PY and source.startswith(
@@ -1184,17 +1191,11 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ):
                 continue
             tree = ast.parse(source, filename=str(path))
-            imported_receivers = {
-                alias.asname or alias.name.split(".", 1)[0]
-                for node in ast.walk(tree)
-                if isinstance(node, (ast.Import, ast.ImportFrom))
-                for alias in node.names
-            }
             pymodule: t.Infra.RopePyModule | None = None
             module_paths: t.MutableMappingKV[p.Infra.RopeImportedModule, Path] = {}
-            for reference in ast.walk(tree):
-                if not isinstance(reference, ast.Attribute):
-                    continue
+            for reference in (
+                node for node in ast.walk(tree) if isinstance(node, ast.Attribute)
+            ):
                 receiver = reference.value
                 public_receiver = not nested_namespace or (
                     isinstance(receiver, ast.Attribute) and receiver.attr == namespace
@@ -1208,7 +1209,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 )
                 if (
                     not isinstance(receiver, ast.Name)
-                    or receiver.id not in imported_receivers
                     or not public_receiver
                     or receiver.id != family
                 ):
@@ -1229,16 +1229,16 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     .encode(c.DEFAULT_ENCODING)[: receiver.col_offset]
                     .decode(c.DEFAULT_ENCODING),
                 )
-                binding = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                imported_binding = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
                     FlextInfraUtilitiesRopeRuntime.scope_at(pymodule, offset),
                     receiver,
                 )
                 if (
-                    not isinstance(binding, p.Infra.RopeImportedName)
-                    or binding.imported_name != family
+                    not isinstance(imported_binding, p.Infra.RopeImportedName)
+                    or imported_binding.imported_name != family
                 ):
                     continue
-                imported = binding.imported_module
+                imported = imported_binding.imported_module
                 if (
                     imported.level == 0
                     and imported.module_name is not None
@@ -1249,7 +1249,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     continue
                 declared = FlextInfraUtilitiesRopeRuntime.imported_module_path(
                     project,
-                    binding,
+                    imported_binding,
                     resolved=module_paths,
                 )
                 if declared not in {

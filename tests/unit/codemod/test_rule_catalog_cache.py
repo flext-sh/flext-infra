@@ -64,7 +64,7 @@ class TestsFlextInfraRuleCatalogCache:
             entries: The set of cache entry filenames to filter.
 
         Returns:
-            A frozenset of cache entry filenames that are actually owned by the local catalog.
+            Cache entry filenames owned by the local catalog.
 
         """
         directory = u.Infra.external_cache_directory(

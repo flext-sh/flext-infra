@@ -452,8 +452,8 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary. A verb exists
 # only in the profiles it declares (make.verbs[].profiles).
-PUBLIC_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check census census-constants smells test test-full test-file file-gate profile-test profile-test-report profile-environment profile-environment-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report fmt fix fix-namespace fix-accessors audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize project-new mod mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
-BUILTIN_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check census census-constants smells test test-full test-file file-gate profile-test profile-test-report profile-environment profile-environment-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report fmt fix fix-namespace fix-accessors audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize project-new mod mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
+PUBLIC_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check census census-constants smells test test-full test-file file-gate profile-test profile-test-report profile-environment profile-environment-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report fmt fix fix-namespace fix-accessors fix-toolchain audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize project-new mod mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
+BUILTIN_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check census census-constants smells test test-full test-file file-gate profile-test profile-test-report profile-environment profile-environment-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report fmt fix fix-namespace fix-accessors fix-toolchain audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint initialize project-new mod mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
 SCRIPT_VERBS :=
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
@@ -1318,6 +1318,21 @@ _activated-fix-accessors: _builtin_require_environment
 
 
 
+fix-toolchain: _builtin_require_workspace
+	@printf '==> %s | project=%s | profile=%s\n' 'fix-toolchain' "$(PROJECT_ROOT)" 'standalone'
+
+	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-fix-toolchain,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-fix-toolchain)
+
+.PHONY: _activated-fix-toolchain
+
+_activated-fix-toolchain: _builtin_require_environment
+
+
+	$(if $(filter Y,$(CI)),+@$(SELF_MAKE) _builtin-fix-toolchain,$(call RUN_PUBLIC,fix-toolchain))
+
+
+
+
 audit: _builtin_require_workspace
 	@printf '==> %s | project=%s | profile=%s\n' 'audit' "$(PROJECT_ROOT)" 'standalone'
 
@@ -1802,6 +1817,10 @@ fix-accessors:
 	@printf '  %-16s %s\n' 'fix-accessors' 'Migrate accessor names owned by the rename catalog'"'"'s origin package and every resolved consumer; homonyms are skipped with a warning; the same origin-aware rewrite runs as a callback phase of make mod.'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make fix-accessors to execute it.'
 
+fix-toolchain:
+	@printf '  %-16s %s\n' 'fix-toolchain' 'Reinstall one explicitly selected declared tool from its current lock, then prove the complete native toolchain.'
+	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make fix-toolchain to execute it.'
+
 audit:
 	@printf '  %-16s %s\n' 'audit' 'Inspect environment, dependency, and workspace ownership health.'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make audit to execute it.'
@@ -1985,6 +2004,8 @@ _builtin-help:
 	@printf '  %-16s %s\n' 'fix-namespace' 'Apply the canonical namespace enforcer to the selected workspace; the same relocation cascade runs as a callback phase of make mod.';
 
 	@printf '  %-16s %s\n' 'fix-accessors' 'Migrate accessor names owned by the rename catalog'"'"'s origin package and every resolved consumer; homonyms are skipped with a warning; the same origin-aware rewrite runs as a callback phase of make mod.';
+
+	@printf '  %-16s %s\n' 'fix-toolchain' 'Reinstall one explicitly selected declared tool from its current lock, then prove the complete native toolchain.';
 
 	@printf '  %-16s %s\n' 'audit' 'Inspect environment, dependency, and workspace ownership health.';
 
@@ -2869,6 +2890,8 @@ _builtin-fmt: _builtin_fmt_all
 _builtin-fix: _builtin_fix_all
 _builtin-fix-namespace: _builtin_fix_namespace
 _builtin-fix-accessors: _builtin_fix_accessors
+_builtin-fix-toolchain:
+	@$(PROJECT_FLEXT_INFRA) codegen mise-repair --repository-root "$(RUNTIME_ROOT)"
 _builtin-audit:
 ifneq ($(CI),Y)
 	@$(PROJECT_FLEXT_INFRA) workspace verify-lanes --repo-root "$(PROJECT_ROOT)"

@@ -15,13 +15,19 @@ class TestsFlextInfraDeclarationRelocationSupport:
     """Seed a real lazy-init package with relocatable family declarations."""
 
     @staticmethod
-    def _seed(
+    def seed(
         tmp_path: Path,
         *,
         body: str = "value: str = Field(default='payload')",
         base: str = "PayloadBase",
         variants: frozenset[str] = frozenset(),
     ) -> t.Pair[Path, t.MutableMappingKV[Path, str]]:
+        """Seed the package and return its root with the written source inventory.
+
+        Returns:
+            The repository root and the mutable path-to-source inventory.
+
+        """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         stem = u.derive_class_stem(root.name)
         models = (

@@ -154,6 +154,7 @@ class TestsFlextInfraConformSupport:
                 f"requires-python = "
                 f'"{config.Infra.codegen.toolchain.python_required_version}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+                f'license = "{u.Tests.project_spec(dist).license}"\n'
                 'dependencies = ["flext-cli"]\n',
             ),
         )

@@ -10,7 +10,6 @@ from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
-    FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._semantic_cutover import (
@@ -361,9 +360,6 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         )
         facts = FlextInfraUtilitiesRopeStructure.logical_statements(source)
         typing = project.get_module("typing")
-        if not FlextInfraUtilitiesRopeRuntimeTypes.semantic_module(typing):
-            message = "Typing declarations require a native semantic module"
-            raise TypeError(message)
         selection = cls._nesting_selection(module, facts, definitions)
         if any(
             item.category

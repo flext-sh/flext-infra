@@ -255,9 +255,11 @@ class TestsFlextInfraClassNestingSuiteScope:
         )
         path.write_text(source, encoding=c.Infra.ENCODING_DEFAULT)
         u.Tests.initialize_git_repo(root)
-        report = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
-            files=frozenset(),
-            entries=(),
+        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence] = (
+            m.Infra.ModOccurrenceReport(
+                files=frozenset(),
+                entries=(),
+            )
         )
         with flext_infra.infra.rope_workspace(root) as rope:
             applied = FlextInfraCodemodSemanticApply.apply(

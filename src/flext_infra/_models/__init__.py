@@ -97,6 +97,9 @@ if TYPE_CHECKING:
     from flext_infra._models.mise_toolchain_base import (
         FlextInfraModelsMiseToolchainBase,
     )
+    from flext_infra._models.mise_toolchain_repair import (
+        FlextInfraModelsMiseToolchainRepair,
+    )
     from flext_infra._models.mixins import FlextInfraModelsMixins
     from flext_infra._models.promoted import FlextInfraModelsPromoted
     from flext_infra._models.refactor import FlextInfraModelsRefactor
@@ -174,6 +177,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsLayout",
     "FlextInfraModelsMiseToolchain",
     "FlextInfraModelsMiseToolchainBase",
+    "FlextInfraModelsMiseToolchainRepair",
     "FlextInfraModelsMixins",
     "FlextInfraModelsNamespaceEnforcer",
     "FlextInfraModelsPromoted",
@@ -258,6 +262,7 @@ install_lazy_exports(
         "FlextInfraModelsLayout": ".layout",
         "FlextInfraModelsMiseToolchain": ".mise_toolchain",
         "FlextInfraModelsMiseToolchainBase": ".mise_toolchain_base",
+        "FlextInfraModelsMiseToolchainRepair": ".mise_toolchain_repair",
         "FlextInfraModelsMixins": ".mixins",
         "FlextInfraModelsNamespaceEnforcer": ".refactor_namespace_enforcer",
         "FlextInfraModelsPromoted": ".promoted",

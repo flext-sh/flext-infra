@@ -62,9 +62,7 @@ class TestsFlextInfraBatchGateSourceDrift:
         path = root / "subject.py"
         path.write_bytes(b'value = "before"\n')
         entry = self._finding(path, None, actionable=False)
-        report = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
-            entries=(entry,), files=frozenset({path})
-        )
+        report = m.Infra.ModOccurrenceReport(entries=(entry,), files=frozenset({path}))
         tm.that(report.findings, eq=1)
         tm.that(report.deferred, eq=1)
         tm.that(report.actionable, eq=0)
@@ -84,7 +82,7 @@ class TestsFlextInfraBatchGateSourceDrift:
         original = b'value = "before"\n'
         path.write_bytes(original)
         state = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
-        report = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
+        report = m.Infra.ModOccurrenceReport(
             entries=(
                 self._finding(path, state, actionable=True),
                 self._finding(path, None, actionable=False),
