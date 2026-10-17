@@ -23,7 +23,7 @@ from rope.base.builtins import BuiltinModule
 from rope.base.pycore import PyCore
 from rope.base.pyobjectsdef import PyModule, PyPackage
 from rope.base.resources import Resource
-from rope.refactor.restructure import ChangeComputer
+from rope.refactor.restructure import _ChangeComputer as ChangeComputer
 from rope.refactor.similarfinder import ExpressionMatch, StatementMatch
 
 from flext_infra._protocols import FlextInfraProtocolsRopeRuntime
