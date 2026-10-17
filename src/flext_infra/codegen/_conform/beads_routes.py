@@ -8,11 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core import r
-from flext_infra import c, m, p
-from flext_infra.codegen._conform.docs_ownership import (
-    FlextInfraCodegenConformDocsOwnership,
-)
+from flext_infra import c, m, p, r
+from flext_infra.codegen._conform import FlextInfraCodegenConformDocsOwnership
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 

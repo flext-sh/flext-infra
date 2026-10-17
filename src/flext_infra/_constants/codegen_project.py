@@ -17,21 +17,27 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from enum import StrEnum, unique
+from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar, Literal
 
-from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
+from flext_infra._constants import FlextInfraConstantsSharedInfra
+from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
 
 if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraConstantsCodegenProject:
+class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     """Manifest + naming constants for project creation (flat in ``c.Infra.*``)."""
 
-    CODEGEN_LOCAL_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.local.yaml"
-    CODEGEN_ORG_OVERRIDES_FILENAME: ClassVar[str] = "codegen-org.yaml"
     CODEGEN_CLI_MODULE_FILENAME: ClassVar[str] = "cli.py"
-
+    GITHUB_WORKFLOWS_RELATIVE_PATH: ClassVar[str] = ".github/workflows"
+    CUSTOM_MAKE_FILENAME: ClassVar[str] = "custom.mk"
+    """Operator-owned Make include rendered beside the generated Makefile."""
+    CODEGEN_CONFIG_DIR: ClassVar[str] = "config"
+    """Directory name for flext-infra config files relative to the package root."""
+    CODEGEN_LOCAL_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.local.yaml"
+    """Local operator override file name, excluded from the tracked baseline."""
     # These enums define the
     # one public conform contract shared by new and existing repositories. The
     # declarative values live in config/codegen.yaml; constants only type the
@@ -53,22 +59,35 @@ class FlextInfraConstantsCodegenProject:
         ALL = "all"
 
     @unique
-    class CodegenConformSurface(StrEnum):
-        """Managed file selection accepted by ``codegen conform``."""
-
-        ALL = "all"
-        DEPENDENCIES = "dependencies"
-        DOCS_CONFIG = "docs-config"
-        MAKEFILE = "makefile"
-        MISE_TRIPLE = "mise-triple"
-        PYPROJECT = "pyproject"
-
-    @unique
     class CodegenConformMode(StrEnum):
         """Read-only or write mode accepted by ``codegen conform``."""
 
         CHECK = "check"
         APPLY = "apply"
+
+    @unique
+    class CodegenStagedFilePhase(StrEnum):
+        """Generation phase that owns one codegen staged publication.
+
+        The closed vocabulary the journal models and the stager accept in
+        ``phase``: every publication and staging site names its owner
+        through this enum instead of a string literal, so the phase
+        contract is code-owned in one declaration.
+        """
+
+        CANDIDATE_BOOTSTRAP = "candidate-bootstrap"
+        CONFORM = "conform"
+        CONFORM_BOOTSTRAP = "conform-bootstrap"
+        DOCS = "docs"
+        LAZY_INIT = "lazy-init"
+        LAYOUT = "layout"
+        MISE = "mise"
+        MOD_TEXT = "mod-text"
+        RECOVERY = "recovery"
+        SCAFFOLD = "scaffold"
+        SEMANTIC = "semantic"
+        TRANSACTION = "transaction"
+        VERSION_FILE = "version-file"
 
     @unique
     class MiseResolutionMode(StrEnum):
@@ -86,55 +105,12 @@ class FlextInfraConstantsCodegenProject:
         OFFLINE = "offline"
 
     @unique
-    class MakeProfile(StrEnum):
-        """Generated Makefile profile for one repository.
-
-        Topology is proven by the repository itself: a checkout that declares
-        ``.gitmodules`` is a workspace, and one that does not is standalone.
-        This mirrors ``MakeProfile``, which the detector returns, so the two
-        vocabularies cannot drift.
-        """
-
-        WORKSPACE = "workspace"
-        STANDALONE = "standalone"
-
-    @unique
-    class RepositoryState(StrEnum):
-        """Lifecycle state used by repository selection."""
-
-        ACTIVE = "active"
-        EXCLUDED = "excluded"
-
-    @unique
     class CheckoutKind(StrEnum):
         """Physical checkout topology for one repository."""
 
         ROOT = "root"
         SUBMODULE = "submodule"
         INDEPENDENT = "independent"
-
-    @unique
-    class CodegenKind(StrEnum):
-        """Code-generation policy applied to one repository."""
-
-        CONFORM = "conform"
-        PYTHON = "python"
-        NONE = "none"
-
-    @unique
-    class ProjectKind(StrEnum):
-        """Governance kind of one repository; decides who may rewrite it.
-
-        Generation applies to ``INTERNAL_FLEXT`` alone. An ``INTERNAL`` project
-        is owned but not built on FLEXT, so FLEXT layout, facade chain, and
-        typing policy do not apply to it. A ``THIRD_PARTY_FORK`` follows its
-        upstream in everything, and standardizing it would destroy the contract
-        the fork exists to track.
-        """
-
-        INTERNAL_FLEXT = "internal_flext"
-        INTERNAL = "internal"
-        THIRD_PARTY_FORK = "third_party_fork"
 
     BEADS_CONFIG_FILENAME: ClassVar[str] = "beads.yaml"
     BEADS_DIRNAME: ClassVar[str] = ".beads"
@@ -198,13 +174,11 @@ class FlextInfraConstantsCodegenProject:
     DOCS_SOURCE_STATE_RACE_MARKER: ClassVar[str] = (
         "docs source state changed during planning"
     )
-    """Emitted by ``docs_verify_sources`` when one snapshotted docs source
-    changes content or physical identity inside the planning window."""
+    """Emitted when a captured docs source changes content or physical identity."""
     DOCS_SOURCE_TOPOLOGY_RACE_MARKER: ClassVar[str] = (
         "docs source topology changed during planning"
     )
-    """Emitted by ``docs_verify_sources`` when the discovered docs source set
-    gains or loses a file inside the planning window."""
+    """Emitted when the captured docs source membership changes."""
     CONFIG_SNAPSHOT_ROOT_RACE_MARKER: ClassVar[str] = (
         "project root changed during config snapshot"
     )
@@ -216,23 +190,49 @@ class FlextInfraConstantsCodegenProject:
     """Emitted by ``snapshot_config_sources`` when the ``config/*.yaml`` set
     changes while its managed-artifact config is snapshotted."""
     WORKSPACE_MANIFEST_FILENAME: ClassVar[str] = "workspace.yaml"
-    WORKSPACE_MANIFEST_VERSION: ClassVar[int] = 3
     UV_LOCK_FILENAME: ClassVar[str] = "uv.lock"
     MISE_LOCK_FILENAME: ClassVar[str] = "mise.lock"
-    MISE_LOCK_TRANSACTION_SCRIPT: ClassVar[str] = "bin/mise-lock-transaction.py"
-    "Generated publisher the Makefile bootstrap runs to commit a staged mise.lock."
+    MISE_LOCK_JOURNAL_FILENAME: ClassVar[str] = "transaction.json"
+    "Staged journal the mise.lock publisher commits before the lock rename."
+    MISE_LOCK_NEW_FILENAME: ClassVar[str] = "new.lock"
+    "Staged replacement lock published only after its sidecars match."
+    MISE_LOCK_OLD_FILENAME: ClassVar[str] = "old.lock"
+    "Previous lock retained until the staged replacement is published."
     MAKEFILE_BOOTSTRAP_DESTINATIONS: ClassVar[frozenset[str]] = frozenset({
         FlextInfraConstantsSharedInfra.MAKEFILE_FILENAME,
-        MISE_LOCK_TRANSACTION_SCRIPT,
     })
-    "The Makefile surface: the Makefile and the lock publisher its bootstrap runs."
+    "The Makefile surface: the generated Makefile alone."
     MISE_LOCK_ANNOTATION: ClassVar[str] = "~"
     "Lockfile cache-key fragment (``<version>~<hash>``); never a selector."
     MISE_MOVING_SELECTOR: ClassVar[str] = "latest"
     "Selector resolved only by ``make upg`` into the committed ``mise.lock``."
+    MISE_VERSION_PLACEHOLDER: ClassVar[str] = "{version}"
+    "Placeholder a toolchain version_probe pattern carries for the lock version."
+    MISE_IDENTITY_PROBE_ENVIRONMENT: ClassVar[t.StrMapping] = MappingProxyType({
+        "MISE_DISABLE_UPDATE_WARNING": "1",
+    })
+    """Environment of the mise version-identity probes, and of nothing else.
+
+    ``mise --version`` prints a daily "newer mise available" notice on stderr;
+    mise moves only through ``mise.lock`` under the supply-chain cooldown, so
+    the notice is not actionable and the strict probes would fail on it.
+    Documented mise setting since 2026.9.5 (tracker memory
+    operator-ruling-2026-10-09-mise-update-notice-probes).
+    """
+    MISE_LOCK_PLATFORM_KEY: ClassVar[str] = "platforms.{platform}"
+    "mise.lock per-platform table key of one locked tool version."
+    MISE_PLATFORM_BY_HOST: ClassVar[t.MappingKV[t.StrPair, str]] = MappingProxyType({
+        ("Linux", "x86_64"): "linux-x64",
+        ("Linux", "aarch64"): "linux-arm64",
+        ("Darwin", "x86_64"): "macos-x64",
+        ("Darwin", "arm64"): "macos-arm64",
+        ("Windows", "AMD64"): "windows-x64",
+    })
+    "Host (platform.system(), platform.machine()) -> mise.lock platform name."
+    MISE_MUSL_PLATFORM_SUFFIX: ClassVar[str] = "-musl"
+    "mise.lock platform suffix of a Linux host without glibc."
     GIT_URL_SUFFIX: ClassVar[str] = ".git"
     "Canonical clone-URL suffix every governed RepositoryRef URL carries."
-    CUSTOM_MAKE_FILENAME: ClassVar[str] = "custom.mk"
     CUSTOM_CI_STEPS_FILENAME: ClassVar[str] = ".github/ci-custom-steps.yml"
     """Project-owned steps injected into generated CI, symmetric to custom.mk.
 
@@ -246,12 +246,10 @@ class FlextInfraConstantsCodegenProject:
     TEMPLATE_TEST_MODULE_SKELETON: ClassVar[str] = "test_module_skeleton.py.j2"
     "Scaffold template for canonical test c/t/p/m/u facades."
     CODEGEN_CONFIG_FILENAME: ClassVar[str] = "codegen.yaml"
-    CODEGEN_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.yaml"
+    INFRA_CONFIG_FILENAME: ClassVar[str] = "infra.yaml"
     CODEGEN_GEN_FILENAME: ClassVar[str] = "codegen.gen.yaml"
     CODEGEN_GEN_SUFFIX: ClassVar[str] = ".gen.yaml"
     "File suffix for generation requirements contract files managed by conform."
-    CODEGEN_CONFIG_DIR: ClassVar[str] = "config"
-    "Directory name for flext-infra config files relative to package root."
 
     # One base catalog serves both profiles;
     # workspace topology is read only from each repository's own .gitmodules.

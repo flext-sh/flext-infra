@@ -20,18 +20,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import infra, main
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import TestsFlextInfraUtilities as u, c, t
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
 
-# Why: each propagation conforms and relocks real member repositories, the
-# same slow harness the release protocol's version phase already declares.
 pytestmark = pytest.mark.slow
 
 
@@ -73,9 +70,11 @@ class TestsFlextInfraWorkspaceMemberPropagation:
                     u.Tests.WorktreeFixture.initialize_governed_project(
                         root / name,
                         name,
-                        workspace="fixture-workspace",
-                        database="fixture_workspace",
-                        issue_prefix="fixture-workspace",
+                        beads=u.Tests.BeadsIdentity(
+                            workspace="fixture-workspace",
+                            database="fixture_workspace",
+                            issue_prefix="fixture-workspace",
+                        ),
                     )
                     u.Tests.checkout_integration(root / name)
                 u.Tests.WorktreeFixture.write_gitmodules(root, self.MEMBERS)
@@ -95,8 +94,12 @@ class TestsFlextInfraWorkspaceMemberPropagation:
                 u.Tests.commit_git_changes(root, "declare members")
                 for name in settled:
                     tm.ok(
-                        FlextInfraCodegenConform.settle_repository(
-                            root / name,
+                        FlextInfraCodegenConform.execute_request(
+                            m.Infra.CodegenConformRequest(
+                                root=root / name,
+                                scope=c.Infra.CodegenConformScope.ALL,
+                                mode=c.Infra.CodegenConformMode.APPLY,
+                            ),
                             ports=infra.codegen_conform_collaborators(),
                         ),
                     )
@@ -118,7 +121,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
             Each ``t.Pair[Path, Path]``.
 
         """
-        # Every settle and propagation locks against the run's local mirrors.
+        # Dependency reads use the run's local mirrors without resolving locks.
         with u.Tests.env_vars_context(env_vars=hermetic):
             root = tmp_path / "workspace"
             shutil.copytree(self._template(settled, hermetic), root, symlinks=True)
@@ -237,16 +240,11 @@ class TestsFlextInfraWorkspaceMemberPropagation:
             )
             tm.that(self._published(tmp_path, self.SETTLED), eq="")
             tm.that(self._on_clean_base(settled), eq=True)
-            # A member is standalone: its generated Makefile never declares the
-            # workspace-only verb.
-            public = next(
-                line
-                for line in (settled / c.Infra.MAKEFILE_FILENAME)
-                .read_text(encoding="utf-8")
-                .splitlines()
-                if line.startswith("PUBLIC_VERBS")
+            help_output = tm.ok(
+                u.Cli.run_raw([c.Infra.MAKE, "help"], cwd=settled),
             )
-            tm.that("propagate" in public.split(), eq=False)
+            tm.that(u.Cli.process_succeeded(help_output.outcome), eq=True)
+            tm.that(help_output.stdout, lacks="propagate")
             recorded = gh_log.read_text(encoding="utf-8")
             tm.that(recorded.count("pr create"), eq=1)
             tm.that(
@@ -303,3 +301,60 @@ class TestsFlextInfraWorkspaceMemberPropagation:
                 )
                 tm.that(self._published(tmp_path, name), eq="")
             tm.that(gh_log.exists(), eq=False)
+
+    def test_external_consumer_lane_runs_its_own_verbs(
+        self,
+        tmp_path: Path,
+        hermetic_git_environment: t.StrMapping,
+    ) -> None:
+        """A declared external consumer advances its lane through its make verbs."""
+        consumer_root = tmp_path / "consumer"
+        consumer_root.mkdir()
+        (consumer_root / "Makefile").write_text(
+            "gen fix-namespace fix-accessors fix fmt:\n"
+            "\tprintf '%s\\n' \"$@\" >> ran.txt\n",
+            encoding="utf-8",
+        )
+        u.Tests.git_run(consumer_root, "init", "--initial-branch", "main")
+        u.Tests.git_run(consumer_root, "add", "Makefile")
+        u.Tests.commit_git_changes(consumer_root, "consumer base")
+        self._publish_to_local_origin(consumer_root, tmp_path / "remotes" / "consumer")
+        with self._workspace(
+            tmp_path,
+            settled=(self.SETTLED,),
+            hermetic=hermetic_git_environment,
+        ) as (root, gh_log):
+            manifest = root / "config" / "workspace.yaml"
+            manifest.write_text(
+                manifest.read_text(encoding="utf-8")
+                + (
+                    "external_consumers:\n"
+                    f"  - name: consumer-x\n"
+                    f"    root: {consumer_root}\n"
+                ),
+                encoding="utf-8",
+            )
+
+            tm.that(self._propagate(root), eq=0)
+
+            lane = self._published(tmp_path, "consumer")
+            tm.that(lane, ne="")
+            tm.that(self._on_clean_base(consumer_root), eq=True)
+            verbs_ran = u.Tests.git_capture(
+                consumer_root,
+                "show",
+                f"{c.Infra.PROPAGATION_BRANCH}:ran.txt",
+            )
+            tm.that(
+                verbs_ran.splitlines(),
+                eq=[
+                    "gen",
+                    "fix-namespace",
+                    "fix-accessors",
+                    "fix",
+                    "fmt",
+                ],
+            )
+            recorded = gh_log.read_text(encoding="utf-8")
+            tm.that(recorded.count("pr create"), eq=2)
+            tm.that(recorded, has="pr create --base main --head")

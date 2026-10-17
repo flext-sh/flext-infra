@@ -1,4 +1,4 @@
-"""Crash recovery for staging, prepared, recovering, or committed journals.
+"""Recover failed journaled dependency groups and retain independent effects.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,566 +6,375 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import stat
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
-from flext_core import r
-from flext_infra import c, m
-from flext_infra.codegen._mise_artifacts_files import (
-    FlextInfraMiseArtifactsFiles as files,
-)
-from flext_infra.codegen._mise_artifacts_journal import (
-    FlextInfraMiseArtifactsJournal as journal_io,
-)
-from flext_infra.codegen._mise_artifacts_process import (
-    FlextInfraMiseArtifactsProcess as process,
-)
-from flext_infra.codegen._mise_artifacts_state import (
-    FlextInfraMiseArtifactsState as state,
-)
-from flext_infra.codegen._mise_artifacts_verification import (
-    FlextInfraMiseArtifactsVerification as verify,
+from flext_infra import m, r, t, u
+from flext_infra.codegen import (
+    FlextInfraMiseArtifactsFiles,
+    FlextInfraMiseArtifactsJournal,
+    FlextInfraMiseArtifactsState,
+    FlextInfraMiseArtifactsVerification,
 )
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
-
-type _FileIdentity = tuple[
-    int | None,
-    int | None,
-    str | None,
-    int | None,
-    int | None,
-    int | None,
-    int | None,
-    int | None,
-    int | None,
-]
-
-type _FileOwnershipIdentity = tuple[
-    bool | None,
-    int | None,
-    int | None,
-    str | None,
-    int | None,
-    int | None,
-    int | None,
-]
+    from flext_infra import p
 
 
 class FlextInfraMiseRecovery:
-    """Restore only full states attributable to one durable journal."""
+    """Recover failed dependent groups while preserving independent published gains."""
 
+    @staticmethod
     def execute(
-        self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
         journal_state: m.Cli.AtomicFileState,
     ) -> p.Result[bool]:
-        """Recover an authenticated journal without consulting source topology.
+        """Retire interrupted proposals or compensate explicitly rejected groups.
+
+        Unselected prepared proposals preserve current destinations as new cleanup
+        inputs. Retirement neither approves the interrupted group nor authorizes its
+        pending publications.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            The cleanup outcome, preserving its original failure.
 
         """
-        topology = verify.journal_topology(layout, journal)
+        topology = FlextInfraMiseArtifactsVerification.journal_topology(layout, journal)
         if topology.failure:
             return topology
-        roots = state.validate_transaction_roots(layout, journal)
-        if roots.failure:
-            return roots
-        if journal.state == "staging":
-            return journal_io.cleanup(layout, journal, journal_state)
-        classified = self._classify(layout, journal)
-        if classified.failure:
-            return r[bool].from_failure(classified)
-        if journal.state == "committed":
-            return journal_io.cleanup(layout, journal, journal_state)
-        if journal.state == "prepared":
-            prepared = self._prepare_restore_candidates(layout, classified.value)
-            if prepared.failure:
-                return r[bool].from_failure(prepared)
-            recovering = journal_io.begin_recovery(journal, prepared.value)
-            if recovering.failure:
-                return r[bool].from_failure(recovering)
-            manifests = verify.register_transaction_manifests(layout, recovering.value)
-            if manifests.failure:
-                return r[bool].from_failure(manifests)
-            recorded = journal_io.record_directories(recovering.value, manifests.value)
-            if recorded.failure:
-                return r[bool].from_failure(recorded)
-            persisted = journal_io.write(layout, recorded.value, expected=journal_state)
-            if persisted.failure:
-                return r[bool].from_failure(persisted)
-            journal = recorded.value
-            journal_state = persisted.value
-            classified = self._classify(layout, journal)
-            if classified.failure:
-                return r[bool].from_failure(classified)
-        candidates = self._load_restore_candidates(layout, classified.value)
-        if candidates.failure:
-            return r[bool].from_failure(candidates)
-        restored = self._restore(classified.value, candidates.value)
-        if restored.failure:
-            return restored
-        exact = self._verify_rollback(layout, journal, classified.value)
-        if exact.failure:
-            return exact
-        return journal_io.cleanup(layout, journal, journal_state)
-
-    @staticmethod
-    def _plain_resource_state(path: Path) -> m.Cli.AtomicFileState:
-        """Read one package-owned resource without atomic-ownership semantics.
-
-        uv hard-links installed package files to its cache, so their link
-        count exceeds one by construction; the atomic-state reader rejects
-        such leaves. Package resources are immutable data read as bytes, and
-        their physical identities still come from lstat for the action log.
-
-        Returns:
-            The resulting ``m.Cli.AtomicFileState``.
-
-        """
-        content = path.read_bytes()
-        leaf = path.lstat()
-        parent = path.parent.lstat()
-        return m.Cli.AtomicFileState(
-            path=path,
-            parent_device=parent.st_dev,
-            parent_inode=parent.st_ino,
-            content=content,
-            mode=stat.S_IMODE(leaf.st_mode),
-            device=leaf.st_dev,
-            inode=leaf.st_ino,
-            link_count=leaf.st_nlink,
-            file_attributes=getattr(leaf, "st_file_attributes", None),
-            reparse_tag=getattr(leaf, "st_reparse_tag", None),
+        current = FlextInfraMiseArtifactsVerification.states_current((journal_state,))
+        if current.failure:
+            return current
+        preserved: t.VariadicTuple[m.Cli.AtomicFileState] = ()
+        if journal.state == "prepared" and not any(
+            entry.recover_group for entry in journal.entries
+        ):
+            observed = FlextInfraMiseRecovery.retirement_inputs(layout, journal)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            preserved = observed.value
+        retained = FlextInfraMiseArtifactsVerification.states_current((
+            *preserved,
+            journal_state,
+        ))
+        if retained.failure:
+            return retained
+        authorized = FlextInfraMiseArtifactsState.reconcile_pending_directories(
+            layout, journal
+        )
+        if authorized.failure:
+            return authorized
+        settled = FlextInfraMiseRecovery._recover_selected_groups(
+            layout, journal, journal_state
+        )
+        return settled.flat_map(
+            lambda current: FlextInfraMiseArtifactsJournal.cleanup(
+                layout, *current, preserved_states=preserved
+            )
         )
 
-    def _classify(
-        self,
+    @staticmethod
+    def _recover_selected_groups(
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenRecoveryAction]]:
-        """Classify every live target before preparing any recovery effect.
+        journal_state: m.Cli.AtomicFileState,
+    ) -> p.Result[t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
+        """Preserve the durable compensation decision for explicitly failed groups.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenRecoveryAction]]``.
+            The settled journal and its exact current receipt.
 
         """
-        result_type = r[tuple[m.Infra.CodegenRecoveryAction, ...]]
-        actions: list[m.Infra.CodegenRecoveryAction] = []
-        for entry in journal.entries:
-            target = files.resolve_transaction(
-                layout,
-                entry.path,
-                purpose="generated destination",
-            )
-            if target.failure:
-                return result_type.from_failure(target)
-            # Package-owned resources (uv hard-links installed templates into
-            # site-packages) are never uniquely-owned workspace state: a stale
-            # journal entry pointing inside the installed package classifies
-            # as a noop instead of failing the whole recovery on the nlink
-            # guard of the atomic-state reader.
-            package_root = Path(__file__).resolve().parents[2]
-            if target.value.is_relative_to(package_root):
-                actions.append(
-                    m.Infra.CodegenRecoveryAction(
-                        entry=entry,
-                        current=self._plain_resource_state(target.value),
-                        operation="noop",
-                    ),
-                )
-                continue
-            current = files.read_state(target.value, required=False)
-            if current.failure:
-                return result_type.from_failure(current)
-            identity = self._classify_identity(current.value)
-            original = self._classify_entry_identity(entry, "original")
-            desired = self._classify_entry_identity(entry, "desired")
-            rollback = self._classify_entry_identity(entry, "rollback")
-            if (
-                journal.state == "committed"
-                or identity == original
-                or (journal.state == "recovering" and identity == rollback)
-            ):
-                operation = "noop"
-            elif identity == desired:
-                operation = "restore" if entry.original_exists else "delete"
-            else:
-                # Um estado nao reconhecido nunca bloqueia a recuperacao: a
-                # geracao e a dona do arquivo e o reescreve. Travar aqui criava
-                # impasse circular (gen nao roda para consertar o que ele gera).
-                operation = "noop"
-            if operation == "restore" and self._staging_tree_is_absent(layout, entry):
-                # The staged rollback tree vanished whole (a crashed run
-                # removed it before the journal could be cleaned), so required
-                # reads under it can never succeed. The same anti-impasse law
-                # as an unrecognized state applies: the generation owns the
-                # file and rewrites it on the next apply pass.
-                operation = "noop"
-            actions.append(
-                m.Infra.CodegenRecoveryAction(
-                    entry=entry,
-                    current=current.value,
-                    operation=operation,
+        result_type = r[
+            t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
+        ]
+        selected = {
+            entry.dependency_group for entry in journal.entries if entry.recover_group
+        }
+        if journal.state != "prepared" or not selected:
+            return result_type.ok((journal, journal_state))
+        journal = journal.model_copy(
+            update={
+                "entries": tuple(
+                    entry.model_copy(update={"recover_group": True})
+                    if entry.dependency_group in selected
+                    else entry
+                    for entry in journal.entries
                 ),
-            )
-        return result_type.ok(tuple(actions))
+            }
+        )
+        persisted = FlextInfraMiseArtifactsJournal.write(
+            layout, journal, expected=journal_state
+        )
+        if persisted.failure:
+            return result_type.from_failure(persisted)
+        return FlextInfraMiseRecovery.restore_groups(layout, journal).map(
+            lambda _: (journal, persisted.value)
+        )
 
     @staticmethod
-    def _staging_tree_is_absent(
+    def retirement_inputs(
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        entry: m.Infra.CodegenJournalEntry,
-    ) -> bool:
-        """Whether the entry's staged rollback tree is gone entirely.
+        journal: m.Infra.CodegenTransactionJournal,
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        """Capture current physical destinations before retiring a proposal.
+
+        These are current cleanup inputs, never publication or completion receipts.
+        Earlier authored changes are preserved; every captured state is revalidated
+        before cleanup and before the journal is retired.
 
         Returns:
-            The resulting ``bool``.
+            The complete observed destination states, or the first unsafe input.
 
         """
-        if entry.original_backup is None:
-            return False
-        backup = files.resolve_transaction(
-            layout,
-            entry.original_backup,
-            purpose="generation recovery backup",
-        )
-        return backup.failure or not backup.value.parent.is_dir()
-
-    def _prepare_restore_candidates(
-        self,
-        layout: m.Infra.MiseToolchainWorkspaceLayout,
-        actions: t.VariadicTuple[m.Infra.CodegenRecoveryAction],
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile | None]]:
-        result_type = r[tuple[m.Infra.CodegenStagedFile | None, ...]]
-        candidates: list[m.Infra.CodegenStagedFile | None] = []
-        for action in actions:
-            if action.operation != "restore":
-                candidates.append(None)
-                continue
-            if not action.entry.original_exists or action.entry.original_backup is None:
-                candidates.append(None)
-                continue
-            backup_path = files.resolve_transaction(
-                layout,
-                action.entry.original_backup,
-                purpose="generation recovery backup",
+        result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
+        captured: list[m.Cli.AtomicFileState] = []
+        for entry in journal.entries:
+            path = FlextInfraMiseArtifactsFiles.resolve_transaction(
+                layout, entry.path, purpose="interrupted proposal retirement"
             )
-            if backup_path.failure:
-                return result_type.from_failure(backup_path)
-            if not backup_path.value.exists():
-                candidates.append(None)
-                continue
-            prepared = self._prepare_restore_candidate(layout, action)
-            if prepared.failure:
-                return result_type.from_failure(prepared)
-            candidates.append(prepared.value)
-        return result_type.ok(tuple(candidates))
+            if path.failure:
+                return result_type.from_failure(path)
+            observed = FlextInfraMiseArtifactsFiles.read_state(
+                path.value, required=False
+            )
+            if observed.failure:
+                return result_type.from_failure(observed)
+            captured.append(observed.value)
+        return result_type.ok(tuple(captured))
 
     @staticmethod
-    def _prepare_restore_candidate(
+    def restore_groups(
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        action: m.Infra.CodegenRecoveryAction,
-    ) -> p.Result[m.Infra.CodegenStagedFile]:
-        entry = action.entry
-        if (
-            entry.original_backup is None
-            or entry.original_sha256 is None
-            or entry.original_mode is None
-        ):
-            return r[m.Infra.CodegenStagedFile].fail(
-                f"generation recovery tuple is incomplete: {entry.path}",
+        journal: m.Infra.CodegenTransactionJournal,
+    ) -> p.Result[bool]:
+        """Consume only preimages selected by the durable group recovery decision.
+
+        Returns:
+            Whether every selected effect was safely recovered.
+
+        """
+        for entry in reversed(journal.entries):
+            if entry.dependency_group is None or not entry.recover_group:
+                continue
+            recovered = FlextInfraMiseRecovery._recover_group_entry(
+                layout, journal, entry
             )
-        backup_path = files.resolve_transaction(
+            if recovered.failure:
+                return recovered
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _recover_group_entry(
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+        entry: m.Infra.CodegenJournalEntry,
+    ) -> p.Result[bool]:
+        """Compensate only an admitted effect or its exact staged inode identity.
+
+        Returns:
+            Whether this authenticated destination required compensation.
+
+        """
+        path = FlextInfraMiseArtifactsFiles.resolve_transaction(
+            layout, entry.path, purpose="dependent-group recovery"
+        )
+        if path.failure:
+            return r[bool].from_failure(path)
+        observed = FlextInfraMiseArtifactsFiles.read_state(path.value, required=False)
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        current = observed.value
+        identity = (
+            current.parent_device,
+            current.parent_inode,
+            FlextInfraMiseArtifactsFiles.digest(current.content)
+            if current.content is not None
+            else None,
+            current.mode,
+            current.device,
+            current.inode,
+            current.link_count,
+            current.file_attributes,
+            current.reparse_tag,
+        )
+        original = (
+            entry.original_parent_device,
+            entry.original_parent_inode,
+            entry.original_sha256,
+            entry.original_mode,
+            entry.original_device,
+            entry.original_inode,
+            entry.original_link_count,
+            entry.original_file_attributes,
+            entry.original_reparse_tag,
+        )
+        if identity == original or (
+            not entry.original_exists and current.content is None
+        ):
+            return r[bool].ok(value=False)
+        desired = (
+            entry.desired_parent_device,
+            entry.desired_parent_inode,
+            entry.desired_sha256,
+            entry.desired_mode,
+            entry.desired_device,
+            entry.desired_inode,
+            entry.desired_link_count,
+            entry.desired_file_attributes,
+            entry.desired_reparse_tag,
+        )
+        if not entry.original_exists:
+            if identity != desired:
+                return (
+                    r[bool].fail(f"admitted group destination changed: {path.value}")
+                    if entry.group_admitted
+                    else r[bool].ok(value=False)
+                )
+            return FlextInfraMiseArtifactsFiles.delete_state(current)
+        return FlextInfraMiseRecovery._restore_original(
             layout,
-            entry.original_backup,
-            purpose="generation recovery backup",
+            journal,
+            entry,
+            current,
+            matches_desired=identity == desired,
+        )
+
+    @staticmethod
+    def _restore_original(
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+        entry: m.Infra.CodegenJournalEntry,
+        current: m.Cli.AtomicFileState,
+        *,
+        matches_desired: bool,
+    ) -> p.Result[bool]:
+        """Bind compensation to its persisted preimage and target receipt.
+
+        Returns:
+            Whether the journal-owned preimage was consumed.
+
+        """
+        if entry.original_staging is None or entry.original_content_hex is None:
+            return r[bool].fail(f"group preimage missing: {entry.path}")
+        backup_path = FlextInfraMiseArtifactsFiles.resolve_transaction(
+            layout, entry.original_staging, purpose="group preimage"
         )
         if backup_path.failure:
-            return r[m.Infra.CodegenStagedFile].from_failure(backup_path)
-        backup = files.read_state(backup_path.value, required=True)
-        if backup.failure or backup.value.content is None:
-            return r[m.Infra.CodegenStagedFile].fail(
-                backup.error or f"generation recovery backup is absent: {entry.path}",
-            )
-        if (
-            backup.value.mode != c.Infra.JOURNAL_MODE
-            or files.digest(backup.value.content) != entry.original_sha256
-        ):
-            return r[m.Infra.CodegenStagedFile].fail(
-                f"generation recovery backup differs: {entry.path}",
-            )
-        candidate_path = backup_path.value.with_suffix(".restore")
-        candidate = files.read_state(candidate_path, required=False)
-        if candidate.failure:
-            return r[m.Infra.CodegenStagedFile].from_failure(candidate)
-        if candidate.value.content is None:
-            created = process.write_new(
-                candidate_path,
-                backup.value.content,
-                entry.original_mode,
-            )
-            if created.failure:
-                return r[m.Infra.CodegenStagedFile].from_failure(created)
-            candidate = files.read_state(candidate_path, required=True)
-            if candidate.failure:
-                return r[m.Infra.CodegenStagedFile].from_failure(candidate)
-        if (
-            candidate.value.content != backup.value.content
-            or candidate.value.mode != entry.original_mode
-        ):
-            return r[m.Infra.CodegenStagedFile].fail(
-                f"generation restore candidate differs: {entry.path}",
-            )
-        project = next(
-            item.root
-            for item in files.transaction_participants(layout)
-            if item.selector == entry.project
-        )
-        return r[m.Infra.CodegenStagedFile].ok(
-            m.Infra.CodegenStagedFile(
-                phase="recovery",
-                project=project,
-                before=action.current,
-                replacement=candidate.value,
+            return r[bool].from_failure(backup_path)
+        intent = next(
+            (
+                item
+                for item in journal.staging_intents
+                if item.before.path == backup_path.value
             ),
+            None,
+        )
+        if (
+            intent is None
+            or intent.created is None
+            or intent.created.sha256 != entry.original_sha256
+        ):
+            return r[bool].fail(f"group preimage has no physical receipt: {entry.path}")
+        receipt = intent.created
+        if (
+            current.parent_device,
+            current.parent_inode,
+            current.device,
+            current.inode,
+            current.mode,
+            FlextInfraMiseArtifactsFiles.digest(current.content)
+            if current.content is not None
+            else None,
+            current.link_count,
+            current.file_attributes,
+            current.reparse_tag,
+        ) == (
+            entry.original_parent_device,
+            entry.original_parent_inode,
+            receipt.device,
+            receipt.inode,
+            receipt.mode,
+            receipt.sha256,
+            receipt.link_count,
+            receipt.file_attributes,
+            receipt.reparse_tag,
+        ):
+            return r[bool].ok(value=False)
+        if not matches_desired or (
+            not entry.desired_exists and not entry.group_admitted
+        ):
+            return (
+                r[bool].fail(
+                    "admitted group destination changed or lacks deletion "
+                    f"receipt: {entry.path}"
+                )
+                if entry.group_admitted or matches_desired
+                else r[bool].ok(value=False)
+            )
+        return FlextInfraMiseRecovery._authenticated_preimage(
+            backup_path.value,
+            entry,
+            receipt,
+        ).flat_map(
+            lambda preimage: u.Cli.atomic_publish_staged_binary_file_guarded(
+                current, preimage
+            ).map(lambda _: True)
         )
 
-    def _load_restore_candidates(
-        self,
-        layout: m.Infra.MiseToolchainWorkspaceLayout,
-        actions: t.VariadicTuple[m.Infra.CodegenRecoveryAction],
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile | None]]:
-        result_type = r[tuple[m.Infra.CodegenStagedFile | None, ...]]
-        candidates: list[m.Infra.CodegenStagedFile | None] = []
-        for action in actions:
-            entry = action.entry
-            if action.operation != "restore":
-                candidates.append(None)
-                continue
-            if entry.original_backup is None:
-                return result_type.fail(
-                    f"generation rollback backup is absent: {entry.path}",
-                )
-            backup = files.resolve_transaction(
-                layout,
-                entry.original_backup,
-                purpose="generation recovery backup",
-            )
-            if backup.failure:
-                return result_type.from_failure(backup)
-            candidate = files.read_state(
-                backup.value.with_suffix(".restore"),
-                required=True,
-            )
-            if candidate.failure:
-                return result_type.from_failure(candidate)
-            if (
-                self._identity(candidate.value)[2:]
-                != self._entry_identity(entry, "rollback")[2:]
-            ):
-                return result_type.fail(
-                    f"generation rollback candidate changed: {entry.path}",
-                )
-            project = next(
-                item.root
-                for item in files.transaction_participants(layout)
-                if item.selector == entry.project
-            )
-            candidates.append(
-                m.Infra.CodegenStagedFile(
-                    phase="recovery",
-                    project=project,
-                    before=action.current,
-                    replacement=candidate.value,
-                ),
-            )
-        return result_type.ok(tuple(candidates))
-
     @staticmethod
-    def _restore(
-        actions: t.VariadicTuple[m.Infra.CodegenRecoveryAction],
-        candidates: t.VariadicTuple[m.Infra.CodegenStagedFile | None],
-    ) -> p.Result[bool]:
-        paired = tuple(zip(actions, candidates, strict=True))
-        for action, candidate in reversed(paired):
-            if action.operation == "restore":
-                if candidate is None:
-                    continue
-                restored = files.write_publication(candidate)
-                if restored.failure:
-                    return r[bool].from_failure(restored)
-            elif action.operation == "delete":
-                removed = files.delete_state(action.current)
-                if removed.failure:
-                    return r[bool].from_failure(removed)
-        return r[bool].ok(value=True)
-
-    def _verify_rollback(
-        self,
-        layout: m.Infra.MiseToolchainWorkspaceLayout,
-        journal: m.Infra.CodegenTransactionJournal,
-        actions: t.VariadicTuple[m.Infra.CodegenRecoveryAction],
-    ) -> p.Result[bool]:
-        by_path = {action.entry.path: action for action in actions}
-        for entry in journal.entries:
-            target = files.resolve_transaction(
-                layout,
-                entry.path,
-                purpose="generated destination",
-            )
-            if target.failure:
-                return r[bool].from_failure(target)
-            current = files.read_state(target.value, required=False)
-            if current.failure:
-                return r[bool].from_failure(current)
-            identity = self._identity(current.value)
-            expected = {
-                self._entry_identity(entry, "original"),
-                self._entry_identity(entry, "rollback"),
-            }
-            action = by_path.get(entry.path)
-            if action is None:
-                return r[bool].fail(
-                    f"generation recovery action is absent: {entry.path}",
-                )
-            if action.operation == "noop":
-                expected.add(self._identity(action.current))
-            if identity not in expected:
-                return r[bool].fail(f"generated file was not restored: {entry.path}")
-        return r[bool].ok(value=True)
-
-    @staticmethod
-    def _classify_identity(state: m.Cli.AtomicFileState) -> _FileOwnershipIdentity:
-        """Classify by durable content and parent identity, never per-copy inode.
+    def _authenticated_preimage(
+        path: Path,
+        entry: m.Infra.CodegenJournalEntry,
+        receipt: m.Cli.AtomicPhysicalTreeEntry,
+    ) -> p.Result[m.Cli.AtomicFileState]:
+        """Read the exact preimage authorized by the journal's staging intention.
 
         Returns:
-            The resulting ``_FileOwnershipIdentity``.
+            The authenticated physical preimage snapshot.
 
         """
-        return (
-            state.content is not None,
-            state.parent_device,
-            state.parent_inode,
-            None if state.content is None else files.digest(state.content),
-            state.mode,
-            state.file_attributes,
-            state.reparse_tag,
-        )
-
-    @staticmethod
-    def _classify_entry_identity(
-        entry: m.Infra.CodegenJournalEntry,
-        prefix: Literal["original", "desired", "rollback"],
-    ) -> _FileOwnershipIdentity:
-        stored = {
-            "original": (
-                entry.original_exists,
-                entry.original_parent_device,
-                entry.original_parent_inode,
-                entry.original_sha256,
-                entry.original_mode,
-                entry.original_file_attributes,
-                entry.original_reparse_tag,
-            ),
-            "desired": (
-                entry.desired_exists,
-                entry.desired_parent_device,
-                entry.desired_parent_inode,
-                entry.desired_sha256,
-                entry.desired_mode,
-                entry.desired_file_attributes,
-                entry.desired_reparse_tag,
-            ),
-            "rollback": (
-                entry.rollback_exists,
-                entry.rollback_parent_device,
-                entry.rollback_parent_inode,
-                entry.rollback_sha256,
-                entry.rollback_mode,
-                entry.rollback_file_attributes,
-                entry.rollback_reparse_tag,
-            ),
-        }
-        return stored[prefix]
-
-    @staticmethod
-    def _identity(state: m.Cli.AtomicFileState) -> _FileIdentity:
-        return (
-            state.parent_device,
-            state.parent_inode,
-            None if state.content is None else files.digest(state.content),
-            state.mode,
-            state.device,
-            state.inode,
-            state.link_count,
-            state.file_attributes,
-            state.reparse_tag,
-        )
-
-    @staticmethod
-    def _entry_identity(
-        entry: m.Infra.CodegenJournalEntry,
-        prefix: Literal["original", "desired", "rollback"],
-    ) -> _FileIdentity:
-        """Build one journal identity without dynamically addressing model fields.
-
-        Returns:
-            The resulting ``_FileIdentity``.
-
-        """
-        stored: t.MappingKV[str, t.Pair[bool | None, _FileIdentity]] = {
-            "original": (
-                entry.original_exists,
-                (
-                    entry.original_parent_device,
-                    entry.original_parent_inode,
-                    entry.original_sha256,
-                    entry.original_mode,
-                    entry.original_device,
-                    entry.original_inode,
-                    entry.original_link_count,
-                    entry.original_file_attributes,
-                    entry.original_reparse_tag,
-                ),
-            ),
-            "desired": (
-                entry.desired_exists,
-                (
-                    entry.desired_parent_device,
-                    entry.desired_parent_inode,
-                    entry.desired_sha256,
-                    entry.desired_mode,
-                    entry.desired_device,
-                    entry.desired_inode,
-                    entry.desired_link_count,
-                    entry.desired_file_attributes,
-                    entry.desired_reparse_tag,
-                ),
-            ),
-            "rollback": (
-                entry.rollback_exists,
-                (
-                    entry.rollback_parent_device,
-                    entry.rollback_parent_inode,
-                    entry.rollback_sha256,
-                    entry.rollback_mode,
-                    entry.rollback_device,
-                    entry.rollback_inode,
-                    entry.rollback_link_count,
-                    entry.rollback_file_attributes,
-                    entry.rollback_reparse_tag,
-                ),
-            ),
-        }
-        exists, identity = stored[prefix]
-        if not exists:
-            # An absent file keeps only its parent directory identity.
-            return (identity[0], identity[1], None, None, None, None, None, None, None)
-        return identity
+        backup = FlextInfraMiseArtifactsFiles.read_state(path, required=True)
+        if backup.failure:
+            return r[m.Cli.AtomicFileState].from_failure(backup)
+        preimage = backup.value
+        if entry.original_content_hex is None:
+            return r[m.Cli.AtomicFileState].fail(
+                f"group preimage bytes missing: {entry.path}"
+            )
+        if (
+            (
+                preimage.parent_device,
+                preimage.parent_inode,
+                preimage.device,
+                preimage.inode,
+                preimage.mode,
+                FlextInfraMiseArtifactsFiles.digest(preimage.content)
+                if preimage.content is not None
+                else None,
+                preimage.link_count,
+                preimage.file_attributes,
+                preimage.reparse_tag,
+            )
+            != (
+                receipt.parent_device,
+                receipt.parent_inode,
+                receipt.device,
+                receipt.inode,
+                receipt.mode,
+                receipt.sha256,
+                receipt.link_count,
+                receipt.file_attributes,
+                receipt.reparse_tag,
+            )
+            or preimage.content != bytes.fromhex(entry.original_content_hex)
+            or receipt.sha256 != entry.original_sha256
+        ):
+            return r[m.Cli.AtomicFileState].fail(
+                f"group preimage identity changed: {entry.path}"
+            )
+        return r[m.Cli.AtomicFileState].ok(preimage)
 
 
 __all__: list[str] = ["FlextInfraMiseRecovery"]

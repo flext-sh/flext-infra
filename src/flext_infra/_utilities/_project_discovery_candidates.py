@@ -7,16 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c
-from flext_infra._utilities._project_discovery_shape import (
+from flext_infra import c, m, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscoveryShapeMixin,
 )
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
@@ -30,11 +26,12 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
         repository_root: Path,
         *,
         scan_dirs: frozenset[str] | None = None,
+        declarations: t.VariadicTuple[m.Infra.GitSubmoduleDeclaration] | None = None,
     ) -> t.SequenceOf[Path]:
-        """Return the root and projects declared by its own ``.gitmodules``.
+        """Elect candidates and exclusions from one current Git declaration read.
 
         Returns:
-            The root and projects declared by its own ``.gitmodules``.
+            The root and participating projects declared by its own ``.gitmodules``.
 
         Raises:
             ValueError: If ``declared_paths.failure``.
@@ -42,12 +39,18 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
         """
         roots: t.MutableSequenceOf[Path] = []
         effective_scan_dirs = scan_dirs or frozenset()
-        declared_paths = FlextInfraUtilitiesGit.git_declared_submodule_paths(
+        if declarations is None:
+            declared = FlextInfraUtilitiesGit.git_submodule_declarations(
+                repository_root,
+            )
+            if declared.failure:
+                raise ValueError(declared.error or "invalid .gitmodules")
+            declarations = declared.value
+        nonparticipants = cls.repository_nonparticipant_paths(
             repository_root,
+            declarations=declarations,
         )
-        if declared_paths.failure:
-            raise ValueError(declared_paths.error or "invalid .gitmodules")
-        configured_projects = tuple(path.as_posix() for path in declared_paths.value)
+        configured_projects = tuple(item.path.as_posix() for item in declarations)
         configured_project_set = frozenset(configured_projects)
         resolved_repository_root = repository_root.resolve()
         configured_entries: set[Path] = set()
@@ -78,8 +81,39 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
                 )
             ])
         if not roots and (resolved_repository_root / c.Infra.DEFAULT_SRC_DIR).is_dir():
-            return [resolved_repository_root]
-        return roots
+            roots.append(resolved_repository_root)
+        if not nonparticipants:
+            return roots
+        return tuple(
+            root
+            for root in roots
+            if not cls._is_nonparticipant(
+                root, resolved_repository_root, nonparticipants
+            )
+        )
+
+    @classmethod
+    def repository_nonparticipant_paths(
+        cls,
+        repository_root: Path,
+        *,
+        declarations: t.VariadicTuple[m.Infra.GitSubmoduleDeclaration] | None = None,
+    ) -> frozenset[str]:
+        """Derive exclusions from this invocation's Git declarations, never a cache.
+
+        Returns:
+            Every explicitly unmanaged Git submodule path.
+
+        """
+        if declarations is None:
+            declarations = FlextInfraUtilitiesGit.git_submodule_declarations(
+                repository_root,
+            ).unwrap()
+        return frozenset(
+            declaration.path.as_posix()
+            for declaration in declarations
+            if declaration.managed is False
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesProjectDiscoveryCandidatesMixin"]

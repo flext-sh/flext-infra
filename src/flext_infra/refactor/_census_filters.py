@@ -26,7 +26,7 @@ class FlextInfraRefactorCensusFiltersMixin:
     _MIN_DUPLICATE_DEFINITIONS: ClassVar[int] = 2
 
     @staticmethod
-    def _duplicate_groups(
+    def duplicate_groups(
         project_objects: t.VariadicTuple[t.SequenceOf[m.Infra.Object]],
     ) -> t.VariadicTuple[m.Infra.DuplicateGroup]:
         """Duplicate groups.
@@ -42,9 +42,12 @@ class FlextInfraRefactorCensusFiltersMixin:
         groups: MutableMapping[t.Triple[str, str, str], list[m.Infra.Object]] = (
             defaultdict(list)
         )
+        payloads: MutableMapping[str, list[m.Infra.Object]] = defaultdict(list)
         for item in (obj for objects in project_objects for obj in objects):
             owner = item.scope_path.rpartition(".")[0]
             groups[item.kind, item.name, owner].append(item)
+            if item.payload_fingerprint:
+                payloads[item.payload_fingerprint].append(item)
         duplicates: list[m.Infra.DuplicateGroup] = []
         for key in sorted(groups):
             definitions = groups[key]
@@ -58,10 +61,32 @@ class FlextInfraRefactorCensusFiltersMixin:
                 m.Infra.DuplicateGroup(
                     name=definitions[0].name,
                     kind=definitions[0].kind,
-                    definitions=tuple(definitions),
+                    definitions=definitions,
                     canonical=canonical.project,
                     value_identical=len({item.fingerprint for item in definitions})
                     == 1,
+                ),
+            )
+        for fingerprint in sorted(payloads):
+            definitions = sorted(payloads[fingerprint], key=object_location)
+            if (
+                len(definitions)
+                < FlextInfraRefactorCensusFiltersMixin._MIN_DUPLICATE_DEFINITIONS
+            ):
+                continue
+            owners = {
+                (item.name, item.scope_path.rpartition(".")[0]) for item in definitions
+            }
+            if len(owners) == 1:
+                continue
+            duplicates.append(
+                m.Infra.DuplicateGroup(
+                    name=definitions[0].name,
+                    kind=definitions[0].kind,
+                    definitions=definitions,
+                    canonical=definitions[0].project,
+                    value_identical=False,
+                    semantic_candidate=True,
                 ),
             )
         return tuple(duplicates)

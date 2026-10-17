@@ -11,13 +11,11 @@ from urllib.parse import urlsplit
 
 from flext_cli import u
 
-from flext_core import r
-from flext_infra import c, m, t
-from flext_infra._utilities._docs_scope_build import (
+from flext_infra import c, m, r, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesDocsScopeBuildMixin,
 )
-from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -137,7 +135,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
             u.write_file(
                 path,
                 "\n".join(lines).rstrip() + "\n",
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
             )
             return r[bool].ok(value=True)
         except OSError as exc:
@@ -203,36 +201,6 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
             ),
             apply=apply,
         )
-
-    @staticmethod
-    def anchorize(text: str) -> str:
-        """Convert heading text to the anchor consumed by MkDocs.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        return FlextInfraUtilitiesDocsContract.docs_contract_anchorize(text)
-
-    @staticmethod
-    def build_toc(content: str) -> str:
-        """Generate a TOC block from ## and ### headings in content.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        return FlextInfraUtilitiesDocsContract.docs_contract_build_toc(content)
-
-    @staticmethod
-    def update_toc(content: str) -> t.StrIntPair:
-        """Insert or replace the TOC in content, returning (updated, changed).
-
-        Returns:
-            The resulting ``t.StrIntPair``.
-
-        """
-        return FlextInfraUtilitiesDocsContract.docs_contract_update_toc(content)
 
     @staticmethod
     def run_scoped(

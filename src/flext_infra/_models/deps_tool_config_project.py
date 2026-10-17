@@ -10,9 +10,7 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra._models.deps_tool_config_project_artifacts import (
-    FlextInfraModelsDepsToolConfigProjectArtifacts,
-)
+from flext_infra._models import FlextInfraModelsDepsToolConfigProjectArtifacts
 
 
 class FlextInfraModelsDepsToolConfigProject(
@@ -31,6 +29,10 @@ class FlextInfraModelsDepsToolConfigProject(
             FlextInfraModelsDepsToolConfigProjectArtifacts.ProjectGitignoreConfig
             | None,
             m.Field(description="Gitignore section declared by this source"),
+        ] = None
+        Ruff: Annotated[
+            FlextInfraModelsDepsToolConfigProjectArtifacts.ProjectRuffConfig | None,
+            m.Field(description="Ruff section declared by this source"),
         ] = None
 
     class ProjectConfigDocument(m.ArbitraryTypesModel):

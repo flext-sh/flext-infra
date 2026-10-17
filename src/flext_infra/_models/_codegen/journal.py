@@ -7,12 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import stat
+from hashlib import sha256
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import m, u
+from flext_cli import m
 
 from flext_infra import t
+from flext_infra._models._git.worktree_state import FlextInfraModelsGitWorktreeState
 
 
 class FlextInfraModelsCodegenJournalModels:
@@ -20,6 +22,15 @@ class FlextInfraModelsCodegenJournalModels:
 
     class CodegenStagedFile(m.ArbitraryTypesModel):
         """One destination state and its optional destination-local replacement."""
+
+        dependency_group: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Invocation-local dependent publication group"),
+        ] = None
+        original_replacement: Annotated[
+            m.Cli.AtomicFileState | None,
+            m.Field(description="Journal-owned physical dependent-group preimage"),
+        ] = None
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
@@ -39,8 +50,41 @@ class FlextInfraModelsCodegenJournalModels:
             m.Cli.AtomicFileState | None,
             m.Field(description="Exact staged state, or None for a planned deletion"),
         ] = None
+        source_states: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(
+                exclude=True,
+                description="Exact dependencies consumed by this destination",
+            ),
+        ] = ()
+        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
+            default=(),
+            strict=True,
+            description="Native directory queries consumed by this target",
+        )
+        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
+            m.Field(
+                default=(),
+                strict=True,
+                description="Physical ancestry of queried source directories",
+            )
+        )
+        tracking: Annotated[
+            Literal["versioned", "runtime-local"],
+            m.Field(description="Managed artifact persistence policy"),
+        ] = "versioned"
+        index_before: Annotated[
+            FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry | None,
+            m.Field(description="Captured index entry authorized for retirement"),
+        ] = None
+        tracking_dependencies: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(
+                description="Portable declaration prerequisites of index retirement"
+            ),
+        ] = ()
 
-        @u.model_validator(mode="after")
+        @m.model_validator(mode="after")
         def _validate_publication(self) -> Self:
             """Bind a complete staged state to one physical project destination.
 
@@ -83,7 +127,7 @@ class FlextInfraModelsCodegenJournalModels:
             m.Field(gt=0, strict=True, description="Project directory inode"),
         ]
 
-        @u.field_validator("selector")
+        @m.field_validator("selector")
         @classmethod
         def _validate_selector(cls, value: str) -> str:
             relative = Path(value)
@@ -130,7 +174,7 @@ class FlextInfraModelsCodegenJournalModels:
             m.Field(description="Last durable authorized temporary-tree manifest"),
         ] = None
 
-        @u.field_validator("path")
+        @m.field_validator("path")
         @classmethod
         def _validate_path(cls, value: str) -> str:
             """Keep the durable authority lexical and inside the workspace.
@@ -153,7 +197,7 @@ class FlextInfraModelsCodegenJournalModels:
                 raise ValueError(msg)
             return value
 
-        @u.model_validator(mode="after")
+        @m.model_validator(mode="after")
         def _validate_disposition(self) -> Self:
             """Bind lifecycle metadata to one physical leaf path.
 
@@ -225,6 +269,9 @@ class FlextInfraModelsCodegenJournalModels:
             t.NonEmptyStr,
             m.Field(description="Generation phase that consumed source"),
         ]
+        role: (
+            Literal["layer0", "family", "consumer", "resource", "distribution"] | None
+        ) = m.Field(default=None, description="Authenticated producer input role")
         path: Annotated[Path, m.Field(description="Absolute authenticated source path")]
         parent_device: Annotated[
             int | None,
@@ -283,7 +330,7 @@ class FlextInfraModelsCodegenJournalModels:
             m.Field(ge=0, strict=True, description="Host reparse tag"),
         ] = None
 
-        @u.field_validator("path")
+        @m.field_validator("path")
         @classmethod
         def _validate_source_path(cls, value: Path) -> Path:
             """Reject relative or lexically escaping source identities.
@@ -300,7 +347,7 @@ class FlextInfraModelsCodegenJournalModels:
                 raise ValueError(msg)
             return value
 
-        @u.model_validator(mode="after")
+        @m.model_validator(mode="after")
         def _validate_source_physical_state(self) -> Self:
             """Reject a persisted source identity that represents a reparse point.
 
@@ -361,11 +408,181 @@ class FlextInfraModelsCodegenJournalModels:
                 raise ValueError(msg)
             return self
 
-    class CodegenJournalEntry(m.ArbitraryTypesModel):
-        """Recoverable full before/after identity for one generated file."""
+    class CodegenStagingIntent(m.ArbitraryTypesModel):
+        """Write-ahead authority, distinct from a finalized publication identity."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
+        before: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(
+                description="Authenticated absent staging leaf and physical parent",
+            ),
+        ]
+        sha256: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[0-9a-f]{64}$",
+                description="Intended staging content hash",
+            ),
+        ]
+        mode: Annotated[
+            int,
+            m.Field(ge=0, le=0o7777, strict=True, description="Intended staging mode"),
+        ]
+        created: Annotated[
+            m.Cli.AtomicPhysicalTreeEntry | None,
+            m.Field(description="Finalized physical receipt after guarded creation"),
+        ] = None
+
+        @m.model_validator(mode="after")
+        def _validate_intent(self) -> Self:
+            """Require an authenticated absent staging leaf before its creation.
+
+            Returns:
+                The validated staging intention.
+
+            Raises:
+                ValueError: If the leaf is present or its parent is unauthenticated.
+
+            """
+            if (
+                self.before.content is not None
+                or self.before.parent_device is None
+                or self.before.parent_inode is None
+            ):
+                msg = "staging intention requires an absent leaf with a physical parent"
+                raise ValueError(msg)
+            return self
+
+        @m.model_validator(mode="after")
+        def _validate_created_intent(self) -> Self:
+            """Bind any finalized receipt to the previously authorized intention.
+
+            Returns:
+                The staging intention with its finalized receipt authenticated.
+
+            Raises:
+                ValueError: If the receipt differs from its intended leaf.
+
+            """
+            created = self.created
+            if created is None:
+                return self
+            msg = "finalized staging receipt differs from its intended leaf"
+            if (
+                created.path != self.before.path
+                or created.kind != "file"
+                or created.sha256 != self.sha256
+                or created.mode != self.mode
+            ):
+                raise ValueError(msg)
+            if (
+                created.parent_device != self.before.parent_device
+                or created.parent_inode != self.before.parent_inode
+                or created.link_count != 1
+            ):
+                raise ValueError(msg)
+            return self
+
+    class CodegenJournalEntry(m.ArbitraryTypesModel):
+        """Recoverable full before/after identity for one generated file."""
+
+        dependency_group: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Invocation-local dependent publication group"),
+        ] = None
+        original_content_hex: Annotated[
+            str | None,
+            m.Field(
+                pattern=r"^(?:[0-9a-f]{2})*$",
+                description="Journal-owned group preimage bytes",
+            ),
+        ] = None
+        original_staging: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Journal-relative physical dependent-group preimage"),
+        ] = None
+        group_admitted: Annotated[
+            bool,
+            m.Field(strict=True, description="Durable dependent-group effect receipt"),
+        ] = False
+        recover_group: Annotated[
+            bool,
+            m.Field(strict=True, description="Durable failed-group recovery selection"),
+        ] = False
+
+        @m.model_validator(mode="after")
+        def _validate_group_preimage(self) -> Self:
+            """Bind group recovery authority to the original authenticated bytes.
+
+            Returns:
+                The resulting ``Self``.
+
+            Raises:
+                ValueError: If independent entry cannot carry group recovery authority;
+                    or if dependent group requires a durable original preimage; or if
+                    dependent group preimage differs from original bytes; or if absent
+                    group original cannot carry a preimage.
+
+            """
+            if self.dependency_group is None:
+                if (
+                    self.original_content_hex is not None
+                    or self.original_staging is not None
+                    or self.group_admitted
+                    or self.recover_group
+                ):
+                    msg = "independent entry cannot carry group recovery authority"
+                    raise ValueError(msg)
+            elif self.original_exists:
+                if self.original_content_hex is None or self.original_staging is None:
+                    msg = "dependent group requires a durable original preimage"
+                    raise ValueError(msg)
+                if (
+                    sha256(bytes.fromhex(self.original_content_hex)).hexdigest()
+                    != self.original_sha256
+                ):
+                    msg = "dependent group preimage differs from original bytes"
+                    raise ValueError(msg)
+            elif (
+                self.original_content_hex is not None
+                or self.original_staging is not None
+            ):
+                msg = "absent group original cannot carry a preimage"
+                raise ValueError(msg)
+            return self
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+
+        source_paths: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(
+                description="Authenticated source identities consumed by this entry"
+            ),
+        ] = ()
+        source_directory_paths: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            strict=True,
+            description="Phase-bound native directory query receipt references",
+        )
+        source_query_topology_paths: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            strict=True,
+            description="Phase-bound source query ancestry receipt references",
+        )
+        tracking: Annotated[
+            Literal["versioned", "runtime-local"],
+            m.Field(description="Declared persistence policy for this destination"),
+        ] = "versioned"
+        index_before: Annotated[
+            FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry | None,
+            m.Field(description="Immutable index preimage authorized for retirement"),
+        ] = None
+        tracking_dependencies: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Declaration destinations required before retirement"),
+        ] = ()
         phase: Annotated[
             t.NonEmptyStr,
             m.Field(description="Generation phase owning this entry"),
@@ -397,10 +614,6 @@ class FlextInfraModelsCodegenJournalModels:
             int,
             m.Field(gt=0, strict=True, description="Original parent inode"),
         ]
-        original_backup: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Workspace-relative original-byte backup"),
-        ] = None
         original_sha256: Annotated[
             str | None,
             m.Field(
@@ -485,59 +698,11 @@ class FlextInfraModelsCodegenJournalModels:
             int | None,
             m.Field(ge=0, strict=True, description="Staged reparse tag"),
         ] = None
-        rollback_exists: Annotated[
-            bool | None,
-            m.Field(
-                strict=True,
-                description="Recovery target presence once rollback is durable",
-            ),
-        ] = None
-        rollback_parent_device: Annotated[
-            int | None,
-            m.Field(ge=0, strict=True, description="Rollback live parent device"),
-        ] = None
-        rollback_parent_inode: Annotated[
-            int | None,
-            m.Field(gt=0, strict=True, description="Rollback live parent inode"),
-        ] = None
-        rollback_sha256: Annotated[
-            str | None,
-            m.Field(pattern=r"^[0-9a-f]{64}$", description="Rollback bytes identity"),
-        ] = None
-        rollback_mode: Annotated[
-            int | None,
-            m.Field(ge=0, le=0o7777, strict=True, description="Rollback mode"),
-        ] = None
-        rollback_device: Annotated[
-            int | None,
-            m.Field(ge=0, strict=True, description="Rollback staged device"),
-        ] = None
-        rollback_inode: Annotated[
-            int | None,
-            m.Field(gt=0, strict=True, description="Rollback staged inode"),
-        ] = None
-        rollback_link_count: Annotated[
-            Literal[1] | None,
-            m.Field(description="Rollback staged unique link count"),
-        ] = None
-        rollback_file_attributes: Annotated[
-            int | None,
-            m.Field(ge=0, strict=True, description="Rollback host attributes"),
-        ] = None
-        rollback_reparse_tag: Annotated[
-            int | None,
-            m.Field(ge=0, strict=True, description="Rollback reparse tag"),
-        ] = None
-        rollback_staging: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Workspace-relative durable rollback candidate path"),
-        ] = None
 
-        @u.field_validator(
+        @m.field_validator(
             "path",
-            "original_backup",
             "desired_staging",
-            "rollback_staging",
+            "original_staging",
         )
         @classmethod
         def _validate_relative_file_path(cls, value: str | None) -> str | None:
@@ -554,7 +719,7 @@ class FlextInfraModelsCodegenJournalModels:
                 raise ValueError(msg)
             return value
 
-        @u.model_validator(mode="after")
+        @m.model_validator(mode="after")
         def _validate_original_tuple(self) -> Self:
             """Require complete recovery identity exactly when original existed.
 
@@ -563,27 +728,19 @@ class FlextInfraModelsCodegenJournalModels:
 
             Raises:
                 ValueError: If Mise journal original recovery tuple is inconsistent; or
-                    if absent codegen original cannot contain host metadata; or if
-                    codegen journal desired identity is inconsistent; or if codegen
-                    journal desired staging path is inconsistent; or if absent codegen
-                    desired state cannot contain host metadata; or if codegen journal
-                    rollback identity has no presence state; or if codegen journal
-                    rollback parent identity is incomplete; or if codegen journal
-                    rollback identity is incomplete; or if codegen journal rollback
-                    staging path is inconsistent; or if absent codegen rollback cannot
-                    contain file identity; or if absent codegen rollback cannot contain
-                    host metadata; or if codegen journal contains a reparse identity.
+                    if absent codegen original cannot contain host metadata.
 
             """
-            original = (
-                self.original_backup,
-                self.original_sha256,
-                self.original_mode,
-                self.original_device,
-                self.original_inode,
-                self.original_link_count,
+            populated = tuple(
+                value is not None
+                for value in (
+                    self.original_sha256,
+                    self.original_mode,
+                    self.original_device,
+                    self.original_inode,
+                    self.original_link_count,
+                )
             )
-            populated = tuple(value is not None for value in original)
             if (self.original_exists and not all(populated)) or (
                 not self.original_exists and any(populated)
             ):
@@ -595,14 +752,31 @@ class FlextInfraModelsCodegenJournalModels:
             ):
                 msg = "absent codegen original cannot contain host metadata"
                 raise ValueError(msg)
-            desired = (
-                self.desired_sha256,
-                self.desired_mode,
-                self.desired_device,
-                self.desired_inode,
-                self.desired_link_count,
+            return self
+
+        @m.model_validator(mode="after")
+        def _validate_desired_tuple(self) -> Self:
+            """Require the desired identity and staging path to be consistent.
+
+            Returns:
+                The resulting ``Self``.
+
+            Raises:
+                ValueError: If codegen journal desired identity is inconsistent; or
+                    if codegen journal desired staging path is inconsistent; or if
+                    absent codegen desired state cannot contain host metadata.
+
+            """
+            desired_populated = tuple(
+                value is not None
+                for value in (
+                    self.desired_sha256,
+                    self.desired_mode,
+                    self.desired_device,
+                    self.desired_inode,
+                    self.desired_link_count,
+                )
             )
-            desired_populated = tuple(value is not None for value in desired)
             if (self.desired_exists and not all(desired_populated)) or (
                 not self.desired_exists and any(desired_populated)
             ):
@@ -617,44 +791,23 @@ class FlextInfraModelsCodegenJournalModels:
             ):
                 msg = "absent codegen desired state cannot contain host metadata"
                 raise ValueError(msg)
-            rollback = (
-                self.rollback_sha256,
-                self.rollback_mode,
-                self.rollback_device,
-                self.rollback_inode,
-                self.rollback_link_count,
-            )
-            rollback_populated = tuple(value is not None for value in rollback)
-            rollback_parent = (self.rollback_parent_device, self.rollback_parent_inode)
-            parent_populated = tuple(value is not None for value in rollback_parent)
-            if self.rollback_exists is None and (
-                any(rollback_populated) or any(parent_populated)
-            ):
-                msg = "codegen journal rollback identity has no presence state"
-                raise ValueError(msg)
-            if self.rollback_exists is not None and not all(parent_populated):
-                msg = "codegen journal rollback parent identity is incomplete"
-                raise ValueError(msg)
-            if self.rollback_exists is True and not all(rollback_populated):
-                msg = "codegen journal rollback identity is incomplete"
-                raise ValueError(msg)
-            if (self.rollback_exists is True) != (self.rollback_staging is not None):
-                msg = "codegen journal rollback staging path is inconsistent"
-                raise ValueError(msg)
-            if self.rollback_exists is False and any(rollback_populated):
-                msg = "absent codegen rollback cannot contain file identity"
-                raise ValueError(msg)
-            if self.rollback_exists is False and (
-                self.rollback_file_attributes is not None
-                or self.rollback_reparse_tag is not None
-            ):
-                msg = "absent codegen rollback cannot contain host metadata"
-                raise ValueError(msg)
+            return self
+
+        @m.model_validator(mode="after")
+        def _validate_reparse_absence(self) -> Self:
+            """Reject any reparse identity in the journal's file states.
+
+            Returns:
+                The resulting ``Self``.
+
+            Raises:
+                ValueError: If codegen journal contains a reparse identity.
+
+            """
             marker = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
             physical = (
                 (self.original_file_attributes, self.original_reparse_tag),
                 (self.desired_file_attributes, self.desired_reparse_tag),
-                (self.rollback_file_attributes, self.rollback_reparse_tag),
             )
             if any(
                 reparse not in {None, 0}
@@ -665,20 +818,5 @@ class FlextInfraModelsCodegenJournalModels:
                 raise ValueError(msg)
             return self
 
-    class CodegenRecoveryAction(m.ArbitraryTypesModel):
-        """One preclassified recovery decision with no live effect applied."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
-
-        entry: Annotated[
-            FlextInfraModelsCodegenJournalModels.CodegenJournalEntry,
-            m.Field(description="Journal entry owning the recovery decision"),
-        ]
-        current: Annotated[
-            m.Cli.AtomicFileState,
-            m.Field(description="Exact live target state used for classification"),
-        ]
-        operation: Annotated[
-            Literal["noop", "delete", "restore"],
-            m.Field(description="Only authorized recovery effect for the target"),
-        ]
+__all__: list[str] = ["FlextInfraModelsCodegenJournalModels"]

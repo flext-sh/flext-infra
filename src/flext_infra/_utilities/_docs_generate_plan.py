@@ -7,19 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_cli import u as cli_u
 
-from flext_core import r
-from flext_infra import m, t
-from flext_infra._utilities._docs_generate_sources import (
+from flext_infra import m, p, r, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDocsContract,
     FlextInfraUtilitiesDocsGenerateSourcesMixin,
 )
-from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesDocsGeneratePlanMixin(
@@ -112,20 +107,8 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
             The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]``.
 
         """
-        # The physical repository root is carried by the bundle: the first output
-        # scope is a member when the root is excluded from the render.
-        repository_root = bundle.repository_root
-        scope_roots = tuple(scoped.scope.path for scoped in bundle.scopes)
-        # The single race barrier of the docs cycle: every snapshotted source is
-        # re-read here, once, immediately before publication planning; the
-        # destination CAS re-validates physically at publish time.
-        stable = FlextInfraUtilitiesDocsGeneratePlanMixin.docs_verify_sources(
-            repository_root,
-            bundle.source_states,
-            extra_roots=scope_roots,
-        )
-        if stable.failure:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(stable)
+        # Each plan carries its batch inputs to the guarded publication owner.
+        # Planning never revalidates the complete fleet or rerenders its sources.
         plans: list[m.Infra.CodegenFilePlan] = []
         for scoped in bundle.scopes:
             for artifact in scoped.artifacts:
@@ -138,7 +121,13 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
                 )
                 if planned.failure:
                     return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(planned)
-                plans.append(planned.value)
+                plans.append(
+                    planned.value.model_copy(
+                        update={
+                            "dependency_group": scoped.scope.path.as_posix(),
+                        }
+                    )
+                )
         return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(tuple(plans))
 
     @staticmethod

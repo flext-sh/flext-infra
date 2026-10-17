@@ -7,52 +7,376 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import secrets
-from collections.abc import Callable, MutableMapping
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core import r
-from flext_infra import m, t, u
-from flext_infra.codegen._codegen_staging import FlextInfraCodegenStaging
-from flext_infra.codegen._mise_artifacts_files import (
-    FlextInfraMiseArtifactsFiles as files,
-)
-from flext_infra.codegen._mise_artifacts_journal import (
-    FlextInfraMiseArtifactsJournal as journal_io,
-)
-from flext_infra.codegen._mise_artifacts_publication import FlextInfraMisePublication
-from flext_infra.codegen._mise_artifacts_recovery import FlextInfraMiseRecovery
-from flext_infra.codegen._mise_artifacts_staging import FlextInfraMiseStaging
-from flext_infra.codegen._mise_artifacts_state import (
-    FlextInfraMiseArtifactsState as state,
-)
-from flext_infra.codegen._mise_artifacts_verification import (
-    FlextInfraMiseArtifactsVerification as verify,
+from flext_infra import c, m, r, t, u
+from flext_infra.codegen import (
+    FlextInfraCodegenTransactionGeneration,
+    FlextInfraMiseArtifactsFiles,
+    FlextInfraMiseArtifactsJournal,
+    FlextInfraMiseArtifactsState,
+    FlextInfraMiseArtifactsVerification,
+    FlextInfraMisePublication,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-from flext_infra.codegen.file_leases import FlextInfraCodegenFileLeases
-from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
+from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraCodegenTransaction(FlextInfraCodegenFileLeases):
+class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
     """Keep every generation phase recoverable until one final fixed point."""
 
-    def __init__(self, owner: p.Infra.MiseArtifactsOwner) -> None:
-        """Initialize the transaction with its configured Mise artifact owner."""
-        super().__init__()
-        self._owner = owner
-        self._planner = FlextInfraMiseWorkspacePlanner(owner)
-        self._recovery = FlextInfraMiseRecovery()
-        self._mise_staging = FlextInfraMiseStaging()
-        self._journal_receipts: MutableMapping[Path, m.Cli.AtomicFileState] = {}
+    _file_run_identity: m.Infra.GitIdentityReport | None = None
+    _file_run_git_directory: t.Pair[int, int] | None = None
+
+    def preview_sources[T](
+        self,
+        workspace: Path,
+        updates: t.MappingKV[Path, str],
+        validator: Callable[[Path, t.MappingKV[Path, Path]], T],
+        *,
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
+        runtime_root: Path | None = None,
+    ) -> p.Result[T]:
+        """Validate a journal-owned source view without publishing live files.
+
+        Args:
+            workspace: The declared source workspace.
+            updates: Desired source content keyed by live paths.
+            validator: A callable that validates the source view.
+            inputs: Original caller source states required to remain unchanged.
+            runtime_root: Declared physical runtime for pre-check candidate imports.
+
+        Returns:
+            A result wrapping the validation outcome or the first failure encountered.
+
+
+        """
+        if self._source_authority is not None and updates:
+            return r[T].fail(
+                "cold source authority permits an unchanged reference view only",
+            )
+        planned = FlextInfraStagedPackage.plan_sources(
+            workspace,
+            updates,
+            inputs=inputs,
+        )
+        if planned.failure:
+            return r[T].from_failure(planned)
+        plan = planned.value
+        roots = self.capability_roots("stage-inputs", sorted(plan.roots))
+
+        def validate_locked(scope_root: Path) -> p.Result[T]:
+            source_barrier = FlextInfraStagedPackage.source_inputs_current(plan)
+            if source_barrier.failure:
+                return r[T].from_failure(source_barrier)
+            started = self.begin_files_locked(scope_root, roots, plan.inputs)
+            if started.failure:
+                return r[T].from_failure(started)
+            session = started.value
+
+            def validate_prepared(
+                prepared: m.Infra.CodegenTransactionSession,
+            ) -> p.Result[T]:
+                participant = next(
+                    item
+                    for item in prepared.plan.layout.file_participants
+                    if item.root == plan.workspace
+                )
+                view_root = participant.transaction_root / "source-view"
+                candidates = {
+                    path: view_root / path.relative_to(plan.workspace)
+                    for path in plan.updates
+                }
+                materialized = self._materialize_source_preview(
+                    prepared,
+                    plan,
+                    view_root,
+                )
+                if materialized.failure:
+                    return r[T].from_failure(materialized)
+                current_session, manifest = materialized.value
+                consumed = self._source_runtime_consumer(plan, view_root, runtime_root)
+                if consumed.failure:
+                    return r[T].from_failure(consumed)
+                value = validator(view_root, candidates)
+                barrier = self._source_preview_current(
+                    plan,
+                    manifest,
+                    current_session,
+                )
+                if barrier.failure:
+                    return r[T].from_failure(barrier)
+                return self._cleaned_source_preview_value(prepared, value)
+
+            return self.publish_prepared_locked(session, validate_prepared)
+
+        return self.run_files_locked(roots, validate_locked)
+
+    def _cleaned_source_preview_value[T](
+        self,
+        prepared: m.Infra.CodegenTransactionSession,
+        value: T,
+    ) -> p.Result[T]:
+        """Recover the prepared source preview and release its captured value.
+
+        Args:
+            prepared: The prepared session owning the staging layout.
+            value: The validated value captured from the live source view.
+
+        Returns:
+            The captured value after clean recovery, or the recovery failure
+            annotated with its residual cleanup error.
+
+        """
+        cleaned = self._recover_prepared(prepared.plan.layout)
+        if cleaned.failure:
+            return r[T].fail(
+                cleaned.error or "source preview staging cleanup failed",
+                error_code=cleaned.error_code,
+                exception=cleaned.exception,
+                error_data={
+                    **(cleaned.error_data or {}),
+                    "cleanup_error": cleaned.error,
+                },
+            )
+        return r[T].ok(value)
+
+    def _materialize_source_preview(
+        self,
+        session: m.Infra.CodegenTransactionSession,
+        plan: m.Infra.StageSourcePlan,
+        view_root: Path,
+    ) -> p.Result[
+        t.Pair[m.Infra.CodegenTransactionSession, m.Cli.AtomicPhysicalTreeManifest]
+    ]:
+        """Record the actual materialized view through the existing journal writer.
+
+        Returns:
+            The prepared cursor and its authenticated candidate manifest.
+
+        """
+        return self._materialize_package_writes(
+            session,
+            self._source_preview_writes(plan, view_root),
+        ).flat_map(
+            lambda current: u.Cli.atomic_inventory_physical_tree(view_root).map(
+                lambda manifest: (current, manifest),
+            )
+        )
+
+    @staticmethod
+    def _source_runtime_consumer(
+        plan: m.Infra.StageSourcePlan,
+        view_root: Path,
+        runtime_root: Path | None,
+    ) -> p.Result[bool]:
+        """Import sealed runtime modules before any candidate check callback.
+
+        Returns:
+            Actual native consumer success or its first causal failure.
+
+        """
+        if runtime_root is None:
+            return r[bool].ok(value=True)
+        environment = u.Infra.runtime_environment_dir(
+            plan.workspace, runtime_root=runtime_root
+        )
+        interpreter = u.Infra.runtime_python(plan.workspace, runtime_root=runtime_root)
+        if environment.is_symlink() or not environment.is_dir():
+            return r[bool].fail(f"candidate runtime must be physical: {environment}")
+        observed = u.Cli.atomic_plan_directory_chain(environment)
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        identity = observed.value
+        bindings = tuple(
+            (
+                layout.package_name,
+                str(view_root / layout.src_dir.relative_to(plan.workspace)),
+            )
+            for layout in plan.layouts
+        )
+        modules = tuple(
+            sorted({
+                ".".join(
+                    (*path.relative_to(layout.src_dir).with_suffix("").parts[:-1],)
+                    if path.stem == "__init__"
+                    else path.relative_to(layout.src_dir).with_suffix("").parts
+                )
+                for layout in plan.layouts
+                for path in (state.path for state in plan.inputs)
+                if path.suffix == c.Infra.EXT_PYTHON
+                and path.is_relative_to(layout.package_dir)
+            })
+        )
+        code = (
+            "import ast, importlib, importlib.util, sys\n"
+            "from importlib.machinery import PathFinder\n"
+            "from graphlib import TopologicalSorter\n"
+            "from pathlib import Path\n"
+            f"if Path(sys.prefix).resolve() != Path({str(environment)!r}).resolve():\n"
+            "    raise RuntimeError('candidate interpreter escaped "
+            "declared physical runtime')\n"
+            f"environment = Path({str(environment)!r})\n"
+            f"expected = {(identity.anchor_device, identity.anchor_inode)!r}\n"
+            "before = environment.stat()\n"
+            "if environment.is_symlink() "
+            "or (before.st_dev, before.st_ino) != expected:\n"
+            "    raise RuntimeError('candidate physical runtime identity changed')\n"
+            f"bindings = {bindings!r}\n"
+            "specs = {}\n"
+            "dependencies = {}\n"
+            "namespaces = {name for name, source in bindings}\n"
+            "for name, source in bindings:\n"
+            "    if name in sys.modules:\n"
+            "        raise ImportError('candidate inherited cached package: ' + name)\n"
+            "    spec = PathFinder.find_spec(name, [source])\n"
+            "    if spec is None or spec.loader is None:\n"
+            "        raise ImportError('unsupported candidate package: ' + name)\n"
+            "    sys.modules[name] = importlib.util.module_from_spec(spec)\n"
+            "    specs[name] = spec\n"
+            "    imports = []\n"
+            "    for node in ast.parse(Path(spec.origin).read_text()).body:\n"
+            "        if isinstance(node, ast.Import):\n"
+            "            imports.extend(alias.name for alias in node.names)\n"
+            "        elif (isinstance(node, ast.ImportFrom) "
+            "and not node.level and node.module):\n"
+            "            imports.append(node.module)\n"
+            "    dependencies[name] = {module.split('.')[0] for module in imports}\n"
+            "    dependencies[name].intersection_update(namespaces - {name})\n"
+            "for name in TopologicalSorter(dependencies).static_order():\n"
+            "    spec = specs[name]\n"
+            "    spec.loader.exec_module(sys.modules[spec.name])\n"
+            f"for name in {modules!r}:\n"
+            "    importlib.import_module(name)\n"
+            "origins = {name: Path(source) / name for name, source in bindings}\n"
+            "for name, module in tuple(sys.modules.items()):\n"
+            "    namespace = name.split('.')[0]\n"
+            f"    if namespace not in {tuple(plan.workspace_packages)!r}:\n"
+            "        continue\n"
+            "    root = origins.get(namespace)\n"
+            "    origin = getattr(module, '__file__', None)\n"
+            "    paths = getattr(module, '__path__', ())\n"
+            "    if (root is None or origin is None\n"
+            "        or not Path(origin).resolve().is_relative_to(root)\n"
+            "        or any(not Path(path).resolve().is_relative_to(root) "
+            "for path in paths)):\n"
+            "        raise ImportError('unsealed candidate origin: ' "
+            "+ name + ': ' + str(origin))\n"
+            "after = environment.stat()\n"
+            "if environment.is_symlink() or (after.st_dev, after.st_ino) != expected:\n"
+            "    raise RuntimeError('candidate physical runtime identity changed')\n"
+        )
+        output = u.Cli.run_raw(
+            [str(interpreter), "-I", "-B", "-W", "error", "-"],
+            cwd=runtime_root,
+            timeout=c.Infra.TIMEOUT_SHORT,
+            options=m.Cli.ProcessOptions(
+                input_data=code,
+                remove_env_keys=(c.Infra.ORCHESTRATOR_ENV_PYTHONPATH,),
+            ),
+        )
+        if output.failure:
+            return r[bool].from_failure(output)
+        if not u.Cli.process_succeeded(output.value.outcome) or output.value.stderr:
+            return r[bool].fail(
+                f"candidate runtime consumer failed: {output.value.outcome}:\n"
+                f"{output.value.stdout}{output.value.stderr}",
+            )
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _source_preview_current(
+        plan: m.Infra.StageSourcePlan,
+        manifest: m.Cli.AtomicPhysicalTreeManifest,
+        session: m.Infra.CodegenTransactionSession,
+    ) -> p.Result[bool]:
+        """Bind acceptance to unchanged candidate, live sources and journal.
+
+        Returns:
+            Success only while every pre-consumer observation remains current.
+
+        """
+        current = u.Cli.atomic_inventory_physical_tree(manifest.root.path)
+        if current.failure:
+            return r[bool].from_failure(current)
+        if current.value != manifest:
+            before = {entry.path: entry for entry in (manifest.root, *manifest.entries)}
+            after = {
+                entry.path: entry
+                for entry in (current.value.root, *current.value.entries)
+            }
+            changed = tuple(
+                str(path.relative_to(manifest.root.path))
+                for path in sorted(before.keys() | after.keys())
+                if before.get(path) != after.get(path)
+            )
+            return r[bool].fail(
+                f"source preview candidate changed during validation: {changed}"
+            )
+        originals = FlextInfraStagedPackage.source_inputs_current(plan)
+        if originals.failure:
+            return r[bool].from_failure(originals)
+        journal = FlextInfraMiseArtifactsState.unchanged_journal(
+            session,
+            "source preview journal changed during validation",
+        )
+        if journal.failure:
+            return r[bool].from_failure(journal)
+        return r[bool].ok(originals.value)
+
+    @staticmethod
+    def _source_preview_writes(
+        plan: m.Infra.StageSourcePlan,
+        view_root: Path,
+    ) -> t.VariadicTuple[tuple[Path, bytes, int]]:
+        """Build the staged writes that materialize the previewed source view.
+
+        Returns:
+            One (destination, content, mode) write per existing or desired source input.
+
+        """
+        writes: list[tuple[Path, bytes, int]] = []
+        for before in plan.inputs:
+            if not before.path.is_relative_to(plan.workspace):
+                continue
+            content = (
+                plan.updates[before.path].encode(c.DEFAULT_ENCODING)
+                if before.path in plan.updates
+                else before.content
+            )
+            if content is None:
+                continue
+            writes.append((
+                view_root / before.path.relative_to(plan.workspace),
+                content,
+                before.mode if before.mode is not None else c.Infra.CONFIG_SPEC[1],
+            ))
+        return tuple(writes)
+
+    @staticmethod
+    def capability_roots(
+        label: str,
+        paths: t.SequenceOf[Path],
+    ) -> t.MappingKV[str, Path]:
+        """Key physical roots by the selectors validated by file participants.
+
+        Returns:
+            The capability root mapping in the supplied order.
+
+        """
+        return {f"@{label}-{index}": path for index, path in enumerate(paths)}
 
     def run_files_locked[T](
         self,
         roots: t.MappingKV[str, Path],
         operation: Callable[[Path], p.Result[T]],
+        *,
+        prepare: bool = True,
     ) -> p.Result[T]:
         """Hold Git and shared destination leases before planning or recovery.
 
@@ -60,49 +384,131 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenFileLeases):
             The resulting ``p.Result[T]``.
 
         """
-        identity = self._planner.scope_identity()
+        if (
+            self._file_run_identity is not None
+            or self._file_run_git_directory is not None
+        ):
+            return r[T].fail("file transaction scope already has an active lease")
+        identity = self._authorized_run_identity(roots)
         if identity.failure:
             return r[T].from_failure(identity)
-        proposed = self._planner.file_layout(
-            identity.value.repo_root,
-            roots,
-            transaction_id=secrets.token_hex(16),
+        physical = FlextInfraMiseArtifactsFiles.physical_directory_identity(
+            identity.value.git_dir,
+        )
+        proposed = physical.flat_map(
+            lambda _: self._planner.file_layout_from_identity(
+                identity.value,
+                roots,
+                transaction_id=secrets.token_hex(16),
+            ),
         )
         if proposed.failure:
             return r[T].from_failure(proposed)
         with u.Infra.codegen_transaction_lease(
             self._planner.journal_path(identity.value),
         ):
-            participants = {
-                item.root: item for item in proposed.value.file_participants
-            }
-            observed = state.journal_state(proposed.value)
-            if observed.failure:
-                return r[T].from_failure(observed)
-            snapshot = state.journal_snapshot(observed.value)
-            if snapshot is not None and snapshot.content is not None:
-                loaded = journal_io.read(proposed.value)
-                if loaded.failure:
-                    return r[T].from_failure(loaded)
-                for participant in loaded.value[0].file_participants:
-                    current = participants.get(participant.root)
-                    if current is not None and (current.device, current.inode) != (
-                        participant.device,
-                        participant.inode,
-                    ):
-                        return r[T].fail(
-                            "file capability identity changed before recovery",
-                        )
-                    participants[participant.root] = participant
+            participants = self._file_identity_current(
+                identity.value,
+                physical.value,
+            ).flat_map(
+                lambda _: self._file_recovery_participants(
+                    proposed.value,
+                    prepare=prepare,
+                ),
+            )
+            if participants.failure:
+                return r[T].from_failure(participants)
             with self._lease_file_participants(
-                tuple(participants.values()),
+                participants.value,
                 held_roots=frozenset({identity.value.repo_root.resolve()}),
             ):
-                return self._run_locked_operation(
-                    identity.value,
-                    prepare=True,
-                    operation=operation,
+                self._file_run_identity = identity.value
+                self._file_run_git_directory = physical.value
+                try:
+                    if not prepare:
+                        residue = FlextInfraMiseArtifactsState.transaction_residue(
+                            proposed.value,
+                        )
+                        if residue:
+                            return r[T].fail(
+                                "unregistered generation staging blocks readiness: "
+                                f"{residue[0]}",
+                            )
+                        u.Cli.info(
+                            "stage=file-transaction-readiness "
+                            "journal=absent residue=0 leased=true",
+                        )
+                    return self._run_locked_operation(
+                        identity.value,
+                        prepare=prepare,
+                        operation=operation,
+                    )
+                finally:
+                    self._file_run_identity = None
+                    self._file_run_git_directory = None
+
+    def _authorized_run_identity(
+        self,
+        roots: t.MappingKV[str, Path],
+    ) -> p.Result[m.Infra.GitIdentityReport]:
+        """Resolve the scope identity and authorize roots and journal for a run.
+
+        Returns:
+            The scope identity report of the transaction scope.
+
+        """
+        producer = self._file_session_authority()
+        if producer.failure:
+            return r[m.Infra.GitIdentityReport].from_failure(producer)
+        identity = self._planner.scope_identity()
+        if identity.failure:
+            return r[m.Infra.GitIdentityReport].from_failure(identity)
+        authorized = self._authorize_roots(tuple(roots.values()))
+        if authorized.failure:
+            return r[m.Infra.GitIdentityReport].from_failure(authorized)
+        return identity
+
+    def _file_recovery_participants(
+        self,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        *,
+        prepare: bool,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFileParticipant]]:
+        """Authenticate current and recorded participants under the journal lease.
+
+        Returns:
+            The ordered participants whose destination leases must be acquired.
+
+        """
+        result_type = r[t.VariadicTuple[m.Infra.CodegenFileParticipant]]
+        participants = {item.root: item for item in layout.file_participants}
+        observed = FlextInfraMiseArtifactsState.journal_state(layout)
+        if observed.failure:
+            return result_type.from_failure(observed)
+        snapshot = FlextInfraMiseArtifactsState.journal_snapshot(observed.value)
+        if snapshot is not None and snapshot.content is not None:
+            if not prepare:
+                return result_type.fail(
+                    "pending file generation journal blocks read-only readiness; "
+                    "authenticated apply recovery is required",
                 )
+            loaded = FlextInfraMiseArtifactsJournal.read(layout)
+            if loaded.failure:
+                return result_type.from_failure(loaded)
+            authorized = self._authorize_journal(layout, loaded.value[0])
+            if authorized.failure:
+                return result_type.from_failure(authorized)
+            for participant in loaded.value[0].file_participants:
+                current = participants.get(participant.root)
+                if current is not None and (current.device, current.inode) != (
+                    participant.device,
+                    participant.inode,
+                ):
+                    return result_type.fail(
+                        "file capability identity changed before recovery",
+                    )
+                participants[participant.root] = participant
+        return result_type.ok(tuple(participants.values()))
 
     def begin_files_locked(
         self,
@@ -110,72 +516,242 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenFileLeases):
         roots: t.MappingKV[str, Path],
         inputs: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Create a durable file-only cursor using the existing journal lifecycle.
+        """Authenticate the producer before creating a durable file-only cursor.
+
+        Authority is re-proven before preparing a layout or opening its journal.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenTransactionSession]``.
 
         """
         result_type = r[m.Infra.CodegenTransactionSession]
+        authority = self._file_session_authority()
+        if authority.failure:
+            return result_type.from_failure(authority)
+        prepared = self._leased_file_layout(scope_root, roots)
+        if prepared.failure:
+            return result_type.from_failure(prepared)
+        layout = prepared.value
+        if layout.transaction_id is None:
+            return result_type.fail("file session lacks its invocation identity")
+        plan = m.Infra.CodegenFileSessionPlan(layout=layout)
+        opened = self._open_file_transaction_journal(
+            layout,
+            plan,
+            inputs,
+            layout.transaction_id,
+        )
+        if opened.failure:
+            return result_type.from_failure(opened)
+        journal, journal_state = opened.value
+        return result_type.ok(
+            m.Infra.CodegenTransactionSession(
+                plan=plan,
+                journal=journal,
+                journal_state=journal_state,
+            ),
+        )
+
+    def _leased_file_layout(
+        self,
+        scope_root: Path,
+        roots: t.MappingKV[str, Path],
+    ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
+        """Bind one invocation identity to authenticated, leased physical roots.
+
+        This layout proof checks destination leases and their physical identities;
+        the publication admission or journal entrypoint owns producer authority.
+
+        Returns:
+            The physical participant layout carrying its invocation identity.
+
+        """
+        result_type = r[m.Infra.MiseToolchainWorkspaceLayout]
         if set(roots.values()) - self._file_leases.keys():
             return result_type.fail("file session requires every destination lease")
-        transaction_id = secrets.token_hex(16)
-        prepared = self._planner.file_layout(
-            scope_root,
-            roots,
-            transaction_id=transaction_id,
+        identity = self._file_run_identity
+        physical = self._file_run_git_directory
+        if identity is None or physical is None or identity.repo_root != scope_root:
+            return result_type.fail("file session differs from its active scope lease")
+        prepared = self._file_identity_current(
+            identity,
+            physical,
+        ).flat_map(
+            lambda _: self._planner.file_layout_from_identity(
+                identity,
+                roots,
+                transaction_id=secrets.token_hex(16),
+            ),
         )
         if prepared.failure:
             return result_type.from_failure(prepared)
         layout = prepared.value
+        mismatch = self._file_lease_mismatch(layout)
+        if mismatch is not None:
+            return result_type.fail(mismatch)
+        return result_type.ok(layout)
+
+    @staticmethod
+    def _file_identity_current(
+        identity: m.Infra.GitIdentityReport,
+        physical: t.Pair[int, int],
+    ) -> p.Result[bool]:
+        """Reprove native Git mapping and original physical journal ownership.
+
+        Returns:
+            The unchanged lease anchor or its first native identity failure.
+
+        """
+        scope = u.Infra.git_mutation_scope(
+            m.Infra.GitRepoRequest(repo_root=identity.repo_root),
+        )
+        if scope.failure:
+            return r[bool].from_failure(scope)
+        if (
+            scope.value.root != identity.repo_root
+            or scope.value.git_dir != identity.git_dir
+        ):
+            return r[bool].fail("file transaction Git ownership changed during lease")
+        observed = FlextInfraMiseArtifactsFiles.physical_directory_identity(
+            identity.git_dir,
+        )
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        if observed.value != physical:
+            return r[bool].fail(
+                "file transaction journal directory changed during lease"
+            )
+        return r[bool].ok(value=True)
+
+    def _file_session_authority(self) -> p.Result[bool]:
+        """Resolve the current producer or cold source authority receipt.
+
+        Returns:
+            Whether the active authority is current, or its first failure.
+
+        """
+        if self._source_authority is not None:
+            return FlextInfraCodegenPreconditions.source_authority_current(
+                self._source_authority,
+            )
+        outputs = FlextInfraMiseArtifactsVerification.publication_outputs_current(
+            self._prior_publications,
+            reference=(
+                None if self._producer is None else self._producer.generator_reference
+            ),
+            destinations=(
+                ()
+                if self._producer is None
+                else tuple(source.path for source in self._producer.inputs)
+            ),
+        )
+        if outputs.failure:
+            return r[bool].from_failure(outputs)
+        if self._producer is None:
+            return r[bool].ok(value=True)
+        return FlextInfraCodegenPreconditions.producer_current(
+            self._producer, outputs=outputs.value
+        )
+
+    def _file_lease_mismatch(
+        self,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+    ) -> str | None:
+        """Describe the first file participant whose identity left its lease.
+
+        Returns:
+            The mismatch message, or None when every participant still matches.
+
+        """
         for participant in layout.file_participants:
             leased = self._file_leases[participant.root]
             if (participant.device, participant.inode) != (leased.device, leased.inode):
-                return result_type.fail(
-                    "file capability root changed after lease acquisition",
-                )
-        plan = m.Infra.CodegenFileSessionPlan(layout=layout)
-        observed = state.journal_state(layout)
+                return "file capability root changed after lease acquisition"
+        return None
+
+    @staticmethod
+    def _file_transaction_guard(
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+    ) -> p.Result[
+        t.Pair[t.VariadicTuple[m.Infra.CodegenJournalDirectory], m.Cli.AtomicFileState]
+    ]:
+        """Require a recovered-absent journal, no residue, and stable inputs.
+
+        Returns:
+            The resulting ``p.Result[t.Pair[t.VariadicTuple[
+                m.Infra.CodegenJournalDirectory], m.Cli.AtomicFileState]]`` with
+            the planned transaction directories and the absent-journal baseline.
+
+        """
+        result_type = r[
+            t.Pair[
+                t.VariadicTuple[m.Infra.CodegenJournalDirectory],
+                m.Cli.AtomicFileState,
+            ]
+        ]
+        observed = FlextInfraMiseArtifactsState.journal_state(layout)
         if observed.failure:
             return result_type.from_failure(observed)
-        before = state.journal_snapshot(observed.value)
+        before = FlextInfraMiseArtifactsState.journal_snapshot(observed.value)
         if before is None or before.content is not None:
             return result_type.fail(
                 "file transaction journal is not absent after recovery",
             )
-        if state.transaction_residue(layout):
+        if FlextInfraMiseArtifactsState.transaction_residue(layout):
             return result_type.fail("file transaction has unowned staging residue")
-        stable = verify.states_current(inputs)
-        if stable.failure:
-            return result_type.from_failure(stable)
-        directories = state.plan_transaction_directories(layout)
+        directories = FlextInfraMiseArtifactsState.plan_transaction_directories(layout)
         if directories.failure:
             return result_type.from_failure(directories)
-        journal = journal_io.begin(
+        return result_type.ok((directories.value, before))
+
+    def _open_file_transaction_journal(
+        self,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        plan: m.Infra.CodegenFileSessionPlan,
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
+        transaction_id: str,
+    ) -> p.Result[t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
+        """Open, persist, materialize, and durably prepare the file journal.
+
+        Returns:
+            The resulting ``p.Result[t.Pair[m.Infra.CodegenTransactionJournal,
+                m.Cli.AtomicFileState]]``.
+
+        """
+        result_type = r[
+            t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
+        ]
+        guarded = self._file_transaction_guard(layout)
+        if guarded.failure:
+            return result_type.from_failure(guarded)
+        directories, before = guarded.value
+        journal = FlextInfraMiseArtifactsJournal.begin(
             plan,
             transaction_id=transaction_id,
             sources=tuple(("docs", source) for source in inputs),
-            directories=directories.value,
+            directories=directories,
+            producer=(
+                self._source_authority
+                if self._source_authority is not None
+                else self._producer
+            ),
         )
         if journal.failure:
             return result_type.from_failure(journal)
-        persisted = self._write_journal(layout, journal.value, expected=before)
-        if persisted.failure:
-            return result_type.from_failure(persisted)
-        materialized = self._materialize_directories(
-            layout,
-            journal.value,
-            persisted.value,
+        opened = self._materialize_journal(layout, journal.value, expected=before)
+        if opened.failure:
+            return result_type.from_failure(opened)
+        recorded, recorded_state = opened.value
+        prepared_journal = FlextInfraMiseArtifactsJournal.append_prepared(
+            plan,
+            recorded,
+            (),
         )
-        if materialized.failure:
-            return result_type.from_failure(materialized)
-        recorded, recorded_state = materialized.value
-        prepared_journal = journal_io.append_prepared(plan, recorded, ())
         if prepared_journal.failure:
             return result_type.from_failure(
                 self._recover_failure(
                     layout,
-                    prepared_journal.error or "file preparation failed",
+                    r[bool].from_failure(prepared_journal),
                 ),
             )
         ready = self._write_journal(
@@ -187,24 +763,20 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenFileLeases):
             return result_type.from_failure(
                 self._handle_journal_write_failure(
                     layout,
-                    ready.error or "file cursor persistence failed",
+                    r[bool].from_failure(ready),
                 ),
             )
-        return result_type.ok(
-            m.Infra.CodegenTransactionSession(
-                plan=plan,
-                journal=prepared_journal.value,
-                journal_state=ready.value,
-            ),
-        )
+        return result_type.ok((prepared_journal.value, ready.value))
 
     def publish_file_phase_locked(
         self,
         scope_root: Path,
         roots: t.MappingKV[str, Path],
         analysis: m.Infra.CodegenPhaseAnalysis,
-        directories: t.VariadicTuple[Path],
-        validator: Callable[[], p.Result[bool]],
+        policy: m.Infra.CodegenPhasePublicationPolicy,
+        *,
+        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
+        | None = None,
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Compose file publication through the same durable phase lifecycle.
 
@@ -213,24 +785,153 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenFileLeases):
 
         """
         result_type = r[t.VariadicTuple[Path]]
-        started = self.begin_files_locked(scope_root, roots, analysis.inputs)
-        if started.failure:
-            return result_type.from_failure(started)
-        prepared = self.append_directories_locked(
-            started.value,
-            analysis.phase,
-            directories,
+        if not analysis.files and (analysis.issues or analysis.exception is not None):
+            return result_type.fail(
+                "\n".join(issue.formatted for issue in analysis.issues)
+                or "generation planning failed",
+                exception=analysis.exception,
+            )
+        admitted = FlextInfraMisePublication.admit_batch(
+            analysis,
+            producer=self._producer,
+            admission=policy.admission,
+            prior_publications=self._prior_publications,
         )
+        if admitted.failure:
+            return result_type.from_failure(admitted)
+        if admitted.value.analysis is None:
+            return result_type.fail("publication lacks its admitted producer analysis")
+        analysis = admitted.value.analysis
+        admission = admitted.value.model_copy(
+            update={
+                "source_topology": policy.source_topology
+                if "source_topology" in policy.model_fields_set
+                else admitted.value.source_topology,
+                "scope_roots": policy.scope_roots
+                if "scope_roots" in policy.model_fields_set
+                else admitted.value.scope_roots,
+                "source_scope": policy.source_scope
+                if "source_scope" in policy.model_fields_set
+                else admitted.value.source_scope,
+            }
+        )
+        effect_free = (
+            bool(analysis.files)
+            and not analysis.issues
+            and analysis.exception is None
+            and not any(
+                u.Infra.codegen_file_requires_effect(file) for file in analysis.files
+            )
+        )
+        if effect_free and not policy.directories and policy.staged_validator is None:
+            return self._publish_unchanged_file_phase(
+                scope_root,
+                roots,
+                admission,
+                publication_receipts=publication_receipts,
+            )
+        session = self.begin_files_locked(scope_root, roots, analysis.inputs)
+        if session.failure:
+            return result_type.from_failure(session)
+
+        def publish(
+            started: m.Infra.CodegenTransactionSession,
+        ) -> p.Result[t.VariadicTuple[Path]]:
+            """Publish the admitted phase under the prepared journal's recovery.
+
+            Returns:
+                The committed paths, or the first publication failure.
+
+            """
+            bound = self.bind_publication_proof(
+                started,
+                analysis.files,
+                topology=admission,
+                phase=analysis.phase,
+                batch_admission=admission,
+            )
+            if bound.failure:
+                return result_type.from_failure(bound)
+            recorded = self.record_publication(bound.value, phase=analysis.phase)
+            if recorded.failure:
+                return result_type.from_failure(recorded)
+            prepared = self.append_directories_locked(
+                recorded.value.model_copy(
+                    update={
+                        "exception": recorded.value.exception or analysis.exception
+                    },
+                ),
+                analysis.phase,
+                policy.directories,
+            )
+            if prepared.failure:
+                return result_type.from_failure(prepared)
+            published = self.append_phase_locked(
+                prepared.value,
+                analysis.phase,
+                analysis.files,
+                issues=analysis.issues,
+                publication_policy=policy.model_copy(update={"admission": admission}),
+            )
+            return published.flat_map(
+                lambda ready: self.commit_locked(
+                    ready,
+                    publication_receipts=publication_receipts,
+                )
+            )
+
+        return self.publish_prepared_locked(
+            session.value,
+            publish,
+        )
+
+    def _publish_unchanged_file_phase(
+        self,
+        scope_root: Path,
+        roots: t.MappingKV[str, Path],
+        admission: m.Infra.CodegenPhaseOutcome,
+        *,
+        publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome] | None,
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Publish observed no-op outputs without authorizing staging or effects.
+
+        Returns:
+            No written paths after the complete admitted observation is proven.
+
+
+        """
+        result_type = r[t.VariadicTuple[Path]]
+        prepared = self._leased_file_layout(scope_root, roots)
         if prepared.failure:
             return result_type.from_failure(prepared)
-        published = self.append_phase_locked(
-            prepared.value,
-            analysis.phase,
-            analysis.files,
+        layout = prepared.value
+        outcome = (
+            self
+            ._file_transaction_guard(layout)
+            .flat_map(
+                lambda _guarded: FlextInfraMiseArtifactsJournal.observed_outcome(
+                    layout,
+                    admission,
+                    producer=(
+                        self._source_authority
+                        if self._source_authority is not None
+                        else self._producer
+                    ),
+                )
+            )
+            .flat_map(self._owned_publication_outcome)
         )
-        if published.failure:
-            return result_type.from_failure(published)
-        return self.commit_locked(published.value, validator)
+        if outcome.failure:
+            return result_type.from_failure(outcome)
+        current = FlextInfraMiseArtifactsVerification.publication_outputs_current(
+            (*self._prior_publications, outcome.value),
+            destinations=tuple(output.path for output in outcome.value.outputs),
+        ).flat_map(lambda _current: self.publish_outcome(scope_root, outcome.value))
+        if current.failure:
+            return result_type.from_failure(current)
+        if publication_receipts is not None:
+            publication_receipts.append(outcome.value)
+        return result_type.ok(())
 
     def validate(
         self,
@@ -258,26 +959,19 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenFileLeases):
             The resulting ``p.Result[bool]``.
 
         """
-        layout_result = (
-            self._planner.layout_for_config_plans(scope_root, config_plans)
-            if config_plans
-            else self._planner.layout(scope_root)
-        )
-        if layout_result.failure:
-            return r[bool].from_failure(layout_result)
-        selected = self._planner.select_layout(layout_result.value, config_plans)
+        selected = self._selected_validate_layout(scope_root, config_plans)
         if selected.failure:
             return r[bool].from_failure(selected)
         layout = selected.value
-        journal = state.journal_state(layout)
+        journal = FlextInfraMiseArtifactsState.journal_state(layout)
         if journal.failure:
             return r[bool].from_failure(journal)
-        journal_snapshot = state.journal_snapshot(journal.value)
+        journal_snapshot = FlextInfraMiseArtifactsState.journal_snapshot(journal.value)
         if journal_snapshot is not None and journal_snapshot.content is not None:
             return r[bool].fail(
                 "pending generation transaction requires apply-mode recovery",
             )
-        residue = state.transaction_residue(layout)
+        residue = FlextInfraMiseArtifactsState.transaction_residue(layout)
         if residue:
             return r[bool].fail(
                 f"generation staging has no journal authority: {residue[0]}",
@@ -285,11 +979,33 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenFileLeases):
         plan = self._planner.snapshot(layout, config_plans)
         if plan.failure:
             return r[bool].from_failure(plan)
-        return verify.live(self._owner, plan.value)
+        return FlextInfraMiseArtifactsVerification.live(self._owner, plan.value)
+
+    def _selected_validate_layout(
+        self,
+        scope_root: Path,
+        config_plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
+        """Derive the exact topology for a validation pass and select its scope.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.MiseToolchainWorkspaceLayout]``.
+
+        """
+        layout_result = (
+            self._planner.layout_for_config_plans(scope_root, config_plans)
+            if config_plans
+            else self._planner.layout(scope_root)
+        )
+        if layout_result.failure:
+            return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(layout_result)
+        return self._planner.select_layout(layout_result.value, config_plans)
 
     @staticmethod
     def validate_phase_analysis_locked(
         analysis: m.Infra.CodegenPhaseAnalysis,
+        *,
+        session: m.Infra.CodegenTransactionSession | None = None,
     ) -> p.Result[bool]:
         """Validate a published phase from its immutable planning receipt.
 
@@ -297,7 +1013,9 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenFileLeases):
             The resulting ``p.Result[bool]``.
 
         """
-        return verify.phase_analysis_live(analysis)
+        return FlextInfraMiseArtifactsVerification.phase_analysis_live(
+            analysis, session=session
+        )
 
     def run_locked[T](
         self,
@@ -336,691 +1054,21 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenFileLeases):
             The resulting ``p.Result[T]``.
 
         """
+        preflight = self._preflight_journal(identity)
+        if preflight.failure:
+            return r[T].from_failure(preflight)
         if prepare:
             reconciled = self._reconcile(identity)
             if reconciled.failure:
                 return r[T].from_failure(reconciled)
         return operation(identity.repo_root)
 
-    def begin_locked(
-        self,
-        scope_root: Path,
-        config_plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
-        file_plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
-    ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Publish conform+Mise as the first fully journaled prepared phase.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.CodegenTransactionSession]``.
-
-        """
-        result_type = r[m.Infra.CodegenTransactionSession]
-        transaction_id = secrets.token_hex(16)
-        layout_result = self._planner.layout_for_config_plans(
-            scope_root,
-            config_plans,
-            transaction_id=transaction_id,
-        )
-        if layout_result.failure:
-            return result_type.from_failure(layout_result)
-        layout = layout_result.value
-        residue = state.transaction_residue(layout)
-        if residue:
-            return result_type.fail(
-                f"generation residue has no journal authority: {residue[0]}",
-            )
-        transaction_directories = state.plan_transaction_directories(
-            layout,
-            destinations=tuple(
-                item.path
-                for item in file_plans
-                if item.desired_content is not None
-                and u.Infra.codegen_file_requires_effect(item)
-            ),
-        )
-        if transaction_directories.failure:
-            return result_type.from_failure(transaction_directories)
-        plan = self._planner.snapshot(layout, config_plans)
-        if plan.failure:
-            return result_type.from_failure(plan)
-        journal_before = state.journal_state(layout)
-        if journal_before.failure:
-            return result_type.from_failure(journal_before)
-        journal_before_snapshot = state.journal_snapshot(journal_before.value)
-        if journal_before_snapshot is None:
-            return result_type.fail("generation journal state is unavailable")
-        if journal_before_snapshot.content is not None:
-            return result_type.fail("generation journal appeared after locked recovery")
-        config_paths = {config_plan.path for config_plan in config_plans}
-        ordinary = tuple(
-            file_plan
-            for file_plan in file_plans
-            if file_plan.path not in config_paths
-            and u.Infra.codegen_file_requires_effect(file_plan)
-        )
-        source_states = FlextInfraCodegenPreconditions.phase_sources(
-            "conform",
-            file_plans,
-        )
-        if source_states.failure:
-            return result_type.from_failure(source_states)
-        mise_sources = tuple(("mise", source) for source in plan.value.sources)
-        all_sources = (*source_states.value, *mise_sources)
-        source_barrier = verify.states_current(
-            FlextInfraCodegenPreconditions.unique_states(
-                tuple(source for _phase, source in all_sources),
-            ),
-        )
-        if source_barrier.failure:
-            return result_type.from_failure(source_barrier)
-        staging_journal = journal_io.begin(
-            plan.value,
-            transaction_id=transaction_id,
-            sources=all_sources,
-            directories=transaction_directories.value,
-        )
-        if staging_journal.failure:
-            return result_type.from_failure(staging_journal)
-        staging_state = self._write_journal(
-            layout,
-            staging_journal.value,
-            expected=journal_before_snapshot,
-        )
-        if staging_state.failure:
-            return result_type.from_failure(staging_state)
-        materialized = self._materialize_directories(
-            layout,
-            staging_journal.value,
-            staging_state.value,
-        )
-        if materialized.failure:
-            return result_type.from_failure(materialized)
-        active_journal, active_state = materialized.value
-        mise_staged = self._mise_staging.stage(plan.value)
-        if mise_staged.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    mise_staged.error or "cannot stage Mise artifacts",
-                ),
-            )
-        mise_files, mise_directories = mise_staged.value
-        staged_manifest = verify.register_transaction_manifests(
-            layout,
-            active_journal,
-            created=(
-                *mise_directories,
-                *(
-                    item.replacement
-                    for item in mise_files
-                    if item.replacement is not None
-                ),
-            ),
-        )
-        if staged_manifest.failure:
-            return result_type.from_failure(staged_manifest)
-        recorded = journal_io.record_directories(active_journal, staged_manifest.value)
-        if recorded.failure:
-            return result_type.from_failure(recorded)
-        persisted = self._write_journal(layout, recorded.value, expected=active_state)
-        if persisted.failure:
-            return result_type.from_failure(persisted)
-        active_journal, active_state = recorded.value, persisted.value
-        for project in plan.value.projects:
-            staged_config = next(
-                item.replacement
-                for item in mise_files
-                if item.before.path == project.config.before.path
-            )
-            if staged_config is None:
-                return result_type.fail("Mise staging receipt has no configuration")
-            # The staged set is complete and self-contained; its projection of
-            # the runtime root is proven again on the published destinations.
-            staged_root = staged_config.path.parent
-            validated = self._owner.validate_artifacts(staged_root, staged_root)
-            if validated.failure:
-                return result_type.from_failure(
-                    self._recover_failure(
-                        layout,
-                        validated.error or "Mise staged validation failed",
-                    ),
-                )
-        mise_publications = tuple(
-            item
-            for item in mise_files
-            if item.replacement is not None
-            and u.Infra.atomic_file_state_differs(
-                item.before,
-                desired_content=item.replacement.content,
-                desired_mode=item.replacement.mode,
-            )
-        )
-        ordinary_staged = FlextInfraCodegenStaging.stage_file_plans(
-            layout,
-            "conform",
-            ordinary,
-        )
-        if ordinary_staged.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    ordinary_staged.error or "cannot stage conform files",
-                ),
-            )
-        bound = state.bind_created_parents(
-            active_journal.directories,
-            (*ordinary_staged.value, *mise_publications),
-        )
-        if bound.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    bound.error or "cannot bind generation destination parents",
-                ),
-            )
-        publications = bound.value
-        barriers = self._verified_prepublication_barriers(
-            layout,
-            plan.value,
-            all_sources,
-            publications,
-        )
-        if barriers.failure:
-            return result_type.from_failure(barriers)
-        prepared_journal = journal_io.append_prepared(
-            plan.value,
-            active_journal,
-            publications,
-            sources=all_sources,
-        )
-        if prepared_journal.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    prepared_journal.error or "cannot prepare generation journal",
-                ),
-            )
-        manifested = journal_io.record_transaction_manifests(
-            layout,
-            prepared_journal.value,
-        )
-        if manifested.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    manifested.error or "cannot register generation staging tree",
-                ),
-            )
-        prepared_state = self._write_journal(
-            layout,
-            manifested.value,
-            expected=active_state,
-        )
-        if prepared_state.failure:
-            return result_type.from_failure(
-                self._handle_journal_write_failure(
-                    layout,
-                    prepared_state.error
-                    or "cannot publish prepared generation journal",
-                ),
-            )
-        barriers = self._verified_prepublication_barriers(
-            layout,
-            plan.value,
-            all_sources,
-            publications,
-        )
-        if barriers.failure:
-            return result_type.from_failure(barriers)
-        published = FlextInfraMisePublication.publish(publications)
-        if published.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    published.error or "generation publication failed",
-                ),
-            )
-        publication_state = verify.publications_live(publications)
-        if publication_state.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    publication_state.error
-                    or "generation publication identity changed",
-                ),
-            )
-        live = verify.live(self._owner, plan.value, mise_publications)
-        if live.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    live.error or "Mise real-consumer validation failed",
-                ),
-            )
-        return result_type.ok(
-            m.Infra.CodegenTransactionSession(
-                plan=plan.value,
-                journal=manifested.value,
-                journal_state=prepared_state.value,
-                written_files=published.value,
-            ),
-        )
-
-    def append_phase_locked(
-        self,
-        session: m.Infra.CodegenTransactionSession,
-        phase: str,
-        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
-    ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Append, durably authorize, then publish one dependent generated phase.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.CodegenTransactionSession]``.
-
-        """
-        result_type = r[m.Infra.CodegenTransactionSession]
-        changed = tuple(
-            plan for plan in plans if u.Infra.codegen_file_requires_effect(plan)
-        )
-        if not changed:
-            return result_type.ok(session)
-        aligned = FlextInfraCodegenPreconditions.unchanged_journal(
-            session,
-            "generation journal changed between phases",
-        )
-        if aligned.failure:
-            return result_type.from_failure(aligned)
-        session = aligned.value
-        layout = session.plan.layout
-        existing_paths = {entry.path for entry in session.journal.entries}
-        for plan in changed:
-            relative = files.transaction_relative(layout, plan.path)
-            if relative.failure:
-                return result_type.from_failure(relative)
-            if relative.value in existing_paths:
-                return result_type.from_failure(
-                    self._recover_failure(
-                        layout,
-                        "multiple generation phases own one destination: "
-                        f"{relative.value}",
-                    ),
-                )
-        sources = FlextInfraCodegenPreconditions.phase_sources(phase, plans)
-        if sources.failure:
-            return result_type.from_failure(
-                self._recover_failure(layout, sources.error or "invalid phase sources"),
-            )
-        source_states = tuple(source for _phase, source in sources.value)
-        source_barrier = verify.states_current(
-            FlextInfraCodegenPreconditions.unique_states(source_states),
-            journal=session.journal,
-        )
-        if source_barrier.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    source_barrier.error or f"{phase} sources changed",
-                ),
-            )
-        staged = FlextInfraCodegenStaging.stage_file_plans(layout, phase, changed)
-        if staged.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    staged.error or f"cannot stage {phase} phase",
-                ),
-            )
-        staged = state.bind_created_parents(session.journal.directories, staged.value)
-        if staged.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    staged.error or f"cannot bind {phase} destination parents",
-                ),
-            )
-        destination_barrier = verify.states_current(
-            tuple(item.before for item in staged.value),
-        )
-        if destination_barrier.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    destination_barrier.error or f"{phase} destinations changed",
-                ),
-            )
-        extended = journal_io.append_prepared(
-            session.plan,
-            session.journal,
-            staged.value,
-            sources=sources.value,
-        )
-        if extended.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    extended.error or f"cannot append {phase} journal phase",
-                ),
-            )
-        manifested = journal_io.record_transaction_manifests(layout, extended.value)
-        if manifested.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    manifested.error or f"cannot register {phase} staging tree",
-                ),
-            )
-        persisted = self._write_journal(
-            layout,
-            manifested.value,
-            expected=session.journal_state,
-        )
-        if persisted.failure:
-            return result_type.from_failure(
-                self._handle_journal_write_failure(
-                    layout,
-                    persisted.error or f"cannot persist {phase} journal phase",
-                ),
-            )
-        source_barrier = verify.states_current(
-            FlextInfraCodegenPreconditions.unique_states(source_states),
-            journal=manifested.value,
-        )
-        destination_barrier = verify.states_current(
-            tuple(item.before for item in staged.value),
-        )
-        if source_barrier.failure or destination_barrier.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    source_barrier.error
-                    or destination_barrier.error
-                    or f"{phase} prepublication barrier failed",
-                ),
-            )
-        published = FlextInfraMisePublication.publish(staged.value)
-        if published.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    published.error or f"cannot publish {phase} phase",
-                ),
-            )
-        live = verify.publications_live(staged.value)
-        if live.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    live.error or f"{phase} publication changed",
-                ),
-            )
-        return result_type.ok(
-            m.Infra.CodegenTransactionSession(
-                plan=session.plan,
-                journal=manifested.value,
-                journal_state=persisted.value,
-                written_files=(*session.written_files, *published.value),
-            ),
-        )
-
-    def append_directories_locked(
-        self,
-        session: m.Infra.CodegenTransactionSession,
-        phase: str,
-        directories: t.VariadicTuple[Path],
-    ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Authorize missing generated directories durably, then create them.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.CodegenTransactionSession]``.
-
-        """
-        result_type = r[m.Infra.CodegenTransactionSession]
-        planned = state.plan_directories(
-            session.plan.layout,
-            phase=phase,
-            requested=directories,
-            disposition="generated",
-        )
-        if planned.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    session.plan.layout,
-                    planned.error or f"cannot plan {phase} directories",
-                ),
-            )
-        if not planned.value:
-            return result_type.ok(session)
-        unchanged = FlextInfraCodegenPreconditions.unchanged_journal(
-            session,
-            "generation journal changed before directories",
-        )
-        if unchanged.failure:
-            return result_type.from_failure(unchanged)
-        session = unchanged.value
-        extended = journal_io.append_directories(session.journal, planned.value)
-        if extended.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    session.plan.layout,
-                    extended.error or f"cannot append {phase} directories",
-                ),
-            )
-        persisted = self._write_journal(
-            session.plan.layout,
-            extended.value,
-            expected=session.journal_state,
-        )
-        if persisted.failure:
-            return result_type.from_failure(
-                self._handle_journal_write_failure(
-                    session.plan.layout,
-                    persisted.error or f"cannot persist {phase} directories",
-                ),
-            )
-        materialized = self._materialize_directories(
-            session.plan.layout,
-            extended.value,
-            persisted.value,
-        )
-        if materialized.failure:
-            return result_type.from_failure(materialized)
-        recorded, recorded_state = materialized.value
-        return result_type.ok(
-            m.Infra.CodegenTransactionSession(
-                plan=session.plan,
-                journal=recorded,
-                journal_state=recorded_state,
-                written_files=session.written_files,
-            ),
-        )
-
-    def commit_locked(
-        self,
-        session: m.Infra.CodegenTransactionSession,
-        validator: Callable[[], p.Result[bool]],
-    ) -> p.Result[t.VariadicTuple[Path]]:
-        """Validate final reality while recoverable, then commit and clean up.
-
-        Returns:
-            The resulting ``p.Result[t.VariadicTuple[Path]]``.
-
-        """
-        exact = verify.journal_destinations_live(session.plan.layout, session.journal)
-        if exact.failure:
-            return r[t.VariadicTuple[Path]].from_failure(
-                self._recover_failure(
-                    session.plan.layout,
-                    exact.error or "publication identity changed",
-                ),
-            )
-        validated = validator()
-        if validated.failure or not validated.value:
-            return r[t.VariadicTuple[Path]].from_failure(
-                self._recover_failure(
-                    session.plan.layout,
-                    validated.error or "generation fixed-point validation failed",
-                ),
-            )
-        unchanged = FlextInfraCodegenPreconditions.unchanged_journal(
-            session,
-            "generation journal changed before commit",
-        )
-        if unchanged.failure:
-            return r[t.VariadicTuple[Path]].from_failure(unchanged)
-        session = unchanged.value
-        exact = verify.journal_destinations_live(session.plan.layout, session.journal)
-        if exact.failure:
-            return r[t.VariadicTuple[Path]].from_failure(
-                self._recover_failure(
-                    session.plan.layout,
-                    exact.error or "publication identity changed before commit",
-                ),
-            )
-        committed = journal_io.commit(session.journal)
-        if committed.failure:
-            return r[t.VariadicTuple[Path]].from_failure(
-                self._recover_failure(
-                    session.plan.layout,
-                    committed.error or "cannot validate generation commit",
-                ),
-            )
-        committed_state = self._write_journal(
-            session.plan.layout,
-            committed.value,
-            expected=session.journal_state,
-        )
-        if committed_state.failure:
-            return r[t.VariadicTuple[Path]].from_failure(
-                self._recover_failure(
-                    session.plan.layout,
-                    committed_state.error or "cannot persist generation commit",
-                ),
-            )
-        cleaned = journal_io.cleanup(
-            session.plan.layout,
-            committed.value,
-            committed_state.value,
-        )
-        if cleaned.failure:
-            return r[t.VariadicTuple[Path]].from_failure(cleaned)
-        self._journal_receipts.pop(session.plan.layout.journal_path, None)
-        return r[t.VariadicTuple[Path]].ok(session.written_files)
-
-    def _materialize_directories(
-        self,
-        layout: m.Infra.MiseToolchainWorkspaceLayout,
-        journal: m.Infra.CodegenTransactionJournal,
-        journal_state: m.Cli.AtomicFileState,
-    ) -> p.Result[t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
-        """Create and durably bind one directory identity at a time.
-
-        Returns:
-            The resulting ``p.Result[t.Pair[m.Infra.CodegenTransactionJournal,
-                m.Cli.AtomicFileState]]``.
-
-        """
-        result_type = r[tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]
-        current_journal = journal
-        current_state = journal_state
-        for intent in current_journal.directories:
-            if intent.created is not None:
-                continue
-            created = state.create_journaled_directory(
-                layout,
-                current_journal.directories,
-                intent,
-            )
-            if created.failure:
-                return result_type.from_failure(
-                    self._recover_failure(
-                        layout,
-                        created.error or f"cannot create directory {intent.path}",
-                    ),
-                )
-            directories = tuple(
-                created.value if entry.path == intent.path else entry
-                for entry in current_journal.directories
-            )
-            recorded = journal_io.record_directories(current_journal, directories)
-            if recorded.failure:
-                failed = self._compensate_directory_persistence(
-                    layout,
-                    created.value,
-                    recorded.error or f"cannot record directory {intent.path}",
-                    journal_write=False,
-                )
-                return result_type.from_failure(failed)
-            persisted = self._write_journal(
-                layout,
-                recorded.value,
-                expected=current_state,
-            )
-            if persisted.failure:
-                failed = self._compensate_directory_persistence(
-                    layout,
-                    created.value,
-                    persisted.error or f"cannot persist directory {intent.path}",
-                    journal_write=True,
-                )
-                return result_type.from_failure(failed)
-            current_journal = recorded.value
-            current_state = persisted.value
-        manifested = journal_io.record_transaction_manifests(layout, current_journal)
-        if manifested.failure:
-            return result_type.from_failure(manifested)
-        for previous, recorded in zip(
-            current_journal.directories,
-            manifested.value.directories,
-            strict=True,
-        ):
-            if (
-                previous.manifest is None
-                and recorded.manifest is not None
-                and recorded.manifest.entries
-            ):
-                return result_type.fail(
-                    f"new transaction tree contains unregistered entries: "
-                    f"{recorded.path}",
-                )
-        persisted = self._write_journal(
-            layout,
-            manifested.value,
-            expected=current_state,
-        )
-        if persisted.failure:
-            return result_type.from_failure(persisted)
-        return result_type.ok((manifested.value, persisted.value))
-
-    def _compensate_directory_persistence(
-        self,
-        layout: m.Infra.MiseToolchainWorkspaceLayout,
-        created: m.Infra.CodegenJournalDirectory,
-        failure: str,
-        *,
-        journal_write: bool,
-    ) -> p.Result[bool]:
-        """Compensate only this invocation's exact empty-directory effect.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        compensated = state.compensate_created_directory(created)
-        if compensated.failure:
-            return r[bool].fail(
-                f"{failure}; created-directory compensation failed: "
-                f"{compensated.error}",
-            )
-        if journal_write:
-            return self._handle_journal_write_failure(layout, failure)
-        return self._recover_failure(layout, failure)
-
     def abort_locked(
         self,
         session: m.Infra.CodegenTransactionSession,
-        failure: str,
+        failure: p.FailureLike,
     ) -> p.Result[bool]:
-        """Recover the complete prepared transaction and preserve the cause.
+        """Recover a native failure; reject a success before touching its journal.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -1037,201 +1085,32 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenFileLeases):
 
         A phase that fails or raises after the journal was prepared recovers
         that journal here, while the lease is still held, and keeps the cause:
-        a failure is returned unchanged and an exception escapes unchanged.
-        A failure whose owner already attempted or refused recovery (it carries
-        ``recovery_error``) is returned as-is, never recovered twice.
+        a failure retains its code and cause with cleanup evidence, and an
+        exception escapes unchanged with any cleanup failure attached as a note.
+        A failure whose owner already attempted or refused cleanup (it carries
+        ``cleanup_error``) is returned as-is, never cleaned twice.
 
         Returns:
             The resulting ``p.Result[T]``.
 
         """
         layout = session.plan.layout
+
         try:
             outcome = operation(session)
         except Exception as exc:
-            recovered = self._recover_prepared(layout)
-            if recovered.failure:
-                exc.add_note(f"generation recovery failed: {recovered.error}")
+            self._recover_failure(layout, r[bool].fail(str(exc), exception=exc))
             raise
-        if outcome.success or (
-            outcome.error_data is not None and "recovery_error" in outcome.error_data
-        ):
-            return outcome
-        recovered = self._recover_prepared(layout)
-        if recovered.failure:
-            return r[T].fail(
-                outcome.error or "generation phase failed",
-                error_data={
-                    **(outcome.error_data or {}),
-                    "recovery_error": recovered.error,
-                },
-            )
-        return outcome
-
-    def _recover_prepared(
-        self,
-        layout: m.Infra.MiseToolchainWorkspaceLayout,
-    ) -> p.Result[bool]:
-        """Recover only the latest journal receipt written by this transaction.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        expected = self._journal_receipts.get(layout.journal_path)
-        if expected is None:
-            observed = state.journal_state(layout)
-            if observed.failure:
-                return r[bool].from_failure(observed)
-            snapshot = state.journal_snapshot(observed.value)
-            if snapshot is not None and snapshot.content is None:
-                return r[bool].ok(value=False)
-            return r[bool].fail("generation recovery has no invocation journal receipt")
-        return self._recover(layout, expected=expected)
-
-    def _reconcile(self, identity: m.Infra.GitIdentityReport) -> p.Result[bool]:
-        layout = self._planner.journal_layout(identity)
-        if layout.failure:
-            return r[bool].from_failure(layout)
-        journal = state.journal_state(layout.value)
-        if journal.failure:
-            return r[bool].from_failure(journal)
-        journal_snapshot = state.journal_snapshot(journal.value)
-        if journal_snapshot is not None and journal_snapshot.content is not None:
-            return self._recover(layout.value)
-        residue = state.transaction_residue(layout.value)
-        if residue:
-            return r[bool].fail(
-                f"generation staging has no journal authority: {residue[0]}",
-            )
-        return r[bool].ok(value=True)
-
-    def _handle_journal_write_failure(
-        self,
-        layout: m.Infra.MiseToolchainWorkspaceLayout,
-        failure: str,
-    ) -> p.Result[bool]:
-        observed = state.journal_state(layout)
-        if observed.failure:
-            return r[bool].fail(
-                f"{failure}; journal inspection failed: {observed.error}",
-            )
-        observed_snapshot = state.journal_snapshot(observed.value)
-        if observed_snapshot is None or observed_snapshot.content is None:
-            return r[bool].fail(f"{failure}; durable journal disappeared")
-        return self._recover_failure(layout, failure)
-
-    def _verified_prepublication_barriers(
-        self,
-        layout: m.Infra.MiseToolchainWorkspaceLayout,
-        plan: m.Infra.MiseToolchainWorkspacePlan,
-        all_sources: t.VariadicTuple[t.Pair[str, m.Cli.AtomicFileState]],
-        publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
-    ) -> p.Result[bool]:
-        """Re-verify every pre-publication barrier, recovering on the first breach.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        barriers = FlextInfraCodegenPreconditions.prepublication_barriers(
-            plan,
-            tuple(source for _phase, source in all_sources),
-            tuple(item.before for item in publications),
-        )
-        if barriers.failure:
-            return r[bool].from_failure(
+        if outcome.failure:
+            if outcome.error_data is not None and "cleanup_error" in outcome.error_data:
+                return outcome
+            return r[T].from_failure(
                 self._recover_failure(
                     layout,
-                    barriers.error or "generation barrier failed",
+                    outcome,
                 ),
             )
-        return r[bool].ok(value=True)
-
-    def _recover_failure(
-        self,
-        layout: m.Infra.MiseToolchainWorkspaceLayout,
-        failure: str,
-    ) -> p.Result[bool]:
-        recovered = self._recover_prepared(layout)
-        if recovered.failure:
-            # Recovery must never replace the failure that initiated it.
-            return r[bool].fail(failure, error_data={"recovery_error": recovered.error})
-        return r[bool].fail(failure)
-
-    def _write_journal(
-        self,
-        layout: m.Infra.MiseToolchainWorkspaceLayout,
-        journal: m.Infra.CodegenTransactionJournal,
-        *,
-        expected: m.Cli.AtomicFileState,
-    ) -> p.Result[m.Cli.AtomicFileState]:
-        """Retain the exact owned receipt for in-session failure recovery.
-
-        Returns:
-            The resulting ``p.Result[m.Cli.AtomicFileState]``.
-
-        """
-        written = journal_io.write(layout, journal, expected=expected)
-        if written.success:
-            self._journal_receipts[layout.journal_path] = written.value
-        return written
-
-    def _recover(
-        self,
-        layout: m.Infra.MiseToolchainWorkspaceLayout,
-        *,
-        expected: m.Cli.AtomicFileState | None = None,
-    ) -> p.Result[bool]:
-        loaded = journal_io.read(layout)
-        if loaded.failure:
-            return r[bool].from_failure(loaded)
-        journal, journal_state = loaded.value
-        if expected is not None and journal_state != expected:
-            return r[bool].fail(
-                "generation recovery journal changed from owned receipt",
-            )
-        if journal.file_participants:
-            if journal.projects:
-                return r[bool].fail(
-                    "mixed Mise and file-only recovery requires explicit composition",
-                )
-            recovery_layout = self._planner.file_layout(
-                layout.scope_root,
-                {item.selector: item.root for item in journal.file_participants},
-                transaction_id=journal.transaction_id,
-            )
-            if recovery_layout.failure:
-                return r[bool].from_failure(recovery_layout)
-            if recovery_layout.value.journal_path != layout.journal_path:
-                return r[bool].fail("file journal identity changed during recovery")
-            with self._lease_file_participants(journal.file_participants):
-                recovered = self._recovery.execute(
-                    recovery_layout.value,
-                    journal,
-                    journal_state,
-                )
-            if recovered.success:
-                self._journal_receipts.pop(layout.journal_path, None)
-            return recovered
-        selectors = tuple(project.selector for project in journal.projects)
-        recovery_layout = self._planner.layout_from_selectors(
-            layout.scope_root,
-            selectors,
-            transaction_id=journal.transaction_id,
-        )
-        if recovery_layout.failure:
-            return r[bool].from_failure(recovery_layout)
-        if recovery_layout.value.journal_path != layout.journal_path:
-            return r[bool].fail("generation journal identity changed during recovery")
-        recovered = self._recovery.execute(
-            recovery_layout.value,
-            journal,
-            journal_state,
-        )
-        if recovered.success:
-            self._journal_receipts.pop(layout.journal_path, None)
-        return recovered
+        return outcome
 
 
 __all__: list[str] = ["FlextInfraCodegenTransaction"]

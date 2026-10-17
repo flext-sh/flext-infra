@@ -8,12 +8,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import config
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-from tests import t, u
+from tests import t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -85,7 +83,7 @@ class TestsFlextInfraExtendedConfigFixer:
                 "pyrefly",
             )
             tm.that(
-                pyrefly["search-path"],
+                tuple(u.Tests.strings(pyrefly["search-path"])),
                 eq=TestsFlextInfraExtendedConfigFixer._extra_paths_manager(
                     tmp_path,
                 ).pyrefly_search_paths(project_dir=tmp_path, is_root=True),
@@ -226,11 +224,14 @@ class TestsFlextInfraExtendedConfigFixer:
                 "tool",
                 "pyrefly",
             )
+            # Declared tool globs plus the generated-source trees of the
+            # codegen artifact key: the one exclusion every analyzer shares.
             tm.that(
                 pyrefly["project-excludes"],
-                eq=sorted(
-                    set(config.Infra.tooling.tools.pyrefly.project_exclude_globs),
-                ),
+                eq=sorted({
+                    *config.Infra.tooling.tools.pyrefly.project_exclude_globs,
+                    *config.Infra.codegen.generated_source_globs,
+                }),
             )
 
     class TestConfigFixerRun:
@@ -279,4 +280,4 @@ class TestsFlextInfraExtendedConfigFixer:
             items = ["a", "b", "c"]
             arr = u.Cli.toml_array(items)
             tm.that(len(arr), eq=3)
-            tm.that(list(arr), has="a")
+            tm.that(u.Cli.toml_as_string_list(arr), eq=items)

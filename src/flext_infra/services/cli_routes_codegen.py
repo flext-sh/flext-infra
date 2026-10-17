@@ -10,28 +10,32 @@ from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, infra, m
-from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
-from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
-from flext_infra.codegen.layout import FlextInfraCodegenLayout
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
-from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
-from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
-from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
-from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
-from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-from flext_infra.deps.lock_integrity import FlextInfraLockIntegrityVerifier
-from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-from flext_infra.services.cli_route_base import FlextInfraCliRouteBase
+from flext_infra.codegen import (
+    FlextInfraCodegenConsolidator,
+    FlextInfraCodegenLayout,
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenMakeBootstrap,
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenMiseToolchainProof,
+    FlextInfraCodegenMiseToolchainRepair,
+    FlextInfraCodegenProjectNew,
+    FlextInfraCodegenPyTyped,
+    FlextInfraCodegenScaffolder,
+    FlextInfraCodegenVersionFile,
+)
+from flext_infra.deps import (
+    FlextInfraConfigFixer,
+    FlextInfraExtraPathsManager,
+    FlextInfraLockIntegrityVerifier,
+    FlextInfraPyprojectModernizer,
+    FlextInfraRuntimeDevDependencyDetector,
+)
 
 if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraCodegenRoutes(FlextInfraCliRouteBase):
+class FlextInfraCodegenRoutes:
     """Own check, codegen, and dependency command routes."""
 
     codegen_routes: ClassVar[
@@ -42,15 +46,13 @@ class FlextInfraCodegenRoutes(FlextInfraCliRouteBase):
                 name=c.Infra.VERB_RUN,
                 help_text="Run workspace quality gates",
                 model_cls=m.Infra.RunCommand,
-                handler=FlextInfraCliRouteBase.result_handler(infra.check),
+                handler=infra.check,
             ),
             m.Cli.ResultCommandRoute(
                 name="fix-pyrefly-settings",
                 help_text="Repair [tool.pyrefly] blocks",
                 model_cls=m.Infra.FixPyreflyConfigCommand,
-                handler=FlextInfraCliRouteBase.result_handler(
-                    FlextInfraConfigFixer.execute_payload,
-                ),
+                handler=FlextInfraConfigFixer.execute_payload,
             ),
         ),
         c.Infra.CLI_GROUP_CODEGEN: (
@@ -58,10 +60,15 @@ class FlextInfraCodegenRoutes(FlextInfraCliRouteBase):
                 name="candidate-bootstrap",
                 help_text="Atomically conform all declared candidate Makefiles",
                 model_cls=m.Infra.CandidateBootstrapCommand,
-                handler=FlextInfraCliRouteBase.result_handler(
-                    infra.bootstrap_candidate,
-                ),
+                handler=infra.bootstrap_candidate,
                 success_message="candidate bootstrap complete",
+            ),
+            m.Cli.ResultCommandRoute(
+                name="generate",
+                help_text="Generate managed projections without declaration repair",
+                model_cls=m.Infra.CodegenGenerateRequest,
+                handler=infra.codegen_generate,
+                success_message="managed projection generation complete",
             ),
             m.Cli.ResultCommandRoute(
                 name="conform",
@@ -69,6 +76,12 @@ class FlextInfraCodegenRoutes(FlextInfraCliRouteBase):
                 model_cls=m.Infra.CodegenConformRequest,
                 handler=infra.codegen_conform,
                 success_message="project conformance complete",
+            ),
+            m.Cli.ResultCommandRoute(
+                name="footprint",
+                help_text="Read the actual generation journal and plan without effects",
+                model_cls=m.Infra.CodegenConformRequest,
+                handler=infra.codegen_footprint,
             ),
             *(
                 m.Cli.ResultCommandRoute(
@@ -83,16 +96,14 @@ class FlextInfraCodegenRoutes(FlextInfraCliRouteBase):
                         "new",
                         "Create a new FLEXT project from the canonical templates",
                         FlextInfraCodegenProjectNew,
-                        FlextInfraCliRouteBase.result_handler(infra.codegen_new),
+                        infra.codegen_new,
                         "project created",
                     ),
                     (
                         "init",
-                        "Bootstrap only the canonical generated Makefile",
+                        "Bootstrap the target's own declaration and canonical Makefile",
                         FlextInfraCodegenMakeBootstrap,
-                        FlextInfraCliRouteBase.result_handler(
-                            FlextInfraCodegenMakeBootstrap.execute,
-                        ),
+                        FlextInfraCodegenMakeBootstrap.execute,
                         "Makefile bootstrap complete",
                     ),
                     (
@@ -104,127 +115,134 @@ class FlextInfraCodegenRoutes(FlextInfraCliRouteBase):
                             "repository)"
                         ),
                         FlextInfraCodegenLazyInit,
-                        FlextInfraCliRouteBase.result_handler(
-                            FlextInfraCodegenLazyInit.execute,
-                        ),
+                        FlextInfraCodegenLazyInit.execute,
                         "lazy-init complete",
                     ),
                     (
                         "census",
                         "Count namespace violations across workspace projects",
                         m.Infra.CodegenCommand,
-                        FlextInfraCliRouteBase.result_handler(infra.codegen_census),
+                        infra.codegen_census,
                         None,
                     ),
                     (
                         "scaffold",
                         "Generate missing base modules in src/ and tests/",
                         FlextInfraCodegenScaffolder,
-                        FlextInfraCliRouteBase.result_handler(
-                            FlextInfraCodegenScaffolder.execute,
-                        ),
+                        FlextInfraCodegenScaffolder.execute,
                         None,
                     ),
                     (
                         "auto-fix",
                         "Auto-fix namespace violations (move Finals/TypeVars)",
                         m.Infra.CodegenAutoFixCommand,
-                        FlextInfraCliRouteBase.result_handler(infra.codegen_auto_fix),
+                        infra.codegen_auto_fix,
                         None,
                     ),
                     (
                         "py-typed",
                         "Create/remove PEP 561 py.typed markers",
                         FlextInfraCodegenPyTyped,
-                        FlextInfraCliRouteBase.result_handler(
-                            FlextInfraCodegenPyTyped.execute,
-                        ),
+                        FlextInfraCodegenPyTyped.execute,
                         "py-typed markers updated",
                     ),
                     (
                         "pipeline",
                         "Run full codegen pipeline",
                         m.Infra.CodegenCommand,
-                        FlextInfraCliRouteBase.result_handler(infra.codegen_pipeline),
+                        infra.codegen_pipeline,
                         None,
                     ),
                     (
                         "constants-quality-gate",
                         "Run constants migration quality gate",
-                        FlextInfraCodegenQualityGate,
-                        FlextInfraCliRouteBase.result_handler(
-                            FlextInfraCodegenQualityGate.execute,
-                        ),
+                        m.Infra.CodegenCommand,
+                        infra.constants_quality_gate,
                         "constants quality gate passed",
                     ),
                     (
                         "consolidate",
                         "Consolidate inline constants into c.Infra.* references",
                         FlextInfraCodegenConsolidator,
-                        FlextInfraCliRouteBase.result_handler(
-                            FlextInfraCodegenConsolidator.execute,
-                        ),
+                        FlextInfraCodegenConsolidator.execute,
                         None,
                     ),
                     (
                         "layout",
                         "Check/apply the canonical project layout (SSOT-driven)",
                         FlextInfraCodegenLayout,
-                        FlextInfraCliRouteBase.result_handler(
-                            FlextInfraCodegenLayout.execute,
-                        ),
+                        FlextInfraCodegenLayout.execute,
                         "layout conformance complete",
                     ),
                     (
                         "mise-artifacts",
                         "Validate the generated Mise bundle read-only",
                         FlextInfraCodegenMiseArtifacts,
-                        FlextInfraCliRouteBase.result_handler(
-                            FlextInfraCodegenMiseArtifacts.execute,
-                        ),
+                        FlextInfraCodegenMiseArtifacts.execute,
                         "Mise artifact validation complete",
+                    ),
+                    (
+                        "mise-proof",
+                        "Prove each declared tool is the self-contained locked release",
+                        FlextInfraCodegenMiseToolchainProof,
+                        FlextInfraCodegenMiseToolchainProof.execute,
+                        "Mise toolchain reality proof complete",
+                    ),
+                    (
+                        "mise-repair",
+                        (
+                            "Reinstall one explicitly selected locked tool and prove "
+                            "reality"
+                        ),
+                        FlextInfraCodegenMiseToolchainRepair,
+                        FlextInfraCodegenMiseToolchainRepair.execute,
+                        "Selected tool installation and complete toolchain verified",
                     ),
                     (
                         "version-file",
                         "Generate __version__.py from project-metadata SSOT",
                         FlextInfraCodegenVersionFile,
-                        FlextInfraCliRouteBase.result_handler(
-                            FlextInfraCodegenVersionFile.execute,
-                        ),
+                        FlextInfraCodegenVersionFile.execute,
                         "version-file generation complete",
                     ),
                 )
             ),
         ),
-        c.Infra.CLI_GROUP_DEPS: tuple(
+        c.Infra.CLI_GROUP_DEPS: (
             m.Cli.ResultCommandRoute(
-                name=route_name,
-                help_text=help_text,
-                model_cls=model_cls,
-                handler=FlextInfraCliRouteBase.result_handler(model_cls.execute),
-            )
-            for route_name, help_text, model_cls in (
-                (
-                    "detect",
-                    "Detect runtime vs dev dependencies",
-                    FlextInfraRuntimeDevDependencyDetector,
-                ),
-                (
-                    "extra-paths",
-                    "Synchronize pyright/mypy extraPaths",
-                    FlextInfraExtraPathsManager,
-                ),
-                (
-                    "modernize",
-                    "Modernize workspace pyproject files",
-                    FlextInfraPyprojectModernizer,
-                ),
-                (
-                    "verify-locks",
-                    "Verify committed generated TOML locks parse and repeat no section",
-                    FlextInfraLockIntegrityVerifier,
-                ),
-            )
+                name="detect",
+                help_text="Detect runtime vs dev dependencies",
+                model_cls=m.Infra.DetectCommand,
+                handler=FlextInfraRuntimeDevDependencyDetector.execute,
+            ),
+            *(
+                m.Cli.ResultCommandRoute(
+                    name=route_name,
+                    help_text=help_text,
+                    model_cls=model_cls,
+                    handler=model_cls.execute,
+                )
+                for route_name, help_text, model_cls in (
+                    (
+                        "extra-paths",
+                        "Synchronize pyright/mypy extraPaths",
+                        FlextInfraExtraPathsManager,
+                    ),
+                    (
+                        "modernize",
+                        "Modernize workspace pyproject files",
+                        FlextInfraPyprojectModernizer,
+                    ),
+                    (
+                        "verify-locks",
+                        (
+                            "Verify committed generated TOML locks parse and repeat no "
+                            "section"
+                        ),
+                        FlextInfraLockIntegrityVerifier,
+                    ),
+                )
+            ),
         ),
     }
 

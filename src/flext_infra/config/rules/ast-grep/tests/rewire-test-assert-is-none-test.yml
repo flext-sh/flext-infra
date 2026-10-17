@@ -1,0 +1,10 @@
+id: rewire-test-assert-is-none
+valid:
+  - assert entry.key is None
+  - |
+    from tests import tm
+    assert entry.key is None, 'absent by contract'
+invalid:
+  - |
+    from tests import tm
+    assert entry.key is None

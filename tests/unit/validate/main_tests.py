@@ -10,12 +10,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
-from flext_infra import main as infra_main
+from flext_infra import main
 from flext_infra.validate.inventory import FlextInfraInventoryService
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
-from tests import c
+from tests import c, tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -32,7 +30,7 @@ class TestsFlextInfraValidateMain:
             The resulting ``int``.
 
         """
-        return infra_main(["validate", *args])
+        return main(["validate", *args])
 
     @staticmethod
     def test_success(tmp_path: Path) -> None:

@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c
-from tests import u
+from tests import tm, u
 
 
 class TestsFlextInfraLazyInitDeterminism:
@@ -52,12 +50,9 @@ class TestsFlextInfraLazyInitDeterminism:
         exit_code = u.Tests.run_lazy_init(repository_root)
         tm.that(exit_code, eq=0)
         init_text = (package_root / c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
-        entries, _refs = u.Infra.module_mapping_assignment_source(
-            init_text,
-            u.Infra.lazy_imports_name_source(init_text),
-        )
+        entries, _refs = u.Infra.lazy_import_mapping_source(init_text)
         keys = [key for key, _names in entries]
         tm.that(keys, empty=False)
         tm.that(keys, eq=sorted(keys))

@@ -1,11 +1,10 @@
-"""Baseline branch derives from live repository reality, not a provider constant.
+"""Baseline resolution checks the declared integration line against live Git.
 
-A provider declares ONE branch, but managed repositories under the same provider
-legitimately integrate on different branches (for example ``dev`` and
-``develop``). Deriving the baseline from ``provider.branch`` therefore fails
-closed on every repository whose integration branch differs from the provider
-default. The canonical baseline is the integration branch the repository really
-publishes, discovered from Git itself.
+The workspace declares ONE versioned integration line
+(``codegen.branch_policy.integration_branch``); resolution reads the
+published remote-tracking ref for exactly that line. A repository that does
+not publish the declared line fails loud — there is no conventional-name
+list to probe and no default to invent.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -15,99 +14,70 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
-from flext_infra import u
-from tests import u as test_u
+from flext_infra import config
+from tests import tm, u
 
 
 class TestsFlextInfraRepositoryBaselineBranch:
-    """Contract for deriving one repository's integration baseline branch."""
+    """Contract for resolving one repository's declared integration baseline."""
 
     @staticmethod
     def _seed_remote_branch(repository_root: Path, branch: str) -> None:
         """Publish one remote-tracking branch exactly as a real clone would."""
         tm.ok(
-            test_u.Cli.run_checked(
+            u.Cli.run_checked(
                 ["git", "update-ref", f"refs/remotes/origin/{branch}", "HEAD"],
                 cwd=repository_root,
             ),
         )
 
-    def test_baseline_follows_the_published_integration_branch(
+    @staticmethod
+    def _delete_published_references(repository_root: Path) -> None:
+        """Drop every published remote-tracking reference one clone carries."""
+        seeded = u.Cli.capture(
+            ["git", "for-each-ref", "--format=%(refname)", "refs/remotes/origin"],
+            cwd=repository_root,
+        )
+        tm.ok(seeded)
+        for reference in seeded.value.split():
+            tm.ok(
+                u.Cli.run_checked(
+                    ["git", "update-ref", "-d", reference],
+                    cwd=repository_root,
+                ),
+            )
+
+    def test_baseline_resolves_the_declared_published_line(
         self,
         infra_git_repo: Path,
     ) -> None:
-        """The derived baseline is the integration branch the repository has."""
-        # A repository that publishes ONLY `dev` must resolve to `dev`, proving
-        # the derivation reads live Git instead of a provider constant.
-        seeded = test_u.Cli.capture(
-            ["git", "for-each-ref", "--format=%(refname)", "refs/remotes/origin"],
-            cwd=infra_git_repo,
-        )
-        tm.ok(seeded)
-        for reference in seeded.value.split():
-            tm.ok(
-                test_u.Cli.run_checked(
-                    ["git", "update-ref", "-d", reference],
-                    cwd=infra_git_repo,
-                ),
-            )
-        self._seed_remote_branch(infra_git_repo, "dev")
+        """The declared line resolves when published Git carries it."""
+        self._delete_published_references(infra_git_repo)
+        declared = config.Infra.codegen.branch_policy.integration_branch
+        self._seed_remote_branch(infra_git_repo, declared)
 
-        resolved = u.Infra.repository_baseline_branch(infra_git_repo)
+        resolved = u.Infra.repository_baseline_branch(
+            infra_git_repo,
+            declared_branch=declared,
+        )
 
         tm.ok(resolved)
-        tm.that(resolved.value, eq="dev")
+        tm.that(resolved.value, eq=declared)
 
     @staticmethod
-    def test_baseline_fails_closed_without_any_integration_branch(
+    def test_baseline_fails_loud_without_the_declared_line(
         tmp_path: Path,
     ) -> None:
-        """A checkout without a published integration branch never guesses."""
-        empty = tmp_path / "no-integration-branch"
+        """A checkout that does not publish the declared line never guesses."""
+        empty = tmp_path / "no-declared-line"
         empty.mkdir(parents=True, exist_ok=True)
-        tm.ok(test_u.Cli.run_checked(["git", "init"], cwd=empty))
+        tm.ok(u.Cli.run_checked(["git", "init"], cwd=empty))
+        declared = config.Infra.codegen.branch_policy.integration_branch
 
-        resolved = u.Infra.repository_baseline_branch(empty)
+        resolved = u.Infra.repository_baseline_branch(
+            empty,
+            declared_branch=declared,
+        )
 
         tm.fail(resolved)
-
-    def test_declared_preference_orders_the_search(self, infra_git_repo: Path) -> None:
-        """A workspace names its own release line instead of a constant.
-
-        The built-in ordering carries conventional names only, so a fleet that
-        integrates on a versioned line has to be able to declare it. Without
-        that, the release name has to live inside this package — which is how
-        `0.12.0-dev` came to be hardcoded next to `develop` and `dev`.
-        """
-        seeded = test_u.Cli.capture(
-            ["git", "for-each-ref", "--format=%(refname)", "refs/remotes/origin"],
-            cwd=infra_git_repo,
-        )
-        tm.ok(seeded)
-        for reference in seeded.value.split():
-            tm.ok(
-                test_u.Cli.run_checked(
-                    ["git", "update-ref", "-d", reference],
-                    cwd=infra_git_repo,
-                ),
-            )
-        # Both are published, so only the declared order can decide between them.
-        self._seed_remote_branch(infra_git_repo, "dev")
-        self._seed_remote_branch(infra_git_repo, "9.9.9-dev")
-
-        declared = u.Infra.repository_baseline_branch(
-            infra_git_repo,
-            preference=("9.9.9-dev", "develop", "dev"),
-        )
-
-        tm.ok(declared)
-        tm.that(declared.value, eq="9.9.9-dev")
-
-        # And the built-in ordering, which cannot know that release name,
-        # resolves the conventional one instead.
-        builtin = u.Infra.repository_baseline_branch(infra_git_repo)
-
-        tm.ok(builtin)
-        tm.that(builtin.value, eq="dev")
+        tm.that(str(resolved.error), has=f"declared {declared}")

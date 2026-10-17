@@ -6,12 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
+import sys
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, infra, m, p, t, u
+from tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,10 +25,45 @@ class TestsFlextInfraFacadeBaseCutover:
     PARENT_CLASS = "ParentDeclaredModelFacade"
     OTHER_CLASS = "OtherDeclaredModelFacade"
 
+    @staticmethod
+    def _lazy_publication(submodule: str, *names: str) -> str:
+        """Render the lazy publication a generated package ``__init__`` carries.
+
+        Generated initializers publish every name through one
+        ``install_lazy_exports(__name__, globals(), MappingProxyType({...}))``
+        call mapping each name to its provider submodule.
+
+        Returns:
+            The publication statements for ``names``.
+
+        """
+        entries = "".join(f'        "{name}": "{submodule}",\n' for name in names)
+        return (
+            "from types import MappingProxyType\n"
+            "from flext_core.lazy import install_lazy_exports\n"
+            "install_lazy_exports(\n"
+            "    __name__,\n"
+            "    globals(),\n"
+            "    MappingProxyType({\n"
+            f"{entries}"
+            "    }),\n"
+            ")\n"
+        )
+
     @pytest.mark.parametrize(
         ("statement", "base", "rebind"),
         [
             ("from parent_pkg import m", "m", "m = ChildModels"),
+            (
+                "from parent_pkg import ParentDeclaredModelFacade as m",
+                "m",
+                "m = ChildModels",
+            ),
+            (
+                "from parent_pkg import ParentDeclaredModelFacade as m",
+                "m",
+                "m: type[ChildModels] = ChildModels",
+            ),
             (
                 "from parent_pkg import m as _parent_m",
                 "_parent_m",
@@ -70,6 +107,65 @@ class TestsFlextInfraFacadeBaseCutover:
         tm.that(updated, has=f"    base = {self.PARENT_CLASS}.BaseModel\n")
         tm.that(updated, has="        return m.BaseModel\n")
 
+    def test_module_alias_uses_the_binding_before_assignment(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Resolve an imported module alias through its actual source identity."""
+        child, sources = self._workspace(
+            tmp_path,
+            """from parent_pkg import m
+
+class ChildModels(m):
+    pass
+
+m = ChildModels
+""",
+        )
+        parent = tmp_path / "parent/src/parent_pkg"
+        sources[parent / "prior.py"] = """class DeclaredAncestor:
+    pass
+
+__all__ = ['DeclaredAncestor']
+"""
+        sources[parent / "models.py"] = f"""from parent_pkg import prior
+
+previous = prior
+
+class {self.PARENT_CLASS}(previous.DeclaredAncestor):
+    pass
+
+m = {self.PARENT_CLASS}
+__all__ = [{self.PARENT_CLASS!r}, 'm']
+"""
+        updated = self._edits(tmp_path, sources, child)[0].updated_source
+        tm.that(updated, has=f"class ChildModels({self.PARENT_CLASS}):")
+        sources[child] = updated
+        for path, source in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        consumer = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from child_pkg.models import ChildModels; "
+                        "from parent_pkg.prior import DeclaredAncestor; "
+                        "assert isinstance(ChildModels(), DeclaredAncestor)"
+                    ),
+                ),
+                cwd=tmp_path,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        "PYTHONPATH": os.pathsep.join(
+                            (str(parent.parent), str(child.parent.parent)),
+                        ),
+                    },
+                ),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True, msg=consumer.stderr)
+
     def test_every_letter_base_of_a_composed_facade_extends_its_own_parent(
         self,
         tmp_path: Path,
@@ -86,6 +182,7 @@ class TestsFlextInfraFacadeBaseCutover:
             "from typing import TYPE_CHECKING\n"
             "if TYPE_CHECKING:\n"
             f"    from .models import {self.OTHER_CLASS}, m\n"
+            f"{self._lazy_publication('.models', self.OTHER_CLASS, 'm')}"
             f"__all__ = [{self.OTHER_CLASS!r}, 'm']\n"
         )
         sources[other / "models.py"] = (
@@ -100,7 +197,8 @@ class TestsFlextInfraFacadeBaseCutover:
         tm.that(updated, has=f"from other_pkg import {self.OTHER_CLASS}\n")
         tm.that(updated, has=f"from parent_pkg import {self.PARENT_CLASS}\n")
         tm.that(
-            updated, has=f"class ChildModels({self.PARENT_CLASS}, {self.OTHER_CLASS}):",
+            updated,
+            has=f"class ChildModels({self.PARENT_CLASS}, {self.OTHER_CLASS}):",
         )
         tm.that(updated, has=f"    base = {self.PARENT_CLASS}.BaseModel\n")
         tm.that(updated, has=f"    other = {self.OTHER_CLASS}.BaseModel\n")
@@ -150,16 +248,48 @@ class TestsFlextInfraFacadeBaseCutover:
                 target.write_text(source, encoding="utf-8")
         tm.that(u.Infra.facade_classes("parent_pkg"), eq={"m": self.PARENT_CLASS})
 
+    @pytest.mark.parametrize("consumer", ["workspace", "member"])
+    def test_facade_classes_read_a_declared_sibling_without_installation(
+        self,
+        tmp_path: Path,
+        consumer: str,
+    ) -> None:
+        """Derive the parent contract from the declared workspace source graph."""
+        child, sources = self._workspace(tmp_path, "")
+        for path, source in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        (tmp_path / ".gitmodules").write_text(
+            '[submodule "parent"]\npath = parent\n'
+            "url = https://example.org/parent.git\n"
+            '[submodule "child"]\npath = child\n'
+            "url = https://example.org/child.git\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.that(
+            u.Infra.facade_classes(
+                "parent_pkg",
+                source_root=tmp_path if consumer == "workspace" else child.parents[2],
+            ),
+            eq={"m": self.PARENT_CLASS},
+        )
+
     def test_composite_facade_cuts_over_every_letter(self, tmp_path: Path) -> None:
         """A facade binding several parent letters cuts over all of them."""
         parent = tmp_path / "parent/src/parent_pkg"
         second = tmp_path / "second/src/second_pkg"
         child = tmp_path / "child/src/child_pkg/protocols.py"
+        second_publication = self._lazy_publication(
+            ".protocols",
+            "SecondDeclaredProtocols",
+            "p",
+        )
         sources = {
             parent / "__init__.py": (
                 "from typing import TYPE_CHECKING\n"
                 "if TYPE_CHECKING:\n"
                 f"    from .models import {self.PARENT_CLASS}, m\n"
+                f"{self._lazy_publication('.models', self.PARENT_CLASS, 'm')}"
                 f"__all__ = [{self.PARENT_CLASS!r}, 'm']\n"
             ),
             parent / "models.py": (
@@ -172,6 +302,7 @@ class TestsFlextInfraFacadeBaseCutover:
                 "from typing import TYPE_CHECKING\n"
                 "if TYPE_CHECKING:\n"
                 "    from .protocols import SecondDeclaredProtocols, p\n"
+                f"{second_publication}"
                 "__all__ = ['SecondDeclaredProtocols', 'p']\n"
             ),
             second / "protocols.py": (
@@ -198,30 +329,21 @@ class TestsFlextInfraFacadeBaseCutover:
         tm.that(updated, has=f"from parent_pkg import {self.PARENT_CLASS}\n")
         tm.that(updated, has="from second_pkg import SecondDeclaredProtocols\n")
 
-    @pytest.mark.parametrize("annotation", ["", "_LAZY_IMPORTS: Mapping\n"])
     def test_lazy_published_letter_resolves_the_declared_class(
         self,
         tmp_path: Path,
-        annotation: str,
     ) -> None:
-        """A letter published only through the lazy map still resolves."""
+        """A letter published only through the generated lazy map resolves.
+
+        The package binds the letter nowhere else (no TYPE_CHECKING import):
+        the ``install_lazy_exports`` publication alone names its provider.
+        """
         parent = tmp_path / "parent/src/parent_pkg"
         child = tmp_path / "child/src/child_pkg/models.py"
         sources = {
             parent / "__init__.py": (
-                "from types import MappingProxyType\n"
                 f"__all__ = [{self.PARENT_CLASS!r}, 'm']\n"
-                f"{annotation}"
-                "_LAZY_IMPORTS = MappingProxyType(\n"
-                "    build_lazy_import_map(\n"
-                "        MappingProxyType({\n"
-                f'            ".models": ({self.PARENT_CLASS!r}, "m"),\n'
-                "        }),\n"
-                "        alias_groups=MappingProxyType({}),\n"
-                "        sort_keys=False,\n"
-                "    )\n"
-                ")\n"
-                f"{annotation}"
+                f"{self._lazy_publication('.models', self.PARENT_CLASS, 'm')}"
             ),
             parent / "models.py": (
                 "from base_pkg import m\n"
@@ -257,6 +379,148 @@ class TestsFlextInfraFacadeBaseCutover:
 
         tm.that(updated, has=f"class ChildModels({self.PARENT_CLASS}):")
 
+    @pytest.mark.parametrize(
+        ("guard_import", "guard"),
+        [
+            ("from typing import TYPE_CHECKING", "TYPE_CHECKING"),
+            ("import typing", "typing.TYPE_CHECKING"),
+            ("import typing_extensions", "typing_extensions.TYPE_CHECKING"),
+        ],
+    )
+    def test_type_only_self_import_does_not_override_lazy_publication(
+        self,
+        tmp_path: Path,
+        installed_dependency_path: Path,
+        guard_import: str,
+        guard: str,
+    ) -> None:
+        """Static self-imports do not create runtime facade binding cycles."""
+        _child, sources = self._workspace(tmp_path, "")
+        parent = tmp_path / "parent/src/parent_pkg"
+        sources[parent / "__init__.py"] = (
+            f"{guard_import}\n"
+            f"{self._lazy_publication('.models', self.PARENT_CLASS, 'm')}"
+            f"if {guard}:\n"
+            f"    from parent_pkg import {self.PARENT_CLASS}, m\n"
+            f"__all__ = [{self.PARENT_CLASS!r}, 'm']\n"
+        )
+        for path, source in sources.items():
+            if "parent_pkg" in path.parts:
+                target = installed_dependency_path / path.relative_to(
+                    tmp_path / "parent/src",
+                )
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(source, encoding="utf-8")
+
+        tm.that(u.Infra.facade_classes("parent_pkg"), eq={"m": self.PARENT_CLASS})
+
+    @pytest.mark.parametrize(
+        "runtime_binding",
+        [
+            "from .models import {owner}, m\n",
+            "class {owner}:\n    pass\nm = {owner}\n",
+            "from .models import {owner}\nm: type[{owner}] = {owner}\n",
+        ],
+    )
+    def test_type_checking_else_preserves_runtime_class_bindings(
+        self,
+        tmp_path: Path,
+        runtime_binding: str,
+    ) -> None:
+        """Only the runtime else arm supplies imports, classes, and aliases."""
+        child, sources = self._workspace(
+            tmp_path,
+            "from parent_pkg import m\nclass ChildModels(m):\n    pass\n"
+            "m = ChildModels\n",
+        )
+        runtime = runtime_binding.format(owner=self.PARENT_CLASS)
+        sources[tmp_path / "parent/src/parent_pkg/__init__.py"] = (
+            "from typing import TYPE_CHECKING\n"
+            "if TYPE_CHECKING:\n"
+            f"    from parent_pkg import {self.PARENT_CLASS}, m\n"
+            "else:\n"
+            + "".join(f"    {line}\n" for line in runtime.splitlines())
+            + f"__all__ = [{self.PARENT_CLASS!r}, 'm']\n"
+        )
+
+        updated = self._edits(tmp_path, sources, child)[0].updated_source
+
+        tm.that(updated, has=f"class ChildModels({self.PARENT_CLASS}):")
+
+    @pytest.mark.parametrize("after_lazy_map", [False, True])
+    def test_runtime_self_import_still_fails_with_lazy_publication(
+        self,
+        tmp_path: Path,
+        *,
+        after_lazy_map: bool,
+    ) -> None:
+        """A lazy entry never hides a real module-scope circular binding."""
+        child, sources = self._workspace(
+            tmp_path,
+            "from parent_pkg import m\nclass ChildModels(m):\n    pass\n"
+            "m = ChildModels\n",
+        )
+        init = tmp_path / "parent/src/parent_pkg/__init__.py"
+        binding = f"from parent_pkg import {self.PARENT_CLASS}, m\n"
+        sources[init] = (
+            sources[init] + binding if after_lazy_map else binding + sources[init]
+        )
+
+        tm.fail(self._plan(tmp_path, sources, child), has="cyclic facade binding")
+
+    @pytest.mark.parametrize(
+        "last_binding",
+        [
+            "m = {owner}\n",
+            "m: type[{owner}] = {owner}\n",
+            "if runtime_condition:\n    m = {owner}\n",
+        ],
+    )
+    def test_last_runtime_binding_wins_over_earlier_binding(
+        self,
+        tmp_path: Path,
+        last_binding: str,
+    ) -> None:
+        """Imports, classes, aliases, and ordinary guards keep their ordering."""
+        child, sources = self._workspace(
+            tmp_path,
+            "from parent_pkg import m\nclass ChildModels(m):\n    pass\n"
+            "m = ChildModels\n",
+        )
+        sources[tmp_path / "parent/src/parent_pkg/__init__.py"] = (
+            "from typing import TYPE_CHECKING\n"
+            "from parent_pkg import m\n"
+            f"class {self.PARENT_CLASS}:\n    pass\n"
+            f"class {self.OTHER_CLASS}:\n    pass\n"
+            f"m = {self.PARENT_CLASS}\n"
+            + last_binding.format(owner=self.OTHER_CLASS)
+            + "if TYPE_CHECKING:\n"
+            f"    m = {self.PARENT_CLASS}\n"
+            f"__all__ = [{self.PARENT_CLASS!r}, {self.OTHER_CLASS!r}, 'm']\n"
+        )
+
+        updated = self._edits(tmp_path, sources, child)[0].updated_source
+
+        tm.that(updated, has=f"class ChildModels({self.OTHER_CLASS}):")
+
+    def test_type_only_publication_without_runtime_owner_fails(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Static declarations alone cannot publish a runtime facade owner."""
+        child, sources = self._workspace(
+            tmp_path,
+            "from parent_pkg import m\nclass ChildModels(m):\n    pass\n"
+            "m = ChildModels\n",
+        )
+        sources[tmp_path / "parent/src/parent_pkg/__init__.py"] = (
+            "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n"
+            f"    from .models import {self.PARENT_CLASS}, m\n"
+            f"__all__ = [{self.PARENT_CLASS!r}, 'm']\n"
+        )
+
+        tm.fail(self._plan(tmp_path, sources, child), has="is not declared")
+
     def _workspace(
         self,
         tmp_path: Path,
@@ -278,6 +542,7 @@ class TestsFlextInfraFacadeBaseCutover:
                 "from typing import TYPE_CHECKING\n"
                 "if TYPE_CHECKING:\n"
                 f"    from .models import {self.PARENT_CLASS}, m\n"
+                f"{self._lazy_publication('.models', self.PARENT_CLASS, 'm')}"
                 f"__all__ = [{self.PARENT_CLASS!r}, 'm']\n"
             ),
             parent / "models.py": (
@@ -290,14 +555,14 @@ class TestsFlextInfraFacadeBaseCutover:
         }
 
     @staticmethod
-    def _finding(file_path: Path) -> m.Infra.ModScanFinding:
+    def _finding(file_path: Path) -> m.Infra.ModOccurrence:
         """Build one detector finding for the facade module.
 
         Returns:
-            The resulting ``m.Infra.ModScanFinding``.
+            The resulting ``m.Infra.ModOccurrence``.
 
         """
-        return m.Infra.ModScanFinding(
+        return m.Infra.ModOccurrence(
             rule_file="facade-base-by-class-name.yml",
             rule_id="facade-base-by-class-name",
             repository="child",
@@ -306,7 +571,6 @@ class TestsFlextInfraFacadeBaseCutover:
             text="m = ChildModels",
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
-            payload={},
         )
 
     @classmethod

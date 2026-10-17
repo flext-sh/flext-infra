@@ -9,10 +9,8 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from flext_tests import tm
-
-from flext_infra import c, m, u
-from tests import u as test_u
+from flext_infra import c, m
+from tests import tm, u
 
 
 class TestsFlextInfraGitIdentitySubmodules:
@@ -33,7 +31,7 @@ class TestsFlextInfraGitIdentitySubmodules:
 
         """
         root.mkdir(parents=True, exist_ok=True)
-        test_u.Tests.initialize_git_repo(root)
+        u.Tests.initialize_git_repo(root)
         return root
 
     @classmethod

@@ -9,22 +9,19 @@ from __future__ import annotations
 import ast
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import override
+
+import libcst as cst
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities._rope_core_pymodule import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesQualifiedNames,
     FlextInfraUtilitiesRopeCorePyModuleMixin,
-)
-from flext_infra._utilities._semantic_cutover.helper_references import (
-    FlextInfraUtilitiesSemanticHelperReferences,
-)
-from flext_infra._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
-from flext_infra._utilities.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-
-if TYPE_CHECKING:
-    import libcst as cst
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticHelperReferences,
+)
 
 
 class FlextInfraUtilitiesSemanticTestHelpers(
@@ -38,7 +35,6 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
     ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
-        import libcst as cst
 
         class _MovedExports(cst.CSTTransformer):
             """Retire only the original declaration's former module export."""
@@ -140,6 +136,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         sources: t.MappingKV[Path, str],
         editable: frozenset[Path],
     ) -> m.Infra.ClassMoveRequest | None:
+
         root = Path(project.root.real_path)
         resource = project.get_resource(path.relative_to(root).as_posix())
         resources = tuple(
@@ -163,8 +160,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
             ):
                 continue
             find_offset = (
-                FlextInfraUtilitiesRopeCorePyModuleMixin
-                .find_identifier_offset_in_lines
+                FlextInfraUtilitiesRopeCorePyModuleMixin.find_identifier_offset_in_lines
             )
             offset = find_offset(
                 sources[path].splitlines(keepends=True),
@@ -189,7 +185,17 @@ class FlextInfraUtilitiesSemanticTestHelpers(
                 continue
             target = cls._test_utilities_owner(workspace, path, sources)
             target_resource = project.get_resource(target.relative_to(root).as_posix())
-            if name in project.get_pymodule(target_resource).get_attributes():
+            target_module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+                project, target_resource
+            )
+            if name in target_module.get_attributes() and not (
+                cls._destination_imports_moving_declaration(
+                    project,
+                    resource,
+                    name,
+                    target_module.get_attribute(name),
+                )
+            ):
                 msg = f"shared helper destination already binds {name}: {target}"
                 raise ValueError(msg)
             return m.Infra.ClassMoveRequest(
@@ -201,6 +207,33 @@ class FlextInfraUtilitiesSemanticTestHelpers(
                 apply=False,
             )
         return None
+
+    @staticmethod
+    def _destination_imports_moving_declaration(
+        project: p.Infra.RopeProject,
+        source: p.Infra.RopeResource,
+        name: str,
+        bound: p.Infra.RopePyName,
+    ) -> bool:
+        """Return whether this binding imports the declaration being moved.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
+        if (
+            not isinstance(bound, p.Infra.RopeImportedName)
+            or bound.imported_name != name
+        ):
+            return False
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        expected = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+            project, source
+        ).get_attribute(name)
+        return runtime.same_name(expected, bound) and (
+            runtime.imported_module_path(project, bound)
+            == Path(source.real_path).resolve()
+        )
 
     @staticmethod
     def _test_utilities_owner(

@@ -21,8 +21,7 @@ from operator import itemgetter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, config, m, r, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -78,7 +77,7 @@ class FlextInfraCodegenLazyInitProjectionManifest:
                 return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(
                     serialized,
                 )
-            content = f"{serialized.value}\n".encode(c.Cli.ENCODING_DEFAULT)
+            content = f"{serialized.value}\n".encode(c.DEFAULT_ENCODING)
             manifest_path = project / ".agents" / c.Infra.MANIFEST_FILENAME
             state = u.Cli.atomic_read_binary_file_state(manifest_path, required=False)
             if state.failure:
@@ -89,7 +88,7 @@ class FlextInfraCodegenLazyInitProjectionManifest:
                     path=manifest_path,
                     before=state.value,
                     desired_content=content,
-                    desired_mode=0o644,
+                    desired_mode=config.Infra.codegen.modes.file_default,
                 ),
             )
         return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].ok(tuple(plans))

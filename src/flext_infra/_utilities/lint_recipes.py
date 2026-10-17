@@ -5,9 +5,9 @@ The tooling owner maps each Ruff rule code to one recipe
 then these recipes to the findings left. Every repair is derived from the
 source itself: a docstring section from the signature, the summary and the
 raise statement, a summary from the declared name, the notice from the
-project's declared author and copyright year, and a static method from a
-method Ruff reports as never reading its instance: only its receiver
-parameter and its decorator list change, its body keeps every byte. A
+project's declared copyright holder, license, year and module path, and a static
+method from a method Ruff reports as never reading its instance: only its
+receiver parameter and its decorator list change, its body keeps every byte. A
 finding the recipe cannot place raises; nothing is skipped.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -17,53 +17,207 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import io
 import re
 import textwrap
-from collections.abc import MutableMapping
+import tokenize
+from collections.abc import Iterable, MutableMapping
+from functools import lru_cache
+from itertools import pairwise
+from operator import itemgetter
 from pathlib import Path
 
-from flext_infra import c, config, m, t
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
+from flext_cli import u
+
+from flext_infra import c, config, m, p, r, t
+from flext_infra._config import FlextInfraConfig
+from flext_infra._utilities import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesPyproject,
+)
 
 
 class FlextInfraUtilitiesLintRecipes:
-    """Apply the declared recipe of each lint finding to one module source."""
+    """Lint-gate policy and repair utilities behind the ``u.Infra`` facade."""
 
     @staticmethod
-    def copyright_notice(pkg_dir: Path) -> str:
-        """Render the copyright notice of the project that owns ``pkg_dir``.
+    def ruff_finding_severity(code: str, advisory: Iterable[str]) -> str:
+        """Severity one Ruff finding reports at.
 
-        The author is the manifest's first declared author and the year is the
-        scaffold copyright year, the same owners the scaffold templates
-        render.
+        The declared warning classification is retained in every report.
+        Severity never exempts a finding from the blocking gate verdict.
 
         Returns:
-            The two-line notice: the copyright line and the SPDX line.
+            The resulting ``str``.
+
+        """
+        return (
+            c.Infra.GateSeverity.WARNING.value
+            if code in frozenset(advisory)
+            else c.Infra.GateSeverity.ERROR.value
+        )
+
+    @staticmethod
+    def blocking_gate_findings(
+        issues: t.SequenceOf[m.Infra.Issue],
+    ) -> tuple[m.Infra.Issue, ...]:
+        """Retain every finding as blocking under the approved quality baseline.
+
+        Returns:
+            The resulting ``tuple[m.Infra.Issue, ...]``.
+
+        """
+        return tuple(issues)
+
+    @staticmethod
+    def project_notice_identity(
+        project_root: Path,
+        declared: m.Infra.ProjectSpec | None,
+        scaffold: m.Infra.ScaffoldProjectSpec,
+    ) -> p.Result[t.Triple[str, str, int]]:
+        """Resolve the copyright holder, license and year a project declares.
+
+        The repository's ``Infra.codegen.repository.project`` declaration owns
+        all three: ``author_name`` is the copyright holder, ``license`` the
+        SPDX identifier and ``year`` the notice year. A tree without that
+        declaration derives them from its live PEP 621 manifest, the
+        existing-tree rule: the first author is the holder, ``project.license``
+        the license, and the scaffold copyright year the year.
+        ``scaffold.supported_licenses`` only validates the result: a license
+        without complete templates is rejected, never replaced.
+
+        Returns:
+            The ``(holder, license, year)`` triple, or the first missing or
+            unsupported declaration.
+
+        """
+        result_type = r[t.Triple[str, str, int]]
+        if declared is not None:
+            identity = (declared.author_name, declared.license, declared.year)
+        else:
+            metadata = FlextInfraUtilitiesPyproject.read_project_metadata_result(
+                project_root,
+            )
+            if metadata.failure:
+                return result_type.from_failure(metadata)
+            authors = metadata.value.project.authors
+            holder = authors[0].name if authors else None
+            if not holder:
+                return result_type.fail(
+                    f"project manifest declares no author name: {project_root}",
+                )
+            license_id = u.Cli.json_walk_path(
+                FlextInfraUtilitiesPyproject.pyproject_payload(
+                    project_root / c.PYPROJECT_FILENAME,
+                ),
+                (c.Infra.PROJECT, c.Infra.LICENSE),
+            )
+            if not isinstance(license_id, str) or not license_id:
+                return result_type.fail(
+                    "project manifest declares no SPDX project.license and the "
+                    f"repository declares no codegen project: {project_root}",
+                )
+            identity = (holder, license_id, scaffold.copyright_year)
+        if identity[1] not in scaffold.supported_licenses:
+            supported = ", ".join(scaffold.supported_licenses)
+            return result_type.fail(
+                f"unsupported scaffold license: {identity[1]}; "
+                f"supported licenses: {supported}",
+            )
+        return result_type.ok(identity)
+
+    @staticmethod
+    @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
+    def _declared_notice_identity(
+        project_root: Path,
+        inputs: t.VariadicTuple[bytes | None],
+    ) -> p.Result[t.Triple[str, str, int]]:
+        """Resolve one project's notice identity once per exact input content.
+
+        ``inputs`` holds the bytes of the repository's own codegen layers and
+        its manifest, so an edited input is a new key, never a stale identity.
+        The repository declaration is still read through its owner, which must
+        observe the same layer bytes the key carries.
+
+        Returns:
+            The ``project_notice_identity`` result for the declared inputs.
+
+        """
+        result_type = r[t.Triple[str, str, int]]
+        artifacts = FlextInfraUtilitiesProjectManagedArtifacts
+        declaration = artifacts.load_repository_declaration_inputs(project_root)
+        if declaration.failure:
+            return result_type.from_failure(declaration)
+        observed = tuple(state.content for state in declaration.value.sources[1:])
+        if observed != inputs[: len(observed)]:
+            return result_type.fail(
+                f"codegen declaration changed during notice resolution: {project_root}",
+            )
+        return FlextInfraUtilitiesLintRecipes.project_notice_identity(
+            project_root,
+            declaration.value.spec.project,
+            config.Infra.codegen.scaffold.project,
+        )
+
+    @classmethod
+    def copyright_notice(cls, pkg_dir: Path, *, module: Path | None = None) -> str:
+        """Render the copyright notice of the project that owns ``pkg_dir``.
+
+        The holder, license and year come from the owning repository's
+        declaration through ``project_notice_identity``, the same owner the
+        conform render consumes. ``module`` names the file that carries the
+        notice. Its project-relative path, without the suffix every module
+        shares, is the line between the copyright sentence and the SPDX line:
+        the sentence and the license stay legal, and the notice is not one
+        stamp.
+
+        Returns:
+            The copyright sentence, that module identity when ``module`` is
+            given, and the SPDX line.
 
         Raises:
-            ValueError: If the path is outside any project manifest or the
-                manifest declares no author name.
+            ValueError: If the path is outside any project manifest, the
+                project declares no holder or a missing or unsupported
+                license, or ``module`` has no identity.
 
         """
         for candidate in (pkg_dir, *pkg_dir.parents):
             if not (candidate / c.PYPROJECT_FILENAME).is_file():
                 continue
-            authors = (
-                FlextInfraUtilitiesPyproject
-                .read_project_metadata_result(candidate)
-                .unwrap()
-                .project.authors
+            root = candidate.resolve()
+            layers = FlextInfraConfig.config_layer_paths_for_repository(
+                root,
+                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
             )
-            author = authors[0].name if authors else None
-            if not author:
-                msg = f"project manifest declares no author name: {candidate}"
+            notice = cls._declared_notice_identity(
+                root,
+                tuple(
+                    u.Cli.files_read_binary(path).unwrap() if path.is_file() else None
+                    for path in (*layers[1:], root / c.PYPROJECT_FILENAME)
+                ),
+            )
+            if notice.failure:
+                raise ValueError(notice.error)
+            holder, license_id, year = notice.value
+            copyright_line = f"Copyright (c) {year} {holder}. All rights reserved."
+            spdx = f"SPDX-License-Identifier: {license_id}"
+            if module is None:
+                return f"{copyright_line}\n{spdx}"
+            try:
+                identity = module.resolve().relative_to(candidate.resolve())
+            except ValueError:
+                identity = module
+            marker = identity.with_suffix("").as_posix()
+            if (
+                not marker
+                or marker == "."
+                or len(marker) > config.Infra.tooling.tools.ruff.line_length
+            ):
+                marker = identity.stem
+            if not marker:
+                msg = f"module has no notice identity: {module}"
                 raise ValueError(msg)
-            scaffold = config.Infra.codegen.scaffold.project
-            return (
-                f"Copyright (c) {scaffold.copyright_year} {author}. "
-                "All rights reserved.\n"
-                f"SPDX-License-Identifier: {scaffold.supported_licenses[0]}"
-            )
+            return f"{copyright_line}\n{marker}\n{spdx}"
         msg = f"package is outside any project manifest: {pkg_dir}"
         raise ValueError(msg)
 
@@ -78,24 +232,63 @@ class FlextInfraUtilitiesLintRecipes:
     ) -> str:
         """Return ``source`` with the declared recipe of every issue applied.
 
-        A static-method finding on a hook a subclass overrides is filtered
-        out by the caller (``overridden_findings``) and never reaches here.
+        A static-method finding on an override chain or on a method that reads
+        its receiver is filtered out by the caller (``overridden_findings``)
+        and never reaches here.
 
         ``path`` names the module in every refusal and locates the project
         whose declared author signs the notice; the notice is derived only
-        when a copyright finding asks for it. A module without a docstring
-        receives one, summarized from its name, to carry the notice.
+        when a copyright finding asks for it.
+
+        Whole-module import normalization and line wrapping belong to the Ruff
+        lint gate, which runs them before passing planned edits to this utility.
 
         Returns:
             The repaired module source.
 
-        Raises:
-            ValueError: If an issue's code has no recipe or its recipe cannot
-                be placed in the module.
-
         """
         tree = ast.parse(source)
         lines = source.splitlines(keepends=True)
+        sections, summaries, wants_notice = cls._collected_sections(
+            tree,
+            issues,
+            path,
+            recipes,
+        )
+        edits = list(cls._static_method_plan(source, tree, issues, path, recipes))
+        edits.extend(cls._docstring_section_edits(lines, sections, path))
+        edits.extend(
+            cls._summary_edit(lines, definition, text)
+            for definition, text in summaries.items()
+        )
+        if wants_notice:
+            edits.append(cls._notice_edit(lines, tree, path))
+        return cls._applied_edits(source, edits)
+
+    @classmethod
+    def _collected_sections(
+        cls,
+        tree: ast.Module,
+        issues: t.SequenceOf[m.Infra.Issue],
+        path: Path,
+        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
+    ) -> t.Triple[
+        MutableMapping[
+            ast.FunctionDef | ast.AsyncFunctionDef,
+            MutableMapping[str, list[str]],
+        ],
+        MutableMapping[ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef, str],
+        bool,
+    ]:
+        """Dispatch every issue's recipe into section, summary, or notice plans.
+
+        Returns:
+            The resulting ``(sections, summaries, wants notice)`` triple.
+
+        Raises:
+            ValueError: If a whole-module recipe reaches the edit planner.
+
+        """
         sections: MutableMapping[
             ast.FunctionDef | ast.AsyncFunctionDef,
             MutableMapping[str, list[str]],
@@ -106,7 +299,8 @@ class FlextInfraUtilitiesLintRecipes:
         ] = {}
         wants_notice = False
         for issue in issues:
-            match cls._recipe_for(issue, recipes, path):
+            recipe = cls._recipe_for(issue, recipes, path)
+            match recipe:
                 case c.Infra.LintFixRecipe.RETURNS_SECTION:
                     function = cls._documented_at(tree, issue.line, path)
                     sections.setdefault(function, {}).setdefault("Returns", []).append(
@@ -130,7 +324,40 @@ class FlextInfraUtilitiesLintRecipes:
                 case c.Infra.LintFixRecipe.STATIC_METHOD:
                     # Planned per method below, after duplicates collapse.
                     continue
-        edits = list(cls._static_method_plan(source, tree, issues, path, recipes))
+                case (
+                    c.Infra.LintFixRecipe.NORMALIZE_IMPORTS
+                    | c.Infra.LintFixRecipe.WRAP_LONG_LINE
+                ):
+                    # The ruff-lint gate applies both as whole-module rewrites
+                    # before planning; reaching the planner breaks that contract.
+                    msg = (
+                        f"{path}:{issue.line}: : lint recipe {recipe.value} for "
+                        f"{issue.code} is a whole-module recipe and requires the "
+                        "Ruff lint gate; it never reaches the edit planner"
+                    )
+                    raise ValueError(msg)
+        return sections, summaries, wants_notice
+
+    @classmethod
+    def _docstring_section_edits(
+        cls,
+        lines: t.SequenceOf[str],
+        sections: t.MappingKV[
+            ast.FunctionDef | ast.AsyncFunctionDef,
+            t.MappingKV[str, list[str]],
+        ],
+        path: Path,
+    ) -> list[t.Triple[int, int, str]]:
+        """Build the section-insertion edits for every documented function.
+
+        Returns:
+            The resulting ``list[t.Triple[int, int, str]]``.
+
+        Raises:
+            ValueError: If a function at line has no docstring.
+
+        """
+        edits: list[t.Triple[int, int, str]] = []
         for function, wanted in sections.items():
             docstring = cls._docstring_expr(function)
             if docstring is None:
@@ -142,36 +369,51 @@ class FlextInfraUtilitiesLintRecipes:
                 end,
                 cls._with_sections(raw, " " * docstring.col_offset, wanted),
             ))
-        for definition, text in summaries.items():
-            first = definition.body[0]
-            decorators = (
-                first.decorator_list
-                if isinstance(
-                    first,
-                    ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
-                )
-                else []
-            )
-            first_line = min((first.lineno, *(item.lineno for item in decorators)))
-            offset = cls._offset(lines, first_line, 0)
-            edits.append((offset, offset, f'{" " * first.col_offset}"""{text}"""\n'))
-        if wants_notice:
-            notice = cls.copyright_notice(path.parent)
-            module_docstring = cls._docstring_expr(tree)
-            if module_docstring is None:
-                offset = len(lines[0]) if lines and lines[0].startswith("#!") else 0
-                stem = path.parent.name if path.stem == "__init__" else path.stem
-                summary = stem.strip("_").replace("_", " ").capitalize()
-                edits.append((
-                    offset,
-                    offset,
-                    f'"""{summary} module.\n\n{notice}\n"""\n\n',
-                ))
-            else:
-                start, end, raw = cls._literal(lines, module_docstring, path)
-                edits.append((start, end, cls._with_notice(raw, notice)))
+        return edits
+
+    @classmethod
+    def _notice_edit(
+        cls,
+        lines: t.SequenceOf[str],
+        tree: ast.Module,
+        path: Path,
+    ) -> t.Triple[int, int, str]:
+        """Build the copyright-notice edit for the module docstring.
+
+        A module without a docstring receives one, summarized from its name,
+        to carry the notice.
+
+        Returns:
+            The resulting ``(start, end, text)`` edit triple.
+
+        """
+        notice = cls.copyright_notice(path.parent, module=path)
+        module_docstring = cls._docstring_expr(tree)
+        if module_docstring is None:
+            offset = len(lines[0]) if lines and lines[0].startswith("#!") else 0
+            stem = path.parent.name if path.stem == "__init__" else path.stem
+            summary = stem.strip("_").replace("_", " ").capitalize()
+            return (offset, offset, f'"""{summary} module.\n\n{notice}\n"""\n\n')
+        start, end, raw = cls._literal(lines, module_docstring, path)
+        return (start, end, cls._with_notice(raw, notice))
+
+    @staticmethod
+    def _applied_edits(
+        source: str,
+        edits: t.SequenceOf[t.Triple[int, int, str]],
+    ) -> str:
+        """Apply every edit back-to-front over the source text.
+
+        Returns:
+            The repaired module source.
+
+        """
         rewritten = source
-        for start, end, text in sorted(edits, key=lambda edit: edit[0], reverse=True):
+        for start, end, text in sorted(
+            edits,
+            key=itemgetter(0, 1),
+            reverse=True,
+        ):
             rewritten = f"{rewritten[:start]}{text}{rewritten[end:]}"
         return rewritten
 
@@ -244,6 +486,66 @@ class FlextInfraUtilitiesLintRecipes:
             raise ValueError(msg)
         return max(enclosing, key=lambda node: node.lineno)
 
+    @classmethod
+    def _summary_edit(
+        cls,
+        lines: t.StrSequence,
+        definition: ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
+        text: str,
+    ) -> t.Triple[int, int, str]:
+        """Return the edit that places ``text`` as ``definition``'s summary.
+
+        A body on its own line receives the summary before that line. A body
+        that shares the suite colon's line is legal Python, including a
+        protocol stub on a wrapped signature: that line expands so the summary
+        and the same suite occupy the following lines.
+
+        Returns:
+            The span to replace and the summary text that replaces it.
+
+        """
+        first = definition.body[0]
+        line = lines[first.lineno - 1]
+        body_at = cls._utf8_chars(line, first.col_offset)
+        colon = body_at
+        while colon > 0 and line[colon - 1] in " \t":
+            colon -= 1
+        if colon == 0 or line[colon - 1] != ":":
+            decorators = (
+                first.decorator_list
+                if isinstance(
+                    first,
+                    ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
+                )
+                else ()
+            )
+            first_line = min((first.lineno, *(item.lineno for item in decorators)))
+            offset = cls._offset(lines, first_line, 0)
+            return (offset, offset, f'{" " * first.col_offset}"""{text}"""\n')
+        suite = line[body_at:].removesuffix("\n").removesuffix("\r")
+        header = lines[definition.lineno - 1]
+        block = " " * (cls._utf8_chars(header, definition.col_offset) + 4)
+        start = cls._offset(lines, first.lineno, 0)
+        return (
+            start,
+            start + len(line),
+            f'{line[:colon]}\n{block}"""{text}"""\n{block}{suite}\n',
+        )
+
+    @staticmethod
+    def _utf8_chars(line: str, col_offset: int) -> int:
+        """Return the character index of a UTF-8 AST column on ``line``.
+
+        Returns:
+            The character index of a UTF-8 AST column on ``line``.
+
+        """
+        return len(
+            line.encode(c.DEFAULT_ENCODING)[:col_offset].decode(
+                c.DEFAULT_ENCODING,
+            ),
+        )
+
     @staticmethod
     def _defined_at(
         tree: ast.Module,
@@ -252,11 +554,13 @@ class FlextInfraUtilitiesLintRecipes:
     ) -> ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef:
         """Return the class or function defined at ``line``.
 
+        An inline body is a legal definition. The summary edit expands it.
+
         Returns:
             The class or function defined at ``line``.
 
         Raises:
-            ValueError: Always; or if ``node.body[0].lineno == node.lineno``.
+            ValueError: If no class or function is defined at ``line``.
 
         """
         for node in ast.walk(tree):
@@ -264,9 +568,6 @@ class FlextInfraUtilitiesLintRecipes:
                 isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef)
                 and node.lineno == line
             ):
-                if node.body[0].lineno == node.lineno:
-                    msg = f"{path}: definition at line {line} has its body inline"
-                    raise ValueError(msg)
                 return node
         msg = f"{path}: no class or function is defined at line {line}"
         raise ValueError(msg)
@@ -323,15 +624,17 @@ class FlextInfraUtilitiesLintRecipes:
     def overridden_methods(
         sources: t.SequenceOf[str],
     ) -> frozenset[t.Pair[str, str]]:
-        """Return each ``(class, method)`` a subclass in ``sources`` redefines.
+        """Return each ``(class, method)`` on an override chain in ``sources``.
 
-        Ruff judges a method alone and cannot see that a subclass overrides
-        it; declaring such a hook static would break every override. Bases
-        are matched by their declared name, transitively, so an ambiguous
-        name only keeps more methods with their owner.
+        Ruff judges a method alone and cannot see its override chain: both the
+        base method a subclass redefines and the redefinition itself stay
+        instance methods, since declaring either static breaks the chain's
+        shared signature. Bases are matched by their declared name,
+        transitively, so an ambiguous name only keeps more methods with their
+        owner.
 
         Returns:
-            The overridden ``(class name, method name)`` pairs.
+            The ``(class name, method name)`` pairs on an override chain.
 
         """
         bases: MutableMapping[str, set[str]] = {}
@@ -359,10 +662,11 @@ class FlextInfraUtilitiesLintRecipes:
                     pending.extend(bases.get(base, ()))
             ancestors[name] = seen
         return frozenset(
-            (ancestor, method)
+            pair
             for name, found in ancestors.items()
             for ancestor in found
             for method in methods[name] & methods.get(ancestor, set())
+            for pair in ((ancestor, method), (name, method))
         )
 
     @classmethod
@@ -375,7 +679,10 @@ class FlextInfraUtilitiesLintRecipes:
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
         overridden: frozenset[t.Pair[str, str]],
     ) -> t.VariadicTuple[m.Infra.Issue]:
-        """Return the static-method findings whose method a subclass overrides.
+        """Return the static-method findings the recipe must not convert.
+
+        A method on an override chain, or one whose body reads its receiver,
+        keeps its receiver.
 
         Returns:
             The findings the static-method recipe leaves to their owner.
@@ -387,7 +694,25 @@ class FlextInfraUtilitiesLintRecipes:
             for issue in issues
             if recipes.get(issue.code) is c.Infra.LintFixRecipe.STATIC_METHOD
             for owner, method in (cls._receiver_method_at(tree, issue, path),)
-            if (owner.name, method.name) in overridden
+            if (owner.name, method.name) in overridden or cls._reads_receiver(method)
+        )
+
+    @staticmethod
+    def _reads_receiver(method: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+        """Tell whether the body reads its receiver, by name or through ``super()``.
+
+        Zero-argument ``super()`` and ``__class__`` bind the receiver
+        implicitly, so a static declaration would break them as well.
+
+        Returns:
+            Whether the body reads its receiver.
+
+        """
+        receiver = (*method.args.posonlyargs, *method.args.args)[0].arg
+        return any(
+            isinstance(node, ast.Name) and node.id in {receiver, "super", "__class__"}
+            for statement in method.body
+            for node in ast.walk(statement)
         )
 
     @classmethod
@@ -561,8 +886,8 @@ class FlextInfraUtilitiesLintRecipes:
         prefix = sum(len(text) for text in lines[: lineno - 1])
         column = len(
             lines[lineno - 1]
-            .encode(c.Cli.ENCODING_DEFAULT)[:col_offset]
-            .decode(c.Cli.ENCODING_DEFAULT),
+            .encode(c.DEFAULT_ENCODING)[:col_offset]
+            .decode(c.DEFAULT_ENCODING),
         )
         return prefix + column
 
@@ -591,7 +916,12 @@ class FlextInfraUtilitiesLintRecipes:
         )
         raw = "".join(lines)[start:end]
         body = raw.lstrip("rRuU")
-        if not (body.startswith('"""') and body.endswith('"""') and len(body) >= 6):
+        delimiter = '"""'
+        if not (
+            body.startswith(delimiter)
+            and body.endswith(delimiter)
+            and len(body) >= 2 * len(delimiter)
+        ):
             msg = f'{path}: docstring at line {value.lineno} is not a """ literal'
             raise ValueError(msg)
         return start, end, raw
@@ -859,6 +1189,33 @@ class FlextInfraUtilitiesLintRecipes:
             inner = f"{inner}\n\n" + "\n\n".join(appended)
         return f'{prefix}"""{inner}\n{indent}"""'
 
+    @staticmethod
+    def _notice_span(inner: str, path: Path) -> t.Triple[int, int, str]:
+        """Locate the notice paragraph span and the text that follows it.
+
+        The notice paragraph starts at the line the declared notice pattern
+        (``tools.ruff.lint.copyright-notice-rgx``) matches and runs to the
+        next blank line.
+
+        Returns:
+            The resulting ``(first, last, after)`` notice span.
+
+        Raises:
+            ValueError: If module docstring carries no copyright notice.
+
+        """
+        found = re.search(
+            config.Infra.tooling.tools.ruff.lint.copyright_notice_rgx,
+            inner,
+        )
+        if found is None:
+            msg = f"{path}: module docstring carries no copyright notice"
+            raise ValueError(msg)
+        first = inner.rfind("\n", 0, found.start()) + 1
+        blank = inner.find("\n\n", found.end())
+        last = len(inner) if blank < 0 else blank
+        return first, last, inner[last:].strip("\n")
+
     @classmethod
     def notice_last(cls, source: str, *, path: Path) -> str:
         """Return ``source`` with its docstring notice paragraph as the last text.
@@ -887,17 +1244,7 @@ class FlextInfraUtilitiesLintRecipes:
             path,
         )
         prefix, inner = cls._split_literal(raw)
-        found = re.search(
-            config.Infra.tooling.tools.ruff.lint.copyright_notice_rgx,
-            inner,
-        )
-        if found is None:
-            msg = f"{path}: module docstring carries no copyright notice"
-            raise ValueError(msg)
-        first = inner.rfind("\n", 0, found.start()) + 1
-        blank = inner.find("\n\n", found.end())
-        last = len(inner) if blank < 0 else blank
-        after = inner[last:].strip("\n")
+        first, last, after = cls._notice_span(inner, path)
         if not after.strip():
             return source
         before = inner[:first].rstrip("\n")
@@ -934,6 +1281,276 @@ class FlextInfraUtilitiesLintRecipes:
         if "r" in prefix.lower():
             return text.replace('"""', "'''")
         return text.replace("\\", "\\\\").replace('"""', '\\"\\"\\"')
+
+    # -- line-too-long: wrap what Ruff format cannot ---------------------------------
+
+    @classmethod
+    def wrap_long_lines(
+        cls,
+        source: str,
+        line_numbers: t.SequenceOf[int],
+        *,
+        limit: int,
+    ) -> str:
+        """Return ``source`` with every wrappable long line wrapped.
+
+        Ruff format wraps expressions but never splits a string literal or a
+        comment. A long single-line string literal is split after spaces into
+        implicit concatenation, inside its enclosing brackets or inside new
+        parentheses; a long full-line comment is reflowed at the same indent.
+        The parser folds implicit concatenation and drops comments, so the
+        repaired module's AST must equal the original one. A line holding
+        neither keeps its text and its finding.
+
+        Returns:
+            The repaired source.
+
+        Raises:
+            ValueError: If a repair would change the module AST.
+
+        """
+        before = ast.dump(ast.parse(source))
+        lines = source.splitlines(keepends=True)
+        tokens = tuple(tokenize.generate_tokens(io.StringIO(source).readline))
+        for number in sorted(set(line_numbers), reverse=True):
+            line = lines[number - 1]
+            if len(line.rstrip("\r\n")) <= limit:
+                continue
+            replacement = cls._line_wrap_comment(
+                line,
+                number,
+                tokens,
+                limit,
+            ) or cls._line_wrap_literal(line, number, tokens, limit)
+            if replacement is not None:
+                lines[number - 1] = replacement
+        repaired = "".join(lines)
+        if ast.dump(ast.parse(repaired)) != before:
+            msg = "line wrap changed the module AST"
+            raise ValueError(msg)
+        return repaired
+
+    @staticmethod
+    def _line_wrap_comment(
+        line: str,
+        number: int,
+        tokens: t.SequenceOf[tokenize.TokenInfo],
+        limit: int,
+    ) -> str | None:
+        """Reflow one full-line comment into lines within the limit.
+
+        Returns:
+            The reflowed comment lines, or ``None`` when the line is no
+            full-line comment or one of its words alone exceeds the limit.
+
+        """
+        comment = next(
+            (
+                token
+                for token in tokens
+                if token.start[0] == number and token.type == tokenize.COMMENT
+            ),
+            None,
+        )
+        indent = line[: len(line) - len(line.lstrip())]
+        if comment is None or comment.start[1] != len(indent):
+            return None
+        prefix = f"{indent}{comment.string[:1]} "
+        wrapped = textwrap.wrap(
+            comment.string[1:].strip(),
+            width=limit - len(prefix),
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+        if len(wrapped) <= 1 or any(
+            len(prefix) + len(part) > limit for part in wrapped
+        ):
+            return None
+        newline = line[len(line.rstrip("\r\n")) :]
+        return "".join(f"{prefix}{part}{newline}" for part in wrapped)
+
+    @classmethod
+    def _line_wrap_literal(
+        cls,
+        line: str,
+        number: int,
+        tokens: t.SequenceOf[tokenize.TokenInfo],
+        limit: int,
+    ) -> str | None:
+        """Split the longest splittable single-line string literal of one line.
+
+        Returns:
+            The line with its literal split, or ``None`` when no literal on the
+            line can be split within the limit.
+
+        """
+        literals = sorted(
+            cls._line_wrap_literals(tokens, number),
+            key=lambda literal: literal.end - literal.start,
+            reverse=True,
+        )
+        for literal in literals:
+            text = line[literal.start : literal.end]
+            column = literal.start if literal.bracketed else literal.start + 1
+            cuts = cls._line_wrap_cuts(text, literal, column, limit)
+            if not cuts:
+                continue
+            pieces = cls._line_wrap_pieces(text, literal, cuts)
+            joined = f"\n{' ' * column}".join(pieces)
+            body = joined if literal.bracketed else f"({joined})"
+            return f"{line[: literal.start]}{body}{line[literal.end :]}"
+        return None
+
+    @staticmethod
+    def _line_wrap_cuts(
+        text: str,
+        literal: m.Infra.LineWrapLiteral,
+        column: int,
+        limit: int,
+    ) -> t.SequenceOf[int]:
+        """Pick split offsets after spaces so every piece fits the limit.
+
+        A split never lands inside an escape sequence or an f-string
+        replacement field.
+
+        Returns:
+            The split offsets, or an empty sequence when the literal cannot fit.
+
+        """
+        opening = len(literal.prefix) + len(literal.quote)
+        closing = len(literal.quote)
+        safe: list[int] = []
+        braces = 0
+        escaped = False
+        for index in range(opening, len(text) - closing):
+            char = text[index]
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == "{":
+                braces += 1
+            elif char == "}":
+                braces = max(braces - 1, 0)
+            elif char == " " and not braces:
+                safe.append(index + 1)
+        cuts: list[int] = []
+        anchor = 0
+        while column + (opening if cuts else 0) + len(text) - anchor > limit:
+            reopen = opening if cuts else 0
+            fitting = [
+                cut
+                for cut in safe
+                if cut > anchor and column + reopen + cut - anchor + closing <= limit
+            ]
+            if not fitting:
+                return ()
+            anchor = fitting[-1]
+            cuts.append(anchor)
+        return tuple(cuts)
+
+    @staticmethod
+    def _line_wrap_pieces(
+        text: str,
+        literal: m.Infra.LineWrapLiteral,
+        cuts: t.SequenceOf[int],
+    ) -> t.StrSequence:
+        """Split one literal at the given offsets into closed literals.
+
+        Returns:
+            The literal pieces, each with its own prefix and quotes.
+
+        """
+        reopen = f"{literal.prefix}{literal.quote}"
+        bounds = (0, *cuts, len(text))
+        return tuple(
+            (reopen if index else "")
+            + text[start:end]
+            + (literal.quote if index < len(bounds) - 2 else "")
+            for index, (start, end) in enumerate(pairwise(bounds))
+        )
+
+    @classmethod
+    def _line_wrap_literals(
+        cls,
+        tokens: t.SequenceOf[tokenize.TokenInfo],
+        number: int,
+    ) -> t.SequenceOf[m.Infra.LineWrapLiteral]:
+        """Return each single-quoted single-line string literal of one line.
+
+        Returns:
+            The literals of the line with their bracket context.
+
+        """
+        depths = cls._line_wrap_bracket_depths(tokens, number)
+        literals: list[m.Infra.LineWrapLiteral] = []
+        for start, end, head in cls._line_wrap_spans(tokens, number):
+            body = head.lstrip("rRbBuUfFtT")
+            quote = body[:1]
+            if body[:3] == quote * 3:
+                continue
+            literals.append(
+                m.Infra.LineWrapLiteral(
+                    start=start,
+                    end=end,
+                    prefix=head[: len(head) - len(body)],
+                    quote=quote,
+                    bracketed=depths.get(start, 0) > 0,
+                ),
+            )
+        return tuple(literals)
+
+    @staticmethod
+    def _line_wrap_bracket_depths(
+        tokens: t.SequenceOf[tokenize.TokenInfo],
+        number: int,
+    ) -> t.MappingKV[int, int]:
+        """Map each token column of one line to its bracket nesting depth.
+
+        Returns:
+            Column to bracket depth for every token starting on the line.
+
+        """
+        depth = 0
+        depths: MutableMapping[int, int] = {}
+        for token in tokens:
+            if token.start[0] > number:
+                break
+            if token.start[0] == number:
+                depths.setdefault(token.start[1], depth)
+            if token.type == tokenize.OP and token.string in {"(", "[", "{"}:
+                depth += 1
+            elif token.type == tokenize.OP and token.string in {")", "]", "}"}:
+                depth -= 1
+        return depths
+
+    @staticmethod
+    def _line_wrap_spans(
+        tokens: t.SequenceOf[tokenize.TokenInfo],
+        number: int,
+    ) -> t.SequenceOf[t.Triple[int, int, str]]:
+        """Return the column span and opening text of each literal on one line.
+
+        Returns:
+            ``(start, end, opening)`` per plain or f-string literal of the line.
+
+        """
+        spans: list[t.Triple[int, int, str]] = []
+        opened: tokenize.TokenInfo | None = None
+        for token in tokens:
+            if token.type == tokenize.FSTRING_START:
+                opened = token
+            elif token.type == tokenize.FSTRING_END and opened is not None:
+                if opened.start[0] == token.end[0] == number:
+                    spans.append((opened.start[1], token.end[1], opened.string))
+                opened = None
+            elif (
+                opened is None
+                and token.type == tokenize.STRING
+                and token.start[0] == token.end[0] == number
+            ):
+                spans.append((token.start[1], token.end[1], token.string))
+        return tuple(spans)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesLintRecipes"]

@@ -13,7 +13,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_core import FlextRuntime
+
 from flext_infra import c, config, m, t, u
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraToolTablesPhase:
@@ -29,18 +32,34 @@ class FlextInfraToolTablesPhase:
         path: Path,
         planned_sources: t.SequenceOf[Path] = (),
     ) -> t.StrSequence:
-        """Derive the project's first-party namespaces from one source each.
-
-        The config-owned base namespaces, the live packages under ``src/``
-        (never a name invented from the distribution), and, for a workspace
-        root, the packages of the subprojects it declares. ``planned_sources``
-        are files a scaffold publishes with the rendered pyproject: their
-        packages under ``src/`` are live in the tree being produced. Ruff's
-        projected known-first-party, deptry's and the lazy-init renderer all
-        read this owner.
+        """Compose Ruff's import-order families over owned target namespaces.
 
         Returns:
-            The sorted first-party namespaces.
+            The sorted namespaces in the declared import-order family.
+
+        """
+        return sorted({
+            *FlextInfraToolTablesPhase.deptry_first_party_namespaces(
+                path=path,
+                planned_sources=planned_sources,
+            ),
+            *FlextInfraToolTablesPhase._workspace_project_namespaces(path),
+        })
+
+    @staticmethod
+    def deptry_first_party_namespaces(
+        *,
+        path: Path,
+        planned_sources: t.SequenceOf[Path] = (),
+        repository_namespace_packages: t.StrSequence = (),
+    ) -> t.StrSequence:
+        """Derive only packages owned by this target's production tree.
+
+        Peer distributions remain dependencies even when their source checkouts
+        share a superproject or their packages are installed in the same runtime.
+
+        Returns:
+            Target-local live and planned production namespaces.
 
         """
         src_dir = path / c.Infra.DEFAULT_SRC_DIR
@@ -55,10 +74,9 @@ class FlextInfraToolTablesPhase:
             if len(parts) > 1 and parts[0].isidentifier()
         }
         return sorted({
-            *config.Infra.tooling.tools.deptry.known_first_party,
             *u.Infra.discover_first_party_namespaces(path),
             *planned_packages,
-            *FlextInfraToolTablesPhase._workspace_project_namespaces(path),
+            *repository_namespace_packages,
         })
 
     @staticmethod
@@ -74,6 +92,18 @@ class FlextInfraToolTablesPhase:
         """
         if not (project_dir / c.PYPROJECT_FILENAME).is_file():
             return ()
+        # Topology law: only a repository that declares .gitmodules composes
+        # child projects; a standalone checkout has none to discover.
+        if not (project_dir / c.Infra.GITMODULES).is_file():
+            return ()
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+            project_dir,
+            allow_unprovisioned_members=True,
+        )
+        if workspace.failure:
+            raise ValueError(workspace.error)
+        if workspace.value.repository.role != c.Infra.MakeProfile.WORKSPACE:
+            return ()
         discovered = u.Infra.discover_projects(project_dir)
         if discovered.failure:
             # A real discovery error (malformed pyproject, IO) must never
@@ -84,11 +114,11 @@ class FlextInfraToolTablesPhase:
                 discovered.error or "workspace project discovery is unavailable",
             )
         return sorted({
-            project.package_name
+            project.package_name.replace("-", "_")
             for project in discovered.value
             if (
                 project.package_name
-                and project.package_name.isidentifier()
+                and project.package_name.replace("-", "_").isidentifier()
                 and project.declared_subproject
             )
         })
@@ -112,11 +142,16 @@ class FlextInfraToolTablesPhase:
                 value=config.Infra.codegen.toolchain.python_version,
             ),
             toml.ListOp(key=c.Infra.PLUGINS, values=mypy.plugins, strategy=replace),
+            toml.ListOp(
+                key="disable_error_code",
+                values=mypy.disable_error_code,
+                strategy=replace,
+            ),
         ]
         operations.append(
             toml.SetOp(
                 key="overrides",
-                value=u.normalize_to_json_value([
+                value=FlextRuntime.normalize_to_json_value([
                     {
                         "module": list(entry.modules),
                         "follow_untyped_imports": entry.follow_untyped_imports,
@@ -155,14 +190,14 @@ class FlextInfraToolTablesPhase:
         """
         return frozenset(
             Path(path).parts[0]
-            for path in u.Infra.manifest_nonparticipant_paths(project_dir.resolve())
+            for path in u.Infra.repository_nonparticipant_paths(project_dir.resolve())
         )
 
     def _phases(
         self,
         *,
-        first_party: t.StrSequence,
         path: Path,
+        repository_namespace_packages: t.StrSequence,
     ) -> t.SequenceOf[m.Infra.DepsToml.PhaseConfig]:
         """Build every policy table; coverage is measured, never floor-gated.
 
@@ -219,10 +254,7 @@ class FlextInfraToolTablesPhase:
                     ),
                     toml.ListOp(
                         key=c.Infra.ADDOPTS,
-                        values=(
-                            *pytest.standard_addopts,
-                            f"--timeout={pytest.case_timeout_seconds}",
-                        ),
+                        values=pytest.standard_addopts,
                         strategy=replace,
                     ),
                     toml.ListOp(
@@ -304,7 +336,11 @@ class FlextInfraToolTablesPhase:
                 operations=(
                     toml.ListOp(
                         key=c.Infra.KNOWN_FIRST_PARTY_UNDERSCORE,
-                        values=first_party,
+                        values=self.deptry_first_party_namespaces(
+                            path=path,
+                            repository_namespace_packages=repository_namespace_packages,
+                        ),
+                        strategy=replace,
                     ),
                 ),
             ),
@@ -361,6 +397,7 @@ class FlextInfraToolTablesPhase:
         payload: t.MutableJsonMapping,
         *,
         path: Path,
+        repository_namespace_packages: t.StrSequence = (),
     ) -> t.StrSequence:
         """Apply every policy table to one normalized payload.
 
@@ -371,8 +408,8 @@ class FlextInfraToolTablesPhase:
         return u.Infra.apply_toml_phases(
             payload,
             *self._phases(
-                first_party=self.first_party_namespaces(path=path.parent),
                 path=path.parent,
+                repository_namespace_packages=repository_namespace_packages,
             ),
         )
 

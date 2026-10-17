@@ -7,13 +7,19 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from enum import StrEnum, unique
 from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar, Literal
 
 from flext_core import c
-from flext_infra._constants.base import FlextInfraConstantsBase as cb
+
+from flext_infra._constants import (
+    FlextInfraConstantsBase,
+    FlextInfraConstantsCensus,
+    FlextInfraConstantsSourceCode,
+)
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -23,13 +29,44 @@ class FlextInfraConstantsRefactor:
     """Shared constants for refactor modules."""
 
     MOD_SCAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(cb.REPORTS_DIR_NAME) / "refactor" / "mod-findings.json"
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME)
+        / "refactor"
+        / "mod-findings.json"
     )
     "Canonical single-file evidence snapshot for the latest mod scan."
-    MOD_SCAN_REPORT_SCHEMA_VERSION: ClassVar[Literal[1]] = 1
+    MOD_SCAN_REPORT_SCHEMA_VERSION: ClassVar[int] = 4
     "Exact structured mod evidence schema version."
+    MOD_SCAN_SOURCE_DRIFT_ERROR_CODE: ClassVar[str] = "MOD_SCAN_SOURCE_DRIFT"
+    "Typed failure code: one finding's source bytes changed during scanning."
     MOD_SCAN_REPORT_MODE: ClassVar[int] = 0o644
     "Canonical permission bits for structured mod evidence."
+    ACCESSOR_MIGRATION_REPORT_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME)
+        / "refactor"
+        / "accessor-migration.json"
+    )
+    "Canonical single-file evidence snapshot for the latest accessor migration."
+    NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME)
+        / "refactor"
+        / "namespace-enforce.json"
+    )
+    "Canonical single-file evidence snapshot for the latest namespace enforcement."
+    VIOLATIONS_SWEEP_ROUTE_NAME: ClassVar[str] = "violations-sweep"
+    "Canonical refactor CLI verb that repairs and proves the always-reducing law."
+    VIOLATIONS_SWEEP_REPORT_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME)
+        / "refactor"
+        / "violations-sweep.json"
+    )
+    "Canonical single-file receipt for the latest violations sweep."
+    VIOLATIONS_SWEEP_REPORT_SCHEMA_VERSION: ClassVar[Literal[1]] = 1
+    "Exact structured violations-sweep report schema version."
+    LINT_REPORT_COUNT_LINE: ClassVar[t.RegexPattern] = re.compile(
+        r"^- lint: (?:PASS|FAIL) \((\d+) issues\)$",
+        re.MULTILINE,
+    )
+    """The check report's generated lint line; its count is the repo's lint column."""
     AST_GREP_ERROR_FINDING_RECEIPT: ClassVar[str] = (
         "Error: {count} error(s) found in code."
     )
@@ -38,6 +75,35 @@ class FlextInfraConstantsRefactor:
         "Help: Scan succeeded and found error level diagnostics in the codebase."
     )
     "Exact second stderr line emitted for error-severity JSONL findings."
+    IMPORT_NORMALIZATION_MAX_PASSES: ClassVar[int] = 24
+    "Fixed-point pass ceiling for import normalization."
+    IMPORT_LAW_OTHER_LAYER: ClassVar[str] = "other"
+    "Import-layer slot of a module whose path names no declared layer."
+    IMPORT_LAW_ROOT_SINGLETONS: ClassVar[frozenset[str]] = frozenset({
+        "config",
+        "settings",
+    })
+    "Root singletons and import layers of the config/settings law (ADR-005)."
+    IMPORT_LAW_GUARD_ERRORS: ClassVar[frozenset[str]] = frozenset({
+        "ImportError",
+        "ModuleNotFoundError",
+    })
+    "Exceptions whose handlers make a ``try`` around imports an import guard."
+    IMPORT_LAW_FAMILY_BASE_FILE: ClassVar[str] = "base.py"
+    "File name of a private family's leaf base module."
+
+    @unique
+    class ImportPlacement(StrEnum):
+        """Where the import law places one imported binding."""
+
+        RUNTIME = "runtime"
+        "The module import block."
+        TYPING = "typing"
+        "The module ``if TYPE_CHECKING:`` block (typing-only reverse edge)."
+        BOUND = "bound"
+        "Nowhere new: an equal module-level import already binds it."
+        STAY = "stay"
+        "Its current place: a reverse runtime use or a foreign binding."
 
     @unique
     class ModScanCommand(StrEnum):
@@ -53,6 +119,21 @@ class FlextInfraConstantsRefactor:
         ACTIONABLE = "actionable"
         DETECTION_ONLY = "detection_only"
         NON_ACTIONABLE_WITH_FIX = "non_actionable_with_fix"
+        DEFERRED_SOURCE_DRIFT = "deferred_source_drift"
+
+    MOD_SCAN_CLASS_COUNT_FIELDS: ClassVar[Mapping[ModScanFindingClass, str]] = (
+        MappingProxyType({
+            ModScanFindingClass.ACTIONABLE: "actionable",
+            ModScanFindingClass.DETECTION_ONLY: "detection_only",
+            ModScanFindingClass.NON_ACTIONABLE_WITH_FIX: "non_actionable_with_fix",
+            ModScanFindingClass.DEFERRED_SOURCE_DRIFT: "deferred",
+        })
+    )
+    """Sole authority mapping one finding class to its report count field.
+
+    Every count writer and validator derives from this map; adding a class
+    member extends this map once, never a second hand-written list.
+    """
 
     @unique
     class CodemodRelocation(StrEnum):
@@ -126,15 +207,39 @@ class FlextInfraConstantsRefactor:
           through its bases, every class the facade's family package
           declares in ``__all__``;
         - ``class-stem``: the captured class name starts with the project's
-          class stem (``Tests`` + stem under the tests tree);
+          class stem as class nesting derives it (``Tests`` + stem under the
+          tests tree; ``Examples``/``Scripts`` + stem or the bare stem under
+          those surfaces);
         - ``package-layers``: the finding's package provides every layer the
           rule names in ``arg`` (a declared facade letter, a module, a
           private module or a subpackage of that name);
         - ``family-base``: the private family package holding the finding's
           module begins with ``base.py``.
 
+        ``family-base-file`` proves that the finding is the immediate base
+        leaf of a private family with a declared sibling facade.
+
+        ``compose-module``: the captured module path is one canonical public
+        family compose module (``<package>.<leaf>`` with ``leaf`` in
+        ``CODEMOD_COMPOSE_MODULE_LEAVES``): the static compose surface the
+        family-shape contract sanctions (bead flext-6e72w). The own package
+        admits the leaf only when it declares the module file; a runtime
+        package of the dependency closure admits the canonical leaf name.
+
+        ``layer-zero-file`` uses the import-law role classifier: the first
+        architectural segment owns the role, so a family's nested config
+        declarations are not settings/config singleton modules.
+
         ``later-layer`` compares with the layer the rule names in ``arg`` when
         it names one.
+
+        ``compose-module`` (the family-shape amendment): the captured dotted
+        module is exactly ``<package>.<leaf>`` where ``leaf`` is one of the
+        canonical public family compose modules (``FAMILY_COMPOSE_MODULES``).
+        For the own package the leaf module file must exist beside the
+        package's private family packages; for a foreign package the module
+        must belong to the project's runtime closure, where the family shape
+        is the fleet-wide contract the compose modules implement.
         """
 
         STDLIB_MODULE = "stdlib-module"
@@ -143,6 +248,7 @@ class FlextInfraConstantsRefactor:
         FACADE_PACKAGE = "facade-package"
         RUNTIME_ALIAS = "runtime-alias"
         LOCAL_ALIAS = "local-alias"
+        COMPOSE_MODULE = "compose-module"
         MODULE_EXPORT = "module-export"
         PACKAGE_EXPORT = "package-export"
         FILE_FAMILY = "file-family"
@@ -154,38 +260,84 @@ class FlextInfraConstantsRefactor:
         PACKAGE_LAYERS = "package-layers"
         PACKAGE_ROOT_INIT = "package-root-init"
         FAMILY_BASE = "family-base"
+        FAMILY_BASE_FILE = "family-base-file"
+        LAYER_ZERO_FILE = "layer-zero-file"
+        PAYLOAD_DECLARATION = "payload-declaration"
+        PROTOCOL_DECLARATION = "protocol-declaration"
+        RESOLVED_SYMBOL = "resolved-symbol"
+        EMITTED_SYMBOL = "emitted-symbol"
+        SAME_BINDING = "same-binding"
+        EXECUTABLE_OCCURRENCE = "executable-occurrence"
+        UNREFERENCED_IMPORT = "unreferenced-import"
 
     CODEMOD_RUNTIME_CLOSURE_PREDICATES: ClassVar[frozenset[CodemodContextPredicate]] = (
         frozenset({
             CodemodContextPredicate.RUNTIME_PACKAGE,
             CodemodContextPredicate.FACADE_PACKAGE,
+            CodemodContextPredicate.COMPOSE_MODULE,
         })
     )
     "Predicates evaluated against the project's runtime dependency closure."
+
+    FAMILY_COMPOSE_MODULES: ClassVar[t.StrSequence] = (
+        "constants",
+        "models",
+        "protocols",
+        "typings",
+        "utilities",
+    )
+    "Public family compose module leaves the family-shape amendment sanctions."
+
+    FAMILY_COMPOSE_MODULE_SEGMENTS: ClassVar[int] = 2
+    "A sanctioned compose module name is exactly ``<package>.<leaf>``."
+
+    CODEMOD_PACKAGE_CONTEXT_PREDICATES: ClassVar[frozenset[CodemodContextPredicate]] = (
+        frozenset({
+            CodemodContextPredicate.STDLIB_MODULE,
+            CodemodContextPredicate.OWN_PACKAGE,
+            CodemodContextPredicate.RUNTIME_PACKAGE,
+            CodemodContextPredicate.FACADE_PACKAGE,
+            CodemodContextPredicate.RUNTIME_ALIAS,
+            CodemodContextPredicate.LOCAL_ALIAS,
+            CodemodContextPredicate.COMPOSE_MODULE,
+        })
+    )
+    "Package predicates consume one declared namespace per admission pass."
+
+    CODEMOD_COMPOSE_MODULE_LEAVES: ClassVar[frozenset[str]] = frozenset({
+        "constants",
+        "models",
+        "protocols",
+        "typings",
+        "utilities",
+    })
+    "Canonical public family compose leaf names (the static compose surface)."
 
     @unique
     class SemanticCutoverPhase(StrEnum):
         """Semantic ``make mod`` cutovers planned by ``u.Infra``."""
 
+        DECLARATION_RELOCATION = "declaration-relocation"
         CLASS_NESTING = "class-nesting"
+        CONSTANT_CONSUMERS = FlextInfraConstantsCensus.CensusRule.CONSTANT_CONSUMERS
+        CONTRACT_NORMALIZATION = "contract-normalization"
         COMPAT_ALIAS = "compat-alias"
         PRIVATE_IMPORT = "private-import"
         FACADE_BASE = "facade-base"
         MODEL_FIELDS = "model-fields"
-        SELF_FACADE_IMPORT = "self-facade-import"
         DYNAMIC_ENVIRONMENT = "dynamic-environment"
         MODULE_END = "module-end"
         NOTICE_LAST = "notice-last"
 
     SEMANTIC_CUTOVER_RULE_IDS: ClassVar[t.MappingKV[str, str]] = MappingProxyType({
+        SemanticCutoverPhase.DECLARATION_RELOCATION: (
+            "ban-nested-payload-outside-models"
+        ),
         SemanticCutoverPhase.COMPAT_ALIAS: "ban-compat-alias",
         SemanticCutoverPhase.PRIVATE_IMPORT: "ban-private-import",
         SemanticCutoverPhase.FACADE_BASE: "facade-base-by-class-name",
         SemanticCutoverPhase.MODEL_FIELDS: (
             "rewire-getattr-model-fields-to-direct-access"
-        ),
-        SemanticCutoverPhase.SELF_FACADE_IMPORT: (
-            "ban-infra-utility-module-self-facade-import"
         ),
         SemanticCutoverPhase.DYNAMIC_ENVIRONMENT: "ban-ambient-environ-read",
         SemanticCutoverPhase.MODULE_END: "require-all-last",
@@ -204,10 +356,6 @@ class FlextInfraConstantsRefactor:
     RK_ALLOW_ALIASES: ClassVar[str] = "allow_aliases"
     RK_ALLOW_TARGET_SUFFIXES: ClassVar[str] = "allow_target_suffixes"
     CODEMOD_RULE_SUFFIX: ClassVar[str] = ".yml"
-    CODEMOD_DOCUMENT_SEPARATOR_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^---\s*$",
-        re.MULTILINE,
-    )
     CODEMOD_CONFIG_FILENAME: ClassVar[str] = "sgconfig.yml"
     # Static rules are data under the one rule root, config/rules: the
     # ast-grep corpus (sgconfig, rules, utils, tests with snapshots) and the
@@ -218,6 +366,13 @@ class FlextInfraConstantsRefactor:
         CODEMOD_RULES_RELPATH / "ast-grep" / CODEMOD_CONFIG_FILENAME
     )
     CODEMOD_ROPE_RULES_RELPATH: ClassVar[Path] = CODEMOD_RULES_RELPATH / "rope"
+    # Rope contract catalogue: the packaged universal rules, then the optional
+    # same-path overlay a governed repository declares for its own symbols.
+    CODEMOD_ROPE_CONTRACTS_RELPATH: ClassVar[Path] = (
+        CODEMOD_ROPE_RULES_RELPATH / "contracts.yaml"
+    )
+    # Rope restructure argument that binds a capture to one qualified identity.
+    ROPE_NAME_CONSTRAINT_PREFIX: ClassVar[str] = "name="
     CODEMOD_RULE_DIRS_KEY: ClassVar[str] = "ruleDirs"
     CODEMOD_UTIL_DIRS_KEY: ClassVar[str] = "utilDirs"
     CODEMOD_TEST_CONFIGS_KEY: ClassVar[str] = "testConfigs"
@@ -310,11 +465,11 @@ class FlextInfraConstantsRefactor:
     )
 
     RULE_TABLE_HEADERS: ClassVar[t.StrSequence] = (
-        cb.RK_ID,
-        cb.NAME,
-        cb.RK_DESCRIPTION,
-        cb.RK_ENABLED,
-        cb.RK_SEVERITY,
+        FlextInfraConstantsBase.RK_ID,
+        FlextInfraConstantsBase.NAME,
+        FlextInfraConstantsBase.RK_DESCRIPTION,
+        FlextInfraConstantsBase.RK_ENABLED,
+        FlextInfraConstantsBase.RK_SEVERITY,
     )
     DOMAIN_PACKAGES: ClassVar[frozenset[str]] = frozenset({
         "flext-ldap",

@@ -9,11 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
+from flext_infra import infra
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-from flext_infra.refactor.census import FlextInfraRefactorCensus
-from tests import m, t
+from tests import c, m, t, tm
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
 
 if TYPE_CHECKING:
@@ -22,32 +20,6 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraUtilitiesGatesMixin:
     """Typed quality-gate execution and enforcement fixture helpers."""
-
-    @staticmethod
-    def detector_context(
-        target: Path,
-        source: str,
-        rope_project: t.Infra.RopeProject,
-        *,
-        project_name: str = "",
-    ) -> m.Infra.DetectorContext:
-        """Write one fixture module and build the context detectors scan.
-
-        Every detector declares its own violation type, so the shared owner
-        stops at the context: the caller keeps its own ``detect_file`` call
-        and therefore its precise return type.
-
-        Returns:
-            The resulting ``m.Infra.DetectorContext``.
-
-        """
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(source, encoding="utf-8")
-        return m.Infra.DetectorContext(
-            file_path=target,
-            rope_project=rope_project,
-            project_name=project_name,
-        )
 
     @staticmethod
     def reject_inaccessible_config_project(tmp_path: Path) -> None:
@@ -102,20 +74,28 @@ class TestsFlextInfraUtilitiesGatesMixin:
     ) -> m.Infra.GateExecution:
         """Create a typed quality-gate execution fixture.
 
+        The native outcome follows the findings, as a completed tool run
+        reports it: findings when issues exist, clean otherwise. A failed
+        gate lists every finding in its errors.
+
         Returns:
             The resulting ``m.Infra.GateExecution``.
 
         """
+        findings = tuple(issues or ())
         return m.Infra.GateExecution(
             result=m.Infra.GateResult(
                 gate=gate,
                 project=project,
                 passed=passed,
-                errors=(),
+                errors=() if passed else tuple(item.formatted for item in findings),
                 duration=0.0,
             ),
-            issues=tuple(issues or ()),
+            issues=findings,
             raw_output="",
+            outcome=(
+                c.Infra.ToolOutcome.FINDINGS if findings else c.Infra.ToolOutcome.CLEAN
+            ),
         )
 
     @staticmethod
@@ -212,10 +192,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
         *,
         rules: t.StrSequence,
         kinds: t.StrSequence | None = None,
-        include_local_scopes: bool = False,
-        impact_map_output: str | None = None,
-        apply_changes: bool = False,
-        dry_run: bool = False,
+        options: m.Infra.CensusInput | None = None,
     ) -> m.Infra.WorkspaceReport:
         """Execute one refactor census and unwrap its successful report.
 
@@ -223,19 +200,13 @@ class TestsFlextInfraUtilitiesGatesMixin:
             The resulting ``m.Infra.WorkspaceReport``.
 
         """
+        resolved = m.Infra.CensusInput() if options is None else options
+        values = resolved.model_dump(round_trip=True)
+        values.update(repository_root=workspace, rules=rules)
+        if kinds is not None:
+            values["kinds"] = kinds
         TestsFlextInfraUtilitiesToolingFixtureMixin.provision_checkout(workspace)
-        result = FlextInfraRefactorCensus(
-            repository_root=workspace,
-            apply_changes=apply_changes,
-            dry_run=dry_run,
-            impact_map_output=impact_map_output,
-            include_local_scopes=include_local_scopes,
-            kinds=kinds,
-            rules=rules,
-        ).execute()
-        tm.ok(result)
-        report: m.Infra.WorkspaceReport = result.unwrap()
-        return report
+        return tm.ok(infra.census(m.Infra.CensusInput.model_validate(values)))
 
     @staticmethod
     def census_violations(report: m.Infra.WorkspaceReport) -> list[m.Infra.Violation]:

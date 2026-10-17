@@ -9,21 +9,20 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, infra, m
-from tests import u
+from tests import tm, u
 
 
 class TestsFlextInfraCodegenConformProgress:
     """Prove conform emits stage and repository progress on stdout."""
 
     @staticmethod
-    def test_plan_emits_stage_and_repository_progress(
+    def test_apply_emits_stage_and_repository_progress(
         infra_git_repo: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """A check-mode conform must report stage and per-repository progress."""
+        """Publication reports its work and check verifies the resulting receipt."""
         root = infra_git_repo
         # The check pass re-detects the checkout, so the manifest must declare
         # the identity the fixture's Git origin carries.
@@ -35,11 +34,6 @@ class TestsFlextInfraCodegenConformProgress:
             what=c.Infra.CodegenConformSurface.MAKEFILE,
         )
         tm.ok(infra.codegen_conform(request, workspace))
-        _ = capsys.readouterr()
-        checked = infra.codegen_conform(
-            request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK}),
-        )
-        tm.ok(checked)
         captured = capsys.readouterr().out
         tm.that("Codegen Conform" in captured, where=bool, msg=captured[-3000:])
         tm.that("stage=plan" in captured, where=bool, msg=captured[-3000:])
@@ -53,8 +47,18 @@ class TestsFlextInfraCodegenConformProgress:
             where=bool,
             msg=captured[-3000:],
         )
+        # The Makefile surface takes the bootstrap path: it renders and
+        # compares the Makefile after the per-repository topology stage.
         tm.that(
-            "stage=pyproject" in captured or "stage=templates" in captured,
+            "stage=topology repository=" in captured,
             where=bool,
             msg=captured[-3000:],
         )
+        checked = tm.ok(
+            infra.codegen_conform(
+                request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK}),
+            ),
+        )
+        tm.that(checked.plan, eq=None)
+        tm.that(checked.verified_publication is not None, eq=True)
+        tm.that(checked.written_files, eq=())

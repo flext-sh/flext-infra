@@ -6,10 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from itertools import pairwise
+from operator import itemgetter
 from pathlib import Path
 
-from flext_core import r
-from flext_infra import c, m, p, t
+from flext_cli import u
+
+from flext_infra import FlextInfraConfig, c, m, p, r, t
+from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
 
 
 class FlextInfraUtilitiesGitignore:
@@ -23,8 +27,11 @@ class FlextInfraUtilitiesGitignore:
             The resolved template root of the installed flext-infra package.
 
         """
-        package_root = Path(__file__).resolve().parent.parent
-        return (package_root / "templates" / codegen.templates.root).resolve()
+        return (
+            FlextInfraConfig.ssot_config_dir().parent
+            / "templates"
+            / codegen.templates.root
+        ).resolve()
 
     @staticmethod
     def codegen_template_sources(codegen: m.Infra.CodegenConfigSpec) -> frozenset[Path]:
@@ -67,8 +74,6 @@ class FlextInfraUtilitiesGitignore:
             The resulting ``p.Result[str]``.
 
         """
-        from flext_infra import u
-
         entry = next(
             (
                 item
@@ -89,7 +94,8 @@ class FlextInfraUtilitiesGitignore:
         project_patterns: t.StrSequence = ()
         preserved_blocks: t.VariadicTuple[m.Infra.ProjectGitignorePreservedBlock] = ()
         if project_dir is not None:
-            resolved = u.Infra.load_project_managed_artifacts(project_dir)
+            managed = FlextInfraUtilitiesProjectManagedArtifacts
+            resolved = managed.load_project_managed_artifacts(project_dir)
             if resolved.failure:
                 return r[str].from_failure(resolved)
             project_patterns = resolved.value.artifacts.Gitignore.patterns
@@ -106,10 +112,14 @@ class FlextInfraUtilitiesGitignore:
         rendered = u.Cli.template_render(templates_root / entry.source, context)
         if rendered.failure or project_dir is None:
             return rendered
+        suffix = FlextInfraUtilitiesGitignore.gitignore_runtime_suffix(codegen)
+        if suffix.failure:
+            return r[str].from_failure(suffix)
         return FlextInfraUtilitiesGitignore.preserve_project_gitignore_blocks(
             rendered.value,
             project_dir,
             preserved_blocks,
+            runtime_suffix=suffix.value,
         )
 
     @staticmethod
@@ -117,6 +127,8 @@ class FlextInfraUtilitiesGitignore:
         rendered: str,
         project_dir: Path,
         blocks: t.VariadicTuple[m.Infra.ProjectGitignorePreservedBlock],
+        *,
+        runtime_suffix: str = "",
     ) -> p.Result[str]:
         """Compose declared external blocks without taking ownership of their lines.
 
@@ -126,7 +138,6 @@ class FlextInfraUtilitiesGitignore:
         """
         if not blocks:
             return r[str].ok(rendered)
-        from flext_infra import u
 
         destination = project_dir / c.Infra.GITIGNORE
         markers = frozenset(
@@ -142,25 +153,111 @@ class FlextInfraUtilitiesGitignore:
         content = snapshot.value.content
         if content is None:
             return r[str].ok(rendered)
-        current = content.decode(c.Cli.ENCODING_DEFAULT)
-        lines = current.splitlines(keepends=True)
-        found: dict[str, list[int]] = {marker: [] for marker in markers}
+        if runtime_suffix and not rendered.endswith(runtime_suffix):
+            error = ValueError(
+                f"generated gitignore lacks its declared runtime policy: {destination}",
+            )
+            return r[str].fail(str(error), exception=error)
+        prefix = rendered.removesuffix(runtime_suffix) if runtime_suffix else rendered
+        composed = FlextInfraUtilitiesGitignore._compose_preserved_blocks(
+            prefix,
+            content,
+            blocks,
+            markers,
+            destination,
+        )
+        return FlextInfraUtilitiesGitignore._apply_runtime_suffix(
+            composed,
+            runtime_suffix,
+        )
+
+    @staticmethod
+    def _apply_runtime_suffix(
+        composed: p.Result[str],
+        runtime_suffix: str,
+    ) -> p.Result[str]:
+        """Re-append the runtime tracking policy after preserved external blocks.
+
+        Returns:
+            The composed gitignore with its declared runtime policy restored.
+
+        """
+        if composed.failure or not runtime_suffix:
+            return composed
+        separator = "" if composed.value.endswith("\n\n") else "\n"
+        return r[str].ok(composed.value + separator + runtime_suffix)
+
+    @staticmethod
+    def gitignore_runtime_suffix(codegen: m.Infra.CodegenConfigSpec) -> p.Result[str]:
+        """Render the final tracking policy from the same typed section owner.
+
+        Returns:
+            The exact final fragment, empty only when no local artifacts are declared.
+
+        """
+        sections = FlextInfraUtilitiesGitignore._runtime_gitignore_sections(codegen)
+        if not sections:
+            return r[str].ok("")
+        entry = next(
+            (
+                item
+                for item in codegen.templates.entries
+                if item.destination == c.Infra.GITIGNORE
+            ),
+            None,
+        )
+        if entry is None or entry.source is None:
+            error = ValueError("gitignore rendering source is not declared")
+            return r[str].fail(str(error), exception=error)
+        return u.Cli.template_render(
+            FlextInfraUtilitiesGitignore.codegen_templates_root(codegen) / entry.source,
+            m.Infra.GitignoreRenderSpec(gitignore_sections=sections),
+        )
+
+    @staticmethod
+    def _locate_block_markers(
+        lines: t.SequenceOf[str],
+        markers: frozenset[str],
+        destination: Path,
+    ) -> p.Result[t.MutableMappingKV[str, list[int]]]:
+        """Index the exact marker lines, rejecting malformed marker prefixes.
+
+        Returns:
+            The resulting ``p.Result[t.MutableMappingKV[str, list[int]]]``.
+
+        """
+        found: t.MutableMappingKV[str, list[int]] = {marker: [] for marker in markers}
         for index, line in enumerate(lines):
             text = line.rstrip("\r\n")
             if text in found:
                 found[text].append(index)
             elif any(text.startswith(marker) for marker in markers):
-                return r[str].fail(
+                return r[t.MutableMappingKV[str, list[int]]].fail(
                     f"malformed gitignore preserved marker: {destination}: {text!r}",
                 )
-        sections: list[tuple[int, int, str]] = []
+        return r[t.MutableMappingKV[str, list[int]]].ok(found)
+
+    @staticmethod
+    def _block_sections(
+        blocks: t.VariadicTuple[m.Infra.ProjectGitignorePreservedBlock],
+        found: t.MappingKV[str, list[int]],
+        lines: t.SequenceOf[str],
+        destination: Path,
+    ) -> p.Result[t.VariadicTuple[t.Triple[int, int, str]]]:
+        """Slice one ordered, non-overlapping external section per declared block.
+
+        Returns:
+            The resulting ``p.Result[t.VariadicTuple[t.Triple[int, int, str]]]``.
+
+        """
+        sections: list[t.Triple[int, int, str]] = []
         for block in blocks:
             begins = found[block.begin]
             ends = found[block.end]
             if not begins and not ends:
                 continue
             if len(begins) != 1 or len(ends) != 1 or begins[0] >= ends[0]:
-                return r[str].fail(
+                return r[t.VariadicTuple[t.Triple[int, int, str]]].fail(
                     f"ambiguous gitignore preserved block {block.begin!r}: "
                     f"{destination}",
                 )
@@ -169,14 +266,45 @@ class FlextInfraUtilitiesGitignore:
                 ends[0],
                 "".join(lines[begins[0] : ends[0] + 1]),
             ))
-        sections.sort(key=lambda item: item[0])
-        if any(
-            previous[1] >= current[0]
-            for previous, current in zip(sections, sections[1:])
-        ):
-            return r[str].fail(f"overlapping gitignore preserved blocks: {destination}")
+        sections.sort(key=itemgetter(0))
+        if any(previous[1] >= current[0] for previous, current in pairwise(sections)):
+            return r[t.VariadicTuple[t.Triple[int, int, str]]].fail(
+                f"overlapping gitignore preserved blocks: {destination}",
+            )
+        return r[t.VariadicTuple[t.Triple[int, int, str]]].ok(tuple(sections))
+
+    @staticmethod
+    def _compose_preserved_blocks(
+        rendered: str,
+        content: bytes,
+        blocks: t.VariadicTuple[m.Infra.ProjectGitignorePreservedBlock],
+        markers: frozenset[str],
+        destination: Path,
+    ) -> p.Result[str]:
+        """Append every located external block to the freshly rendered content.
+
+        Returns:
+            The resulting ``p.Result[str]``.
+
+        """
+        lines = content.decode(c.DEFAULT_ENCODING).splitlines(keepends=True)
+        located = FlextInfraUtilitiesGitignore._locate_block_markers(
+            lines,
+            markers,
+            destination,
+        )
+        if located.failure:
+            return r[str].from_failure(located)
+        sections = FlextInfraUtilitiesGitignore._block_sections(
+            blocks,
+            located.value,
+            lines,
+            destination,
+        )
+        if sections.failure:
+            return r[str].from_failure(sections)
         composed = rendered
-        for _, _, external in sections:
+        for _, _, external in sections.value:
             if composed and not composed.endswith("\n"):
                 composed += "\n"
             if composed and not composed.endswith("\n\n"):
@@ -258,7 +386,34 @@ class FlextInfraUtilitiesGitignore:
                     patterns=tuple(project_patterns),
                 ),
             )
+        sections.extend(
+            FlextInfraUtilitiesGitignore._runtime_gitignore_sections(codegen)
+        )
         return tuple(sections)
+
+    @staticmethod
+    def _runtime_gitignore_sections(
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> t.VariadicTuple[m.Infra.ScaffoldGitignoreSectionSpec]:
+        """Declare final ignore precedence for precisely the runtime-local artifacts.
+
+        Returns:
+            The single derived policy section or an empty declaration.
+
+        """
+        local_projections = tuple(
+            f"/{item.path.as_posix()}"
+            for item in sorted(codegen.managed_file_specs, key=lambda item: item.path)
+            if item.tracking == "runtime-local"
+        )
+        if local_projections:
+            return (
+                m.Infra.ScaffoldGitignoreSectionSpec(
+                    name="RUNTIME: local projections (derived)",
+                    patterns=local_projections,
+                ),
+            )
+        return ()
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGitignore"]

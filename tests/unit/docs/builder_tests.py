@@ -9,10 +9,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.docs.builder import FlextInfraDocBuilder
-from tests import m
+from tests import m, tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -75,8 +74,8 @@ class TestsFlextInfraBuilder:
             match kwargs.get("projects"):
                 case list() as projects:
                     tm.ok(builder.build(tmp_path, projects=projects))
-                case invalid:
-                    pytest.fail(f"invalid projects test case: {invalid!r}")
+                case invalid_projects:
+                    pytest.fail(f"invalid projects test case: {invalid_projects!r}")
 
     @staticmethod
     @pytest.mark.parametrize("status", ["OK", "FAIL", "SKIP"])

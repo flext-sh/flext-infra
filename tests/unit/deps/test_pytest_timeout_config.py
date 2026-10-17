@@ -7,14 +7,46 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config
-from tests import c
+from tests import c, tm
 
 
 class TestsFlextInfraPytestTimeoutConfig:
     """Prove the operator caps and relational policy at the typed SSOT."""
+
+    @staticmethod
+    @pytest.mark.parametrize("distribution", ["load", "loadscope"])
+    @pytest.mark.parametrize("reorder", [False, True])
+    def test_native_scheduling_policy_round_trips(
+        distribution: str,
+        *,
+        reorder: bool,
+    ) -> None:
+        """Every supported scheduler and explicit ordering policy stays typed."""
+        policy = config.Infra.tooling.tools.pytest
+        payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
+        payload.update({
+            "parallel-distribution": distribution,
+            "loadscope-reorder": reorder,
+        })
+
+        configured = type(policy).model_validate(payload)
+        round_tripped = type(policy).model_validate(
+            configured.model_dump(by_alias=True, exclude_computed_fields=True),
+        )
+
+        tm.that(round_tripped, eq=configured)
+
+    @staticmethod
+    def test_reordering_refuses_string_coercion() -> None:
+        """A text flag cannot silently become an execution policy boolean."""
+        policy = config.Infra.tooling.tools.pytest
+        payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
+        payload["loadscope-reorder"] = "false"
+
+        with pytest.raises(c.ValidationError, match="valid boolean"):
+            type(policy).model_validate(payload)
 
     @staticmethod
     def test_policy_round_trips_through_its_production_model() -> None:
@@ -30,7 +62,7 @@ class TestsFlextInfraPytestTimeoutConfig:
     @staticmethod
     @pytest.mark.parametrize(
         (
-            "case_timeout_seconds",
+            "slow_timeout_seconds",
             "run_timeout_seconds",
             "termination_grace_seconds",
             "parallel_workers",
@@ -38,7 +70,7 @@ class TestsFlextInfraPytestTimeoutConfig:
         [(1, 6, 1, 1), (7, 20, 2, 8)],
     )
     def test_arbitrary_valid_execution_policy_round_trips(
-        case_timeout_seconds: int,
+        slow_timeout_seconds: int,
         run_timeout_seconds: int,
         termination_grace_seconds: int,
         parallel_workers: int,
@@ -46,7 +78,6 @@ class TestsFlextInfraPytestTimeoutConfig:
         """Test arbitrary valid execution policy round trips."""
         policy = config.Infra.tooling.tools.pytest
         payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
-        slow_timeout_seconds = case_timeout_seconds + 1
         run_timeout_seconds = max(
             run_timeout_seconds,
             max(2, policy.parallel_schedule_chunk) * slow_timeout_seconds
@@ -54,7 +85,6 @@ class TestsFlextInfraPytestTimeoutConfig:
             + 1,
         )
         payload.update({
-            "case-timeout-seconds": case_timeout_seconds,
             "run-timeout-seconds": run_timeout_seconds,
             "slow-timeout-seconds": slow_timeout_seconds,
             "termination-grace-seconds": termination_grace_seconds,
@@ -71,7 +101,7 @@ class TestsFlextInfraPytestTimeoutConfig:
     @staticmethod
     @pytest.mark.parametrize(
         "field",
-        ["case-timeout-seconds", "run-timeout-seconds", "termination-grace-seconds"],
+        ["slow-timeout-seconds", "run-timeout-seconds", "termination-grace-seconds"],
     )
     def test_operator_caps_are_hard_typed_boundaries(field: str) -> None:
         """Test operator caps are hard typed boundaries."""
@@ -85,7 +115,14 @@ class TestsFlextInfraPytestTimeoutConfig:
     @staticmethod
     @pytest.mark.parametrize(
         "override",
-        ["-o", "-o=addopts=", "--override-ini", "--override-ini=addopts="],
+        [
+            "-o",
+            "-o=addopts=",
+            "--override-ini",
+            "--override-ini=addopts=",
+            "--loadscope-reorder",
+            "--no-loadscope-reorder",
+        ],
     )
     def test_pytest_ini_override_is_forbidden(override: str) -> None:
         """Test pytest ini override is forbidden."""
@@ -108,8 +145,7 @@ class TestsFlextInfraPytestTimeoutConfig:
         """
         policy = config.Infra.tooling.tools.pytest
         payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
-        payload["run-timeout-seconds"] = policy.suite_stop_reserve_seconds
-        payload["slow-timeout-seconds"] = policy.case_timeout_seconds + 1
+        payload["run-timeout-seconds"] = policy.slow_suite_stop_reserve_seconds
 
         with pytest.raises(
             c.ValidationError,
@@ -118,31 +154,22 @@ class TestsFlextInfraPytestTimeoutConfig:
             type(policy).model_validate(payload)
 
     @staticmethod
-    def test_slow_budget_is_declared_and_bounded_by_the_case_and_run_walls() -> None:
-        """An explicitly slow item gets a longer arm than the per-case default."""
+    def test_slow_budget_is_declared_and_bounded_by_the_run_wall() -> None:
+        """Only explicitly slow items carry a narrow item budget."""
         policy = config.Infra.tooling.tools.pytest
 
-        tm.that(policy.slow_timeout_seconds > policy.case_timeout_seconds, eq=True)
         tm.that(policy.slow_timeout_seconds < policy.run_timeout_seconds, eq=True)
 
     @staticmethod
-    @pytest.mark.parametrize(
-        "expected",
-        [
-            "pytest slow timeout must exceed the per-case timeout",
-            "pytest slow timeout must be less than run timeout",
-        ],
-    )
-    def test_slow_budget_is_a_hard_typed_boundary(expected: str) -> None:
-        """A slow budget outside the case/run walls is unrepresentable."""
+    def test_slow_budget_is_a_hard_typed_boundary() -> None:
+        """A slow budget outside the aggregate run wall is unrepresentable."""
         policy = config.Infra.tooling.tools.pytest
         payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
-        if "exceed the per-case" in expected:
-            payload["slow-timeout-seconds"] = policy.case_timeout_seconds
-        else:
-            payload["slow-timeout-seconds"] = policy.run_timeout_seconds
+        payload["slow-timeout-seconds"] = policy.run_timeout_seconds
 
-        with pytest.raises(c.ValidationError, match=expected):
+        with pytest.raises(
+            c.ValidationError, match="pytest slow timeout must be less than run timeout"
+        ):
             type(policy).model_validate(payload)
 
     @staticmethod
@@ -160,7 +187,7 @@ class TestsFlextInfraPytestTimeoutConfig:
         policy = config.Infra.tooling.tools.pytest
         payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
         payload["run-timeout-overrides"] = {
-            config.Infra.name: policy.suite_stop_reserve_seconds,
+            config.Infra.name: policy.slow_suite_stop_reserve_seconds,
         }
 
         with pytest.raises(
@@ -192,6 +219,8 @@ class TestsFlextInfraPytestTimeoutConfig:
             "--timeout=999",
             "-n=auto",
             "--dist=load",
+            "--loadscope-reorder",
+            "--no-loadscope-reorder",
             f"-p=no:{config.Infra.tooling.tools.pytest.enforcement_plugin}",
             "--junitxml=elsewhere.xml",
             "--cov=unowned",

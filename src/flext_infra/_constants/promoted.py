@@ -9,8 +9,8 @@ from __future__ import annotations
 from enum import StrEnum, unique
 from typing import ClassVar
 
-from flext_core import e
-from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
+from flext_infra import e
+from flext_infra._constants import FlextInfraConstantsSharedInfra
 
 
 class FlextInfraConstantsPromoted:

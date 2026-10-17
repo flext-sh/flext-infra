@@ -9,22 +9,13 @@ from __future__ import annotations
 import ast
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_core import r
-from flext_infra import c, m, t
-from flext_infra._utilities._semantic_cutover.alias_cst import (
+from flext_infra import c, m, p, r, t
+from flext_infra._utilities import FlextInfraUtilitiesCompatibilityAliasValidation
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverAliasCst,
-)
-from flext_infra._utilities._semantic_cutover.edits import (
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
-from flext_infra._utilities.compatibility_alias_validation import (
-    FlextInfraUtilitiesCompatibilityAliasValidation,
-)
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesSemanticCutoverAliases(
@@ -37,7 +28,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
     def _api_alias_specs(
         cls,
         root: Path,
-        findings: t.SequenceOf[m.Infra.ModScanFinding],
+        findings: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> p.Result[
         t.Pair[t.MappingKV[Path, t.StrMapping], t.MappingKV[str, t.StrMapping]]
     ]:
@@ -82,7 +73,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         cls,
         root: Path,
         sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModScanFinding],
+        findings: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Plan API alias removals and AST-proven consumer rewrites.
 
@@ -106,6 +97,11 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
             import_aliases: MutableMapping[str, MutableMapping[str, str]] = {}
             attribute_aliases: MutableMapping[t.Pair[str, str], str] = {}
             qualified_aliases = dict(local_aliases)
+            qualified_aliases.update(
+                (f"{module}.{alias}", target)
+                for module, aliases in specs_by_module.items()
+                for alias, target in aliases.items()
+            )
             for node in ast.walk(tree):
                 if (
                     isinstance(node, ast.ImportFrom)
@@ -118,7 +114,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                         )
                         if imported_target is None:
                             continue
-                        if imported.asname not in {None, imported.name}:
+                        if imported.asname is not None:
                             msg = (
                                 "ambiguous compatibility import alias "
                                 f"{imported.name} as {imported.asname}"
@@ -139,7 +135,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                             {},
                         ).items()
                     )
-            if not (local_aliases or import_aliases or attribute_aliases):
+            if not qualified_aliases:
                 return source, ()
             FlextInfraUtilitiesCompatibilityAliasValidation.require_static_compatibility_alias_exports(
                 tree,

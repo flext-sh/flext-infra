@@ -8,19 +8,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from git import (
-    BaseIndexEntry,
-    GitCommandError,
-    InvalidGitRepositoryError,
-    NoSuchPathError,
-    Repo,
-)
+from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Repo
 
-from flext_core import r
-from flext_infra import c, m, t
-from flext_infra._utilities._git.semantic_paths import (
-    FlextInfraUtilitiesGitSemanticPathsMixin,
-)
+from flext_infra import c, m, r, t
+from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticPathsMixin
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -59,7 +50,8 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
             return r[t.MappingKV[str, bytes]].ok({})
         try:
             return r[t.MappingKV[str, bytes]].ok({
-                blob.name: blob.data_stream.read() for blob in tree.blobs
+                blob.name: cls._state_blob_payload(repo_root, blob.hexsha)
+                for blob in tree.blobs
             })
         except (OSError, ValueError) as exc:
             return r[t.MappingKV[str, bytes]].fail_op(
@@ -135,15 +127,15 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
             "--cached",
             "--others",
             "--exclude-standard",
-        ).encode(c.Cli.ENCODING_DEFAULT)
-        index_z = repo.git.ls_files("--stage", "-z").encode(c.Cli.ENCODING_DEFAULT)
+        ).encode(c.DEFAULT_ENCODING)
+        index_z = repo.git.ls_files("--stage", "-z").encode(c.DEFAULT_ENCODING)
         # An unborn HEAD has no commit; its fingerprint input is the typed
         # unborn marker instead of an oid.
         head = (
             repo.head.commit.hexsha
             if repo.head.is_valid()
             else c.Infra.GIT_UNBORN_HEAD_MARKER
-        ).encode(c.Cli.ENCODING_DEFAULT)
+        ).encode(c.DEFAULT_ENCODING)
         return paths_z, index_z, head
 
     @classmethod
@@ -159,13 +151,13 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
         """
         try:
             repo = cls._repo(request.repo_root)
-            entry = BaseIndexEntry((
-                c.Infra.GIT_MODE_GITLINK,
-                bytes.fromhex(request.oid),
-                c.Infra.GIT_STAGE_NORMAL,
+            repo.git.update_index(
+                "--add",
+                "--cacheinfo",
+                c.Infra.GIT_GITLINK_MODE_TEXT,
+                request.oid,
                 request.relative_path,
-            ))
-            repo.index.add([entry])
+            )
         except GitCommandError as exc:
             return r[m.Infra.GitBoolReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:

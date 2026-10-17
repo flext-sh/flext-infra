@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
-from tests import m, u
+from tests import m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -164,13 +162,15 @@ class TestsFlextInfraAuditorStaleSymbols:
             (
                 '"""Demo package."""\n\n'
                 "from typing import TYPE_CHECKING\n\n"
-                "from flext_core.lazy import build_lazy_import_map, install_lazy_exports\n\n"
+                "from flext_core.lazy import "
+                "build_lazy_import_map, install_lazy_exports\n\n"
                 "if TYPE_CHECKING:\n"
                 "    from demo_pkg.facade import LiveSymbol as LiveSymbol\n\n"
                 "_LAZY_MODULES: dict[str, t.VariadicTuple[str]] = {\n"
                 '    ".facade": ("LiveSymbol",),\n'
                 "}\n\n"
-                "_LAZY_IMPORTS = build_lazy_import_map(_LAZY_MODULES, sort_keys=False)\n\n"
+                "_LAZY_IMPORTS = "
+                "build_lazy_import_map(_LAZY_MODULES, sort_keys=False)\n\n"
                 '_PUBLIC_EXPORTS: t.VariadicTuple[str] = ("LiveSymbol",)\n'
                 "__all__: t.VariadicTuple[str] = tuple(_PUBLIC_EXPORTS)\n\n"
                 "install_lazy_exports(\n"
@@ -333,3 +333,35 @@ class TestsFlextInfraAuditorStaleSymbols:
         issues = u.Infra.docstring_issues(tmp_path, contract)
 
         tm.that(issues, eq=[])
+
+    def test_docstring_audit_uses_the_public_export_contract(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Private modules stay private while undocumented public symbols fail."""
+        package_root = tmp_path / "src" / "demo_pkg"
+        self._write_demo_pyproject(tmp_path)
+        self._write(
+            package_root / "__init__.py",
+            '"""Demo package."""\n\n'
+            "from demo_pkg import _internal\n"
+            "from demo_pkg.facade import LiveSymbol, UndocumentedSymbol\n\n"
+            '__all__ = ["LiveSymbol", "UndocumentedSymbol", "_internal"]\n',
+        )
+        self._write(package_root / "_internal.py", "VALUE = 1\n")
+        self._write(
+            package_root / "facade.py",
+            '"""Demo public facade."""\n\n'
+            "class LiveSymbol:\n"
+            '    """Documented public symbol."""\n\n'
+            "class UndocumentedSymbol:\n"
+            "    pass\n",
+        )
+
+        contract = u.Infra.public_contract(tmp_path, "demo_pkg")
+        issues = u.Infra.docstring_issues(tmp_path, contract)
+
+        tm.that(contract["public_symbols"], has="UndocumentedSymbol")
+        tm.that(len(issues), eq=1)
+        tm.that(issues[0].file, eq="src/demo_pkg/facade.py")
+        tm.that(issues[0].message, has="UndocumentedSymbol")

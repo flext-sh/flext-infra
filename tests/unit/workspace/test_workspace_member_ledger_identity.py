@@ -6,39 +6,36 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import c, m
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import t, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraWorkspaceMemberLedgerIdentity:
     """Prove parent and member identities remain in their own coordinates."""
 
     @staticmethod
-    @pytest.mark.parametrize("root_produces_activation", [False, True])
-    @pytest.mark.parametrize("member_produces_activation", [False, True])
-    def test_manifest_load_preserves_each_activation_producer(
+    @pytest.mark.parametrize("root_requires_activation", [False, True])
+    @pytest.mark.parametrize("member_requires_activation", [False, True])
+    def test_manifest_load_preserves_each_activation_requirement(
         tmp_path: Path,
         *,
-        root_produces_activation: bool,
-        member_produces_activation: bool,
+        root_requires_activation: bool,
+        member_requires_activation: bool,
     ) -> None:
         """Load both declared command boundaries without losing typed fields."""
         root_verb = m.Infra.MakeVerbSpec(
             name="fixture-runtime",
-            description="Produce the root activation inputs",
-            produces_activation=root_produces_activation,
+            description="Consume the root runtime",
+            requires_activation=root_requires_activation,
         )
         member_verb = m.Infra.MakeVerbSpec(
             name="fixture-runtime",
-            description="Produce the member activation inputs",
-            produces_activation=member_produces_activation,
+            description="Consume the member runtime",
+            requires_activation=member_requires_activation,
         )
         repository = u.Tests.repository_ref(
             "fixture-workspace",
@@ -100,25 +97,14 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
             The resulting ``t.Pair[Path, Path]``.
 
         """
-        child_source = tmp_path / "child-source"
-        u.Tests.WorktreeFixture.initialize_governed_project(
-            child_source,
-            "fixture-member",
-            workspace="member-workspace",
-            database="member-database",
-            issue_prefix="member-prefix",
-            beads_owner=False,
-        )
         parent = tmp_path / "workspace"
-        u.Tests.WorktreeFixture.initialize_governed_project(
+        member = u.Tests.WorktreeFixture.copied_member(
             parent,
             "fixture-workspace",
             workspace="root-workspace",
             database="root-database",
             issue_prefix="root-prefix",
         )
-        member = parent / "apps" / "member"
-        shutil.copytree(child_source, member)
         u.Tests.WorktreeFixture.link_member_beads(
             member,
             parent,
@@ -148,6 +134,7 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
         )
         declared = observed.repository.model_copy(
             update={
+                "examples_module": "examples.member_runtime",
                 "extra_verbs": (verb,),
                 "script_dispatch": dispatch,
                 "editable": False,
@@ -170,6 +157,7 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
         reference = workspace.subprojects[0]
         tm.that(reference.path, eq=Path("apps/member"))
         tm.that(reference.editable, eq=True)
+        tm.that(reference.examples_module, eq=declared.examples_module)
         tm.that(reference.extra_verbs, eq=(verb,))
         tm.that(reference.script_dispatch, eq=dispatch)
         tm.that(workspace.repository.extra_verbs, empty=True)

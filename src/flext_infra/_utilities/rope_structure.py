@@ -6,7 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, m, t
+from flext_infra import c, m, p, t
+from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeStructure:
@@ -19,13 +20,26 @@ class FlextInfraUtilitiesRopeStructure:
         Returns:
             Rope logical regions with scope and TYPE_CHECKING context.
 
-        """
-        from rope.base import codeanalyze
+        Raises:
+            TypeError: If Rope's source analyzer does not satisfy its contracts.
 
+        """
         if not source:
             return ()
-        lines = codeanalyze.SourceLinesAdapter(source)
-        finder = codeanalyze.LogicalLineFinder(lines)
+        lines = FlextInfraUtilitiesRopeRuntime.runtime_callable(
+            "rope.base.codeanalyze",
+            "SourceLinesAdapter",
+        )(source)
+        if not isinstance(lines, p.Infra.RopeSourceLines):
+            msg = "Rope source lines do not satisfy their source contract"
+            raise TypeError(msg)
+        finder = FlextInfraUtilitiesRopeRuntime.runtime_callable(
+            "rope.base.codeanalyze",
+            "LogicalLineFinder",
+        )(lines)
+        if not isinstance(finder, p.Infra.RopeLogicalLineFinder):
+            msg = "Rope logical line finder does not satisfy its region contract"
+            raise TypeError(msg)
         statements: t.MutableSequenceOf[m.Infra.LogicalStatement] = []
         enclosers: t.MutableSequenceOf[t.Triple[int, c.Infra.RopeScopeKind, str]] = []
         type_checking_guards: t.MutableSequenceOf[int] = []
@@ -80,7 +94,7 @@ class FlextInfraUtilitiesRopeStructure:
             Whether one logical-line region opens a TYPE_CHECKING branch.
 
         """
-        normalized = " ".join(text.split())
+        normalized = " ".join(text.partition("#")[0].split())
         return normalized in {"if TYPE_CHECKING:", "if TYPE_CHECKING is True:"}
 
     @staticmethod
@@ -105,17 +119,17 @@ class FlextInfraUtilitiesRopeStructure:
             enclosers.append((
                 indent,
                 c.Infra.RopeScopeKind.CLASS,
-                FlextInfraUtilitiesRopeStructure._header_name(text),
+                FlextInfraUtilitiesRopeStructure.header_name(text),
             ))
         elif category == c.Infra.StatementCategory.FUNC_DEF:
             enclosers.append((
                 indent,
                 c.Infra.RopeScopeKind.FUNCTION,
-                FlextInfraUtilitiesRopeStructure._header_name(text),
+                FlextInfraUtilitiesRopeStructure.header_name(text),
             ))
 
     @staticmethod
-    def _header_name(text: str) -> str:
+    def header_name(text: str) -> str:
         """Return the declared name from a ``class``/``def`` header line.
 
         Returns:
@@ -158,6 +172,9 @@ class FlextInfraUtilitiesRopeStructure:
         Returns:
             The resulting ``c.Infra.StatementCategory``.
 
+        Raises:
+            TypeError: If Rope Worder does not expose native annotation boundaries.
+
         """
         head = FlextInfraUtilitiesRopeStructure._assignment_head(stripped)
         if head is not None:
@@ -170,6 +187,20 @@ class FlextInfraUtilitiesRopeStructure:
             # Docstrings carry parentheses in their prose; they are inert
             # string-literal expressions, never executable calls.
             return c.Infra.StatementCategory.OTHER
+        if ":" in stripped:
+            words = FlextInfraUtilitiesRopeRuntime.runtime_callable(
+                "rope.base.worder", "Worder"
+            )(stripped, handle_ignores=True)
+            if not isinstance(words, p.Infra.RopeWorder):
+                message = "Rope Worder does not expose native annotation boundaries"
+                raise TypeError(message)
+            begin, end = words.get_word_range(0)
+            if (
+                begin == 0
+                and stripped[begin:end].isidentifier()
+                and stripped[end:].lstrip().startswith(":")
+            ):
+                return c.Infra.StatementCategory.ANN_ASSIGN
         return (
             c.Infra.StatementCategory.CALL
             if "(" in stripped

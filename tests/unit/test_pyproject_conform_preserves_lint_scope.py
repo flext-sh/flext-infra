@@ -16,10 +16,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import config
-from tests import TestsFlextInfraUtilities as tu, u
+from tests import tm, u
 
 
 class TestsFlextInfraPyprojectConformPreservesLintScope:
@@ -45,7 +43,7 @@ class TestsFlextInfraPyprojectConformPreservesLintScope:
         content = (self._repository_root() / "pyproject.toml").read_text(
             encoding="utf-8",
         )
-        ignores = tu.Tests.toml_table_at(
+        ignores = u.Tests.toml_table_at(
             content,
             "tool",
             "ruff",
@@ -85,4 +83,4 @@ class TestsFlextInfraPyprojectConformPreservesLintScope:
         """No governed lint exemption is missing from the tooling SSOT."""
         missing = self._live_per_file_ignores() - self._ssot_per_file_ignores()
 
-        tm.that(missing, eq=frozenset())
+        tm.that(missing, empty=True)

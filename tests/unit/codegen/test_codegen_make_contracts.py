@@ -9,14 +9,36 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, u
+from tests import c, m, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = [pytest.mark.slow]
+
+
+def _apply_custom_make_and_assert_clean(
+    root: Path,
+    workspace: m.Infra.WorkspaceSpec,
+    custom_content: str,
+    captured: pytest.CaptureFixture[str],
+) -> None:
+    """Write custom.mk, apply the MAKEFILE surface, and assert a clean outcome."""
+    custom = root / "custom.mk"
+    tm.ok(u.Cli.atomic_write_text_file(custom, custom_content))
+    result = infra.codegen_conform(
+        u.Tests.conform_request(
+            root,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        ),
+        initial_workspace=workspace,
+    )
+    tm.ok(result)
+    tm.that("WARN:" in captured.readouterr().out, eq=False)
+    tm.that(Path(f"{custom}.rej").exists(), eq=False)
 
 
 class TestsFlextInfraCodegenMakeContracts:
@@ -58,31 +80,18 @@ class TestsFlextInfraCodegenMakeContracts:
         """Test valid private custom make has no rejection."""
         root = infra_git_repo
         workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
-        custom = root / "custom.mk"
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                custom,
-                (
-                    ".PHONY: \\\n"
-                    "\t_custom_check_demo \\\n"
-                    "\t_custom_run_demo\n"
-                    "_custom_check_demo:\n\t@true\n"
-                    "_custom_run_demo:\n\t@true\n"
-                ),
+        _apply_custom_make_and_assert_clean(
+            root,
+            workspace,
+            (
+                ".PHONY: \\\n"
+                "\t_custom_check_demo \\\n"
+                "\t_custom_run_demo\n"
+                "_custom_check_demo:\n\t@true\n"
+                "_custom_run_demo:\n\t@true\n"
             ),
+            capsys,
         )
-        result = infra.codegen_conform(
-            u.Tests.conform_request(
-                root,
-                what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.APPLY,
-            ),
-            initial_workspace=workspace,
-        )
-        tm.ok(result)
-        tm.that("WARN:" in capsys.readouterr().out, eq=False)
-        tm.that(Path(f"{custom}.rej").exists(), eq=False)
 
     @staticmethod
     def test_custom_make_rejects_unterminated_phony_continuation() -> None:
@@ -105,7 +114,7 @@ class TestsFlextInfraCodegenMakeContracts:
     def test_scaffold_make_help_documents_and_lists_custom_hooks(
         infra_git_repo: Path,
     ) -> None:
-        """Scaffold help lists the selector-free interface; hooks stay lifecycle-only."""
+        """Scaffold help lists the selector-free interface; hooks are lifecycle-only."""
         root = infra_git_repo
         workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
         TestsFlextInfraConformSupport.apply_conform_surface(
@@ -124,7 +133,7 @@ class TestsFlextInfraCodegenMakeContracts:
         )
         outcome = u.Cli.run_raw(
             ["make", "-C", str(root), "help"],
-            remove_env_keys=("MAKEFLAGS",),
+            options=m.Cli.ProcessOptions(remove_env_keys=("MAKEFLAGS",)),
         )
         output = tm.ok(outcome)
         tm.that(output.stderr, eq="")
@@ -183,29 +192,16 @@ class TestsFlextInfraCodegenMakeContracts:
         """custom.mk may append pre/post verb hooks (verb-wide and WHAT-scoped)."""
         root = infra_git_repo
         workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
-        custom = root / "custom.mk"
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                custom,
-                ".PHONY: pre-check post-check pre-test-all post-test-all\n"
-                "pre-check:\n\t@true\n"
-                "post-check:\n\t@true\n"
-                "pre-test-all:\n\t@true\n"
-                "post-test-all:\n\t@true\n",
-            ),
+        _apply_custom_make_and_assert_clean(
+            root,
+            workspace,
+            ".PHONY: pre-check post-check pre-test-all post-test-all\n"
+            "pre-check:\n\t@true\n"
+            "post-check:\n\t@true\n"
+            "pre-test-all:\n\t@true\n"
+            "post-test-all:\n\t@true\n",
+            capsys,
         )
-        result = infra.codegen_conform(
-            u.Tests.conform_request(
-                root,
-                what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.APPLY,
-            ),
-            initial_workspace=workspace,
-        )
-        tm.ok(result)
-        tm.that("WARN:" in capsys.readouterr().out, eq=False)
-        tm.that(Path(f"{custom}.rej").exists(), eq=False)
 
     @staticmethod
     @pytest.mark.slow

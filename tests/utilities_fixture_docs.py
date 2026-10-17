@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_core import r
+
+from flext_infra import config
 from flext_infra.docs.generator import FlextInfraDocGenerator
-from tests import m, t
+from tests import m, t, tm
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
@@ -65,9 +65,19 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
         workspace_table = (
             f"\n[tool.uv.workspace]\nmembers = [{members}]\n" if project_names else ""
         )
+        infrastructure = config.Infra.codegen.infra_repository.distribution
+        infrastructure_ref = TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
+            infrastructure
+        )
+        development = (
+            "\n[dependency-groups]\n"
+            f'dev = ["{infrastructure} @ git+{infrastructure_ref.url}@'
+            f'{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}"]\n'
+        )
         _write(
             workspace / "pyproject.toml",
-            f'[project]\nname = "workspace"\nversion = "0.1.0"\n{workspace_table}',
+            '[project]\nname = "workspace"\nversion = "0.1.0"\n'
+            f"{development}{workspace_table}",
         )
 
         for name in project_names:
@@ -76,12 +86,13 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
             pkg_name = name.replace("-", "_")
             _write(
                 project / "pyproject.toml",
-                (f'[project]\nname = "{name}"\nversion = "0.1.0"\n'),
+                (f'[project]\nname = "{name}"\nversion = "0.1.0"\n{development}'),
             )
             _write(
                 project / f"src/{pkg_name}/__init__.py",
                 '"""Documentation fixture package."""\n\n'
-                'def hello() -> str:\n    """Return a greeting."""\n    return "hello"\n\n'
+                'def hello() -> str:\n    """Return a greeting."""\n'
+                '    return "hello"\n\n'
                 '__all__ = ["hello"]\n',
             )
             _write(project / "README.md", f"# {name}\n")
@@ -157,10 +168,7 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
                 ),
                 encoding="utf-8",
             )
-            src_dir = project / "src" / name.replace("-", "_")
-            src_dir.mkdir(parents=True, exist_ok=True)
-            (src_dir / "__init__.py").write_text("", encoding="utf-8")
-            TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
+            TestsFlextInfraUtilitiesProjectFixtureMixin.write_member_package(
                 project,
                 name,
             )

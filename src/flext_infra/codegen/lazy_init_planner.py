@@ -1,6 +1,7 @@
 """Lazy-init planning over generic Rope workspace indexes.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
+src/flext_infra/codegen/lazy_init_planner
 SPDX-License-Identifier: MIT
 """
 
@@ -10,7 +11,8 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, m, p, r, t, u
+from flext_infra.codegen import FlextInfraCodegenLazyInitPlannerPublicRootMixin
 from flext_infra.codegen._lazy_init_planner_aliases import (
     FlextInfraCodegenLazyInitPlannerAliasesMixin,
 )
@@ -28,9 +30,6 @@ from flext_infra.codegen._lazy_init_planner_exports import (
 )
 from flext_infra.codegen._lazy_init_planner_parents import (
     FlextInfraCodegenLazyInitPlannerParentsMixin,
-)
-from flext_infra.codegen._lazy_init_planner_public_root import (
-    FlextInfraCodegenLazyInitPlannerPublicRootMixin,
 )
 
 
@@ -56,34 +55,93 @@ class FlextInfraCodegenLazyInitPlanner(
     _module_exports_cache: MutableMapping[
         tuple[str, bool, bool, bool, bool, bool],
         t.LazyAliasMap,
-    ] = u.PrivateAttr(default_factory=dict)
+    ] = u.PrivateAttr(
+        default_factory=dict[tuple[str, bool, bool, bool, bool, bool], t.LazyAliasMap],
+    )
     _package_exports_cache: MutableMapping[str, frozenset[str]] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict[str, frozenset[str]],
     )
     _source_exports_cache: MutableMapping[str, frozenset[str]] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict[str, frozenset[str]],
     )
     _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict[str, m.Infra.LazyInitPlan],
     )
     _parent_package_cache: MutableMapping[str, t.StrSequence] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict[str, t.StrSequence],
     )
     _module_file_by_name: MutableMapping[str, Path] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict[str, Path],
     )
     _project_layout_cache: MutableMapping[Path, m.Infra.RopeProjectLayout] = (
-        u.PrivateAttr(default_factory=dict)
+        u.PrivateAttr(
+            default_factory=dict[Path, m.Infra.RopeProjectLayout],
+        )
     )
     _version_module_name: str = u.PrivateAttr(
         default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py",
     )
     _collision_count: int = u.PrivateAttr(default_factory=int)
 
-    @property
-    def collision_count(self) -> int:
-        """Number of unresolved export collisions found so far."""
-        return self._collision_count
+    def plan_all_inits(
+        self,
+        pkg_dirs: t.SequenceOf[Path],
+        *,
+        target_package_dir: Path | None = None,
+    ) -> p.Result[t.VariadicTuple[m.Infra.LazyInitPlan]]:
+        """Resolve selected plans bottom-up and reject ambiguous ownership.
+
+        Returns:
+            The selected plans, or failure after the complete collision inventory.
+
+        """
+        dir_exports: MutableMapping[str, t.LazyAliasMap] = {}
+        planned: list[m.Infra.LazyInitPlan] = []
+        repository_root = self.rope_workspace.repository_root
+        progress_interval = max(1, len(pkg_dirs) // 20) if pkg_dirs else 1
+        for idx, pkg_dir in enumerate(pkg_dirs, start=1):
+            report_progress = (
+                idx == 1 or idx == len(pkg_dirs) or idx % progress_interval == 0
+            )
+            if report_progress:
+                rel_path = (
+                    pkg_dir.relative_to(repository_root)
+                    if repository_root in pkg_dir.parents
+                    else pkg_dir
+                )
+                u.Cli.info(f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}")
+            plan = self.build_plan(pkg_dir, dir_exports=dir_exports)
+            if report_progress:
+                u.Cli.info(
+                    f"lazy-init: resolved {idx}/{len(pkg_dirs)} "
+                    f"package={plan.context.current_pkg} "
+                    f"importable={plan.context.importable} "
+                    f"action={plan.action.value} exports={len(plan.lazy_map)}"
+                )
+            if plan.lazy_map:
+                dir_exports[str(pkg_dir.resolve())] = dict(plan.lazy_map)
+            should_process = (
+                target_package_dir is None
+                or pkg_dir.resolve() == target_package_dir.resolve()
+                or (
+                    target_package_dir.name == c.Infra.DIR_TESTS
+                    and pkg_dir.resolve().is_relative_to(target_package_dir.resolve())
+                )
+            )
+            if should_process:
+                planned.append(plan)
+            if (
+                target_package_dir is not None
+                and pkg_dir.resolve() == target_package_dir.resolve()
+            ):
+                break
+        u.Cli.info(f"lazy-init: resolved {len(planned)} package artifact plans")
+        if self._collision_count:
+            return r[t.VariadicTuple[m.Infra.LazyInitPlan]].fail(
+                "lazy-init public export ownership is ambiguous: "
+                f"{self._collision_count} collision(s)",
+            )
+        return r[t.VariadicTuple[m.Infra.LazyInitPlan]].ok(tuple(planned))
 
     @override
     def build_plan(
@@ -99,34 +157,21 @@ class FlextInfraCodegenLazyInitPlanner(
 
         """
         context = self.context(pkg_dir)
+        current = u.Cli.atomic_read_binary_file_state(
+            context.init_path,
+            required=False,
+        ).unwrap()
+        if u.Infra.codegen_initializer_is_authored(current.content):
+            return self._authored_plan(context)
         if not context.importable or self._shadows_stdlib_module(pkg_dir):
-            # No generated content can repair a package name that
-            # shadows a stdlib module, so the plan removes generator-owned
-            # residue and otherwise skips the directory. The ALL_SCAN_PATTERNS
-            # contract is unchanged: every surface is still scanned; only
-            # directories that cannot legally be packages are not rendered,
-            # and _merge_children applies the same predicate to the parent.
-            residue_action = (
-                c.Infra.LazyInitAction.REMOVE
-                if context.generated_init
-                else c.Infra.LazyInitAction.SKIP
-            )
-            return self._publish_plan(
-                m.Infra.LazyInitPlan(
-                    context=context,
-                    action=residue_action,
-                    lazy_map={},
-                    eager_dunders={},
-                    inline_constants={},
-                ),
-            )
+            return self._residue_plan(context)
         is_test_child_package = (
             context.surface == c.Infra.DIR_TESTS
             and context.current_pkg != c.Infra.DIR_TESTS
         )
         empty_action: c.Infra.LazyInitAction = (
             c.Infra.LazyInitAction.WRITE
-            if is_test_child_package
+            if is_test_child_package or self._keeps_facade_when_empty(context)
             else (
                 c.Infra.LazyInitAction.REMOVE
                 if context.generated_init
@@ -134,30 +179,32 @@ class FlextInfraCodegenLazyInitPlanner(
             )
         )
         lazy_map = self._package_exports(context)
-        version_map = self._module_exports(
-            context.pkg_dir / self._version_module_name,
-            f"{context.current_pkg}.{c.Infra.DUNDER_VERSION}",
-            export_options=m.Infra.ExportOptions(include_dunder=True),
-        )
+        self._merge_version_module(context, lazy_map)
         child_lazy = self._merge_children(context.pkg_dir, lazy_map, dir_exports)
-        # Version-submodule dunders are emitted as eager imports rather than
-        # lazy. The submodule shares its name (``__version__``) with the dunder
-        # string it exports; lazy resolution would let Python's import
-        # machinery shadow the dunder with the submodule object on first
-        # access. Eager binding at __init__.py load time pins the canonical
-        # strings in the package dict permanently.
-        eager_dunders = dict(version_map)
-        for name in eager_dunders:
-            lazy_map.pop(name, None)
         self._resolve_aliases(
             lazy_map,
             current_pkg=context.current_pkg,
             pkg_dir=context.pkg_dir,
             surface=context.surface,
         )
-        for name in c.Infra.INFRA_ONLY_EXPORTS:
-            lazy_map.pop(name, None)
-            eager_dunders.pop(name, None)
+        eager_dunders: t.MutableLazyAliasMap = {
+            name: lazy_map.pop(name)
+            for name in (c.Infra.DUNDER_VERSION,)
+            if lazy_map.get(name)
+            == (f"{context.current_pkg}.{Path(self._version_module_name).stem}", name)
+        }
+        # Inject test runtime aliases (tm, td, tf, tk, etc.) for the tests facade root.
+        # The tests package (e.g., flext_api.tests) is a facade root that should
+        # publish these aliases from flext_tests.
+        is_test_facade_root = (
+            context.current_pkg == c.Infra.DIR_TESTS
+            and context.pkg_dir.name == c.Infra.DIR_TESTS
+            and context.surface == c.Infra.DIR_TESTS
+        )
+        if is_test_facade_root:
+            for alias_name, target in c.Infra.TEST_RUNTIME_ALIAS_TARGETS.items():
+                if alias_name not in lazy_map:
+                    lazy_map[alias_name] = target
         if not lazy_map and not eager_dunders:
             return self._publish_plan(
                 m.Infra.LazyInitPlan(
@@ -220,6 +267,8 @@ class FlextInfraCodegenLazyInitPlanner(
         plan = m.Infra.LazyInitPlan(
             context=context,
             action=c.Infra.LazyInitAction.WRITE,
+            ownership="generator",
+            disposition="planned",
             exports=u.Infra.ordered_namespace_exports(
                 package_dir=context.pkg_dir,
                 package_name=context.current_pkg,
@@ -232,20 +281,93 @@ class FlextInfraCodegenLazyInitPlanner(
             child_packages_for_lazy=child_lazy,
             excluded_lazy_names=excluded_lazy_names,
         )
-        if (
-            context.current_pkg.split(".", maxsplit=1)[0]
-            == c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE
-            and frozenset(context.current_pkg.split("."))
-            & c.Infra.BOOTSTRAP_CYCLE_EXCEPTION_SEGMENTS
-        ):
-            # Bootstrap-cycle exception (see _codegen_generation_file): these
-            # initializers render side-effect-free and publish nothing. The
-            # discovered lazy map stays so parent resolution and dir_exports
-            # are unchanged; exports=() is the publication contract the
-            # fresh-import probe validates against the empty static init.
-            plan = plan.model_copy(update={"exports": ()})
         self._source_exports_cache[context.current_pkg] = frozenset(plan.exports)
         return self._publish_plan(plan)
+
+    def _authored_plan(
+        self,
+        context: m.Infra.LazyInitPackageContext,
+    ) -> m.Infra.LazyInitPlan:
+        """Retain an authored initializer, cached for its consumers.
+
+        Returns:
+            The retained plan for the package's authored initializer.
+
+        """
+        exports = self._module_exports(
+            context.init_path,
+            context.current_pkg,
+            export_options=m.Infra.ExportOptions(
+                include_dunder=True,
+                allow_assignments=True,
+                allow_functions=True,
+                require_explicit_all=True,
+            ),
+        )
+        self._source_exports_cache[context.current_pkg] = frozenset(exports)
+        return self._publish_plan(
+            m.Infra.LazyInitPlan(
+                context=context,
+                action=c.Infra.LazyInitAction.RETAIN,
+                ownership="authored",
+                disposition="retained",
+                exports=tuple(sorted(exports)),
+                lazy_map=exports,
+                eager_dunders={},
+                inline_constants={},
+            ),
+        )
+
+    def _residue_plan(
+        self,
+        context: m.Infra.LazyInitPackageContext,
+    ) -> m.Infra.LazyInitPlan:
+        """Remove or skip an unrenderable package's generator residue.
+
+        No generated content can repair a package name that shadows a stdlib
+        module, so the plan removes generator-owned residue and otherwise skips
+        the directory. The ALL_SCAN_PATTERNS contract is unchanged: every
+        surface is still scanned; only directories that cannot legally be
+        packages are not rendered, and ``_merge_children`` applies the same
+        predicate to the parent.
+
+        Returns:
+            The remove-or-skip plan for the unrenderable package.
+
+        """
+        residue_action = (
+            c.Infra.LazyInitAction.REMOVE
+            if context.generated_init
+            else c.Infra.LazyInitAction.SKIP
+        )
+        return self._publish_plan(
+            m.Infra.LazyInitPlan(
+                context=context,
+                action=residue_action,
+                lazy_map={},
+                eager_dunders={},
+                inline_constants={},
+            ),
+        )
+
+    def _merge_version_module(
+        self,
+        context: m.Infra.LazyInitPackageContext,
+        lazy_map: t.MutableLazyAliasMap,
+    ) -> None:
+        """Merge the package's version module exports into the lazy map."""
+        if not (context.pkg_dir / self._version_module_name).is_file():
+            return
+        lazy_map.update(
+            self._module_exports(
+                context.pkg_dir / self._version_module_name,
+                f"{context.current_pkg}.{c.Infra.DUNDER_VERSION}",
+                export_options=m.Infra.ExportOptions(
+                    include_dunder=True,
+                    require_explicit_all=True,
+                ),
+            ),
+        )
 
     def _publish_plan(self, plan: m.Infra.LazyInitPlan) -> m.Infra.LazyInitPlan:
         """Publish one bottom-up plan so parents follow it in the same pass.
@@ -260,6 +382,13 @@ class FlextInfraCodegenLazyInitPlanner(
             The resulting ``m.Infra.LazyInitPlan``.
 
         """
+        if plan.ownership is None and plan.action in {
+            c.Infra.LazyInitAction.WRITE,
+            c.Infra.LazyInitAction.REMOVE,
+        }:
+            plan = plan.model_copy(
+                update={"ownership": "generator", "disposition": "planned"},
+            )
         self._source_plan_cache[str(plan.context.pkg_dir.resolve())] = plan
         return plan
 

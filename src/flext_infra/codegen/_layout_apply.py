@@ -11,10 +11,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core import r
-from flext_infra import m, p, t
-from flext_infra.codegen._layout_files import FlextInfraCodegenLayoutFilesMixin
-from flext_infra.codegen._layout_gitignore import FlextInfraCodegenLayoutGitignoreMixin
+from flext_infra import m, p, r, t
+from flext_infra.codegen import (
+    FlextInfraCodegenLayoutFilesMixin,
+    FlextInfraCodegenLayoutGitignoreMixin,
+)
 
 
 class FlextInfraCodegenLayoutApplyMixin(
@@ -112,9 +113,9 @@ class FlextInfraCodegenLayoutApplyMixin(
         moved = self._move_entry(project_dir, source, target, finding.path)
         if moved.failure:
             return r[m.Infra.LayoutFinding].from_failure(moved)
-        status: t.Infra.LayoutStatus = "applied"
+        status, message = moved.value
         return r[m.Infra.LayoutFinding].ok(
-            finding.model_copy(update={"status": status, "message": moved.value}),
+            finding.model_copy(update={"status": status, "message": message}),
         )
 
     def _apply_archive(

@@ -1,0 +1,27 @@
+# Class-bound alias deferral belongs to the typed alias owner. Never repair it
+# by deleting constraints: the public CLI route regression demonstrates that
+# removing a functional bound breaks all three checker contracts.
+id: class-alias-generic-bound
+language: python
+severity: error
+files:
+  - "src/**/*.py"
+  - "tests/**/*.py"
+rule:
+  kind: constrained_type
+  all:
+    - has:
+        kind: type
+        has:
+          kind: attribute
+          pattern: t.Cli.ResultValue
+    - inside:
+        kind: type_parameter
+        stopBy: end
+        inside:
+          kind: class_definition
+          stopBy: neighbor
+message: >-
+  This class generic reads its bound through the lazy facade alias
+  t.Cli.ResultValue. Resolve class-bound alias deferral at the canonical
+  typings owner; do not remove the bound or weaken its consumer contract.

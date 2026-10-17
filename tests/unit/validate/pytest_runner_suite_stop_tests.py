@@ -6,19 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import sqlite3
 import time
 from contextlib import closing
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import FlextInfraPytestRunner, c, config, m, t, u
-from tests.unit.validate.pytest_runner_support import (
-    declare_parallel_project,
-    runner_for,
-)
+from flext_infra import config
+from flext_infra.validate import FlextInfraPytestRunner
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraPytestRunnerSuiteStop:
@@ -35,38 +33,24 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         return tm.ok(u.Cli.files_read_text(path))
 
     @staticmethod
-    def _spent_runner(project: Path, *, serial: bool = False) -> FlextInfraPytestRunner:
+    def _spent_runner(project: Path) -> FlextInfraPytestRunner:
         """Build the real runner whose derived stop instant has already passed.
 
         The entrypoint clock is placed so pytest stops dispatch at a durable
         testmon batch checkpoint, never through the deadline SIGTERM. The
-        reserve matches the runner's own serial decision for the selection.
+        reserve is the aggregate termination grace, independent of dispatch.
 
         Returns:
             The resulting ``FlextInfraPytestRunner``.
 
         """
-        cache = config.Infra.codegen.make.testmon_cache
         policy = config.Infra.tooling.tools.pytest
-        testmon_db = project.parent / ".testmon-cache" / cache.database_filename
-        testmon_db.parent.mkdir(parents=True)
-        runner = FlextInfraPytestRunner(
-            repository_root=project,
-            started_at_monotonic=time.monotonic(),
-            target=cache.target_directory,
-            reports=cache.reports_directory,
-            testmon_db=testmon_db,
-        )
-        reserve = (
-            policy.serial_suite_stop_reserve_seconds
-            if serial or runner.parallel_worker_budget(policy) <= 1
-            else policy.suite_stop_reserve_seconds
-        )
+        runner = u.Tests.PytestRunner.runner_for(project)
         return runner.model_copy(
             update={
                 "started_at_monotonic": time.monotonic()
-                - policy.run_timeout_seconds
-                + reserve,
+                - runner.run_timeout_seconds(policy)
+                + policy.termination_grace_seconds,
             },
         )
 
@@ -99,14 +83,48 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         return bounded, selected, executed
 
     @staticmethod
-    def test_stop_reserve_matches_the_runner_dispatch_decision(
+    @pytest.mark.slow
+    def test_interrupted_startup_preserves_exit_without_completed_reports(
         cached_runner_project: Path,
     ) -> None:
-        """The typed reserve follows the same serial decision as the workers.
+        """An actual startup interruption is not a completed failing suite."""
+        abort_message = "suite interrupted before session startup completed"
+        (cached_runner_project / "conftest.py").write_text(
+            "import pytest\n"
+            "def pytest_sessionstart(session: pytest.Session) -> None:\n"
+            "    if not session.config.option.collectonly:\n"
+            f"        pytest.exit({abort_message!r}, "
+            "returncode=pytest.ExitCode.INTERRUPTED)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
 
-        The reserve follows the actual worker budget. A one-worker selection
-        executes serially and keeps only one in-flight item.
-        """
+        result = runner.execute()
+
+        tm.that(tm.ok(result), eq=pytest.ExitCode.INTERRUPTED.value)
+        reports = config.Infra.codegen.make.testmon_cache.reports_directory
+        (outcome_path,) = (cached_runner_project / reports).glob(
+            "*/suite-outcome.json",
+        )
+        outcome = m.Cli.ProcessOutcome.model_validate_json(
+            tm.ok(u.Cli.files_read_text(outcome_path)),
+        )
+        tm.that(outcome.raw_return_code, eq=pytest.ExitCode.INTERRUPTED.value)
+        tm.that(outcome.timed_out, eq=False)
+        tm.that(outcome.forwarded_signal, none=True)
+        tm.that(
+            tm.ok(u.Cli.files_read_text(outcome_path.parent / "pytest.log")),
+            has=abort_message,
+        )
+        tm.that((outcome_path.parent / "junit.xml").exists(), eq=False)
+        tm.that((outcome_path.parent / "summary.txt").exists(), eq=False)
+        tm.that((outcome_path.parent / "run-accounting.json").exists(), eq=False)
+
+    @staticmethod
+    def test_ordinary_stop_reserve_is_independent_of_dispatch(
+        cached_runner_project: Path,
+    ) -> None:
+        """Both dispatch shapes share the aggregate grace, without an item cap."""
         policy = config.Infra.tooling.tools.pytest
 
         def dispatch_plan(node_ids: t.StrSequence) -> m.Infra.PytestSelectionPlan:
@@ -126,9 +144,9 @@ class TestsFlextInfraPytestRunnerSuiteStop:
                 owns_no_tests=False,
             )
 
-        declare_parallel_project(cached_runner_project)
+        u.Tests.PytestRunner.declare_parallel_project(cached_runner_project)
         multi = [f"tests/test_serial_{'x' * index}.py::test_one" for index in range(4)]
-        runner = runner_for(cached_runner_project)
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         multi_plan = dispatch_plan(multi)
         multi_command = runner.build_command(
             cached_runner_project / runner.reports,
@@ -156,7 +174,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
             stop_value(multi_command),
             eq=runner.started_at_monotonic
             + runner.run_timeout_seconds(policy)
-            - policy.suite_stop_reserve_seconds,
+            - policy.termination_grace_seconds,
         )
         serial_workers_index = list(serial_command).index("-n") + 1
         tm.that(list(serial_command)[serial_workers_index], eq="0")
@@ -164,30 +182,68 @@ class TestsFlextInfraPytestRunnerSuiteStop:
             stop_value(serial_command),
             eq=runner.started_at_monotonic
             + runner.run_timeout_seconds(policy)
-            - policy.serial_suite_stop_reserve_seconds,
+            - policy.termination_grace_seconds,
         )
 
     @pytest.mark.slow
+    @pytest.mark.parametrize("distributed", [True, False], ids=["xdist", "serial"])
     def test_suite_stop_instant_persists_the_executed_prefix(
         self,
         cached_runner_project: Path,
+        distributed: bool,
     ) -> None:
         """A run reaching its stop instant ends itself and testmon keeps progress.
 
         pytest must report a red incomplete run, and the testmon database must
         hold every executed test, so the next selection excludes them.
         """
+        if distributed:
+            u.Tests.PytestRunner.declare_parallel_project(cached_runner_project)
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
+        workers = (
+            runner.parallel_worker_budget(config.Infra.tooling.tools.pytest)
+            if distributed
+            else 1
+        )
+        distribution = u.Infra.codemod_distributions()["pytest-testmon"]
+        installed_files = distribution.files
+        assert installed_files is not None
+        (batch_owner,) = (
+            entry
+            for entry in installed_files
+            if entry.as_posix() == "testmon/testmon_core.py"
+        )
+        batch_source = Path(str(distribution.locate_file(batch_owner)))
+        tree = u.Infra.parse_rope_module(
+            self._read(batch_source),
+            filename=str(batch_source),
+        )
+        assert isinstance(tree, ast.Module)
+        (declaration,) = (
+            statement
+            for statement in tree.body
+            if isinstance(statement, ast.Assign)
+            and any(
+                isinstance(name, ast.Name) and name.id == "TEST_BATCH_SIZE"
+                for name in statement.targets
+            )
+        )
+        literal = declaration.value
+        assert isinstance(literal, ast.Constant)
+        batch_size = literal.value
+        assert isinstance(batch_size, int)
+        assert not isinstance(batch_size, bool)
+        assert batch_size > 0
         target = config.Infra.codegen.make.testmon_cache.target_directory
         (cached_runner_project / target / "test_budget.py").write_text(
             "from runner_sample import answer\n\n"
             + "".join(
                 f"def test_budget_{index}() -> None:\n    assert answer() == 42\n\n"
-                for index in range(260)
+                for index in range(batch_size * workers * (2 if distributed else 1) + 1)
             ),
             encoding="utf-8",
         )
-        runner = self._runner_stopping_at(cached_runner_project, time.monotonic())
-
+        runner = self._spent_runner(cached_runner_project)
         tm.that(tm.ok(runner.execute()), eq=pytest.ExitCode.INTERRUPTED.value)
 
         bounded, selected, executed = self._published_run(
@@ -196,6 +252,13 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         )
         tm.that(executed, gt=0)
         tm.that(executed, lt=len(selected))
+        if distributed:
+            tm.that(workers, gt=1)
+            tm.that(self._read(bounded / "command.txt"), has=f"-n {workers}")
+            tm.that(
+                self._read(bounded / "pytest.log"),
+                has=["[gw0]", "[gw1]", "suite stop instant"],
+            )
         tm.that(
             self._read(bounded / "summary.txt"),
             has=[
@@ -234,7 +297,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         the accounting is complete and the run is green although pytest still
         reports its interrupt.
         """
-        runner = self._spent_runner(cached_runner_project, serial=True)
+        runner = self._spent_runner(cached_runner_project)
 
         tm.that(tm.ok(runner.execute()), eq=pytest.ExitCode.OK.value)
 

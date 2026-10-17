@@ -9,11 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import m, t
-from flext_infra.base import FlextInfraServiceBase
+from flext_infra import FlextInfraServiceBase, m, t
 
 
-class FlextInfraCodegenExecutionBase[TResult: t.Cli.ResultValue](
+class FlextInfraCodegenExecutionBase[TResult: t.JsonPayload](
     FlextInfraServiceBase[TResult],
 ):
     """Own explicit repository execution state shared by codegen services."""

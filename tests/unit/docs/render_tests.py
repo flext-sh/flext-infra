@@ -7,18 +7,61 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+import mkdocs.config
 import pytest
-from flext_tests import tm
-from mkdocs.config import load_config
+from mkdocs.config.defaults import MkDocsConfig
 from mkdocs.structure.files import get_files
 from mkdocs.structure.nav import get_navigation
 
-from tests import m, u
+from tests import m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+@runtime_checkable
+class MkDocsProjectLoader(Protocol):
+    """Native MkDocs loader port for one project configuration file."""
+
+    def __call__(
+        self,
+        config_file: str,
+        *,
+        plugins: list[object],
+    ) -> MkDocsConfig:
+        """Load one project configuration, overriding declared plugins."""
+        ...
+
+
+@runtime_checkable
+class MkDocsConfigModulePort(Protocol):
+    """Native ``mkdocs.config`` module port exposing its loader."""
+
+    @property
+    def load_config(self) -> MkDocsProjectLoader:
+        """The native loader bound to this configuration module."""
+        ...
+
+
+def mkdocs_project_config(
+    module: object,
+    config_file: str,
+) -> MkDocsConfig:
+    """Load one project ``mkdocs.yml`` with plugin overrides disabled.
+
+    Returns:
+        The loaded native MkDocs configuration.
+
+    Raises:
+        TypeError: If the native module does not satisfy its loader port.
+
+    """
+    if not isinstance(module, MkDocsConfigModulePort):
+        msg = "mkdocs.config does not satisfy its loader port"
+        raise TypeError(msg)
+    return module.load_config(config_file, plugins=[])
 
 
 class TestsFlextInfraDocsRender:
@@ -34,7 +77,7 @@ class TestsFlextInfraDocsRender:
     def test_project_navigation_discovers_maintained_pages(
         tmp_path: Path,
     ) -> None:
-        """The real MkDocs navigation includes manual guides beyond generated indexes."""
+        """The real MkDocs navigation has manual guides beyond generated indexes."""
         scope = m.Infra.DocScope(
             name="flext-demo",
             path=tmp_path,
@@ -49,7 +92,7 @@ class TestsFlextInfraDocsRender:
             u.Infra.docs_project_mkdocs(scope, {}, []),
             encoding="utf-8",
         )
-        configuration = load_config(config_file=str(config_file), plugins=[])
+        configuration = mkdocs_project_config(mkdocs.config, str(config_file))
         files = get_files(configuration)
         navigation = get_navigation(files, configuration)
         tm.that(
@@ -99,7 +142,7 @@ class TestsFlextInfraDocsRender:
             u.Infra.docs_root_mkdocs({"site_title": "Workspace"}),
             encoding="utf-8",
         )
-        configuration = load_config(config_file=str(config_file), plugins=[])
+        configuration = mkdocs_project_config(mkdocs.config, str(config_file))
         files = get_files(configuration)
         navigation = get_navigation(files, configuration)
 
@@ -151,13 +194,20 @@ class TestsFlextInfraDocsRender:
             rendered,
             has=(
                 "  - git-revision-date-localized:\n"
-                "      # Why: enable_creation_date resolves via 'git log --diff-filter=Ar', which returns\n"
-                "      # EMPTY for pages whose only add-commit is a merge commit. The plugin then falls back\n"
-                "      # to time.time() (build clock), making first_revision > last_revision always true,\n"
-                "      # which logs a warning that mkdocs --strict turns into a build failure. Revision date\n"
-                "      # from the last commit touching the page is the intended and robust behavior.\n"
-                "      # enable_git_follow is off for the same reason: following renames re-reads\n"
-                "      # history per page and reintroduces the same empty-result fallback.\n"
+                "      # Why: enable_creation_date resolves via"
+                " 'git log --diff-filter=Ar', which returns\n"
+                "      # EMPTY for pages whose only add-commit is a merge commit."
+                " The plugin then falls back\n"
+                "      # to time.time() (build clock), making first_revision >"
+                " last_revision always true,\n"
+                "      # which logs a warning that mkdocs --strict turns into a"
+                " build failure. Revision date\n"
+                "      # from the last commit touching the page is the intended and"
+                " robust behavior.\n"
+                "      # enable_git_follow is off for the same reason: following"
+                " renames re-reads\n"
+                "      # history per page and reintroduces the same empty-result"
+                " fallback.\n"
                 "      enable_creation_date: false\n"
                 "      enable_git_follow: false\n"
                 "      type: date\n"

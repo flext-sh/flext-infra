@@ -11,20 +11,21 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, t
-from flext_infra._models.workspace import FlextInfraModelsWorkspace as mw
-from flext_infra._utilities._docs_scope_paths import (
+from flext_infra import c, m, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesDocsScopePathsMixin,
+    FlextInfraUtilitiesPyproject,
 )
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 
 
 class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMixin):
     """Load one authenticated pyproject state for every docs decision."""
 
     @staticmethod
-    def _project_state(project_root: Path) -> mw.ProjectPyprojectState:
+    def _project_state(
+        project_root: Path,
+    ) -> m.Infra.ProjectPyprojectState:
         """Return project state bound to the current authenticated file bytes.
 
         When the pyproject is absent or empty, the returned state carries
@@ -59,11 +60,12 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
         root: Path,
         pyproject_path: Path,
         content: bytes | None,
-    ) -> mw.ProjectPyprojectState:
+        source_paths: t.VariadicTuple[Path] | None = None,
+    ) -> m.Infra.ProjectPyprojectState:
         """Parse once per byte-identical canonical pyproject snapshot.
 
         Returns:
-            The resulting ``mw.ProjectPyprojectState``.
+            The resulting ``m.Infra.ProjectPyprojectState``.
 
         Raises:
             ValueError: If ``recovered.failure``; or if docs pyproject TOML is invalid;
@@ -74,7 +76,7 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
             payload: t.JsonMapping = {}
         else:
             try:
-                source = content.decode(c.Cli.ENCODING_DEFAULT)
+                source = content.decode(c.DEFAULT_ENCODING)
             except UnicodeDecodeError as exc:
                 msg = f"docs pyproject is not valid UTF-8: {pyproject_path}"
                 raise ValueError(msg) from exc
@@ -87,8 +89,7 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
             if parsed is None:
                 msg = f"docs pyproject TOML is invalid: {pyproject_path}"
                 raise ValueError(msg)
-            validated = FlextInfraUtilitiesPyproject.validate_infra_payload(parsed)
-            payload = validated
+            payload = parsed
         docs_meta = FlextInfraUtilitiesDocsScopeStateMixin.docs_meta_from_payload(
             payload,
         )
@@ -98,7 +99,7 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
             ),
         )
         if not payload:
-            return mw.ProjectPyprojectState(
+            return m.Infra.ProjectPyprojectState(
                 project_root=root,
                 pyproject_path=pyproject_path,
                 payload=payload,
@@ -107,7 +108,7 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
                 package_name="",
                 dependency_names=dependency_names,
             )
-        return mw.ProjectPyprojectState(
+        return m.Infra.ProjectPyprojectState(
             project_root=root,
             pyproject_path=pyproject_path,
             payload=payload,
@@ -119,24 +120,38 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
                 )
             ),
             package_name=(
-                FlextInfraUtilitiesDocsScopeStateMixin.package_name_from_payload(
+                FlextInfraUtilitiesPyproject.package_name_from_payload(
                     root,
                     payload,
                     docs_meta,
+                    source_paths=source_paths,
                 )
             ),
             dependency_names=dependency_names,
         )
 
     @staticmethod
-    def project_state(project_root: Path) -> mw.ProjectPyprojectState:
+    def project_state(
+        project_root: Path,
+        *,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
+    ) -> m.Infra.ProjectPyprojectState:
         """Return one fresh state bound to authenticated pyproject bytes.
 
         Returns:
             One fresh state bound to authenticated pyproject bytes.
 
         """
-        return FlextInfraUtilitiesDocsScopeStateMixin._project_state(project_root)
+        if source_states is None:
+            return FlextInfraUtilitiesDocsScopeStateMixin._project_state(project_root)
+        path = project_root / c.PYPROJECT_FILENAME
+        state = next(item for item in source_states if item.path == path)
+        return FlextInfraUtilitiesDocsScopeStateMixin._state_from_content(
+            project_root,
+            path,
+            state.content,
+            tuple(item.path for item in source_states),
+        ).model_copy(deep=True)
 
     @staticmethod
     def project_name_from_payload(entry: Path, payload: t.JsonMapping) -> str:
@@ -149,7 +164,11 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
         return FlextInfraUtilitiesPyproject.project_name_from_payload(entry, payload)
 
     @staticmethod
-    def project_payload(project_root: Path) -> t.JsonMapping:
+    def project_payload(
+        project_root: Path,
+        *,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
+    ) -> t.JsonMapping:
         """Return a project's ``pyproject.toml`` payload as a plain mapping.
 
         Returns:
@@ -158,6 +177,7 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
         """
         return FlextInfraUtilitiesDocsScopeStateMixin.project_state(
             project_root,
+            source_states=source_states,
         ).payload
 
     @staticmethod

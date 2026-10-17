@@ -9,23 +9,22 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config
-from tests import c, m
+from tests import c, m, tm
 
 if TYPE_CHECKING:
     from tests import t
 
 
-def _spec_payload(**overrides: t.JsonValue) -> dict[str, object]:
+def _spec_payload(**overrides: t.JsonValue) -> t.MutableJsonMapping:
     """Build one valid synthetic spec payload; overrides mutate one field.
 
     Returns:
-        The resulting ``dict[str, object]``.
+        The resulting ``t.MutableJsonMapping``.
 
     """
-    payload: dict[str, object] = {
+    payload: t.MutableJsonMapping = {
         "actions": ["generate", "fix", "validate"],
         "mutable_actions": ["fix"],
         "reports_dir": ".reports/docs",

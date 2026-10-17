@@ -7,12 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models import FlextInfraModelsMixins as mm
+from flext_infra._models import FlextInfraModelsMixins
 
 
 class FlextInfraModelsCodegenLazyInitModels:
@@ -54,6 +54,14 @@ class FlextInfraModelsCodegenLazyInitModels:
             c.Infra.LazyInitAction,
             m.Field(description="Action selected for this package."),
         ] = c.Infra.LazyInitAction.SKIP
+        ownership: Literal["generator", "authored"] | None = m.Field(
+            default=None,
+            description="Content-elected initializer owner",
+        )
+        disposition: Literal["planned", "retained"] | None = m.Field(
+            default=None,
+            description="Actual ownership decision, never a failure suppression",
+        )
         exports: t.StrSequence = m.Field(
             default_factory=tuple,
             description="Public exports for generated __init__.py.",
@@ -94,7 +102,10 @@ class FlextInfraModelsCodegenLazyInitModels:
         detail: Annotated[str, m.Field(description="Human-readable check detail")] = ""
         critical: Annotated[bool, m.Field(description="Whether failure is critical")]
 
-    class QualityGateProjectFinding(mm.ProjectNameMixin, m.ArbitraryTypesModel):
+    class QualityGateProjectFinding(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        m.ArbitraryTypesModel,
+    ):
         """Per-project quality gate findings."""
 
         violations_total: Annotated[
@@ -105,3 +116,6 @@ class FlextInfraModelsCodegenLazyInitModels:
             bool,
             m.Field(description="Whether validator passed"),
         ]
+
+
+__all__: list[str] = ["FlextInfraModelsCodegenLazyInitModels"]

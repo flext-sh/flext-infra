@@ -10,7 +10,7 @@ import sys
 from typing import TYPE_CHECKING
 
 from flext_infra import c, settings, u
-from flext_infra._promoted.discovery import FlextInfraPromotedDiscovery
+from flext_infra._promoted import FlextInfraPromotedDiscovery
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

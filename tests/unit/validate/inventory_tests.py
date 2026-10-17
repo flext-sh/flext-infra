@@ -8,14 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
-from flext_infra.validate.inventory import FlextInfraInventoryService
-from tests import m, u
+from flext_infra.validate import FlextInfraInventoryService
+from tests import m, tm, u
 
 
 class TestsFlextInfraInventory:
-    """Core, script-scanning, and report-generation tests for FlextInfraInventoryService."""
+    """Core, script-scanning, and report tests for FlextInfraInventoryService."""
 
     @staticmethod
     def test_generate_empty_workspace(tmp_path: Path) -> None:

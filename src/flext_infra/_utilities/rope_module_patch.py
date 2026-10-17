@@ -7,14 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from typing import TYPE_CHECKING
+from functools import lru_cache
 
+from flext_infra import c, t
 from flext_infra._utilities._rope_analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraUtilitiesRopeModulePatch:
@@ -45,7 +43,13 @@ class FlextInfraUtilitiesRopeModulePatch:
         )
 
     @classmethod
-    def facade_letter_names_source(cls, source: str) -> frozenset[str]:
+    @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
+    def facade_letter_names_source(
+        cls,
+        source: str,
+        *,
+        filename: str,
+    ) -> frozenset[str]:
         """Return the exported lower-case names bound directly to a class.
 
         A facade letter (ADR-015 R1a, ADR-018 p.1) is a published alias whose
@@ -59,7 +63,7 @@ class FlextInfraUtilitiesRopeModulePatch:
             The exported lower-case names bound directly to a class.
 
         """
-        tree = ast.parse(source)
+        tree = ast.parse(source, filename=filename)
         class_names = {
             node.name for node in tree.body if isinstance(node, ast.ClassDef)
         } | {
@@ -68,13 +72,27 @@ class FlextInfraUtilitiesRopeModulePatch:
             if isinstance(node, ast.ImportFrom)
             for alias in node.names
         }
+        # One parse serves every export: indexing the direct module bindings by
+        # name once keeps this linear in the module size.
+        bindings_by_name: t.MutableMappingKV[
+            str,
+            t.MutableSequenceOf[ast.Assign | ast.AnnAssign],
+        ] = {}
+        for node in tree.body:
+            if not isinstance(node, ast.Assign | ast.AnnAssign):
+                continue
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for bound in {
+                target.id for target in targets if isinstance(target, ast.Name)
+            }:
+                bindings_by_name.setdefault(bound, []).append(node)
         letters: set[str] = set()
         for name in FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
             source,
         ):
             if not name.islower() or name.startswith("_"):
                 continue
-            bindings = cls.runtime_alias_bindings(source, alias=name)
+            bindings = bindings_by_name.get(name, [])
             if len(bindings) != 1 or bindings[0].value is None:
                 continue
             root = bindings[0].value

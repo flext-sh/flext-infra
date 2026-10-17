@@ -10,10 +10,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import r, u
+from flext_cli import u
 from packaging.version import InvalidVersion, Version
 
-from flext_infra import c, p, t
+from flext_infra import c, p, r, t
 
 
 class FlextInfraUtilitiesVersioning:
@@ -156,7 +156,7 @@ class FlextInfraUtilitiesVersioning:
         """
         pyproject = repository_root / c.PYPROJECT_FILENAME
         try:
-            content = pyproject.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            content = pyproject.read_text(encoding=c.DEFAULT_ENCODING)
         except OSError as exc:
             return r[str].fail_op("read", exc)
         version = FlextInfraUtilitiesVersioning._extract_project_version_from_text(
@@ -236,8 +236,16 @@ class FlextInfraUtilitiesVersioning:
             tag = raw_tag.strip()
             if not tag:
                 continue
+            remainder = tag.removeprefix(prefix)
+            if not remainder[:1].isdigit():
+                # Foreign tag namespace — cycle-control markers (val*), fork
+                # tags, anything that only collides with the prefix. Those are
+                # not release candidates, so skipping keeps them out of the
+                # ranking; a tag that LOOKS like a version (digit-leading) but
+                # does not parse still fails loud below.
+                continue
             try:
-                parsed = Version(tag.removeprefix(prefix))
+                parsed = Version(remainder)
             except InvalidVersion as exc:
                 return r[str].fail(f"invalid release tag {tag}: {exc}")
             if highest_version is None or parsed > highest_version:
@@ -280,7 +288,7 @@ class FlextInfraUtilitiesVersioning:
         """
         pyproject = project_path / c.PYPROJECT_FILENAME
         try:
-            content = pyproject.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            content = pyproject.read_text(encoding=c.DEFAULT_ENCODING)
         except OSError as exc:
             return r[bool].fail_op("read", exc)
         rendered = FlextInfraUtilitiesVersioning.render_project_version(

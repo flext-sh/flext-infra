@@ -12,9 +12,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_tests import tm
-
 from flext_infra import config
+from tests import tm
 
 
 class TestsFlextInfraToolchainMake:
@@ -25,4 +24,4 @@ class TestsFlextInfraToolchainMake:
         """Keep Make policy explicit while Mise resolves its newest release."""
         toolchain = config.Infra.codegen.toolchain
 
-        tm.that(toolchain.make_version, eq="latest")
+        tm.that(toolchain.tool_versions["make"], eq="latest")

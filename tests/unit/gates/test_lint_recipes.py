@@ -10,13 +10,39 @@ import ast
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import config, m, t, u
+from flext_infra import config
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraLintRecipes:
     """Each recipe derives its repair from the source the finding points at."""
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "code",
+        [
+            code
+            for code, recipe in (
+                config.Infra.tooling.tools.ruff.lint.fix_recipes.items()
+            )
+            if recipe
+            in {
+                c.Infra.LintFixRecipe.NORMALIZE_IMPORTS,
+                c.Infra.LintFixRecipe.WRAP_LONG_LINE,
+            }
+        ],
+    )
+    def test_gate_owned_recipe_requires_its_runtime_owner(
+        code: str,
+    ) -> None:
+        """Reject a whole-module recipe instead of silently returning its input."""
+        with pytest.raises(ValueError, match=code) as failure:
+            TestsFlextInfraLintRecipes._apply(
+                "import os\n",
+                (code, 1, "A gate-owned repair is required"),
+            )
+        tm.that(str(failure.value), has=code)
 
     @staticmethod
     def _apply(
@@ -138,6 +164,7 @@ class TestsFlextInfraLintRecipes:
 
         function = ast.parse(repaired).body[0]
         tm.that(function, is_=ast.FunctionDef)
+        assert isinstance(function, ast.FunctionDef)
         tm.that(
             ast.get_docstring(function) or "",
             has='ValueError: If ``not body.startswith(\'"""\')``.',
@@ -166,6 +193,7 @@ class TestsFlextInfraLintRecipes:
 
         function = ast.parse(repaired).body[0]
         tm.that(function, is_=ast.FunctionDef)
+        assert isinstance(function, ast.FunctionDef)
         docstring = ast.get_docstring(function) or ""
         tm.that(docstring, has="RuntimeError: If selection failed.")
         tm.that(docstring, lacks="failed (")
@@ -195,15 +223,92 @@ class TestsFlextInfraLintRecipes:
             ),
         )
 
+    def test_summary_docstring_expands_an_inline_protocol_body(self) -> None:
+        """An inline protocol stub is legal Python and receives a summary."""
+        source = (
+            "class Sample:\n"
+            '    """Define the sample."""\n'
+            "\n"
+            "    def __call__(self) -> int: ...\n"
+        )
+
+        repaired = self._apply(
+            source,
+            ("undocumented-public-method", 4, "Missing docstring in public method"),
+        )
+
+        tm.that(
+            repaired,
+            eq=(
+                "class Sample:\n"
+                '    """Define the sample."""\n'
+                "\n"
+                "    def __call__(self) -> int:\n"
+                '        """Provide ``__call__``."""\n'
+                "        ...\n"
+            ),
+        )
+        ast.parse(repaired)
+
+    def test_summary_docstring_expands_a_wrapped_signature_stub(self) -> None:
+        """A stub whose suite shares the signature's last line expands there."""
+        source = (
+            "class Sample:\n"
+            "    def __call__[T](\n"
+            "        self,\n"
+            "        operation: Callable[[], T],\n"
+            "    ) -> T: ...\n"
+        )
+
+        repaired = self._apply(
+            source,
+            ("undocumented-public-method", 2, "Missing docstring in public method"),
+        )
+
+        tm.that(
+            repaired,
+            eq=(
+                "class Sample:\n"
+                "    def __call__[T](\n"
+                "        self,\n"
+                "        operation: Callable[[], T],\n"
+                "    ) -> T:\n"
+                '        """Provide ``__call__``."""\n'
+                "        ...\n"
+            ),
+        )
+        ast.parse(repaired)
+
+    def test_summary_docstring_expands_an_inline_body_under_its_class(self) -> None:
+        """A class summary stays before the method its inline body expands into."""
+        source = "class Sample:\n    def __call__(self) -> int: ...\n"
+
+        repaired = self._apply(
+            source,
+            ("undocumented-public-class", 1, "Missing docstring in public class"),
+            ("undocumented-public-method", 2, "Missing docstring in public method"),
+        )
+
+        tm.that(
+            repaired,
+            eq=(
+                "class Sample:\n"
+                '    """Define ``Sample``."""\n'
+                "    def __call__(self) -> int:\n"
+                '        """Provide ``__call__``."""\n'
+                "        ...\n"
+            ),
+        )
+        ast.parse(repaired)
+
     def test_copyright_notice_follows_the_module_summary(
         self,
         tmp_path: Path,
     ) -> None:
         """The notice is signed by the author the owning manifest declares."""
-        (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "sample"\nversion = "1.0.0"\n'
-            'authors = [{ name = "Sample Author" }]\n',
-            encoding="utf-8",
+        self._write_manifest(
+            tmp_path,
+            license_id=u.Tests.project_spec("sample").license,
         )
         module = tmp_path / "sample.py"
 
@@ -213,9 +318,129 @@ class TestsFlextInfraLintRecipes:
             path=module,
         )
 
-        notice = u.Infra.copyright_notice(tmp_path)
+        notice = u.Infra.copyright_notice(tmp_path, module=module)
+        sibling = u.Infra.copyright_notice(tmp_path, module=tmp_path / "other.py")
         tm.that(notice, has="Sample Author")
+        tm.that(notice, has="\nsample\nSPDX-License-Identifier:")
+        tm.that(sibling, has="\nother\nSPDX-License-Identifier:")
         tm.that(repaired, eq=f'"""Sample module.\n\n{notice}\n"""\n\nVALUE = 1\n')
+
+    @staticmethod
+    def _write_manifest(
+        root: Path,
+        *,
+        license_id: str | None,
+        author: str = "Sample Author",
+    ) -> None:
+        """Write a PEP 621 manifest declaring one author and, optionally, a license."""
+        license_line = "" if license_id is None else f'license = "{license_id}"\n'
+        (root / c.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "sample"\nversion = "1.0.0"\n'
+            f"{license_line}"
+            f'authors = [{{ name = "{author}" }}]\n',
+            encoding="utf-8",
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "license_id",
+        config.Infra.codegen.scaffold.project.supported_licenses,
+    )
+    def test_copyright_notice_signs_with_the_declared_project(
+        tmp_path: Path,
+        license_id: str,
+    ) -> None:
+        """The repository's codegen project declaration owns holder, license, year.
+
+        The manifest names another author and a license outside the supported
+        set: neither reaches the notice once the repository declares its project.
+        """
+        TestsFlextInfraLintRecipes._write_manifest(
+            tmp_path,
+            license_id="LicenseRef-Manifest-Only",
+            author="Manifest Author",
+        )
+        declared = u.Tests.project_spec("sample").model_copy(
+            update={
+                "license": license_id,
+                "author_name": "Declared Holder",
+                "year": config.Infra.codegen.scaffold.project.copyright_year + 1,
+            },
+        )
+        directory = tmp_path / c.CONFIG_DIR_NAME
+        directory.mkdir()
+        tm.ok(
+            u.Cli.yaml_dump(
+                directory / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": {
+                                "project": declared.model_dump(
+                                    mode="json",
+                                    exclude_none=True,
+                                ),
+                            },
+                        },
+                    },
+                },
+            ),
+        )
+
+        notice = u.Infra.copyright_notice(tmp_path)
+
+        tm.that(
+            notice,
+            eq=(
+                f"Copyright (c) {declared.year} {declared.author_name}. "
+                "All rights reserved.\n"
+                f"SPDX-License-Identifier: {declared.license}"
+            ),
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "license_id",
+        config.Infra.codegen.scaffold.project.supported_licenses,
+    )
+    def test_copyright_notice_of_an_undeclared_project_reads_its_manifest(
+        tmp_path: Path,
+        license_id: str,
+    ) -> None:
+        """Without a codegen project the PEP 621 author and license sign it."""
+        TestsFlextInfraLintRecipes._write_manifest(tmp_path, license_id=license_id)
+
+        notice = u.Infra.copyright_notice(tmp_path)
+
+        tm.that(
+            notice,
+            eq=(
+                f"Copyright (c) {config.Infra.codegen.scaffold.project.copyright_year}"
+                " Sample Author. All rights reserved.\n"
+                f"SPDX-License-Identifier: {license_id}"
+            ),
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("license_id", "cause"),
+        [
+            ("LicenseRef-Unsupported", "unsupported scaffold license"),
+            (None, "declares no SPDX project.license"),
+        ],
+    )
+    def test_copyright_notice_rejects_an_undeclared_or_unsupported_license(
+        tmp_path: Path,
+        license_id: str | None,
+        cause: str,
+    ) -> None:
+        """No supported license is picked for a project that declares none."""
+        TestsFlextInfraLintRecipes._write_manifest(tmp_path, license_id=license_id)
+
+        with pytest.raises(ValueError, match=cause) as failure:
+            u.Infra.copyright_notice(tmp_path)
+
+        tm.that(str(failure.value), has=cause)
 
     def test_a_module_without_a_copyright_finding_needs_no_author(
         self,
@@ -374,6 +599,43 @@ class TestsFlextInfraLintRecipes:
         repaired = TestsFlextInfraLintRecipes._apply(
             source,
             ("no-self-use", 2, "Method `hook` could be a function"),
+        )
+
+        tm.that(repaired, eq=source)
+
+    @staticmethod
+    def test_static_method_leaves_an_override_of_a_parent_method() -> None:
+        """A subclass method that redefines its base method keeps its receiver."""
+        source = (
+            "class Base:\n"
+            "    def hook(self) -> int:\n"
+            "        return id(self)\n"
+            "\n"
+            "\n"
+            "class Child(Base):\n"
+            "    def hook(self) -> int:\n"
+            "        return 1\n"
+        )
+
+        repaired = TestsFlextInfraLintRecipes._apply(
+            source,
+            ("no-self-use", 7, "Method `hook` could be a function"),
+        )
+
+        tm.that(repaired, eq=source)
+
+    @staticmethod
+    def test_static_method_leaves_a_method_that_reads_its_receiver() -> None:
+        """Zero-argument ``super()`` reads the receiver, so the method keeps it."""
+        source = (
+            "class Sample(Base):\n"
+            "    def run(self) -> int:\n"
+            "        return super().run() + 1\n"
+        )
+
+        repaired = TestsFlextInfraLintRecipes._apply(
+            source,
+            ("no-self-use", 2, "Method `run` could be a function"),
         )
 
         tm.that(repaired, eq=source)

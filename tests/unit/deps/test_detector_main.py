@@ -9,10 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import config, main
-from tests import c, u
+from flext_infra import config, m, main
+from flext_infra.deps import FlextInfraRuntimeDevDependencyDetector
+from tests import c, tm, u
 
 # The fixture resolves and installs a real consumer environment from Git/index
 # sources; this is an external integration boundary owned by ``test-full``.
@@ -23,18 +23,28 @@ class TestsFlextInfraDepsDetectorMain:
     """Tests for ``FlextInfraDepsDetectorMain``."""
 
     @staticmethod
+    @pytest.mark.parametrize("entrypoint", ["cli", "request"])
     def test_run_without_typings_skips_typings_detection(
         real_detector_project: Path,
+        entrypoint: str,
     ) -> None:
-        """Test run without typings skips typings detection."""
+        """CLI and typed service requests retain the same report behavior."""
         root = real_detector_project
         before = (root / "pyproject.toml").read_bytes()
-        outcome = tm.ok(u.Tests.run_real_detector(root, "--no-pip-check"))
-        tm.that(
-            u.Cli.process_succeeded(outcome.outcome),
-            eq=True,
-            msg=f"{outcome.stdout}\n{outcome.stderr}",
-        )
+        if entrypoint == "request":
+            params = m.Infra.DetectCommand(repository_root=root, no_pip_check=True)
+            before_request = params.model_dump()
+            tm.that(
+                tm.ok(FlextInfraRuntimeDevDependencyDetector.execute(params)), eq=True
+            )
+            tm.that(params.model_dump(), eq=before_request)
+        else:
+            outcome = tm.ok(u.Tests.run_real_detector(root, "--no-pip-check"))
+            tm.that(
+                u.Cli.process_succeeded(outcome.outcome),
+                eq=True,
+                msg=f"{outcome.stdout}\n{outcome.stderr}",
+            )
         tm.that((root / "pyproject.toml").read_bytes(), eq=before)
         report = tm.ok(
             u.Cli.json_read(
@@ -61,9 +71,47 @@ class TestsFlextInfraDepsDetectorMain:
     # The governed mypy policy decides whether those stubs are findings: when
     # untyped imports are followed, applying typings adds nothing.
     @staticmethod
+    def _install_typings_and_declare_ignores(root: Path, added: set[str]) -> bytes:
+        """Install the typed stubs and declare their deptry ignore.
+
+        Why: a stub-only `types-*` package is never itself importable, so
+        deptry's own usage scan (current deptry ships no PEP 561 stub
+        awareness) flags every package this run just installed as unused
+        on the very next scan. A project that carries a `typings` extra
+        declares this exact deptry ignore for it; replicate that real
+        configuration here instead of asserting a scan deptry cannot pass.
+
+        Returns:
+            The pyproject snapshot taken after the ignore was appended.
+
+        """
+        installed = tm.ok(
+            u.Cli.capture(
+                [
+                    str(root / ".venv/bin/python"),
+                    "-c",
+                    (
+                        "import importlib.metadata,sys; "
+                        "[print(importlib.metadata.version(name))"
+                        " for name in sys.argv[1:]]"
+                    ),
+                    *sorted(added),
+                ],
+                cwd=root,
+            ),
+        )
+        tm.that(len(installed.splitlines()), eq=len(added))
+        with (root / "pyproject.toml").open("a", encoding="utf-8") as stream:
+            stream.write(
+                "\n[tool.deptry.per_rule_ignores]\n"
+                f"DEP002 = {sorted(added)!r}\n".replace("'", '"'),
+            )
+        return (root / "pyproject.toml").read_bytes()
+
+    @staticmethod
     @pytest.mark.parametrize(
         "real_detector_project",
-        [("requests", "pytz"), ("requests", "pytz", "six")],
+        c.Tests.DETECTOR_MODULE_SCENARIOS[1:],
         indirect=True,
     )
     def test_apply_typings_follows_governed_policy_and_preserves_source(
@@ -83,7 +131,7 @@ class TestsFlextInfraDepsDetectorMain:
                 u.Tests.toml_mapping(before["dependency-groups"])["dev"],
             )
         }
-        tm.that(declared_dev & set(expected.values()), eq=set())
+        tm.that(declared_dev & set(expected.values()), empty=True)
         outcome = tm.ok(
             u.Tests.run_real_detector(
                 root,
@@ -105,7 +153,9 @@ class TestsFlextInfraDepsDetectorMain:
             for item in u.Infra.project_dependency_names_from_payload(before)
             if item in expected
         ]
-        added = set() if followed else {expected[item] for item in requirements}
+        added: set[str] = (
+            set() if followed else {expected[item] for item in requirements}
+        )
         typing_specs = u.Tests.toml_strings(
             u.Tests.toml_mapping(
                 u.Tests.toml_mapping(after["project"])["optional-dependencies"],
@@ -133,34 +183,10 @@ class TestsFlextInfraDepsDetectorMain:
             )["feature"],
             eq=["requests"],
         )
-        installed = tm.ok(
-            u.Cli.capture(
-                [
-                    str(root / ".venv/bin/python"),
-                    "-c",
-                    (
-                        "import importlib.metadata,sys; "
-                        "[print(importlib.metadata.version(name)) for name in sys.argv[1:]]"
-                    ),
-                    *sorted(added),
-                ],
-                cwd=root,
-            ),
+        snapshot = TestsFlextInfraDepsDetectorMain._install_typings_and_declare_ignores(
+            root,
+            added,
         )
-        tm.that(len(installed.splitlines()), eq=len(added))
-        # Why: a stub-only `types-*` package is never itself importable, so
-        # deptry's own usage scan (current deptry ships no PEP 561 stub
-        # awareness) flags every package this run just installed as unused
-        # on the very next scan. A project that carries a `typings` extra
-        # declares this exact deptry ignore for it; replicate that real
-        # configuration here instead of asserting a scan deptry cannot pass.
-        installed_names = sorted(added)
-        with (root / "pyproject.toml").open("a", encoding="utf-8") as stream:
-            stream.write(
-                "\n[tool.deptry.per_rule_ignores]\n"
-                f"DEP002 = {installed_names!r}\n".replace("'", '"'),
-            )
-        snapshot = (root / "pyproject.toml").read_bytes()
         repeated = tm.ok(
             u.Tests.run_real_detector(
                 root,
@@ -227,13 +253,14 @@ class TestsFlextInfraDepsDetectorMain:
     ) -> None:
         """Test member without own venv fails closed not parent environment."""
         root = real_detector_project
+        python_required = config.Infra.codegen.toolchain.python_required_version
         member = u.Tests.mk_project(
             root,
             "member",
             with_src=True,
             pyproject=(
                 '[project]\nname = "member"\nversion = "0.1.0"\n'
-                f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
+                f'requires-python = "{python_required}"\n'
                 'dependencies = ["pyyaml"]\n'
                 "[tool.mypy]\n"
             ),

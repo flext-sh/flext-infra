@@ -1,0 +1,32 @@
+# One binding owner for typing.X and import-aliased module receivers.
+id: typing-module-binding
+language: python
+rule:
+  all:
+    - kind: identifier
+    - pattern: $MODULE
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          kind: import_statement
+          stopBy: end
+          any:
+            - has:
+                kind: dotted_name
+                stopBy: end
+                pattern: $MODULE
+                regex: "^typing$"
+                not:
+                  inside:
+                    kind: aliased_import
+            - has:
+                kind: aliased_import
+                stopBy: end
+                has:
+                  field: name
+                  regex: "^typing$"
+                all:
+                  - has:
+                      field: alias
+                      pattern: $MODULE

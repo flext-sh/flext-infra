@@ -12,12 +12,29 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
-from tests import c, u
+from tests import c, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+def _run_lazy_init_and_read_mapping(
+    repository_root: Path,
+    package_root: Path,
+) -> t.Pair[str, t.VariadicTuple[t.Pair[str, t.StrSequence]]]:
+    """Generate lazy init and return its content with the elected mapping.
+
+    Returns:
+        The generated initializer text and the parsed module-to-exports map.
+
+    """
+    result = u.Tests.run_lazy_init(repository_root)
+    init_content = (package_root / c.Infra.INIT_PY).read_text(
+        encoding=c.DEFAULT_ENCODING,
+    )
+    tm.that(result, eq=0)
+    entries, _refs = u.Infra.lazy_import_mapping_source(init_content)
+    return init_content, entries
 
 
 class TestsFlextInfraLazyInitFixtureSettingsCollision:
@@ -31,39 +48,37 @@ class TestsFlextInfraLazyInitFixtureSettingsCollision:
         repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         fixtures_dir = package_root / "_fixtures"
         fixtures_dir.mkdir()
-        (fixtures_dir / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        (fixtures_dir / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
         (fixtures_dir / "settings.py").write_text(
             '"""Test fixtures."""\n\n'
             "def settings() -> str:\n"
             '    return "fixture"\n\n'
             "def reset_settings() -> None:\n"
             '    """Keep the non-colliding fixture public."""\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (package_root / "_config.py").write_text(
             "class _FlextSampleConfig:\n"
             '    """Private loader class."""\n\n'
             "config = _FlextSampleConfig()\n"
             '__all__ = ["config"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (package_root / "_settings.py").write_text(
             "class _FlextSampleSettings:\n"
             '    """Private loader class."""\n\n'
             "settings = _FlextSampleSettings()\n"
             '__all__ = ["settings"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
-        result = u.Tests.run_lazy_init(repository_root)
-
-        init_content = (package_root / c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+        init_content, entries = _run_lazy_init_and_read_mapping(
+            repository_root,
+            package_root,
         )
-        tm.that(result, eq=0)
-        tm.that(init_content, contains='"._config": (')
-        tm.that(init_content, contains='"._settings": (')
-        tm.that(init_content, lacks='"._fixtures.settings": (')
+        tm.that(dict(entries).get("._config", ()), has="config")
+        tm.that(dict(entries).get("._settings", ()), has="settings")
+        tm.that(dict(entries), lacks="._fixtures.settings")
         tm.that(init_content, lacks='"reset_settings"')
         # Explicit identity aliases declare static reexports without eagerly
         # loading the runtime singleton modules.
@@ -91,31 +106,29 @@ class TestsFlextInfraLazyInitFixtureSettingsCollision:
         repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         fixtures_dir = package_root / "_fixtures"
         fixtures_dir.mkdir()
-        (fixtures_dir / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        (fixtures_dir / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
         (fixtures_dir / "settings.py").write_text(
             '"""Test fixtures."""\n\n'
             "def settings() -> str:\n"
             '    """Fixture colliding with the public singleton."""\n'
             '    return "fixture"\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         (package_root / "_settings.py").write_text(
             "class FlextSampleSettings:\n"
             '    """Public settings class."""\n\n'
             "settings = FlextSampleSettings()\n"
             '__all__ = ["FlextSampleSettings", "settings"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
-        result = u.Tests.run_lazy_init(repository_root)
-
-        init_content = (package_root / c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+        init_content, entries = _run_lazy_init_and_read_mapping(
+            repository_root,
+            package_root,
         )
-        tm.that(result, eq=0)
         tm.that(
-            init_content,
-            contains='"._settings": ("FlextSampleSettings", "settings")',
+            dict(entries).get("._settings", ()),
+            eq=("FlextSampleSettings", "settings"),
         )
         tm.that(
             init_content,

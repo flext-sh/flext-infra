@@ -6,17 +6,23 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping
+import sys
+from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core import r
-from flext_infra import c, m, u
-from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
+import libcst as cst
+
+from flext_infra import c, m, r, t, u
+from flext_infra.codemod._batch_dead_scaffold import FlextInfraDeadScaffold
+from flext_infra.codemod._batch_orphan_import import (
+    FlextInfraOrphanImport,
+    type_checking_guarded,
+)
 from flext_infra.transformers import FlextInfraSemanticPublication
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraModReplacements:
@@ -24,7 +30,7 @@ class FlextInfraModReplacements:
 
     @staticmethod
     def generator_owned(
-        entries: t.SequenceOf[m.Infra.ModScanFinding],
+        entries: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> t.StrTuple:
         """Name the findings whose file the canonical generator owns.
 
@@ -46,7 +52,7 @@ class FlextInfraModReplacements:
     @classmethod
     def require_authored(
         cls,
-        entries: t.SequenceOf[m.Infra.ModScanFinding],
+        entries: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> p.Result[bool]:
         """Refuse to write generated files: their findings are generator repairs.
 
@@ -63,8 +69,28 @@ class FlextInfraModReplacements:
         return r[bool].ok(value=True)
 
     @classmethod
-    def publish(cls, root: Path, report: m.Infra.ModScanReport) -> p.Result[bool]:
+    def publish[FindingT: m.Infra.ModOccurrence](
+        cls,
+        root: Path,
+        report: m.Infra.ModOccurrenceReport[FindingT],
+        *,
+        exact_replacements: bool = False,
+        published_plans: t.MutableSequenceOf[m.Infra.CodegenStagedFile] | None = None,
+        verification: t.Pair[
+            Callable[[], p.Result[bool]], Callable[[Path], p.Result[bool]]
+        ]
+        | None = None,
+    ) -> p.Result[bool]:
         """Validate byte coordinates and publish complete CAS-owned file plans.
+
+        Args:
+            root: Repository root the finding paths are relative to.
+            report: The scanned findings whose actionable fixes publish.
+            exact_replacements: Publish exact byte-span replacements instead
+                of recomposed CST output.
+            published_plans: Mutable sink receiving every published file
+                plan; publishing proceeds without capture when omitted.
+            verification: Original input proof and candidate/live acceptance callbacks.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -75,83 +101,290 @@ class FlextInfraModReplacements:
         )
         if allowed.failure:
             return allowed
-        grouped: MutableMapping[Path, list[m.Infra.ModScanFinding]] = {}
+        grouped: MutableMapping[Path, list[m.Infra.ModOccurrence]] = {}
         for finding in report.entries:
             if finding.actionable:
                 grouped.setdefault(root / finding.file, []).append(finding)
         plans: list[m.Infra.SemanticFilePlan] = []
         for path, findings in sorted(grouped.items()):
-            before = findings[0].source_state
-            if before is None or before.content is None:
-                return r[bool].fail(
-                    f"actionable finding lacks authenticated state: {path}",
-                )
-            replacements: list[t.Triple[int, int, bytes]] = []
-            for finding in findings:
-                if finding.source_state != before or finding.replacement is None:
-                    return r[bool].fail(
-                        f"inconsistent actionable finding source: {path}",
-                    )
-                raw_offsets = finding.payload.get("replacementOffsets")
-                raw_match = finding.range.get("byteOffset")
-                if not isinstance(raw_offsets, Mapping) or not isinstance(
-                    raw_match,
-                    Mapping,
-                ):
-                    return r[bool].fail(
-                        f"ast-grep finding lacks byte coordinates: "
-                        f"{path}:{finding.rule_id}",
-                    )
-                offsets = m.Infra.ModReplacementOffsets.model_validate(raw_offsets)
-                matched = m.Infra.ModReplacementOffsets.model_validate(raw_match)
-                if not (
-                    0 <= offsets.start <= offsets.end <= len(before.content)
-                ) or not (0 <= matched.start <= matched.end <= len(before.content)):
-                    return r[bool].fail(
-                        f"ast-grep byte coordinates escape source: {path}",
-                    )
-                if before.content[matched.start : matched.end] != finding.text.encode(
-                    c.Cli.ENCODING_DEFAULT,
-                ):
-                    return r[bool].fail(
-                        f"ast-grep match differs from authenticated source: {path}",
-                    )
-                replacements.append((
-                    offsets.start,
-                    offsets.end,
-                    finding.replacement.encode(c.Cli.ENCODING_DEFAULT),
-                ))
-            updated = before.content
-            boundary = len(updated)
-            for start, end, replacement in sorted(replacements, reverse=True):
-                if end > boundary:
-                    return r[bool].fail(f"ast-grep replacements overlap: {path}")
-                updated = updated[:start] + replacement + updated[end:]
-                boundary = start
-            plans.append(
-                m.Infra.SemanticFilePlan(
-                    project=u.Infra.project_root(path) or root,
-                    path=path,
-                    before=before,
-                    desired_content=updated,
-                    desired_mode=before.mode,
-                    changes=tuple(finding.rule_id for finding in findings),
-                ),
+            plan = cls._path_plan(
+                root,
+                path,
+                findings,
+                exact_replacements=exact_replacements,
             )
+            if plan.failure:
+                if plan.error_code == c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE:
+                    sys.stderr.write(f"mod: publish deferred drifted source: {path}\n")
+                    sys.stderr.flush()
+                    continue
+                return r[bool].from_failure(plan)
+            plans.append(plan.value)
         published = FlextInfraSemanticPublication.publish_semantic_file_plans(
             plans,
             repository_root=root,
+            published_files=published_plans,
+            options=m.Infra.SemanticPublicationOptions(
+                source_guard=verification[0] if verification is not None else None,
+                validator=verification[1] if verification is not None else None,
+            ),
         )
         if published.failure:
             return r[bool].from_failure(published)
-        # A node-exact replacement (an emptied statement fix) leaves the
-        # surrounding blank-line skeleton of the source line behind, so the
-        # published bytes must be normalized before the mod circuit's own
-        # first-pass format check reads them.
-        formatted = FlextInfraRuffFormatGate.format_files(root, tuple(sorted(grouped)))
-        if formatted.failure:
-            return r[bool].from_failure(formatted)
         return r[bool].ok(value=True)
+
+    @classmethod
+    def _path_plan(
+        cls,
+        root: Path,
+        path: Path,
+        findings: t.SequenceOf[m.Infra.ModOccurrence],
+        *,
+        exact_replacements: bool = False,
+        compose_only: bool = False,
+    ) -> p.Result[m.Infra.SemanticFilePlan]:
+        """Validate one path's actionable findings into one publication plan.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.SemanticFilePlan]``.
+
+        """
+        before = findings[0].source_state
+        if before is None or before.content is None:
+            return r[m.Infra.SemanticFilePlan].fail(
+                f"actionable finding lacks authenticated state: {path}",
+            )
+        replacements: list[t.Triple[int, int, bytes]] = []
+        observed = (
+            before
+            if compose_only
+            else u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+        )
+        for finding in findings:
+            if (
+                finding.source_state != before
+                or finding.replacement is None
+                or observed != before
+            ):
+                return r[m.Infra.SemanticFilePlan].fail(
+                    f"inconsistent actionable finding source: {path}",
+                    error_code=c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE,
+                )
+            coordinates = cls._finding_replacement(
+                before.content,
+                finding,
+                finding.replacement,
+                path,
+            )
+            if coordinates.failure:
+                return r[m.Infra.SemanticFilePlan].from_failure(coordinates)
+            replacements.append(coordinates.value)
+        updated = cls._apply_replacements(before.content, replacements, path)
+        if updated.failure:
+            return r[m.Infra.SemanticFilePlan].from_failure(updated)
+        bindings: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
+        graphs = {
+            id(finding.binding_states): finding.binding_states for finding in findings
+        }
+        for states in graphs.values():
+            for state in states:
+                if bindings.setdefault(state.path, state) != state:
+                    return r[m.Infra.SemanticFilePlan].fail(
+                        f"binding snapshots disagree: {state.path}",
+                    )
+        candidate = (
+            r[bytes].ok(updated.value)
+            if compose_only
+            else cls._normalized_candidate(
+                root,
+                path,
+                before.content,
+                updated.value,
+                exact_replacements=exact_replacements,
+            )
+        )
+        return candidate.map(
+            lambda content: m.Infra.SemanticFilePlan(
+                project=u.Infra.project_root(path) or root,
+                path=path,
+                before=before,
+                desired_content=content,
+                desired_mode=before.mode,
+                changes=tuple(finding.rule_id for finding in findings),
+                source_states=tuple(bindings.values()),
+            ),
+        )
+
+    @classmethod
+    def compose[FindingT: m.Infra.ModOccurrence](
+        cls, root: Path, report: m.Infra.ModOccurrenceReport[FindingT]
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticFilePlan]]:
+        """Compose authenticated candidate bytes without admission or live effects.
+
+        Returns:
+            Exact syntax plans; final normalization and gates belong to convergence.
+
+        """
+        grouped: MutableMapping[Path, list[m.Infra.ModOccurrence]] = {}
+        for finding in report.entries:
+            if finding.actionable and finding.source_owner != "generator":
+                grouped.setdefault(root / finding.file, []).append(finding)
+        plans: list[m.Infra.SemanticFilePlan] = []
+        for path, findings in sorted(grouped.items()):
+            planned = cls._path_plan(root, path, findings, compose_only=True)
+            if planned.failure:
+                return r[tuple[m.Infra.SemanticFilePlan, ...]].from_failure(planned)
+            plans.append(planned.value)
+        return r[tuple[m.Infra.SemanticFilePlan, ...]].ok(tuple(plans))
+
+    @classmethod
+    def admit(
+        cls, root: Path, plans: t.SequenceOf[m.Infra.SemanticFilePlan]
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticFilePlan]]:
+        """Normalize and judge only complete syntax candidates against originals.
+
+        Returns:
+            Accepted plans or the first native admission failure.
+
+        """
+        accepted: list[m.Infra.SemanticFilePlan] = []
+        for plan in plans:
+            if plan.before.content is None or plan.desired_content is None:
+                return r[tuple[m.Infra.SemanticFilePlan, ...]].fail(
+                    f"syntax candidate lacks authenticated bytes: {plan.path}"
+                )
+            normalized = cls._normalized_candidate(
+                root, plan.path, plan.before.content, plan.desired_content
+            )
+            if normalized.failure:
+                return r[tuple[m.Infra.SemanticFilePlan, ...]].from_failure(normalized)
+            accepted.append(
+                plan.model_copy(update={"desired_content": normalized.value})
+            )
+        return r[tuple[m.Infra.SemanticFilePlan, ...]].ok(tuple(accepted))
+
+    @staticmethod
+    def _finding_replacement(
+        content: bytes,
+        finding: m.Infra.ModOccurrence,
+        replacement: str,
+        path: Path,
+    ) -> p.Result[t.Triple[int, int, bytes]]:
+        """Validate one finding's byte coordinates against the authenticated bytes.
+
+        Returns:
+            The resulting ``(start, end, replacement)`` replacement triple.
+
+        """
+        offsets = finding.replacement_offsets
+        raw_match = finding.range.get("byteOffset")
+        if offsets is None or not isinstance(raw_match, Mapping):
+            return r[t.Triple[int, int, bytes]].fail(
+                f"ast-grep finding lacks byte coordinates: {path}:{finding.rule_id}",
+            )
+        matched = m.Infra.ModReplacementOffsets.model_validate(raw_match)
+        if not (0 <= offsets.start <= offsets.end <= len(content)) or not (
+            0 <= matched.start <= matched.end <= len(content)
+        ):
+            return r[t.Triple[int, int, bytes]].fail(
+                f"ast-grep byte coordinates escape source: {path}",
+            )
+        if content[matched.start : matched.end] != finding.text.encode(
+            c.DEFAULT_ENCODING,
+        ):
+            return r[t.Triple[int, int, bytes]].fail(
+                f"ast-grep match differs from authenticated source: {path}",
+            )
+        return r[t.Triple[int, int, bytes]].ok((
+            offsets.start,
+            offsets.end,
+            replacement.encode(c.DEFAULT_ENCODING),
+        ))
+
+    @staticmethod
+    def _apply_replacements(
+        content: bytes,
+        replacements: t.SequenceOf[t.Triple[int, int, bytes]],
+        path: Path,
+    ) -> p.Result[bytes]:
+        """Apply one path's replacements back-to-front, rejecting overlaps.
+
+        Returns:
+            The resulting updated content.
+
+        """
+        updated = content
+        boundary = len(updated)
+        for start, end, replacement in sorted(replacements, reverse=True):
+            if end > boundary:
+                return r[bytes].fail(f"ast-grep replacements overlap: {path}")
+            updated = updated[:start] + replacement + updated[end:]
+            boundary = start
+        return r[bytes].ok(updated)
+
+    @classmethod
+    def _normalized_candidate(
+        cls,
+        root: Path,
+        path: Path,
+        before: bytes,
+        candidate: bytes,
+        *,
+        exact_replacements: bool = False,
+    ) -> p.Result[bytes]:
+        """Judge final normalized bytes before the atomic publisher has effects.
+
+        Returns:
+            Accepted bytes, or the first normalization or Ruff delta failure.
+
+        """
+        baseline = u.Infra.lint_snapshot(
+            path,
+            root,
+            gates=(c.Infra.LINT,),
+            source=before.decode(c.DEFAULT_ENCODING),
+        )
+        if exact_replacements:
+            final: p.Result[str] = r[str].ok(candidate.decode(c.DEFAULT_ENCODING))
+            cst.parse_module(final.value)
+        else:
+            normalized = u.Infra.normalize_source(
+                root,
+                path,
+                candidate.decode(c.DEFAULT_ENCODING),
+                before_source=before.decode(c.DEFAULT_ENCODING),
+            )
+            if normalized.failure:
+                return r[bytes].from_failure(normalized)
+            module = cst.parse_module(normalized.value)
+            stripped = module.visit(FlextInfraDeadScaffold())
+            orphaned = stripped.visit(
+                FlextInfraOrphanImport(guarded=type_checking_guarded(stripped))
+            )
+            final = (
+                normalized
+                if orphaned.code == normalized.value
+                else u.Infra.normalize_source(
+                    root,
+                    path,
+                    orphaned.code,
+                    before_source=before.decode(c.DEFAULT_ENCODING),
+                )
+            )
+        if final.failure:
+            return r[bytes].from_failure(final)
+        introduced = u.Infra.lint_new_errors(
+            baseline,
+            u.Infra.lint_snapshot(
+                path, root, gates=(c.Infra.LINT,), source=final.value
+            ),
+        )
+        if introduced:
+            return r[bytes].fail(
+                f"mod introduced Ruff findings in {path}: "
+                + "\n".join(line for lines in introduced.values() for line in lines),
+            )
+        return r[bytes].ok(final.value.encode(c.DEFAULT_ENCODING))
 
 
 __all__: list[str] = ["FlextInfraModReplacements"]

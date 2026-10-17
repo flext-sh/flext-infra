@@ -9,17 +9,505 @@ from __future__ import annotations
 import os
 import stat
 from collections.abc import MutableMapping
+from copy import deepcopy
+from functools import lru_cache, partial
 from pathlib import Path
 
 from flext_cli import u
+from flext_core.config_sources import FlextStrictYamlConfigSource
 
-from flext_core import r
-from flext_infra import c, m, p, t
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
+from flext_infra import c, m, p, r, t
+from flext_infra._config import FlextInfraConfig
+from flext_infra._utilities import FlextInfraUtilitiesGit
 
 
 class FlextInfraUtilitiesProjectManagedArtifacts:
     """Single owner for ``ManagedArtifacts`` across ``config/*.yaml`` files."""
+
+    @classmethod
+    def load_codegen_inputs(
+        cls,
+        repository_root: Path,
+        *,
+        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
+    ) -> p.Result[m.Infra.CodegenInputs]:
+        """Load one root's full policy through the ordered strict YAML source.
+
+        Returns:
+            The effective codegen declaration and exact consulted file snapshots.
+
+        """
+        result_type = r[m.Infra.CodegenInputs]
+        document = cls.load_config_document_inputs(
+            repository_root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+            projections=projections,
+        )
+        if document.failure:
+            return result_type.from_failure(document)
+        loaded = r[m.Infra.CodegenConfigSpec].create_from_callable(
+            partial(cls._repository_codegen_spec, document.value.values),
+        )
+        if loaded.failure:
+            return result_type.from_failure(loaded)
+        verified = cls._verify_unchanged_snapshots(document.value.sources)
+        if verified.failure:
+            return result_type.from_failure(verified)
+        return result_type.ok(
+            m.Infra.CodegenInputs(
+                spec=loaded.value,
+                sources=document.value.sources,
+            ),
+        )
+
+    @classmethod
+    def load_repository_declaration_inputs(
+        cls,
+        repository_root: Path,
+    ) -> p.Result[m.Infra.RepositoryDeclarationInputs]:
+        """Validate only repository policy through the same captured YAML layers.
+
+        An absent optional repository subsection declares no self-owned deltas.
+        Invalid declared policy retains its cause; unrelated editor or tool policy
+        belongs to its own typed consumer and does not determine topology.
+
+        Returns:
+            Strict repository policy with current consulted source snapshots.
+
+        """
+        result_type = r[m.Infra.RepositoryDeclarationInputs]
+        document = cls.load_config_document_inputs(
+            repository_root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        if document.failure:
+            return result_type.from_failure(document)
+        codegen = u.Cli.json_walk_path(document.value.values, ("Infra", "codegen"))
+        section = r[t.JsonMapping].create_from_callable(
+            partial(t.Cli.JSON_MAPPING_ADAPTER.validate_python, codegen),
+        )
+        if section.failure:
+            return result_type.from_failure(section)
+        loaded = u.validate_value(
+            m.Infra.RepositoryDeltaSpec,
+            section.value.get("repository", {}),
+        )
+        if loaded.failure:
+            return result_type.from_failure(loaded)
+        verified = cls._verify_unchanged_snapshots(document.value.sources)
+        if verified.failure:
+            return result_type.from_failure(verified)
+        return result_type.ok(
+            m.Infra.RepositoryDeclarationInputs(
+                spec=loaded.value,
+                sources=document.value.sources,
+            ),
+        )
+
+    @classmethod
+    def load_config_document_inputs(
+        cls,
+        repository_root: Path,
+        *,
+        filename: str,
+        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
+    ) -> p.Result[m.Infra.ConfigDocumentInputs]:
+        """Capture and compose one F.yaml through the same strict layer reader.
+
+        Returns:
+            The typed document and ordered snapshots, with no ambient source lookup.
+
+        """
+        result_type = r[m.Infra.ConfigDocumentInputs]
+        elected = r[tuple[Path, ...]].create_from_callable(
+            partial(
+                FlextInfraConfig.config_sources_for_repository,
+                repository_root,
+                filename=filename,
+            ),
+        )
+        if elected.failure:
+            return result_type.from_failure(elected)
+        layers = FlextInfraConfig.config_layer_paths_for_repository(
+            repository_root,
+            filename=filename,
+        )
+        selected = tuple(dict.fromkeys(layers))
+        if any(projection.path not in selected[1:] for projection in projections):
+            error = ValueError(
+                "projected codegen declaration is outside elected layers"
+            )
+            return result_type.fail(str(error), exception=error)
+        snapshots: list[m.Cli.AtomicFileState] = []
+        for path in selected:
+            observed = u.Cli.atomic_read_binary_file_state(
+                path,
+                required=path == selected[0] or path in elected.value,
+            )
+            if observed.failure:
+                return result_type.from_failure(observed)
+            snapshots.append(observed.value)
+        loaded = r[t.JsonMapping].create_from_callable(
+            partial(
+                cls._repository_config_document,
+                selected,
+                tuple(snapshots),
+                projections,
+            ),
+        )
+        if loaded.failure:
+            return result_type.from_failure(loaded)
+        verified = cls._verify_unchanged_snapshots(snapshots)
+        if verified.failure:
+            return result_type.from_failure(verified)
+        return result_type.ok(
+            m.Infra.ConfigDocumentInputs(
+                values=loaded.value,
+                sources=tuple(snapshots),
+            ),
+        )
+
+    @staticmethod
+    def _verify_unchanged_snapshots(
+        snapshots: t.SequenceOf[m.Cli.AtomicFileState],
+    ) -> p.Result[bool]:
+        """Fail when a consulted configuration file changed during loading.
+
+        Returns:
+            Success when every snapshot still matches its consulted bytes.
+
+        """
+        for before in snapshots:
+            observed = u.Cli.atomic_read_binary_file_state(
+                before.path,
+                required=before.content is not None,
+            )
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            if observed.value != before:
+                error = ValueError(
+                    f"codegen configuration changed during read: {before.path}"
+                )
+                return r[bool].fail(str(error), exception=error)
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def load_refactor_csv_campaigns(
+        cls,
+        repository_root: Path,
+    ) -> p.Result[m.Infra.RefactorCsvCampaignsSpec]:
+        """Elect only this target's declared campaigns through its F.yaml layers.
+
+        Returns:
+            The validated campaign declaration; generic defaults own an empty set.
+
+        """
+        document = cls.load_config_document_inputs(
+            repository_root,
+            filename=c.Infra.INFRA_CONFIG_FILENAME,
+        )
+        if document.failure:
+            return r[m.Infra.RefactorCsvCampaignsSpec].from_failure(document)
+        return u.validate_value(
+            m.Infra.RefactorCsvCampaignsSpec,
+            u.Cli.json_walk_path(
+                document.value.values,
+                ("Infra", "refactor_csv_campaigns"),
+            ),
+        )
+
+    @classmethod
+    def project_codegen_inputs(
+        cls,
+        repository_root: Path,
+        captured: m.Infra.CodegenInputs,
+        *,
+        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
+        include_local: bool = True,
+    ) -> p.Result[m.Infra.CodegenInputs]:
+        """Project pending layers from captured bytes without rereading their sources.
+
+        Returns:
+            A validated preview retaining the original input identities.
+
+        """
+        result_type = r[m.Infra.CodegenInputs]
+        layers = FlextInfraConfig.config_layer_paths_for_repository(
+            repository_root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        if not captured.sources:
+            error = ValueError("codegen projection requires captured library inputs")
+            return result_type.fail(str(error), exception=error)
+        if captured.sources[0].path != layers[0] or any(
+            state.path not in layers for state in captured.sources
+        ):
+            error = ValueError("captured codegen inputs do not belong to this root")
+            return result_type.fail(str(error), exception=error)
+        selected = tuple(
+            dict.fromkeys(
+                layers if include_local else layers[:2],
+            ),
+        )
+        if any(projection.path not in selected[1:] for projection in projections):
+            error = ValueError(
+                "projected codegen declaration is outside elected layers"
+            )
+            return result_type.fail(str(error), exception=error)
+        loaded = r[m.Infra.CodegenConfigSpec].create_from_callable(
+            lambda: cls._repository_codegen_spec(
+                cls._repository_config_document(
+                    selected, captured.sources, projections
+                ),
+            ),
+        )
+        return loaded.map(
+            lambda spec: m.Infra.CodegenInputs(spec=spec, sources=captured.sources),
+        )
+
+    @staticmethod
+    def read_codegen_config_document(content: bytes) -> p.Result[t.JsonMapping]:
+        """Parse captured YAML bytes through the single strict config transport.
+
+        Returns:
+            A mapping, including the source's defined empty-document representation.
+
+        """
+        return r[t.JsonMapping].create_from_callable(
+            partial(
+                FlextInfraUtilitiesProjectManagedArtifacts._parse_codegen_config_document,
+                content,
+            ),
+        )
+
+    @staticmethod
+    def _parse_codegen_config_document(content: bytes) -> t.JsonMapping:
+        """Apply the strict source's mapping and empty-document contracts.
+
+        Returns:
+            Validated configuration values from immutable source bytes.
+
+        """
+        return deepcopy(
+            FlextInfraUtilitiesProjectManagedArtifacts._parsed_config_content(content),
+        )
+
+    @staticmethod
+    @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
+    def _parsed_config_content(content: bytes) -> t.JsonMapping:
+        """Memoize successful strict parsing of exact immutable source bytes.
+
+        Exceptions leave unchanged and are never cached. The admission owner
+        copies each successful value before exposing it to consumers.
+
+        Returns:
+            The validated document owned by this content memo.
+
+        """
+        parsed = FlextStrictYamlConfigSource.unique_key_load(
+            content.decode(c.DEFAULT_ENCODING),
+        )
+        return (
+            {} if parsed is None else t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed)
+        )
+
+    @staticmethod
+    def _repository_codegen_spec(
+        document: t.JsonMapping,
+    ) -> m.Infra.CodegenConfigSpec:
+        """Validate composed policy with its model's already-compiled schema.
+
+        Returns:
+            The validated full repository codegen policy.
+
+        """
+        codegen = u.Cli.json_walk_path(document, ("Infra", "codegen"))
+        return m.Infra.CodegenConfigSpec.model_validate(codegen)
+
+    @classmethod
+    def _repository_config_document(
+        cls,
+        sources: tuple[Path, ...],
+        snapshots: t.VariadicTuple[m.Cli.AtomicFileState],
+        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection],
+    ) -> t.JsonMapping:
+        """Merge ordered captured F.yaml bytes and explicitly projected layers.
+
+        Projections replace values within their source layer. Distinct layers
+        use the strict YAML source's recursive mapping and list composition.
+
+        Returns:
+            The composed document; schema consumers validate their owned section.
+
+        """
+        merged: t.JsonDict = {}
+        for path in sources:
+            captured = next((item for item in snapshots if item.path == path), None)
+            if captured is None or captured.content is None:
+                payload: t.JsonMapping = {}
+            else:
+                payload = cls._parse_codegen_config_document(captured.content)
+            projected = next(
+                (item for item in projections if item.path == path),
+                None,
+            )
+            values = (
+                u.config_merge(dict(payload), dict(projected.values))
+                if projected is not None
+                else dict(payload)
+            )
+            merged = FlextStrictYamlConfigSource.merge_values(merged, values)
+        return merged
+
+    @staticmethod
+    def compose_ruff_per_file_ignores(
+        tooling: m.Infra.ToolConfigDocument,
+        project: m.Infra.ProjectRuffConfig,
+    ) -> t.Infra.PerFileIgnores:
+        """Compose shared policy with this project's validated Ruff additions.
+
+        Returns:
+            Deterministic scoped rules retaining both owners' declarations.
+
+        """
+        shared = tooling.tools.ruff.lint.per_file_ignores
+        local = project.per_file_ignores
+        return {
+            pattern: tuple(
+                sorted({
+                    *shared.get(pattern, ()),
+                    *local.get(pattern, ()),
+                })
+            )
+            for pattern in sorted(shared.keys() | local.keys())
+        }
+
+    @classmethod
+    def _validated_config_roots(
+        cls,
+        project_dir: Path,
+    ) -> p.Result[
+        t.Quad[Path, t.VariadicTuple[int], t.VariadicTuple[int], t.VariadicTuple[Path]]
+    ]:
+        """Validate the physical project and config directories, list yaml paths.
+
+        An absent ``config/`` directory keeps the validated identity empty; the
+        caller renders that as a project with no config sources.
+
+        Returns:
+            The resulting
+                ``(config dir, project identity, config identity, yaml paths)``
+                quadruple.
+
+        """
+        quad = r[
+            t.Quad[
+                Path,
+                t.VariadicTuple[int],
+                t.VariadicTuple[int],
+                t.VariadicTuple[Path],
+            ]
+        ]
+        project_identity = cls._required_directory_identity(
+            project_dir,
+            purpose="project root",
+        )
+        if project_identity.failure:
+            return quad.from_failure(project_identity)
+        config_dir = project_dir / c.CONFIG_DIR_NAME
+        identity = cls._config_directory_identity(config_dir)
+        if identity.failure:
+            return quad.from_failure(identity)
+        if not identity.value:
+            return quad.ok((config_dir, project_identity.value, (), ()))
+        paths = cls._config_yaml_paths(config_dir, identity.value)
+        if paths.failure:
+            return quad.from_failure(paths)
+        return quad.ok((
+            config_dir,
+            project_identity.value,
+            identity.value,
+            paths.value,
+        ))
+
+    @classmethod
+    def _stable_snapshot_identity(
+        cls,
+        project_dir: Path,
+        config_dir: Path,
+        identity_value: t.VariadicTuple[int],
+        paths_value: t.VariadicTuple[Path],
+        project_identity_value: t.VariadicTuple[int],
+    ) -> p.Result[t.VariadicTuple[int]]:
+        """Re-read both identities and require the snapshot topology to hold.
+
+        Returns:
+            The resulting ``p.Result[t.VariadicTuple[int]]``.
+
+        """
+        stable_paths = cls._config_yaml_paths(config_dir, identity_value)
+        if stable_paths.failure:
+            return r[t.VariadicTuple[int]].from_failure(stable_paths)
+        if stable_paths.value != paths_value:
+            return r[t.VariadicTuple[int]].fail(
+                f"{c.Infra.CONFIG_SNAPSHOT_TOPOLOGY_RACE_MARKER}: {config_dir}",
+            )
+        stable_project = cls._required_directory_identity(
+            project_dir,
+            purpose="project root",
+        )
+        if stable_project.failure:
+            return r[t.VariadicTuple[int]].from_failure(stable_project)
+        if stable_project.value != project_identity_value:
+            return r[t.VariadicTuple[int]].fail(
+                f"{c.Infra.CONFIG_SNAPSHOT_ROOT_RACE_MARKER}: {project_dir}",
+            )
+        return stable_project
+
+    @classmethod
+    def _snapshot_sources(
+        cls,
+        project_dir: Path,
+        config_dir: Path,
+        identity_value: t.VariadicTuple[int],
+        paths_value: t.VariadicTuple[Path],
+        project_identity_value: t.VariadicTuple[int],
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        """Read every config source, then require the topology to stay stable.
+
+        Returns:
+            The resulting
+                ``p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]``.
+
+        """
+        sources: list[m.Cli.AtomicFileState] = []
+        for path in paths_value:
+            source = u.Cli.atomic_read_binary_file_state(path, required=True)
+            if source.failure:
+                return r[t.VariadicTuple[m.Cli.AtomicFileState]].from_failure(source)
+            sources.append(source.value)
+        stable_project = cls._stable_snapshot_identity(
+            project_dir,
+            config_dir,
+            identity_value,
+            paths_value,
+            project_identity_value,
+        )
+        if stable_project.failure:
+            return r[t.VariadicTuple[m.Cli.AtomicFileState]].from_failure(
+                stable_project,
+            )
+        return r[t.VariadicTuple[m.Cli.AtomicFileState]].ok(tuple(sources))
+
+    @staticmethod
+    def direct_config_source(project_dir: Path, path: Path) -> bool:
+        """Whether ``path`` is one direct ``config/*.yaml`` source of the project.
+
+        Returns:
+            True for a direct YAML child of the project's config directory.
+
+        """
+        return path.parent == project_dir / c.CONFIG_DIR_NAME and path.suffix == ".yaml"
 
     @classmethod
     def snapshot_config_sources(
@@ -37,45 +525,19 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         """
         if not project_dir.exists() and not project_dir.is_symlink():
             return r[tuple[m.Cli.AtomicFileState, ...]].ok(())
-        project_identity = cls._required_directory_identity(
-            project_dir,
-            purpose="project root",
-        )
-        if project_identity.failure:
-            return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(project_identity)
-        config_dir = project_dir / c.CONFIG_DIR_NAME
-        identity = cls._config_directory_identity(config_dir)
-        if identity.failure:
-            return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(identity)
-        if not identity.value:
+        roots = cls._validated_config_roots(project_dir)
+        if roots.failure:
+            return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(roots)
+        config_dir, project_identity, identity, paths = roots.value
+        if not identity:
             return r[tuple[m.Cli.AtomicFileState, ...]].ok(())
-        paths = cls._config_yaml_paths(config_dir, identity.value)
-        if paths.failure:
-            return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(paths)
-        sources: list[m.Cli.AtomicFileState] = []
-        for path in paths.value:
-            source = u.Cli.atomic_read_binary_file_state(path, required=True)
-            if source.failure:
-                return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(source)
-            sources.append(source.value)
-        stable_paths = cls._config_yaml_paths(config_dir, identity.value)
-        if stable_paths.failure:
-            return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(stable_paths)
-        if stable_paths.value != paths.value:
-            return r[tuple[m.Cli.AtomicFileState, ...]].fail(
-                f"{c.Infra.CONFIG_SNAPSHOT_TOPOLOGY_RACE_MARKER}: {config_dir}",
-            )
-        stable_project = cls._required_directory_identity(
+        return cls._snapshot_sources(
             project_dir,
-            purpose="project root",
+            config_dir,
+            identity,
+            paths,
+            project_identity,
         )
-        if stable_project.failure:
-            return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(stable_project)
-        if stable_project.value != project_identity.value:
-            return r[tuple[m.Cli.AtomicFileState, ...]].fail(
-                f"{c.Infra.CONFIG_SNAPSHOT_ROOT_RACE_MARKER}: {project_dir}",
-            )
-        return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(sources))
 
     @classmethod
     def _required_directory_identity(
@@ -132,6 +594,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 artifacts=m.Infra.ProjectManagedArtifactsConfig(
                     Mise=m.Infra.ProjectMiseConfig(tools={}),
                     Gitignore=m.Infra.ProjectGitignoreConfig(patterns=()),
+                    Ruff=m.Infra.ProjectRuffConfig(per_file_ignores={}),
                 ),
                 mise_tool_sources={},
             ),
@@ -145,7 +608,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
     ) -> p.Result[t.VariadicTuple[Path]]:
         try:
             paths = tuple(
-                sorted(path for path in config_dir.iterdir() if path.suffix == ".yaml"),
+                sorted(
+                    path
+                    for path in config_dir.iterdir()
+                    if cls.direct_config_source(config_dir.parent, path)
+                ),
             )
         except OSError as exc:
             return r[t.VariadicTuple[Path]].fail_op(
@@ -320,61 +787,160 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             return r[m.Infra.ProjectManagedArtifactsResolution].ok(
                 cls.empty_snapshot().resolution,
             )
+        fragments: list[tuple[Path, m.Infra.ProjectManagedArtifactsFragment]] = []
+        for source, content in sorted(payloads.items()):
+            parsed = cls._parse_project_fragment(source, content)
+            if parsed.failure:
+                return r[m.Infra.ProjectManagedArtifactsResolution].from_failure(parsed)
+            fragments.append((source, parsed.value))
+        return cls._compose_project_fragments(fragments)
+
+    @staticmethod
+    def _parse_project_fragment(
+        source: Path,
+        content: bytes,
+    ) -> p.Result[m.Infra.ProjectManagedArtifactsFragment]:
+        """Decode one project YAML source into its managed-artifact fragment.
+
+        Returns:
+            The fragment, empty when the source declares no ``ManagedArtifacts``.
+
+        """
+        try:
+            source_text = content.decode(c.DEFAULT_ENCODING)
+        except UnicodeDecodeError as exc:
+            return r[m.Infra.ProjectManagedArtifactsFragment].fail_op(
+                f"decode project config source {source}",
+                exc,
+            )
+        loaded = u.Cli.yaml_parse(source_text)
+        if loaded.failure:
+            return r[m.Infra.ProjectManagedArtifactsFragment].from_failure(loaded)
+        managed = loaded.value.get("ManagedArtifacts")
+        if not managed:
+            return r[m.Infra.ProjectManagedArtifactsFragment].ok(
+                m.Infra.ProjectManagedArtifactsFragment(),
+            )
+        project_config = m.Infra.ProjectConfigDocument.model_validate({
+            "ManagedArtifacts": managed,
+        })
+        return r[m.Infra.ProjectManagedArtifactsFragment].ok(
+            project_config.ManagedArtifacts,
+        )
+
+    @staticmethod
+    def _merge_unique_keys[V](
+        label: str,
+        source: Path,
+        items: t.MappingKV[str, V],
+        merged: MutableMapping[str, V],
+        owners: MutableMapping[str, Path],
+    ) -> str | None:
+        """Merge keyed entries of one source, refusing keys another source owns.
+
+        Returns:
+            The duplicate-key failure message, or ``None`` when every key merged.
+
+        """
+        for key, value in items.items():
+            previous = owners.get(key)
+            if previous is not None:
+                return f"duplicate project {label} {key!r}: {previous} and {source}"
+            merged[key] = value
+            owners[key] = source
+        return None
+
+    @staticmethod
+    def _merge_gitignore(
+        source: Path,
+        gitignore: m.Infra.ProjectGitignoreConfig | None,
+        patterns: list[str],
+        blocks: list[m.Infra.ProjectGitignorePreservedBlock],
+        markers: MutableMapping[str, Path],
+    ) -> str | None:
+        """Merge one source's gitignore patterns and uniquely owned blocks.
+
+        Returns:
+            The duplicate-marker failure message, or ``None`` when all merged.
+
+        """
+        if gitignore is None:
+            return None
+        patterns.extend(
+            pattern
+            for pattern in dict.fromkeys(gitignore.patterns)
+            if pattern not in patterns
+        )
+        for block in gitignore.preserved_blocks:
+            failure = FlextInfraUtilitiesProjectManagedArtifacts._merge_unique_keys(
+                "gitignore preserved marker",
+                source,
+                dict.fromkeys((block.begin, block.end), source),
+                markers,
+                markers,
+            )
+            if failure is not None:
+                return failure
+            blocks.append(block)
+        return None
+
+    @classmethod
+    def _compose_project_fragments(
+        cls,
+        fragments: t.SequenceOf[tuple[Path, m.Infra.ProjectManagedArtifactsFragment]],
+    ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
+        """Compose source fragments in path order into one resolution.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.ProjectManagedArtifactsResolution]``.
+
+        """
         mise_tools: MutableMapping[str, m.Infra.ProjectMiseTool] = {}
         mise_sources: MutableMapping[str, Path] = {}
+        ruff_ignores: MutableMapping[str, t.SequenceOf[t.Infra.RuffRule]] = {}
+        ruff_sources: MutableMapping[str, Path] = {}
         gitignore_patterns: list[str] = []
         gitignore_blocks: list[m.Infra.ProjectGitignorePreservedBlock] = []
-        gitignore_block_markers: dict[str, Path] = {}
-
-        for source, content in sorted(payloads.items()):
-            try:
-                source_text = content.decode(c.Cli.ENCODING_DEFAULT)
-            except UnicodeDecodeError as exc:
-                return r[m.Infra.ProjectManagedArtifactsResolution].fail_op(
-                    f"decode project config source {source}",
-                    exc,
+        gitignore_markers: MutableMapping[str, Path] = {}
+        for source, fragment in fragments:
+            failure = (
+                cls._merge_gitignore(
+                    source,
+                    fragment.Gitignore,
+                    gitignore_patterns,
+                    gitignore_blocks,
+                    gitignore_markers,
                 )
-            loaded = u.Cli.yaml_parse(source_text)
-            if loaded.failure:
-                return r[m.Infra.ProjectManagedArtifactsResolution].from_failure(loaded)
-            managed = loaded.value.get("ManagedArtifacts")
-            if not managed:
-                continue
-            project_config = m.Infra.ProjectConfigDocument.model_validate({
-                "ManagedArtifacts": managed,
-            })
-            artifacts = project_config.ManagedArtifacts
-            if artifacts.Gitignore is not None:
-                for pattern in artifacts.Gitignore.patterns:
-                    if pattern not in gitignore_patterns:
-                        gitignore_patterns.append(pattern)
-                for block in artifacts.Gitignore.preserved_blocks:
-                    for marker in (block.begin, block.end):
-                        previous = gitignore_block_markers.get(marker)
-                        if previous is not None:
-                            return r[m.Infra.ProjectManagedArtifactsResolution].fail(
-                                "duplicate project gitignore preserved marker "
-                                f"{marker!r}: {previous} and {source}",
-                            )
-                        gitignore_block_markers[marker] = source
-                    gitignore_blocks.append(block)
-            if artifacts.Mise is None:
-                continue
-            for selector, tool in artifacts.Mise.tools.items():
-                previous = mise_sources.get(selector)
-                if previous is not None:
-                    return r[m.Infra.ProjectManagedArtifactsResolution].fail(
-                        "duplicate project Mise selector "
-                        f"{selector!r}: {previous} and {source}",
-                    )
-
-                mise_tools[selector] = tool
-                mise_sources[selector] = source
+                or cls._merge_unique_keys(
+                    "Ruff per-file ignore",
+                    source,
+                    {
+                        pattern: tuple(rules)
+                        for pattern, rules in fragment.Ruff.per_file_ignores.items()
+                    }
+                    if fragment.Ruff
+                    else {},
+                    ruff_ignores,
+                    ruff_sources,
+                )
+                or cls._merge_unique_keys(
+                    "Mise selector",
+                    source,
+                    fragment.Mise.tools if fragment.Mise else {},
+                    mise_tools,
+                    mise_sources,
+                )
+            )
+            if failure is not None:
+                return r[m.Infra.ProjectManagedArtifactsResolution].fail(failure)
         artifacts = m.Infra.ProjectManagedArtifactsConfig(
             Mise=m.Infra.ProjectMiseConfig(tools=dict(sorted(mise_tools.items()))),
             Gitignore=m.Infra.ProjectGitignoreConfig(
                 patterns=tuple(gitignore_patterns),
                 preserved_blocks=tuple(gitignore_blocks),
+            ),
+            Ruff=m.Infra.ProjectRuffConfig(
+                per_file_ignores=dict(sorted(ruff_ignores.items())),
             ),
         )
         return r[m.Infra.ProjectManagedArtifactsResolution].ok(

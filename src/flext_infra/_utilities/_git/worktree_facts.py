@@ -18,9 +18,7 @@ from pathlib import Path
 from typing import Literal
 
 from flext_infra import c, m, t
-from flext_infra._utilities._git.worktree_measure import (
-    FlextInfraUtilitiesGitWorktreeMeasureMixin,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeMeasureMixin
 
 
 class FlextInfraUtilitiesGitWorktreeFactsMixin(
@@ -194,7 +192,7 @@ class FlextInfraUtilitiesGitWorktreeFactsMixin(
         pointer = entry / "gitdir"
         if not pointer.is_file():
             return None
-        text = pointer.read_text(encoding=c.Cli.ENCODING_DEFAULT).strip()
+        text = pointer.read_text(encoding=c.DEFAULT_ENCODING).strip()
         return Path(text) if text else None
 
     @staticmethod
@@ -205,7 +203,7 @@ class FlextInfraUtilitiesGitWorktreeFactsMixin(
             The resulting ``str``.
 
         """
-        head = (entry / "HEAD").read_text(encoding=c.Cli.ENCODING_DEFAULT).strip()
+        head = (entry / "HEAD").read_text(encoding=c.DEFAULT_ENCODING).strip()
         prefix = f"ref: {c.Infra.GIT_REFS_HEADS}"
         return head.removeprefix(prefix) if head.startswith(prefix) else ""
 

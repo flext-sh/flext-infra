@@ -6,13 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import dataclasses
 from pathlib import Path
 
-from flext_tests import tm
 from packaging.utils import canonicalize_name
 
 from flext_infra import config, u
-from tests import c, m, t
+from tests import c, m, t, tm
 
 # Fixture scenario data, declared here and nowhere else: flext-infra ships no
 # provider registry, so a test that needs a provider declares the one it means
@@ -20,25 +20,30 @@ from tests import c, m, t
 FIXTURE_PROVIDER_NAME = "flext-sh"
 FIXTURE_PROVIDER_ORGANIZATION = "flext-sh"
 FIXTURE_PROVIDER_BASE_URL = "https://github.com/flext-sh"
-FIXTURE_PROVIDER_BRANCH = "0.12.0-dev"
 WORKSPACE_MANIFEST_VERSION = 3
 
 
 class TestsFlextInfraUtilitiesProjectFixtureMixin:
     """Typed project identity, spec, and manifest-seed fixture helpers."""
 
+    @dataclasses.dataclass(frozen=True)
+    class ProjectInfoTraits:
+        """Optional project-info knobs grouped into one fixture contract."""
+
+        stack: str = "python"
+        has_tests: bool = False
+        has_src: bool = True
+        project_class: str = "FlextTestProject"
+        make_profile: c.Infra.MakeProfile = c.Infra.MakeProfile.STANDALONE
+        declared_subproject: bool = False
+
     @staticmethod
     def create_project_info(
         project_root: Path,
         *,
         name: str = "test-project",
-        stack: str = "python",
-        has_tests: bool = False,
-        has_src: bool = True,
-        project_class: str = "FlextTestProject",
         package_name: str = "test_project",
-        make_profile: c.Infra.MakeProfile = c.Infra.MakeProfile.STANDALONE,
-        declared_subproject: bool = False,
+        traits: ProjectInfoTraits | None = None,
     ) -> m.Infra.ProjectInfo:
         """Provide the typed test helper `create_project_info`.
 
@@ -46,16 +51,18 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             The resulting ``m.Infra.ProjectInfo``.
 
         """
+        fixture = TestsFlextInfraUtilitiesProjectFixtureMixin
+        resolved_traits = fixture.ProjectInfoTraits() if traits is None else traits
         return m.Infra.ProjectInfo(
             name=name,
             path=project_root,
-            stack=stack,
-            has_tests=has_tests,
-            has_src=has_src,
-            project_class=project_class,
+            stack=resolved_traits.stack,
+            has_tests=resolved_traits.has_tests,
+            has_src=resolved_traits.has_src,
+            project_class=resolved_traits.project_class,
             package_name=package_name,
-            make_profile=make_profile,
-            declared_subproject=declared_subproject,
+            make_profile=resolved_traits.make_profile,
+            declared_subproject=resolved_traits.declared_subproject,
         )
 
     @staticmethod
@@ -76,11 +83,15 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
     def provider_branch() -> str:
         """Return the declared fixture integration branch.
 
+        The fixture fleet integrates on the workspace's declared versioned
+        line: one SSOT (``codegen.branch_policy.integration_branch``) owns
+        the branch name that fixtures publish and resolution checks.
+
         Returns:
             The declared fixture integration branch.
 
         """
-        return FIXTURE_PROVIDER_BRANCH
+        return config.Infra.codegen.branch_policy.integration_branch
 
     @staticmethod
     def flext_source(distribution: str | None = None) -> str:
@@ -116,7 +127,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
         provider = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
         return m.Infra.WorkspaceIntegrationSpec(
             provider=provider.name,
-            branch=FIXTURE_PROVIDER_BRANCH,
+            branch=TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch(),
         )
 
     @staticmethod
@@ -237,9 +248,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             license=config.Infra.codegen.scaffold.project.supported_licenses[0],
             author_name="FLEXT Team",
             author_email="team@flext.dev",
-            upstream=(
-                config.Infra.codegen.scaffold.project.dependency_profiles[0].upstream
-            ),
+            upstream=(config.Infra.codegen.scaffold.project.config_bases[-1].module),
             homepage=homepage,
             documentation=homepage,
             repository_root_rel=".",
@@ -339,14 +348,15 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             The resulting ``Path``.
 
         """
-        provider = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
+        fixture = TestsFlextInfraUtilitiesProjectFixtureMixin
+        provider = fixture.provider()
         path = repository / c.Infra.GITMODULES
         path.write_text(
             "".join(
                 f'[submodule "{project}"]\n'
                 f"\tpath = {project}\n"
                 f"\turl = {provider.base_url.rstrip('/')}/{Path(project).name}.git\n"
-                f"\tbranch = {TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}\n"
+                f"\tbranch = {fixture.provider_branch()}\n"
                 for project in projects
             ),
             encoding="utf-8",
@@ -366,6 +376,17 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             workspace=name,
             database=name,
             issue_prefix=name,
+        )
+
+    @staticmethod
+    def write_member_package(project_dir: Path, name: str) -> None:
+        """Give one declared member its empty import package and topology input."""
+        package = project_dir / "src" / name.replace("-", "_")
+        package.mkdir(parents=True, exist_ok=True)
+        (package / "__init__.py").write_text("", encoding="utf-8")
+        TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
+            project_dir,
+            name,
         )
 
     @staticmethod

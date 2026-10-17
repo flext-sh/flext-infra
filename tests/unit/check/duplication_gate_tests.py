@@ -8,12 +8,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.gates.duplication import FlextInfraDuplicationGate
-from tests import m, u
+from tests import m, tm, u
 
 
 class TestsFlextInfraDuplicationGate:
@@ -69,9 +67,11 @@ def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
         u.Tests.WorktreeFixture.initialize_governed_project(
             root,
             "fixture-duplication",
-            workspace="duplication-workspace",
-            database="duplication-database",
-            issue_prefix="duplication-prefix",
+            beads=u.Tests.BeadsIdentity(
+                workspace="duplication-workspace",
+                database="duplication-database",
+                issue_prefix="duplication-prefix",
+            ),
         )
         package = root / "src" / "fixture_duplication"
         package.mkdir(parents=True, exist_ok=True)
@@ -94,6 +94,7 @@ def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
             manifest = root / "config" / "workspace.yaml"
             manifest.parent.mkdir(parents=True, exist_ok=True)
             provider = u.Tests.provider()
+            url = u.Tests.WorktreeFixture.governed_repository_url("fixture-duplication")
             manifest.write_text(
                 "version: 3\n"
                 "name: duplication-workspace\n"
@@ -101,7 +102,7 @@ def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
                 "  name: fixture-duplication\n"
                 "  distribution: fixture-duplication\n"
                 f"  provider: {provider.name}\n"
-                f"  url: {u.Tests.WorktreeFixture.governed_repository_url('fixture-duplication')}\n"
+                f"  url: {url}\n"
                 "  path: .\n"
                 "  role: standalone\n"
                 "  state: active\n"
@@ -110,8 +111,14 @@ def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
                 "  codegen: none\n"
                 "  package: true\n"
                 "  editable: true\n"
-                "  read_only: false\n"
-                "  duplication_trees: [charts]\n",
+                "  read_only: false\n",
+                encoding="utf-8",
+            )
+            (root / "config" / "codegen.yaml").write_text(
+                "Infra:\n"
+                "  codegen:\n"
+                "    repository:\n"
+                "      duplication_trees: [charts]\n",
                 encoding="utf-8",
             )
         return root
@@ -164,9 +171,11 @@ def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
             u.Tests.WorktreeFixture.initialize_governed_project(
                 member,
                 name,
-                workspace="sibling-workspace",
-                database="sibling_workspace",
-                issue_prefix="sibling",
+                beads=u.Tests.BeadsIdentity(
+                    workspace="sibling-workspace",
+                    database="sibling_workspace",
+                    issue_prefix="sibling",
+                ),
             )
             package = member / "src" / name.replace("-", "_")
             package.mkdir(parents=True, exist_ok=True)
@@ -196,3 +205,197 @@ def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
 
         tm.that(execution.result.passed, eq=True)
         tm.that(execution.issues, eq=())
+
+    _PYTHON_BEHAVIOR_BLOCK = """\
+def normalize_records(records: list[str]) -> tuple[str, ...]:
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for record in records:
+        candidate = record.strip().casefold()
+        if not candidate:
+            continue
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        normalized.append(candidate)
+    ordered = sorted(normalized)
+    return tuple(ordered)
+"""
+
+    @staticmethod
+    def _governed_with_python_clone(tmp_path: Path, *, same_file: bool) -> Path:
+        """One governed checkout whose only duplication is Python behavior.
+
+        Returns:
+            The resulting ``Path``.
+
+        """
+        root = tmp_path / "python-clone"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-python-clone",
+            beads=u.Tests.BeadsIdentity(
+                workspace="python-clone-workspace",
+                database="python_clone_database",
+                issue_prefix="python-clone",
+            ),
+        )
+        package = root / "src" / "fixture_python_clone"
+        package.mkdir(parents=True, exist_ok=True)
+        block = TestsFlextInfraDuplicationGate._PYTHON_BEHAVIOR_BLOCK
+        if same_file:
+            (package / "duplicated.py").write_text(
+                f"{block}\n\n{block}",
+                encoding="utf-8",
+            )
+        else:
+            (package / "first.py").write_text(block, encoding="utf-8")
+            (package / "second.py").write_text(block, encoding="utf-8")
+        return root
+
+    def test_overlapping_scope_never_reports_a_file_as_its_own_clone(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Overlapping declarations never produce double-scan clone findings.
+
+        A duplicated scope entry makes jscpd clone every file against itself,
+        which is the false double-scan artifact; the union must be unique.
+        """
+        root = self._governed_with_declared_trees(tmp_path, declare_trees=True)
+        pyproject = root / "pyproject.toml"
+        pyproject.write_text(
+            f"{pyproject.read_text(encoding='utf-8')}\n"
+            "[tool.flext.project.duplication]\n"
+            'scope = ["src", "charts", "charts"]\n',
+            encoding="utf-8",
+        )
+
+        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+
+        tm.that(execution.result.passed, eq=False)
+        tm.that(execution.issues, empty=False)
+        report = m.Infra.JscpdReport.model_validate_json(
+            (
+                root / c.Infra.JSCPD_REPORT_DIRNAME / c.Infra.JSCPD_REPORT_FILENAME
+            ).read_text(encoding="utf-8"),
+        )
+        tm.that(report.duplicates, empty=False)
+        for duplicate in report.duplicates:
+            tm.that(duplicate.first_file == duplicate.second_file, eq=False)
+        tm.that(
+            tuple(issue.file for issue in execution.issues),
+            has="charts/values.yaml",
+        )
+
+    def test_cross_file_clone_is_reported(self, tmp_path: Path) -> None:
+        """A clone between two distinct files is a blocking finding."""
+        root = self._governed_with_python_clone(tmp_path, same_file=False)
+
+        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+
+        tm.that(execution.result.passed, eq=False)
+        tm.that(len(execution.issues) >= 1, eq=True)
+
+    def test_intra_file_clone_is_reported(self, tmp_path: Path) -> None:
+        """A file that duplicates a block inside itself is a finding.
+
+        The identical file/span pair from the double-scan is dropped, but a
+        same-file clone with two distinct spans is genuine duplication and
+        must never be hidden.
+        """
+        root = self._governed_with_python_clone(tmp_path, same_file=True)
+
+        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+
+        tm.that(execution.result.passed, eq=False)
+        tm.that(
+            {issue.file for issue in execution.issues},
+            eq={"src/fixture_python_clone/duplicated.py"},
+        )
+
+    @staticmethod
+    def _governed_with_fleet_members(
+        tmp_path: Path, *, enable_fleet: bool | None
+    ) -> Path:
+        """One governed root plus two declared members sharing a Python block.
+
+        Returns:
+            The resulting ``Path``.
+
+        """
+        root = tmp_path / "fleet-duplication"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-fleet",
+            beads=u.Tests.BeadsIdentity(
+                workspace="fleet-workspace",
+                database="fleet_database",
+                issue_prefix="fleet",
+            ),
+        )
+        root_package = root / "src" / "fixture_fleet"
+        root_package.mkdir(parents=True, exist_ok=True)
+        (root_package / "unique.py").write_text(
+            "ROOT_ONLY_MARKER = 'canonical-root-only'\n",
+            encoding="utf-8",
+        )
+        block = TestsFlextInfraDuplicationGate._PYTHON_BEHAVIOR_BLOCK
+        for name in ("alpha", "beta"):
+            member = root / f"peer-{name}"
+            package = member / "src" / f"peer_{name}"
+            package.mkdir(parents=True, exist_ok=True)
+            (member / "pyproject.toml").write_text(
+                f'[project]\nname = "peer-{name}"\nversion = "0"\n',
+                encoding="utf-8",
+            )
+            (package / "duplicated.py").write_text(block, encoding="utf-8")
+        (root / ".gitmodules").write_text(
+            '[submodule "peer-alpha"]\n'
+            "\tpath = peer-alpha\n"
+            "\turl = https://example.invalid/peer-alpha\n"
+            '[submodule "peer-beta"]\n'
+            "\tpath = peer-beta\n"
+            "\turl = https://example.invalid/peer-beta\n",
+            encoding="utf-8",
+        )
+        if enable_fleet is not None:
+            pyproject = root / "pyproject.toml"
+            pyproject.write_text(
+                f"{pyproject.read_text(encoding='utf-8')}\n"
+                "[tool.flext.project.duplication]\n"
+                f"fleet = {str(enable_fleet).lower()}\n",
+                encoding="utf-8",
+            )
+        return root
+
+    def test_fleet_scope_reports_a_cross_project_clone(self, tmp_path: Path) -> None:
+        """Two declared members sharing a block are one cross-project finding."""
+        root = self._governed_with_fleet_members(tmp_path, enable_fleet=True)
+
+        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+
+        tm.that(execution.result.passed, eq=False)
+        text = " ".join(f"{issue.file} {issue.message}" for issue in execution.issues)
+        tm.that(text, has="peer-alpha")
+        tm.that(text, has="peer-beta")
+
+    def test_fleet_disabled_ignores_member_projects(self, tmp_path: Path) -> None:
+        """An explicit fleet=false keeps member projects out of scope."""
+        root = self._governed_with_fleet_members(tmp_path, enable_fleet=False)
+
+        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+
+        assert execution.result.passed, execution.issues
+
+    def test_default_fleet_scope_follows_typed_overrides(self, tmp_path: Path) -> None:
+        """An omitted fleet declaration follows the canonical typed default."""
+        root = self._governed_with_fleet_members(tmp_path, enable_fleet=None)
+        fleet = m.Infra.ProjectDuplicationOverrides().fleet
+
+        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+
+        tm.that(execution.result.passed, eq=not fleet)
+        text = " ".join(f"{issue.file} {issue.message}" for issue in execution.issues)
+        tm.that("peer-alpha" in text, eq=fleet)
+        tm.that("peer-beta" in text, eq=fleet)

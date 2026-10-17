@@ -8,13 +8,9 @@ from __future__ import annotations
 
 from http import HTTPStatus
 from http.client import HTTPConnection, HTTPException, HTTPSConnection
-from typing import TYPE_CHECKING
 from urllib.parse import urlencode, urlsplit
 
-from flext_core import p, r
-
-if TYPE_CHECKING:
-    from flext_infra import t
+from flext_infra import p, r, t
 
 
 class FlextInfraUtilitiesNetwork:

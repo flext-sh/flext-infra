@@ -1,0 +1,24 @@
+{% macro matrix_host_steps(explicit_bash) %}
+    steps:
+      - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
+        with:
+          submodules: {{ checkout_submodules }}
+          # No step needs authenticated git after checkout; persisting the
+          # token into .git/config would expose it to every later command.
+          persist-credentials: false
+{%- include "_fragments/mise_install.j2" %}
+      - name: Bootstrap
+{% if explicit_bash %}        shell: bash
+{% endif %}        run: {{ make.ci.variable }}={{ make.ci.value }} make setup
+      - name: Generate twice
+{% if explicit_bash %}        shell: bash
+{% endif %}        run: |
+          {{ make.ci.variable }}={{ make.ci.value }} make gen
+          {{ make.ci.variable }}={{ make.ci.value }} make gen
+      - name: Native gates
+{% if explicit_bash %}        shell: bash
+{% endif %}        run: |
+          {{ make.ci.variable }}={{ make.ci.value }} make check
+          {{ make.ci.variable }}={{ make.ci.value }} make test
+          {{ make.ci.variable }}={{ make.ci.value }} make build
+{%- endmacro %}

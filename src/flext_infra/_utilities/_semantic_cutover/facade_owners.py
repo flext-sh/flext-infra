@@ -2,7 +2,7 @@
 
 The owner of a facade letter is the module that declares it in its own
 ``__all__`` next to the class it names (``__all__ = ["FlextCliModels", "m"]``).
-Resolution follows the last module-scope binding of each name through imports
+Resolution follows the last runtime module-scope binding of each name through imports
 and plain or annotated aliases, reading editable and installed sources without
 importing them. No class name is ever inferred from a package name.
 
@@ -16,14 +16,22 @@ import ast
 from collections.abc import MutableMapping
 from functools import lru_cache
 from importlib.util import resolve_name
+from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_infra import c
-from flext_infra._utilities.private_import_facades import (
+from flext_infra._utilities import (
     FlextInfraUtilitiesPrivateImportFacades,
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
 )
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities._rope_source_bases_aliases import (
+    FlextInfraUtilitiesRopeSourceBasesAliases,
+)
+from flext_infra._utilities._rope_source_bases_inventory_collector import (
+    FlextInfraUtilitiesRopeSourceBindingCollector,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -35,7 +43,12 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
     """Resolve facade letters to the class their declaring module names."""
 
     @classmethod
-    def facade_classes(cls, package: str) -> t.StrMapping:
+    def facade_classes(
+        cls,
+        package: str,
+        *,
+        source_root: Path | None = None,
+    ) -> t.StrMapping:
         """Map every letter ``package`` publishes to its declared facade class.
 
         Returns:
@@ -45,8 +58,19 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             ValueError: If facade package is not importable for derivation.
 
         """
+        sources = (
+            {
+                path: path.read_text(encoding=c.DEFAULT_ENCODING)
+                for root in FlextInfraUtilitiesRopeCore.import_project_roots(
+                    source_root
+                )
+                for path in (root / c.Infra.DEFAULT_SRC_DIR / package).rglob("*.py")
+            }
+            if source_root is not None
+            else {}
+        )
         modules = FlextInfraUtilitiesPrivateImportFacades.source_modules(
-            {},
+            sources,
             (f"from {package} import *",),
         )
         indexed = modules.get(package)
@@ -78,7 +102,22 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             ValueError: If ``owner is None``.
 
         """
-        owner = cls._facade_letter_class(modules, module, letter)
+        resolved = cls._facade_declared_class(modules, module, letter, frozenset())
+        if resolved is not None and resolved[1] == letter:
+            owner_module, owner_name = resolved
+            exported_here = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                modules[module][0],
+            )
+            exported_owner = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                modules[owner_module][0],
+            )
+            owner = (
+                owner_name
+                if owner_name in exported_here and owner_name in exported_owner
+                else None
+            )
+        else:
+            owner = cls._facade_letter_class(modules, module, letter)
         if owner is None:
             msg = (
                 f"{module}.{letter} is not declared with its facade class in the "
@@ -120,6 +159,107 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             raise ValueError(msg)
         return owner
 
+    @staticmethod
+    def _assigns_name(
+        node: ast.Assign | ast.AnnAssign,
+        name: str,
+    ) -> bool:
+        """Report whether one assignment statement binds ``name``.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
+        return any(
+            isinstance(bound, ast.Name) and bound.id == name
+            for bound in (
+                node.targets if isinstance(node, ast.Assign) else (node.target,)
+            )
+        )
+
+    @staticmethod
+    def _assigned_value_binding(
+        node: ast.Assign | ast.AnnAssign,
+        module: str,
+    ) -> t.Pair[str, str] | None:
+        """Return the ``module.name`` target of a plain-name value, else ``None``.
+
+        Returns:
+            The resulting ``t.Pair[str, str] | None``.
+
+        """
+        return (module, node.value.id) if isinstance(node.value, ast.Name) else None
+
+    @staticmethod
+    def _imported_binding(
+        node: ast.ImportFrom,
+        name: str,
+        package: str,
+    ) -> t.Pair[str, str] | None:
+        """Resolve the import that binds ``name`` relative to ``package``.
+
+        Returns:
+            The resulting ``t.Pair[str, str] | None``.
+
+        """
+        for imported in node.names:
+            if (imported.asname or imported.name) == name:
+                source_module = (
+                    resolve_name(
+                        "." * node.level + (node.module or ""),
+                        package,
+                    )
+                    if node.level
+                    else node.module or ""
+                )
+                return source_module, imported.name
+        return None
+
+    @classmethod
+    def _facade_binding_state(
+        cls,
+        source: str,
+        module: str,
+        name: str,
+        package: str,
+    ) -> t.Pair[t.Pair[str, str] | None, bool]:
+        """Follow module-scope execution order to the last binding of ``name``.
+
+        Returns:
+            The resulting ``(target, declared)`` binding state after the body.
+
+        """
+        target: t.Pair[str, str] | None = None
+        declared = False
+        statements = cls._facade_module_statements(source, module)
+        for index, node in enumerate(statements):
+            if isinstance(node, ast.AnnAssign) and node.value is None:
+                # An annotation without a value does not rebind an existing name.
+                continue
+            if isinstance(node, ast.ClassDef) and node.name == name:
+                target, declared = None, True
+            elif isinstance(node, ast.Assign | ast.AnnAssign) and cls._assigns_name(
+                node,
+                name,
+            ):
+                target = cls._assigned_value_binding(node, module)
+                if isinstance(node.value, ast.Name):
+                    previous, previous_declared = cls._facade_binding_state(
+                        ast.unparse(
+                            ast.Module(body=list(statements[:index]), type_ignores=[]),
+                        ),
+                        module,
+                        node.value.id,
+                        package,
+                    )
+                    target = (module, node.value.id) if previous_declared else previous
+                declared = False
+            elif isinstance(node, ast.ImportFrom):
+                binding = cls._imported_binding(node, name, package)
+                if binding is not None:
+                    target, declared = binding, False
+        return target, declared
+
     @classmethod
     def _facade_declared_class(
         cls,
@@ -146,47 +286,15 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             return None
         source, is_package = indexed
         package = module if is_package else module.rpartition(".")[0]
-        target: t.Pair[str, str] | None = None
-        declared = False
-        # The generated lazy publication has one owner: the cached index.
-        lazy = cls._facade_lazy_bindings(source, module)
-        for node in cls._facade_module_statements(source, module):
-            if isinstance(node, ast.AnnAssign) and node.value is None:
-                # An annotation without a value does not rebind an existing name.
-                continue
-            if isinstance(node, ast.ClassDef) and node.name == name:
-                target, declared = None, True
-            elif isinstance(node, ast.Assign | ast.AnnAssign) and any(
-                isinstance(bound, ast.Name) and bound.id == name
-                for bound in (
-                    node.targets if isinstance(node, ast.Assign) else (node.target,)
-                )
-            ):
-                target = (
-                    (module, node.value.id)
-                    if isinstance(node.value, ast.Name)
-                    else None
-                )
-                declared = False
-            elif isinstance(node, ast.ImportFrom):
-                for imported in node.names:
-                    if (imported.asname or imported.name) == name:
-                        source_module = (
-                            resolve_name(
-                                "." * node.level + (node.module or ""),
-                                package,
-                            )
-                            if node.level
-                            else node.module or ""
-                        )
-                        target, declared = (source_module, imported.name), False
+        target, declared = cls._facade_binding_state(source, module, name, package)
         if declared:
             return module, name
+        # The generated lazy publication has one reader: the rope aliases owner.
+        lazy = cls._facade_lazy_bindings(source, module, is_package=is_package)
         if target is None and name in lazy:
-            # A lazy entry binds the name through its submodule; resolution
-            # continues where the submodule defines it.
-            sub = lazy[name]
-            target = (f"{module}{sub}" if sub.startswith(".") else sub, name)
+            # A lazy entry binds the name through its provider module;
+            # resolution continues where that module defines it.
+            target = (lazy[name], name)
         # A submodule import binds a module, never a facade class.
         if target is None or ".".join(target) in modules:
             return None
@@ -203,7 +311,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         Every facade letter re-resolves its bindings through the same modules,
         and each conform plan derives the facades twice (plan and fixed-point
         replan), so the key is the exact source text: an edited module is a new
-        key, never a stale tree.
+        key, never a stale tree. TYPE_CHECKING declarations belong to the static
+        source inventory, not this runtime publication view.
 
         Returns:
             The resulting ``t.VariadicTuple[ast.stmt]``.
@@ -217,62 +326,44 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
 
     @staticmethod
     @lru_cache(maxsize=256)
-    def _facade_lazy_bindings(source: str, module: str) -> t.StrMapping:
+    def _facade_lazy_bindings(
+        source: str,
+        module: str,
+        *,
+        is_package: bool,
+    ) -> t.StrMapping:
         """Index the generated lazy publication of one module source once.
 
-        The lazy publication IS a binding statement: every name it lists
-        resolves through its submodule entry, exactly as install_lazy_exports
-        resolves it at runtime. Walking that mapping once per name made every
-        facade derivation quadratic in the package's export count; the key is
-        the exact source text, so an edited module is a new key.
+        The lazy publication IS a binding statement: every name the
+        ``install_lazy_exports`` map lists resolves through its provider
+        module, exactly as it resolves at runtime. The map has one reader
+        (``FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases``),
+        which understands the generated shape; the key is the exact source
+        text, so an edited module is a new key.
 
         Returns:
-            The resulting ``t.StrMapping``.
+            Published name to absolute provider module.
 
         """
-        bindings: MutableMapping[str, str] = {}
-        for (
-            node
-        ) in FlextInfraUtilitiesSemanticCutoverFacadeOwners._facade_module_statements(
-            source,
-            module,
-        ):
-            if not (
-                isinstance(node, ast.Assign | ast.AnnAssign)
-                and node.value is not None
-                and any(
-                    isinstance(bound, ast.Name)
-                    and bound.id == c.Infra.LAZY_IMPORTS_BINDING
-                    for bound in (
-                        node.targets if isinstance(node, ast.Assign) else (node.target,)
-                    )
-                )
-            ):
-                continue
-            for dict_node in (
-                d for d in ast.walk(node.value) if isinstance(d, ast.Dict)
-            ):
-                for key, value in zip(dict_node.keys, dict_node.values, strict=False):
-                    if not (
-                        isinstance(key, ast.Constant)
-                        and isinstance(key.value, str)
-                        and isinstance(value, ast.Tuple | ast.List)
-                    ):
-                        continue
-                    for element in value.elts:
-                        if isinstance(element, ast.Constant) and isinstance(
-                            element.value,
-                            str,
-                        ):
-                            bindings.setdefault(element.value, key.value)
-        return MappingProxyType(bindings)
+        path = Path(
+            c.Infra.INIT_PY if is_package else f"{module.rpartition('.')[2]}.py",
+        )
+        return MappingProxyType(
+            FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
+                module,
+                path,
+                source,
+            ),
+        )
 
     @classmethod
     def _facade_ordered_statements(
         cls,
         body: t.SequenceOf[ast.stmt],
     ) -> Iterator[ast.stmt]:
-        """Yield module-scope bindings in execution order, entering conditionals.
+        """Yield runtime bindings, excluding static-only TYPE_CHECKING bodies.
+
+        Other conditions retain the existing conservative branch traversal.
 
         Yields:
             Each ``ast.stmt``.
@@ -280,7 +371,13 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         """
         for node in body:
             if isinstance(node, ast.If):
-                yield from cls._facade_ordered_statements(node.body)
+                is_static_only = (
+                    FlextInfraUtilitiesRopeSourceBindingCollector.type_checking_test(
+                        node.test,
+                    )
+                )
+                if not is_static_only:
+                    yield from cls._facade_ordered_statements(node.body)
                 yield from cls._facade_ordered_statements(node.orelse)
             else:
                 yield node

@@ -6,19 +6,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
+import sys
 from pathlib import Path
 
-from flext_tests import tm
-
-from flext_core import r
-from flext_infra import config, u
+from flext_infra import config, r, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from tests import c, m, p, t
+from tests import c, m, p, t, tm
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
+from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
 
 
 class TestsFlextInfraUtilitiesCodegenMixin:
@@ -39,8 +39,8 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         """Render the fleet Ruff policy as a pyproject fragment.
 
         Reads the same typed SSOT production reads (P0): fixture
-        workspaces carry the real policy — select, preview and the
-        per-file-ignores map — never a hand-rolled fragment.
+        workspaces carry the real policy — select, the global ignore table,
+        preview and the per-file-ignores map — never a hand-rolled fragment.
 
         Returns:
             The resulting ``str``.
@@ -48,6 +48,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         """
         ruff_cfg = config.Infra.tooling.tools.ruff
         select = ", ".join(f'"{rule}"' for rule in sorted(ruff_cfg.lint.select))
+        ignore = ", ".join(f'"{rule}"' for rule in sorted(ruff_cfg.lint.ignore))
         quoted_rules = {
             pattern: ", ".join(f'"{rule}"' for rule in rules)
             for pattern, rules in sorted(ruff_cfg.lint.per_file_ignores.items())
@@ -64,11 +65,12 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         return (
             f"[tool.ruff]\nsrc = [{src}]\n"
             f"preview = {str(ruff_cfg.preview).lower()}\n\n"
-            f"[tool.ruff.lint]\nselect = [{select}]\n\n"
+            f"[tool.ruff.lint]\nselect = [{select}]\nignore = [{ignore}]\n\n"
             "[tool.ruff.lint.isort]\n"
             f"combine-as-imports = {str(isort.combine_as_imports).lower()}\n"
             f"force-single-line = {str(isort.force_single_line).lower()}\n"
-            f"split-on-trailing-comma = {str(isort.split_on_trailing_comma).lower()}\n\n"
+            f"split-on-trailing-comma = "
+            f"{str(isort.split_on_trailing_comma).lower()}\n\n"
             f"[tool.ruff.lint.per-file-ignores]\n{rows}\n"
         )
 
@@ -97,6 +99,8 @@ class TestsFlextInfraUtilitiesCodegenMixin:
     def conform_plan(
         root: Path,
         workspace: m.Infra.WorkspaceSpec,
+        *,
+        what: c.Infra.CodegenConformSurface = c.Infra.CodegenConformSurface.ALL,
     ) -> m.Infra.CodegenPlan:
         """Plan one fixture workspace through the public conform boundary.
 
@@ -104,7 +108,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
             The resulting ``m.Infra.CodegenPlan``.
 
         """
-        request = TestsFlextInfraUtilitiesCodegenMixin.conform_request(root)
+        request = TestsFlextInfraUtilitiesCodegenMixin.conform_request(root, what=what)
         return tm.ok(
             FlextInfraCodegenConform(
                 repository_root=root,
@@ -114,16 +118,37 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         )
 
     @staticmethod
+    def conform_makefile_text(root: Path, workspace: m.Infra.WorkspaceSpec) -> str:
+        """Render the root Makefile conform plans for one fixture workspace.
+
+        Returns:
+            The resulting ``str``.
+
+        """
+        plan = TestsFlextInfraUtilitiesCodegenMixin.conform_plan(
+            root,
+            workspace,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+        )
+        makefile = next(
+            file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
+        )
+        return TestsFlextInfraUtilitiesTomlMixin.codegen_file_text(makefile)
+
+    @staticmethod
     def scaffold_plan(
         root: Path,
         *,
         members: t.StrSequence = (),
+        what: c.Infra.CodegenConformSurface = c.Infra.CodegenConformSurface.ALL,
     ) -> m.Infra.CodegenPlan:
-        """Plan every artifact conform renders for a fresh repository scaffold.
+        """Plan the artifacts conform renders for a fresh repository scaffold.
 
         Without members the fixture repository is standalone; each member
         makes it a workspace composing that project, so generated surfaces
         are observed exactly as the public codegen owner renders them.
+        ``what`` selects the conform surface, so a scenario about one surface
+        never pays for planning every template.
 
         Returns:
             The resulting ``m.Infra.CodegenPlan``.
@@ -133,6 +158,24 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         # A governed repository carries its committed Mise lock; generation
         # formats through the release it pins and never resolves a selector.
         TestsFlextInfraUtilitiesToolingFixtureMixin.copy_tracked_mise_seeds(root)
+        for name in members:
+            manifest = root / name / c.PYPROJECT_FILENAME
+            if not manifest.exists():
+                manifest.parent.mkdir(parents=True, exist_ok=True)
+                tm.ok(
+                    u.Cli.toml_write_mapping(
+                        manifest,
+                        {
+                            "project": {
+                                "name": name,
+                                "version": tm.ok(
+                                    u.Infra.current_workspace_version(Path.cwd()),
+                                ),
+                                "dependencies": [],
+                            },
+                        },
+                    ),
+                )
         repository = fixture.repository_ref(
             "fixture-project",
             role=(
@@ -150,6 +193,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                     fixture.repository_ref(name, path=Path(name)) for name in members
                 ),
             ),
+            what=what,
         )
 
     @staticmethod
@@ -158,6 +202,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         destination: str,
         *,
         members: t.StrSequence = (),
+        what: c.Infra.CodegenConformSurface = c.Infra.CodegenConformSurface.ALL,
     ) -> str:
         """Return one rendered scaffold artifact, failing when it is not planned.
 
@@ -170,6 +215,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                 TestsFlextInfraUtilitiesCodegenMixin.scaffold_plan(
                     root,
                     members=members,
+                    what=what,
                 ),
                 destination,
             ),
@@ -197,7 +243,8 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         for family in ("u", "p"):
             facade = (
                 package_dir
-                / f"{TestsFlextInfraUtilitiesCodegenMixin.family_public_module(family)}.py"
+                / f"{TestsFlextInfraUtilitiesCodegenMixin.family_public_module(family)}"
+                ".py"
             )
             if (
                 package_dir / u.Infra.facade_families()[family].directory
@@ -226,7 +273,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         return (
             None
             if match is None or match.desired_content is None
-            else tm.not_none(match.desired_content).decode(c.Cli.ENCODING_DEFAULT)
+            else tm.not_none(match.desired_content).decode(c.DEFAULT_ENCODING)
         )
 
     @staticmethod
@@ -236,13 +283,14 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         project_name: str = "flext-test-project",
         package_name: str = "flext_test_project",
     ) -> t.Pair[Path, Path]:
-        """Provide the typed test helper `create_lazy_init_workspace`.
+        """Create a real workspace with an empty, generation-eligible initializer.
 
         Returns:
             The resulting ``t.Pair[Path, Path]``.
 
         """
         repository_root = tmp_path / project_name
+        project = TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(project_name)
         package_root = repository_root / c.Infra.DEFAULT_SRC_DIR / package_name
         package_root.mkdir(parents=True)
         (repository_root / "Makefile").write_text(
@@ -252,7 +300,9 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         (repository_root / c.PYPROJECT_FILENAME).write_text(
             (
                 f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n'
-                'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n\n'
+                f'license = "{project.license}"\n'
+                f'authors = [{{name = "{project.author_name}", '
+                f'email = "{project.author_email}"}}]\n\n'
                 + TestsFlextInfraUtilitiesCodegenMixin.ruff_per_file_ignores_toml()
             ),
             encoding=c.Infra.ENCODING_DEFAULT,
@@ -269,7 +319,12 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         # checkout.  The shared workspace fixture therefore owns a real,
         # repository-local identity instead of letting individual tests depend
         # on whichever checkout happens to contain ``tmp_path``.
-        TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(repository_root)
+        TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(
+            repository_root,
+            TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
+                project_name
+            ).url,
+        )
         return (repository_root, package_root)
 
     @staticmethod
@@ -284,16 +339,18 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         """Write a namespace module fixture for lazy-export tests."""
         export_list = f'"{class_name}", "{alias}"'
         extra_classes = "".join(
-            f"\nclass {extra_class_name}:\n    pass\n"
+            f'\nclass {extra_class_name}:\n    """Additional namespace '
+            f'declaration."""\n'
             for extra_class_name in extra_class_names
         )
+        notice = u.Infra.copyright_notice(module_path.parent, module=module_path)
         module_path.write_text(
             (
-                f'"""{docstring}"""\n\n'
+                f'"""{docstring}\n\n{notice}\n"""\n\n'
                 "from __future__ import annotations\n\n"
                 f"__all__: list[str] = [{export_list}]\n\n"
                 f"class {class_name}:\n"
-                "    pass\n\n"
+                '    """Public namespace declaration."""\n\n'
                 f"{alias} = {class_name}\n"
                 f"{extra_classes}"
             ),
@@ -307,6 +364,34 @@ class TestsFlextInfraUtilitiesCodegenMixin:
             ('__version__ = "0.1.0"\n__version_info__ = (0, 1, 0)\n'),
             encoding=c.Infra.ENCODING_DEFAULT,
         )
+
+    @staticmethod
+    def run_lazy_init_probe(
+        probe: str,
+        *,
+        python_paths: t.StrSequence,
+        cwd: Path | None = None,
+        arguments: t.StrSequence = (),
+    ) -> t.StrSequence:
+        """Run ``probe`` in a fresh interpreter importing generated packages.
+
+        The probe observes generated initializers through Python's real import
+        machinery, isolated from the test process's already imported modules.
+
+        Returns:
+            The probe's standard output lines.
+
+        """
+        probe_env = dict(os.environ)
+        probe_env["PYTHONPATH"] = os.pathsep.join(python_paths)
+        result = tm.ok(
+            u.Cli.run(
+                [sys.executable, "-c", probe, *arguments],
+                options=m.Cli.ProcessOptions(env=probe_env),
+                cwd=cwd,
+            ),
+        )
+        return result.stdout.splitlines()
 
     @staticmethod
     def run_lazy_init(repository_root: Path, *, check_only: bool = False) -> int:
@@ -400,7 +485,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                 )
             if result.failure:
                 return r[bool].from_failure(result)
-        return r[bool].ok(True)
+        return r[bool].ok(value=True)
 
     @staticmethod
     def create_lazy_init_service(repository_root: Path) -> FlextInfraCodegenLazyInit:

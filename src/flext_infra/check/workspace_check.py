@@ -7,17 +7,19 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shlex
+import sys
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_core import r
-from flext_infra import c, config, m, p, t, u
-from flext_infra.base import FlextInfraServiceBase
-from flext_infra.check._workspace_check_reports import (
+from flext_infra import FlextInfraServiceBase, c, config, m, p, r, t, u
+from flext_infra.check import (
+    FlextInfraGateRegistry,
+    FlextInfraWorkspaceCheckGatesMixin,
     FlextInfraWorkspaceCheckReportsMixin,
 )
-from flext_infra.check.gate_registry import FlextInfraGateRegistry
-from flext_infra.check.workspace_check_gates import FlextInfraWorkspaceCheckGatesMixin
+from flext_infra.workspace.runtime_dependencies import (
+    FlextInfraRuntimeDependencyCollector,
+)
 
 
 class FlextInfraWorkspaceChecker(
@@ -27,9 +29,9 @@ class FlextInfraWorkspaceChecker(
 ):
     """Run workspace quality gates and generate reports."""
 
-    _repository_root: Path
-    _registry: FlextInfraGateRegistry
-    _default_reports_dir: Path
+    _repository_root: Path = u.PrivateAttr()
+    _registry: FlextInfraGateRegistry = u.PrivateAttr()
+    _default_reports_dir: Path = u.PrivateAttr()
     model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
         validate_by_name=True,
         validate_by_alias=True,
@@ -98,13 +100,22 @@ class FlextInfraWorkspaceChecker(
             The resulting ``p.Result[bool]``.
 
         """
-        project_targets_result = self._resolve_project_targets(params)
+        selected_files_result = self._resolve_selected_files(params)
+        if selected_files_result.failure:
+            return r[bool].from_failure(selected_files_result)
+        selected_files = selected_files_result.value
+        project_targets_result = self._resolve_project_targets(params, selected_files)
         if project_targets_result.failure:
             return r[bool].from_failure(project_targets_result)
         project_targets = project_targets_result.value
         # An omitted gate selection is the typed SSOT default: every default
         # check gate (the set an unset CI token runs), never an empty run.
         gates = list(params.gates or config.Infra.codegen.make.check_gates_default)
+        if selected_files:
+            u.Cli.info(
+                f"file-gate: source={selected_files[0]} gates={gates} "
+                "selection=CLI:check run --gates"
+            )
         gate_ctx = m.Infra.GateContext(
             repository_root=params.repository_root,
             reports_dir=params.reports_dir_path,
@@ -113,6 +124,11 @@ class FlextInfraWorkspaceChecker(
             fail_fast=params.fail_fast,
             ruff_args=tuple(self.parse_tool_args(params.ruff_args)),
             pyright_args=tuple(self.parse_tool_args(params.pyright_args)),
+            selected_files=selected_files,
+            runtime_dependency_collector=FlextInfraRuntimeDependencyCollector(
+                python=Path(sys.executable),
+                development_only=(),
+            ),
         )
         run_result = self.run_projects(
             projects=project_targets,
@@ -123,14 +139,94 @@ class FlextInfraWorkspaceChecker(
         )
         if run_result.failure:
             return r[bool].from_failure(run_result)
-        if len(run_result.value) != len(project_targets):
+        return self._summarize_project_results(run_result.value, project_targets)
+
+    @classmethod
+    def _resolve_selected_files(
+        cls,
+        params: m.Infra.RunCommand,
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Resolve the optional ``--file`` selection into one repository file.
+
+        Returns:
+            The resulting ``p.Result[t.VariadicTuple[Path]]``.
+
+        """
+        if params.file is None:
+            return r[t.VariadicTuple[Path]].ok(())
+        if not params.gates:
+            return r[t.VariadicTuple[Path]].fail(
+                "--file requires explicit canonical --gates selection"
+            )
+        requested = u.Infra.normalize_sequence_values(params.projects)
+        if (
+            params.apply
+            or params.ruff_args is not None
+            or params.pyright_args is not None
+            or (requested and tuple(requested) != (".",))
+        ):
+            return r[t.VariadicTuple[Path]].fail(
+                "file-gate requires read-only local selection without tool overrides",
+            )
+        return cls._resolve_repository_file(params.repository_root, params.file)
+
+    @staticmethod
+    def _resolve_repository_file(
+        repository_root: Path,
+        raw: str,
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Resolve a literal repository-relative source file without symlinks.
+
+        Returns:
+            The resulting ``p.Result[t.VariadicTuple[Path]]``.
+
+        """
+        relative = Path(raw)
+        if (
+            not raw
+            or raw != raw.strip()
+            or relative.is_absolute()
+            or any(part in {"", ".", ".."} for part in raw.split("/"))
+        ):
+            return r[t.VariadicTuple[Path]].fail(
+                f"invalid literal repository-relative FILE: {raw!r}"
+            )
+        root = repository_root.resolve(strict=True)
+        selected = root / relative
+        current = root
+        for part in relative.parts:
+            current /= part
+            if current.is_symlink():
+                return r[t.VariadicTuple[Path]].fail(
+                    f"FILE has a symlink component: {current}"
+                )
+        if (
+            not selected.is_file()
+            or not selected.resolve(strict=True).is_relative_to(root)
+            or selected.suffix not in {".py", ".pyi"}
+        ):
+            return r[t.VariadicTuple[Path]].fail(
+                f"FILE is not an existing repository file: {selected}"
+            )
+        return r[t.VariadicTuple[Path]].ok((selected,))
+
+    @staticmethod
+    def _summarize_project_results(
+        results: t.SequenceOf[m.Infra.ProjectResult],
+        project_targets: t.SequenceOf[m.Infra.CheckProjectTarget],
+    ) -> p.Result[bool]:
+        """Fail unless every requested project executed and passed.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        if len(results) != len(project_targets):
             return r[bool].fail(
                 "quality checks did not execute every requested project: "
-                f"{len(run_result.value)}/{len(project_targets)}",
+                f"{len(results)}/{len(project_targets)}",
             )
-        failed_projects = [
-            project for project in run_result.value if not project.passed
-        ]
+        failed_projects = [project for project in results if not project.passed]
         if failed_projects:
             failed_names = ", ".join(project.project for project in failed_projects)
             total_findings = sum(
@@ -147,18 +243,38 @@ class FlextInfraWorkspaceChecker(
     @staticmethod
     def _resolve_project_targets(
         params: m.Infra.RunCommand,
+        selected_files: t.VariadicTuple[Path],
     ) -> p.Result[t.SequenceOf[m.Infra.CheckProjectTarget]]:
-        """Resolve the selected projects; an omitted selection is this repository.
+        """Resolve the selected projects from the declared workspace topology.
 
-        Every repository evaluates only itself: an
-        omitted ``--projects`` never widens to the declared members, and a root
-        that is not a project fails loud through the topology owner.
+        An omitted selection covers the root and its first-party members.
+        Standalone repositories resolve their own root through the same owner.
+        A literal file selects only its deepest declared project owner.
 
         Returns:
             The resulting ``p.Result[t.SequenceOf[m.Infra.CheckProjectTarget]]``.
 
         """
-        requested = params.project_names
+        if selected_files:
+            discovered = u.Infra.resolve_projects(params.repository_root, ())
+            if discovered.failure:
+                return r[t.SequenceOf[m.Infra.CheckProjectTarget]].from_failure(
+                    discovered,
+                )
+            owners = [
+                project
+                for project in discovered.value
+                if selected_files[0].is_relative_to(project.path)
+            ]
+            if not owners:
+                return r[t.SequenceOf[m.Infra.CheckProjectTarget]].fail(
+                    f"FILE has no declared project owner: {selected_files[0]}",
+                )
+            owner = max(owners, key=lambda project: len(project.path.parts))
+            return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok((
+                m.Infra.CheckProjectTarget(name=owner.name, path=owner.path),
+            ))
+        requested = u.Infra.normalize_sequence_values(params.projects)
         if requested:
             return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok(
                 tuple(
@@ -169,15 +285,12 @@ class FlextInfraWorkspaceChecker(
                     for project_name in requested
                 ),
             )
-        resolved = u.Infra.resolve_projects(params.repository_root, (".",))
-        if resolved.failure:
-            return r[t.SequenceOf[m.Infra.CheckProjectTarget]].from_failure(resolved)
-        return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok(
-            tuple(
-                m.Infra.CheckProjectTarget(name=project.name, path=project.path)
-                for project in resolved.value
+        return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok((
+            m.Infra.CheckProjectTarget(
+                name=params.repository_root.name,
+                path=params.repository_root,
             ),
-        )
+        ))
 
     def format(self, project_dir: Path) -> p.Result[m.Infra.GateResult]:
         """Run format checks for one project.
@@ -223,7 +336,7 @@ class FlextInfraWorkspaceChecker(
         fail_fast: bool = c.Infra.CHECK_FAIL_FAST_DEFAULT,
         ctx: m.Infra.GateContext | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
-        """Run selected gates for multiple projects.
+        """Run selected gates in one exclusively owned invocation report directory.
 
         Returns:
             The resulting ``p.Result[t.SequenceOf[m.Infra.ProjectResult]]``.
@@ -250,10 +363,14 @@ class FlextInfraWorkspaceChecker(
                 "quality check selected projects without a pyproject: "
                 + ", ".join(unrunnable),
             )
-        report_base = reports_dir or self._default_reports_dir
-        dir_ensure = u.Cli.ensure_dir(report_base)
+        reports_root = reports_dir or self._default_reports_dir
+        dir_ensure = u.Cli.ensure_dir(reports_root)
         if dir_ensure.failure:
             return r[t.SequenceOf[m.Infra.ProjectResult]].from_failure(dir_ensure)
+        # One invocation owns one report leaf: concurrent checks never
+        # overwrite each other's receipt.
+        report_base = reports_root / u.generate_id()
+        report_base.mkdir(exist_ok=False)
         effective_ctx = ctx or m.Infra.GateContext(
             repository_root=self._repository_root,
             reports_dir=report_base,
@@ -263,13 +380,33 @@ class FlextInfraWorkspaceChecker(
             return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
                 "gate context fail_fast disagrees with the requested project policy",
             )
+        effective_ctx = effective_ctx.model_copy(update={"reports_dir": report_base})
+        requested_gates = tuple(resolved_gates)
         outcome = self._run_project_loop(
             targets,
             resolved_gates,
             effective_ctx,
             fail_fast=fail_fast,
         )
-        return self._write_reports_and_summary(resolved_gates, report_base, outcome)
+        return self._write_reports_and_summary(
+            resolved_gates,
+            report_base,
+            outcome,
+            m.Infra.CheckReportSummary(
+                requested_gates=requested_gates,
+                targets=tuple(
+                    m.Infra.CheckProjectTarget(
+                        name=target.path.name,
+                        path=target.path.resolve(),
+                    )
+                    for target in targets
+                ),
+                results=tuple(outcome.results),
+                # A file-scoped run publishes its selection, so no consumer
+                # reads its counts as whole-project quality.
+                selected_files=tuple(effective_ctx.selected_files),
+            ),
+        )
 
     def _project_targets(
         self,

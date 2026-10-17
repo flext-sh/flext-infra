@@ -16,34 +16,20 @@ from typing import Annotated
 from flext_cli import m
 
 from flext_infra import t
-from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+from flext_infra._models import FlextInfraModelsMixins
+from flext_infra._models.mise_toolchain_base import FlextInfraModelsMiseToolchainBase
 
 
 class FlextInfraModelsLayout:
     """Field-only layout SSOT contracts and engine result models."""
 
-    class _LayoutContract(m.ContractModel):
-        """Private declarative base for schema-loaded layout records.
-
-        Mirrors ``ConfigContract`` from ``_models/_config/contract.py``; kept
-        local because the config families consume this module (a reverse
-        import would be a cycle).
-        """
-
-        model_config = m.ConfigDict(
-            strict=False,
-            frozen=True,
-            extra="forbid",
-            str_strip_whitespace=False,
-        )
-
-    class LayoutMoveSpec(_LayoutContract):
+    class LayoutMoveSpec(FlextInfraModelsMiseToolchainBase):
         """One explicit per-project move override (nested source allowed)."""
 
         source: Annotated[t.NonEmptyStr, m.Field(description="Project-relative source")]
         target: Annotated[t.NonEmptyStr, m.Field(description="Project-relative target")]
 
-    class LayoutProjectOverrideSpec(_LayoutContract):
+    class LayoutProjectOverrideSpec(FlextInfraModelsMiseToolchainBase):
         """Per-project layout deltas applied on top of the global rules."""
 
         archive_names: Annotated[
@@ -81,7 +67,7 @@ class FlextInfraModelsLayout:
             ),
         ] = ()
 
-    class LayoutSpec(_LayoutContract):
+    class LayoutSpec(FlextInfraModelsMiseToolchainBase):
         """Fully modeled content of the ``layout`` section of ``codegen.yaml``."""
 
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
@@ -170,9 +156,14 @@ class FlextInfraModelsLayout:
         project_overrides: Annotated[
             Mapping[str, FlextInfraModelsLayout.LayoutProjectOverrideSpec],
             m.Field(description="Per-project layout deltas keyed by project name"),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(
+            default_factory=lambda: MappingProxyType[
+                str,
+                FlextInfraModelsLayout.LayoutProjectOverrideSpec,
+            ]({}),
+        )
 
-    class LayoutFinding(_LayoutContract):
+    class LayoutFinding(FlextInfraModelsMiseToolchainBase):
         """One planned or executed layout decision for a project entry."""
 
         rule: Annotated[t.Infra.LayoutRule, m.Field(description="Decision kind")]
@@ -193,7 +184,10 @@ class FlextInfraModelsLayout:
             m.Field(description="Execution status"),
         ] = "planned"
 
-    class LayoutProjectReport(mm.ProjectNameMixin, _LayoutContract):
+    class LayoutProjectReport(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        FlextInfraModelsMiseToolchainBase,
+    ):
         """Per-project layout plan or apply outcome."""
 
         findings: Annotated[
@@ -204,7 +198,12 @@ class FlextInfraModelsLayout:
         @m.computed_field
         @property
         def actionable(self) -> t.VariadicTuple[FlextInfraModelsLayout.LayoutFinding]:
-            """Findings the engine acts on in apply mode (never review)."""
+            """Findings the engine acts on in apply mode (never review).
+
+            Returns:
+                The resulting ``t.VariadicTuple[FlextInfraModelsLayout.LayoutFinding]``.
+
+            """
             return tuple(
                 finding for finding in self.findings if finding.rule != "review"
             )
@@ -212,10 +211,15 @@ class FlextInfraModelsLayout:
         @m.computed_field
         @property
         def applied_count(self) -> int:
-            """Number of findings executed by an apply run."""
+            """Number of findings executed by an apply run.
+
+            Returns:
+                The resulting ``int``.
+
+            """
             return sum(1 for finding in self.findings if finding.status == "applied")
 
-    class LayoutRunReport(_LayoutContract):
+    class LayoutRunReport(FlextInfraModelsMiseToolchainBase):
         """Batch layout outcome across the selected projects."""
 
         reports: Annotated[

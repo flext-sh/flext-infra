@@ -10,12 +10,10 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
-from flext_core import r
-from flext_infra import c, main, u
+from flext_infra import c, main, r
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests import u as test_u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -29,7 +27,7 @@ class TestsFlextInfraWorkspaceChecker:
     @staticmethod
     @pytest.fixture
     def _clear_make_ci_token() -> Iterator[None]:
-        with test_u.Tests.env_vars_context(vars_to_clear=(c.Infra.PYTEST_ENV_CI,)):
+        with u.Tests.env_vars_context(vars_to_clear=(c.Infra.PYTEST_ENV_CI,)):
             yield
 
     @staticmethod
@@ -77,7 +75,7 @@ class TestsFlextInfraWorkspaceChecker:
     @staticmethod
     def test_cli_requires_explicit_member_selection(tmp_path: Path) -> None:
         """An omitted selection checks only the repository root."""
-        project_dir = test_u.Tests.mk_project(
+        project_dir = u.Tests.mk_project(
             tmp_path,
             "flext-core",
             pyproject=(
@@ -97,7 +95,7 @@ class TestsFlextInfraWorkspaceChecker:
             '"""Fixture module."""\n\nvalue = 1\n',
             encoding="utf-8",
         )
-        test_u.Tests.declare_workspace_projects(tmp_path, (project_dir.name,))
+        u.Tests.declare_workspace_projects(tmp_path, (project_dir.name,))
         init_result = u.Cli.run_raw([c.Infra.GIT, "init"], cwd=tmp_path)
         add_result = u.Cli.run_raw([c.Infra.GIT, "add", "flext-core"], cwd=tmp_path)
         tm.ok(init_result)
@@ -162,7 +160,7 @@ class TestsFlextInfraWorkspaceChecker:
         checker = FlextInfraWorkspaceChecker(
             repository_root=tmp_path,
         )
-        project_dir = test_u.Tests.mk_project(tmp_path, "p1", with_src=True)
+        project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
         reports_dir = tmp_path / "reports"
         result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
@@ -174,10 +172,12 @@ class TestsFlextInfraWorkspaceChecker:
         tmp_path: Path,
     ) -> None:
         """Test that lint() returns a GateResult."""
+        project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
+        (project_dir / "src" / "probe.py").write_text("VALUE = 1\n", encoding="utf-8")
         checker = FlextInfraWorkspaceChecker(
             repository_root=tmp_path,
         )
-        result = checker.lint(tmp_path)
+        result = checker.lint(project_dir)
         tm.that(result, is_=r)
         tm.ok(result)
 

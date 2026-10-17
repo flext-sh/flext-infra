@@ -6,16 +6,72 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import c, infra, m, p, t, u
+from flext_infra import t, u
+from tests import tm
+from tests.unit.codemod.private_import_cutover_support import (
+    TestsFlextInfraFacadeNaming,
+    TestsFlextInfraPrivateImportCutoverSupport,
+)
 
 
-class TestsFlextInfraPrivateImportCutover:
-    """Exercise private-import automation only through ``u.Infra``."""
+class TestsFlextInfraPrivateImportCutover(
+    TestsFlextInfraPrivateImportCutoverSupport,
+):
+    """Exercise installed and declared re-export cutovers only through ``u.Infra``."""
+
+    @pytest.mark.parametrize(
+        ("example_path", "consumer"),
+        [
+            (
+                "flext-grpc/examples/advanced_usage.py",
+                (
+                    "from flext_grpc import c, p, t\n"
+                    "example = namespace['ExamplesFlextGrpcAdvancedUsage']()\n"
+                    "assert example.c is c\n"
+                    "assert example.p is p\n"
+                    "assert example.t is t\n"
+                ),
+            ),
+            (
+                "flext-oracle-wms/examples/example_02_configuration.py",
+                (
+                    "from flext_oracle_wms import c\n"
+                    "configurations = namespace['get_environment_configs']()\n"
+                    "assert configurations\n"
+                    "assert all(configuration.timeout == c.OracleWms.DEFAULT_TIMEOUT\n"
+                    "           for configuration in configurations.values())\n"
+                    "settings = namespace['create_demo_config']()\n"
+                    "assert settings.OracleWms.timeout == c.OracleWms.DEFAULT_TIMEOUT\n"
+                ),
+            ),
+        ],
+    )
+    def test_workspace_examples_preserve_public_facade_runtime(
+        self,
+        example_path: str,
+        consumer: str,
+    ) -> None:
+        """Exercise actual facade accessors and offline configuration consumers."""
+        root = Path(__file__).resolve().parents[4]
+        executed = tm.ok(
+            u.Cli.run_raw(
+                [
+                    sys.executable,
+                    "-c",
+                    "import sys\nfrom runpy import run_path\n"
+                    "namespace = run_path(sys.argv[1])\n" + consumer,
+                    str(root / example_path),
+                ],
+                cwd=root,
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(executed.outcome), eq=True)
+        tm.that(executed.stderr, eq="")
 
     def test_earlier_semantic_move_retires_stale_preflight_import(
         self,
@@ -24,10 +80,12 @@ class TestsFlextInfraPrivateImportCutover:
         """Test earlier semantic move retires stale preflight import."""
         consumer, statement, _ = self._facade_case(
             tmp_path,
-            "constants",
-            "profile",
-            "Profile",
-            "c",
+            TestsFlextInfraFacadeNaming.from_family(
+                "constants",
+                "profile",
+                "Profile",
+                "c",
+            ),
         )
         sources = {consumer: "from flext_sample import c\nvalue = c.Profile.Value\n"}
         tm.that(self._edits(tmp_path, sources, consumer, statement), empty=True)
@@ -43,10 +101,12 @@ class TestsFlextInfraPrivateImportCutover:
         """An invalid import blocks only a cutover that reaches its module."""
         consumer, statement, facade_sources = self._facade_case(
             tmp_path,
-            "constants",
-            "profile",
-            "Profile",
-            "c",
+            TestsFlextInfraFacadeNaming.from_family(
+                "constants",
+                "profile",
+                "Profile",
+                "c",
+            ),
         )
         package = installed_dependency_path / "flext_sample"
         package.mkdir()
@@ -85,25 +145,23 @@ class TestsFlextInfraPrivateImportCutover:
         tm.that(edits[0].updated_source, has="profile = c.Profile.Value")
         tm.that(unrelated.read_text(encoding="utf-8"), eq=invalid_import)
 
-    @pytest.mark.parametrize("case", ["unique", "ambiguous", "shadowed"])
-    @pytest.mark.parametrize("depth", [0, 2])
-    def test_installed_facades_are_read_only_discovery_inputs(
+    def _seed_sample_dependency(
         self,
-        tmp_path: Path,
-        installed_dependency_path: Path,
+        package: Path,
+        facade_sources: t.MappingKV[Path, str],
+        *,
         case: str,
         depth: int,
-    ) -> None:
-        """Test installed facades are read only discovery inputs."""
-        consumer, statement, facade_sources = self._facade_case(
-            tmp_path,
-            "constants",
-            "profile",
-            "Profile",
-            "c",
-        )
-        package = installed_dependency_path / "flext_sample"
-        package.mkdir()
+    ) -> t.MutableMappingKV[Path, str]:
+        """Materialize the installed sample dependency package for one case.
+
+        Deep cases bridge the private facade through real subclasses and
+        rewire every facade reference to the outermost bridge class.
+
+        Returns:
+            Every seeded dependency path and its written source.
+
+        """
         dependency_sources = {
             package / path.name: source for path, source in facade_sources.items()
         }
@@ -115,19 +173,22 @@ class TestsFlextInfraPrivateImportCutover:
         )
         if case == "ambiguous":
             dependency_sources[package / "other.py"] = self._facade_source(
-                private_module="flext_sample._constants.profile",
-                private_class="FlextSampleConstantsProfile",
-                root_class="OtherConstants",
-                nested_class="Other",
-                alias="c",
+                naming=TestsFlextInfraFacadeNaming(
+                    private_module="flext_sample._constants.profile",
+                    private_class="FlextSampleConstantsProfile",
+                    root_class="OtherConstants",
+                    nested_class="Other",
+                    alias="c",
+                ),
             )
         previous_module = "flext_sample._constants.profile"
         previous_class = "FlextSampleConstantsProfile"
         for level in range(depth):
             module_name = f"bridge_{level}"
             class_name = f"FlextSampleConstantsBridge{level}"
+            previous_leaf = previous_module.rsplit(".", maxsplit=1)[-1]
             dependency_sources[package / f"_constants/{module_name}.py"] = (
-                f"from .{previous_module.rsplit('.', maxsplit=1)[-1]} import {previous_class}\n"
+                f"from .{previous_leaf} import {previous_class}\n"
                 f"class {class_name}({previous_class}):\n    pass\n"
             )
             previous_module = f"flext_sample._constants.{module_name}"
@@ -143,6 +204,35 @@ class TestsFlextInfraPrivateImportCutover:
         for path, source in dependency_sources.items():
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(source, encoding="utf-8")
+        return dependency_sources
+
+    @pytest.mark.parametrize("case", ["unique", "ambiguous", "shadowed"])
+    @pytest.mark.parametrize("depth", [0, 2])
+    def test_installed_facades_are_read_only_discovery_inputs(
+        self,
+        tmp_path: Path,
+        installed_dependency_path: Path,
+        case: str,
+        depth: int,
+    ) -> None:
+        """Test installed facades are read only discovery inputs."""
+        consumer, statement, facade_sources = self._facade_case(
+            tmp_path,
+            TestsFlextInfraFacadeNaming.from_family(
+                "constants",
+                "profile",
+                "Profile",
+                "c",
+            ),
+        )
+        package = installed_dependency_path / "flext_sample"
+        package.mkdir()
+        dependency_sources = self._seed_sample_dependency(
+            package,
+            facade_sources,
+            case=case,
+            depth=depth,
+        )
         sources = {
             consumer: f"{statement}\nprofile = FlextSampleConstantsProfile.Value\n",
         }
@@ -319,11 +409,13 @@ class TestsFlextInfraPrivateImportCutover:
             package / "_private/client.py": "class Client:\n    pass\n",
             package / "_private/__init__.py": (
                 "from typing import TYPE_CHECKING\n"
-                "from flext_core.lazy import build_lazy_import_map, install_lazy_exports\n"
+                "from flext_core.lazy import "
+                "build_lazy_import_map, install_lazy_exports\n"
                 "if TYPE_CHECKING:\n    from .client import Client\n"
                 "__all__ = ('Client',)\n"
                 "_LAZY_IMPORTS = build_lazy_import_map({'.client': ('Client',)})\n"
-                "install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)\n"
+                "install_lazy_exports("
+                "__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)\n"
             ),
             package / "api.py": (
                 f"from ._private.client import Client as {public_name}\n"
@@ -453,405 +545,3 @@ class TestsFlextInfraPrivateImportCutover:
 
         with pytest.raises(ValueError, match=expected):
             self._plan(tmp_path, sources, consumer, statement)
-
-    @staticmethod
-    def _finding(file_path: Path, text: str) -> m.Infra.ModScanFinding:
-        """Build one authenticated-shape semantic finding.
-
-        Returns:
-            The resulting ``m.Infra.ModScanFinding``.
-
-        """
-        return m.Infra.ModScanFinding(
-            rule_file="ban-private-import.yml",
-            rule_id="ban-private-import",
-            repository="flext-sample",
-            file=file_path,
-            range={},
-            text=text,
-            actionable=False,
-            classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
-            payload={},
-        )
-
-    @staticmethod
-    def _facade_source(
-        *,
-        private_module: str,
-        private_class: str,
-        root_class: str,
-        nested_class: str,
-        alias: str,
-        root_bases: str = "",
-    ) -> str:
-        """Build one public facade module that nests ``private_class``.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        return (
-            f"from {private_module} import {private_class}\n\n"
-            f"class {root_class}{root_bases}:\n"
-            f"    class {nested_class}({private_class}):\n"
-            "        pass\n\n"
-            f"{alias} = {root_class}\n"
-        )
-
-    @classmethod
-    def _facade_case(
-        cls,
-        tmp_path: Path,
-        family: str,
-        leaf: str,
-        nested_class: str,
-        alias: str,
-        *,
-        import_alias: str = "",
-        root_bases: str = "",
-    ) -> t.Triple[Path, str, t.MutableMappingKV[Path, str]]:
-        """Derive the consumer path, private import, and facade source of one family.
-
-        Every name follows the FLEXT naming contract, so the case is declared
-        by ``family``/``leaf`` rather than by frozen literals repeated per test.
-
-        Returns:
-            The resulting ``t.Triple[Path, str, t.MutableMappingKV[Path, str]]``.
-
-        """
-        private_module = f"flext_sample._{family}.{leaf}"
-        private_class = f"FlextSample{family.title()}{leaf.title()}"
-        binding = (
-            f"{private_class} as {import_alias}" if import_alias else private_class
-        )
-        sources = {
-            tmp_path / f"flext-sample/src/flext_sample/{family}.py": cls._facade_source(
-                private_module=private_module,
-                private_class=private_class,
-                root_class=f"FlextSample{family.title()}",
-                nested_class=nested_class,
-                alias=alias,
-                root_bases=root_bases,
-            ),
-        }
-        consumer_path = tmp_path / "flext-consumer/src/flext_consumer/service.py"
-        return consumer_path, f"from {private_module} import {binding}", sources
-
-    @classmethod
-    def _plan(
-        cls,
-        tmp_path: Path,
-        sources: t.MappingKV[Path, str],
-        consumer_path: Path,
-        *private_imports: str,
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        """Plan the cutover for every private import reported in the consumer.
-
-        Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
-
-        """
-        with infra.rope_workspace(tmp_path) as rope:
-            return u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.PRIVATE_IMPORT,
-                rope_workspace=rope,
-                sources=sources,
-                findings=tuple(
-                    cls._finding(consumer_path.relative_to(tmp_path), private_import)
-                    for private_import in private_imports
-                ),
-            )
-
-    @classmethod
-    def _edits(
-        cls,
-        tmp_path: Path,
-        sources: t.MappingKV[Path, str],
-        consumer_path: Path,
-        *private_imports: str,
-    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
-        """Return the successful plan's edits.
-
-        Returns:
-            The successful plan's edits.
-
-        """
-        planned = cls._plan(tmp_path, sources, consumer_path, *private_imports)
-        tm.ok(planned)
-        return planned.value
-
-    @classmethod
-    def _updated_source(
-        cls,
-        tmp_path: Path,
-        sources: t.MappingKV[Path, str],
-        consumer_path: Path,
-        *private_imports: str,
-    ) -> str:
-        """Return the single planned edit's rewritten consumer source.
-
-        Returns:
-            The single planned edit's rewritten consumer source.
-
-        """
-        return cls._edits(tmp_path, sources, consumer_path, *private_imports)[
-            0
-        ].updated_source
-
-    def test_rewires_unique_public_facade_binding(self, tmp_path: Path) -> None:
-        """Derive the nested facade path and remove the private import atomically."""
-        consumer_path, private_import, sources = self._facade_case(
-            tmp_path,
-            "utilities",
-            "managers",
-            "Sample",
-            "u",
-        )
-        sources[consumer_path] = (
-            "from flext_sample import p\n"
-            f"{private_import}\n\n"
-            "manager: FlextSampleUtilitiesManagers.ServiceManagers\n"
-        )
-
-        edits = self._edits(tmp_path, sources, consumer_path, private_import)
-        tm.that(len(edits), eq=1)
-        updated = edits[0].updated_source
-
-        tm.that(
-            "from flext_sample import p, u" in updated
-            or "from flext_sample import u" in updated,
-            eq=True,
-        )
-        tm.that(updated, has="manager: u.Sample.ServiceManagers")
-        tm.that(updated, lacks=private_import)
-        tm.that(updated, lacks="FlextSampleUtilitiesManagers.ServiceManagers")
-
-    def test_prefers_nested_facade_over_its_root_ancestor(self, tmp_path: Path) -> None:
-        """Select the deepest public namespace when the root shares its base."""
-        consumer_path, private_import, sources = self._facade_case(
-            tmp_path,
-            "utilities",
-            "managers",
-            "Sample",
-            "u",
-            root_bases="(FlextSampleUtilitiesManagers)",
-        )
-        sources[consumer_path] = (
-            f"{private_import}\n\nmanager = FlextSampleUtilitiesManagers.ServiceManagers\n"
-        )
-
-        updated = self._updated_source(tmp_path, sources, consumer_path, private_import)
-
-        tm.that(updated, has="manager = u.Sample.ServiceManagers")
-        tm.that(updated, lacks=private_import)
-
-    def test_rewrites_only_the_imported_alias_binding(self, tmp_path: Path) -> None:
-        """Keep a homonymous local binding outside the authenticated cutover."""
-        consumer_path, private_import, sources = self._facade_case(
-            tmp_path,
-            "utilities",
-            "managers",
-            "Sample",
-            "u",
-            import_alias="managers",
-        )
-        sources[consumer_path] = (
-            f"{private_import}\n\n"
-            "manager = managers.ServiceManagers\n\n"
-            "def identity(managers: str) -> str:\n"
-            "    return managers\n"
-        )
-
-        updated = self._updated_source(tmp_path, sources, consumer_path, private_import)
-
-        tm.that(updated, has="manager = u.Sample.ServiceManagers")
-        tm.that(updated, has="def identity(managers: str) -> str:")
-        tm.that(updated, has="    return managers")
-        tm.that(updated, lacks=private_import)
-
-    def test_rejects_shadowed_public_facade_alias(self, tmp_path: Path) -> None:
-        """Fail before effects when a local binding would capture the facade alias."""
-        consumer_path, private_import, sources = self._facade_case(
-            tmp_path,
-            "utilities",
-            "managers",
-            "Sample",
-            "u",
-        )
-        sources[consumer_path] = (
-            f"{private_import}\n\n"
-            "def select(u: str) -> str:\n"
-            "    return FlextSampleUtilitiesManagers.ServiceManagers or u\n"
-        )
-
-        tm.fail(
-            self._plan(tmp_path, sources, consumer_path, private_import),
-            has="public facade alias u is shadowed",
-        )
-
-    def test_accepts_alias_owned_by_removed_private_import(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Replace the old import binding with its public facade atomically."""
-        consumer_path, private_import, sources = self._facade_case(
-            tmp_path,
-            "models",
-            "base",
-            "Metadata",
-            "m",
-            import_alias="m",
-        )
-        sources[consumer_path] = f"{private_import}\n\nmetadata = m.Metadata()\n"
-
-        updated = self._updated_source(tmp_path, sources, consumer_path, private_import)
-
-        tm.that(updated, has="from flext_sample import m")
-        tm.that(updated, has="metadata = m.Metadata()")
-        tm.that(updated, lacks=private_import)
-
-    def test_preserves_type_checking_boundary_for_public_facade(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Keep a type-only facade import in the original type-only boundary."""
-        consumer_path, private_import, sources = self._facade_case(
-            tmp_path,
-            "models",
-            "base",
-            "Metadata",
-            "m",
-            import_alias="m",
-        )
-        sources[consumer_path] = (
-            "from __future__ import annotations\n\n"
-            "from typing import TYPE_CHECKING\n\n"
-            "if TYPE_CHECKING:\n"
-            f"    {private_import}\n\n"
-            "metadata: m.Metadata\n"
-        )
-
-        updated = self._updated_source(tmp_path, sources, consumer_path, private_import)
-
-        tm.that(updated, has="if TYPE_CHECKING:\n    from flext_sample import m")
-        tm.that(updated, lacks="\nfrom flext_sample import m\n")
-        tm.that(updated, lacks=private_import)
-
-    def test_preserves_multiple_type_only_facades_from_one_package(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Rewire every type facade without promoting imports to runtime."""
-        package_path = tmp_path / "flext-sample/src/flext_sample"
-        consumer_path = tmp_path / "flext-consumer/src/flext_consumer/service.py"
-        layers = (
-            ("models", "m", "FlextSampleModelsBase", "Model"),
-            ("protocols", "p", "FlextSampleProtocolsBase", "Protocol"),
-            ("typings", "t", "FlextSampleTypesBase", "Type"),
-        )
-        sources: t.MutableMappingKV[Path, str] = {}
-        private_imports: list[str] = []
-        annotations: list[str] = []
-        for layer, alias, private_class, nested_class in layers:
-            private_module = f"flext_sample._{layer}.base"
-            private_imports.append(
-                f"from {private_module} import {private_class} as {alias}b",
-            )
-            sources[package_path / f"{layer}.py"] = self._facade_source(
-                private_module=private_module,
-                private_class=private_class,
-                root_class=f"FlextSample{layer.title()}",
-                nested_class=nested_class,
-                alias=alias,
-            )
-            annotations.append(f"value_{alias}: {alias}b.Member")
-        sources[consumer_path] = (
-            "from __future__ import annotations\n\n"
-            "from typing import TYPE_CHECKING\n\n"
-            "if TYPE_CHECKING:\n    "
-            + "\n    ".join(private_imports)
-            + "\n\n"
-            + "\n".join(annotations)
-            + "\n"
-        )
-
-        updated = self._updated_source(
-            tmp_path,
-            sources,
-            consumer_path,
-            *private_imports,
-        )
-
-        tm.that(updated, has="    from flext_sample import m, p, t")
-        tm.that(updated.count("from flext_sample import"), eq=1)
-        for _layer, alias, _private_class, nested_class in layers:
-            tm.that(updated, has=f"value_{alias}: {alias}.{nested_class}.Member")
-            tm.that(updated, lacks=f"\nfrom flext_sample import {alias}\n")
-        for private_import in private_imports:
-            tm.that(updated, lacks=private_import)
-
-    def test_discovers_operational_facade_from_live_source(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Rewire an operational family without a registered family-to-alias map."""
-        consumer_path, private_import, sources = self._facade_case(
-            tmp_path,
-            "exceptions",
-            "base",
-            "Invalid",
-            "e",
-            import_alias="eb",
-        )
-        sources[consumer_path] = f"{private_import}\n\nerror: eb.Code\n"
-
-        updated = self._updated_source(tmp_path, sources, consumer_path, private_import)
-
-        tm.that(updated, has="from flext_sample import e")
-        tm.that(updated, has="error: e.Invalid.Code")
-        tm.that(updated, lacks=private_import)
-
-    def test_replaces_public_long_alias_during_private_cutover(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Delete the long public alias while wiring the canonical facade."""
-        consumer_path, private_import, sources = self._facade_case(
-            tmp_path,
-            "models",
-            "pydantic",
-            "Pydantic",
-            "m",
-            import_alias="mp",
-        )
-        sources[consumer_path] = (
-            "from __future__ import annotations\n\n"
-            f"{private_import}\n\n"
-            "from typing import TYPE_CHECKING\n\n"
-            "if TYPE_CHECKING:\n"
-            "    from flext_sample import FlextSampleModels as m\n\n"
-            "value: m.Metadata\n"
-            "model: mp.BaseModel\n"
-        )
-
-        updated = self._updated_source(tmp_path, sources, consumer_path, private_import)
-
-        tm.that(updated.count("from flext_sample import m"), eq=1)
-        tm.that(updated, lacks="FlextSampleModels as m")
-        tm.that(updated, lacks=private_import)
-        tm.that(updated, has="model: m.Pydantic.BaseModel")
-
-    def test_preserves_valid_relative_private_import(self, tmp_path: Path) -> None:
-        """Leave an already-relative same-owner import outside the finding set."""
-        consumer_path = tmp_path / "flext-sample/src/flext_sample/service.py"
-        relative_import = (
-            "from ._models.pydantic import FlextSampleModelsPydantic as mp"
-        )
-
-        edits = self._edits(
-            tmp_path,
-            {consumer_path: f"{relative_import}\n\nmodel = mp.BaseModel\n"},
-            consumer_path,
-        )
-
-        tm.that(edits, eq=())

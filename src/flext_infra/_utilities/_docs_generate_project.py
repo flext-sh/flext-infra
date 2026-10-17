@@ -7,20 +7,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_core import r
-from flext_infra import c, m, t
-from flext_infra._utilities._docs_generate_plan import (
+from flext_infra import c, m, p, r, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDocsApi,
+    FlextInfraUtilitiesDocsContract,
     FlextInfraUtilitiesDocsGeneratePlanMixin,
+    FlextInfraUtilitiesDocsGuidesMixin,
+    FlextInfraUtilitiesDocsRender,
 )
-from flext_infra._utilities._docs_guides import FlextInfraUtilitiesDocsGuidesMixin
-from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
-from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
-from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesDocsGenerateProjectMixin(
@@ -29,7 +24,10 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
     """Render the complete desired artifact inventory for one project scope."""
 
     @staticmethod
-    def _module_names(scope: m.Infra.DocScope) -> list[str]:
+    def _module_names(
+        scope: m.Infra.DocScope,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
+    ) -> list[str]:
         """Return the public top-level modules of the scope's package.
 
         The public API is what the package itself declares public: every
@@ -43,21 +41,32 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
         if not scope.package_name:
             return []
         package_dir = scope.path / c.Infra.DEFAULT_SRC_DIR / scope.package_name
+        paths = (
+            (state.path for state in source_states if state.path.parent == package_dir)
+            if source_states is not None
+            else package_dir.glob(c.Infra.EXT_PYTHON_GLOB)
+        )
         return [
             f"{scope.package_name}.{module.stem}"
-            for module in sorted(package_dir.glob(c.Infra.EXT_PYTHON_GLOB))
-            if not module.stem.startswith("_")
+            for module in sorted(paths)
+            if module.suffix == ".py" and not module.stem.startswith("_")
         ]
 
     @staticmethod
-    def docs_project_api_artifacts(scope: m.Infra.DocScope) -> list[t.Pair[Path, str]]:
+    def docs_project_api_artifacts(
+        scope: m.Infra.DocScope,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
+    ) -> list[t.Pair[Path, str]]:
         """Render package API pages before their owning tree is pruned.
 
         Returns:
             The resulting ``list[t.Pair[Path, str]]``.
 
         """
-        module_names = FlextInfraUtilitiesDocsGenerateProjectMixin._module_names(scope)
+        module_names = FlextInfraUtilitiesDocsGenerateProjectMixin._module_names(
+            scope,
+            source_states,
+        )
         api_root = scope.path / "docs/api-reference/generated"
         rendered = [
             (
@@ -124,12 +133,17 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
         analyzed_contract = FlextInfraUtilitiesDocsApi.public_contract(
             scope.path,
             scope.package_name,
+            source_states=source_states,
         )
         contract = FlextInfraUtilitiesDocsContract.docs_current_project_contract(
             scope.path,
             analyzed_contract,
+            source_states=source_states,
         )
-        module_names = FlextInfraUtilitiesDocsGenerateProjectMixin._module_names(scope)
+        module_names = FlextInfraUtilitiesDocsGenerateProjectMixin._module_names(
+            scope,
+            source_states,
+        )
         rendered: list[t.Pair[Path, str]] = [
             (
                 scope.path / "README.md",
@@ -161,12 +175,17 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
                     # under the canonical repository identity: the per-project
                     # " Documentation" suffix belongs to member sites, never to
                     # the repository root (root title contract, c6db82fb2).
-                    FlextInfraUtilitiesDocsRender.docs_root_mkdocs(contract, ("src",))
+                    FlextInfraUtilitiesDocsRender.docs_root_mkdocs(
+                        contract,
+                        ("src",),
+                        source_states=source_states,
+                    )
                     if scope.path == repository_root
                     else FlextInfraUtilitiesDocsRender.docs_project_mkdocs(
                         scope,
                         contract,
                         module_names,
+                        source_states=source_states,
                     )
                 ),
             ),
@@ -180,6 +199,7 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
             ),
             *FlextInfraUtilitiesDocsGenerateProjectMixin.docs_project_api_artifacts(
                 scope,
+                source_states,
             ),
         ]
         pruned = (

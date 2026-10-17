@@ -1,0 +1,34 @@
+# Shape only: the cases below exercise the production-text/parse pairing on
+# syntax alone; every invalid case derives an AST from an owner's source, and
+# every valid case is a shape this law structurally keeps.
+id: ban-test-production-ast
+valid:
+  # Behavioral assertions over the public surface.
+  - assert svc.run(payload).success
+  - tm.that(facade.execute(), eq=expected)
+  # Parsing a test-owned snippet is fixture construction, not production
+  # validation.
+  - |
+    tree = ast.parse("x = 1")
+    ast.walk(tree)
+  # Reading the owner's data (not its text) and validating the data.
+  - |
+    payload = load_fixture("cli.json")
+    assert payload["commands"]
+invalid:
+  # The parse entry point over a Path read.
+  - |
+    tree = ast.parse(Path("src/ai_hub/cli.py").read_text())
+  # The parse subject bound from a read first.
+  - |
+    source = Path("src/ai_hub/cli.py").read_text()
+    ast.parse(source)
+  # The library spelling of the same read.
+  - |
+    from ai_hub import cli
+    ast.parse(inspect.getsource(cli))
+  # Walking an inline production parse.
+  - ast.walk(ast.parse(Path("cli.py").read_text()))
+  # Dumping an inline production parse.
+  - |
+    assert ast.dump(ast.parse(Path("cli.py").read_text()))

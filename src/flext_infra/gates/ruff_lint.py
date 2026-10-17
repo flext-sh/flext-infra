@@ -11,7 +11,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates import FlextInfraGate
+from flext_infra.refactor import FlextInfraImportNormalization
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -26,6 +27,25 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     # can_fix=False made workspace_check_gates skip it, so `make fix`
     # never applied a single lint fix and the command below was dead code.
     can_fix: ClassVar[bool] = True
+
+    @override
+    def _check_env(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> t.StrMapping:
+        """Keep native cache writes outside authenticated source candidates.
+
+        Returns:
+            The resulting ``t.StrMapping``.
+
+        """
+        return {
+            **(super()._check_env(project_dir, ctx) or {}),
+            c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE: str(
+                u.Infra.ruff_cache_directory(project_dir)
+            ),
+        }
 
     @override
     def _get_check_dirs(
@@ -49,10 +69,10 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         check_dirs: t.StrSequence,
     ) -> t.StrSequence:
-        """Build check command.
+        """Lint read-only with the config-owned check flags.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The Ruff lint invocation in check mode.
 
         """
         _ = project_dir
@@ -82,37 +102,28 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
         """Apply Ruff's own fixes, then the declared recipe of each finding left.
 
-        A recipe that creates a docstring runs before the recipes that extend
-        one, since a new summary exposes the sections its function needs; the
-        static-method recipe edits only signatures and decorators, so it runs
-        in that first phase.
-        Ruff re-reads the tree after each phase; a recipe-owned finding that
-        survives both phases is a recipe defect and raises.
+        The recipe phases are tooling data (``fix-recipe-phases``) applied in
+        order; Ruff re-reads the tree after each phase. A recipe-owned finding
+        that survives every phase is a recipe defect and raises, except for
+        the recipes the tooling declares residual (``fix-recipe-residual``),
+        whose remainder stays a visible check finding.
 
         Returns:
             The gate execution of Ruff's final pass.
 
         """
         execution = super().fix(project_dir, ctx)
-        recipes = config.Infra.tooling.tools.ruff.lint.fix_recipes
+        lint = config.Infra.tooling.tools.ruff.lint
+        recipes = lint.fix_recipes
         overridden = self._project_overrides(project_dir, execution.issues, recipes)
-        for phase in (
-            frozenset({
-                c.Infra.LintFixRecipe.SUMMARY_DOCSTRING,
-                c.Infra.LintFixRecipe.COPYRIGHT_NOTICE,
-                c.Infra.LintFixRecipe.STATIC_METHOD,
-            }),
-            frozenset({
-                c.Infra.LintFixRecipe.RETURNS_SECTION,
-                c.Infra.LintFixRecipe.YIELDS_SECTION,
-                c.Infra.LintFixRecipe.RAISES_SECTION,
-            }),
-        ):
-            hooks = (
-                *self._overridden_hooks(execution.issues, recipes, overridden),
-                *self._service_owned_hooks(execution.issues, recipes),
+        for phase in lint.fix_recipe_phases:
+            hooks = self._overridden_hooks(execution.issues, recipes, overridden)
+            by_file = self._phase_findings(
+                execution.issues,
+                recipes,
+                frozenset(phase),
+                hooks,
             )
-            by_file = self._phase_findings(execution.issues, recipes, phase, hooks)
             if by_file:
                 self._apply_phase(project_dir, by_file, recipes)
                 execution = super().fix(project_dir, ctx)
@@ -130,7 +141,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         issues: t.SequenceOf[m.Infra.Issue],
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
     ) -> frozenset[t.Pair[str, str]]:
-        """Index the methods a subclass of this project redefines.
+        """Index the methods on an override chain of this project.
 
         The index exists only for the static-method recipe, so a run without
         its findings builds none. A module Ruff reports as ``invalid-syntax``
@@ -138,7 +149,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         finding remains for its owner.
 
         Returns:
-            The overridden ``(class name, method name)`` pairs.
+            The ``(class name, method name)`` pairs on an override chain.
 
         """
         if not any(
@@ -153,7 +164,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         }
         return u.Infra.overridden_methods(
             tuple(
-                path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                path.read_text(encoding=c.DEFAULT_ENCODING)
                 for directory in self._existing_check_dirs(project_dir)
                 for path in u.Infra.iter_directory_python_files(
                     project_dir / directory,
@@ -192,6 +203,15 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     ) -> None:
         """Repair every module of one phase, computing all before any write."""
         with self._mutation_lease(project_dir):
+            import_graph: t.MappingKV[str, frozenset[str]] = (
+                u.Infra.project_import_graph(project_dir)[0]
+                if any(
+                    recipes.get(issue.code) is c.Infra.LintFixRecipe.NORMALIZE_IMPORTS
+                    for issues in by_file.values()
+                    for issue in issues
+                )
+                else {}
+            )
             # A module the recipes cannot place stops the phase with nothing
             # written.
             planned: t.MutableSequenceOf[t.Pair[m.Cli.AtomicFileState, str]] = []
@@ -200,15 +220,15 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                     path,
                     required=True,
                 ).unwrap()
-                planned.append((
+                repaired = self._repaired_source(
+                    project_dir,
                     before,
-                    u.Infra.apply_lint_recipes(
-                        (before.content or b"").decode(c.Cli.ENCODING_DEFAULT),
-                        issues,
-                        path=path,
-                        recipes=recipes,
-                    ),
-                ))
+                    issues,
+                    recipes,
+                    import_graph=import_graph,
+                )
+                if repaired.encode(c.DEFAULT_ENCODING) != before.content:
+                    planned.append((before, repaired))
             for before, repaired in planned:
                 u.Cli.atomic_write_text_file_guarded(before, repaired).unwrap()
 
@@ -241,6 +261,65 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                 recipes=recipes,
             )
         )
+    def _repaired_source(
+        project_dir: Path,
+        before: m.Cli.AtomicFileState,
+        issues: t.SequenceOf[m.Infra.Issue],
+        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
+        *,
+        import_graph: t.MappingKV[str, frozenset[str]],
+    ) -> str:
+        """Apply one module's recipes: whole-module rewrites, then planned edits.
+
+        ``normalize-imports`` runs the import-law engine over the module and
+        ``wrap-long-line`` wraps the reported lines; every other recipe is an
+        edit the lint-recipe planner places.
+
+        Returns:
+            The repaired module source.
+
+        Raises:
+            FileNotFoundError: If ``before.content is None``.
+
+        """
+        if before.content is None:
+            raise FileNotFoundError(before.path)
+        path = before.path
+        source = before.content.decode(c.DEFAULT_ENCODING)
+        owned = {issue.code: recipes[issue.code] for issue in issues}
+        if c.Infra.LintFixRecipe.NORMALIZE_IMPORTS in owned.values():
+            source = (
+                FlextInfraImportNormalization.normalize_source(
+                    project_root=project_dir,
+                    file_path=path,
+                    source=source,
+                    import_graph=import_graph,
+                )
+                or source
+            )
+        wrapped = [
+            issue.line
+            for issue in issues
+            if owned[issue.code] is c.Infra.LintFixRecipe.WRAP_LONG_LINE
+        ]
+        if wrapped:
+            source = u.Infra.wrap_long_lines(
+                source,
+                wrapped,
+                limit=config.Infra.tooling.tools.ruff.line_length,
+            )
+        planned = [
+            issue
+            for issue in issues
+            if owned[issue.code]
+            not in {
+                c.Infra.LintFixRecipe.NORMALIZE_IMPORTS,
+                c.Infra.LintFixRecipe.WRAP_LONG_LINE,
+            }
+        ]
+        if not planned:
+            return source
+        return u.Infra.apply_lint_recipes(source, planned, path=path, recipes=recipes)
 
     @staticmethod
     def _reject_recipe_residue(
@@ -258,8 +337,20 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         """
         if hooks:
             u.Cli.info(
-                f"lint: {len(hooks)} no-self-use finding(s) are hooks a subclass "
-                f"overrides, left to their owner: {', '.join(hooks)}",
+                f"lint: {len(hooks)} no-self-use finding(s) are on an override "
+                f"chain or read their receiver, left to their owner: "
+                f"{', '.join(hooks)}",
+            )
+        residual = config.Infra.tooling.tools.ruff.lint.fix_recipe_residual
+        kept = sorted(
+            f"{issue.file}:{issue.line}:{issue.code}"
+            for issue in issues
+            if recipes.get(issue.code) in residual
+        )
+        if kept:
+            u.Cli.info(
+                f"lint: {len(kept)} finding(s) stay for manual repair under the "
+                f"import law or the line budget: {', '.join(kept)}",
             )
         if service_owned:
             u.Cli.info(
@@ -271,10 +362,8 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             located
             for issue in issues
             if issue.code in recipes
-            and (
-                located := f"{issue.file}:{issue.line}:{issue.code}"
-            ) not in hooks
-            and located not in service_owned
+            and recipes[issue.code] not in residual
+            and (located := f"{issue.file}:{issue.line}:{issue.code}") not in hooks
         )
         if left:
             msg = f"lint recipes left their own findings: {', '.join(left)}"
@@ -289,7 +378,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         """Locate the static-method findings the recipe leaves to their owner.
 
         Returns:
-            ``file:line:code`` of each finding on a method a subclass overrides.
+            ``file:line:code`` of each finding the static-method recipe keeps.
 
         """
         by_file: MutableMapping[Path, list[m.Infra.Issue]] = {}
@@ -300,7 +389,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             f"{issue.file}:{issue.line}:{issue.code}"
             for path, found in by_file.items()
             for issue in u.Infra.overridden_findings(
-                path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+                path.read_text(encoding=c.DEFAULT_ENCODING),
                 found,
                 path=path,
                 recipes=recipes,
@@ -356,21 +445,32 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         if not isinstance(report, list):
             msg = f"Ruff JSON report is not a list: {type(report).__name__}"
             raise TypeError(msg)
+        advisory = frozenset(config.Infra.tooling.tools.ruff.informative_rules)
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for entry in report:
             if not isinstance(entry, Mapping):
                 msg = f"Ruff JSON finding is not an object: {type(entry).__name__}"
                 raise TypeError(msg)
+            code = u.Cli.json_pick_str(entry, "name")
             issues.append(
                 m.Infra.Issue(
                     file=u.Cli.json_pick_str(entry, "filename", "?"),
                     line=u.Cli.json_nested_int(entry, "location", "row"),
                     column=u.Cli.json_nested_int(entry, "location", "column"),
-                    code=u.Cli.json_pick_str(entry, "name"),
+                    code=code,
                     message=u.Cli.json_pick_str(entry, "message"),
+                    severity=u.Infra.ruff_finding_severity(code, advisory),
                 ),
             )
-        return self._finalize_parse_result(result, project_dir, issues, c.Infra.RUFF)
+        passed, parsed = self._finalize_parse_result(
+            result,
+            project_dir,
+            issues,
+            c.Infra.RUFF,
+        )
+        # Ruff's findings exit is a valid scanner result, but every reported
+        # finding still blocks the lint gate under the current quality baseline.
+        return passed and not parsed, parsed
 
     @staticmethod
     @override

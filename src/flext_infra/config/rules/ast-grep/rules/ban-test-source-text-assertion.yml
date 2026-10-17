@@ -1,0 +1,122 @@
+# Test law: a test asserts behavior, never the text of the source.
+#
+# Reading a production module's text (`Path(__file__)...read_text()` /
+# `.read()`, `inspect.getsource(...)`) and asserting a fragment is `in` it
+# couples the test to how the owner is spelled instead of what it does. It is
+# the textual twin of the shape probes ban-test-implementation-shape owns: the
+# assertion fails on every harmless edit (a comment, a rename, a reformatted
+# signature) while proving nothing about runtime behavior, and it survives the
+# owner's public contract changing underneath it.
+#
+# This rule is the single owner of the source-text-assertion law and covers
+# both spellings a violating test reaches for:
+#
+#   * the read call is the `in` operand itself: `assert "def main" in
+#     Path(...).read_text()`, `tm.that(Path(...).read_text(), eq=...)`;
+#   * the read text is bound first and asserted later: `source =
+#     Path(...).read_text()` then `assert "x" in source` — the bound-name
+#     check unifies the operand with the assignment, so an unrelated
+#     `assert "x" in container` never matches.
+#
+# `inspect.getsource(...)` (bare or through the module) is the same read in
+# library spelling. Only the `Path(...)-rooted` read chain and `getsource` are
+# owners' source reads: an `open(...)` stream or a subprocess capture is a
+# different surface this law does not name, and asserting whole-text equality
+# against an expected literal is a fixture comparison, not a source probe —
+# both stay outside the rule.
+#
+# Detection-only: the replacement asserts the observable behavior through the
+# public facade, which a rewrite cannot author. A violating test is deleted
+# and its behavior re-covered through the public surface.
+id: ban-test-source-text-assertion
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/examples/**/*.py"
+  - "**/conftest.py"
+metadata:
+  ruling: operator-ruling-2026-09-14-public-behavior-tests
+  description: >-
+    A test never reads production source text (Path read_text/read,
+    inspect.getsource) and asserts a fragment is in it; it asserts behavior
+    through the public facade.
+utils:
+  source-read-call:
+    any:
+      # `Path(__file__)...read_text()` and the `.read()` spelling: the receiver
+      # chain is rooted at a Path construction.
+      - kind: call
+        regex: "^Path\\([\\s\\S]*\\.(?:read_text|read)\\(\\)$"
+      # `inspect.getsource(x)` and a direct `getsource` import binding.
+      - kind: call
+        regex: "^(?:inspect\\.)?getsource\\("
+  # An identifier is the read text only when the same module binds that exact
+  # name from a source-read call; $V is captured at the top so the operand and
+  # the assignment's left side must unify.
+  bound-source-text:
+    all:
+      - kind: identifier
+      - pattern: $V
+      - inside:
+          kind: module
+          stopBy: end
+          has:
+            stopBy: end
+            kind: assignment
+            all:
+              - has:
+                  field: left
+                  pattern: $V
+              - has:
+                  field: right
+                  matches: source-read-call
+rule:
+  any:
+    # Inline: the read call is the `in` operand of the assertion.
+    - all:
+        - kind: assert_statement
+        - has:
+            kind: comparison_operator
+            regex: "\\sin\\s|\\snot\\sin\\s"
+            all:
+              - has:
+                  kind: call
+                  matches: source-read-call
+    # Bound: the `in` operand is a name the module binds from a source read.
+    - all:
+        - kind: assert_statement
+        - has:
+            kind: comparison_operator
+            regex: "\\sin\\s|\\snot\\sin\\s"
+            all:
+              - has:
+                  kind: identifier
+                  pattern: $V
+              - has:
+                  matches: bound-source-text
+    # The tests facade helper asserts the read text as its subject.
+    - all:
+        - kind: call
+        - has:
+            field: function
+            regex: "^tm\\.that$"
+        - has:
+            kind: argument_list
+            any:
+              - has:
+                  nthChild: 1
+                  kind: call
+                  matches: source-read-call
+              - all:
+                  - has:
+                      nthChild: 1
+                      kind: identifier
+                      pattern: $V
+                  - has:
+                      nthChild: 1
+                      matches: bound-source-text
+message: >-
+  Source-text assertion: the test reads an owner's source (Path read_text or
+  inspect.getsource) and asserts its text instead of its behavior. Delete the
+  probe and assert the public facade's observable outcome.

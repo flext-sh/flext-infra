@@ -9,11 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import c, config, infra, m
-from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import u
+from flext_infra import config, infra
+from flext_infra.codegen import FlextInfraCodegenConform
+from tests import c, m, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -146,6 +145,121 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(line.organization, eq=provider.organization)
 
     @staticmethod
+    @pytest.mark.parametrize("group", ["dev", "codegen", "DeV", "CODEGEN"])
+    def test_flext_line_ignores_only_generated_group_occurrences(
+        tmp_path: Path,
+        group: str,
+    ) -> None:
+        """Stale member projections cannot compete with the authored family line."""
+        provider = u.Tests.provider()
+        branch = u.Tests.provider_branch()
+        distribution = config.Infra.codegen.infra_repository.distribution
+        requirement = f"{distribution} @ git+{provider.base_url}/{distribution}.git"
+        stale = f"{requirement}@retired-member-line"
+        source = (
+            '[project]\nname = "consumer"\nversion = "0.1.0"\n'
+            f'dependencies = ["{requirement}@{branch}"]\n'
+            "[dependency-groups]\n"
+            f"{group} = [\n"
+            f'    "{stale}", # flext: derived member environment\n'
+            '    {include-group = "authored"},\n'
+            "]\n"
+            f'authored = ["{requirement}@{branch}"]\n'
+        )
+        path = tmp_path / c.PYPROJECT_FILENAME
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+
+        line = tm.ok(
+            u.Infra.flext_integration_line(
+                codegen=config.Infra.codegen,
+                repository_root=tmp_path,
+            ),
+        )
+
+        tm.that((line.base_url, line.branch), eq=(provider.base_url, branch))
+        admitted = tm.ok(u.Infra.declared_dependency_payload(path))
+        tm.that(
+            admitted[c.Infra.DEPENDENCY_GROUPS],
+            eq={
+                group: [{"include-group": "authored"}],
+                "authored": [f"{requirement}@{branch}"],
+            },
+        )
+        tm.that(
+            admitted[c.Infra.PROJECT],
+            eq={
+                "name": "consumer",
+                "version": "0.1.0",
+                "dependencies": [f"{requirement}@{branch}"],
+            },
+        )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "groups",
+        ["", "[dependency-groups]\n", '[dependency-groups]\nqa = ["authored>=1"]\n'],
+    )
+    def test_dependency_admission_preserves_absent_native_groups(
+        tmp_path: Path,
+        groups: str,
+    ) -> None:
+        """Reading provenance never invents dev/codegen groups or a root table."""
+        source = '[project]\nname = "consumer"\nversion = "0.1.0"\n' + groups
+        path = tmp_path / c.PYPROJECT_FILENAME
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+
+        tm.that(
+            tm.ok(u.Infra.declared_dependency_payload(path)),
+            eq=tm.not_none(u.Cli.toml_mapping_from_text(source)),
+        )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("group", "comment"),
+        [
+            ("dev", ""),
+            ("codegen", ""),
+            ("dev", "# note # flext: derived member environment"),
+            ("codegen", "# note # flext: derived member environment"),
+            ("qa", "# flext: derived member environment"),
+        ],
+    )
+    def test_flext_line_retains_authored_conflicts_beside_generated_occurrences(
+        tmp_path: Path,
+        group: str,
+        comment: str,
+    ) -> None:
+        """Ownership is per native occurrence, not per value or comment substring."""
+        provider = u.Tests.provider()
+        branch = u.Tests.provider_branch()
+        distribution = config.Infra.codegen.infra_repository.distribution
+        requirement = f"{distribution} @ git+{provider.base_url}/{distribution}.git"
+        stale = f"{requirement}@retired-member-line"
+        source = (
+            '[project]\nname = "consumer"\nversion = "0.1.0"\n'
+            f'dependencies = ["{requirement}@{branch}"]\n'
+            "[dependency-groups]\n"
+            f"{group} = [\n"
+            f'    # "{stale}", # flext: derived member environment\n'
+            f'    "{stale}", # flext: derived member environment\n'
+            f'    "{stale}", {comment}\n'
+            "]\n"
+        )
+        path = tmp_path / c.PYPROJECT_FILENAME
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+
+        tm.fail(
+            u.Infra.flext_integration_line(
+                codegen=config.Infra.codegen,
+                repository_root=tmp_path,
+            ),
+            has="conflicting flext-* line sources",
+        )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
     def test_flext_line_fails_loud_on_conflicting_infra_sources(
         tmp_path: Path,
     ) -> None:
@@ -206,7 +320,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
             else conflict + declaration
         )
         path = root / c.PYPROJECT_FILENAME
-        path.write_text(content, encoding=c.Cli.ENCODING_DEFAULT)
+        path.write_text(content, encoding=c.DEFAULT_ENCODING)
 
         result = u.Infra.flext_integration_line(codegen=codegen, repository_root=root)
 
@@ -217,7 +331,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         else:
             tm.that(result.failure, eq=True)
             tm.that(result.error, has="outside owner-declared TOML sections")
-        tm.that(path.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=content)
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=content)
 
     @staticmethod
     def test_infra_repository_identity_fails_loud_when_undeclared(
@@ -241,25 +355,33 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(result.error, has="is undeclared by this checkout")
 
     @staticmethod
-    def test_bootstrap_toolchain_tracks_latest_mise_release(
+    def test_bootstrap_recovers_exactly_the_locked_mise_release(
         tmp_path: Path,
     ) -> None:
-        """The rendered bootstrap launches the tracked Mise and records its receipt."""
+        """The bootstrap recovers only the mise.lock pin and proves its receipt.
+
+        A missing pinned Mise is fetched once from the release asset that
+        mise.lock records (https GitHub release URL plus sha256), verified
+        against that checksum, and its ``--version`` receipt must equal the
+        pin. Nothing resolves a "latest" release and no failed fetch repeats.
+        """
         makefile = u.Tests.scaffold_text(
             tmp_path / "fixture-project",
             c.Infra.MAKEFILE_FILENAME,
         )
-        tm.that(makefile, lacks="latest_release_url")
-        tm.that(makefile, lacks="curl ")
-        tm.that(makefile, lacks="--windows --version")
-        tm.that(makefile, lacks="mise_install_path=")
-        tm.that(makefile, has='pinned_mise="$$mise"')
-        tm.that(makefile, has="mise_receipt runtime-version")
+        tm.that(makefile, lacks=["latest_release_url", "--retry", "mise_install_path="])
+        tm.that(
+            makefile, has=["https://github.com/*/releases/download/*)", "sha256:*)"]
+        )
+        tm.that(makefile, has="curl --proto '=https' --tlsv1.2 -fsSL -o")
+        tm.that(makefile, has="| sha256sum -c -")
+        tm.that(makefile, has='if [ "$$mise_receipt" != "$$mise_pin" ]; then')
         mise_toml = u.Tests.scaffold_text(
             tmp_path / "fixture-project",
             c.Infra.MISE_TOML_FILENAME,
         )
-        tm.that(mise_toml, lacks="jdx/mise")
+        # The pin the bootstrap recovers is the manifest's own declaration.
+        tm.that(mise_toml, has=f'"{config.Infra.codegen.toolchain.mise_selector}" = "')
 
     @staticmethod
     def test_setup_provisions_only_and_gen_owns_conformance(
@@ -271,16 +393,14 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(content, lacks="_builtin_setup_conform")
         setup_env = content.split("_builtin_setup_environment:", 1)[1]
         tm.that(setup_env.split("\n\n", 1)[0], lacks="codegen conform")
-        tm.that(
-            content,
-            has='"$${SETUP_DIRENV:?missing Mise-resolved direnv executable}" allow',
-        )
         toolchain = config.Infra.codegen.toolchain
         mise = tm.not_none(u.Tests.planned_text(plan, c.Infra.MISE_TOML_FILENAME))
         tm.that(mise, has=f'python = "{toolchain.python_version}"')
-        tm.that(mise, has=f'direnv = "{toolchain.direnv_version}"')
-        tm.that(mise, has=f'go = "{toolchain.go_version}"')
-        tm.that(mise, has=f'make = "{toolchain.make_version}"')
+        tm.that(mise, has=f'direnv = "{toolchain.tool_versions["direnv"]}"')
+        # operator-ruling-2026-10-10-make-system-go-per-project: make is
+        # system-owned and go is a per-project addition, never a fleet tool.
+        tm.that(mise, lacks="\nmake = ")
+        tm.that(mise, lacks="\ngo = ")
         tm.that(mise, lacks="credential_command")
         tm.that(
             mise,
@@ -291,7 +411,12 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(content, lacks="_builtin_gen_check:")
         tm.that(content, lacks="_builtin_gen_apply:")
         tm.that(content, has="_builtin_gen_all:")
-        tm.that(content, lacks="GH_CONFIG_DIR")
+        # The gh configuration is the operator's: auth diagnostics may read it,
+        # the Makefile never assigns or exports it.
+        tm.that(
+            content,
+            lacks=["export GH_CONFIG_DIR", "GH_CONFIG_DIR :=", "GH_CONFIG_DIR ="],
+        )
         tm.that(content, lacks="self-update")
         tm.that(content, lacks="mise launcher version mismatch")
         verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}
@@ -306,7 +431,8 @@ class TestsFlextInfraCodegenCatalogExtensions:
         config_dir = tmp_path / "config"
         config_dir.mkdir()
         (config_dir / "tooling.yaml").write_text(
-            "ManagedArtifacts:\n  Mise:\n    tools:\n      node:\n        version: '26'\n",
+            "ManagedArtifacts:\n  Mise:\n    tools:\n"
+            "      node:\n        version: '26'\n",
             encoding="utf-8",
         )
         # The composer reads the committed catalog: the overlay must be in HEAD.
@@ -345,9 +471,11 @@ class TestsFlextInfraCodegenCatalogExtensions:
         u.Tests.WorktreeFixture.initialize_governed_project(
             member_source,
             member.distribution,
-            workspace=member.name,
-            database=member.name,
-            issue_prefix=member.name,
+            beads=u.Tests.BeadsIdentity(
+                workspace=member.name,
+                database=member.name,
+                issue_prefix=member.name,
+            ),
         )
         member_head = tm.ok(
             u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=member_source),
@@ -377,9 +505,11 @@ class TestsFlextInfraCodegenCatalogExtensions:
         u.Tests.WorktreeFixture.initialize_governed_project(
             repository_root,
             root.distribution,
-            workspace=root.name,
-            database=root.name,
-            issue_prefix=root.name,
+            beads=u.Tests.BeadsIdentity(
+                workspace=root.name,
+                database=root.name,
+                issue_prefix=root.name,
+            ),
         )
         tm.ok(
             u.Cli.run_checked(

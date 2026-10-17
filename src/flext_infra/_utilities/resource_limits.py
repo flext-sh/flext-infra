@@ -10,17 +10,16 @@ import platform
 import shutil
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from flext_cli import u
 
-from flext_infra import c, config, m, settings, t
-from flext_infra._utilities.process import FlextInfraUtilitiesProcess
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
-
-if TYPE_CHECKING:
-    from flext_infra import p
+from flext_infra import c, config, m, p, settings, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesProcess,
+    FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesPyproject,
+)
 
 
 class FlextInfraUtilitiesResourceLimits:
@@ -105,6 +104,8 @@ class FlextInfraUtilitiesResourceLimits:
             ),
             "--no-error-summary",
             "--no-color-output",
+            # Profile the full analysis, never an incidental warm-cache hit.
+            *(("--no-incremental",) if invocation.profile_output is not None else ()),
             *(("--output", c.Infra.OUTPUT_JSON) if invocation.report_json else ()),
             *(("--verbose",) if invocation.verbose else ()),
             "--",
@@ -171,8 +172,46 @@ class FlextInfraUtilitiesResourceLimits:
         Returns:
             The resulting ``Path``.
 
+        """
+        return FlextInfraUtilitiesResourceLimits.project_cache_directory(
+            project_dir,
+            FlextInfraUtilitiesResourceLimits.external_cache_directory(
+                config.Infra.codegen.make.mypy_cache,
+            ),
+        )
+
+    @staticmethod
+    def ruff_cache_directory(project_dir: Path) -> Path:
+        """Resolve persistent Ruff storage while preserving native invalidation.
+
+        Args:
+            project_dir: The path to the project whose Ruff cache is being resolved.
+
+        Returns:
+            The resulting ``Path``.
+
+        """
+        return FlextInfraUtilitiesResourceLimits.project_cache_directory(
+            project_dir,
+            FlextInfraUtilitiesResourceLimits.external_cache_directory(
+                config.Infra.codegen.make.ruff_cache,
+            ),
+        )
+
+    @staticmethod
+    def project_cache_directory(project_dir: Path, cache_root: Path) -> Path:
+        """Namespace one declared cache by the real project's metadata.
+
+        Args:
+            project_dir: The path to the project whose cache is being namespaced.
+            cache_root: The root directory under which the project's cache will be
+                stored.
+
+        Returns:
+            The resulting ``Path``.
+
         Raises:
-            ValueError: If ``metadata.failure``.
+            ValueError: If the project metadata cannot be read.
 
         """
         metadata = FlextInfraUtilitiesPyproject.read_project_metadata_result(
@@ -181,16 +220,11 @@ class FlextInfraUtilitiesResourceLimits:
         if metadata.failure:
             msg = metadata.error or f"project metadata unreadable: {project_dir}"
             raise ValueError(msg)
-        return (
-            FlextInfraUtilitiesResourceLimits.external_cache_directory(
-                config.Infra.codegen.make.mypy_cache,
-            )
-            / metadata.value.project.name
-        )
+        return cache_root / metadata.value.project.name
 
     @staticmethod
     def external_cache_directory(
-        spec: m.Infra.MakeSpec.MypyCacheSpec | m.Infra.MakeSpec.CodemodRulesCacheSpec,
+        spec: p.Infra.ExternalCacheDirectory,
     ) -> Path:
         """Resolve one declared FLEXT cache below the XDG cache home.
 
@@ -199,8 +233,8 @@ class FlextInfraUtilitiesResourceLimits:
             joined with the spec's FLEXT-owned storage directory.
 
         """
-        home = settings.env_lookup(str(spec.data_home_environment_variable)) or str(
-            Path(settings.env_required(str(spec.user_home_environment_variable)))
+        home = settings.env_lookup(spec.data_home_environment_variable) or str(
+            Path(settings.env_required(spec.user_home_environment_variable))
             / spec.home_cache_directory,
         )
         return Path(home) / spec.external_storage_directory
@@ -316,15 +350,16 @@ class FlextInfraUtilitiesResourceLimits:
         tooling = project_dir / "config" / "tooling.yaml"
         if not tooling.is_file():
             return None
-        node: t.JsonValue = u.Cli.yaml_safe_load(tooling).unwrap()
+        loaded: t.JsonMapping = u.Cli.yaml_safe_load(tooling).unwrap()
+        current: t.JsonValue = dict(loaded)
         for key in ("Infra", "tooling", "tools", "mypy", "timeout_seconds"):
-            if not isinstance(node, dict):
+            if not isinstance(current, dict):
                 msg = f"project tooling.yaml level above {key!r} is not a mapping"
                 raise TypeError(msg)
-            if key not in node:
+            if key not in current:
                 return None
-            node = node[key]
-        raw_budget = node
+            current = current[key]
+        raw_budget = current
         if not isinstance(raw_budget, int) or isinstance(raw_budget, bool):
             msg = f"project mypy budget must be a plain integer: {raw_budget!r}"
             raise TypeError(msg)

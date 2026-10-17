@@ -10,13 +10,15 @@ from collections.abc import Mapping
 from html import unescape
 from typing import TYPE_CHECKING
 
-from flext_cli import u
 from markdown import Markdown
 from markdown.extensions.toc import slugify
+from pymdownx.superfences import SuperFencesCodeExtension
 
-from flext_core import r
-from flext_infra import c, m, t
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from flext_infra import c, m, r, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenFilePlan,
+    FlextInfraUtilitiesDocsScope,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -43,7 +45,7 @@ class FlextInfraUtilitiesDocsContract:
         return 0
 
     @staticmethod
-    def _docs_contract_strip_invented_toc_before_frontmatter(content: str) -> str:
+    def docs_contract_strip_invented_toc_before_frontmatter(content: str) -> str:
         """Undo H1+TOC wrongly prepended ahead of YAML frontmatter.
 
         Returns:
@@ -62,8 +64,8 @@ class FlextInfraUtilitiesDocsContract:
             return content
         return after_toc
 
-    @staticmethod
-    def docs_contract_update_toc(content: str) -> t.StrIntPair:
+    @classmethod
+    def docs_contract_update_toc(cls, content: str) -> t.StrIntPair:
         """Normalize the managed table of contents in Markdown content.
 
         Returns:
@@ -71,10 +73,8 @@ class FlextInfraUtilitiesDocsContract:
 
         """
         original = content
-        strip_toc = (
-            FlextInfraUtilitiesDocsContract
-            ._docs_contract_strip_invented_toc_before_frontmatter
-        )
+        docs_contract = FlextInfraUtilitiesDocsContract
+        strip_toc = docs_contract.docs_contract_strip_invented_toc_before_frontmatter
         content = strip_toc(
             content,
         )
@@ -138,7 +138,7 @@ class FlextInfraUtilitiesDocsContract:
 
         """
         renderer = Markdown(
-            extensions=["attr_list", "md_in_html", "toc", "pymdownx.superfences"],
+            extensions=["attr_list", "md_in_html", "toc", SuperFencesCodeExtension()],
             extension_configs={"toc": {"toc_depth": "2-3"}},
         )
         body = c.Infra.TOC_BLOCK_RE.sub("", content)
@@ -160,7 +160,8 @@ class FlextInfraUtilitiesDocsContract:
             items,
         )
         if not items:
-            items = ["- No sections found"]
+            # An honest empty TOC block: no fake bullet, no sentinel text.
+            return f"{c.Infra.TOC_START}\n\n{c.Infra.TOC_END}"
         return f"{c.Infra.TOC_START}\n\n" + "\n".join(items) + f"\n\n{c.Infra.TOC_END}"
 
     @staticmethod
@@ -187,7 +188,11 @@ class FlextInfraUtilitiesDocsContract:
             )
 
     @staticmethod
-    def docs_workspace_contract(repository_root: Path) -> t.JsonMapping:
+    def docs_workspace_contract(
+        repository_root: Path,
+        *,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
+    ) -> t.JsonMapping:
         """Return the root docs contract using root ``pyproject.toml`` metadata.
 
         Returns:
@@ -197,12 +202,15 @@ class FlextInfraUtilitiesDocsContract:
         return FlextInfraUtilitiesDocsContract.docs_current_project_contract(
             repository_root,
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python({}),
+            source_states=source_states,
         )
 
     @staticmethod
     def docs_current_project_contract(
         project_root: Path,
         rendered_contract: t.JsonMapping,
+        *,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
     ) -> t.JsonMapping:
         """Bind rendered API analysis to the current authenticated pyproject bytes.
 
@@ -213,7 +221,10 @@ class FlextInfraUtilitiesDocsContract:
             TypeError: If docs project metadata is missing.
 
         """
-        payload = FlextInfraUtilitiesDocsScope.project_payload(project_root)
+        payload = FlextInfraUtilitiesDocsScope.project_payload(
+            project_root,
+            source_states=source_states,
+        )
         project_value = payload.get(c.Infra.PROJECT)
         if not isinstance(project_value, Mapping):
             msg = f"docs project metadata is missing: {project_root}"
@@ -280,7 +291,7 @@ class FlextInfraUtilitiesDocsContract:
             return r[m.Infra.CodegenFilePlan].fail(
                 f"docs desired bytes and mode differ: {path}",
             )
-        before = u.Cli.atomic_read_binary_file_state(path, required=False)
+        before = FlextInfraUtilitiesCodegenFilePlan.codegen_target_snapshot(path)
         if before.failure:
             return r[m.Infra.CodegenFilePlan].from_failure(before)
         return r[m.Infra.CodegenFilePlan].ok(
@@ -314,7 +325,7 @@ class FlextInfraUtilitiesDocsContract:
 
         """
         exists = path.exists()
-        current = path.read_text(encoding=c.Cli.ENCODING_DEFAULT) if exists else ""
+        current = path.read_text(encoding=c.DEFAULT_ENCODING) if exists else ""
         normalized = (
             FlextInfraUtilitiesDocsContract.docs_contract_update_toc(content)[0]
             if path.suffix == ".md"
@@ -324,7 +335,7 @@ class FlextInfraUtilitiesDocsContract:
         created = not exists
         if apply and (drift or created):
             path.parent.mkdir(parents=True, exist_ok=True)
-            _ = path.write_text(normalized, encoding=c.Cli.ENCODING_DEFAULT)
+            _ = path.write_text(normalized, encoding=c.DEFAULT_ENCODING)
         return m.Infra.GeneratedFile(
             path=path.as_posix(),
             changed=drift or created,

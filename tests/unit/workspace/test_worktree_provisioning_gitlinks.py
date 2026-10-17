@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
-from flext_infra import FlextInfraWorktreeService, c
-from tests import t, u
+from flext_infra import FlextInfraWorktreeService
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraWorktreeProvisioningGitlinks:

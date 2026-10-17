@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
-from flext_infra import main as infra_main
-from tests import c
+from flext_infra import main
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -27,7 +25,7 @@ class TestsFlextInfraValidateCli:
         workspace.mkdir(parents=True, exist_ok=True)
 
         tm.that(
-            infra_main([
+            main([
                 "validate",
                 "stub-validate",
                 "--repository-root",
@@ -40,7 +38,7 @@ class TestsFlextInfraValidateCli:
     @staticmethod
     def test_stub_validate_help_returns_zero() -> None:
         """Test stub validate help returns zero."""
-        tm.that(infra_main(["validate", "stub-validate", "--help"]), eq=0)
+        tm.that(main(["validate", "stub-validate", "--help"]), eq=0)
 
     @staticmethod
     def _rule_project(tmp_path: Path, source: str) -> Path:
@@ -61,6 +59,7 @@ class TestsFlextInfraValidateCli:
             "dependencies = []\n",
             encoding="utf-8",
         )
+        u.Tests.copy_tracked_mise_seeds(project)
         config_path.write_text(
             f"ruleDirs: [{c.Cli.RULES_DIR_NAME}]\n",
             encoding="utf-8",
@@ -84,8 +83,11 @@ class TestsFlextInfraValidateCli:
             '"""Namespace contract fixture."""\n\n'
             "from __future__ import annotations\n\nVALUE = 1\n",
         )
+        # The rule engine runs ast-grep through the project's own declared
+        # Mise toolchain, which every governed project carries.
+        tm.that((project / c.Infra.MISE_TOML_FILENAME).is_file(), eq=True)
 
-        exit_code = infra_main([
+        exit_code = main([
             "validate",
             "namespace",
             "--repository-root",
@@ -101,7 +103,7 @@ class TestsFlextInfraValidateCli:
         """Test namespace validate exits nonzero for rule findings."""
         project = self._rule_project(tmp_path, "first(1)\n")
 
-        exit_code = infra_main([
+        exit_code = main([
             "validate",
             "namespace",
             "--repository-root",

@@ -10,10 +10,8 @@ from collections import defaultdict
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
-from flext_infra import config
-from flext_infra.codegen._codegen_generation_paths import (
-    FlextInfraCodegenGenerationPathsMixin,
-)
+from flext_infra import config, u
+from flext_infra.codegen import FlextInfraCodegenGenerationPathsMixin
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -56,21 +54,27 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
         )
 
     @staticmethod
-    def _format_module_alias_import(indent: str, mod: str, export_name: str) -> str:
+    def _format_module_alias_import(
+        indent: str,
+        mod: str,
+        export_name: str,
+    ) -> t.StrSequence:
         """Format a module alias import as a from-import of its parent package.
 
         Returns:
-            The resulting ``str``.
+            The resulting ``t.StrSequence``.
 
         """
         if "." in mod and mod != ".":
-            parent_mod, _, child_name = mod.rpartition(".")
+            level = len(mod) - len(mod.lstrip("."))
+            parent_mod, _, child_name = mod[level:].rpartition(".")
+            parent_mod = "." * level + parent_mod
             compact = (
                 f"{indent}from {parent_mod or '.'} import {child_name} as {export_name}"
             )
             line_length = config.Infra.tooling.tools.ruff.line_length
             if len(compact) <= line_length:
-                return compact
+                return (compact,)
             nested_indent = f"{indent}    "
             # One symbol per wrapped line is the only form Ruff's isort accepts
             # (I001); the width contract matches _format_import so the render
@@ -80,7 +84,7 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
                 f"{nested_indent}{child_name} as {export_name},",
                 f"{indent})",
             )
-        return f"{indent}import {mod} as {export_name}"
+        return (f"{indent}import {mod} as {export_name}",)
 
     @staticmethod
     def _format_type_checking_module_alias_import(
@@ -94,12 +98,10 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
             The resulting ``t.StrSequence``.
 
         """
-        return (
-            FlextInfraCodegenGenerationImportsMixin._format_module_alias_import(
-                indent,
-                mod,
-                export_name,
-            ),
+        return FlextInfraCodegenGenerationImportsMixin._format_module_alias_import(
+            indent,
+            mod,
+            export_name,
         )
 
     @staticmethod
@@ -133,11 +135,7 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
         """
         export_name, imported_name = item
         imported = imported_name or export_name
-        category = 0 if imported.isupper() else 1 if imported[:1].isupper() else 2
-        # Ruff isort orders names inside a type group case-insensitively
-        # (``TEST_FACADE_BASES`` < ``TESTS_ROOT``): raw ASCII puts ``S`` (83)
-        # before ``_`` (95) and flips the pair, producing a gen/fmt flip-flop.
-        return (category, imported.casefold()), export_name != imported_name
+        return u.Infra.isort_member_key(imported), export_name != imported_name
 
 
 __all__: list[str] = ["FlextInfraCodegenGenerationImportsMixin"]

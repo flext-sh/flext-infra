@@ -14,11 +14,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, m
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
-from tests import c, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -71,6 +70,30 @@ class TestsFlextInfraLocCapGate:
         flagged = [issue.file for issue in result.issues if issue.code == "LOC_CAP"]
         tm.that(len(flagged), eq=0 if passed else 1)
         tm.that(all(path.endswith("sample.py") for path in flagged), eq=True)
+
+    def test_generated_source_tree_is_outside_the_cap(self, tmp_path: Path) -> None:
+        """A tracked generated-source module never counts against the cap.
+
+        Premise (flext-gknfx): generated trees are tracked, so Git ignore rules
+        no longer hide them from scc; the codegen artifact key excludes them.
+        """
+        names = config.Infra.codegen.generated_sources
+        tm.that(names, empty=False)
+        project = self.gate_project(tmp_path, code_lines=1)
+        tree = project / "src" / "demo_project" / names[0]
+        tree.mkdir()
+        (tree / "wire_pb2.py").write_text(
+            "".join(
+                f"x{index} = {index}\n"
+                for index in range(config.Infra.codegen.loc_cap.max_lines + 50)
+            ),
+            encoding="utf-8",
+        )
+
+        result = u.Tests.run_gate_check(FlextInfraLocCapGate, tmp_path, project)
+
+        tm.that(result.result.passed, eq=True)
+        tm.that(result.issues, eq=())
 
     def test_unavailable_scanner_is_not_silenced(self, tmp_path: Path) -> None:
         """Test unavailable scanner is not silenced."""
@@ -130,10 +153,10 @@ class TestsFlextInfraLocCapGate:
             code_lines=config.Infra.codegen.loc_cap.max_lines + 1,
         )
         module = project / "src" / "demo_project" / "sample.py"
-        source = module.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        source = module.read_text(encoding=c.DEFAULT_ENCODING)
         module.write_text(
             f"{c.Infra.AUTOGEN_HEADER}\n{source}",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
         gate = FlextInfraLocCapGate(tmp_path)
 

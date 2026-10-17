@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra.services._codegen.vscode import FlextInfraCodegenVscodeMixin
+from flext_infra.services._codegen import FlextInfraCodegenVscodeMixin
 
 
 class FlextInfraCodegen(FlextInfraCodegenVscodeMixin):

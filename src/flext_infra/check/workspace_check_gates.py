@@ -9,14 +9,15 @@ from __future__ import annotations
 import time
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli
 
-from flext_core import r
-from flext_infra import c, m, p, t, u
-from flext_infra.check.gate_registry import FlextInfraGateRegistry
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra import c, config, m, p, r, t, u
+
+if TYPE_CHECKING:
+    from flext_infra.check import FlextInfraGateRegistry
+    from flext_infra.gates import FlextInfraGate
 
 
 class FlextInfraWorkspaceCheckGatesMixin:
@@ -37,16 +38,18 @@ class FlextInfraWorkspaceCheckGatesMixin:
         Returns:
             The resulting ``m.Infra.GateContext``.
 
+        Raises:
+            ValueError: If the context carries runtime dependency inputs
+                that belong to a different project target.
+
         """
-        return m.Infra.GateContext(
-            repository_root=ctx.repository_root,
-            reports_dir=ctx.reports_dir / target.name,
-            apply_fixes=ctx.apply_fixes,
-            check_only=ctx.check_only,
-            fail_fast=ctx.fail_fast,
-            ruff_args=ctx.ruff_args,
-            pyright_args=ctx.pyright_args,
-        )
+        if (
+            ctx.runtime_dependency_inputs is not None
+            and ctx.runtime_dependency_inputs.target_root != target.path
+        ):
+            msg = "dependency provenance belongs to another project"
+            raise ValueError(msg)
+        return ctx.model_copy(update={"reports_dir": ctx.reports_dir / target.name})
 
     def _run_single_project(
         self,
@@ -149,6 +152,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 ),
                 issues=(),
                 raw_output=f"{gate_id} gate not registered",
+                outcome=c.Infra.ToolOutcome.ERROR,
             )
         return gate.check(project_dir, ctx or self._gate_ctx(reports_dir))
 
@@ -160,10 +164,10 @@ class FlextInfraWorkspaceCheckGatesMixin:
     ) -> m.Infra.ProjectResult:
         """Run gates for one project and retain every executed gate in order.
 
-        Fixers mutate shared files, so an ``--apply`` run chains every gate on
-        the previous one. Read-only gates share no mutable state and run as one
-        parallel wave; reporting retains the complete wave, including failures
-        after the first one. Serialized fail-fast runs stop at their failed gate.
+        Every gate runs serially through the public CLI pipeline. Whole-program
+        checkers must not compete for memory, and fixers share mutable files.
+        Read-only checks retain every verdict; fail-fast and mutating runs stop
+        at the first failed gate without fabricating unexecuted results.
 
         Returns:
             The resulting ``m.Infra.ProjectResult``.
@@ -178,22 +182,16 @@ class FlextInfraWorkspaceCheckGatesMixin:
         executions: MutableMapping[str, m.Infra.GateExecution] = {}
 
         stages: t.MutableSequenceOf[m.Cli.PipelineStageSpec] = []
-        previous_gate_id: str | None = None
         for gate_id in gates:
             gate_instance = self._registry.create(gate_id, self._repository_root)
             if gate_instance is None:
                 msg = f"{gate_id} gate not registered"
                 raise ValueError(msg)
-            if not gate_instance.selected_for(project_dir):
+            if not ctx.selected_files and not gate_instance.selected_for(project_dir):
                 continue
             stages.append(
                 m.Cli.PipelineStageSpec(
                     stage_id=gate_id,
-                    depends_on=(
-                        frozenset({previous_gate_id})
-                        if (ctx.fail_fast or mutating) and previous_gate_id is not None
-                        else frozenset()
-                    ),
                     handler=self._make_gate_handler(
                         gate_instance,
                         project_dir,
@@ -202,15 +200,16 @@ class FlextInfraWorkspaceCheckGatesMixin:
                     ),
                 ),
             )
-            previous_gate_id = gate_id
 
-        cli.pipeline(
-            stages,
-            context=m.Cli.PipelineStageContext(repository_root=project_dir),
-            logger=self._gate_logger,
-        )
         for stage in stages:
+            pipeline_result = cli.pipeline(
+                (stage,),
+                context=m.Cli.PipelineStageContext(repository_root=project_dir),
+                logger=self._gate_logger,
+            )
             execution = executions[stage.stage_id]
+            if execution.result.passed:
+                pipeline_result.unwrap()
             result.gates[stage.stage_id] = execution
             u.Cli.gate_result(
                 stage.stage_id,
@@ -218,19 +217,15 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 passed=execution.result.passed,
                 elapsed=execution.result.duration,
             )
-            if not execution.result.passed:
-                for finding in execution.result.errors:
-                    u.Cli.info(finding)
-                # Missing or malformed findings must retain the producer's failure.
-                if execution.raw_output.strip() and (
-                    not execution.result.errors
-                    or any(
-                        issue.code == c.Infra.ToolOutcome.ERROR
-                        for issue in execution.issues
+            if execution.issues or not execution.result.passed:
+                for issue in execution.issues:
+                    u.Cli.info(issue.formatted)
+                if execution.raw_receipt is not None:
+                    u.Cli.info(
+                        f"{stage.stage_id}: {execution.outcome.value}; "
+                        f"Native output receipt: {execution.raw_receipt}",
                     )
-                ):
-                    u.Cli.info(execution.raw_output)
-                if ctx.fail_fast or mutating:
+                if not execution.result.passed and (ctx.fail_fast or mutating):
                     break
         return result
 
@@ -248,7 +243,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         """Build a pipeline stage handler that executes a single gate.
 
         The handler only records the GateExecution into *gates_sink*; reporting
-        happens after the wave, in declared gate order.
+        happens after the individual stage, in declared gate order.
 
         Returns:
             The resulting ``p.Cli.PipelineStage``.
@@ -267,16 +262,16 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 The resulting ``p.Result[m.Cli.PipelineStageResult]``.
 
             """
-            gate_ctx = m.Infra.GateContext(
-                repository_root=ctx.repository_root,
-                reports_dir=ctx.reports_dir,
-                apply_fixes=ctx.apply_fixes,
-                check_only=ctx.check_only,
-                fail_fast=ctx.fail_fast,
-                ruff_args=ctx.ruff_args,
-                pyright_args=ctx.pyright_args,
-            )
+            gate_ctx = ctx.model_copy()
             execution = self._execute_gate(gate_instance, project_dir, gate_ctx)
+            raw_receipt = gate_ctx.reports_dir / (
+                f"{gate_id}{config.Infra.tooling.raw_check_receipt_suffix}"
+            )
+            u.Cli.atomic_write_text_file(
+                raw_receipt,
+                execution.raw_output,
+            ).unwrap()
+            execution = execution.model_copy(update={"raw_receipt": raw_receipt})
             gates_sink[gate_id] = execution
             self._gate_logger.info(
                 "gate_executed",
@@ -320,6 +315,8 @@ class FlextInfraWorkspaceCheckGatesMixin:
             The resulting ``m.Infra.GateExecution``.
 
         """
+        if ctx.selected_files:
+            return gate_instance.check_files(ctx.selected_files, project_dir, ctx)
         if ctx.apply_fixes and (not ctx.check_only) and gate_instance.can_fix:
             return gate_instance.fix(project_dir, ctx)
         return gate_instance.check(project_dir, ctx)

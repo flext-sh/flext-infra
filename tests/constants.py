@@ -36,6 +36,18 @@ class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
     class Tests(TestsFlextInfraConstantsScanMixin, FlextTestsConstants.Tests):
         """Flat constants optimized for data-driven infra tests."""
 
+        DETECTOR_MODULE_SCENARIOS: ClassVar[t.SequenceOf[t.StrTuple]] = (
+            ("requests",),
+            ("requests", "pytz"),
+            ("requests", "pytz", "six"),
+        )
+        """Dependency scenarios whose union provisions the shared consumer."""
+        CONSUMER_MODULES: ClassVar[t.StrTuple] = tuple(
+            dict.fromkeys(
+                module for scenario in DETECTOR_MODULE_SCENARIOS for module in scenario
+            )
+        )
+
         DIRENV_SESSION_ENV_KEYS: ClassVar[t.StrSequence] = (
             "DIRENV_DIFF",
             "DIRENV_DIR",
@@ -82,6 +94,9 @@ class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
 
         COLD_MISE_STORAGE: ClassVar[str] = "cold-mise-storage"
         """Mise storage that starts empty, so every tool and lookup is fetched."""
+
+        MISE_DATA_DIR_ENV: ClassVar[str] = "MISE_DATA_DIR"
+        """Mise's own storage-root variable the cold-storage scenarios set."""
 
         MAKE_TEMPLATE_CI_CHECKOUT: ClassVar[str] = "ci"
         """Home of the template checkout set up once in cold CI storage."""
@@ -139,8 +154,8 @@ class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
             FlextInfraConstants.Infra.MAKE_REPOSITORY_ROOT,
             *FlextInfraConstants.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             *DIRENV_SESSION_ENV_KEYS,
-            # The host's GitHub credential (and the aliases Make unexports)
-            # never enters a test; a test that needs one passes its own.
+            # The host's GitHub credential under every name Make reads never
+            # enters a test; a test that needs one passes its own.
             "GITHUB_TOKEN",
             "GH_TOKEN",
             "MISE_GITHUB_TOKEN",

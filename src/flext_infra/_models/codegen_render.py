@@ -6,16 +6,385 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableSet
+from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m
 
-from flext_infra import t
+from flext_infra import c, t
+from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
+from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.make import FlextInfraConfigModelsMake
+from flext_infra._models._config.provider import FlextInfraConfigModelsProvider
+from flext_infra._models._config.render import FlextInfraConfigModelsRender
 from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolConfig
+from flext_infra._models.mise_toolchain import FlextInfraModelsMiseToolchain
 
 
 class FlextInfraModelsCodegenRender:
     """Typed render contexts for generated codegen artifacts."""
+
+    class UvResolutionViewState(m.ArbitraryTypesModel):
+        """Mutable accumulator for one native resolution view projection."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid",
+            arbitrary_types_allowed=True,
+        )
+
+        directory: Path = m.Field(
+            description="Generated view root resolving member relative paths.",
+        )
+        policy: FlextInfraConfigModelsMake.MakeUvResolutionSpec = m.Field(
+            description="Declared resolution policy owning member naming.",
+        )
+        native_uv: t.MutableJsonMapping = m.Field(
+            description="Detached root ``[tool.uv]`` table under projection.",
+        )
+        view_project: t.MutableJsonMapping = m.Field(
+            description="Generated virtual project table, empty when absent.",
+        )
+        dependencies: t.MutableJsonList = m.Field(
+            description="Root dependency requests in declaration order.",
+        )
+        member_bindings: t.MutableJsonList = m.Field(
+            description="Member dependency requests in declaration order.",
+        )
+        extras: t.MutableJsonMapping = m.Field(
+            description="View optional-dependency groups by target name.",
+        )
+        groups: t.MutableJsonMapping = m.Field(
+            description="View dependency groups by target name.",
+        )
+        group_metadata: t.MutableJsonMapping = m.Field(
+            description="Renamed group metadata keyed by target name.",
+        )
+        sources: t.MutableJsonMapping = m.Field(
+            description="Context-qualified source entries by dependency name.",
+        )
+        index_entries: t.MutableJsonMapping = m.Field(
+            description="Conflict-checked index declarations by identity.",
+        )
+        constraints: t.MutableJsonList = m.Field(
+            description="Constraints preserving replaced local sources.",
+        )
+        retained_overrides: t.ListOf[
+            str | FlextInfraModelsMiseToolchain.UvScopedOverride
+        ] = m.Field(
+            description="Declared overrides with member requests appended.",
+        )
+        overridden: MutableSet[str] = m.Field(
+            description="Canonical member names already natively bound.",
+        )
+        seen_groups: MutableSet[str] = m.Field(
+            description="Normalized group names already claimed.",
+        )
+        seen_extras: MutableSet[str] = m.Field(
+            description="Normalized extra names already claimed.",
+        )
+
+    class UvResolutionProject(FlextInfraConfigModelsContract.ConfigContract):
+        """Authenticated project input to the native development resolution view."""
+
+        repository: Annotated[
+            FlextInfraConfigModelsContexts.RepositoryRef,
+            m.Field(
+                description="Declared identity, package status and editable policy"
+            ),
+        ]
+        directory: Annotated[
+            Path,
+            m.Field(description="Authenticated absolute physical project directory"),
+        ]
+        document: Annotated[
+            t.Cli.TomlDocument,
+            m.Field(
+                exclude=True,
+                description="Already parsed conform-owned native project metadata",
+            ),
+        ]
+
+    class GithubWorkflowRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Typed input consumed by generated GitHub workflow templates."""
+
+        dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
+        gate_original_receipt_filename: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Public original native gate receipt filename"),
+        ]
+        setup_operations_report_directory: Annotated[
+            Path,
+            m.Field(description="Canonical setup operation report artifact directory"),
+        ]
+        docs_report_filenames: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Structured docs reports CI dumps and uploads"),
+        ] = c.Infra.DOCS_STRUCTURED_REPORT_FILENAMES
+        make_profile: Annotated[
+            c.Infra.MakeProfile,
+            m.Field(
+                description=(
+                    "Make/codegen profile; ci-matrix projected only for "
+                    "workspace/standalone; standalone excluded "
+                    "and orphan copies pruned"
+                ),
+            ),
+        ]
+        gascity_enabled: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Gas City runtime-contract participation; gates the Dolt "
+                    "server mode the generated Beads policy script asserts."
+                ),
+            ),
+        ] = True
+        repository_branch: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Repository integration branch"),
+        ]
+        python_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Python major.minor line"),
+        ]
+        toolchain: Annotated[
+            FlextInfraConfigModelsContract.ToolchainSpec,
+            m.Field(description="Canonical toolchain consumed by CI bootstrap"),
+        ]
+        github_actions: Annotated[
+            Mapping[str, FlextInfraConfigModelsProvider.GithubActionPinSpec],
+            m.Field(description="Immutable GitHub Action catalog"),
+        ]
+        make: Annotated[
+            FlextInfraConfigModelsMake.MakeSpec,
+            m.Field(description="Canonical workflow command contract"),
+        ]
+        workspace_repositories: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsContexts.RepositoryRef],
+            m.Field(
+                description=(
+                    "Governed subproject repositories consumed by workspace-scoped "
+                    "workflow templates (docs paths, dependabot directories)"
+                ),
+            ),
+        ] = ()
+        ci_trigger_branches: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description="Ordered, deduplicated blocking CI branches",
+            ),
+        ] = ()
+        has_devcontainer: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Whether the rendered repository ships a .devcontainer "
+                    "directory. Dependabot only accepts a devcontainers "
+                    "ecosystem entry when one exists; declaring it for a "
+                    "repository without that directory makes GitHub reject the "
+                    "whole manifest, which silently disables EVERY ecosystem in "
+                    "it, security updates included. Derived from the repository "
+                    "on disk rather than declared, because the directory is the "
+                    "fact and a second declaration could disagree with it"
+                ),
+            ),
+        ] = False
+        dependency_cooldown_days: Annotated[
+            int,
+            m.Field(
+                ge=1,
+                description=(
+                    "Fleet supply-chain cooldown (codegen.toolchain SSOT) "
+                    "rendered as default-days into every dependabot ecosystem "
+                    "entry."
+                ),
+            ),
+        ]
+        cooldown_excluded_dependencies: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Requirement names the project takes by direct git "
+                    "reference (forks and local projects): derived from its "
+                    "pyproject, they never enter the cooldown."
+                ),
+            ),
+        ] = ()
+        checkout_submodules: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^(true|false|recursive)$",
+                description="actions/checkout submodules mode resolved from config",
+            ),
+        ]
+        custom_steps: Annotated[
+            str,
+            m.Field(
+                default="",
+                description=(
+                    "Verbatim project-owned workflow steps injected before the "
+                    "toolchain installer, read from the project's own "
+                    "custom-steps file; empty when the project declares none"
+                ),
+            ),
+        ] = ""
+        private_submodules: Annotated[
+            FlextInfraConfigModelsProvider.CiPrivateSubmodulesSpec | None,
+            m.Field(
+                default=None,
+                description=(
+                    "Optional private-subproject deploy-key init for this "
+                    "distribution; None means the workflow skips the step"
+                ),
+            ),
+        ] = None
+        private_dependency_auth: Annotated[
+            FlextInfraConfigModelsProvider.CiPrivateDependencyAuthSpec | None,
+            m.Field(
+                default=None,
+                description=(
+                    "Optional GitHub App token minting for private git "
+                    "dependencies; None means the workflow skips the step"
+                ),
+            ),
+        ] = None
+        system_packages: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "Runner packages this distribution's tests need; empty "
+                    "means the workflow renders no install step"
+                ),
+            ),
+        ] = ()
+        packages_read: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description=(
+                    "Grant the ci job packages: read because this "
+                    "distribution's gates resolve GitHub Packages; False keeps "
+                    "the job contents-only"
+                ),
+            ),
+        ] = False
+
+    class MakeWorkflowRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Typed input shared by generated local workflow surfaces."""
+
+        dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
+        make: Annotated[
+            FlextInfraConfigModelsMake.MakeSpec,
+            m.Field(description="Canonical workflow command contract"),
+        ]
+
+    class DistroDockerRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Typed input consumed by generated distro Dockerfiles."""
+
+        package_name: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Python import package name"),
+        ]
+        python_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Python major.minor line"),
+        ]
+        make: Annotated[
+            FlextInfraConfigModelsMake.MakeSpec,
+            m.Field(description="Canonical Make CI token contract for ENV CI=Y"),
+        ]
+
+    class EnvrcRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Typed input consumed only by the generated project ``.envrc``."""
+
+        toolchain: Annotated[
+            FlextInfraConfigModelsContract.ToolchainSpec,
+            m.Field(description="Governed native reader shared with Make"),
+        ]
+        uv_resolution: Annotated[
+            FlextInfraConfigModelsMake.MakeUvResolutionSpec,
+            m.Field(description="Native resolver input ownership shared with Make"),
+        ]
+        repository_root_rel: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Project-relative owner of the runtime environment"),
+        ] = "."
+        environment_path_prepends: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Project-relative executable paths"),
+        ]
+        environment_directory: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Runtime-root-local development environment"),
+        ] = c.Infra.ENVIRONMENT_DIRECTORY
+
+    class SonarcloudRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Typed input consumed only by the generated ``.sonarcloud.properties``."""
+
+        sonarcloud: Annotated[
+            FlextInfraConfigModelsRender.SonarcloudSpec,
+            m.Field(description="Fleet SonarCloud scope policy"),
+        ]
+        tests_dir: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Project-relative tests directory; conform always "
+                    "materializes it (managed tests/fixtures/ci/docker "
+                    "projections), so sonar.tests always names a real directory"
+                ),
+            ),
+        ]
+        workspace_subprojects: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Workspace-relative member checkout paths of a workspace "
+                    "root; each member is its own repository with its own "
+                    "SonarCloud project, so the root scope excludes them. "
+                    "Empty for a standalone repository"
+                ),
+            ),
+        ] = ()
+        generated_source_globs: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Tracked generated-source trees derived from the codegen "
+                    "artifact key; never governed source"
+                ),
+            ),
+        ] = ()
+
+    class UvResolutionSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Resolver keys conform owns in one project's ``[tool.uv]`` table.
+
+        Every key is declared: an empty sequence removes it from the table.
+        """
+
+        link_mode: Annotated[str, m.Field(description="uv installation link mode")]
+        constraint_dependencies: Annotated[
+            t.VariadicTuple[str],
+            m.Field(description="Declared constraints; the uv pin is never kept"),
+        ]
+        override_dependencies: Annotated[
+            t.VariadicTuple[str | FlextInfraModelsMiseToolchain.UvScopedOverride],
+            m.Field(
+                description=(
+                    "SSOT-declared PEP 508 overrides resolving a transitive "
+                    "graph's family pins to the declared integration line; "
+                    "empty removes the key, so a standalone repository locks "
+                    "exactly like a fleet member (no member-computed fallback)."
+                ),
+            ),
+        ] = ()
+        environments: Annotated[
+            t.VariadicTuple[str],
+            m.Field(description="Resolved environment markers uv resolves for"),
+        ]
 
     class MarkdownLintRenderSpec(m.ContractModel):
         """Validated tooling-only context for Markdown lint projections."""
@@ -30,6 +399,25 @@ class FlextInfraModelsCodegenRender:
             FlextInfraModelsDepsToolConfig.ToolConfigDocument,
             m.Field(description="Canonical validated tooling policy."),
         ]
+
+    class QltyRenderSpec(m.ContractModel):
+        """Validated context for the generated qlty repository configuration."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid",
+            frozen=True,
+            strict=True,
+        )
+
+        generated_source_globs: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Tracked generated-source trees excluded from the smells "
+                    "scan, derived from the codegen artifact key."
+                ),
+            ),
+        ] = ()
 
     # Keep the module-skeleton template boundary model-backed and immutable.
     class ModuleSkeletonRenderContext(m.ContractModel):
@@ -117,20 +505,9 @@ class FlextInfraModelsCodegenRender:
         exports_tuple: t.NonEmptyStr = m.Field(
             description="Canonical rendered root ``__all__`` tuple.",
         )
-        lazy_module_mapping: t.NonEmptyStr = m.Field(
-            description="Canonical rendered lazy module mapping.",
+        lazy_export_mapping: t.NonEmptyStr = m.Field(
+            description="Immutable elected export-to-target installer argument.",
         )
-        lazy_alias_mapping: t.NonEmptyStr = m.Field(
-            description="Canonical rendered lazy alias mapping.",
-        )
-
-    class StaticPackageInitRender(m.ArbitraryTypesModel):
-        """Template context for a non-root static ``__init__.py``."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
-        autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
-        docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
 
 
 __all__: list[str] = ["FlextInfraModelsCodegenRender"]

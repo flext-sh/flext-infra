@@ -15,8 +15,8 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_core import r
-from flext_infra import c, m, t
+from flext_infra import c, m, r, t
+from flext_infra._utilities import FlextInfraUtilitiesPyproject
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -26,6 +26,58 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesWorkspaceManifest:
     """Resolve, load and classify a checkout by its workspace manifest."""
+
+    @staticmethod
+    def repository_declaration_delta(
+        legacy: m.Infra.WorkspaceManifestSpec,
+    ) -> p.Result[m.Infra.RepositoryDeltaSpec]:
+        """Extract only self-owned declarations for an explicit migration.
+
+        This operation describes migration input. Runtime discovery must consume
+        the resulting repository codegen declaration, never the legacy document.
+        Composed members, exclusions, ledger copies and machine-local consumer
+        paths cannot become repository declaration fields.
+
+        Returns:
+            The validated declaration belonging to the document's own repository.
+
+        """
+        result_type = r[m.Infra.RepositoryDeltaSpec]
+        fields = set(m.Infra.RepositoryDeltaSpec.model_fields)
+        values = legacy.model_dump(
+            mode="json",
+            include=fields.intersection(m.Infra.WorkspaceManifestSpec.model_fields),
+            exclude_none=True,
+            exclude_computed_fields=True,
+        )
+        values.update(
+            legacy.repository.model_dump(
+                mode="json",
+                include=fields.intersection(m.Infra.RepositoryRef.model_fields),
+                exclude_none=True,
+                exclude_computed_fields=True,
+            ),
+        )
+        for policy in legacy.repository_policy_overlays:
+            if policy.project == legacy.repository.distribution:
+                values.update(
+                    policy.model_dump(
+                        mode="json",
+                        include=fields.intersection(
+                            m.Infra.RepositoryPolicyOverlaySpec.model_fields,
+                        ),
+                        # Why: the overlay's ``project`` is the selector that
+                        # matched this policy (the distribution name string);
+                        # the delta's ``project`` is ProjectSpec metadata. The
+                        # selector is admission, never delta content.
+                        exclude={"project"},
+                        exclude_computed_fields=True,
+                    ),
+                )
+        validated = u.validate_value(m.Infra.RepositoryDeltaSpec, values)
+        if validated.failure:
+            return result_type.from_failure(validated)
+        return result_type.ok(validated.value)
 
     @staticmethod
     def workspace_manifest_path(repository_root: Path) -> Path:
@@ -93,20 +145,14 @@ class FlextInfraUtilitiesWorkspaceManifest:
 
     @classmethod
     def fleet_umbrella(cls, repository_root: Path) -> bool:
-        """Whether this checkout declares itself a fleet umbrella.
-
-        The typed role in the handwritten workspace manifest is the only signal.
-        Every governed standalone project also carries this manifest, so file
-        existence alone would collapse its docs scope onto an aggregate root.
+        """Whether this checkout declares governed participants in Git.
 
         Returns:
             The resulting ``bool``.
 
         """
-        manifests = cls.load_workspace_manifest(repository_root).unwrap()
-        return any(
-            manifest.repository.role is c.Infra.MakeProfile.WORKSPACE
-            for manifest in manifests
+        return bool(
+            FlextInfraUtilitiesPyproject.workspace_project_paths(repository_root),
         )
 
 

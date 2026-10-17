@@ -1,0 +1,128 @@
+# Settings/config import boundary (operator-ruling-2026-10-08-settings-config-imports
+# and operator-ruling-2026-10-08-settings-config-boundary).
+#
+# A layer-zero module owns config/settings before entering any facade family.
+# Family-domain config declarations such as `_models/_config/` remain model
+# assembly, not layer zero. The typed import-law classifier owns this fact. It
+# imports nothing from its own namespace, including TYPE_CHECKING imports.
+# Anything from another namespace is allowed (the own-package context decides
+# which namespace is the module's own). The family internals of c/t/p/m/u may
+# import settings/config, which is why settings/config stay below them. A family
+# `base.py` is a leaf: it imports no other module of its own namespace except its
+# own split parts, and never settings/config.
+#
+# Detection only: use native or valid upstream contracts at layer zero; never
+# defer an invalid own-namespace dependency into a typing guard.
+id: ban-settings-config-own-facade-import
+language: python
+severity: error
+files:
+- "**/_settings*.py"
+- "**/_config*.py"
+- "**/settings*.py"
+- "**/config*.py"
+- "**/_settings*/**/*.py"
+- "**/_config*/**/*.py"
+ignores:
+- "**/__init__.py"
+metadata:
+  context:
+    MODULE:
+    - is: own-package
+    - is: layer-zero-file
+rule:
+  matches: root-imported-name
+  inside:
+    stopBy: end
+    kind: import_from_statement
+    has:
+      field: module_name
+      pattern: $MODULE
+message: >-
+  Layer-zero settings/config imports from its own root `$MODULE`, including TYPE_CHECKING: use native or valid upstream contracts, never its own namespace.
+---
+id: ban-settings-config-own-module-import
+language: python
+severity: error
+files:
+- "**/_settings*.py"
+- "**/_config*.py"
+- "**/settings*.py"
+- "**/config*.py"
+- "**/_settings*/**/*.py"
+- "**/_config*/**/*.py"
+ignores:
+- "**/__init__.py"
+metadata:
+  context:
+    MODULE:
+    - is: own-package
+    - is: layer-zero-file
+rule:
+  any:
+  - kind: import_from_statement
+    has:
+      field: module_name
+      kind: dotted_name
+      pattern: $MODULE
+      regex: "\\."
+  - kind: dotted_name
+    pattern: $MODULE
+    any:
+    - inside:
+        kind: import_statement
+    - inside:
+        kind: aliased_import
+        field: name
+        inside:
+          kind: import_statement
+message: >-
+  Layer-zero settings/config imports its own namespace `$MODULE`, including TYPE_CHECKING: use native or valid upstream contracts.
+---
+# A family base composes its family's parts; the classes it shares with the
+# sibling families it reaches through the package's public family compose
+# modules (`<own-package>.{constants,models,protocols,typings,utilities}` —
+# the compose-module context, the family-shape amendment cosmos-h5y3o): the
+# compose classes are the only form the type checkers resolve, and the lazy
+# root keeps re-exporting them for runtime. Every other own-module import
+# stays banned, and the import-layer law (ban-reverse-runtime-import) still
+# governs which of those compose imports may run at runtime.
+id: ban-family-base-own-import
+language: python
+severity: error
+files:
+- "**/_*/base.py"
+metadata:
+  context:
+    MODULE:
+    - is: own-package
+    - is: family-base-file
+    # The family compose modules are the sanctioned static surface (bead
+    # flext-6e72w): a family base reaches the canonical public compose
+    # leaves (constants/models/protocols/typings/utilities) the way every
+    # consumer does, and only other own modules stay banned.
+    - not: compose-module
+rule:
+  any:
+  - all:
+    - kind: import_from_statement
+    - has:
+        field: module_name
+        kind: dotted_name
+        pattern: $MODULE
+        not:
+          regex: "\\._[a-z]+\\._base_parts(\\.|$)"
+  - kind: dotted_name
+    pattern: $MODULE
+    not:
+      regex: "\\._[a-z]+\\._base_parts(\\.|$)"
+    any:
+    - inside:
+        kind: import_statement
+    - inside:
+        kind: aliased_import
+        field: name
+        inside:
+          kind: import_statement
+message: >-
+  Family base.py imports `$MODULE` from its own namespace: a family base is a leaf and imports neither other own modules nor settings/config (its family's public compose module is the one sanctioned static surface).

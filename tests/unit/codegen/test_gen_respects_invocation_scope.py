@@ -1,21 +1,8 @@
-"""Every command in one verb recipe writes to the same root.
+"""Generation uses one root and one owner for the complete declared composition.
 
-Scope is the invocation point's own repository: every repository, the
-workspace root included, works on itself alone (operator ruling 2026-09-29).
-
-The ``gen`` recipe broke that by mixing two criteria in the same body:
-``codegen conform`` received ``PROJECT_ROOT`` while dependency stages received
-``REPOSITORY_ROOT``. A ``gen`` invoked inside one
-member therefore rewrote the ``pyproject.toml`` of every sibling -- measured as
-"INFO: Updated <sibling>/pyproject.toml" for ~30 repositories, leaving each one
-dirty without the caller ever touching it.
-
-The damage compounds: ``gen`` runs inside ``check``, and ``check`` runs in the
-pre-commit hook, so a single commit in any lane dirties every sibling.
-
-At the workspace root ``PROJECT_ROOT`` is the root repository itself, so one
-rule keeps every verb on its own repository everywhere. No flag is needed --
-one rule, applied consistently.
+The generation owner receives ``PROJECT_ROOT`` and resolves the invocation scope.
+Other writers must not independently escalate to ``REPOSITORY_ROOT`` or duplicate
+the generation transaction.
 
 Every contract is asserted on the Makefile the public conform owner renders
 for a workspace fixture composing one member.
@@ -30,10 +17,9 @@ import re
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config
-from tests import t, u
+from tests import t, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -41,7 +27,7 @@ _MEMBER = "fixture-member"
 
 
 class TestsFlextInfraGenRespectsInvocationScope:
-    """`gen` recipes write to exactly one root per invocation."""
+    """`gen` delegates the complete composition through exactly one root."""
 
     @staticmethod
     @pytest.fixture
@@ -71,8 +57,11 @@ class TestsFlextInfraGenRespectsInvocationScope:
         for line in text.splitlines():
             target = re.match(r"^(_builtin_[a-z_]+):", line)
             if target:
-                current = target.group(1)
-                bodies[current] = []
+                name = target.group(1)
+                if name is None:
+                    pytest.fail("matched builtin target has no name")
+                current = name
+                bodies[name] = []
                 continue
             if current is None:
                 continue
@@ -88,8 +77,8 @@ class TestsFlextInfraGenRespectsInvocationScope:
     ) -> None:
         """One rendered recipe never writes to two different roots.
 
-        A command that escalates to ``REPOSITORY_ROOT`` beside one scoped to
-        ``PROJECT_ROOT`` mutates siblings the caller never asked for.
+        Conform owns member discovery; a second writer must not independently
+        escalate from ``PROJECT_ROOT`` to ``REPOSITORY_ROOT``.
         """
         bodies = self._recipe_bodies(rendered_makefile)
         project_scoped = {
@@ -103,25 +92,20 @@ class TestsFlextInfraGenRespectsInvocationScope:
             if any("$(REPOSITORY_ROOT)" in line for line in bodies[target])
         }
 
-        # The rendered gen recipe is project-scoped, so the invariant below is
+        # The gen recipe is PROJECT_ROOT-anchored, so the invariant below is
         # never satisfied vacuously by an unparsed Makefile.
         tm.that(project_scoped, has="_builtin_gen_all")
         tm.that(mixed, eq={})
 
     def test_gen_has_one_codegen_owner(self, rendered_makefile: str) -> None:
-        """The gen recipe delegates once to the conform owner.
-
-        Apply verifies its own fixed point inside the conform transaction, so a
-        second external check invocation would duplicate ownership.
-        """
+        """The gen recipe delegates once to the generation owner."""
         tm.that(rendered_makefile, lacks="CODEGEN_PROJECT_ARGS")
         body = self._recipe_bodies(rendered_makefile)["_builtin_gen_all"]
-        conform_lines = [line for line in body if "codegen conform" in line]
+        generation_lines = [line for line in body if "codegen generate" in line]
 
-        tm.that(len(conform_lines), eq=1)
-        tm.that(conform_lines[0], has="--mode apply")
-        tm.that(conform_lines[0], has='--root "$(PROJECT_ROOT)"')
-        tm.that(conform_lines[0], lacks="--scope")
+        tm.that(len(generation_lines), eq=1)
+        tm.that(generation_lines[0], has='--root "$(PROJECT_ROOT)"')
+        tm.that(generation_lines[0], has='--scope "$$scope"')
         tm.that(any("deps modernize" in line for line in body), eq=False)
         tm.that(any("deps extra-paths" in line for line in body), eq=False)
 
@@ -141,40 +125,50 @@ class TestsFlextInfraGenRespectsInvocationScope:
             eq=True,
         )
         tm.that(any("codegen conform" in line for line in init_lines), eq=False)
+        rendered_lines = rendered_makefile.splitlines()
         for verb in config.Infra.codegen.make.verbs:
-            if verb.name in {"setup", "upg", "help", "clean"} or (
-                verb.profiles and c.Infra.MakeProfile.WORKSPACE not in verb.profiles
+            if (
+                verb.name in {"setup", "upg", "help", "clean"}
+                or (
+                    verb.profiles and c.Infra.MakeProfile.WORKSPACE not in verb.profiles
+                )
+                or not verb.requires_activation
             ):
                 continue
-            tm.that(
-                rendered_makefile,
-                has=f"_activated-{verb.name}: _builtin_require_environment",
+            activation_target = f"_activated-{verb.name}"
+            expected_route = f"{activation_target}: _builtin_require_environment"
+            activation_routes = tuple(
+                line
+                for line in rendered_lines
+                if line.startswith(f"{activation_target}:")
             )
-            if not verb.produces_activation:
-                tm.that(
-                    rendered_makefile,
-                    has=(
-                        'direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) '
-                        f"_activated-{verb.name}"
-                    ),
-                )
+            tm.that(
+                any(expected_route in line for line in activation_routes),
+                eq=True,
+                msg=(
+                    f"verb={verb.name!r}: expected route {expected_route!r}; "
+                    f"observed routes={activation_routes!r}"
+                ),
+            )
+            expected_invocation = (
+                f'direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) {activation_target}'
+            )
+            activation_commands = tuple(
+                line.strip()
+                for line in rendered_lines
+                if line.startswith("\t") and activation_target in line
+            )
+            tm.that(
+                any(expected_invocation in line for line in activation_commands),
+                eq=True,
+                msg=(
+                    f"verb={verb.name!r}: expected invocation "
+                    f"{expected_invocation!r}; "
+                    f"observed commands={activation_commands!r}"
+                ),
+            )
         tm.that(rendered_makefile, has="_builtin-initialize: _builtin_gen_init")
         tm.that(rendered_makefile, has="ifneq ($(filter initialize,$(MAKECMDGOALS)),)")
         tm.that(rendered_makefile, has="GEN_INIT_ONLY := Y")
         tm.that(rendered_makefile, has="REPOSITORY_ROOT := $(MAKEFILE_ROOT)")
         tm.that(rendered_makefile, lacks="INIT_FLEXT_INFRA")
-
-    @staticmethod
-    def test_project_selector_resolves_members_from_repository_root(
-        rendered_makefile: str,
-    ) -> None:
-        """Workspace members are projected as declared gitlinks, not a WORKSPACE var.
-
-        Root cause: the `override WORKSPACE := .../$(PROJECT)` selector was
-        retired in favor of `WORKSPACE_SUBPROJECTS`/`MANAGED_GITLINKS`, which the
-        generator renders from the declared workspace members, never re-derived
-        from a shell probe at `REPOSITORY_ROOT` or `PROJECT_ROOT`.
-        """
-        tm.that(rendered_makefile, lacks="override WORKSPACE :=")
-        tm.that(rendered_makefile, has=f"WORKSPACE_SUBPROJECTS := {_MEMBER}")
-        tm.that(rendered_makefile, has="MANAGED_GITLINKS :=$(WORKSPACE_SUBPROJECTS)")

@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
-from tests import TestsFlextInfraUtilities as u, c, m, t
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraReleasePublish:

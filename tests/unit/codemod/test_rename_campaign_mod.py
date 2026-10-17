@@ -11,13 +11,12 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import FlextInfraConfig, c, infra, m
-from tests import u
+from tests import tm, u
 
 
-class TestsRenameCampaignMod:
+class TestsFlextInfraRenameCampaignMod:
     """Use separate processes and real config files, never patched owner state."""
 
     @staticmethod
@@ -67,7 +66,9 @@ class TestsRenameCampaignMod:
                     str(mod_workspace),
                     *(("--apply",) if apply else ()),
                 ),
-                env={"FLEXT_INFRA_CONFIG_DIR": str(config_dir)},
+                options=m.Cli.ProcessOptions(
+                    env={"FLEXT_INFRA_CONFIG_DIR": str(config_dir)},
+                ),
             ),
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=apply, msg=result.stderr)
@@ -175,7 +176,9 @@ class TestsRenameCampaignMod:
                     str(mod_workspace),
                     "--apply",
                 ),
-                env={"FLEXT_INFRA_CONFIG_DIR": str(config_dir)},
+                options=m.Cli.ProcessOptions(
+                    env={"FLEXT_INFRA_CONFIG_DIR": str(config_dir)},
+                ),
             ),
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=False)
@@ -228,7 +231,9 @@ class TestsRenameCampaignMod:
                     str(mod_workspace),
                     "--apply",
                 ),
-                env={"FLEXT_INFRA_CONFIG_DIR": str(config_dir)},
+                options=m.Cli.ProcessOptions(
+                    env={"FLEXT_INFRA_CONFIG_DIR": str(config_dir)},
+                ),
             ),
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=False)

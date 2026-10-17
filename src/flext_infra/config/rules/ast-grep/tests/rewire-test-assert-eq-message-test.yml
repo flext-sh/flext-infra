@@ -1,0 +1,34 @@
+id: rewire-test-assert-eq-message
+valid:
+  - "assert result.count == 3, 'count must match'"
+  - |
+    from tests import tm
+    assert alpha == alpha, 'self compare'
+  - |
+    from tests import tm
+    assert left == right
+  - |
+    from tests import tm
+    assert lower == middle == upper, explain()
+  - |
+    from tests import tm
+    try:
+        perform()
+    except ValueError:
+        assert left == right, explain()
+invalid:
+  - |
+    from tests import tm
+    assert result.count == 3, 'count must match'
+  - |
+    from tests import tm
+    assert issue.code == "type-var", rejected.raw_output
+  - |
+    from flext_tests import tm
+    assert left() == right(), explain()
+  - |
+    from tests import tm
+    assert (left if choose() else fallback()) == (right or other()), explain()
+  - |
+    from tests import tm
+    assert (seen := left()) == right(), explain(seen)

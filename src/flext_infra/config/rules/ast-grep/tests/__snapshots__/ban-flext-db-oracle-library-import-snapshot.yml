@@ -1,0 +1,14 @@
+id: ban-flext-db-oracle-library-import
+snapshots:
+  from sqlalchemy import create_engine:
+    labels:
+    - source: sqlalchemy
+      style: primary
+      start: 5
+      end: 15
+  import sqlalchemy.orm:
+    labels:
+    - source: sqlalchemy.orm
+      style: primary
+      start: 7
+      end: 21

@@ -11,9 +11,8 @@ import tomllib
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_core import r
-from flext_infra import c, p, t
-from flext_infra.base import FlextInfraServiceBase
+from flext_infra import FlextInfraServiceBase, c, p, r, t
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
@@ -73,10 +72,16 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
             The resulting ``p.Result[bool]``.
 
         """
+        selected = FlextInfraWorkspaceDetector.resolution_context(self.repository_root)
+        if selected.failure:
+            return r[bool].from_failure(selected)
         failures: t.StrSequence = tuple(
             failure
-            for lock_filename in (c.Infra.MISE_LOCK_FILENAME, c.Infra.UV_LOCK_FILENAME)
-            for failure in self._verify_lock(self.repository_root / lock_filename)
+            for lock_path in (
+                selected.value.runtime_root / c.Infra.MISE_LOCK_FILENAME,
+                selected.value.lock_path,
+            )
+            for failure in self._verify_lock(lock_path)
         )
         if failures:
             return r[bool].fail("; ".join(failures))

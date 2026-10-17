@@ -1,4 +1,4 @@
-"""Zero-test projects run to a typed green receipt instead of rc=5 (6n6u).
+"""Empty test ownership remains red; only an audited testmon cache hit is green.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,19 +10,14 @@ import time
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import FlextInfraPytestRunner, c, config, m, u
+from flext_infra import c, config, m, u
+from flext_infra.validate import FlextInfraPytestRunner
+from tests import tm
 
 
 class TestsFlextInfraPytestRunnerZeroTest:
-    """A project whose config-owned roots own no test module is a receipt, not red.
-
-    The invest workspace shell is the real consumer: its root collects zero
-    tests by declared design, and every fresh checkout used to die with
-    ``pytest executed zero tests`` / ``empty incremental selection`` before
-    the contract existed (bead invest-6n6u).
-    """
+    """Preserve native empty-suite status and its typed accounting."""
 
     @staticmethod
     def _zero_test_project(tmp_path: Path) -> Path:
@@ -41,8 +36,26 @@ class TestsFlextInfraPytestRunnerZeroTest:
         package_root = project_root / c.Infra.DEFAULT_SRC_DIR / "zero_sample"
         package_root.mkdir(parents=True)
         (project_root / cache.target_directory).mkdir(exist_ok=True)
+        # The consumer's pytest table carries the SSOT collection patterns and
+        # marker registry exactly as generated projects do, so collection and
+        # the runner's ownership check read the same declarations.
+        pytest_settings = config.Infra.tooling.tools.pytest
         (project_root / "pyproject.toml").write_text(
-            f'[tool.pytest.ini_options]\npythonpath = ["{c.Infra.DEFAULT_SRC_DIR}"]\n',
+            u.Cli.toml_dumps(
+                u.Cli.toml_document_from_mapping({
+                    "tool": {
+                        "pytest": {
+                            "ini_options": {
+                                "pythonpath": [c.Infra.DEFAULT_SRC_DIR],
+                                c.Infra.PYTHON_FILES: list(
+                                    pytest_settings.python_files,
+                                ),
+                                "markers": list(pytest_settings.standard_markers),
+                            },
+                        },
+                    },
+                }),
+            ),
             encoding="utf-8",
         )
         (package_root / "__init__.py").write_text("VALUE = 41\n", encoding="utf-8")
@@ -55,6 +68,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         *,
         slow_phase: bool = False,
         elapsed_seconds: float = 0.0,
+        target_file: Path | None = None,
     ) -> FlextInfraPytestRunner:
         """Build the public runner exactly as the make verbs do.
 
@@ -73,6 +87,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
             testmon_db=testmon_db,
             apply_changes=True,
             slow_phase=slow_phase,
+            target_file=target_file,
         )
 
     @pytest.mark.slow
@@ -128,15 +143,11 @@ class TestsFlextInfraPytestRunnerZeroTest:
         tm.that(list(reports_root.glob("*/run-context.json")), eq=[])
 
     @pytest.mark.slow
-    def test_slow_phase_without_slow_items_publishes_receipt(
+    def test_empty_slow_scope_remains_red_with_accounting(
         self,
         tmp_path: Path,
     ) -> None:
-        """A project whose suite has no slow-marked item closes its slow phase green.
-
-        The budgeted phase executes the suite; the slow phase then owns no
-        item in its scope and publishes the typed zero-test receipt.
-        """
+        """A requested empty scope is not a successful test execution."""
         project = self._zero_test_project(tmp_path)
         cache = config.Infra.codegen.make.testmon_cache
         (project / cache.target_directory / "test_budgeted.py").write_text(
@@ -151,7 +162,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
 
         outcome = tm.ok(self._runner(project, tmp_path, slow_phase=True).execute())
 
-        tm.that(outcome, eq=pytest.ExitCode.OK.value)
+        tm.that(outcome, eq=pytest.ExitCode.NO_TESTS_COLLECTED.value)
         summary = self._latest_summary(project / cache.reports_directory)
         plan = m.Infra.PytestSelectionPlan.model_validate_json(
             self._read(summary.parent / "selection-plan.json"),
@@ -167,13 +178,13 @@ class TestsFlextInfraPytestRunnerZeroTest:
         self,
         tmp_path: Path,
     ) -> None:
-        """Make test on a zero-test project exits 0 with typed accounting."""
+        """Make test retains native empty-suite status with typed accounting."""
         project = self._zero_test_project(tmp_path)
         runner = self._runner(project, tmp_path)
 
         outcome = tm.ok(runner.execute())
 
-        tm.that(outcome, eq=pytest.ExitCode.OK.value)
+        tm.that(outcome, eq=pytest.ExitCode.NO_TESTS_COLLECTED.value)
         cache = config.Infra.codegen.make.testmon_cache
         reports_root = project / cache.reports_directory
         summary = self._latest_summary(reports_root)
@@ -187,28 +198,132 @@ class TestsFlextInfraPytestRunnerZeroTest:
         tm.that(plan.owns_no_tests, eq=True)
 
     @pytest.mark.slow
-    def test_full_run_publishes_receipt_for_zero_test_project(
+    def test_full_run_keeps_native_status_for_zero_test_project(
         self,
         tmp_path: Path,
     ) -> None:
-        """Make test-full on a zero-test project exits 0 with typed accounting."""
+        """The unbounded full operation never normalizes an empty suite.
+
+        It runs no testmon selection, so no zero-test receipt exists: pytest's
+        native no-tests status is the result, with the run context naming the
+        unbounded full operation.
+        """
         project = self._zero_test_project(tmp_path)
         runner = self._runner(project, tmp_path)
 
         outcome = tm.ok(runner.execute_full())
 
-        tm.that(outcome, eq=pytest.ExitCode.OK.value)
+        tm.that(outcome, eq=pytest.ExitCode.NO_TESTS_COLLECTED.value)
         cache = config.Infra.codegen.make.testmon_cache
         reports_root = project / cache.reports_directory
-        summary = self._latest_summary(reports_root)
+        report_dir = reports_root / self._read(reports_root / "latest.txt").strip()
+        context = m.Infra.PytestRunContext.model_validate_json(
+            self._read(report_dir / "run-context.json"),
+        )
+        tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
+        tm.that(context.testmon_db, none=True)
+        tm.that(context.deadline_monotonic, none=True)
+        suite = m.Cli.ProcessOutcome.model_validate_json(
+            self._read(report_dir / "suite-outcome.json"),
+        )
+        tm.that(suite.raw_return_code, eq=pytest.ExitCode.NO_TESTS_COLLECTED.value)
+        tm.that((report_dir / "run-accounting.json").exists(), eq=False)
+
+    @pytest.mark.slow
+    def test_slow_only_declared_file_executes_its_slow_items(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A declared file carries its slow items, so a slow-only file runs.
+
+        The file scope never deselects the slow marker: a file whose items are
+        all slow executes them instead of ending as an empty scope.
+        """
+        project = self._zero_test_project(tmp_path)
+        cache = config.Infra.codegen.make.testmon_cache
+        relative = Path(cache.target_directory) / "test_slow_only.py"
+        slow_marker = config.Infra.tooling.tools.pytest.slow_marker
+        (project / relative).write_text(
+            f"import pytest\n\npytestmark = pytest.mark.{slow_marker}\n\n"
+            "def test_slow_item() -> None:\n    assert True\n",
+            encoding="utf-8",
+        )
+
+        outcome = tm.ok(
+            self._runner(project, tmp_path, target_file=relative).execute(),
+        )
+
+        tm.that(outcome, eq=pytest.ExitCode.OK.value)
+        summary = self._latest_summary(project / cache.reports_directory)
+        tm.that(self._read(summary), has=["outcome=executed\n", "executed=1\n"])
         plan = m.Infra.PytestSelectionPlan.model_validate_json(
             self._read(summary.parent / "selection-plan.json"),
         )
-        tm.that(plan.owns_no_tests, eq=True)
-        accounting = m.Infra.TestmonRunAccounting.model_validate_json(
-            self._read(summary.parent / "run-accounting.json"),
+        tm.that(plan.owns_no_tests, eq=False)
+
+    @pytest.mark.slow
+    def test_target_file_collection_failure_stays_red(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A declared file that fails to collect is not an empty scope."""
+        project = self._zero_test_project(tmp_path)
+        cache = config.Infra.codegen.make.testmon_cache
+        relative = Path(cache.target_directory) / "test_broken.py"
+        (project / relative).write_text(
+            "import not_a_real_collection_module\n\n"
+            "def test_broken() -> None:\n    assert True\n",
+            encoding="utf-8",
         )
-        tm.that(accounting.executed_count, eq=0)
+
+        with pytest.raises(RuntimeError, match="testmon selection failed"):
+            self._runner(project, tmp_path, target_file=relative).execute()
+
+    @pytest.mark.slow
+    def test_target_file_failure_stays_red(self, tmp_path: Path) -> None:
+        """A declared file whose test fails still fails the phase."""
+        project = self._zero_test_project(tmp_path)
+        cache = config.Infra.codegen.make.testmon_cache
+        relative = Path(cache.target_directory) / "test_red.py"
+        (project / relative).write_text(
+            "def test_red() -> None:\n    assert False\n",
+            encoding="utf-8",
+        )
+
+        outcome = tm.ok(
+            self._runner(project, tmp_path, target_file=relative).execute(),
+        )
+
+        tm.that(outcome, ne=0)
+
+    @pytest.mark.slow
+    def test_target_file_rerun_over_a_warm_cache_executes_again(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A second run of one declared file executes it, never a cache hit.
+
+        The declared file always runs under forceselect, so the restored cache
+        selects nothing for it; that empty selection must not be read as a
+        cache hit holding executed tests.
+        """
+        project = self._zero_test_project(tmp_path)
+        cache = config.Infra.codegen.make.testmon_cache
+        relative = Path(cache.target_directory) / "test_rerun.py"
+        (project / relative).write_text(
+            "def test_rerun() -> None:\n    assert True\n",
+            encoding="utf-8",
+        )
+        for _ in range(2):
+            outcome = tm.ok(
+                self._runner(project, tmp_path, target_file=relative).execute(),
+            )
+            tm.that(outcome, eq=pytest.ExitCode.OK.value)
+            summary = self._latest_summary(project / cache.reports_directory)
+            accounting = m.Infra.TestmonRunAccounting.model_validate_json(
+                self._read(summary.parent / "run-accounting.json"),
+            )
+            tm.that(accounting.executed_count, eq=1)
 
     @staticmethod
     def _read(path: Path) -> str:

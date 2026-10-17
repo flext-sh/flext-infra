@@ -13,12 +13,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
-
 from flext_core import r
+
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-from tests import c, m, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -61,6 +60,10 @@ class TestsFlextInfraCodegenCensus:
             "first(1)\nthird(2)\n",
             encoding="utf-8",
         )
+        # A governed project carries its Mise declaration: the census runs
+        # ast-grep from the project, and the shim resolves the pinned tool
+        # from that declaration, never from a developer's global config.
+        u.Tests.copy_tracked_mise_seeds(project)
         return project
 
     def test_report_violations_carry_rule_location_and_fixability(

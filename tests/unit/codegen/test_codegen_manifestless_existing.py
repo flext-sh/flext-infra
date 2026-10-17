@@ -9,12 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, u
+from tests import c, m, p, t, tm, u
 
 
 # Exemplar: conform materializes a full managed tree on disk, so the render
@@ -26,27 +25,24 @@ class TestsFlextInfraCodegenManifestlessExisting:
     """Tests for ``FlextInfraCodegenManifestlessExisting``."""
 
     @staticmethod
-    def test_existing_root_uses_pep621_metadata_for_managed_artifacts(
-        infra_git_repo: Path,
-    ) -> None:
-        """Test existing root uses pep621 metadata for managed artifacts."""
-        root = infra_git_repo
-        repository = u.Tests.repository_ref(config.Infra.name)
-        # Why: LICENSE has no generator and is genuinely exists_or_absent.
-        # README.md is also externally_managed/exists_or_absent for conform's
-        # managed-file surface, but `execute_request` runs the full apply
-        # pipeline including docs generation, which regenerates README.md
-        # from live project metadata regardless of prior content — so only
-        # LICENSE is proven byte-preserved here.
-        preserved = {"LICENSE": "existing license\n"}
-        seeded = {**preserved, "README.md": "# Existing repository\n"}
+    def seed_manifest_pyproject(root: Path) -> str:
+        """Seed the root manifest with one custom dev-group requirement.
+
+        Returns:
+            The written manifest source text.
+
+        """
         pyproject_source = tm.ok(u.Cli.files_read_text(Path.cwd() / "pyproject.toml"))
-        custom_dev_requirement = 'flext-custom-tests>=0.1; python_version < "3.0"'
+        # An external CUSTOM requirement: a FLEXT-family name without a direct
+        # Git source is a source-less internal dependency, which conform
+        # refuses loudly by design.
+        custom_dev_requirement = 'custom-dev-tool>=0.1; python_version < "3.0"'
         pyproject_payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
             u.Tests.toml_payload(pyproject_source),
         )
         dev_groups = u.Cli.toml_mapping_ensure_table(
-            pyproject_payload, c.Infra.DEPENDENCY_GROUPS,
+            pyproject_payload,
+            c.Infra.DEPENDENCY_GROUPS,
         )
         dev_groups[str(c.Infra.DEV)] = [
             *u.Cli.json_as_sequence(dev_groups.get(str(c.Infra.DEV))),
@@ -60,10 +56,17 @@ class TestsFlextInfraCodegenManifestlessExisting:
         package_init = root / c.Infra.DEFAULT_SRC_DIR / package_name / "__init__.py"
         package_init.parent.mkdir(parents=True)
         tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
-        # The copied manifest declares scripts and entry points; conform's
-        # fresh-import gate loads each one, so the seeded tree carries every
-        # declared target (module and attribute) inside its own package —
-        # never a copy of the whole production package.
+        return pyproject_source
+
+    @staticmethod
+    def seed_declared_entry_targets(root: Path, pyproject_source: str) -> None:
+        """Stub every declared script and entry-point target in the tree.
+
+        The copied manifest declares scripts and entry points; conform's
+        fresh-import gate loads each one, so the seeded tree carries every
+        declared target (module and attribute) inside its own package —
+        never a copy of the whole production package.
+        """
         manifest = tm.not_none(u.Cli.toml_mapping_from_text(pyproject_source))
         project_table = u.Cli.json_as_mapping(
             u.Cli.toml_mapping_child(manifest, "project"),
@@ -80,7 +83,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
         )
         # A dotted target (``Class.member``) resolves through attribute access,
         # so the seeded class carries each declared member.
-        targets: dict[Path, dict[str, set[str]]] = {}
+        targets: t.MutableMappingKV[Path, t.MutableMappingKV[str, set[str]]] = {}
         for entries in declared_groups:
             for target in entries.values():
                 module_name, _, attribute = str(target).partition(":")
@@ -108,6 +111,10 @@ class TestsFlextInfraCodegenManifestlessExisting:
                     ),
                 ),
             )
+
+    @staticmethod
+    def seed_existing_tree(root: Path, seeded: t.StrMapping) -> None:
+        """Copy the externally managed extras and commit the seeded tree."""
         vscode_settings = root / ".vscode" / "settings.json"
         vscode_settings.parent.mkdir()
         tm.ok(
@@ -126,6 +133,26 @@ class TestsFlextInfraCodegenManifestlessExisting:
                 cwd=root,
             ),
         )
+
+    @staticmethod
+    def test_existing_root_uses_pep621_metadata_for_managed_artifacts(
+        infra_git_repo: Path,
+    ) -> None:
+        """Test existing root uses pep621 metadata for managed artifacts."""
+        root = infra_git_repo
+        repository = u.Tests.repository_ref(config.Infra.name)
+        # Why: LICENSE has no generator and is genuinely exists_or_absent.
+        # README.md is also externally_managed/exists_or_absent for conform's
+        # managed-file surface, but `execute_request` runs the full apply
+        # pipeline including docs generation, which regenerates README.md
+        # from live project metadata regardless of prior content — so only
+        # LICENSE is proven byte-preserved here.
+        preserved = {"LICENSE": "existing license\n"}
+        seeded = {**preserved, "README.md": "# Existing repository\n"}
+        manifestless = TestsFlextInfraCodegenManifestlessExisting
+        pyproject_source = manifestless.seed_manifest_pyproject(root)
+        manifestless.seed_declared_entry_targets(root, pyproject_source)
+        manifestless.seed_existing_tree(root, seeded)
 
         derived = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         tm.that(derived.repository.name, eq=repository.name)
@@ -188,27 +215,19 @@ class TestsFlextInfraCodegenManifestlessExisting:
         )
 
     @staticmethod
-    def test_root_distribution_owns_its_dependency_profile(
-        tmp_path: Path,
-    ) -> None:
-        """The tree's root declares no flext runtime dependency and still conforms.
+    def seed_root_distribution(tmp_path: Path, license_id: str) -> Path:
+        """Seed a manifestless root declaring ``license_id`` in its PEP 621 manifest.
 
         Since 208716f4f the checkout must declare the infrastructure line it
         consumes; a manifestless root declares it the way a real member does,
         through its development group's direct Git source.
+
+        Returns:
+            The seeded repository root.
+
         """
-        profile = next(
-            item
-            for item in config.Infra.codegen.scaffold.project.dependency_profiles
-            if item.project is None
-            and not any(
-                other.upstream.replace("_", "-")
-                in {u.Infra.dep_name(dependency) for dependency in item.runtime}
-                for other in config.Infra.codegen.scaffold.project.dependency_profiles
-                if other is not item and other.project is None
-            )
-        )
-        distribution = profile.upstream.replace("_", "-")
+        base = config.Infra.codegen.scaffold.project.config_bases[-1]
+        distribution = base.distribution
         # Every internal development dependency the SSOT requires carries its
         # own direct Git source, exactly as a real standalone member declares.
         internal_dev = tuple(
@@ -218,6 +237,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
                 for requirement in (
                     config.Infra.codegen.infra_repository.distribution,
                     *config.Infra.codegen.scaffold.project.dev,
+                    *config.Infra.codegen.scaffold.project.required_flext_dev,
                 )
             )
             if name is not None and name.startswith("flext-")
@@ -226,9 +246,9 @@ class TestsFlextInfraCodegenManifestlessExisting:
             f'"{ref.distribution} @ git+{ref.url}@{u.Tests.provider_branch()}"'
             for ref in internal_dev
         )
-        u.Tests.seed_locked_taplo(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         root = tmp_path / distribution
-        package = root / c.Infra.DEFAULT_SRC_DIR / profile.upstream
+        package = root / c.Infra.DEFAULT_SRC_DIR / base.module
         package.mkdir(parents=True)
         tm.ok(u.Cli.atomic_write_text_file(package / "__init__.py", ""))
         tm.ok(
@@ -236,8 +256,10 @@ class TestsFlextInfraCodegenManifestlessExisting:
                 root / "pyproject.toml",
                 f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
                 f'description = "{distribution} root fixture"\n'
-                f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
+                f"requires-python = "
+                f'"{config.Infra.codegen.toolchain.python_required_version}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+                f'license = "{license_id}"\n'
                 "dependencies = []\n"
                 "\n[dependency-groups]\n"
                 f"dev = [{dev_group}]\n",
@@ -248,28 +270,98 @@ class TestsFlextInfraCodegenManifestlessExisting:
             root,
             origin_url=u.Tests.repository_ref(distribution).url,
         )
+        return root
+
+    @staticmethod
+    def plan_surface(
+        root: Path,
+        what: c.Infra.CodegenConformSurface,
+    ) -> p.Result[m.Infra.CodegenPlan]:
+        """Plan the ``what`` surface of ``root`` in check mode.
+
+        Returns:
+            The conform plan result.
+
+        """
+        return FlextInfraCodegenConform(repository_root=root).plan(
+            u.Tests.conform_request(
+                root,
+                what=what,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.CHECK,
+            ),
+        )
+
+    @staticmethod
+    def test_root_distribution_preserves_its_runtime_requirements(
+        tmp_path: Path,
+    ) -> None:
+        """The tree's root declares no flext runtime dependency and still conforms."""
+        manifestless = TestsFlextInfraCodegenManifestlessExisting
+        base = config.Infra.codegen.scaffold.project.config_bases[-1]
+        root = manifestless.seed_root_distribution(
+            tmp_path,
+            u.Tests.project_spec(base.distribution).license,
+        )
 
         plan = tm.ok(
-            FlextInfraCodegenConform(repository_root=root).plan(
-                u.Tests.conform_request(
-                    root,
-                    what=c.Infra.CodegenConformSurface.PYPROJECT,
-                    scope=c.Infra.CodegenConformScope.SELF,
-                    mode=c.Infra.CodegenConformMode.CHECK,
-                ),
-            ),
+            manifestless.plan_surface(root, c.Infra.CodegenConformSurface.PYPROJECT),
         )
         rendered = u.Tests.codegen_file_text(
             next(file for file in plan.files if file.path.name == "pyproject.toml"),
         )
-        owned_runtime = tuple(
-            dependency
-            for dependency in profile.runtime
-            if u.Infra.dep_name(dependency) != distribution
+        tm.that(
+            u.Tests.toml_strings_at(rendered, "project", "dependencies"),
+            eq=(),
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "license_id",
+        config.Infra.codegen.scaffold.project.supported_licenses,
+    )
+    def test_undeclared_root_renders_the_license_its_manifest_declares(
+        tmp_path: Path,
+        license_id: str,
+    ) -> None:
+        """An undeclared tree's derived identity carries its own PEP 621 license."""
+        manifestless = TestsFlextInfraCodegenManifestlessExisting
+        root = manifestless.seed_root_distribution(tmp_path, license_id)
+
+        plan = tm.ok(
+            manifestless.plan_surface(root, c.Infra.CodegenConformSurface.ALL),
+        )
+        rendered = u.Tests.codegen_file_text(
+            next(file for file in plan.files if file.path.name == "pyproject.toml"),
         )
         tm.that(
-            set(owned_runtime).issubset(
-                u.Tests.toml_strings_at(rendered, "project", "dependencies"),
+            u.Cli.json_walk_path(
+                u.Tests.toml_payload(rendered),
+                (c.Infra.PROJECT, c.Infra.LICENSE),
             ),
-            eq=True,
+            eq=license_id,
+        )
+
+    @staticmethod
+    def test_undeclared_root_with_an_unsupported_license_fails_loud(
+        tmp_path: Path,
+    ) -> None:
+        """No supported license replaces the one an undeclared tree declares."""
+        unsupported = "LicenseRef-Unsupported"
+        root = TestsFlextInfraCodegenManifestlessExisting.seed_root_distribution(
+            tmp_path,
+            unsupported,
+        )
+
+        plan = tm.ok(
+            TestsFlextInfraCodegenManifestlessExisting.plan_surface(
+                root,
+                c.Infra.CodegenConformSurface.ALL,
+            ),
+        )
+
+        tm.that(plan.files, empty=True)
+        tm.that(
+            "\n".join(issue.message for issue in plan.issues),
+            has=f"unsupported scaffold license: {unsupported}",
         )

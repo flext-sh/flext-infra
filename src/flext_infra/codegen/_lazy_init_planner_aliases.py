@@ -41,7 +41,11 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         ) -> t.StrSequence: ...
 
         def _resolve_inherited_alias_source(
-            self, package_names: t.StrSequence, alias_name: str, *, current_pkg: str,
+            self,
+            package_names: t.StrSequence,
+            alias_name: str,
+            *,
+            current_pkg: str,
         ) -> str: ...
 
     def _resolve_aliases(
@@ -69,6 +73,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                 alias := u.Infra.publication_policy(
                     module_path,
                     rope_project=self.rope_workspace.rope_project,
+                    project_layout=layout,
                 ).expected_alias
             )
             is not None
@@ -183,3 +188,6 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         parents = self._parents_from_constants_module(constants_path, current_pkg)
         self._parent_package_cache[cache_key] = parents
         return parents
+
+
+__all__: list[str] = ["FlextInfraCodegenLazyInitPlannerAliasesMixin"]

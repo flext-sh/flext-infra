@@ -6,26 +6,259 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
+import sys
 from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m
-from flext_infra.codemod.batch_apply import FlextInfraCodemodBatchApply
+from flext_infra import infra, main
+from flext_infra.codemod import (
+    FlextInfraApplyRenames,
+    FlextInfraCodemodBatchApply,
+    FlextInfraCodemodSemanticApply,
+    FlextInfraModGateEngine,
+)
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraCodemodBatchApplyValidation:
     """Keep staged rules distinct from a rewrite that recreates its own finding."""
 
+    class RuntimeProgress:
+        """Execute the real consumer at the first post-syntax public phase."""
+
+        def __init__(self, sample: Path) -> None:
+            """Bind the consumer whose imports must already converge."""
+            self.sample = sample
+            self.validated = False
+
+        def emit(self, message: str) -> None:
+            """Validate before either consumer text rewrites or the census run."""
+            if message == "mod: apply declared consumer text cutovers":
+                tm.ok(u.Cli.run((sys.executable, str(self.sample))))
+                self.validated = True
+
+        def emit_rename(self, report: m.Infra.ApplyRenamesReport) -> None:
+            """Accept the public campaign progress contract."""
+            _ = report
+
     @staticmethod
-    def _report(path: Path, rule_id: str) -> m.Infra.ModScanReport:
+    @pytest.mark.slow
+    @pytest.mark.parametrize(
+        ("entry", "broken"),
+        [("census", True), ("pipeline", False), ("noop", False)],
+    )
+    def test_census_publishes_joint_factory_and_constants_candidate(
+        tmp_path: Path,
+        entry: str,
+        broken: bool,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Real census gates see both cutovers and retain unrelated failures."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.provision_checkout(root)
+        notice = u.Infra.copyright_notice(root)
+        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
+        owner = f"{u.derive_class_stem(root.name)}{family.suffix}"
+        parts = package / "_constants"
+        tm.ok(u.Cli.ensure_dir(parts))
+        consumer = package / "consumer.py"
+        sources = {
+            parts / c.Infra.INIT_PY: (
+                f'"""Candidate constant family.\n\n{notice}\n"""\n\n'
+                "from __future__ import annotations\n"
+            ),
+            parts / "base.py": (
+                f'"""Candidate constant declaration.\n\n{notice}\n"""\n\n'
+                "from __future__ import annotations\n\n"
+                "from typing import ClassVar\n\n\n"
+                f"class {owner}Base:\n"
+                '    """Own the fixture protocol value."""\n\n'
+                '    JOINT_VALUE: ClassVar[str] = "joint-candidate"\n\n\n'
+                f'__all__ = ["{owner}Base"]\n'
+            ),
+            package / c.Infra.CONSTANTS_PY: (
+                f'"""Candidate constants.\n\n{notice}\n"""\n\n'
+                "from __future__ import annotations\n\n"
+                f"from ._constants.base import {owner}Base\n\n\n"
+                f"class {owner}({owner}Base):\n"
+                '    """Inherit the public constant contract."""\n\n\n'
+                f"c = {owner}\n"
+                f'__all__ = ["{owner}", "c"]\n'
+            ),
+            package / c.Infra.INIT_PY: (
+                f'"""Candidate public facade.\n\n{notice}\n"""\n\n'
+                "from __future__ import annotations\n\n"
+                "from .constants import c\n\n"
+                '__all__ = ["c"]\n'
+            ),
+            consumer: (
+                (
+                    f'"""Real joint cutover consumer.\n\n{notice}\n"""\n\n'
+                    "from __future__ import annotations\n\n"
+                    "from flext_core import t\n"
+                    f"from {package.name} import c\n\n"
+                    f"from {package.name}._constants.base import "
+                    f"{owner}Base as upstream_c\n"
+                    "value = t.scalar_mapping_adapter().validate_python("
+                    "{'name': 'value'})\n"
+                    "constant = upstream_c.JOINT_VALUE\n"
+                    "local = c.JOINT_VALUE\n"
+                )
+                + ("broken: str = 1\n" if broken else "")
+            ),
+        }
+        for path, source in tuple(sources.items()):
+            sources[path] = tm.ok(
+                u.Infra.normalize_source(
+                    root,
+                    path,
+                    source,
+                ),
+            )
+            tm.ok(u.Cli.atomic_write_text_file(path, sources[path]))
+        command = (
+            sys.executable,
+            "-I",
+            "-c",
+            (
+                "import sys; sys.path.insert(0, sys.argv[1]); "
+                f"from {package.name}.consumer import value, constant, local; "
+                "assert value == {'name': 'value'}; "
+                "assert constant == local"
+            ),
+            str(package.parent),
+        )
+        if entry == "pipeline":
+            output = tm.ok(u.Cli.run_raw(command))
+            tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+            for path, source in sources.items():
+                tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+            tm.that(
+                main(["refactor", "mod", "--repository-root", str(root), "--apply"]),
+                eq=0,
+            )
+        else:
+            with infra.rope_workspace(root) as rope:
+                result = FlextInfraCodemodSemanticApply.census_constants(
+                    root,
+                    rope,
+                    apply=True,
+                    source_preview=infra.source_preview(root),
+                    workspace_factory=infra.rope_workspace,
+                )
+            if broken:
+                tm.fail(result, has="quality")
+            else:
+                tm.ok(result)
+        console = capsys.readouterr().out
+        for gate in (c.Infra.LINT, c.Infra.PYREFLY, c.Infra.FRESH_IMPORT):
+            verdict = "FAIL" if broken and gate == c.Infra.PYREFLY else "OK"
+            tm.that(console, has=f"[{verdict}] {gate}")
+        if broken:
+            tm.that(console, has="bad-assignment")
+            for path, source in sources.items():
+                tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        else:
+            published = consumer.read_text(encoding=c.DEFAULT_ENCODING)
+            tm.that(published, has="u.scalar_mapping_adapter()")
+            tm.that(published, has="constant = c.JOINT_VALUE")
+            output = tm.ok(u.Cli.run_raw(command))
+            tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+        if entry == "noop":
+            published = consumer.read_text(encoding=c.DEFAULT_ENCODING)
+            with infra.rope_workspace(root) as rope:
+                tm.ok(
+                    FlextInfraCodemodSemanticApply.census_constants(
+                        root,
+                        rope,
+                        apply=True,
+                        source_preview=infra.source_preview(root),
+                        workspace_factory=infra.rope_workspace,
+                    ),
+                )
+            tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=published)
+            invalid = published + "broken: str = 1\n"
+            tm.ok(u.Cli.atomic_write_text_file(consumer, invalid))
+            with infra.rope_workspace(root) as rope:
+                tm.fail(
+                    FlextInfraCodemodSemanticApply.census_constants(
+                        root,
+                        rope,
+                        apply=True,
+                        source_preview=infra.source_preview(root),
+                        workspace_factory=infra.rope_workspace,
+                    ),
+                    has="quality",
+                )
+            tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=invalid)
+            tm.that(capsys.readouterr().out, has=f"[FAIL] {c.Infra.PYREFLY}")
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize(
+        "contract",
+        ["t.JsonMapping", "Annotated[t.JsonMapping, None]"],
+    )
+    def test_typeform_syntax_cascade_converges_before_consumer_publication(
+        self,
+        mod_workspace: Path,
+        contract: str,
+    ) -> None:
+        """The native pipeline supplies companion imports before leaving syntax."""
+        u.Tests.provision_checkout(mod_workspace)
+        sample = mod_workspace / "sample.py"
+        owner = u.derive_class_stem(mod_workspace.name)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                sample,
+                '"""Adapter runtime contract."""\n'
+                "from __future__ import annotations\n\n"
+                "from typing import Annotated\n"
+                "from flext_core import t, u\n\n"
+                f"class {owner}:\n"
+                "    @staticmethod\n"
+                "    def main() -> None:\n"
+                f"        adapter = u.type_adapter({contract})\n"
+                '        assert adapter.validate_python({"name": "value"}) '
+                '== {"name": "value"}\n\n'
+                f"{owner}.main()\n",
+            ),
+        )
+        before = tm.ok(FlextInfraModGateEngine.scan(mod_workspace, fix=False))
+        rule_ids = {item.rule_id for item in before.entries}
+        tm.that(any(rule.startswith("pydantic-adapter-typeform") for rule in rule_ids))
+        tm.that("pydantic-typeform-import" in rule_ids, eq=False)
+        progress = self.RuntimeProgress(sample)
+        with infra.rope_workspace(mod_workspace) as rope:
+            service = FlextInfraCodemodBatchApply(
+                workspace_factory=infra.rope_workspace,
+                source_preview=infra.source_preview(mod_workspace),
+                repository_root=mod_workspace,
+                apply_changes=True,
+                rename_runner=FlextInfraApplyRenames(),
+                progress=progress,
+                rope=rope,
+            )
+            tm.ok(service.execute())
+            first = sample.read_bytes()
+            tm.that(progress.validated, eq=True)
+            after = tm.ok(FlextInfraModGateEngine.scan(mod_workspace, fix=False))
+            tm.that(len(after.entries), eq=0)
+            tm.ok(service.execute())
+            tm.that(sample.read_bytes(), eq=first)
+
+    @staticmethod
+    def _report(
+        path: Path, rule_id: str
+    ) -> m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]:
         """Build one actionable ast-grep finding report.
 
         Returns:
-            The resulting ``m.Infra.ModScanReport``.
+            The operational occurrence inventory.
 
         """
-        finding = m.Infra.ModScanFinding(
+        finding = m.Infra.ModOccurrence(
             rule_file="fixture.yml",
             rule_id=rule_id,
             repository="fixture",
@@ -37,16 +270,82 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             replacement="after",
             actionable=True,
             classification=c.Infra.ModScanFindingClass.ACTIONABLE,
-            payload={},
         )
-        return m.Infra.ModScanReport(
-            findings=1,
-            actionable=1,
-            detection_only=0,
-            non_actionable_with_fix=0,
+        return m.Infra.ModOccurrenceReport(
             files=frozenset({path}),
             entries=(finding,),
         )
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("outcome", ["converged", "cycle", "rejected"])
+    def test_general_syntax_candidate_is_atomic(
+        self, mod_workspace: Path, outcome: str
+    ) -> None:
+        """Two native rule waves converge, or reject without changing live bytes."""
+        u.Tests.provision_checkout(mod_workspace)
+        sample = mod_workspace / "sample.py"
+        source = (
+            '"""General syntax cascade consumer."""\n'
+            "from __future__ import annotations\n\nvalue = 0\n"
+        )
+        tm.ok(u.Cli.atomic_write_text_file(sample, source))
+        final = (
+            "2"
+            if outcome == "converged"
+            else ("0" if outcome == "cycle" else "missing_candidate_binding")
+        )
+        u.Tests.declare_codemod_rules(
+            mod_workspace,
+            {
+                "first-wave": (
+                    "id: first-wave\nlanguage: Python\nseverity: error\n"
+                    "rule:\n  pattern: value = 0\nfix: value = 1\n"
+                ),
+                "second-wave": (
+                    "id: second-wave\nlanguage: Python\nseverity: error\n"
+                    f"rule:\n  pattern: value = 1\nfix: value = {final}\n"
+                ),
+            },
+        )
+        progress = self.RuntimeProgress(sample)
+        with infra.rope_workspace(mod_workspace) as rope:
+            service = FlextInfraCodemodBatchApply(
+                workspace_factory=infra.rope_workspace,
+                source_preview=infra.source_preview(mod_workspace),
+                repository_root=mod_workspace,
+                apply_changes=True,
+                rename_runner=FlextInfraApplyRenames(),
+                progress=progress,
+                rope=rope,
+            )
+            if outcome != "converged":
+                with pytest.raises(
+                    RuntimeError,
+                    match="|".join(
+                        re.escape(message)
+                        for message in ("cycle", "Ruff", "normalization")
+                    ),
+                ):
+                    service.execute()
+                tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+                tm.that(progress.validated, eq=False)
+                return
+            tm.ok(service.execute())
+            first = sample.read_bytes()
+            tm.that(progress.validated, eq=True)
+            tm.ok(
+                u.Cli.run((
+                    sys.executable,
+                    "-c",
+                    (
+                        "import runpy, sys; "
+                        "assert runpy.run_path(sys.argv[1])['value'] == 2"
+                    ),
+                    str(sample),
+                ))
+            )
+            tm.ok(service.execute())
+            tm.that(sample.read_bytes(), eq=first)
 
     def test_allows_a_later_rule_enabled_by_a_prior_rewrite(
         self,

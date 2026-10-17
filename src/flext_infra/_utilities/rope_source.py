@@ -12,7 +12,10 @@ from operator import itemgetter
 from pathlib import Path
 
 from flext_infra import c, t
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesRopeRuntime,
+)
 
 
 class FlextInfraUtilitiesRopeSource:
@@ -94,19 +97,6 @@ class FlextInfraUtilitiesRopeSource:
         return position
 
     @staticmethod
-    def index_after_docstring_and_future_imports(lines: t.StrSequence) -> int:
-        """Return insertion index after module docstring and future imports.
-
-        Returns:
-            Insertion index after module docstring and future imports.
-
-        """
-        return FlextInfraUtilitiesRopeSource.find_import_insert_position(
-            lines,
-            past_existing=False,
-        )
-
-    @staticmethod
     def parse_import_names(names_str: str) -> t.StrPairSequence:
         """Parse ``A, B as C`` into ``[(name, bound), ...]``.
 
@@ -146,7 +136,7 @@ class FlextInfraUtilitiesRopeSource:
         """
         if not statement_lines:
             return False
-        source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        source = file_path.read_text(encoding=c.DEFAULT_ENCODING)
         lines = source.splitlines(keepends=True)
         hoisted: list[str] = []
         drop: set[int] = set()
@@ -161,7 +151,7 @@ class FlextInfraUtilitiesRopeSource:
         block = [f"{text}\n" for text in hoisted if text not in present]
         updated = "".join([*kept[:position], *block, *kept[position:]])
         ast.parse(updated, filename=str(file_path))
-        file_path.write_text(updated, encoding=c.Cli.ENCODING_DEFAULT)
+        file_path.write_text(updated, encoding=c.DEFAULT_ENCODING)
         return True
 
     @staticmethod
@@ -209,7 +199,7 @@ class FlextInfraUtilitiesRopeSource:
     @staticmethod
     def rewrite_source_at_offsets(
         rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
+        resource: t.Infra.RopeFile,
         changes: t.SequenceOf[t.Triple[int, int, str]],
         *,
         apply: bool = True,
@@ -219,8 +209,14 @@ class FlextInfraUtilitiesRopeSource:
         Returns:
             The resulting ``str``.
 
+        Raises:
+            TypeError: If the resource is not a Rope file resource.
+
         """
         _ = rope_project
+        if not FlextInfraUtilitiesRopeRuntime.file_resource(resource):
+            msg = f"expected a Rope file resource: {resource.path}"
+            raise TypeError(msg)
         source: str = resource.read()
         for start, end, replacement in sorted(changes, key=itemgetter(0), reverse=True):
             source = source[:start] + replacement + source[end:]

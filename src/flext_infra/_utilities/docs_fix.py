@@ -12,9 +12,11 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 
 from flext_infra import c, config, m, t
-from flext_infra._utilities._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
-from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
-from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDocs,
+    FlextInfraUtilitiesDocsContract,
+    FlextInfraUtilitiesDocsGithubLinks,
+)
 
 if TYPE_CHECKING:
     import re
@@ -33,7 +35,10 @@ class FlextInfraUtilitiesDocsFix:
 
         """
         if FlextInfraUtilitiesDocs.docs_is_secure_web_url(raw_link):
-            return FlextInfraUtilitiesDocsGithubLinks.docs_rewrite_github_url(raw_link)
+            return FlextInfraUtilitiesDocsGithubLinks.docs_rewrite_github_url(
+                raw_link,
+                repository_root=md_file.parent,
+            )
         result: str | None = None
         if not (
             FlextInfraUtilitiesDocs.docs_is_external(raw_link)
@@ -69,7 +74,7 @@ class FlextInfraUtilitiesDocsFix:
         changed: t.MutableSequenceOf[m.Infra.GeneratedFile] = []
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             original = md_file.read_text(
-                encoding=c.Cli.ENCODING_DEFAULT,
+                encoding=c.DEFAULT_ENCODING,
                 errors=c.Infra.IGNORE,
             )
 
@@ -94,18 +99,26 @@ class FlextInfraUtilitiesDocsFix:
                 ]
                 fix_outcome = u.Cli.run_raw(
                     (*common, *config.Infra.codegen.make.ruff.lint_fix),
-                    input_data=body.encode(),
+                    cwd=scope.path,
+                    options=m.Cli.ProcessOptions(input_data=body.encode()),
                 )
                 if fix_outcome.failure:
                     raise RuntimeError(
                         fix_outcome.error or f"Ruff could not inspect {rel}",
                     )
-                # ``ruff check --fix`` exits non-zero when it DETECTED
-                # violations even after fixing every one of them; the fence
-                # is accepted only when a second, fix-free check comes back
-                # clean, never on the fix pass's own exit code.
+                if not u.Cli.process_succeeded(fix_outcome.value.outcome):
+                    msg = (
+                        f"Ruff could not fix {rel}: "
+                        f"{fix_outcome.value.stdout}\n{fix_outcome.value.stderr}"
+                    )
+                    raise RuntimeError(msg)
+                # Verify through the same read-only policy as the auditor.
                 fixed_body = fix_outcome.value.stdout
-                verify_outcome = u.Cli.run_raw(common, input_data=fixed_body.encode())
+                verify_outcome = u.Cli.run_raw(
+                    (*common, *config.Infra.codegen.make.ruff.lint_check),
+                    cwd=scope.path,
+                    options=m.Cli.ProcessOptions(input_data=fixed_body.encode()),
+                )
                 if verify_outcome.failure:
                     raise RuntimeError(
                         verify_outcome.error or f"Ruff could not verify {rel}",
@@ -166,7 +179,7 @@ class FlextInfraUtilitiesDocsFix:
 
         """
         original = md_file.read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
             errors=c.Infra.IGNORE,
         )
         link_count = 0
@@ -190,9 +203,11 @@ class FlextInfraUtilitiesDocsFix:
         updated = c.Infra.MARKDOWN_LINK_RE.sub(replace_link, original)
         fence_changed = c.Infra.FENCE_NOTEST_ATTR_RE.subn(r"```{.\1 .notest}", updated)
         updated = fence_changed[0]
-        updated, toc_changed = FlextInfraUtilitiesDocs.update_toc(updated)
+        updated, toc_changed = FlextInfraUtilitiesDocsContract.docs_contract_update_toc(
+            updated,
+        )
         if apply and updated != original:
-            _ = md_file.write_text(updated, encoding=c.Cli.ENCODING_DEFAULT)
+            _ = md_file.write_text(updated, encoding=c.DEFAULT_ENCODING)
         return m.Infra.DocsPhaseItemModel(
             phase="fix",
             file=md_file.as_posix(),

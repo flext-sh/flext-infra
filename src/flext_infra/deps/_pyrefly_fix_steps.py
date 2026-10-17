@@ -9,9 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping
 from typing import TYPE_CHECKING
 
-from flext_core import r
-from flext_infra import c, config, t, u
-from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+from flext_infra import c, config, r, t, u
+from flext_infra.deps import FlextInfraExtraPathsManager
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -164,8 +163,8 @@ class FlextInfraConfigFixerSteps:
                     validated.error,
                 )
             current_excludes = [str(value) for value in validated.value]
-        expected_excludes = sorted(
-            set(config.Infra.tooling.tools.pyrefly.project_exclude_globs),
+        expected_excludes = u.Infra.pyrefly_project_excludes(
+            config.Infra.tooling.tools.pyrefly.project_exclude_globs,
         )
         if current_excludes != expected_excludes:
             pyrefly[c.Infra.PROJECT_EXCLUDES] = u.Cli.toml_array(expected_excludes)

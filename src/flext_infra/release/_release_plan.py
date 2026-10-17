@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core import r
-from flext_infra import c, config, m, p, t, u
-from flext_infra.release._release_publish import FlextInfraReleasePublishMixin
+from flext_infra import c, config, m, p, r, t, u
+from flext_infra.release import FlextInfraReleasePublishMixin
 
 
 class FlextInfraReleasePlanMixin(FlextInfraReleasePublishMixin):
@@ -62,28 +61,12 @@ class FlextInfraReleasePlanMixin(FlextInfraReleasePublishMixin):
             The resulting ``p.Result[m.Infra.ReleasePlan]``.
 
         """
-        tags = u.Cli.capture(
-            [
-                c.Infra.GIT,
-                "tag",
-                "--merged",
-                c.Infra.GIT_HEAD,
-                "--list",
-                c.Infra.TAG_FORMAT.format(version="*"),
-                "--sort=-version:refname",
-            ],
-            cwd=root,
-        )
-        if tags.failure:
-            return r[m.Infra.ReleasePlan].from_failure(tags)
-        latest = next((line for line in tags.value.splitlines() if line), "")
-        # Why: CI plans on the pull request's synthetic merge commit, so the
-        # merged release commit is looked up in the whole history since the tag.
-        history = cls._subjects(root, latest, merges_only=False)
-        if history.failure:
-            return r[m.Infra.ReleasePlan].from_failure(history)
+        tagged = cls._tag_and_history(root)
+        if tagged.failure:
+            return r[m.Infra.ReleasePlan].from_failure(tagged)
+        latest, history = tagged.value
         if latest != c.Infra.TAG_FORMAT.format(version=current) and any(
-            u.Infra.release_subject(subject, current) for subject in history.value
+            u.Infra.release_subject(subject, current) for subject in history
         ):
             # The release commit is merged and awaits its tag: nothing to bump.
             return r[m.Infra.ReleasePlan].ok(
@@ -121,6 +104,57 @@ class FlextInfraReleasePlanMixin(FlextInfraReleasePublishMixin):
                     declared=True,
                 ),
             )
+        return cls._bump_plan(root, current, latest)
+
+    @classmethod
+    def _tag_and_history(cls, root: Path) -> p.Result[t.Pair[str, t.StrSequence]]:
+        """Resolve the latest merged release tag and the subjects since it.
+
+        Why: CI plans on the pull request's synthetic merge commit, so the
+        merged release commit is looked up in the whole history since the tag.
+        The listing glob demands a digit after the prefix: foreign tag
+        namespaces that only collide with it (cycle-control markers like
+        ``val<date>t<hhmm>``) are excluded at the source, so ``latest`` can
+        never name one.
+
+        Returns:
+            The resulting ``(latest_tag, subjects)`` pair.
+
+        """
+        result_type = r[t.Pair[str, t.StrSequence]]
+        tags = u.Cli.capture(
+            [
+                c.Infra.GIT,
+                "tag",
+                "--merged",
+                c.Infra.GIT_HEAD,
+                "--list",
+                c.Infra.TAG_FORMAT.format(version="[0-9]*"),
+                "--sort=-version:refname",
+            ],
+            cwd=root,
+        )
+        if tags.failure:
+            return result_type.from_failure(tags)
+        latest = next((line for line in tags.value.splitlines() if line), "")
+        history = cls._subjects(root, latest, merges_only=False)
+        if history.failure:
+            return result_type.from_failure(history)
+        return result_type.ok((latest, history.value))
+
+    @classmethod
+    def _bump_plan(
+        cls,
+        root: Path,
+        current: str,
+        latest: str,
+    ) -> p.Result[m.Infra.ReleasePlan]:
+        """Derive the bump from the merge titles since the last release tag.
+
+        Returns:
+            The resulting release plan.
+
+        """
         merges = cls._subjects(root, latest, merges_only=True)
         if merges.failure:
             return r[m.Infra.ReleasePlan].from_failure(merges)
@@ -149,22 +183,10 @@ class FlextInfraReleasePlanMixin(FlextInfraReleasePublishMixin):
             The resulting ``p.Result[bool]``.
 
         """
-        branch = cls._integration_branch(root)
-        if branch.failure:
-            return r[bool].from_failure(branch)
-        base = u.Cli.capture(
-            [
-                c.Infra.GIT,
-                "merge-base",
-                f"{c.Infra.GIT_ORIGIN}/{branch.value}",
-                c.Infra.GIT_HEAD,
-            ],
-            cwd=root,
-        )
-        head = u.Cli.capture([c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=root)
-        if base.failure or head.failure:
-            return r[bool].from_failure(base if base.failure else head)
-        base_oid, head_oid = base.value.strip(), head.value.strip()
+        resolved = cls._integration_base(root)
+        if resolved.failure:
+            return r[bool].from_failure(resolved)
+        base_oid, head_oid = resolved.value
         if base_oid == head_oid:
             return r[bool].ok(value=True)
         content = u.Cli.capture(
@@ -189,19 +211,47 @@ class FlextInfraReleasePlanMixin(FlextInfraReleasePublishMixin):
             f"carries no {subject!r}); run `make release WHAT=version` instead",
         )
 
+    @classmethod
+    def _integration_base(cls, root: Path) -> p.Result[t.Pair[str, str]]:
+        """Resolve the merge base against the published integration branch.
+
+        Returns:
+            The resulting ``(base_oid, head_oid)`` pair.
+
+        """
+        result_type = r[t.Pair[str, str]]
+        branch = cls._integration_branch(root)
+        if branch.failure:
+            return result_type.from_failure(branch)
+        base = u.Cli.capture(
+            [
+                c.Infra.GIT,
+                "merge-base",
+                f"{c.Infra.GIT_ORIGIN}/{branch.value}",
+                c.Infra.GIT_HEAD,
+            ],
+            cwd=root,
+        )
+        head = u.Cli.capture([c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=root)
+        if base.failure or head.failure:
+            return result_type.from_failure(base if base.failure else head)
+        return result_type.ok((base.value.strip(), head.value.strip()))
+
     @staticmethod
     def _integration_branch(root: Path) -> p.Result[str]:
-        """Resolve the published integration branch this repository releases from.
+        """Resolve the integration branch this repository releases from.
+
+        The repository's own declaration (``repository.integration.branch``
+        in its codegen layers) wins over the workspace policy line: a consumer
+        integrating on ``dev`` releases from ``dev``, never from the fleet line.
 
         Returns:
             The resulting ``p.Result[str]``.
 
         """
-        return u.Infra.repository_baseline_branch(
+        return u.Infra.resolve_integration_branch(
             root,
-            preference=tuple(
-                config.Infra.codegen.branch_policy.integration_branch_preference,
-            ),
+            policy_branch=config.Infra.codegen.branch_policy.integration_branch,
         )
 
     @staticmethod

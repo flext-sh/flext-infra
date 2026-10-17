@@ -10,7 +10,9 @@ import operator
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, u
+from flext_cli import u
+
+from flext_infra import c, m
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -26,8 +28,6 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             tuple[str, bool, bool, bool, bool, bool],
             t.LazyAliasMap,
         ]
-        _version_module_name: str
-        _project_layout_cache: MutableMapping[Path, m.Infra.RopeProjectLayout]
 
         def _package_entry(
             self,
@@ -41,26 +41,6 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             target: t.StrPair,
         ) -> None: ...
 
-        @staticmethod
-        def _publish(name: str, *, allow_main: bool) -> bool: ...
-
-    def _project_layout_for(self, pkg_dir: Path) -> m.Infra.RopeProjectLayout | None:
-        """Reuse the project's canonical layout during one planning snapshot.
-
-        Returns:
-            The resulting ``m.Infra.RopeProjectLayout | None``.
-
-        """
-        project_root = u.Infra.project_root(pkg_dir)
-        if project_root is None:
-            return None
-        layout = self._project_layout_cache.get(project_root)
-        if layout is None:
-            layout = u.Infra.layout(project_root)
-            if layout is not None:
-                self._project_layout_cache[project_root] = layout
-        return layout
-
     def _package_exports(
         self,
         context: m.Infra.LazyInitPackageContext,
@@ -71,21 +51,67 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             The lazy export map for a package (excluding child packages).
 
         Raises:
-            ValueError: If unindexed publication source.
+            ValueError: If unindexed publication source; or if declared publication
+                module is shadowed by a package.
 
         """
         package_entry = self._package_entry(context.pkg_dir)
-        # Operator init law (2026-09-16): every package with public children —
-        # underscore internals included — carries a light lazy-init export
-        # surface. When the rope index does not track the package, enumerate
-        # direct children from the filesystem instead of rendering an empty
-        # init; emptiness here is a defect, never canonical.
-        # The rope index exposes modules in its own scan order, which follows
-        # the filesystem's directory-entry order and therefore differs between
-        # machines. Sorting the entries makes the rendered lazy map — whose
-        # insertion order the generated ``__init__`` preserves — byte-identical
-        # for the same sources on every host, so a render on one machine can
-        # never drift against a render on another.
+        module_entries = self._enumerated_module_entries(context, package_entry)
+        u.Cli.info(
+            f"lazy-init: export inventory package={context.current_pkg} "
+            f"modules={len(module_entries)}"
+        )
+        index: t.MutableLazyAliasMap = {}
+        for py_file, module_name in module_entries:
+            if self._skipped_export_module(context, py_file):
+                continue
+            entry = self.rope_workspace.module(py_file)
+            if entry is None:
+                msg = f"unindexed publication source: {py_file}"
+                raise ValueError(msg)
+            targets = self._module_exports(
+                py_file,
+                entry.module_name,
+                export_options=m.Infra.ExportOptions(
+                    allow_main=True,
+                    allow_assignments=True,
+                    allow_functions=True,
+                    require_explicit_all=True,
+                ),
+            )
+            child_entry = self._package_entry(py_file.parent / py_file.stem)
+            if targets and child_entry is not None and child_entry.package_name:
+                msg = (
+                    "declared publication module is shadowed by a package: "
+                    f"{module_name}"
+                )
+                raise ValueError(msg)
+            for name, target in targets.items():
+                self._add(index, name, target)
+        return index
+
+    @staticmethod
+    def _enumerated_module_entries(
+        context: m.Infra.LazyInitPackageContext,
+        package_entry: m.Infra.RopePackageIndexEntry | None,
+    ) -> t.MutableSequenceOf[t.Pair[Path, str]]:
+        """Enumerate a package's modules from the rope index or the filesystem.
+
+        Operator init law (2026-09-16): every package with public children —
+        underscore internals included — carries a light lazy-init export
+        surface. When the rope index does not track the package, enumerate
+        direct children from the filesystem instead of rendering an empty
+        init; emptiness here is a defect, never canonical. The rope index
+        exposes modules in its own scan order, which follows the filesystem's
+        directory-entry order and therefore differs between machines. Sorting
+        the entries makes the rendered lazy map — whose insertion order the
+        generated ``__init__`` preserves — byte-identical for the same sources
+        on every host.
+
+        Returns:
+            The resulting sorted module entries.
+
+        """
         module_entries: t.MutableSequenceOf[t.Pair[Path, str]] = (
             sorted(
                 (
@@ -108,106 +134,23 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 for child in sorted(context.pkg_dir.glob("*.py"))
                 if child.name != c.Infra.INIT_PY
             ]
-        index: t.MutableLazyAliasMap = {}
-        project_layout = self._project_layout_for(context.pkg_dir)
-        # Generated support modules are output, never public input.
-        # conftest.py is pytest-private: its hook variables (pytest_plugins) are
-        # never public package ABI and must not enter the lazy export map.
-        skip_names = {
-            c.Infra.INIT_PY,
-            "__main__.py",
-            "conftest.py",
-            self._version_module_name,
-            *c.Infra.OBSOLETE_GENERATED_INIT_FILES,
-        }
-        for py_file, module_name in module_entries:
-            # Universal, no exceptions: a light
-            # package init exports ONLY its direct children. Subdirectory
-            # symbols stay in the subpackage's own init — never re-exported
-            # upward, in the root or anywhere else.
-            if py_file.parent != context.pkg_dir:
-                continue
-            child_dir = py_file.parent / py_file.stem
-            child_entry = self._package_entry(child_dir)
-            # Test artifacts never enter an installable package ABI.
-            test_only_source_module = (
-                context.surface != c.Infra.DIR_TESTS
-                or context.current_pkg == c.Infra.DIR_TESTS
-            ) and (
-                c.Infra.TEST_ONLY_SOURCE_MODULE_RE.fullmatch(py_file.name) is not None
-            )
-            # Extract predicate to satisfy PLR0916
-            # (>5 boolean expressions); retired/generated/test modules are
-            # never semantic input for the lazy export map.
-            is_generated_or_test = (
-                py_file.name in skip_names
-                or c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(py_file.name)
-                or py_file.stem in c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES
-                or test_only_source_module
-                # A stem that is not an identifier (numbered example scripts,
-                # dash-named files) can never appear in a from-import: it is
-                # unimportable and never semantic input for the lazy export map.
-                or not py_file.stem.isidentifier()
-            )
-            is_child_package = child_entry is not None and child_entry.package_name
-            if is_generated_or_test or is_child_package:
-                continue
-            policy = u.Infra.publication_policy(
-                py_file,
-                rel_path=py_file.relative_to(context.pkg_dir),
-                current_pkg=context.current_pkg,
-                rope_project=self.rope_workspace.rope_project,
-                project_layout=project_layout,
-            )
-            entry = self.rope_workspace.module(py_file)
-            if entry is None:
-                msg = f"unindexed publication source: {py_file}"
-                raise ValueError(msg)
-            module_path = entry.module_name
-            root_private_contract = (
-                py_file.parent == context.pkg_dir
-                and py_file.stem in {"_config", "_settings"}
-                and bool(
-                    self._module_exports(
-                        py_file,
-                        module_path,
-                        export_options=m.Infra.ExportOptions(
-                            allow_main=True,
-                            allow_assignments=True,
-                            allow_functions=True,
-                            require_explicit_all=True,
-                        ),
-                    ),
-                )
-            )
-            if (
-                not policy.include_in_lazy_init and not root_private_contract
-            ) or not module_name:
-                continue
-            # In public src packages, public submodules (without expected_alias) derive
-            # from their explicit __all__; non-public/private subpackages auto-discover.
-            require_explicit_all = context.surface in c.Infra.NON_PUBLIC_LAZY_ROOTS or (
-                not any(part.startswith("_") for part in context.pkg_dir.parts)
-                and not py_file.stem.startswith("_")
-                and (
-                    u.Infra.matches_root_namespace_file(py_file.name)
-                    or policy.expected_alias is not None
-                    or "." in context.current_pkg
-                )
-            )
-            targets = self._module_exports(
-                py_file,
-                module_path,
-                export_options=m.Infra.ExportOptions(
-                    allow_main=True,
-                    allow_assignments=True,
-                    allow_functions=True,
-                    require_explicit_all=require_explicit_all,
-                ),
-            )
-            for name, target in targets.items():
-                self._add(index, name, target)
-        return index
+        return module_entries
+
+    @staticmethod
+    def _skipped_export_module(
+        context: m.Infra.LazyInitPackageContext,
+        py_file: Path,
+    ) -> bool:
+        """Whether a module never enters its package's lazy export map.
+
+        Each directory publishes its direct modules' declarations. Its own
+        initializer propagates those declarations and is never an input.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
+        return py_file.parent != context.pkg_dir or py_file.name == c.Infra.INIT_PY
 
     def _module_exports(
         self,
@@ -221,8 +164,13 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         Returns:
             The lazy export map for one Python module (cache-backed).
 
+        Raises:
+            ValueError: If unindexed publication resource.
+
         """
-        resolved_export_options = export_options or m.Infra.ExportOptions()
+        resolved_export_options = export_options or m.Infra.ExportOptions(
+            require_explicit_all=True,
+        )
         cache_key = (
             str(py_file.resolve()),
             resolved_export_options.include_dunder,
@@ -235,23 +183,17 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         if cached is not None:
             return dict(cached)
         if self.rope_workspace.resource(py_file) is None:
-            return {}
+            msg = f"unindexed publication resource: {py_file}"
+            raise ValueError(msg)
         names = self.rope_workspace.exports(
             py_file,
-            export_options=resolved_export_options.model_copy(
-                update={
-                    "require_explicit_all": (
-                        resolved_export_options.require_explicit_all
-                        and not resolved_export_options.include_dunder
-                    ),
-                },
-            ),
+            export_options=resolved_export_options,
         )
-        exports = {
-            name: (module_path, name)
-            for name in names
-            if resolved_export_options.include_dunder
-            or self._publish(name, allow_main=resolved_export_options.allow_main)
-        }
+        if not names:
+            u.Cli.info(f"lazy-init: empty module exports module={module_path}")
+        exports = {name: (module_path, name) for name in names}
         self._module_exports_cache[cache_key] = exports
         return dict(exports)
+
+
+__all__: list[str] = ["FlextInfraCodegenLazyInitPlannerExportsMixin"]

@@ -1,4 +1,4 @@
-"""Accessor per-file lint processing + report rendering — extracted concern.
+"""Accessor candidate validation, publication and report rendering.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -7,163 +7,292 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableMapping
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import m, u
+from flext_infra import c, m, r, settings, t, u
+from flext_infra.codegen.staged_package import FlextInfraStagedPackage
+from flext_infra.refactor import FlextInfraAccessorOriginResolver
+from flext_infra.transformers import FlextInfraSemanticPublication
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import t
+    from flext_infra import p
 
 
 class FlextInfraAccessorMigrationReportMixin:
-    """Per-file lint snapshot/write and CLI report rendering.
-
-    Composed into FlextInfraAccessorMigrationOrchestrator via inheritance; the
-    facade provides ``dry_run`` / ``repository_root`` / the gate-name properties
-    through FLEXT (declared below for static resolution).
-    """
+    """Compose a complete accessor candidate before any shared-source write."""
 
     if TYPE_CHECKING:
-        dry_run: bool
-        repository_root: Path
-
-        @property
-        def gate_names(self) -> t.StrSequence: ...
-
-        @property
-        def lint_tool_names(self) -> t.StrSequence: ...
+        _AUTOMATED_RULES: ClassVar[t.VariadicTuple[m.Infra.AccessorMigrationRule]]
 
         def _apply_automated_rewrites(
             self,
             rope_project: t.Infra.RopeProject,
             py_file: Path,
             source: str,
+            *,
+            resolver: FlextInfraAccessorOriginResolver,
         ) -> t.Pair[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]: ...
-
-        def _collect_manual_warnings(
-            self,
-            py_file: Path,
-            source: str,
-        ) -> t.SequenceOf[m.Infra.AccessorMigrationChange]: ...
 
     @staticmethod
     def _accumulate_lint_totals(
         totals: MutableMapping[str, int],
-        snapshot: t.Infra.LintSnapshot,
+        snapshot: t.Infra.LintSnapshot[m.Infra.LintGateResult],
     ) -> None:
         """Accumulate lint totals."""
-        for tool, lines in snapshot.items():
-            totals[tool] = totals.get(tool, 0) + len(tuple(lines))
+        for tool, receipt in snapshot.items():
+            totals[tool] = totals.get(tool, 0) + len(receipt.errors)
 
-    def _process_file(
+    def _plan_files(
         self,
         rope_project: t.Infra.RopeProject,
-        py_file: Path,
-        source: str,
+        py_files: t.SequenceOf[Path],
         *,
-        preview_available: bool,
-    ) -> m.Infra.AccessorMigrationFile:
-        """Rewrite one file, collect its manual warnings and lint evidence.
+        params: m.Infra.AccessorMigrationInput,
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
+    ) -> p.Result[
+        t.Pair[
+            t.SequenceOf[m.Infra.SemanticFilePlan],
+            t.SequenceOf[m.Infra.AccessorMigrationFile],
+        ]
+    ]:
+        """Capture the original sources and plan all rewrites without effects.
 
         Returns:
-            The resulting ``m.Infra.AccessorMigrationFile``.
+            Existing typed publication plans and unvalidated per-file evidence.
 
         """
-        updated_source, automated_changes = self._apply_automated_rewrites(
-            rope_project,
-            py_file,
-            source,
+        result_type = r[
+            t.Pair[
+                t.SequenceOf[m.Infra.SemanticFilePlan],
+                t.SequenceOf[m.Infra.AccessorMigrationFile],
+            ]
+        ]
+        states: dict[Path, m.Cli.AtomicFileState] = {}
+        for state in inputs:
+            if states.setdefault(state.path, state) != state:
+                return result_type.fail(
+                    f"accessor input snapshots disagree: {state.path}"
+                )
+        for py_file in py_files:
+            observed = u.Cli.atomic_read_binary_file_state(py_file, required=True)
+            if observed.failure:
+                return result_type.from_failure(observed)
+            state = observed.value
+            if state.content is None or state.mode is None:
+                return result_type.fail(
+                    f"accessor source has no bytes or mode: {py_file}"
+                )
+            if states.setdefault(state.path, state) != state:
+                return result_type.fail(
+                    f"accessor source changed since preflight: {py_file}"
+                )
+        reports: list[m.Infra.AccessorMigrationFile] = []
+        plans: list[m.Infra.SemanticFilePlan] = []
+        resolver = FlextInfraAccessorOriginResolver(
+            rope_project, namespace=params.namespace, module=params.module
         )
-        warnings = list(self._collect_manual_warnings(py_file, source))
-        include_preview = bool(automated_changes or warnings) and preview_available
-        lint_before: MutableMapping[str, t.StrSequence] = {}
-        lint_after: MutableMapping[str, t.StrSequence] = {}
-        new_lint_errors: MutableMapping[str, t.StrSequence] = {}
-        before: t.Infra.LintSnapshot = {}
-        after: t.Infra.LintSnapshot = {}
-        if automated_changes:
-            if self.dry_run and include_preview:
-                before, after = u.Infra.preview_source_lint(
-                    py_file,
-                    self.repository_root,
-                    updated_source=updated_source,
-                    gates=self.gate_names,
+        for py_file in py_files:
+            state = states[py_file.resolve()]
+            if state.content is None:
+                return result_type.fail(f"accessor source has no bytes: {py_file}")
+            source = state.content.decode(c.DEFAULT_ENCODING)
+            updated_source, changes = self._apply_automated_rewrites(
+                rope_project, py_file, source, resolver=resolver
+            )
+            automated = tuple(change for change in changes if change.automated)
+            warnings = (
+                *resolver.collect_manual_warnings(
+                    rope_project, py_file, source, rules=self._AUTOMATED_RULES
+                ),
+                *(change for change in changes if not change.automated),
+            )
+            reports.append(
+                m.Infra.AccessorMigrationFile(
+                    file=str(py_file),
+                    automated_changes=automated,
+                    warnings=warnings,
+                    diff=self._diff(py_file, source, updated_source)
+                    if automated
+                    else "",
+                    lint_before={},
+                    lint_after={},
+                    new_lint_errors={},
                 )
-            elif not self.dry_run:
-                before = (
-                    u.Infra.lint_snapshot(
-                        py_file,
-                        self.repository_root,
-                        gates=self.gate_names,
+            )
+            if updated_source != source:
+                plans.append(
+                    m.Infra.SemanticFilePlan(
+                        project=u.Infra.project_root(py_file) or params.repository_root,
+                        path=state.path,
+                        before=state,
+                        desired_content=updated_source.encode(c.DEFAULT_ENCODING),
+                        desired_mode=state.mode,
+                        changes=tuple(change.original_name for change in automated),
+                        source_states=tuple(states.values()),
                     )
-                    if include_preview
-                    else {}
                 )
-                ok, report = u.Infra.protected_source_write(
-                    py_file,
-                    request=m.Infra.ProtectedSourceWriteRequest(
-                        workspace=self.repository_root,
-                        updated_source=updated_source,
-                        gates=self.gate_names,
-                    ),
-                )
-                if not ok:
-                    warnings.append(
-                        m.Infra.AccessorMigrationChange(
-                            file=str(py_file),
-                            line=0,
-                            original_name="protected_write",
-                            replacement_name="",
-                            automated=False,
-                            reason=" ; ".join(report[:3]) or "protected write failed",
-                        ),
-                    )
-                after = (
-                    u.Infra.lint_snapshot(
-                        py_file,
-                        self.repository_root,
-                        gates=self.gate_names,
-                    )
-                    if include_preview
-                    else {}
-                )
-            else:
-                before = {}
-                after = {}
-            if include_preview:
-                lint_before = self._freeze_lints(before)
-                lint_after = self._freeze_lints(after)
-                new_lint_errors = self._freeze_lints(
-                    u.Infra.lint_new_errors(before, after),
-                )
-        return m.Infra.AccessorMigrationFile(
-            file=str(py_file),
-            lint_tools=tuple(self.lint_tool_names)
-            if automated_changes and include_preview
-            else (),
-            automated_changes=tuple(automated_changes),
-            warnings=tuple(warnings),
-            diff=self._diff(py_file, source, updated_source)
-            if automated_changes and include_preview
-            else "",
-            lint_before=lint_before,
-            lint_after=lint_after,
-            new_lint_errors=new_lint_errors,
+        return result_type.ok((tuple(plans), tuple(reports)))
+
+    def _process_files(
+        self,
+        rope_project: t.Infra.RopeProject,
+        py_files: t.SequenceOf[Path],
+        *,
+        params: m.Infra.AccessorMigrationInput,
+        source_preview: p.Infra.SourcePreview,
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
+    ) -> p.Result[t.SequenceOf[m.Infra.AccessorMigrationFile]]:
+        """Validate the whole coupled candidate before its single publication.
+
+        Returns:
+            Measured per-file evidence or the original protected failure.
+
+        """
+        result_type = r[t.SequenceOf[m.Infra.AccessorMigrationFile]]
+        planned = self._plan_files(rope_project, py_files, params=params, inputs=inputs)
+        if planned.failure:
+            return result_type.from_failure(planned)
+        plans, reports = planned.value
+        if not plans:
+            return result_type.ok(reports)
+        updates = {
+            plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
+            for plan in plans
+            if plan.desired_content is not None
+        }
+        staged = FlextInfraStagedPackage.plan_sources(
+            params.repository_root, updates, inputs=plans[0].source_states
+        )
+        if staged.failure:
+            return result_type.from_failure(staged)
+        gates = tuple(params.gates) or tuple(u.Infra.snapshot_lint_gates())
+        checked = self.validate_candidate(staged.value, source_preview, gates)
+        if checked.failure:
+            return result_type.from_failure(checked)
+        if params.apply:
+            published = FlextInfraSemanticPublication.publish_source_candidate(
+                plans,
+                candidate=staged.value,
+            )
+            if published.failure:
+                return result_type.from_failure(published)
+        return result_type.ok(self._candidate_reports(reports, checked.value, gates))
+
+    @staticmethod
+    def _candidate_reports(
+        reports: t.SequenceOf[m.Infra.AccessorMigrationFile],
+        evidence: t.Pair[
+            t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+            t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+        ],
+        gates: t.StrSequence,
+    ) -> t.SequenceOf[m.Infra.AccessorMigrationFile]:
+        """Attach the measured batch evidence to the existing report model.
+
+        Returns:
+            Per-file reports retaining explicit not-executed empty snapshots.
+
+        """
+        before, after = evidence
+        tools = tuple(u.Infra.selected_lint_tool_names(gates))
+        return tuple(
+            m.Infra.AccessorMigrationFile.model_validate({
+                **report.model_dump(),
+                "lint_tools": tools,
+                "lint_before": before[Path(report.file)],
+                "lint_after": after[Path(report.file)],
+                "new_lint_errors": u.Infra.lint_new_errors(
+                    before[Path(report.file)], after[Path(report.file)]
+                ),
+            })
+            if report.automated_changes
+            else report
+            for report in reports
         )
 
     @staticmethod
-    def _freeze_lints(
-        snapshot: t.Infra.LintSnapshot,
-    ) -> MutableMapping[str, t.StrSequence]:
-        """Freeze lints.
+    def validate_candidate(
+        plan: m.Infra.StageSourcePlan,
+        source_preview: p.Infra.SourcePreview,
+        gates: t.StrSequence,
+    ) -> p.Result[
+        t.Pair[
+            t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+            t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+        ]
+    ]:
+        """Validate changed and unchanged Python consumers in one staged view.
 
         Returns:
-            The resulting ``MutableMapping[str, t.StrSequence]``.
+            Original/candidate lint evidence, or a pre-publication rejection.
 
         """
-        return {tool: tuple(lines) for tool, lines in snapshot.items()}
+        paths = tuple(
+            state.path
+            for state in plan.inputs
+            if state.content is not None
+            and state.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+        )
+        before = u.Infra.lint_snapshots(paths, plan.workspace, gates=gates)
+
+        def validate(
+            view_root: Path,
+            candidates: t.MappingKV[Path, Path],
+        ) -> t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]]:
+            staged_paths = {
+                path: candidates.get(path, view_root / path.relative_to(plan.workspace))
+                for path in paths
+            }
+            snapshots = u.Infra.lint_snapshots(
+                tuple(staged_paths.values()), view_root, gates=gates
+            )
+            return {
+                path: snapshots[candidate] for path, candidate in staged_paths.items()
+            }
+
+        previewed = source_preview.preview_sources(
+            plan.workspace,
+            plan.updates,
+            validate,
+            inputs=plan.inputs,
+            runtime_root=u.Infra.runtime_environment_dir(
+                plan.workspace,
+                runtime_root=type(settings).fetch_global().Infra.runtime_root,
+            ).parent,
+        )
+        if previewed.failure:
+            return r[
+                t.Pair[
+                    t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+                    t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+                ]
+            ].from_failure(previewed)
+        execution_errors = tuple(
+            f"{path}: {error}"
+            for path in paths
+            for snapshot in (before[path], previewed.value[path])
+            for error in u.Infra.lint_execution_errors(snapshot)
+        )
+        errors = execution_errors + tuple(
+            f"{path}: {tool}: {line}"
+            for path in paths
+            for tool, lines in u.Infra.lint_new_errors(
+                before[path], previewed.value[path]
+            ).items()
+            for line in lines
+        )
+        result_type = r[
+            t.Pair[
+                t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+                t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+            ]
+        ]
+        if errors:
+            return result_type.fail(
+                "accessor candidate rejected before publication:\n" + "\n".join(errors)
+            )
+        return result_type.ok((before, previewed.value))
 
     @staticmethod
     def _diff(py_file: Path, before: str, after: str) -> str:
@@ -201,6 +330,9 @@ class FlextInfraAccessorMigrationReportMixin:
             f"lint_tools: {', '.join(report.lint_tools)}",
         ]
         for tool in report.lint_tools:
+            if tool not in report.lint_before_totals:
+                lines.append(f"lint-totals:{tool} not-executed (no automated rewrites)")
+                continue
             lines.append(
                 f"lint-totals:{tool} "
                 f"before={report.lint_before_totals.get(tool, 0)} "
@@ -223,12 +355,23 @@ class FlextInfraAccessorMigrationReportMixin:
                 lines.append(f"  warn:{warning.line} {warning.original_name}{target}")
                 lines.append(f"    {warning.reason}")
             for tool in file_report.lint_tools:
-                issues = tuple(file_report.lint_after.get(tool, ()))
+                receipt = file_report.lint_after.get(tool)
+                issues = (
+                    (
+                        *receipt.errors,
+                        *(
+                            (receipt.execution_error,)
+                            if receipt.execution_error
+                            else ()
+                        ),
+                    )
+                    if receipt is not None
+                    else ("not executed",)
+                )
                 lines.append(f"  lint-after:{tool}")
-                if not issues:
-                    lines.append("    ok")
-                    continue
-                lines.extend(f"    {issue}" for issue in issues[:4])
+                lines.extend(
+                    tuple(f"    {issue}" for issue in issues[:4]) or ("    ok",)
+                )
             for tool in file_report.lint_tools:
                 issues = tuple(file_report.new_lint_errors.get(tool, ()))
                 if not issues:

@@ -6,23 +6,253 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from flext_cli import u
 
-from flext_cli import r, u
-
-from flext_infra import c, t
+from flext_infra import c, m, p, r, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesManagedConflicts,
+    FlextInfraUtilitiesPyproject,
+)
 from flext_infra._utilities._pyproject.requirements import (
     FlextInfraUtilitiesPyprojectRequirements,
 )
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-from flext_infra._utilities.managed_conflicts import FlextInfraUtilitiesManagedConflicts
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesPyprojectOverlay:
     """Merge one rendered pyproject with its live CUSTOM surface."""
+
+    @staticmethod
+    def _validated_requirement_lists(
+        project: t.MutableJsonMapping,
+        live_project: t.JsonMapping,
+        key: str,
+    ) -> p.Result[t.Pair[t.StrSequence, t.StrSequence]]:
+        """Validate generated and CUSTOM runtime dependency lists once.
+
+        Returns:
+            The resulting ``(required, custom)`` requirement lists.
+
+        """
+        validated_required: p.Result[t.StrSequence] = u.validate_value(
+            t.Infra.STR_SEQ_ADAPTER,
+            project.get(key, []),
+            strict=True,
+        )
+        if validated_required.failure:
+            return r[t.Pair[t.StrSequence, t.StrSequence]].fail_op(
+                "validate runtime dependencies",
+                validated_required.error,
+            )
+        validated_custom: p.Result[t.StrSequence] = u.validate_value(
+            t.Infra.STR_SEQ_ADAPTER,
+            live_project[key],
+            strict=True,
+        )
+        if validated_custom.failure:
+            return r[t.Pair[t.StrSequence, t.StrSequence]].fail_op(
+                "validate runtime dependencies",
+                validated_custom.error,
+            )
+        return r[t.Pair[t.StrSequence, t.StrSequence]].ok(
+            (validated_required.value, validated_custom.value),
+        )
+
+    @staticmethod
+    def _merged_requirements(
+        required: t.StrSequence,
+        custom: t.StrSequence,
+    ) -> list[t.JsonValue]:
+        """Merge CUSTOM runtime requirements under the generated ownership order.
+
+        Profiles own same-name requirements. CUSTOM requirements retain full
+        specs, including distinct markers for one name. Conformance uses this
+        same order: overlay must not move generated requirements ahead of
+        preserved custom ones.
+
+        Returns:
+            The resulting ``list[t.JsonValue]``.
+
+        """
+        owned_names = {
+            FlextInfraUtilitiesDependencies.dep_name(item) for item in required
+        }
+        # The list display widens the sorted ``str`` items to the JSON value
+        # list the caller stores, in the single pass that materializes them.
+        return [
+            *sorted(
+                dict.fromkeys((
+                    *required,
+                    *(
+                        item
+                        for item in custom
+                        if FlextInfraUtilitiesDependencies.dep_name(item)
+                        not in owned_names
+                    ),
+                )),
+                key=FlextInfraUtilitiesPyprojectRequirements.dependency_order_key,
+            ),
+        ]
+
+    @classmethod
+    def _overlay_project_surface(
+        cls,
+        merged: t.MutableJsonMapping,
+        live_payload: t.JsonMapping,
+        project_keys: t.StrSequence,
+    ) -> p.Result[t.JsonDict]:
+        """Overlay every declared CUSTOM project key onto the merged document.
+
+        Returns:
+            The resulting ``p.Result[t.JsonDict]``.
+
+        """
+        project = dict(u.Cli.toml_mapping_child(merged, c.Infra.PROJECT) or {})
+        live_project = u.Cli.toml_mapping_child(live_payload, c.Infra.PROJECT) or {}
+        for key in project_keys:
+            if key not in live_project:
+                continue
+            if key == c.Infra.DEPENDENCIES:
+                validated = cls._validated_requirement_lists(
+                    project,
+                    live_project,
+                    key,
+                )
+                if validated.failure:
+                    return r[t.JsonDict].from_failure(validated)
+                required, custom = validated.value
+                project[key] = cls._merged_requirements(required, custom)
+            else:
+                project[key] = live_project[key]
+        return r[t.JsonDict].ok(project)
+
+    @staticmethod
+    def sync_member_dev_provenance(
+        document: t.Cli.TomlDocument,
+        *,
+        custom: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+        group: str = str(c.Infra.DEV),
+    ) -> None:
+        """Tag generated additions in the existing dev group, not another registry."""
+        groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
+        group = FlextInfraUtilitiesPyproject.dependency_group_name(
+            groups,
+            group,
+        )
+        values = FlextInfraUtilitiesPyprojectRequirements.read_dependency_group(
+            groups,
+            group,
+        )
+        if not values:
+            return
+        custom_values = frozenset(custom)
+        generated = u.Cli.toml_array(()).multiline(multiline=False)
+        for value in values:
+            generated.add_line(
+                (
+                    value
+                    if isinstance(value, str)
+                    else value.model_dump(mode="json", by_alias=True)
+                ),
+                comment=(
+                    None
+                    if not isinstance(value, str) or value in custom_values
+                    else c.Infra.MEMBER_DEV_PROVENANCE
+                ),
+            )
+        generated.add_line(indent="")
+        groups[group] = generated
+
+    @staticmethod
+    def _overlay_dev_group(
+        merged: t.MutableJsonMapping,
+        live_payload: t.JsonMapping,
+        live: str | None,
+    ) -> p.Result[bool]:
+        """Preserve CUSTOM environment additions before conformance floors.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        rendered_groups = dict(
+            u.Cli.toml_mapping_child(merged, c.Infra.DEPENDENCY_GROUPS) or {},
+        )
+        live_groups = (
+            u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
+        )
+        groups = dict(rendered_groups)
+        for name, entries in live_groups.items():
+            authored_name = FlextInfraUtilitiesPyproject.dependency_group_name(
+                tuple(live_groups),
+                name,
+            )
+            previous = FlextInfraUtilitiesPyproject.dependency_group_name(
+                tuple(groups),
+                authored_name,
+            )
+            if previous != authored_name:
+                groups.pop(previous, None)
+            groups[authored_name] = entries
+        for group in (str(c.Infra.DEV), c.Infra.DependencyGroup.CODEGEN):
+            selected = FlextInfraUtilitiesPyproject.dependency_group_name(
+                tuple(groups),
+                str(group),
+            )
+            custom = FlextInfraUtilitiesPyproject.custom_dev_additions(
+                live_payload,
+                live,
+                group=group,
+            )
+            if custom.failure:
+                return r[bool].from_failure(custom)
+            if group == c.Infra.DependencyGroup.CODEGEN:
+                required = u.validate_value(
+                    m.Infra.DependencyGroupEntries,
+                    rendered_groups.get(
+                        FlextInfraUtilitiesPyproject.dependency_group_name(
+                            tuple(rendered_groups),
+                            str(group),
+                        ),
+                        (),
+                    ),
+                    strict=True,
+                )
+                if required.failure:
+                    return r[bool].from_failure(required)
+                groups[selected] = FlextInfraUtilitiesPyproject.dependency_group_wire(
+                    FlextInfraUtilitiesPyprojectRequirements.merge_dependency_group_entries(
+                        required.value.root,
+                        custom.value,
+                    ),
+                )
+            else:
+                groups[selected] = FlextInfraUtilitiesPyproject.dependency_group_wire(
+                    custom.value,
+                )
+        validated = u.validate_value(
+            m.Infra.DependencyGroupDeclarations,
+            {"dependency-groups": groups},
+        )
+        if validated.failure:
+            return r[bool].from_failure(validated)
+        merged[c.Infra.DEPENDENCY_GROUPS] = groups
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _overlay_tool_tables(
+        merged: t.MutableJsonMapping,
+        live_payload: t.JsonMapping,
+        tool_tables: t.StrSequence,
+    ) -> None:
+        """Copy every live tool table the fleet does not manage."""
+        tool = dict(u.Cli.toml_mapping_child(merged, c.Infra.TOOL) or {})
+        live_tool = u.Cli.toml_mapping_child(live_payload, c.Infra.TOOL) or {}
+        managed = frozenset(tool_tables)
+        tool.update({
+            key: value for key, value in live_tool.items() if key not in managed
+        })
+        merged[c.Infra.TOOL] = tool
 
     @classmethod
     def overlay_preserved(
@@ -52,86 +282,39 @@ class FlextInfraUtilitiesPyprojectOverlay:
             if managed_tool_tables is None
             else managed_tool_tables
         )
-        rendered_payload = u.Cli.toml_mapping_from_text(rendered)
+        rendered_payload = u.Cli.toml_mapping_from_text_result(rendered)
         # An absent live file takes the same canonicalization path as a present
         # one: the projection is the parse-merge-dump form, so first publication
         # and every later conform produce byte-identical output (fixed point).
         empty_payload: t.JsonMapping = {}
         live_payload = (
-            u.Cli.toml_mapping_from_text(live) if live is not None else empty_payload
+            u.Cli.toml_mapping_from_text_result(live)
+            if live is not None
+            else r[t.JsonMapping].ok(empty_payload)
         )
-        if rendered_payload is None:
-            return r[str].fail("rendered pyproject is not valid TOML")
-        if live_payload is None:
-            return r[str].fail("live pyproject is not valid TOML")
-        merged = dict(rendered_payload)
-        project = dict(u.Cli.toml_mapping_child(merged, c.Infra.PROJECT) or {})
-        live_project = u.Cli.toml_mapping_child(live_payload, c.Infra.PROJECT) or {}
-        for key in project_keys:
-            if key in live_project:
-                if key == c.Infra.DEPENDENCIES:
-                    validated_required: p.Result[t.StrSequence] = u.validate_value(
-                        t.Infra.STR_SEQ_ADAPTER,
-                        project.get(key, []),
-                        strict=True,
-                    )
-                    if validated_required.failure:
-                        return r[str].fail_op(
-                            "validate runtime dependencies",
-                            validated_required.error,
-                        )
-                    validated_custom: p.Result[t.StrSequence] = u.validate_value(
-                        t.Infra.STR_SEQ_ADAPTER,
-                        live_project[key],
-                        strict=True,
-                    )
-                    if validated_custom.failure:
-                        return r[str].fail_op(
-                            "validate runtime dependencies",
-                            validated_custom.error,
-                        )
-                    required = validated_required.value
-                    custom = validated_custom.value
-                    owned_names = {
-                        FlextInfraUtilitiesDependencies.dep_name(item)
-                        for item in required
-                    }
-                    # Profiles own same-name requirements. CUSTOM requirements
-                    # retain full specs, including distinct markers for one name.
-                    # Conformance uses this same order: overlay must not move
-                    # generated requirements ahead of preserved custom ones.
-                    project[key] = list[t.JsonValue](
-                        sorted(
-                            dict.fromkeys((
-                                *required,
-                                *(
-                                    item
-                                    for item in custom
-                                    if FlextInfraUtilitiesDependencies.dep_name(item)
-                                    not in owned_names
-                                ),
-                            )),
-                            key=FlextInfraUtilitiesPyprojectRequirements.dependency_order_key,
-                        ),
-                    )
-                else:
-                    project[key] = live_project[key]
-        merged[c.Infra.PROJECT] = project
-        # Preserve project dev additions before conformance reapplies fleet floors.
-        groups = dict(u.Cli.toml_mapping_child(merged, c.Infra.DEPENDENCY_GROUPS) or {})
-        live_groups = (
-            u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
-        )
-        if str(c.Infra.DEV) in live_groups:
-            groups[str(c.Infra.DEV)] = live_groups[str(c.Infra.DEV)]
-            merged[c.Infra.DEPENDENCY_GROUPS] = groups
-        tool = dict(u.Cli.toml_mapping_child(merged, c.Infra.TOOL) or {})
-        live_tool = u.Cli.toml_mapping_child(live_payload, c.Infra.TOOL) or {}
-        managed = frozenset(tool_tables)
-        tool.update({
-            key: value for key, value in live_tool.items() if key not in managed
-        })
-        merged[c.Infra.TOOL] = tool
+        if rendered_payload.failure:
+            return r[str].fail(
+                f"rendered pyproject is not valid TOML: {rendered_payload.error}",
+                error_code=rendered_payload.error_code,
+                error_data=rendered_payload.error_data,
+                exception=rendered_payload.exception,
+            )
+        if live_payload.failure:
+            return r[str].fail(
+                f"live pyproject is not valid TOML: {live_payload.error}",
+                error_code=live_payload.error_code,
+                error_data=live_payload.error_data,
+                exception=live_payload.exception,
+            )
+        merged = dict(rendered_payload.value)
+        project = cls._overlay_project_surface(merged, live_payload.value, project_keys)
+        if project.failure:
+            return r[str].from_failure(project)
+        merged[c.Infra.PROJECT] = project.value
+        dev = cls._overlay_dev_group(merged, live_payload.value, live)
+        if dev.failure:
+            return r[str].from_failure(dev)
+        cls._overlay_tool_tables(merged, live_payload.value, tool_tables)
         return r[str].ok(u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(merged)))
 
 

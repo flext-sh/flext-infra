@@ -13,9 +13,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import u
+from tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -37,7 +36,8 @@ class TestsFlextInfraReleaseDependencyOrder:
         project.mkdir(parents=True, exist_ok=True)
         rendered = ", ".join(f'"{dependency}"' for dependency in dependencies)
         (project / "pyproject.toml").write_text(
-            f'[project]\nname = "{name}"\nversion = "0.1.0"\ndependencies = [{rendered}]\n',
+            f'[project]\nname = "{name}"\nversion = "0.1.0"\n'
+            f"dependencies = [{rendered}]\n",
             encoding="utf-8",
         )
 

@@ -1,4 +1,4 @@
-"""Declared profiles and complete CUSTOM requirements survive public generation.
+"""Target-owned complete CUSTOM requirements survive public generation.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,53 +6,58 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from packaging.requirements import Requirement
 
 from flext_infra import c, config, m
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from tests import u
+from tests import t, tm, u
 
 
 class TestsFlextInfraCodegenRuntimeProfiles:
     """Tests for ``FlextInfraCodegenRuntimeProfiles``."""
 
     @staticmethod
-    @pytest.mark.parametrize(
-        "upstream",
-        tuple(
-            item.upstream
-            for item in config.Infra.codegen.scaffold.project.dependency_profiles
-            if item.project is None
-        ),
-    )
-    @pytest.mark.parametrize("composed", [False, True])
-    def test_declared_profile_restores_runtime_and_preserves_custom_specs(
+    def _seed_member_workspace(
         tmp_path: Path,
         upstream: str,
         *,
         composed: bool,
-    ) -> None:
-        """Real standalone and parent plans consume the same member-owned profile."""
+    ) -> tuple[Path, Path, Path]:
+        """Initialize the governed member (and parent when composed).
+
+        The member manifest carries its own facade contract; a member
+        cannot introduce another parent target through its manifest.
+
+        Returns:
+            The request root, the member checkout, and the member pyproject.
+
+        """
+        fixture = u.Tests.WorktreeFixture
         root = tmp_path / "workspace"
         member = root / "sample-member" if composed else tmp_path / "sample-member"
         if composed:
-            u.Tests.WorktreeFixture.initialize_governed_project(
+            fixture.initialize_governed_project(
                 root,
                 "sample-workspace",
+                beads=u.Tests.BeadsIdentity(
+                    workspace="sample-workspace",
+                    database="sample_workspace",
+                    issue_prefix="sample",
+                ),
+            )
+        pyproject = fixture.initialize_governed_project(
+            member,
+            "sample-member",
+            beads=u.Tests.BeadsIdentity(
                 workspace="sample-workspace",
                 database="sample_workspace",
                 issue_prefix="sample",
-            )
-        pyproject = u.Tests.WorktreeFixture.initialize_governed_project(
-            member,
-            "sample-member",
-            workspace="sample-workspace",
-            database="sample_workspace",
-            issue_prefix="sample",
+            ),
         )
         observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
         project = u.Tests.project_spec(observed.repository.name).model_copy(
@@ -61,9 +66,9 @@ class TestsFlextInfraCodegenRuntimeProfiles:
         manifest = m.Infra.WorkspaceManifestSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=observed.repository.name,
+            docs_audit=observed.docs_audit,
             repository=observed.repository,
             project=project,
-            # A member cannot introduce another parent target through its manifest.
             members=(
                 u.Tests.repository_ref(
                     "unselected-project",
@@ -73,56 +78,146 @@ class TestsFlextInfraCodegenRuntimeProfiles:
         )
         manifest_path = member / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME
         tm.ok(u.Cli.yaml_dump(manifest_path, manifest.model_dump(mode="json")))
-        profile = next(
-            item
-            for item in config.Infra.codegen.scaffold.project.dependency_profiles
-            if item.project is None and item.upstream == upstream
-        )
-        owned_name = tm.not_none(u.Infra.dep_name(profile.runtime[0]))
-        custom = (
-            "custom-runtime[feature]>=2; python_version < '3.14'",
-            "custom-runtime[feature]>=3; python_version >= '3.14'",
-            (
-                "custom-artifact[extra] @ https://example.invalid/pkg.whl "
-                "; sys_platform == 'linux'"
-            ),
-        )
-        declared = tm.ok(
-            u.Cli.json_dumps([
-                f"{owned_name.upper().replace('-', '_')}[old]==0",
-                *custom,
-            ]),
-        )
-        # The governed fixture already declares `dependencies`; replace that
-        # declaration instead of adding a second (invalid) key.
-        pyproject.write_text(
-            "".join(
-                f"dependencies = {declared}\n"
-                if line.startswith("dependencies = ")
-                else line
-                for line in pyproject.read_text(encoding="utf-8").splitlines(
-                    keepends=True,
-                )
-            ),
-            encoding="utf-8",
-        )
         if composed:
-            u.Tests.WorktreeFixture.attach_submodule(
+            fixture.attach_submodule(
                 root,
                 member,
                 distribution="sample-member",
                 relative_path="sample-member",
             )
-        request_root = root if composed else member
+        return root, member, pyproject
+
+    @staticmethod
+    def _declare_custom_dependencies(
+        pyproject: Path,
+        upstream: str,
+    ) -> t.VariadicTuple[str]:
+        """Author marker variants and a direct source in the target declaration.
+
+        Returns:
+            The declared requirement variants and the direct source.
+
+        """
+        declared = (
+            u.Tests.flext_source(upstream.replace("_", "-")),
+            "custom-runtime[feature]>=2; python_version < '3.14'",
+            "custom-runtime[feature]>=3; python_version >= '3.14'",
+            (
+                "custom-artifact[extra] @ https://example.invalid/pkg.whl ;"
+                " sys_platform == 'linux'"
+            ),
+        )
+        payload = tm.ok(u.Cli.json_dumps(list(declared)))
+        pyproject.write_text(
+            "".join(
+                f"dependencies = {payload}\n"
+                if line.startswith("dependencies = ")
+                else line
+                for line in pyproject.read_text(encoding="utf-8").splitlines(
+                    keepends=True
+                )
+            ),
+            encoding="utf-8",
+        )
+        return declared
+
+    @staticmethod
+    def _protected_state(
+        request_root: Path,
+        member: Path,
+        *,
+        composed: bool,
+    ) -> tuple[m.Infra.WorkspaceSpec, t.MappingKV[Path, bytes]]:
+        """Snapshot the baseline workspace and the bytes conform must preserve.
+
+        Returns:
+            The observed workspace and the protected path-to-bytes mapping.
+
+        """
         before = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(request_root))
         protected = {
             path: path.read_bytes()
             for path in (
-                manifest_path,
+                member / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
                 member / "config" / c.Infra.BEADS_CONFIG_FILENAME,
-                *((root / c.Infra.GITMODULES,) if composed else ()),
+                *((request_root / c.Infra.GITMODULES,) if composed else ()),
             )
         }
+        return before, protected
+
+    def _assert_render_retains_requirements(
+        self,
+        rendered: str,
+        declared: t.VariadicTuple[str],
+    ) -> str:
+        """Public generation retains requirement variants, injecting only dev policy.
+
+        Returns:
+            The rendered text, returned unchanged once the assertions pass.
+
+        """
+        tm.that(
+            Counter(
+                Requirement(item)
+                for item in u.Tests.toml_strings_at(rendered, "project", "dependencies")
+            ),
+            eq=Counter(Requirement(item) for item in declared),
+        )
+        tm.that(
+            u.Tests.toml_table_at(rendered, "tool", "pyrefly", "errors"),
+            eq=dict.fromkeys(
+                sorted(set(config.Infra.tooling.tools.pyrefly.strict_errors)), "error"
+            ),
+        )
+        development = u.Tests.toml_strings_at(rendered, "dependency-groups", "dev")
+        dev_names = [
+            n for item in development if (n := u.Infra.dep_name(item)) is not None
+        ]
+        required_names = [
+            n
+            for item in config.Infra.codegen.scaffold.project.required_flext_dev
+            if (n := u.Infra.dep_name(item)) is not None
+        ]
+        tm.that(
+            dev_names,
+            has=required_names,
+        )
+        return rendered
+
+    @pytest.mark.parametrize(
+        "upstream",
+        tuple(
+            base.module for base in config.Infra.codegen.scaffold.project.config_bases
+        ),
+    )
+    @pytest.mark.parametrize("composed", [False, True])
+    # Two complete governed pyproject renders per case (tooling context,
+    # template, overlay, conform, taplo) over a real git fixture: measured
+    # 3.3-4.9s per render under a four-worker phase, so each case exceeds the
+    # bounded-phase item budget. Integration-scale, so it runs in the slow
+    # phase under its per-item bound (rules/workflow/gate-budget.md), never a
+    # raised limit.
+    @pytest.mark.slow
+    def test_target_requirements_survive_runtime_rendering(
+        self,
+        tmp_path: Path,
+        upstream: str,
+        *,
+        composed: bool,
+    ) -> None:
+        """Standalone and parent plans consume the same member-owned requirements."""
+        root, member, pyproject = self._seed_member_workspace(
+            tmp_path,
+            upstream,
+            composed=composed,
+        )
+        declared = self._declare_custom_dependencies(pyproject, upstream)
+        request_root = root if composed else member
+        before, protected = self._protected_state(
+            request_root,
+            member,
+            composed=composed,
+        )
         request = u.Tests.conform_request(
             request_root,
             what=c.Infra.CodegenConformSurface.PYPROJECT,
@@ -138,42 +233,11 @@ class TestsFlextInfraCodegenRuntimeProfiles:
             request=request,
         )
         first = tm.ok(service.plan(request))
-        rendered = u.Tests.codegen_file_text(
-            next(item for item in first.files if item.path == pyproject),
-        )
-        rendered_dependencies = set(
-            u.Tests.toml_strings_at(rendered, "project", "dependencies"),
-        )
-        owned = rendered_dependencies - set(custom)
-        tm.that(rendered_dependencies, has=list(custom))
-        # The profile owns which runtime requirements are restored; the
-        # dependency conform owner (6086621bd) owns their canonical form, so the
-        # restored set must be names of the profile and a conform fixed point.
-        tm.that(
-            {u.Infra.dep_name(item) for item in owned},
-            eq={u.Infra.dep_name(item) for item in profile.runtime},
-        )
-        toolchain = config.Infra.codegen.toolchain
-        expected = tm.ok(
-            u.Infra.pyproject_conform(
-                '[project]\nname = "sample-member"\ndependencies = '
-                + u.Cli.toml_array(sorted(owned)).as_string()
-                + "\n",
-                workspace=tm.ok(
-                    FlextInfraWorkspaceDetector.load_workspace_spec(member),
-                ),
-                required_dev_dependencies=(),
-                uv_resolution=m.Infra.UvResolutionSpec(
-                    link_mode=toolchain.uv_link_mode,
-                    constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
-                    exclude_dependencies=(),
-                    environments=tuple(toolchain.uv_environments),
-                ),
+        rendered = self._assert_render_retains_requirements(
+            u.Tests.codegen_file_text(
+                next(item for item in first.files if item.path == pyproject),
             ),
-        )
-        tm.that(
-            set(u.Tests.toml_strings_at(expected, "project", "dependencies")),
-            eq=owned,
+            declared,
         )
         tm.that(first.workspace.repository, eq=before.repository)
         tm.that(first.workspace.subprojects, eq=before.subprojects)

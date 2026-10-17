@@ -6,62 +6,25 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
-from importlib import import_module
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
+import mkdocs.commands.build
+import mkdocs.commands.serve
+import mkdocs.config
 from flext_cli import u
 
-from flext_infra import c, m
-from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
+from flext_infra import c, m, p
+from flext_infra._utilities import FlextInfraUtilitiesDocs
 
 if TYPE_CHECKING:
     from types import ModuleType
 
-    from flext_infra import p, t
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesDocsBuild:
     """Reusable build helpers exposed through ``u.Infra``."""
-
-    @staticmethod
-    def _module_callable(module: ModuleType, name: str) -> p.Infra.MkDocsAnyCallable:
-        """Return a named callable from a lazily loaded module.
-
-        Returns:
-            A named callable from a lazily loaded module.
-
-        Raises:
-            OSError: Always.
-
-        """
-        value: p.AttributeProbe = getattr(module, name)
-        if callable(value):
-            return cast("p.Infra.MkDocsAnyCallable", value)
-        msg = f"{module.__name__}.{name} is not callable"
-        raise OSError(msg)
-
-    @staticmethod
-    def _load_mkdocs_config(
-        load: p.Infra.MkDocsLoadConfig,
-        settings: Path,
-        site_dir: Path,
-    ) -> MutableMapping[str, p.AttributeProbe]:
-        """Load and validate one declared MkDocs config mapping.
-
-        The settings path goes through ``config_file`` (MkDocs 1.6) and the
-        output directory is pinned on the loaded mapping afterwards: a stale
-        keyword made MkDocs absorb both into ``**kwargs`` and fall back to
-        whatever ``mkdocs.yml`` the working directory held.
-
-        Returns:
-            The resulting ``MutableMapping[str, p.AttributeProbe]``.
-
-        """
-        config_obj = load(str(settings))
-        config_obj["site_dir"] = str(site_dir)
-        return config_obj
 
     @staticmethod
     def docs_mkdocs_config_files(scope: m.Infra.DocScope) -> t.VariadicTuple[Path]:
@@ -123,8 +86,7 @@ class FlextInfraUtilitiesDocsBuild:
             return primary_report.model_copy(
                 update={
                     "reason": (
-                        f"{primary_report.reason}; "
-                        "product mkdocs.yaml also built"
+                        f"{primary_report.reason}; product mkdocs.yaml also built"
                     ),
                 },
             )
@@ -139,9 +101,7 @@ class FlextInfraUtilitiesDocsBuild:
     ) -> m.Infra.DocsPhaseReport:
         """Build one MkDocs config file into a site directory.
 
-        A MkDocs failure becomes the phase's ``FAIL`` report — the phase
-        result, not a raised exception, is the reporting contract every
-        caller (``execute`` above all) consumes.
+        MkDocs owns strict warning accounting; its first failure escapes.
 
         Returns:
             The resulting ``m.Infra.DocsPhaseReport``.
@@ -152,17 +112,7 @@ class FlextInfraUtilitiesDocsBuild:
             / c.Infra.DEFAULT_DOCS_OUTPUT_DIR
             / f"{c.Infra.DIR_SITE}{site_suffix}"
         ).resolve()
-        try:
-            FlextInfraUtilitiesDocsBuild._run_mkdocs_api(settings, site_dir)
-        except Exception as exc:  # ruff: ignore[blind-except] - reported, not swallowed
-            return m.Infra.DocsPhaseReport(
-                phase="build",
-                scope=scope.name,
-                result=c.Infra.ResultStatus.FAIL,
-                reason=f"build failed ({settings.name}): {exc}",
-                site_dir="",
-                passed=False,
-            )
+        FlextInfraUtilitiesDocsBuild._run_mkdocs_api(settings, site_dir)
         return m.Infra.DocsPhaseReport(
             phase="build",
             scope=scope.name,
@@ -174,25 +124,16 @@ class FlextInfraUtilitiesDocsBuild:
 
     @staticmethod
     def _run_mkdocs_api(settings: Path, site_dir: Path) -> None:
-        """Run MkDocs build via the Python API with lazy imports."""
-        mkdocs_build = import_module("mkdocs.commands.build")
-        mkdocs_config = import_module("mkdocs.config")
-        load = cast(
-            "p.Infra.MkDocsLoadConfig",
-            FlextInfraUtilitiesDocsBuild._module_callable(mkdocs_config, "load_config"),
-        )
-        build = cast(
-            "p.Infra.MkDocsBuild",
-            FlextInfraUtilitiesDocsBuild._module_callable(mkdocs_build, "build"),
-        )
+        """Validate and build through the typed public MkDocs SDK."""
         site_dir.parent.mkdir(parents=True, exist_ok=True)
-        config_obj = FlextInfraUtilitiesDocsBuild._load_mkdocs_config(
-            load,
-            settings,
-            site_dir,
+        config_obj = FlextInfraUtilitiesDocsBuild._config_sdk(
+            mkdocs.config,
+        ).load_config(
+            config_file=str(settings),
+            site_dir=str(site_dir),
+            strict=True,
         )
-        config_obj["strict"] = True
-        _ = build(config_obj, dirty=False)
+        mkdocs.commands.build.build(config_obj, dirty=False)
 
     @staticmethod
     def docs_serve_mkdocs(
@@ -218,12 +159,7 @@ class FlextInfraUtilitiesDocsBuild:
                 site_dir="",
                 passed=False,
             )
-        serve_module = import_module("mkdocs.commands.serve")
-        serve_fn = cast(
-            "p.Infra.MkDocsServe",
-            FlextInfraUtilitiesDocsBuild._module_callable(serve_module, "serve"),
-        )
-        serve_fn(
+        FlextInfraUtilitiesDocsBuild._serve_sdk(mkdocs.commands.serve).serve(
             config_file=str(settings),
             livereload=livereload,
             dev_addr=dev_addr,
@@ -259,6 +195,38 @@ class FlextInfraUtilitiesDocsBuild:
                 f"Site dir: {report.site_dir}",
             ],
         ).unwrap()
+
+    @staticmethod
+    def _config_sdk(module: ModuleType) -> p.Infra.MkDocsConfigModule:
+        """Validate the native SDK configuration dependency before effects.
+
+        Returns:
+            The native module through its required configuration port.
+
+        Raises:
+            TypeError: If the dependency lacks its declared operation.
+
+        """
+        if isinstance(module, p.Infra.MkDocsConfigModule):
+            return module
+        message = "MkDocs configuration module does not satisfy its public contract"
+        raise TypeError(message)
+
+    @staticmethod
+    def _serve_sdk(module: ModuleType) -> p.Infra.MkDocsServeModule:
+        """Validate the native SDK serve dependency before effects.
+
+        Returns:
+            The native module through its required serve port.
+
+        Raises:
+            TypeError: If the dependency lacks its declared operation.
+
+        """
+        if isinstance(module, p.Infra.MkDocsServeModule):
+            return module
+        message = "MkDocs serve module does not satisfy its public contract"
+        raise TypeError(message)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsBuild"]

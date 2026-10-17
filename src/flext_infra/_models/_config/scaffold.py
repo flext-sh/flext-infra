@@ -9,9 +9,9 @@ from __future__ import annotations
 from typing import Annotated
 
 from flext_cli import m
+from packaging.requirements import Requirement
 
-from flext_infra import t
-from flext_infra._constants import FlextInfraConstantsCodegenProject
+from flext_infra import c, t
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 
 
@@ -26,31 +26,6 @@ class FlextInfraConfigModelsScaffold:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Build-system requirements"),
         ]
-
-    class ScaffoldDependencyProfileSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """Dependencies selected by the declared upstream FLEXT facade."""
-
-        upstream: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Supported upstream facade package"),
-        ]
-        project: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                description=(
-                    "Distribution receiving additional requirements; "
-                    "unset selects the shared upstream profile"
-                ),
-            ),
-        ] = None
-        runtime: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(min_length=1, description="Runtime requirements"),
-        ]
-        codegen: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(description="Code-generation requirements"),
-        ] = ()
 
     class ScaffoldConfigBaseSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One upstream config base a generated ``_config.py`` may compose."""
@@ -102,11 +77,20 @@ class FlextInfraConfigModelsScaffold:
                 description="Canonical development and validation requirements",
             ),
         ]
-        dependency_profiles: Annotated[
-            t.VariadicTuple[
-                FlextInfraConfigModelsScaffold.ScaffoldDependencyProfileSpec
-            ],
-            m.Field(min_length=1, description="Upstream dependency profiles"),
+        retired_dev: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description="Development distributions retired from managed groups"
+            ),
+        ] = ()
+        required_flext_dev: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Development suppliers required only by internal FLEXT projects"
+                ),
+            ),
         ]
         config_bases: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsScaffold.ScaffoldConfigBaseSpec],
@@ -118,6 +102,21 @@ class FlextInfraConfigModelsScaffold:
                 ),
             ),
         ]
+
+        @m.field_validator("dev", "required_flext_dev")
+        @classmethod
+        def validate_requirements(
+            cls, requirements: t.VariadicTuple[str]
+        ) -> t.VariadicTuple[str]:
+            """Validate declared development policy before any dependency writer runs.
+
+            Returns:
+                The original requirements, retaining markers, extras and sources.
+
+            """
+            for requirement in requirements:
+                Requirement(requirement)
+            return requirements
 
     class ScaffoldPingExampleSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Values for the functional ping example created only by codegen new."""
@@ -153,7 +152,7 @@ class FlextInfraConfigModelsScaffold:
             m.Field(min_length=1, description="Ignored path patterns"),
         ]
         profiles: Annotated[
-            t.VariadicTuple[FlextInfraConstantsCodegenProject.MakeProfile],
+            t.VariadicTuple[c.Infra.MakeProfile],
             m.Field(
                 description=(
                     "Make profiles this section applies to; empty means every "
@@ -165,6 +164,49 @@ class FlextInfraConfigModelsScaffold:
                 ),
             ),
         ] = ()
+
+    class ScaffoldDependencyProfileSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Dependencies selected by the declared upstream FLEXT facade."""
+
+        upstream: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Supported upstream facade package"),
+        ]
+        project: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Distribution receiving additional requirements; "
+                    "unset selects the shared upstream profile"
+                ),
+            ),
+        ] = None
+        runtime: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(min_length=1, description="Runtime requirements"),
+        ]
+        codegen: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Code-generation requirements"),
+        ] = ()
+
+        @m.field_validator("runtime", "codegen")
+        @classmethod
+        def validate_requirements(
+            cls, requirements: t.VariadicTuple[str]
+        ) -> t.VariadicTuple[str]:
+            """Reject invalid PEP 508 policy before any dependency writer runs.
+
+            Args:
+                requirements: A tuple of requirement strings to validate.
+
+            Returns:
+                The validated tuple of requirement strings.
+
+            """
+            for requirement in requirements:
+                Requirement(requirement)
+            return requirements
 
     class ScaffoldSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Complete typed policy consumed only by new-project templates."""
@@ -187,3 +229,6 @@ class FlextInfraConfigModelsScaffold:
             ],
             m.Field(min_length=1, description="Generated Git ignore sections"),
         ]
+
+
+__all__: list[str] = ["FlextInfraConfigModelsScaffold"]

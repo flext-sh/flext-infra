@@ -10,9 +10,8 @@ import os
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from tests import c, u
+from tests import c, tm, u
 
 # Real dependency discovery provisions a consumer from external package sources.
 pytestmark = [pytest.mark.slow, pytest.mark.remote]
@@ -30,7 +29,7 @@ class TestsFlextInfraDepsDetectorReportFlags:
     ) -> None:
         """Test real dependency and environment issues respect no fail."""
         root = real_detector_project
-        (root / "src/detector_fixture/undeclared.py").write_text(
+        (root / "src" / root.name.replace("-", "_") / "undeclared.py").write_text(
             "import undeclared_detector_dependency\n",
             encoding="utf-8",
         )

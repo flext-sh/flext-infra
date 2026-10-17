@@ -13,10 +13,10 @@ import os
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import FlextInfraPytestRunner, config, m
-from tests.unit.validate.pytest_runner_support import runner_for
+from flext_infra import config
+from flext_infra.validate import FlextInfraPytestRunner
+from tests import m, tm, u
 
 
 @pytest.mark.unit
@@ -86,8 +86,6 @@ class TestsFlextInfraPytestWorkerCeiling:
     @staticmethod
     def test_declared_overrides_come_from_the_typed_ssot() -> None:
         """The tooling SSOT carries validated ceilings of either form."""
-        from flext_infra import config
-
         overrides = config.Infra.tooling.tools.pytest.parallel_worker_overrides
         tm.that(len(overrides) > 0, eq=True)
         for declared in overrides.values():
@@ -102,7 +100,7 @@ class TestsFlextInfraPytestWorkerCeiling:
     ) -> None:
         """A tree without ``[project].name`` takes the fleet-wide ceiling."""
         policy = config.Infra.tooling.tools.pytest
-        runner = runner_for(cached_runner_project)
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         assert runner.parallel_worker_budget(policy) == policy.parallel_workers
 
     @staticmethod
@@ -113,13 +111,9 @@ class TestsFlextInfraPytestWorkerCeiling:
         policy = config.Infra.tooling.tools.pytest
         assert policy.parallel_worker_overrides
         declared_name = next(iter(policy.parallel_worker_overrides))
-        pyproject = cached_runner_project / "pyproject.toml"
-        pyproject.write_text(
-            pyproject.read_text(encoding="utf-8")
-            + f'\n[project]\nname = "{declared_name}"\nversion = "0.1.0"\n',
-            encoding="utf-8",
+        runner = u.Tests.PytestRunner.declared_project_runner(
+            cached_runner_project, declared_name
         )
-        runner = runner_for(cached_runner_project)
         report = (
             cached_runner_project
             / config.Infra.codegen.make.testmon_cache.reports_directory

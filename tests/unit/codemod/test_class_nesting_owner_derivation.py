@@ -9,10 +9,10 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
+import flext_core
 
 from flext_infra import infra
-from tests import c, t, u
+from tests import c, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -152,6 +152,10 @@ __all__: list[str] = ["LIMIT", "write"]
 
         source = updated[module.resolve()]
         tm.that(self._top_level(source), eq=(owner, "__all__"))
+        tm.that(
+            source,
+            has=f'class {owner}:\n    """Loose helpers of one family module."""',
+        )
         tm.that(source, has=f'__all__: list[str] = ["{owner}"]')
         tm.that(source, has="    @staticmethod\n    def write(")
         tm.that(source, has="    @staticmethod\n    def _helper(")
@@ -257,6 +261,46 @@ __all__: list[str] = ["LIMIT", "write"]
         tm.that(nested, has=f"    class {helper}:")
         tm.that(residue, eq={})
 
+    def test_family_suffix_excludes_the_shared_core_stem(self) -> None:
+        """Every family suffix follows one shared, non-empty core class stem.
+
+        A suffix spanning the whole core facade name doubles the stem in every
+        derived owner (``<Project>FlextUtilities<Module>``).
+        """
+        stems = {
+            getattr(flext_core, letter).__name__.removesuffix(family.suffix)
+            for letter, family in u.Infra.facade_families().items()
+        }
+        tm.that(len(stems), eq=1)
+        tm.that(stems.pop(), ne="")
+
+    def test_declared_owner_absorbs_loose_functions(self, tmp_path: Path) -> None:
+        """Loose helpers beside the declared owner nest into it, no new owner."""
+        root, module = self._family_module(tmp_path, "step_helpers", "")
+        owner = self._derived_owner(root, "step_helpers")
+        source = (
+            '"""Declared owner and loose helpers."""\n\n'
+            "from __future__ import annotations\n\n\n"
+            "def _strip(value: str) -> str:\n    return value.strip()\n\n\n"
+            f"class {owner}:\n"
+            '    """Step helpers."""\n\n'
+            "    @staticmethod\n"
+            "    def clean(value: str) -> str:\n"
+            '        """Return the stripped value."""\n'
+            "        return _strip(value)\n\n\n"
+            f'__all__: list[str] = ["{owner}"]\n'
+        )
+        tm.ok(u.Cli.atomic_write_text_file(module, source))
+
+        updated, residue = self._plan(root, {module: source})
+
+        nested = updated[module.resolve()]
+        tm.that(self._top_level(nested), eq=(owner, "__all__"))
+        tm.that(nested, has="    @staticmethod\n    def _strip(")
+        tm.that(nested, lacks="Canonical namespace owner")
+        tm.that(residue, eq={})
+        compile(nested, str(module), "exec")
+
     def test_rival_stem_classes_fail_naming_the_module(self, tmp_path: Path) -> None:
         """Two classes carrying the project stem leave the owner undecidable."""
         root, module = self._family_module(tmp_path, "rival_owners", "")
@@ -279,3 +323,94 @@ __all__: list[str] = ["LIMIT", "write"]
 
         tm.fail(planned, has="requires exactly one declared module owner")
         tm.fail(planned, has="rival_owners")
+
+    def test_owner_creation_reads_stay_module_level(self, tmp_path: Path) -> None:
+        """A metaclass factory, its builder and their sentinel never nest."""
+        root, module = self._family_module(tmp_path, "lazy_helpers", "")
+        owner = self._derived_owner(root, "lazy_helpers")
+        source = (
+            '"""Lazy assembly of one family facade."""\n\n'
+            "from __future__ import annotations\n\n"
+            "from typing import Any\n\n\n"
+            "_SENTINEL: type | None = None\n\n\n"
+            "def _build_tree() -> type:\n"
+            '    """Assemble the tree on first access."""\n'
+            "    global _SENTINEL\n"
+            "    if _SENTINEL is not None:\n"
+            "        return _SENTINEL\n\n"
+            "    class Tree:\n"
+            '        """Assembled tree."""\n\n'
+            "    _SENTINEL = Tree\n"
+            "    return _SENTINEL\n\n\n"
+            "def _lazy_meta() -> type:\n"
+            '    """Build the lazy metaclass."""\n\n'
+            "    class _Meta(type):\n"
+            '        """Assemble the tree on first class-level access."""\n\n'
+            "        def __getattr__(cls, name: str) -> Any:\n"
+            '            if name == "Tree":\n'
+            "                tree = _build_tree()\n"
+            "                cls.Tree = tree\n"
+            "                return tree\n"
+            '            msg = f"no attribute {name!r}"\n'
+            "            raise AttributeError(msg)\n\n"
+            "    return _Meta\n\n\n"
+            f"class {owner}(metaclass=_lazy_meta()):\n"
+            '    """The facade owner."""\n\n'
+            f'__all__: list[str] = ["{owner}"]\n'
+        )
+        tm.ok(u.Cli.atomic_write_text_file(module, source))
+
+        updated, residue = self._plan(root, {module: source})
+
+        kept = updated[module.resolve()]
+        tm.that(
+            self._top_level(kept),
+            eq=(
+                "_SENTINEL",
+                "_build_tree",
+                "_lazy_meta",
+                owner,
+                "__all__",
+            ),
+        )
+        tm.that(kept, has="def _lazy_meta() -> type:")
+        tm.that(kept, has="tree = _build_tree()")
+        tm.that(residue, eq={})
+        compile(kept, str(module), "exec")
+
+    def test_nested_class_annotations_keep_a_resolvable_name(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Annotations inside a moved class name the owner, not a dropped bare name."""
+        source = (
+            '"""Registry annotations."""\n\n'
+            "from __future__ import annotations\n\n"
+            "from typing import ClassVar\n\n\n"
+            "class _Handler:\n"
+            "    @staticmethod\n"
+            "    def current() -> _Registry:\n"
+            "        return _Registry.current()\n\n\n"
+            "class _Registry:\n"
+            "    _current: ClassVar[_Registry | None] = None\n\n"
+            "    @classmethod\n"
+            "    def start(cls) -> _Registry:\n"
+            "        return cls()\n\n"
+            "    @classmethod\n"
+            "    def current(cls) -> _Registry:\n"
+            "        return cls()\n"
+        )
+        root, module = self._family_module(tmp_path, "registry_helpers", source)
+        owner = self._derived_owner(root, "registry_helpers")
+
+        updated, residue = self._plan(root, {module: source})
+
+        nested = updated[module.resolve()]
+        qualified = f"{owner}._Registry"
+        tm.that(nested, has=f"def current() -> {qualified}:")
+        tm.that(nested, has=f"return {qualified}.current()")
+        tm.that(nested, has=f"_current: ClassVar[{qualified} | None] = None")
+        tm.that(nested, has=f"def start(cls) -> {qualified}:")
+        tm.that(nested, has=f"def current(cls) -> {qualified}:")
+        tm.that(residue, eq={})
+        compile(nested, str(module), "exec")

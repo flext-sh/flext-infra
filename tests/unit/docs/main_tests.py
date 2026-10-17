@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
-from flext_infra import main as infra_main
-from tests import c, u
+from flext_infra import main
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -27,7 +25,7 @@ class TestsFlextInfraDocsMain:
 
         tm.that(
             (
-                infra_main([
+                main([
                     "docs",
                     "validate",
                     "--repository-root",
@@ -53,7 +51,7 @@ class TestsFlextInfraDocsMain:
         workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
 
         tm.that(
-            infra_main([
+            main([
                 "docs",
                 "generate",
                 "--repository-root",

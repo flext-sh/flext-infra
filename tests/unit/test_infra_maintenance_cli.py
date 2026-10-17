@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
-from flext_infra import main as infra_main
+from flext_infra import main
+from tests import tm
 
 if TYPE_CHECKING:
     from tests import t
@@ -24,7 +23,7 @@ class TestsFlextInfraInfraMaintenanceCli:
         args = ["maintenance"]
         if argv is not None:
             args.extend(argv)
-        return infra_main(args)
+        return main(args)
 
     def test_maintenance_rejects_apply_flag(self) -> None:
         """Test maintenance rejects apply flag."""

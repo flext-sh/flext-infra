@@ -10,9 +10,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
-from flext_infra import main as infra_main
+from flext_infra import main
+from tests import tm
 
 if TYPE_CHECKING:
     from _pytest.capture import CaptureFixture
@@ -26,7 +25,7 @@ class TestsFlextInfraFixPyreflyConfig:
         capsys: CaptureFixture[str],
     ) -> None:
         """Test fix pyrefly config main executes real cli help."""
-        exit_code = infra_main(["check", "fix-pyrefly-settings", "--help"])
+        exit_code = main(["check", "fix-pyrefly-settings", "--help"])
         captured = capsys.readouterr()
         tm.that(exit_code, eq=0)
         tm.that(captured.out.lower(), has="usage:")

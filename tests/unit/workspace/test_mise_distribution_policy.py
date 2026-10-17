@@ -13,10 +13,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import config
-from tests import u
+from tests import tm, u
 
 
 class TestsFlextInfraMiseDistributionPolicy:
@@ -42,7 +40,10 @@ class TestsFlextInfraMiseDistributionPolicy:
         config_dir = root / "config"
         config_dir.mkdir()
         toolchain = config.Infra.codegen.toolchain
-        selector, version = toolchain.qlty_selector, toolchain.qlty_version
+        selector, version = (
+            toolchain.tool_selectors["qlty"],
+            toolchain.tool_versions["qlty"],
+        )
         (config_dir / "tools.yaml").write_text(
             "ManagedArtifacts:\n  Mise:\n    tools:\n"
             f'      "{selector}":\n        version: "{version}.divergent"\n',

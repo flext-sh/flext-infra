@@ -6,21 +6,21 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections import defaultdict
 from collections.abc import MutableMapping
 from keyword import iskeyword
-from operator import attrgetter
 from pathlib import Path
 from time import perf_counter
 from types import TracebackType
 from typing import Annotated, ClassVar, Self, override
 
-from flext_core import r
-from flext_infra import c, m, p, t, u
-from flext_infra.base import s
+from flext_infra import c, m, p, r, s, t, u
+from flext_infra.workspace import FlextInfraRopeQueryMixin
 
 
-class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
+class FlextInfraRopeWorkspace(
+    FlextInfraRopeQueryMixin,
+    s[m.Infra.RopeWorkspaceSession],
+):
     """Open one shared Rope workspace with cached public DSL methods."""
 
     _IDENTIFIER_PATTERN: ClassVar[t.RegexPattern] = c.Infra.IDENTIFIER_PATTERN
@@ -30,7 +30,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         m.Field(description="Optional Rope project root; defaults to repository_root"),
     ] = None
 
-    _rope_repository_root: Path
+    _rope_repository_root: Path = u.PrivateAttr()
     _rope_project: t.Infra.RopeProject | None = u.PrivateAttr(
         default_factory=lambda: None,
     )
@@ -57,7 +57,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         t.Triple[str, bool, bool],
         t.VariadicTuple[m.Infra.Object],
     ] = u.PrivateAttr(default_factory=dict)
-    _resource_cache: MutableMapping[str, t.Infra.RopeResource | None] = u.PrivateAttr(
+    _resource_cache: MutableMapping[str, t.Infra.RopeFile | None] = u.PrivateAttr(
         default_factory=dict,
     )
     _name_index: (
@@ -103,11 +103,13 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         return workspace
 
     @property
+    @override
     def rope_repository_root(self) -> Path:
         """Canonical root used for the shared Rope project."""
         return self._rope_repository_root
 
     @property
+    @override
     def rope_project(self) -> t.Infra.RopeProject:
         """Shared Rope project, opening it lazily once."""
         rope_project = self._rope_project
@@ -123,6 +125,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         return rope_project
 
     @property
+    @override
     def workspace_index(self) -> m.Infra.RopeWorkspaceIndex:
         """Cached workspace index for the shared Rope project."""
         workspace_index = self._workspace_index
@@ -168,6 +171,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             workspace_index=self.workspace_index,
         )
 
+    @override
     def refresh(
         self,
         *,
@@ -180,6 +184,8 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         files and already restored the original on-disk content before the
         refresh runs. ``validate_project=False`` is reserved for those reverted
         preview flows so cleanup does not rescan an already-restored project.
+        Normal refresh also invalidates module inventory, project discovery,
+        and layouts; reverted previews retain those unchanged snapshots.
 
         Returns:
             The resulting ``m.Infra.RopeWorkspaceSession``.
@@ -193,10 +199,14 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         self._module_object_cache.clear()
         self._resource_cache.clear()
         if not preserve_indexes:
+            self._workspace_index = None
+            self._codegen_projects = None
+            self._project_layout_cache.clear()
             self._name_index = None
             self._import_dependents_index = None
         return self.session_snapshot()
 
+    @override
     def reload(self) -> m.Infra.RopeWorkspaceSession:
         """Reopen the shared Rope project and drop all transient caches.
 
@@ -208,194 +218,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         _ = self.rope_project
         return self.session_snapshot()
 
-    def resource(self, file_path: Path) -> t.Infra.RopeResource | None:
-        """Return one cached Rope resource for the requested file path.
-
-        Returns:
-            One cached Rope resource for the requested file path.
-
-        """
-        cache_key = str(file_path.resolve())
-        cached = self._resource_cache.get(cache_key)
-        if cache_key in self._resource_cache:
-            return cached
-        resource = u.Infra.resolve_resource_from_path(self.rope_project, file_path)
-        self._resource_cache[cache_key] = resource
-        return resource
-
-    def module(self, file_path: Path) -> m.Infra.RopeModuleIndexEntry | None:
-        """Return one indexed module entry for the requested file path.
-
-        Returns:
-            One indexed module entry for the requested file path.
-
-        """
-        raw = self.workspace_index.modules_by_path.get(str(file_path.resolve()))
-        if raw is None:
-            return None
-        validated: m.Infra.RopeModuleIndexEntry = (
-            m.Infra.RopeModuleIndexEntry.model_validate(raw)
-        )
-        return validated
-
-    def package(self, package_dir: Path) -> m.Infra.RopePackageIndexEntry | None:
-        """Return one indexed package entry for the requested directory.
-
-        Returns:
-            One indexed package entry for the requested directory.
-
-        """
-        raw = self.workspace_index.packages_by_dir.get(str(package_dir.resolve()))
-        if raw is None:
-            return None
-        validated: m.Infra.RopePackageIndexEntry = (
-            m.Infra.RopePackageIndexEntry.model_validate(raw)
-        )
-        return validated
-
-    def modules(
-        self,
-        *,
-        project_names: t.StrSequence | None = None,
-    ) -> t.SequenceOf[m.Infra.RopeModuleIndexEntry]:
-        """Return path-sorted module entries, optionally only the named projects'.
-
-        Returns:
-            Path-sorted module entries, optionally only the named projects'.
-
-        """
-        selected = frozenset(project_names or ())
-        return tuple(
-            sorted(
-                (
-                    entry
-                    for entry in self.workspace_index.modules_by_path.values()
-                    if not selected
-                    or (
-                        entry.project_root is not None
-                        and entry.project_root.name in selected
-                    )
-                ),
-                key=attrgetter("file_path"),
-            ),
-        )
-
-    def source(self, file_path: Path) -> str:
-        """Return one module source snapshot from the active Rope workspace.
-
-        Returns:
-            One module source snapshot from the active Rope workspace.
-
-        """
-        text: str = self._resource_for(file_path).read()
-        return text
-
-    def import_dependents(self, import_target: str) -> t.VariadicTuple[Path]:
-        """Return cached module paths that semantically import ``import_target``.
-
-        Returns:
-            Cached module paths that semantically import ``import_target``.
-
-        """
-        if not import_target:
-            return ()
-        index = self._import_dependents_index
-        if index is None:
-            dependents: MutableMapping[str, set[Path]] = defaultdict(set)
-            for module in self.modules():
-                file_path = module.file_path.resolve()
-                for target in self.semantic(file_path).semantic_imports.values():
-                    if not target:
-                        continue
-                    dependents[target].add(file_path)
-            index = {
-                target: tuple(sorted(paths)) for target, paths in dependents.items()
-            }
-            self._import_dependents_index = index
-        return index.get(import_target, ())
-
-    def name_index(
-        self,
-    ) -> t.MappingKV[str, t.VariadicTuple[t.Triple[Path, str, t.VariadicTuple[int]]]]:
-        """Return a cached ``{name: ((path, surface, lines), ...)}`` workspace index.
-
-        Built once per workspace session via a single regex scan of every
-        indexed ``.py`` module. Short-circuits rope's ``find_occurrences``
-        when a symbol's surface distribution alone answers the
-        unused classification question.
-
-        Returns:
-            A cached ``{name: ((path, surface, lines), ...)}`` workspace index.
-
-        """
-        if self._name_index is not None:
-            return self._name_index
-        index: MutableMapping[str, list[t.Triple[Path, str, list[int]]]] = {}
-        for entry in self.workspace_index.modules_by_path.values():
-            py_file = entry.file_path
-            source_text = self._resource_for(py_file).read()
-            surface = self._reference_surface_for(py_file)
-            lines_by_name: MutableMapping[str, list[int]] = {}
-            for lineno, source_line in enumerate(source_text.splitlines(), start=1):
-                for match in self._IDENTIFIER_PATTERN.finditer(source_line):
-                    name = match.group(0)
-                    lines_by_name.setdefault(name, []).append(lineno)
-            for name, line_numbers in lines_by_name.items():
-                index.setdefault(name, []).append((py_file, surface, line_numbers))
-        self._name_index = {
-            name: tuple((path, surface, tuple(lines)) for path, surface, lines in refs)
-            for name, refs in index.items()
-        }
-        return self._name_index
-
-    _SURFACE_DIRS: ClassVar[t.StrSequence] = (
-        c.Infra.DIR_TESTS,
-        c.Infra.DIR_EXAMPLES,
-        c.Infra.DIR_SCRIPTS,
-    )
-
-    @classmethod
-    def _reference_surface_for(cls, file_path: Path) -> str:
-        """Return the reference surface for a file path.
-
-        Returns:
-            The reference surface for a file path.
-
-        """
-        for part in file_path.parts:
-            if part in cls._SURFACE_DIRS:
-                surface: str = part
-                return surface
-        default_src: str = c.Infra.DEFAULT_SRC_DIR
-        return default_src
-
-    def objects(
-        self,
-        file_path: Path,
-        *,
-        include_local_scopes: bool = True,
-        include_references: bool = True,
-    ) -> t.SequenceOf[m.Infra.Object]:
-        """Return Rope-only discovered objects for one module path.
-
-        Returns:
-            Rope-only discovered objects for one module path.
-
-        """
-        resolved_file = file_path.resolve()
-        cache_key = (str(resolved_file), include_local_scopes, include_references)
-        cached = self._module_object_cache.get(cache_key)
-        if cached is not None:
-            return cached
-        objects = u.Infra.objects(
-            self,
-            resolved_file,
-            include_local_scopes=include_local_scopes,
-            include_references=include_references,
-        )
-        self._module_object_cache[cache_key] = objects
-        return objects
-
+    @override
     def projects(self) -> t.SequenceOf[p.Infra.ProjectInfo]:
         """Return the canonical codegen project selection for this workspace.
 
@@ -405,15 +228,10 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         """
         if self._codegen_projects is None:
             projects_result = u.Infra.projects(self.repository_root)
-            if projects_result.failure:
-                self._codegen_projects = ()
-            else:
-                discovered_projects: t.SequenceOf[p.Infra.ProjectInfo] = (
-                    projects_result.unwrap()
-                )
-                self._codegen_projects = tuple(discovered_projects)
+            self._codegen_projects = tuple(projects_result.unwrap())
         return self._codegen_projects
 
+    @override
     def layout(self, project_root: Path) -> m.Infra.RopeProjectLayout | None:
         """Return one centralized project layout contract for codegen pipelines.
 
@@ -437,6 +255,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         self._project_layout_cache[cache_key] = layout
         return layout
 
+    @override
     def package_context(self, package_dir: Path) -> m.Infra.LazyInitPackageContext:
         """Return one centralized lazy-init package context for a package dir.
 
@@ -471,6 +290,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         self._package_context_cache[cache_key] = context
         return context
 
+    @override
     def policy(
         self,
         file_path: Path,
@@ -492,15 +312,25 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         cached = self._module_policy_cache.get(cache_key)
         if cached is not None:
             return cached
+        module_entry = self.module(resolved_file)
+        project_root = (
+            module_entry.project_root
+            if module_entry is not None and module_entry.project_root is not None
+            else u.Infra.project_root(resolved_file)
+        )
         policy: m.Infra.NamespaceModulePolicy = u.Infra.policy(
             resolved_file,
             rope_project=self.rope_project,
             rel_path=resolved_rel_path,
             current_pkg=current_pkg,
+            project_layout=self.layout(project_root)
+            if project_root is not None
+            else None,
         )
         self._module_policy_cache[cache_key] = policy
         return policy
 
+    @override
     def convention(
         self,
         file_path: Path,
@@ -558,6 +388,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         self._module_convention_cache[cache_key] = convention
         return convention
 
+    @override
     def semantic(self, file_path: Path) -> m.Infra.ModuleSemanticState:
         """Return one cached semantic snapshot for a module path.
 
@@ -571,6 +402,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         )
         return state
 
+    @override
     def exports(
         self,
         file_path: Path,
@@ -590,6 +422,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             export_options=resolved_export_options,
         )
 
+    @override
     def close(self) -> None:
         """Close the shared Rope project and clear transient caches."""
         if self._rope_project is not None:
@@ -606,6 +439,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         self._name_index = None
         self._import_dependents_index = None
 
+    @override
     def __enter__(self) -> Self:
         """Open the Rope project on context-manager entry.
 
@@ -616,6 +450,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         _ = self.rope_project
         return self
 
+    @override
     def __exit__(
         self,
         _exc_type: type[BaseException] | None,
@@ -625,7 +460,8 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         """Close the Rope project on context-manager exit."""
         self.close()
 
-    def _resource_for(self, file_path: Path) -> t.Infra.RopeResource:
+    @override
+    def _resource_for(self, file_path: Path) -> t.Infra.RopeFile:
         """Require a resource inside the active Rope workspace.
 
         Returns:

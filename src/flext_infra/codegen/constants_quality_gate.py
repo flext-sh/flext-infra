@@ -9,24 +9,26 @@ from __future__ import annotations
 import operator
 import shutil
 import sys
-from collections.abc import MutableMapping
+from collections.abc import Callable, MutableMapping
 from concurrent.futures import Future, ThreadPoolExecutor
-from typing import TYPE_CHECKING, override
+from pathlib import Path
+from typing import override
 
-from flext_core import r
-from flext_infra import c, m, t, u
-from flext_infra.base import s
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.refactor.census import FlextInfraRefactorCensus
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import p
+from flext_infra import c, m, p, r, s, t, u
+from flext_infra.codegen import FlextInfraCodegenLazyInit
+from flext_infra.refactor import FlextInfraRefactorCensus
 
 
 class FlextInfraCodegenQualityGate(s[bool]):
     """Run final constants migration checks with before/after comparison."""
+
+    source_preview: t.Port[p.Infra.SourcePreview] = m.Field(
+        exclude=True,
+        description="Injected authenticated source preview capability",
+    )
+    workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl] = (
+        m.Field(exclude=True, description="Injected candidate Rope workspace factory")
+    )
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -67,8 +69,12 @@ class FlextInfraCodegenQualityGate(s[bool]):
                 f"lazy-init artifacts require codegen conform: {paths}",
             )
         census = FlextInfraRefactorCensus(
-            include_local_scopes=False,
-            kinds=("constant",),
+            workspace_factory=self.workspace_factory,
+            source_preview=self.source_preview,
+            options=m.Infra.CensusOptions(
+                include_local_scopes=False,
+                kinds=("constant",),
+            ),
         ).model_copy(update={"repository_root": self.repository_root})
         census_report = census.build_report()
         modified_files = self.modified_python_files(self.repository_root)
@@ -398,7 +404,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         json_write = u.Cli.atomic_write_text_file(
             report_json,
             t.Infra.INFRA_MAPPING_ADAPTER.dump_json(report, by_alias=True).decode(
-                c.Cli.ENCODING_DEFAULT,
+                c.DEFAULT_ENCODING,
             ),
         )
         if json_write.failure:
@@ -444,9 +450,11 @@ class FlextInfraCodegenQualityGate(s[bool]):
             "Current:",
             f"- violations: {after.get('total_violations', 'n/a')}",
             f"- duplicates: {after.get('duplicate_groups', 'n/a')}",
-            f"- projects: {after.get('projects_total', 0)} total, "
-            f"{after.get('projects_passed', 0)} passed, "
-            f"{after.get('projects_failed', 0)} failed",
+            (
+                f"- projects: {after.get('projects_total', 0)} total, "
+                f"{after.get('projects_passed', 0)} passed, "
+                f"{after.get('projects_failed', 0)} failed"
+            ),
         ])
         if duplicate_groups:
             lines.extend(["", "Duplicate Groups:"])

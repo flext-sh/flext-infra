@@ -10,14 +10,15 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import FlextInfraEnsurePyrightConfigPhase, m, t, u
+from flext_infra import m, t, u
+from flext_infra.deps import FlextInfraEnsurePyrightConfigPhase
 from flext_infra.gates.pyright import FlextInfraPyrightGate
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestsPyrightPublicContract:
+class TestsFlextInfraPyrightPublicContract:
     """Exercise the configured semantic owner with real source and type stubs."""
 
     @staticmethod

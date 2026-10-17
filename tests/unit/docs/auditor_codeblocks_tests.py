@@ -9,9 +9,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
-from tests import m, u
+from tests import m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -19,6 +18,43 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraAuditorCodeblocks:
     """Regression tests for docs codeblock and exported-docstring auditing."""
+
+    @staticmethod
+    @pytest.mark.parametrize("first_party", ["flext_infra", "pydantic"])
+    def test_codeblocks_use_the_declared_scope_configuration(
+        tmp_path: Path,
+        first_party: str,
+    ) -> None:
+        """Audit and repair consume the target policy outside the caller's root."""
+        imports = {"flext_infra": "m", "pydantic": "BaseModel"}
+        third_party = next(name for name in imports if name != first_party)
+        u.Tests.standalone_workspace(tmp_path)
+        with (tmp_path / "pyproject.toml").open("a", encoding="utf-8") as manifest:
+            manifest.write(
+                '[tool.ruff.lint]\nselect = ["I"]\n'
+                "[tool.ruff.lint.isort]\n"
+                f'known-first-party = ["{first_party}"]\n'
+                f'known-third-party = ["{third_party}"]\n',
+            )
+        docs = tmp_path / "docs"
+        docs.mkdir()
+        snippet = docs / "imports.md"
+        first = f"from {first_party} import {imports[first_party]}\n"
+        third = f"from {third_party} import {imports[third_party]}\n"
+        snippet.write_text(f"```python\n{third}\n{first}```\n", encoding="utf-8")
+        scope = m.Infra.DocScope(
+            name="scoped-policy",
+            path=tmp_path,
+            report_dir=tmp_path / "reports",
+        )
+
+        tm.that(u.Infra.docs_python_codeblock_issues(scope), eq=[])
+        snippet.write_text(f"```python\n{first}\n{third}```\n", encoding="utf-8")
+        tm.that(bool(u.Infra.docs_python_codeblock_issues(scope)), eq=True)
+
+        tm.that(bool(u.Infra.docs_fix_python_codeblocks(scope, apply=True)), eq=True)
+        tm.that(u.Infra.docs_python_codeblock_issues(scope), eq=[])
+        tm.that(u.Infra.docs_fix_python_codeblocks(scope, apply=True), eq=[])
 
     @staticmethod
     def test_docs_python_codeblock_issues_ignore_snippet_only_rules(

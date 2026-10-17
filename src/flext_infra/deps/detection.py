@@ -9,9 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-from flext_core import c as core_c, r
-from flext_infra import c, m, p, t, u
-from flext_infra.deps.detection_analysis import FlextInfraDependencyDetectionAnalysis
+from flext_infra import c, m, p, r, t, u
+from flext_infra.deps import FlextInfraDependencyDetectionAnalysis
 
 
 class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis):
@@ -36,7 +35,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
                 if raw_value is None:
                     normalized_item[key] = ""
                     continue
-                if isinstance(raw_value, core_c.PRIMITIVES_TYPES):
+                if isinstance(raw_value, c.PRIMITIVES_TYPES):
                     normalized_item[key] = raw_value
             error_obj = item.get(c.Infra.ERROR)
             if not isinstance(error_obj, Mapping):

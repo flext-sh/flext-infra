@@ -21,30 +21,6 @@ class FlextInfraDocAuditorMixin:
     """Mixin providing helper methods for the documentation auditor."""
 
     @staticmethod
-    def resolve_checks(check: str) -> t.Infra.StrSet:
-        """Parse check string into a resolved set of check names.
-
-        Returns:
-            The resulting ``t.Infra.StrSet``.
-
-        """
-        checks = {part.strip() for part in check.split(",") if part.strip()}
-        if not checks or "all" in checks:
-            return {
-                "links",
-                "forbidden-terms",
-                "placeholders",
-                "machine-paths",
-                "stale-symbols",
-                "scope-boundary",
-                "generated-ownership",
-                "command-contract",
-                "docstrings",
-                "python-codeblocks",
-            }
-        return checks
-
-    @staticmethod
     def write_audit_reports(
         scope: m.Infra.DocScope,
         issues: t.SequenceOf[m.Infra.AuditIssue],
@@ -61,7 +37,7 @@ class FlextInfraDocAuditorMixin:
         ],
     ) -> None:
         """Persist JSON summary and markdown report to the scope report directory."""
-        validated_checks = t.json_list_adapter().validate_python(sorted(checks))
+        validated_checks = u.json_list_adapter().validate_python(sorted(checks))
         sorted_checks: t.JsonValueList = list(validated_checks)
         summary: t.JsonDict = {
             c.Infra.RK_SCOPE: scope.name,

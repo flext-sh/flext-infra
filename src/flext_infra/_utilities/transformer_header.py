@@ -10,9 +10,7 @@ import ast
 from collections.abc import MutableMapping
 
 from flext_infra import c, t
-from flext_infra._utilities.transformer_header_parser import (
-    FlextInfraUtilitiesTransformerHeaderParser,
-)
+from flext_infra._utilities import FlextInfraUtilitiesTransformerHeaderParser
 
 
 class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderParser):
@@ -325,7 +323,7 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
         )
         spans: list[t.Quad[int, int, int, int]] = []
         for node in ast.walk(module):
-            annotations = []
+            annotations: t.MutableSequenceOf[ast.expr | None] = []
             if isinstance(node, ast.AnnAssign | ast.arg):
                 annotations.append(node.annotation)
             elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):

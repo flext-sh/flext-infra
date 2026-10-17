@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-from tests import u
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -87,7 +85,7 @@ class TestsFlextInfraConfigFixer:
         pyproject.write_text("[tool]\nother = true\n")
         result = fixer.process_file(pyproject)
         tm.ok(result)
-        tm.that(result.value, eq=[])
+        tm.that(result.value, eq=())
 
     @staticmethod
     def test_process_file_with_invalid_toml(tmp_path: Path) -> None:

@@ -12,16 +12,15 @@ name: CI
 # workflow_call changes no direct-run behavior and declares the optional
 # cross-repo dependency-credential secret contract in workflow scope.
 "on":
+  workflow_dispatch:
   push:
     branches:
       - main
-      - 0.12.0-dev
-      - 0.20.0-dev
+      - upload-20261007
   pull_request:
     branches:
       - main
-      - 0.12.0-dev
-      - 0.20.0-dev
+      - upload-20261007
     types: [opened, synchronize, reopened, ready_for_review, edited]
   workflow_call:
     secrets:
@@ -39,8 +38,11 @@ name: CI
 # End SECTION: triggers
 
 # Why: one active run per workflow and branch prevents obsolete CI from consuming runners.
+# The event and PR number keep pull_request runs out of the integration push
+# group: a PR event delivered after its merge resolves github.ref to the base
+# branch and, keyed by ref alone, cancelled the post-merge run.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ (github.event_name == 'pull_request' && github.event.pull_request.number) || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -64,65 +66,8 @@ jobs:
         uses: actions/checkout@v7
         with:
           submodules: false
+          persist-credentials: false
           fetch-depth: 0
-      # Cross-repo private git dependencies: the workflow token is scoped to
-      # this repository only, so it cannot clone siblings that turn private.
-      # Every declared sibling is public today and resolves anonymously; the
-      # credential exists for the private-sibling scenario. When the org
-      # installs its cross-repo dependency GitHub App and exposes
-      # CI_DEPENDENCIES_APP_ID / CI_DEPENDENCIES_APP_PRIVATE_KEY, mint a
-      # short-lived installation token and scope it to github.com clones.
-      # Absent secrets make this step a recorded NOT EXECUTED while the
-      # repository has not declared the credential requirement; a repository
-      # that declares the CI_DEPENDENCIES_REQUIRED repo variable fails the
-      # job non-zero with a typed message and without exposing any secret
-      # value (absence normalized as success is a defect).
-      - name: Mint cross-repo dependency credential
-        env:
-          CI_DEPS_APP_ID: ${{ secrets.CI_DEPENDENCIES_APP_ID }}
-          CI_DEPS_APP_KEY: ${{ secrets.CI_DEPENDENCIES_APP_PRIVATE_KEY }}
-          CI_DEPS_REQUIRED: '0'
-        run: |
-          set -euo pipefail
-          if [ -z "$CI_DEPS_APP_ID" ] || [ -z "$CI_DEPS_APP_KEY" ]; then
-            case "$CI_DEPS_REQUIRED" in
-              1 | true | TRUE | True | yes | YES | Yes)
-                echo "ERROR[CI_CREDENTIAL_REQUIRED]: CI_DEPENDENCIES_APP_ID/CI_DEPENDENCIES_APP_PRIVATE_KEY are declared required by this repository and are absent or empty" >&2
-                exit 1
-                ;;
-              *)
-                echo "NOT EXECUTED: CI_DEPENDENCIES_* secrets absent, no cross-repo credential minted"
-                exit 0
-                ;;
-            esac
-          fi
-          identity_root="$RUNNER_TEMP/flext-cross-repo-deps"
-          install -d -m 700 "$identity_root"
-          key_path="$identity_root/app-key.pem"
-          printf '%s\n' "$CI_DEPS_APP_KEY" > "$key_path.new"
-          chmod 600 "$key_path.new"
-          mv "$key_path.new" "$key_path"
-          b64url() {
-            openssl base64 -A | tr '+/' '-_' | tr -d '='
-          }
-          now=$(date +%s)
-          header='{"alg":"RS256","typ":"JWT"}'
-          payload=$(printf '{"iat":%s,"exp":%s,"iss":"%s"}' "$((now - 60))" "$((now + 540))" "$CI_DEPS_APP_ID")
-          input="$(printf %s "$header" | b64url).$(printf %s "$payload" | b64url)"
-          signature=$(printf %s "$input" | openssl dgst -sha256 -sign "$key_path" | b64url)
-          jwt="$input.$signature"
-          # Credential mint without curl-pipe-to-shell (semgrep gha-curl-pipe-shell):
-          # responses land in a temp file and are parsed from disk, never piped.
-          response_file="$identity_root/github-api-response.json"
-          curl -sfS -X GET -H "Authorization: Bearer $jwt" -H "Accept: application/vnd.github+json" -o "$response_file" https://api.github.com/app/installations
-          installation_id=$(python3 -c 'import json, sys; entries = json.load(open(sys.argv[1])); assert len(entries) == 1, f"expected exactly one app installation, got {len(entries)}"; print(entries[0]["id"])' "$response_file")
-          curl -sfS -X POST -H "Authorization: Bearer $jwt" -H "Accept: application/vnd.github+json" -o "$response_file" "https://api.github.com/app/installations/$installation_id/access_tokens"
-          access_token=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["token"])' "$response_file")
-          rm -f "$response_file"
-          echo "::add-mask::$access_token"
-          git config --global url."https://x-access-token:${access_token}@github.com/".insteadOf "https://github.com/"
-          rm -f "$key_path"
-
       # Why: GitHub runners expose umask 002, so git checkout materializes
       # group-writable modes (0664) for tracked files. Canonical Mise
       # artifacts demand exact modes (0o644) and the conform gate fails loud
@@ -138,6 +83,10 @@ jobs:
       # Why: the same pair keeps the locked Mise tool storage, so
       # a cold runner never re-downloads the pinned tarballs, where a network
       # blip failed setup.
+      # Why: the cache keeps Mise's installs and downloads but never its shims.
+      # A restored shim points at the Mise binary of an earlier run, which Mise
+      # treats as unmanaged ("not replacing unmanaged file in shims directory",
+      # one warning per tool); Mise regenerates the shims from mise.lock.
       - name: Restore tool caches
         id: tool-cache
         uses: actions/cache/restore@v6
@@ -152,9 +101,10 @@ jobs:
             .hypothesis
             ~/.cache/uv
             ~/.local/share/mise
-          key: ${{ runner.os }}-3.13-tools-${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml') }}
+            !~/.local/share/mise/shims
+          key: ${{ runner.os }}-3.13-tools-${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', '.mise.toml') }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            ${{ runner.os }}-3.13-tools-
+            ${{ runner.os }}-3.13-tools-${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', '.mise.toml') }}-
 
       # make setup is the frozen installer. It bootstraps the committed Mise
       # release and installs the fleet toolchain from the committed
@@ -167,77 +117,170 @@ jobs:
       # and selects the whole suite. Restore the newest database of any earlier
       # run: testmon revalidates every recorded file by checksum, so a restored
       # database never hides a changed dependency of a selected test.
+      - name: Resolve project testmon database
+        id: testmon_path
+        env:
+          CACHE_BRANCH: ${{ github.head_ref || github.ref_name }}
+          CACHE_SEED_BRANCH: ${{ github.base_ref || github.event.repository.default_branch }}
+          CACHE_WRITE_ALLOWED: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) }}
+          CACHE_INPUTS: ${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', 'config/**') }}
+          CACHE_PLATFORM: ${{ runner.os }}-${{ runner.arch }}
+          CACHE_GENERATION: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -eu
+          cache_home="${XDG_CACHE_HOME:-${HOME}/.cache}"
+          database="$(realpath -m "${cache_home}/flext/infra/testmon/flext-infra/.testmondata")"
+          case "${database}" in /*) ;; *) exit 2 ;; esac
+          printf 'database=%s\n' "${database}" >> "${GITHUB_OUTPUT}"
+          branch_digest="$(printf '%s' "${CACHE_BRANCH}" | sha256sum)"
+          seed_digest="$(printf '%s' "${CACHE_SEED_BRANCH}" | sha256sum)"
+          namespace="${CACHE_PLATFORM}-3.13-flext-testmon-flext-infra-${branch_digest%% *}-"
+          seed_namespace="${CACHE_PLATFORM}-3.13-flext-testmon-flext-infra-${seed_digest%% *}-"
+          printf 'namespace=%s\nseed_namespace=%s\nsave_allowed=%s\n' "${namespace}" "${seed_namespace}" "${CACHE_WRITE_ALLOWED}" >> "${GITHUB_OUTPUT}"
+          printf 'key=%s%s-%s\n' "${namespace}" "${CACHE_INPUTS}" "${CACHE_GENERATION}" >> "${GITHUB_OUTPUT}"
       - name: Restore testmon database
         uses: actions/cache/restore@v6
         with:
-          path: ~/.cache/flext/infra/testmon
-          key: ${{ runner.os }}-3.13-flext-testmon-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.testmon_path.outputs.database }}
+          key: ${{ steps.testmon_path.outputs.key }}
           restore-keys: |
-            ${{ runner.os }}-3.13-flext-testmon-
+            ${{ steps.testmon_path.outputs.namespace }}${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', 'config/**') }}-
+            ${{ steps.testmon_path.outputs.namespace }}
+            ${{ steps.testmon_path.outputs.seed_namespace }}
 
-      - name: setup (blocking)
-        # Why: explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
+      - name: Install the mise release pinned by mise.lock
+        shell: bash
+        run: |
+          set -eu
+          mise_system="${RUNNER_OS}"
+          if [ "${mise_system}" = "macOS" ]; then mise_system=Darwin; fi
+          case "${RUNNER_OS}-${RUNNER_ARCH}" in
+            Windows-X64) mise_machine=AMD64 ;;
+            Linux-ARM64) mise_machine=aarch64 ;;
+            *-X64) mise_machine=x86_64 ;;
+            *-ARM64) mise_machine=arm64 ;;
+            *) echo "ERROR: unsupported runner identity ${RUNNER_OS}-${RUNNER_ARCH}" >&2; exit 2 ;;
+          esac
+          case "${mise_system}/${mise_machine}" in
+            Linux/x86_64) mise_platform=linux-x64 ;;
+            Linux/aarch64) mise_platform=linux-arm64 ;;
+            Darwin/x86_64) mise_platform=macos-x64 ;;
+            Darwin/arm64) mise_platform=macos-arm64 ;;
+            Windows/AMD64) mise_platform=windows-x64 ;;
+            *) echo "ERROR: no mise.lock platform for ${RUNNER_OS}-${RUNNER_ARCH}" >&2; exit 2 ;;
+          esac
+          mise_field() {
+            awk -v section="[tools.\"github:jdx/mise\".\"platforms.${mise_platform}\"]" -v key="$1" '
+              $0 == section { inside = 1; next }
+              inside && substr($0, 1, 1) == "[" { exit }
+              inside && $1 == key { gsub(/"/, "", $3); print $3; exit }
+            ' mise.lock
+          }
+          mise_url="$(mise_field url)"
+          mise_checksum="$(mise_field checksum)"
+          case "${mise_url}" in
+            https://github.com/jdx/mise/releases/download/*) ;;
+            *) echo "ERROR: mise.lock has no GitHub release URL for ${mise_platform}: '${mise_url}'" >&2; exit 2 ;;
+          esac
+          case "${mise_checksum}" in
+            sha256:*) mise_sha256="${mise_checksum#sha256:}" ;;
+            *) echo "ERROR: mise.lock has no sha256 for ${mise_platform}: '${mise_checksum}'" >&2; exit 2 ;;
+          esac
+          mise_stage="${RUNNER_TEMP}/mise-install"
+          mkdir -p "${mise_stage}" "${HOME}/.local/bin"
+          mise_archive="${mise_stage}/${mise_url##*/}"
+          curl --proto '=https' --tlsv1.2 -fsSL -o "${mise_archive}" "${mise_url}"
+          if command -v sha256sum >/dev/null 2>&1; then
+            echo "${mise_sha256}  ${mise_archive}" | sha256sum -c -
+          else
+            echo "${mise_sha256}  ${mise_archive}" | shasum -a 256 -c -
+          fi
+          case "${mise_archive}" in
+            *.zip) unzip -q "${mise_archive}" -d "${mise_stage}" ;;
+            *) tar -xf "${mise_archive}" -C "${mise_stage}" ;;
+          esac
+          if [ "${RUNNER_OS}" = "Windows" ]; then
+            cp "${mise_stage}/mise/bin/mise.exe" "${HOME}/.local/bin/mise.exe"
+          else
+            install -m 0755 "${mise_stage}/mise/bin/mise" "${HOME}/.local/bin/mise"
+          fi
+          echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+          echo "${HOME}/.local/share/mise/shims" >> "${GITHUB_PATH}"
+          mise_pin="$(awk 'index($0, "[[tools.\"github:jdx/mise\"]]") == 1 { inside = 1; next } inside && substr($0, 1, 1) == "[" { exit } inside && $1 == "version" { gsub(/[",]/, "", $3); print $3; exit }' mise.lock)"
+          if [ -z "${mise_pin}" ]; then
+            printf 'ERROR: mise.lock pins no github:jdx/mise release; run make upg\n' >&2
+            exit 2
+          fi
+          "${HOME}/.local/bin/mise" install --locked "github:jdx/mise"
+          mise_path="$("${HOME}/.local/bin/mise" which mise)"
+          mise_receipt="$("${mise_path}" --version | cut -d ' ' -f1)"
+          if [ "${mise_receipt}" != "${mise_pin}" ]; then
+            printf 'ERROR: provisioned Mise %s differs from mise.lock pin %s; run make setup\n' "${mise_receipt}" "${mise_pin}" >&2
+            exit 2
+          fi
+          echo "${mise_path%/*}" >> "${GITHUB_PATH}"
+
+      # CI approval, one visible step per ci workflow row (setup -> gen -> audit -> check -> test -> verify-clean).
+      - name: make setup (blocking)
+        id: approval-setup
         run: CI=Y make setup
-      - name: gen fixed point (blocking)
-        # Why (docs-gen private sources): the docs generation resolves the
-        # governed workspaces' documentation state, which fetches private
-        # sibling repos — unauthenticated fetches fail with "docs generation
-        # source state is absent or unauthenticated". The job token
-        # authenticates those reads without changing the toolchain contract.
-        run: |
-          set -eu
-          CI=Y make gen
-          git status --short
-          candidate_status="$(git status --porcelain --untracked-files=all --ignore-submodules=none)"
-          test -z "$candidate_status"
-
-      # Setup installs frozen from the committed uv.lock (`uv sync --locked`)
-      # and never rewrites it; the deps audit proves that locked graph.
-      - name: deps check (blocking)
+      # CI approval, one visible step per ci workflow row (setup -> gen -> audit -> check -> test -> verify-clean).
+      - name: make gen (blocking)
+        id: approval-gen
+        # Every approval verb reports once setup provisioned the environment,
+        # so one red verdict (an audit lock drift) never hides the others.
+        if: ${{ !cancelled() && steps.approval-setup.outcome == 'success' }}
+        run: CI=Y make gen
+      # CI approval, one visible step per ci workflow row (setup -> gen -> audit -> check -> test -> verify-clean).
+      - name: make audit (blocking)
+        id: approval-audit
+        # Every approval verb reports once setup provisioned the environment,
+        # so one red verdict (an audit lock drift) never hides the others.
+        if: ${{ !cancelled() && steps.approval-setup.outcome == 'success' }}
         run: CI=Y make audit
-
-      - name: check (blocking)
-        # Why: explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
+      # CI approval, one visible step per ci workflow row (setup -> gen -> audit -> check -> test -> verify-clean).
+      - name: make check (blocking)
+        id: approval-check
+        # Every approval verb reports once setup provisioned the environment,
+        # so one red verdict (an audit lock drift) never hides the others.
+        if: ${{ !cancelled() && steps.approval-setup.outcome == 'success' }}
         run: CI=Y make check
-        # Fast partition only, derived from the gate registry kind:
-        # lint security markdown duplication loc-cap runtime-census fresh-import index-declarations codemod layout direnv.
-        # Type checkers and flext-infra validators block locally and at
-        # pre-push (CI=N runs pyrefly mypy pyright).
-
-      - name: test (blocking)
-        # Why: explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
+      # CI approval, one visible step per ci workflow row (setup -> gen -> audit -> check -> test -> verify-clean).
+      - name: make test (blocking)
+        id: approval-test
+        # Every approval verb reports once setup provisioned the environment,
+        # so one red verdict (an audit lock drift) never hides the others.
+        if: ${{ !cancelled() && steps.approval-setup.outcome == 'success' }}
         run: CI=Y make test
-
-      # Mutating gates and tests must validate the committed candidate.
-      # Repairs left in the runner checkout require a new commit and CI run.
-      - name: Candidate cleanliness (blocking)
-        run: |
-          set -eu
-          git status --short
-          candidate_status="$(git status --porcelain --untracked-files=all --ignore-submodules=none)"
-          test -z "$candidate_status"
+      # CI approval, one visible step per ci workflow row (setup -> gen -> audit -> check -> test -> verify-clean).
+      - name: make verify-clean (blocking)
+        id: approval-verify-clean
+        # Every approval verb reports once setup provisioned the environment,
+        # so one red verdict (an audit lock drift) never hides the others.
+        if: ${{ !cancelled() && steps.approval-setup.outcome == 'success' }}
+        run: CI=Y make verify-clean
 
       - name: Dump reports on failure
         if: ${{ failure() }}
         run: |
           set -eu
-          # Structured reports only — same allowlist as Upload reports (no raw
+          # Structured reports only — a subset of Upload reports (no raw
           # pytest/tool logs: those may carry connection strings / env secrets).
           for report_root in .reports apps; do
-            if [ -d "$report_root" ]; then
-              find "$report_root" \
+            if [ -d "${report_root}" ]; then
+              find "${report_root}" \
                 \( -path '*/junit.xml' -o -path '*/coverage.xml' -o -path '*/coverage.json' \) \
                 -type f -exec sh -eu -c '
                   for report_file do
-                    printf "::group::%s\n" "$report_file"
-                    tail -n 200 "$report_file"
+                    printf "::group::%s\n" "${report_file}"
+                    tail -n 200 "${report_file}"
                     printf "::endgroup::\n"
                   done
                 ' sh {} +
             fi
           done
-      - name: Upload reports on failure
-        if: ${{ failure() }}
+      - name: Upload execution reports
+        if: ${{ always() }}
         uses: actions/upload-artifact@v7
         with:
           name: flext-ci-reports-${{ github.run_id }}
@@ -247,26 +290,49 @@ jobs:
             .reports/**/junit.xml
             .reports/**/coverage.xml
             .reports/**/coverage.json
-            apps/*/.reports/**/junit.xml
-            apps/*/.reports/**/coverage.xml
-            apps/*/.reports/**/coverage.json
-          if-no-files-found: ignore
+            .reports/check/**/*.sarif
+            .reports/check/**/*.md
+            .reports/gates/**/original-receipt.json
+            .reports/gates/**/check/**/*.sarif
+            .reports/gates/**/check/**/*.md
+            .reports/codegen-plan.json
+            .reports/codegen-publication.json
+            .reports/codegen-publication/**/*.json
+            .reports/setup-operations/*.json
+            .reports/tests/**/suite-outcome.json
+            .reports/tests/**/selection-outcome.json
+            .reports/tests/**/inventory-outcome.json
+            .reports/tests/**/run-context.json
+            .reports/tests/**/selection-plan.json
+            .reports/tests/**/testmon-selection.json
+            .reports/tests/**/testmon-inventory.json
+            .reports/tests/**/run-accounting.json
+            .reports/tests/**/diagnostics.json
+            .reports/tests/**/original-receipt.json
+            .reports/tests/**/cache-before.json
+            .reports/tests/**/cache-after.json
+            .reports/tests/**/cache-policy.json
+            .reports/tests/**/markdown-reconciliation.json
+          include-hidden-files: true
+          if-no-files-found: error
           retention-days: 7
-      # Why: save on every outcome, a failing or budget-stopped make test
-      # included, under a key unique to this run, so every run hands the
-      # results it recorded to the next selection.
+      # Completed failing tests may save; cancelled/incomplete/corrupt runs cannot.
       - name: Save testmon database
-        if: ${{ always() }}
+        if: >-
+          ${{ always() && !cancelled() && steps.testmon_path.outputs.save_allowed == 'true' && steps.approval-test.outputs.testmon_saveable == 'true' && steps.approval-test.outputs.testmon_database == steps.testmon_path.outputs.database && steps.approval-test.outputs.testmon_digest != '' }}
         uses: actions/cache/save@v6
         with:
-          path: ~/.cache/flext/infra/testmon
-          key: ${{ runner.os }}-3.13-flext-testmon-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.approval-test.outputs.testmon_database }}
+          key: ${{ steps.testmon_path.outputs.key }}
 
 
-      # Why: save on every outcome — including a failing gate — so
-      # the next run starts warm. Only written when the restore missed.
+      # Save a new immutable generation after completed failures as well as
+      # successes, so warm restores never discard new provisioning progress.
       - name: Save tool caches
-        if: ${{ always() && steps.tool-cache.outputs.cache-hit != 'true' }}
+        # Native cache action access mode remains authoritative before upload.
+        # Only declared events may publish; fork requests remain restore-only.
+        if: >-
+          ${{ always() && !cancelled() && steps.tool-cache.outcome == 'success' && steps.tool-cache.outputs.cache-primary-key != '' && ((github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')) || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)) }}
         uses: actions/cache/save@v6
         with:
           path: |
@@ -279,7 +345,8 @@ jobs:
             .hypothesis
             ~/.cache/uv
             ~/.local/share/mise
-          key: ${{ runner.os }}-3.13-tools-${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml') }}
+            !~/.local/share/mise/shims
+          key: ${{ steps.tool-cache.outputs.cache-primary-key }}
 
   # End SECTION: ci job
 
@@ -304,107 +371,85 @@ jobs:
         with:
           fetch-depth: 0
           submodules: false
-      # Cross-repo private git dependencies: the workflow token is scoped to
-      # this repository only, so it cannot clone siblings that turn private.
-      # Every declared sibling is public today and resolves anonymously; the
-      # credential exists for the private-sibling scenario. When the org
-      # installs its cross-repo dependency GitHub App and exposes
-      # CI_DEPENDENCIES_APP_ID / CI_DEPENDENCIES_APP_PRIVATE_KEY, mint a
-      # short-lived installation token and scope it to github.com clones.
-      # Absent secrets make this step a recorded NOT EXECUTED while the
-      # repository has not declared the credential requirement; a repository
-      # that declares the CI_DEPENDENCIES_REQUIRED repo variable fails the
-      # job non-zero with a typed message and without exposing any secret
-      # value (absence normalized as success is a defect).
-      - name: Mint cross-repo dependency credential
-        env:
-          CI_DEPS_APP_ID: ${{ secrets.CI_DEPENDENCIES_APP_ID }}
-          CI_DEPS_APP_KEY: ${{ secrets.CI_DEPENDENCIES_APP_PRIVATE_KEY }}
-          CI_DEPS_REQUIRED: '0'
+          persist-credentials: false
+      - name: Install the mise release pinned by mise.lock
+        shell: bash
         run: |
-          set -euo pipefail
-          if [ -z "$CI_DEPS_APP_ID" ] || [ -z "$CI_DEPS_APP_KEY" ]; then
-            case "$CI_DEPS_REQUIRED" in
-              1 | true | TRUE | True | yes | YES | Yes)
-                echo "ERROR[CI_CREDENTIAL_REQUIRED]: CI_DEPENDENCIES_APP_ID/CI_DEPENDENCIES_APP_PRIVATE_KEY are declared required by this repository and are absent or empty" >&2
-                exit 1
-                ;;
-              *)
-                echo "NOT EXECUTED: CI_DEPENDENCIES_* secrets absent, no cross-repo credential minted"
-                exit 0
-                ;;
-            esac
-          fi
-          identity_root="$RUNNER_TEMP/flext-cross-repo-deps"
-          install -d -m 700 "$identity_root"
-          key_path="$identity_root/app-key.pem"
-          printf '%s\n' "$CI_DEPS_APP_KEY" > "$key_path.new"
-          chmod 600 "$key_path.new"
-          mv "$key_path.new" "$key_path"
-          b64url() {
-            openssl base64 -A | tr '+/' '-_' | tr -d '='
+          set -eu
+          mise_system="${RUNNER_OS}"
+          if [ "${mise_system}" = "macOS" ]; then mise_system=Darwin; fi
+          case "${RUNNER_OS}-${RUNNER_ARCH}" in
+            Windows-X64) mise_machine=AMD64 ;;
+            Linux-ARM64) mise_machine=aarch64 ;;
+            *-X64) mise_machine=x86_64 ;;
+            *-ARM64) mise_machine=arm64 ;;
+            *) echo "ERROR: unsupported runner identity ${RUNNER_OS}-${RUNNER_ARCH}" >&2; exit 2 ;;
+          esac
+          case "${mise_system}/${mise_machine}" in
+            Linux/x86_64) mise_platform=linux-x64 ;;
+            Linux/aarch64) mise_platform=linux-arm64 ;;
+            Darwin/x86_64) mise_platform=macos-x64 ;;
+            Darwin/arm64) mise_platform=macos-arm64 ;;
+            Windows/AMD64) mise_platform=windows-x64 ;;
+            *) echo "ERROR: no mise.lock platform for ${RUNNER_OS}-${RUNNER_ARCH}" >&2; exit 2 ;;
+          esac
+          mise_field() {
+            awk -v section="[tools.\"github:jdx/mise\".\"platforms.${mise_platform}\"]" -v key="$1" '
+              $0 == section { inside = 1; next }
+              inside && substr($0, 1, 1) == "[" { exit }
+              inside && $1 == key { gsub(/"/, "", $3); print $3; exit }
+            ' mise.lock
           }
-          now=$(date +%s)
-          header='{"alg":"RS256","typ":"JWT"}'
-          payload=$(printf '{"iat":%s,"exp":%s,"iss":"%s"}' "$((now - 60))" "$((now + 540))" "$CI_DEPS_APP_ID")
-          input="$(printf %s "$header" | b64url).$(printf %s "$payload" | b64url)"
-          signature=$(printf %s "$input" | openssl dgst -sha256 -sign "$key_path" | b64url)
-          jwt="$input.$signature"
-          # Credential mint without curl-pipe-to-shell (semgrep gha-curl-pipe-shell):
-          # responses land in a temp file and are parsed from disk, never piped.
-          response_file="$identity_root/github-api-response.json"
-          curl -sfS -X GET -H "Authorization: Bearer $jwt" -H "Accept: application/vnd.github+json" -o "$response_file" https://api.github.com/app/installations
-          installation_id=$(python3 -c 'import json, sys; entries = json.load(open(sys.argv[1])); assert len(entries) == 1, f"expected exactly one app installation, got {len(entries)}"; print(entries[0]["id"])' "$response_file")
-          curl -sfS -X POST -H "Authorization: Bearer $jwt" -H "Accept: application/vnd.github+json" -o "$response_file" "https://api.github.com/app/installations/$installation_id/access_tokens"
-          access_token=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["token"])' "$response_file")
-          rm -f "$response_file"
-          echo "::add-mask::$access_token"
-          git config --global url."https://x-access-token:${access_token}@github.com/".insteadOf "https://github.com/"
-          rm -f "$key_path"
+          mise_url="$(mise_field url)"
+          mise_checksum="$(mise_field checksum)"
+          case "${mise_url}" in
+            https://github.com/jdx/mise/releases/download/*) ;;
+            *) echo "ERROR: mise.lock has no GitHub release URL for ${mise_platform}: '${mise_url}'" >&2; exit 2 ;;
+          esac
+          case "${mise_checksum}" in
+            sha256:*) mise_sha256="${mise_checksum#sha256:}" ;;
+            *) echo "ERROR: mise.lock has no sha256 for ${mise_platform}: '${mise_checksum}'" >&2; exit 2 ;;
+          esac
+          mise_stage="${RUNNER_TEMP}/mise-install"
+          mkdir -p "${mise_stage}" "${HOME}/.local/bin"
+          mise_archive="${mise_stage}/${mise_url##*/}"
+          curl --proto '=https' --tlsv1.2 -fsSL -o "${mise_archive}" "${mise_url}"
+          if command -v sha256sum >/dev/null 2>&1; then
+            echo "${mise_sha256}  ${mise_archive}" | sha256sum -c -
+          else
+            echo "${mise_sha256}  ${mise_archive}" | shasum -a 256 -c -
+          fi
+          case "${mise_archive}" in
+            *.zip) unzip -q "${mise_archive}" -d "${mise_stage}" ;;
+            *) tar -xf "${mise_archive}" -C "${mise_stage}" ;;
+          esac
+          if [ "${RUNNER_OS}" = "Windows" ]; then
+            cp "${mise_stage}/mise/bin/mise.exe" "${HOME}/.local/bin/mise.exe"
+          else
+            install -m 0755 "${mise_stage}/mise/bin/mise" "${HOME}/.local/bin/mise"
+          fi
+          echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+          echo "${HOME}/.local/share/mise/shims" >> "${GITHUB_PATH}"
+          mise_pin="$(awk 'index($0, "[[tools.\"github:jdx/mise\"]]") == 1 { inside = 1; next } inside && substr($0, 1, 1) == "[" { exit } inside && $1 == "version" { gsub(/[",]/, "", $3); print $3; exit }' mise.lock)"
+          if [ -z "${mise_pin}" ]; then
+            printf 'ERROR: mise.lock pins no github:jdx/mise release; run make upg\n' >&2
+            exit 2
+          fi
+          "${HOME}/.local/bin/mise" install --locked "github:jdx/mise"
+          mise_path="$("${HOME}/.local/bin/mise" which mise)"
+          mise_receipt="$("${mise_path}" --version | cut -d ' ' -f1)"
+          if [ "${mise_receipt}" != "${mise_pin}" ]; then
+            printf 'ERROR: provisioned Mise %s differs from mise.lock pin %s; run make setup\n' "${mise_receipt}" "${mise_pin}" >&2
+            exit 2
+          fi
+          echo "${mise_path%/*}" >> "${GITHUB_PATH}"
 
       - name: Boot
         run: CI=Y make setup
       - name: Release plan and guard
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
-        run: make release-plan
+        run: CI=Y make release-plan
   # End SECTION: release-plan job
 
-  # === SECTION: merge-guard job (managed) ===
-  merge-guard:
-    name: merge-guard
-    permissions:
-      contents: read
-    # Draft is the typed WIP state: no repository Action is selected until the
-    # same PR is promoted to Review with a non-WIP head.
-    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == false }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout promoted head
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 1
-          # Inspect the PR head commit, not the refs/pull/N/merge commit that
-          # actions/checkout selects by default on pull_request events; the
-          # merge commit subject would never carry the WIP marker.
-          ref: ${{ github.event.pull_request.head.sha }}
-      - name: Block WIP heads from protected integration branches
-        env:
-          BASE_REF: ${{ github.base_ref }}
-        run: |
-          set -eu
-          case "$BASE_REF" in
-            dev|develop|0.12.0-dev)
-              ;;
-            *)
-              echo "Merge guard passed for $(git rev-parse HEAD) -> $BASE_REF"
-              exit 0
-              ;;
-          esac
-          subject=$(git log -1 --format=%s)
-          if printf '%s' "$subject" | grep -qiE '^\[WIP\]|^WIP|^wip'; then
-            echo "WIP head cannot merge into ${BASE_REF}: ${subject}"
-            exit 1
-          fi
-          echo "Merge guard passed for $(git rev-parse HEAD) -> $BASE_REF"
-  # End SECTION: merge-guard job
+

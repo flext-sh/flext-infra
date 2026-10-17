@@ -7,24 +7,26 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated, override
+from typing import ClassVar, override
 
 from flext_cli import cli
 
-from flext_core import r
-from flext_infra import c, m, p, t, u
-from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
-from flext_infra.refactor._census_collect import FlextInfraRefactorCensusCollectMixin
-from flext_infra.refactor._census_collect_helpers import (
-    FlextInfraRefactorCensusCollectHelpersMixin,
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
+from flext_infra.codemod import (
+    FlextInfraCodemodDuplicateApply,
+    FlextInfraCodemodSemanticApply,
 )
-from flext_infra.refactor._census_filters import FlextInfraRefactorCensusFiltersMixin
-from flext_infra.refactor._census_objects import FlextInfraRefactorCensusObjectsMixin
-from flext_infra.refactor._census_project import FlextInfraRefactorCensusProjectMixin
-from flext_infra.refactor._census_removal import FlextInfraRefactorCensusRemovalMixin
-from flext_infra.refactor._census_render import FlextInfraRefactorCensusRenderMixin
-from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+from flext_infra.refactor import (
+    FlextInfraRefactorCensusCollectHelpersMixin,
+    FlextInfraRefactorCensusCollectMixin,
+    FlextInfraRefactorCensusFiltersMixin,
+    FlextInfraRefactorCensusObjectsMixin,
+    FlextInfraRefactorCensusProjectMixin,
+    FlextInfraRefactorCensusRemovalMixin,
+    FlextInfraRefactorCensusRenderMixin,
+)
 
 
 class FlextInfraRefactorCensus(
@@ -43,64 +45,39 @@ class FlextInfraRefactorCensus(
     codemod gate); the census reports what only a workspace object inventory
     can see — duplicate definitions, unreferenced objects and tier placement —
     and, when applying, removes the unreferenced objects it proved removable.
+    Immutable census options are composed as data, independently of the service
+    lifecycle and injected source-preview capability.
     """
 
-    json_output: Annotated[
-        str | None,
-        m.Field(description="Path to write JSON report"),
-    ] = None
-    impact_map_output: Annotated[
-        str | None,
-        m.Field(description="Path to write dry-run impact map JSON"),
-    ] = None
-    kinds: Annotated[
-        t.StrSequence | None,
-        m.Field(description="Optional symbol-kind filters; repeat --kinds NAME"),
-    ] = None
-    rules: Annotated[
-        t.StrSequence | None,
-        m.Field(description="Optional violation-rule filters; repeat --rules NAME"),
-    ] = None
-    families: Annotated[
-        t.StrSequence | None,
-        m.Field(
-            description="Optional namespace-family filters; repeat --families NAME",
-        ),
-    ] = None
-    include_local_scopes: Annotated[
-        bool,
-        m.Field(description="Include locals, parameters, and nested scopes"),
-    ] = True
+    # Keep the options policy that the former right-hand model base supplied.
+    model_config: ClassVar[m.ConfigDict] = m.Infra.CensusOptions.model_config
+
+    options: m.Infra.CensusOptions = m.Field(
+        default_factory=m.Infra.CensusOptions,
+        description="Validated census filters and report destinations",
+    )
+
+    source_preview: t.Port[p.Infra.SourcePreview] = m.Field(
+        exclude=True,
+        description="Injected authenticated source preview capability",
+    )
+    workspace_factory: Callable[[Path, Path | None], p.Infra.RopeWorkspaceDsl] = (
+        m.Field(exclude=True, description="Injected candidate Rope workspace factory")
+    )
 
     @property
     def json_output_path(self) -> Path | None:
         """Resolved JSON export path when provided."""
-        path: Path | None = u.Infra.normalize_optional_path(self.json_output)
+        path: Path | None = u.Infra.normalize_optional_path(self.options.json_output)
         return path
 
     @property
     def impact_map_output_path(self) -> Path | None:
         """Resolved impact-map export path when provided."""
-        path: Path | None = u.Infra.normalize_optional_path(self.impact_map_output)
+        path: Path | None = u.Infra.normalize_optional_path(
+            self.options.impact_map_output,
+        )
         return path
-
-    @property
-    @override
-    def kind_names(self) -> t.StrSequence | None:
-        """Normalized symbol-kind filters."""
-        return u.Infra.normalize_sequence_values(self.kinds)
-
-    @property
-    @override
-    def rule_names(self) -> t.StrSequence | None:
-        """Normalized violation-rule filters."""
-        return u.Infra.normalize_sequence_values(self.rules)
-
-    @property
-    @override
-    def family_names(self) -> t.StrSequence | None:
-        """Normalized family filters."""
-        return u.Infra.normalize_sequence_values(self.families)
 
     @property
     @override
@@ -144,20 +121,91 @@ class FlextInfraRefactorCensus(
 
         """
         started = time.monotonic()
-        with FlextInfraRopeWorkspace.open_workspace(
+        with self.workspace_factory(
             self.root,
-            rope_repository_root=self._rope_root_for_selection(),
+            self._rope_root_for_selection(),
         ) as rope:
-            impact_report = self._collect_report(rope)
+            constant_edits: t.VariadicTuple[m.Infra.SemanticMigrationEdit] = ()
+            if (
+                (rule_names := u.Infra.normalize_sequence_values(self.options.rules))
+                is not None
+                and c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS in rule_names
+            ):
+                planned_constants = FlextInfraCodemodSemanticApply.census_constants(
+                    self.root,
+                    rope,
+                    apply=self.apply_changes and not self.effective_dry_run,
+                    source_preview=self.source_preview,
+                    workspace_factory=self.workspace_factory,
+                )
+                if planned_constants.failure:
+                    # An unprovable constant-consumer phase is reported
+                    # read-only: the census never aborts the other actionable
+                    # rewrites the mod loop already applied.
+                    cli.display_text(
+                        "census: constant-consumers read-only "
+                        f"reason={planned_constants.error or 'unprovable rewrite'}",
+                    )
+                else:
+                    constant_edits = planned_constants.value
+                    cli.display_text(
+                        "census: constant-consumers "
+                        f"files={len(constant_edits)} "
+                        f"bindings={sum(len(edit.changes) for edit in constant_edits)} "
+                        f"applied={self.apply_changes and not self.effective_dry_run}",
+                    )
+                rope.refresh()
+            impact_report = self._collect_report(
+                rope, source_preview=self.source_preview
+            )
             report = impact_report
+            duplicate_plans: t.VariadicTuple[m.Infra.DuplicateCurePlan] = ()
+            duplicate_files = duplicate_copies = duplicate_bindings = 0
+            if (
+                rule_names := u.Infra.normalize_sequence_values(self.options.rules)
+            ) is not None and c.Infra.CensusRule.DUPLICATE in rule_names:
+                cure = FlextInfraCodemodDuplicateApply.census_duplicates(
+                    self.root,
+                    rope,
+                    impact_report.duplicates,
+                    apply=self.apply_changes and not self.effective_dry_run,
+                ).unwrap()
+                duplicate_plans = cure.plans
+                duplicate_files = cure.files_changed
+                duplicate_copies = cure.copies_removed
+                duplicate_bindings = cure.bindings_rewired
+                cli.display_text(
+                    "census: duplicate-cure "
+                    f"files={duplicate_files} "
+                    f"copies={duplicate_copies} "
+                    f"bindings={duplicate_bindings} "
+                    f"plans={len(duplicate_plans)} "
+                    f"applied={self.apply_changes and not self.effective_dry_run}",
+                )
+                if duplicate_files:
+                    rope.reload()
+                    report = self._collect_report(
+                        rope, source_preview=self.source_preview
+                    )
             if (
                 self.apply_changes
                 and not self.effective_dry_run
-                and self._apply_removal_candidates(rope, impact_report)
+                and self._apply_removal_candidates(rope, report)
             ):
-                report = self._collect_report(rope)
+                rope.refresh()
+                report = self._collect_report(rope, source_preview=self.source_preview)
         finalized = report.model_copy(
-            update={"scan_duration_seconds": time.monotonic() - started},
+            update={
+                "scan_duration_seconds": time.monotonic() - started,
+                "constant_consumer_files": len(constant_edits),
+                "constant_consumer_bindings": sum(
+                    len(edit.changes) for edit in constant_edits
+                ),
+                "duplicate_cure_files": duplicate_files,
+                "duplicate_cure_copies": duplicate_copies,
+                "duplicate_cure_bindings": duplicate_bindings,
+                "duplicate_cure_plans": duplicate_plans,
+            },
         )
         return finalized, impact_report
 

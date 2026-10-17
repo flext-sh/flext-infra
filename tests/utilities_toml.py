@@ -9,11 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_tests import tm
-
-from flext_core import r
-from flext_infra import config, u
-from tests import c, m, p, t
+from flext_infra import config, r, u
+from tests import c, m, p, t, tm
 
 
 class TestsFlextInfraUtilitiesTomlMixin:
@@ -32,7 +29,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
             f'version = "{version}"\n'
             f'backend = "aqua:tamasfe/{tool}"\n'
             f'specifiers = ["{selector}"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
         )
 
     @staticmethod
@@ -44,7 +41,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
 
         """
         lock = Path(__file__).resolve().parents[1] / c.Infra.MISE_LOCK_FILENAME
-        return lock.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        return lock.read_text(encoding=c.DEFAULT_ENCODING)
 
     @staticmethod
     def pinned_mise_version(lock_text: str, tool: str) -> str:
@@ -65,18 +62,16 @@ class TestsFlextInfraUtilitiesTomlMixin:
 
     @staticmethod
     def seed_locked_taplo(root: Path) -> None:
-        """Pin Taplo under ``root`` exactly as this checkout's committed lock does.
+        """Seed the complete committed mise.lock into ``root``.
 
-        Generation formats TOML only through the release ``mise.lock`` pins,
-        found at or above the generated tree, so a fixture tree carries it.
+        For a root whose Mise declaration the conform publishes itself: that
+        declaration resolves only against its sibling lock. Native tool
+        identities and metadata are preserved; no selector is resolved.
         """
-        tool = c.Infra.TAPLO_MISE_TOOL_NAME
-        TestsFlextInfraUtilitiesTomlMixin.write_mise_lock(
-            root,
-            tool,
-            TestsFlextInfraUtilitiesTomlMixin.pinned_mise_version(
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / c.Infra.MISE_LOCK_FILENAME,
                 TestsFlextInfraUtilitiesTomlMixin.repo_mise_lock(),
-                tool,
             ),
         )
 
@@ -88,7 +83,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
             The resulting ``str``.
 
         """
-        return tm.not_none(plan.desired_content).decode(c.Cli.ENCODING_DEFAULT)
+        return tm.not_none(plan.desired_content).decode(c.DEFAULT_ENCODING)
 
     @staticmethod
     def infra_mapping(value: t.JsonMapping) -> t.JsonMapping:
@@ -203,7 +198,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
             TypeError: If normalized TOML document is not a mapping.
 
         """
-        normalized: t.JsonValue = u.normalize_to_json_value(doc.unwrap())
+        normalized = u.Cli.normalize_json_value(doc.unwrap())
         tm.that(normalized, is_=Mapping)
         if not isinstance(normalized, Mapping):
             msg = "normalized TOML document is not a mapping"
@@ -222,7 +217,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
             TypeError: If normalized TOML value is not a mapping.
 
         """
-        normalized: t.JsonValue = u.normalize_to_json_value(value)
+        normalized = u.Cli.normalize_json_value(value)
         tm.that(normalized, is_=Mapping)
         if not isinstance(normalized, Mapping):
             msg = "normalized TOML value is not a mapping"
@@ -241,7 +236,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
             TypeError: If normalized TOML value is not a list.
 
         """
-        normalized: t.JsonValue = u.normalize_to_json_value(value)
+        normalized = u.Cli.normalize_json_value(value)
         tm.that(normalized, is_=list)
         if not isinstance(normalized, list):
             msg = "normalized TOML value is not a list"
@@ -261,7 +256,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
             TypeError: If normalized TOML strings are not a list.
 
         """
-        normalized: t.JsonValue = u.normalize_to_json_value(value)
+        normalized = u.Cli.normalize_json_value(value)
         tm.that(normalized, is_=list)
         if not isinstance(normalized, list):
             msg = "normalized TOML strings are not a list"

@@ -6,13 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import operator
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
+)
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -90,11 +93,10 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         """
         result: t.MutableSequenceOf[m.Infra.SymbolInfo] = []
         pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(rope_project, resource)
-        tree: p.AttributeProbe = pymodule.get_ast()
-        body: p.AttributeProbe = getattr(tree, "body", ())
-        if not isinstance(body, (list, tuple)):
+        tree = pymodule.get_ast()
+        if not isinstance(tree, ast.Module):
             return result
-        for node in body:
+        for node in tree.body:
             result.extend(
                 FlextInfraUtilitiesRopeAnalysisIntrospection._module_symbols_from_node(
                     node,
@@ -144,13 +146,10 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
             Assignment-like target names from one top-level AST node.
 
         """
-        if node_kind == "Assign":
-            raw_targets: p.AttributeProbe = getattr(node, "targets", ())
-            if not isinstance(raw_targets, (list, tuple)):
-                return ()
+        if isinstance(node, ast.Assign):
             return tuple(
                 name
-                for target in raw_targets
+                for target in node.targets
                 if (
                     name
                     := FlextInfraUtilitiesRopeAnalysisIntrospection._ast_named_value(
@@ -158,9 +157,10 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
                     )
                 )
             )
-        if node_kind == "AnnAssign":
-            target: p.AttributeProbe = getattr(node, "target", None)
-            name = FlextInfraUtilitiesRopeAnalysisIntrospection._ast_named_value(target)
+        if isinstance(node, ast.AnnAssign):
+            name = FlextInfraUtilitiesRopeAnalysisIntrospection._ast_named_value(
+                node.target,
+            )
             return (name,) if name else ()
         if node_kind == "TypeAlias":
             name = FlextInfraUtilitiesRopeAnalysisIntrospection._ast_named_value(node)

@@ -11,11 +11,12 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_core import r
-from flext_infra import c, t
-from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
-from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from flext_infra import c, r, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDocs,
+    FlextInfraUtilitiesDocsApi,
+    FlextInfraUtilitiesDocsScope,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -35,7 +36,7 @@ class FlextInfraUtilitiesDocsValidate:
 
         """
         text = skill_path.read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+            encoding=c.DEFAULT_ENCODING,
             errors=c.Infra.IGNORE,
         )
         return "adr" in text.lower()
@@ -204,7 +205,7 @@ class FlextInfraUtilitiesDocsValidate:
             f"`{c.Infra.DEFAULT_DOCS_OUTPUT_DIR}/{c.Infra.DOCS_VALIDATE_REPORT_FILENAME}`.\n"
         )
         try:
-            _ = path.write_text(content, encoding=c.Cli.ENCODING_DEFAULT)
+            _ = path.write_text(content, encoding=c.DEFAULT_ENCODING)
         except OSError as exc:
             return r[bool].fail(f"failed to write {path}: {exc}")
         return r[bool].ok(value=True)

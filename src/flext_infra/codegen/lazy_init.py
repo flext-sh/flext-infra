@@ -13,17 +13,14 @@ from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_core import r
-from flext_infra import c, config, m, t, u
-from flext_infra.codegen._execution import FlextInfraCodegenExecutionBase
-from flext_infra.codegen._lazy_init_generation import (
+from flext_infra import c, config, m, r, t, u
+from flext_infra.codegen import (
+    FlextInfraCodegenExecutionBase,
     FlextInfraCodegenLazyInitGenerationMixin,
-)
-from flext_infra.codegen._lazy_init_projection_manifest import (
+    FlextInfraCodegenLazyInitPlanner,
     FlextInfraCodegenLazyInitProjectionManifest,
 )
-from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
-from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+from flext_infra.workspace import FlextInfraRopeWorkspace
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -85,7 +82,11 @@ class FlextInfraCodegenLazyInit(
             )
         return r[bool].ok(value=True)
 
-    def plan_files(self) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+    def plan_files(
+        self,
+        *,
+        evidence_root: Path | None = None,
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Return one complete immutable lazy-init analysis receipt.
 
         Returns:
@@ -115,6 +116,13 @@ class FlextInfraCodegenLazyInit(
         if planned.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
         analysis = planned.value
+        evidence = u.Infra.publish_refactor_report_evidence(
+            resolved_repository_root if evidence_root is None else evidence_root,
+            analysis,
+            relative_path=c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH,
+        )
+        if evidence.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(evidence)
         changed = tuple(
             plan
             for plan in analysis.files
@@ -148,43 +156,14 @@ class FlextInfraCodegenLazyInit(
             if self.project_scope_roots is None
             else tuple(sorted({root.resolve() for root in self.project_scope_roots}))
         )
-        analyses: list[m.Infra.CodegenPhaseAnalysis] = []
-        inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
-        target_roots = 0
-        for root in roots:
-            with FlextInfraRopeWorkspace.open_workspace(
-                root,
-                rope_repository_root=root,
-            ) as rope:
-                if self.target_module:
-                    targets = self._target_package_dirs(rope.workspace_index, root)
-                    if not targets:
-                        continue
-                    target_roots += 1
-                    if target_roots > 1:
-                        return r[m.Infra.CodegenPhaseAnalysis].fail(
-                            f"lazy-init target module is ambiguous: "
-                            f"{self.target_module}",
-                        )
-                planned = self._plan_open_workspace(rope)
-                if planned.failure:
-                    return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
-                analyses.append(planned.value)
-                for state in planned.value.inputs:
-                    previous = inputs.get(state.path)
-                    if previous is not None and previous != state:
-                        return r[m.Infra.CodegenPhaseAnalysis].fail(
-                            f"lazy-init shared input changed between "
-                            f"repositories: {state.path}",
-                        )
-                    inputs[state.path] = state
+        composed_analyses = self._composed_repository_analyses(roots)
+        if composed_analyses.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(composed_analyses)
+        analyses, inputs, target_roots = composed_analyses.value
         if self.target_module and not target_roots:
             return r[m.Infra.CodegenPhaseAnalysis].fail(
                 f"lazy-init target module not found: {self.target_module}",
             )
-        stable = self._verify_snapshots(inputs)
-        if stable.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(stable)
         composed = tuple(file for analysis in analyses for file in analysis.files)
         manifests = (
             FlextInfraCodegenLazyInitProjectionManifest.projection_manifest_plans(
@@ -195,7 +174,7 @@ class FlextInfraCodegenLazyInit(
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(manifests)
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
-                phase="lazy-init",
+                phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
                 files=composed + manifests.value,
                 inputs=tuple(inputs[path] for path in sorted(inputs)),
                 publications=tuple(
@@ -203,6 +182,57 @@ class FlextInfraCodegenLazyInit(
                 ),
             ),
         )
+
+    def _composed_repository_analyses(
+        self,
+        roots: t.VariadicTuple[Path],
+    ) -> p.Result[
+        t.Triple[
+            list[m.Infra.CodegenPhaseAnalysis],
+            t.MappingKV[Path, m.Cli.AtomicFileState],
+            int,
+        ]
+    ]:
+        """Plan every selected repository and fold their shared inputs.
+
+        Returns:
+            The resulting ``p.Result[t.Triple[list[m.Infra.CodegenPhaseAnalysis],
+                t.MappingKV[Path, m.Cli.AtomicFileState], int]]``.
+
+        """
+        result_type = r[
+            t.Triple[
+                list[m.Infra.CodegenPhaseAnalysis],
+                t.MappingKV[Path, m.Cli.AtomicFileState],
+                int,
+            ]
+        ]
+        analyses: list[m.Infra.CodegenPhaseAnalysis] = []
+        inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
+        target_roots = 0
+        for root in roots:
+            import_roots = u.Infra.import_project_roots(root)
+            with FlextInfraRopeWorkspace.open_workspace(
+                root,
+                rope_repository_root=import_roots[0],
+            ) as rope:
+                if self.target_module:
+                    targets = self._target_package_dirs(rope.workspace_index, root)
+                    if not targets:
+                        continue
+                    target_roots += 1
+                    if target_roots > 1:
+                        return result_type.fail(
+                            f"lazy-init target module is ambiguous: "
+                            f"{self.target_module}",
+                        )
+                planned = self._plan_open_workspace(rope)
+                if planned.failure:
+                    return result_type.from_failure(planned)
+                analyses.append(planned.value)
+                for state in planned.value.inputs:
+                    inputs[state.path] = state
+        return result_type.ok((analyses, inputs, target_roots))
 
     def _target_package_dirs(
         self,
@@ -272,70 +302,107 @@ class FlextInfraCodegenLazyInit(
                 reverse=True,
             ),
         )
-        target_package_dir: Path | None = None
-        if self.target_module:
-            sorted_target_dirs = self._target_package_dirs(
-                workspace_index,
-                rope.repository_root.resolve(),
-            )
-            if not sorted_target_dirs:
-                return r[m.Infra.CodegenPhaseAnalysis].fail(
-                    f"lazy-init target module not found: {self.target_module}",
-                )
-            if sorted_target_dirs[1:]:
-                return r[m.Infra.CodegenPhaseAnalysis].fail(
-                    f"lazy-init target module is ambiguous: {self.target_module}",
-                )
-            target_package_dir = sorted_target_dirs[0]
-            if target_package_dir not in indexed_package_dirs:
-                return r[m.Infra.CodegenPhaseAnalysis].fail(
-                    f"lazy-init target belongs to retired support: "
-                    f"{self.target_module}",
-                )
+        target = self._resolved_target_package_dir(
+            workspace_index,
+            indexed_package_dirs,
+        )
+        if target.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(target)
         package_dirs = self._package_dirs_for_target(
             indexed_package_dirs,
-            target_package_dir=target_package_dir,
+            target_package_dir=target.value[0],
             repository_root=resolved_repository_root,
         )
         snapshots = self._snapshot_planner_inputs(workspace_index, package_dirs)
         if snapshots.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(snapshots)
+        return self._analyzed_workspace(
+            rope,
+            package_dirs,
+            target.value[0],
+            workspace_index,
+            snapshots.value,
+        )
+
+    def _resolved_target_package_dir(
+        self,
+        workspace_index: m.Infra.RopeWorkspaceIndex,
+        indexed_package_dirs: t.VariadicTuple[Path],
+    ) -> p.Result[t.Pair[Path | None, bool]]:
+        """Resolve the single target package dir when a target module is set.
+
+        Returns:
+            The resulting ``p.Result[t.Pair[Path | None, bool]]`` where the
+            boolean marks resolution (False: no target module is set).
+
+        """
+        result_type = r[t.Pair[Path | None, bool]]
+        if not self.target_module:
+            return result_type.ok((None, False))
+        sorted_target_dirs = self._target_package_dirs(
+            workspace_index,
+            self.repository_root.resolve(),
+        )
+        if not sorted_target_dirs:
+            return result_type.fail(
+                f"lazy-init target module not found: {self.target_module}",
+            )
+        if sorted_target_dirs[1:]:
+            return result_type.fail(
+                f"lazy-init target module is ambiguous: {self.target_module}",
+            )
+        target_package_dir = sorted_target_dirs[0]
+        if target_package_dir not in indexed_package_dirs:
+            return result_type.fail(
+                f"lazy-init target belongs to retired support: {self.target_module}",
+            )
+        return result_type.ok((target_package_dir, True))
+
+    def _analyzed_workspace(
+        self,
+        rope: FlextInfraRopeWorkspace,
+        package_dirs: t.VariadicTuple[Path],
+        target_package_dir: Path | None,
+        workspace_index: m.Infra.RopeWorkspaceIndex,
+        snapshots: t.MappingKV[Path, m.Cli.AtomicFileState],
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Plan every initializer, build file plans, and re-verify snapshots.
+
+        One writer per destination (render purity, v4 §2.1): templates own
+        every generated surface; alignment is a semantic phase of ``make
+        mod`` (codemod/semantic_apply.py phase 0), never a second writer
+        inside the gen transaction.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenPhaseAnalysis]``.
+
+        """
+        result_type = r[m.Infra.CodegenPhaseAnalysis]
         planner = FlextInfraCodegenLazyInitPlanner(
             rope_workspace=rope,
             lazy_init=config.Infra.tooling.lazy_init,
         )
         u.Cli.info(f"lazy-init: planning {len(package_dirs)} package dirs")
-        package_plans = self._plan_all_inits(
+        package_plans = planner.plan_all_inits(
             package_dirs,
-            planner=planner,
             target_package_dir=target_package_dir,
         )
-        if planner.collision_count:
-            return r[m.Infra.CodegenPhaseAnalysis].fail(
-                "lazy-init public export ownership is ambiguous: "
-                f"{planner.collision_count} collision(s)",
-            )
+        if package_plans.failure:
+            return result_type.from_failure(package_plans)
         file_plans = self._build_file_plans(
-            package_plans,
+            package_plans.value,
             index=workspace_index,
-            snapshots=snapshots.value,
+            snapshots=snapshots,
         )
         if file_plans.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(file_plans)
-        # One writer per destination (render purity, v4 §2.1): templates own
-        # every generated surface; alignment is a semantic phase of ``make
-        # mod`` (codemod/semantic_apply.py phase 0), never a second writer
-        # inside the gen transaction.
+            return result_type.from_failure(file_plans)
         all_plans = file_plans.value
-        stable = self._verify_snapshots(snapshots.value)
-        if stable.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(stable)
-        return r[m.Infra.CodegenPhaseAnalysis].ok(
+        return result_type.ok(
             m.Infra.CodegenPhaseAnalysis(
-                phase="lazy-init",
+                phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
                 files=all_plans,
-                inputs=tuple(snapshots.value[path] for path in sorted(snapshots.value)),
-                publications=tuple(package_plans),
+                inputs=tuple(snapshots[path] for path in sorted(snapshots)),
+                publications=package_plans.value,
             ),
         )
 

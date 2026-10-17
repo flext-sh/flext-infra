@@ -10,11 +10,14 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_core import build_lazy_import_map, install_lazy_exports
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra.gates.bandit import FlextInfraBanditGate
     from flext_infra.gates.base_gate import FlextInfraGate
+    from flext_infra.gates.codemod import FlextInfraCodemodGate
+    from flext_infra.gates.conflict_markers import FlextInfraConflictMarkersGate
+    from flext_infra.gates.deps import FlextInfraDepsGate
     from flext_infra.gates.direnv import FlextInfraDirenvGate
     from flext_infra.gates.duplication import FlextInfraDuplicationGate
     from flext_infra.gates.fresh_import import FlextInfraFreshImportGate
@@ -38,6 +41,9 @@ if TYPE_CHECKING:
 
 __all__: tuple[str, ...] = (
     "FlextInfraBanditGate",
+    "FlextInfraCodemodGate",
+    "FlextInfraConflictMarkersGate",
+    "FlextInfraDepsGate",
     "FlextInfraDirenvGate",
     "FlextInfraDuplicationGate",
     "FlextInfraFreshImportGate",
@@ -60,34 +66,34 @@ __all__: tuple[str, ...] = (
     "FlextInfraSmellsGate",
 )
 
-_LAZY_IMPORTS = MappingProxyType(
-    build_lazy_import_map(
-        MappingProxyType({
-            ".bandit": ("FlextInfraBanditGate",),
-            ".base_gate": ("FlextInfraGate",),
-            ".direnv": ("FlextInfraDirenvGate",),
-            ".duplication": ("FlextInfraDuplicationGate",),
-            ".fresh_import": ("FlextInfraFreshImportGate",),
-            ".index_declarations": ("FlextInfraIndexDeclarationsGate",),
-            ".layout": ("FlextInfraLayoutGate",),
-            ".loc_cap": ("FlextInfraLocCapGate",),
-            ".markdown": ("FlextInfraMarkdownGate",),
-            ".markdown_code": ("FlextInfraMarkdownCodeGate",),
-            ".markdown_code_sources": ("FlextInfraMarkdownCodeSources",),
-            ".markdown_format": ("FlextInfraMarkdownFormatGate",),
-            ".markdown_support": ("FlextInfraMarkdownGateBase",),
-            ".mypy": ("FlextInfraMypyGate",),
-            ".pyrefly": ("FlextInfraPyreflyGate",),
-            ".pyright": ("FlextInfraPyrightGate",),
-            ".ruff_format": ("FlextInfraRuffFormatGate",),
-            ".ruff_lint": ("FlextInfraRuffLintGate",),
-            ".runtime_census": ("FlextInfraRuntimeCensusGate",),
-            ".scanner_gate": ("FlextInfraScannerGateMixin",),
-            ".smells": ("FlextInfraSmellsGate",),
-        }),
-        alias_groups=MappingProxyType({}),
-        sort_keys=False,
-    ),
+install_lazy_exports(
+    __name__,
+    globals(),
+    MappingProxyType({
+        "FlextInfraBanditGate": ".bandit",
+        "FlextInfraCodemodGate": ".codemod",
+        "FlextInfraConflictMarkersGate": ".conflict_markers",
+        "FlextInfraDepsGate": ".deps",
+        "FlextInfraDirenvGate": ".direnv",
+        "FlextInfraDuplicationGate": ".duplication",
+        "FlextInfraFreshImportGate": ".fresh_import",
+        "FlextInfraGate": ".base_gate",
+        "FlextInfraIndexDeclarationsGate": ".index_declarations",
+        "FlextInfraLayoutGate": ".layout",
+        "FlextInfraLocCapGate": ".loc_cap",
+        "FlextInfraMarkdownCodeGate": ".markdown_code",
+        "FlextInfraMarkdownCodeSources": ".markdown_code_sources",
+        "FlextInfraMarkdownFormatGate": ".markdown_format",
+        "FlextInfraMarkdownGate": ".markdown",
+        "FlextInfraMarkdownGateBase": ".markdown_support",
+        "FlextInfraMypyGate": ".mypy",
+        "FlextInfraPyreflyGate": ".pyrefly",
+        "FlextInfraPyrightGate": ".pyright",
+        "FlextInfraRuffFormatGate": ".ruff_format",
+        "FlextInfraRuffLintGate": ".ruff_lint",
+        "FlextInfraRuntimeCensusGate": ".runtime_census",
+        "FlextInfraScannerGateMixin": ".scanner_gate",
+        "FlextInfraSmellsGate": ".smells",
+    }),
+    public_exports=__all__,
 )
-
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)

@@ -6,10 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import t
-from flext_infra.validate._pytest_runner.execution import (
-    FlextInfraPytestRunnerExecution,
-)
+from typing import TYPE_CHECKING
+
+from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerExecution
+
+if TYPE_CHECKING:
+    from flext_infra import t
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraPytestRunner(FlextInfraPytestRunnerExecution):

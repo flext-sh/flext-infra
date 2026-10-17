@@ -11,14 +11,171 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 
-from flext_infra import t
-from flext_infra._models.deps_toml import FlextInfraModelsDepsToml
-from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolConfig
-from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+from flext_infra import p, t
+from flext_infra._models import (
+    FlextInfraModelsDepsToml,
+    FlextInfraModelsDepsToolConfig,
+    FlextInfraModelsMixins,
+)
+from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
+from flext_infra._models.workspace import FlextInfraModelsWorkspace
+
+GitSourceUrlPrefixField = Annotated[
+    t.NonEmptyStr | None,
+    m.Field(
+        alias="git-source-url-prefix",
+        description="Explicit Git source URL scope",
+    ),
+]
+GitSourceRefFromField = Annotated[
+    t.NonEmptyStr | None,
+    m.Field(alias="git-source-ref-from", description="Explicit reference to migrate"),
+]
+GitSourceRefToField = Annotated[
+    t.NonEmptyStr | None,
+    m.Field(alias="git-source-ref-to", description="Replacement Git reference"),
+]
 
 
 class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsToml):
     """Models for dependency detection and modernization reporting."""
+
+    class ProjectPackagingDeclaration(m.ContractModel):
+        """Native packaging facts retained independently of Python export health."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="ignore",
+            frozen=True,
+            populate_by_name=True,
+        )
+        uv_package: Annotated[
+            bool | None,
+            m.Field(
+                validation_alias=m.AliasPath("tool", "uv", "package"),
+                description="Explicit native UV package participation declaration",
+            ),
+        ] = None
+        build_backend: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                validation_alias=m.AliasPath("build-system", "build-backend"),
+                description="Declared native Python build backend",
+            ),
+        ] = None
+
+    class ProjectMetadataState(m.ArbitraryTypesModel):
+        """One TOML ingress retaining metadata and its native packaging declaration."""
+
+        metadata: Annotated[
+            p.ProjectMetadata,
+            m.Field(description="Original canonical PEP 621 and FLEXT metadata"),
+        ]
+        packaging: Annotated[
+            FlextInfraModelsDeps.ProjectPackagingDeclaration,
+            m.Field(description="Packaging facts from the same parsed document"),
+        ]
+
+    class InstalledResourceSnapshot(m.ContractModel):
+        """An exact installed resource authenticated by its owning wheel inventory."""
+
+        resource: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(
+                description="Physical installed resource bytes verified against RECORD"
+            ),
+        ]
+        inventory: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(
+                min_length=1,
+                description="Owning distribution metadata and RECORD snapshots",
+            ),
+        ]
+
+    class RuntimeDependencyProvider(m.Value):
+        """One imported package associated with an authenticated locked supplier."""
+
+        modules: Annotated[
+            t.StrTuple,
+            m.Field(
+                min_length=1,
+                description="Native import identities supplied by metadata",
+            ),
+        ]
+        package: Annotated[
+            FlextInfraModelsWorkspace.LockedPackage,
+            m.Field(description="Exact package selected by the target's native lock"),
+        ]
+        requirement: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="Target-qualified PEP 508 requirement retaining its source"
+            ),
+        ]
+        inputs: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(
+                min_length=1, description="Authenticated distribution metadata states"
+            ),
+        ]
+
+    class RuntimeDependencyInputs(m.Value):
+        """Interpreter, lock and import-provider proof injected by the owner."""
+
+        target_root: Annotated[Path, m.Field(description="Selected repository root")]
+        python: Annotated[Path, m.Field(description="Elected consumer interpreter")]
+        lock: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Captured native UV lock of the selected runtime"),
+        ]
+        providers: Annotated[
+            t.VariadicTuple[FlextInfraModelsDeps.RuntimeDependencyProvider],
+            m.Field(description="All matching suppliers; ambiguity is preserved"),
+        ]
+        development_only: Annotated[
+            t.StrTuple,
+            m.Field(description="Contract-owned requirements forbidden in runtime"),
+        ]
+        inputs: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(
+                min_length=1,
+                description="Native lock and production-source input states",
+            ),
+        ]
+
+    class RuntimeDependencyPlan(m.Value):
+        """Calculated target requirements and unchanged diagnostic identities."""
+
+        source: Annotated[
+            t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+            m.Field(
+                min_length=1,
+                description="Production trees establishing applicability",
+            ),
+        ]
+        before: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(
+                description="Authenticated pyproject state consumed by native deptry"
+            ),
+        ]
+        dependencies: Annotated[
+            t.StrTuple,
+            m.Field(
+                description="Calculated runtime requirements, including marker variants"
+            ),
+        ]
+        unresolved_modules: Annotated[
+            t.StrTuple,
+            m.Field(description="Missing or ambiguous import suppliers remaining red"),
+        ]
+        inputs: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(
+                description="Every metadata, lock and source state backing this plan"
+            ),
+        ]
 
     class DependencyMarkerEnvironment(m.Value):
         """Complete PEP 508 facts reported by the consumer interpreter."""
@@ -81,7 +238,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             m.Field(description="Active consumer resolution constraints"),
         ]
 
-    class DetectCommand(mm.WriteMixin, m.ContractModel):
+    class DetectCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra deps detect``.
 
         Inherits ``apply``/``dry_run``, ``repository_root``, ``projects``,
@@ -97,7 +254,8 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             m.Field(None, description="Optional output report path"),
         ] = None
         quiet: Annotated[
-            bool, m.Field(default=False, description="Reduce command output"),
+            bool,
+            m.Field(default=False, description="Reduce command output"),
         ] = False
         no_fail: Annotated[
             bool,
@@ -143,10 +301,37 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
                 return None
             return Path(self.limits).expanduser().resolve()
 
-    class ExtraPathsCommand(mm.WriteMixin, m.ContractModel):
+    class ExtraPathsCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra deps extra-paths``."""
 
-    class ModernizeCommand(mm.WriteMixin, m.ContractModel):
+    class GitSourceReferenceMigration(m.ContractModel):
+        """Explicit source scope and reference transition; no source conversion."""
+
+        url_prefix: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^https://[^/?#]+/[^?#]+/$",
+                description=(
+                    "Canonical Git URL directory prefix selecting dependency sources"
+                ),
+            ),
+        ]
+        source_ref: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[^\s@#;]+$",
+                description="Only this existing explicit Git reference may change",
+            ),
+        ]
+        target_ref: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[^\s@#;]+$",
+                description="Operator-declared replacement Git reference",
+            ),
+        ]
+
+    class ModernizeCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra deps modernize``."""
 
         check: Annotated[
@@ -177,6 +362,9 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
                 ),
             ),
         ] = False
+        git_source_url_prefix: GitSourceUrlPrefixField = None
+        git_source_ref_from: GitSourceRefFromField = None
+        git_source_ref_to: GitSourceRefToField = None
 
     # Codegen consumes the pure pyproject
     # renderer directly, so no deps CLI payload remains for path/workspace modes.
@@ -202,7 +390,17 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
         payload: Annotated[
             t.MutableJsonMapping,
             m.Field(description="Validated plain TOML payload"),
-        ] = m.Field(default_factory=dict)
+        ] = m.Field(default_factory=dict[str, t.JsonValue])
+        document: Annotated[
+            t.Cli.TomlDocument | None,
+            m.Field(
+                default=None,
+                exclude=True,
+                description=(
+                    "Original parsed TOML tree retaining authored layout and comments"
+                ),
+            ),
+        ] = None
 
     class PackagedDataSelection(m.ContractModel):
         """Validated data inputs separated by Hatch selection semantics."""
@@ -219,7 +417,6 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
     class RuffProjectFacts(m.ContractModel):
         """Measured per-project facts the canonical Ruff phase derives from."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
         first_party: Annotated[
             t.StrSequence,
             m.Field(description="Detected first-party namespaces"),
@@ -235,12 +432,11 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
         analysis_exclusions: Annotated[
             t.StrSequence | None,
             m.Field(
-                default=None,
                 description=(
                     "Declared analysis exclusions; None derives workspace globs"
                 ),
             ),
-        ]
+        ] = None
         generated_python_roots: Annotated[
             t.StrSequence,
             m.Field(description="Generated python roots to exclude"),
@@ -411,7 +607,10 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             m.Field(0, description="Raw issue count"),
         ] = 0
 
-    class ProjectDependencyReport(mm.ProjectNameMixin, m.ArbitraryTypesModel):
+    class ProjectDependencyReport(
+        FlextInfraModelsMixins.ProjectNameMixin,
+        m.ArbitraryTypesModel,
+    ):
         """Project-level dependency report combining deptry results."""
 
         deptry: FlextInfraModelsDeps.DeptryReport = m.Field(description="Deptry report")
@@ -489,6 +688,46 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             description="Dependency limits",
             validate_default=True,
         )
+
+    class ToolingContextRequest(m.ArbitraryTypesModel):
+        """Declared inputs the modernizer resolves into a runtime context."""
+
+        planned_sources: Annotated[
+            t.MappingKV[Path, str],
+            m.Field(
+                exclude=True,
+                description="Captured Python candidate bytes overriding disk",
+            ),
+        ]
+
+        project_name: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Distribution name of the project"),
+        ]
+        package_name: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Importable package name of the project"),
+        ]
+        path: Annotated[
+            Path,
+            m.Field(description="Absolute path of the project's pyproject file"),
+        ]
+        topology: Annotated[
+            FlextInfraModelsDeps.PyprojectDeclaredTopology,
+            m.Field(description="Declared repository topology"),
+        ]
+        scaffold_project: Annotated[
+            FlextInfraConfigModelsScaffold.ScaffoldProjectSpec,
+            m.Field(description="Scaffold project specification"),
+        ]
+        runtime_dependency_overlay: Annotated[
+            t.StrSequence,
+            m.Field(description="Runtime dependency overlay requirement lines"),
+        ]
+        declared_project_dependencies: Annotated[
+            t.StrSequence,
+            m.Field(description="Declared project dependency requirement lines"),
+        ]
 
 
 __all__: list[str] = ["FlextInfraModelsDeps"]

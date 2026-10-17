@@ -9,10 +9,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import c, main as infra_main
-from tests import t, u
+from flext_infra import c, main
+from tests import t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -83,10 +82,12 @@ class TestsFlextInfraDepsModernizerPackaging:
         _ = u.Tests.write_standalone_workspace_manifest(
             root,
             "flext-packaging-fixture",
-            root_modules=[root_module],
-            root_packages=[root_package],
-            # The fixture package ships no cli module, so it declares none.
-            cli_module=False,
+            declaration=u.Tests.StandaloneManifestDeclaration(
+                root_modules=[root_module],
+                root_packages=[root_package],
+                # The fixture package ships no cli module, so it declares none.
+                cli_module=False,
+            ),
         )
         u.Tests.git_bootstrap(
             root,
@@ -109,7 +110,7 @@ class TestsFlextInfraDepsModernizerPackaging:
             The resulting ``int``.
 
         """
-        return infra_main([
+        return main([
             c.Infra.CLI_GROUP_CODEGEN,
             "conform",
             "--root",
@@ -159,8 +160,8 @@ class TestsFlextInfraDepsModernizerPackaging:
         }
         module_path = f"{c.Infra.DEFAULT_SRC_DIR}/{root_module}.py"
         tm.that(
-            set(u.Tests.toml_list(wheel["include"])),
-            eq={f"/{path}/**" for path in package_paths},
+            set(u.Tests.toml_list(wheel["only-include"])),
+            eq=package_paths,
         )
         tm.that(
             u.Tests.toml_mapping(wheel["force-include"]),
@@ -171,8 +172,8 @@ class TestsFlextInfraDepsModernizerPackaging:
             u.Tests.toml_mapping(wheel["force-include"])[module_path],
             eq=f"{root_module}.py",
         )
-        included = set(u.Tests.toml_list(sdist["include"]))
-        tm.that({f"/{path}/**" for path in package_paths} <= included, eq=True)
+        included = set(u.Tests.toml_list(sdist["only-include"]))
+        tm.that(package_paths <= included, eq=True)
         tm.that(u.Tests.toml_mapping(sdist["force-include"]), has=module_path)
         tm.that(
             u.Tests.toml_mapping(sdist["force-include"])[module_path],
@@ -201,7 +202,7 @@ class TestsFlextInfraDepsModernizerPackaging:
         )
         tm.that(u.Tests.toml_mapping(repaired["force-include"]), lacks="stale.txt")
 
-        fixed_point = infra_main([
+        fixed_point = main([
             c.Infra.CLI_GROUP_CODEGEN,
             "conform",
             "--root",

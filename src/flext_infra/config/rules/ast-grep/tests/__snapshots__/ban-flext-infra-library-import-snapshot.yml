@@ -1,0 +1,14 @@
+id: ban-flext-infra-library-import
+snapshots:
+  from rope.base.project import Project:
+    labels:
+    - source: rope.base.project
+      style: primary
+      start: 5
+      end: 22
+  import rope:
+    labels:
+    - source: rope
+      style: primary
+      start: 7
+      end: 11

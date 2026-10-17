@@ -9,17 +9,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import (
+from flext_infra import c, config
+from flext_infra.deps import (
     FlextInfraEnsurePyreflyConfigPhase,
     FlextInfraExtraPathsManager,
     FlextInfraPyprojectModernizer,
-    c,
-    config,
 )
-from tests import m, t, u
-from tests.unit.deps.extra_paths_support import ExtraPathsTestSupport
+from tests import m, t, tm, u
+from tests.unit.deps.extra_paths_support import TestsFlextInfraExtraPathsSupport
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -71,7 +69,7 @@ class TestsFlextInfraModernizerPyrefly:
     ) -> None:
         """Keep shared analyzer config invariant across checkout topologies."""
         tm.ok(u.Cli.run_raw(["git", "init"], cwd=tmp_path))
-        u.Tests.seed_locked_taplo(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
         u.Infra.runtime_environment_dir(tmp_path).mkdir(parents=True)
         child_origin = tmp_path / "child-origin"
         child_origin.mkdir()
@@ -268,35 +266,82 @@ class TestsFlextInfraModernizerPyrefly:
             "VALUE = 2\n",
             encoding="utf-8",
         )
-
-        tooling_runtime = tm.ok(
-            FlextInfraPyprojectModernizer(
-                repository_root=tmp_path,
-                skip_check=True,
-            ).resolve_tooling_context(
-                project_name="flext-consumer",
-                package_name="flext_consumer",
-                path=project_dir / c.PYPROJECT_FILENAME,
-                scaffold_project=config.Infra.codegen.scaffold.project,
-                upstream=next(
-                    profile.upstream
-                    for profile in config.Infra.codegen.scaffold.project.dependency_profiles
-                    if profile.project is None
-                ),
-                runtime_dependency_overlay=(),
-                declared_project_dependencies=(),
-                topology=m.Infra.PyprojectDeclaredTopology(
-                    declared_python_dirs=(source_dir,),
-                    declared_python_dirs_are_complete=True,
-                ),
-            ),
+        scaffold_project = config.Infra.codegen.scaffold.project
+        modernizer = FlextInfraPyprojectModernizer(
+            repository_root=tmp_path,
+            skip_check=True,
         )
+        topology = m.Infra.PyprojectDeclaredTopology(
+            declared_python_dirs=(source_dir,),
+            declared_python_dirs_are_complete=False,
+        )
+
+        request = m.Infra.ToolingContextRequest(
+            planned_sources={},
+            project_name=project_dir.name,
+            package_name=u.Tests.project_spec(project_dir.name).package_name,
+            path=project_dir / c.PYPROJECT_FILENAME,
+            scaffold_project=scaffold_project,
+            runtime_dependency_overlay=(),
+            declared_project_dependencies=(),
+            topology=topology,
+        )
+        source = u.Cli.toml_dumps(
+            u.Cli.toml_document_from_mapping({
+                c.Infra.PROJECT: {
+                    c.Infra.NAME: request.project_name,
+                    "version": "0.1.0",
+                },
+                c.Infra.TOOL: {
+                    "flext": {
+                        "docs": {"package_name": request.package_name},
+                    },
+                },
+            }),
+        )
+        tm.ok(u.Cli.atomic_write_text_file(request.path, source))
+        tooling_runtime = tm.ok(modernizer.resolve_tooling_context(request))
 
         tm.that(
             tooling_runtime.pyrefly_project_includes,
             has=f"{undeclared_env_dir}/**/*.py*",
         )
         tm.that(tooling_runtime.pyrefly_project_includes, has=f"{source_dir}/**/*.py*")
+        rendered = tm.ok(
+            modernizer.conform_source(
+                source,
+                path=request.path,
+                format_source=False,
+                topology=request.topology,
+            ),
+        )
+        pyrefly = u.Tests.toml_table_at(rendered, c.Infra.TOOL, "pyrefly")
+        tm.that(
+            list(tooling_runtime.pyrefly_project_includes),
+            eq=list(u.Tests.strings(pyrefly[c.Infra.PROJECT_INCLUDES])),
+            msg=(
+                f"runtime={list(tooling_runtime.pyrefly_project_includes)!r}; "
+                "rendered="
+                f"{list(u.Tests.strings(pyrefly[c.Infra.PROJECT_INCLUDES]))!r}"
+            ),
+        )
+        tm.that(
+            list(tooling_runtime.pyrefly_search_path),
+            eq=list(u.Tests.strings(pyrefly["search-path"])),
+            msg=(
+                f"runtime={list(tooling_runtime.pyrefly_search_path)!r}; "
+                f"rendered={list(u.Tests.strings(pyrefly['search-path']))!r}"
+            ),
+        )
+        tm.that(
+            list(tooling_runtime.pyrefly_project_excludes),
+            eq=list(u.Tests.strings(pyrefly[c.Infra.PROJECT_EXCLUDES])),
+            msg=(
+                f"runtime={list(tooling_runtime.pyrefly_project_excludes)!r}; "
+                "rendered="
+                f"{list(u.Tests.strings(pyrefly[c.Infra.PROJECT_EXCLUDES]))!r}"
+            ),
+        )
 
     def test_pyright_include_feeds_project_includes(self, tmp_path: Path) -> None:
         """Existing Pyright roots feed project-scoped Pyrefly includes."""
@@ -351,7 +396,7 @@ class TestsFlextInfraModernizerPyrefly:
         rules = config.Infra.tooling.tools.pyrefly.path_rules
         (tmp_path / "tests").mkdir()
         (tmp_path / "tests" / "__init__.py").write_text("", encoding="utf-8")
-        _ = ExtraPathsTestSupport.workspace_with_dependency(tmp_path)
+        _ = TestsFlextInfraExtraPathsSupport.workspace_with_dependency(tmp_path)
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
 
         _ = FlextInfraEnsurePyreflyConfigPhase(config.Infra.tooling).apply_payload(

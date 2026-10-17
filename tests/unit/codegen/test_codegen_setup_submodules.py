@@ -10,10 +10,9 @@ import shutil
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_infra import c, config, u
-from tests import p, t, u as test_u
+from flext_infra import c, config
+from tests import p, t, tm, u
 
 # The run-scoped template resolves a real toolchain through Make upg before any
 # item starts; each scenario provisions its own physical environment frozen
@@ -60,7 +59,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         # Only governed source and lock inputs travel; setup creates a distinct
         # physical environment for every scenario instead of borrowing the seed.
         root.mkdir(parents=True)
-        test_u.Tests.copy_tracked_mise_seeds(root, source_root=template)
+        u.Tests.copy_tracked_mise_seeds(root, source_root=template)
         for relative in (
             c.Infra.MAKEFILE_FILENAME,
             c.PYPROJECT_FILENAME,
@@ -80,7 +79,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
             root / c.Infra.DEFAULT_SRC_DIR,
             ignore=shutil.ignore_patterns("__pycache__"),
         )
-        test_u.Tests.initialize_git_repo(root)
+        u.Tests.initialize_git_repo(root)
         tm.that(u.Infra.runtime_environment_dir(root).exists(), eq=False)
 
     @staticmethod
@@ -92,7 +91,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
 
         """
         return tm.ok(
-            test_u.Tests.run_isolated_make(
+            u.Tests.run_isolated_make(
                 ["--no-print-directory", "setup"],
                 cwd=root,
                 env={"GIT_ALLOW_PROTOCOL": "file:https:ssh"},
@@ -118,6 +117,30 @@ class TestsFlextInfraCodegenSetupSubmodules:
         tm.that(environment.is_symlink(), eq=False)
         tm.that(process.stdout, has="installed-runtime-verified")
         return process
+
+    @classmethod
+    def _assert_detached_recorded_gitlink(cls, project: Path) -> None:
+        checkout = project / "vendor/source"
+        tm.that(cls._git(checkout, "branch", "--show-current"), eq="")
+        tm.that(
+            cls._git(checkout, "rev-parse", "HEAD"),
+            eq=cls._git(project, "rev-parse", "HEAD:vendor/source"),
+        )
+
+    @classmethod
+    def _seed_unmanaged_upstream(cls, tmp_path: Path, template: Path) -> Path:
+        source = tmp_path / "source"
+        cls._commit_repository(source, "upstream", "foreign")
+        project = tmp_path / "project"
+        cls._generated_project(project, template)
+        cls._add_submodule(
+            project,
+            source,
+            "vendor/upstream",
+            "upstream",
+            managed=False,
+        )
+        return project
 
     @classmethod
     def _add_submodule(
@@ -206,7 +229,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         # Hatchling consumes this real gitlink file while uv builds the package.
         # A setup that reaches the build before initialization fails natively.
         pyproject = project / c.PYPROJECT_FILENAME
-        document = test_u.Tests.toml_doc(pyproject.read_text(encoding="utf-8"))
+        document = u.Tests.toml_doc(pyproject.read_text(encoding="utf-8"))
         metadata = tm.not_none(u.Cli.toml_table_child(document, "project"))
         metadata["readme"] = {
             "file": direct_marker.relative_to(project).as_posix(),
@@ -216,13 +239,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         tm.that(direct_marker.exists(), eq=False)
 
         self._assert_setup(project)
-
-        checkout = project / "vendor/source"
-        tm.that(self._git(checkout, "branch", "--show-current"), eq="")
-        tm.that(
-            self._git(checkout, "rev-parse", "HEAD"),
-            eq=self._git(project, "rev-parse", "HEAD:vendor/source"),
-        )
+        self._assert_detached_recorded_gitlink(project)
         tm.that(nested_marker.exists(), eq=False)
 
     def test_setup_is_repeatable_with_managed_submodule(
@@ -303,17 +320,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         generated_project_template: Path,
     ) -> None:
         """A checkout without the config-owned marker remains untouched."""
-        source = tmp_path / "source"
-        self._commit_repository(source, "upstream", "foreign")
-        project = tmp_path / "project"
-        self._generated_project(project, generated_project_template)
-        self._add_submodule(
-            project,
-            source,
-            "vendor/upstream",
-            "upstream",
-            managed=False,
-        )
+        project = self._seed_unmanaged_upstream(tmp_path, generated_project_template)
         self._git(project, "submodule", "deinit", "-q", "-f", "--all")
 
         self._assert_setup(project)
@@ -326,17 +333,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         generated_project_template: Path,
     ) -> None:
         """Setup neither synchronizes nor validates an immutable checkout."""
-        source = tmp_path / "source"
-        self._commit_repository(source, "upstream", "foreign")
-        project = tmp_path / "project"
-        self._generated_project(project, generated_project_template)
-        self._add_submodule(
-            project,
-            source,
-            "vendor/upstream",
-            "upstream",
-            managed=False,
-        )
+        project = self._seed_unmanaged_upstream(tmp_path, generated_project_template)
         checkout = project / "vendor/upstream"
         marker = checkout / "marker.txt"
         marker.write_text("foreign wip", encoding="utf-8")
@@ -570,13 +567,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         self._git(project, "submodule", "deinit", "-q", "-f", "--all")
 
         self._assert_setup(project)
-
-        checkout = project / "vendor/source"
-        tm.that(self._git(checkout, "branch", "--show-current"), eq="")
-        tm.that(
-            self._git(checkout, "rev-parse", "HEAD"),
-            eq=self._git(project, "rev-parse", "HEAD:vendor/source"),
-        )
+        self._assert_detached_recorded_gitlink(project)
 
     def test_setup_succeeds_when_gitlink_is_ahead_of_origin(
         self,

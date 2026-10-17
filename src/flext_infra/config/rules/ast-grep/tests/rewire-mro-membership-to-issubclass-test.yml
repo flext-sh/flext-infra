@@ -1,0 +1,12 @@
+id: rewire-mro-membership-to-issubclass
+valid:
+  - assert issubclass(FlextLdap, FlextLdapService)
+  - assert not issubclass(FlextLdap, object)
+  - assert "u" in flext_ldap.__all__
+  - assert value in collection
+invalid:
+  - assert FlextLdapService in FlextLdap.__mro__
+  - tm.that(cli_t in FlextPluginTypes.__mro__, eq=True)
+  - tm.that(FlextPluginTypes in t.__mro__, eq=True)
+  - assert FlextMeltanoTypes in t.__mro__
+  - tm.that(c in c.__mro__, eq=True)

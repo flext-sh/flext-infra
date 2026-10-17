@@ -11,20 +11,31 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Self
 
-from flext_infra import c, config, m, t, u
+from flext_infra import c, config, m, settings, t, u
 from flext_infra.base import s
-
-type PytestPolicy = m.Infra.PytestConfig
 
 
 class FlextInfraPytestRunnerBase(s[int]):
     """Own immutable inputs shared by all pytest runner phases."""
+
+    _cache_publication: m.Infra.TestmonCachePublication | None = m.PrivateAttr(
+        default=None,
+    )
 
     started_at_monotonic: Annotated[
         float,
         m.Field(gt=0, description="Clock captured before FLEXT imports."),
     ]
     target: Annotated[Path, m.Field(description="Repository-relative test root.")]
+    target_file: Annotated[
+        Path | None,
+        m.Field(
+            description=(
+                "Optional repository-relative single test file; it replaces "
+                "the test root as the only pytest node target when declared."
+            ),
+        ),
+    ] = None
     reports: Annotated[Path, m.Field(description="Repository-relative report root.")]
     testmon_db: Annotated[
         Path,
@@ -33,12 +44,6 @@ class FlextInfraPytestRunnerBase(s[int]):
     ci_context: Annotated[
         bool,
         m.Field(description="CI/pre-commit selection captured at the Make boundary."),
-    ] = False
-    profile_enabled: Annotated[
-        bool,
-        m.Field(
-            description="Profile the real suite child and preserve its native exit",
-        ),
     ] = False
     collection_command_prefix: Annotated[
         t.StrTuple,
@@ -49,10 +54,7 @@ class FlextInfraPytestRunnerBase(s[int]):
     profile_enabled: Annotated[
         bool,
         m.Field(
-            description=(
-                "Run the suite under the profiling entrypoint bound to this "
-                "invocation's run receipt."
-            ),
+            description="Profile the real suite child and preserve its native exit",
         ),
     ] = False
     slow_phase: Annotated[
@@ -61,6 +63,15 @@ class FlextInfraPytestRunnerBase(s[int]):
             description=(
                 "Run only the configured slow marker in its own phase; otherwise "
                 "the budgeted phase runs everything else."
+            ),
+        ),
+    ] = False
+    unbounded: Annotated[
+        bool,
+        m.Field(
+            description=(
+                "Run every phase without a deadline: the local full suite "
+                "(make test-full) has no time limit; every other verb is budgeted."
             ),
         ),
     ] = False
@@ -76,6 +87,17 @@ class FlextInfraPytestRunnerBase(s[int]):
         return u.Cli.env_read(name, dict(os.environ)).unwrap().strip()
 
     @classmethod
+    def _optional_environment_path(cls, name: str) -> Path | None:
+        """Read one optional Make-owned runner path input.
+
+        Returns:
+            The resulting ``Path | None``.
+
+        """
+        value = cls._environment_value(name)
+        return Path(value) if value else None
+
+    @classmethod
     def from_environment(
         cls,
         *,
@@ -83,22 +105,36 @@ class FlextInfraPytestRunnerBase(s[int]):
         collection_command_prefix: t.StrTuple = (),
         profile_enabled: bool = False,
         slow_phase: bool = False,
+        unbounded: bool = False,
     ) -> Self:
         """Create the runner exclusively from generated Make inputs.
 
         Returns:
             The resulting ``Self``.
 
+        Raises:
+            ValueError: If the Make-owned pytest repository root is not absolute.
+
         """
         ci = config.Infra.codegen.make.ci
+        repository_root = Path(
+            settings.env_required(c.Infra.PYTEST_ENV_REPOSITORY_ROOT)
+        )
+        if not repository_root.is_absolute():
+            msg = "Make-owned pytest repository root must be absolute"
+            raise ValueError(msg)
         return cls(
-            repository_root=Path.cwd(),
+            repository_root=repository_root,
             started_at_monotonic=started_at_monotonic,
             collection_command_prefix=collection_command_prefix,
             profile_enabled=profile_enabled,
             slow_phase=slow_phase,
+            unbounded=unbounded,
             ci_context=(u.Infra.env_lookup(ci.variable) or "").strip() == ci.value,
             target=Path(cls._environment_value(c.Infra.PYTEST_ENV_TARGET)),
+            target_file=cls._optional_environment_path(
+                c.Infra.PYTEST_ENV_TARGET_FILE,
+            ),
             reports=Path(cls._environment_value(c.Infra.PYTEST_ENV_REPORTS)),
             testmon_db=Path(
                 cls._environment_value(
@@ -107,9 +143,9 @@ class FlextInfraPytestRunnerBase(s[int]):
             ),
         )
 
-    @u.model_validator(mode="after")
+    @m.model_validator(mode="after")
     def _validate_paths(self) -> Self:
-        """Require repository-contained target and report paths.
+        r"""Require repository-contained target and report paths.
 
         Returns:
             The resulting ``Self``.
@@ -120,7 +156,8 @@ class FlextInfraPytestRunnerBase(s[int]):
                 the checkout; or if ``path.is_absolute() or not path.parts or any((part
                 in {'', '.', '..'} for part in path.parts)) or any((character in raw for
                 character in '\x00\r\n\\'))``; or if ``not
-                resolved.is_relative_to(self.root.resolve())``.
+                resolved.is_relative_to(self.root.resolve())``; or if test
+                target file must be an existing repository file.
 
         """
         for name, path in (("target", self.target), ("reports", self.reports)):
@@ -138,14 +175,50 @@ class FlextInfraPytestRunnerBase(s[int]):
                 msg = f"{name} escapes the repository"
                 raise ValueError(msg)
         target_path = self.root / self.target
-        if not target_path.is_dir() or target_path.is_symlink():
-            msg = f"test target must be an existing directory: {self.target}"
+        if (
+            not (target_path.is_dir() or target_path.is_file())
+            or target_path.is_symlink()
+        ):
+            msg = f"test target must be an existing directory or file: {self.target}"
             raise ValueError(msg)
         if not self.testmon_db.is_absolute():
             msg = "testmon database path must be absolute"
             raise ValueError(msg)
         if self.testmon_db.resolve().is_relative_to(self.root.resolve()):
             msg = f"testmon database must be outside the checkout: {self.testmon_db}"
+            raise ValueError(msg)
+        return self._validate_target_file()
+
+    def _validate_target_file(self) -> Self:
+        """Require the declared single-file target to be repository-contained.
+
+        Returns:
+            The resulting ``Self``.
+
+        Raises:
+            ValueError: If target file must be a normalized repository-relative
+                path; or if target file escapes the repository; or if test
+                target file must be an existing repository file.
+
+        """
+        if self.target_file is None:
+            return self
+        raw_file = str(self.target_file)
+        if (
+            self.target_file.is_absolute()
+            or not self.target_file.parts
+            or any(part in {"", ".", ".."} for part in self.target_file.parts)
+            or any(character in raw_file for character in "\0\r\n\\")
+        ):
+            msg = "target_file must be a normalized repository-relative path"
+            raise ValueError(msg)
+        resolved_file = (self.root / self.target_file).resolve()
+        if not resolved_file.is_relative_to(self.root.resolve()):
+            msg = "target_file escapes the repository"
+            raise ValueError(msg)
+        file_path = self.root / self.target_file
+        if not file_path.is_file() or file_path.is_symlink():
+            msg = f"test target file must be an existing file: {self.target_file}"
             raise ValueError(msg)
         return self
 
@@ -185,7 +258,7 @@ class FlextInfraPytestRunnerBase(s[int]):
             return None
         return u.Infra.project_name_from_payload(pyproject_path, payload)
 
-    def run_timeout_seconds(self, policy: PytestPolicy) -> int:
+    def run_timeout_seconds(self, policy: m.Infra.PytestConfig) -> int:
         """Resolve the declared project's measured wall over the fleet default.
 
         Returns:
@@ -199,7 +272,7 @@ class FlextInfraPytestRunnerBase(s[int]):
 
     def _declared_worker_ceiling(
         self,
-        policy: PytestPolicy,
+        policy: m.Infra.PytestConfig,
     ) -> int | m.Infra.PytestWorkerCeiling:
         """Resolve the declared project's ceiling over the fleet default.
 
@@ -237,7 +310,7 @@ class FlextInfraPytestRunnerBase(s[int]):
         numerator_text, denominator_text = (ceiling.cpu_fraction or "1/1").split("/")
         return max(1, cpu_count * int(numerator_text) // int(denominator_text))
 
-    def parallel_worker_budget(self, policy: PytestPolicy) -> int:
+    def parallel_worker_budget(self, policy: m.Infra.PytestConfig) -> int:
         """Bound xdist by configuration, CPU, and physical memory.
 
         The per-project override map (``[project].name`` → absolute workers or

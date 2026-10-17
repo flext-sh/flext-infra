@@ -9,6 +9,7 @@ from __future__ import annotations
 import difflib
 import errno
 import os
+import sys
 import time
 from collections.abc import Generator
 from contextlib import contextmanager
@@ -17,10 +18,9 @@ from typing import TYPE_CHECKING
 
 from flext_cli import m as cli_m, u
 
-from flext_core import r
-from flext_infra import c, m, p, t
+from flext_infra import c, m, p, r, t
 
-if os.name == "nt":
+if sys.platform == "win32":
     import msvcrt
 else:
     import fcntl
@@ -31,6 +31,51 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesCodegenFilePlan:
     """Derive generated-file effects from immutable planning data."""
+
+    @staticmethod
+    def codegen_target_snapshot(
+        path: Path,
+    ) -> p.Result[cli_m.Cli.AtomicFileState | cli_m.Cli.AtomicDirectoryChainPlan]:
+        """Capture the original leaf or the exact still-missing parent chain.
+
+        Returns:
+            The observed file state when the leaf exists, the missing-parent
+            chain plan when it does not, or the propagated read failure.
+
+        """
+        result_type = r[cli_m.Cli.AtomicFileState | cli_m.Cli.AtomicDirectoryChainPlan]
+        observed = u.Cli.atomic_read_binary_file_state(path, required=False)
+        if observed.failure:
+            return result_type.from_failure(observed)
+        if observed.value.parent_device is not None:
+            return result_type.ok(observed.value)
+        witness = u.Cli.atomic_plan_directory_chain(path.parent)
+        if witness.failure:
+            return result_type.from_failure(witness)
+        if not witness.value.directories:
+            return result_type.fail(
+                f"codegen destination parent changed during snapshot: {path}",
+            )
+        return result_type.ok(witness.value)
+
+    @staticmethod
+    def codegen_initializer_is_authored(content: bytes | None) -> bool:
+        """Elect initializer ownership from content and declared generator markers.
+
+        Returns:
+            Whether a nonempty existing initializer belongs to its author.
+
+        """
+        return (
+            content is not None
+            and bool(content.strip())
+            and not content.startswith(
+                tuple(
+                    header.encode(c.DEFAULT_ENCODING)
+                    for header in c.Infra.AUTOGEN_HEADERS
+                ),
+            )
+        )
 
     class JournalLeaseTimeoutError(TimeoutError):
         """Another process held the journal lease past the acquisition deadline."""
@@ -71,13 +116,17 @@ class FlextInfraUtilitiesCodegenFilePlan:
         """
         lock_path = journal_path.with_name(f"{journal_path.name}.lock")
         lock_path.parent.mkdir(parents=True, exist_ok=True)
-        descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+        descriptor = os.open(
+            lock_path,
+            os.O_RDWR | os.O_CREAT,
+            c.Infra.JOURNAL_MODE,
+        )
         acquired = False
         try:
             deadline = time.monotonic() + wait_seconds
             while True:
                 try:
-                    if os.name == "nt":
+                    if sys.platform == "win32":
                         os.lseek(descriptor, 0, os.SEEK_SET)
                         msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
                     else:
@@ -90,13 +139,9 @@ class FlextInfraUtilitiesCodegenFilePlan:
                     }:
                         raise
                     if time.monotonic() >= deadline:
-                        timeout_error = (
-                            FlextInfraUtilitiesCodegenFilePlan
-                            .JournalLeaseTimeoutError
-                        )
-                        raise timeout_error(
-                            lock_path,
-                        ) from error
+                        raise (
+                            FlextInfraUtilitiesCodegenFilePlan.JournalLeaseTimeoutError
+                        )(lock_path) from error
                     time.sleep(c.Infra.JOURNAL_LEASE_POLL_SECONDS)
                     continue
                 acquired = True
@@ -104,7 +149,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
             yield
         finally:
             try:
-                if acquired and os.name == "nt":
+                if sys.platform == "win32" and acquired:
                     os.lseek(descriptor, 0, os.SEEK_SET)
                     msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
             finally:
@@ -171,9 +216,11 @@ class FlextInfraUtilitiesCodegenFilePlan:
         """Whether publication must change a generated-file destination.
 
         Returns:
-            The resulting ``bool``.
+            Whether bytes, mode or declared tracking require publication.
 
         """
+        if plan.index_before is not None:
+            return True
         if isinstance(plan.before, cli_m.Cli.AtomicDirectoryChainPlan):
             return plan.desired_content is not None
         return FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(
@@ -181,6 +228,30 @@ class FlextInfraUtilitiesCodegenFilePlan:
             desired_content=plan.desired_content,
             desired_mode=plan.desired_mode,
         )
+
+    @staticmethod
+    def codegen_fixed_point(
+        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        *,
+        subject: str,
+    ) -> p.Result[bool]:
+        """Reject a re-plan that still has to change any generated destination.
+
+        Returns:
+            Success only when no plan requires an effect; otherwise the failure
+            names every residual destination.
+
+        """
+        residual = [
+            str(plan.path)
+            for plan in plans
+            if FlextInfraUtilitiesCodegenFilePlan.codegen_file_requires_effect(plan)
+        ]
+        if residual:
+            return r[bool].fail(
+                f"{subject} did not reach a fixed point: {', '.join(residual)}",
+            )
+        return r[bool].ok(value=True)
 
     @staticmethod
     def codegen_file_drift_report(
