@@ -459,7 +459,11 @@ class FlextInfraCodegenQualityGate(s[bool]):
         if duplicate_groups:
             lines.extend(["", "Duplicate Groups:"])
         for group in duplicate_groups:
-            parsed_group = m.Infra.DuplicateGroup.model_validate(group)
+            # The report carries JSON-mode payloads; JSON re-enters the strict
+            # model through its JSON validator, where arrays are sequences.
+            parsed_group = m.Infra.DuplicateGroup.model_validate_json(
+                t.Infra.INFRA_MAPPING_ADAPTER.dump_json(group),
+            )
             projects = sorted({
                 definition.project for definition in parsed_group.definitions
             })
