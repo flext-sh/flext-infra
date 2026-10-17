@@ -390,8 +390,6 @@ class FlextInfraEnsurePyrightConfigPhase:
                     ).unwrap()
                 ),
             )
-        if context.declared_python_dirs_are_complete:
-            return declared
         if context.project_dir is not None:
             return u.Infra.analyzer_python_roots(
                 context.project_dir,
@@ -404,7 +402,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                     ).unwrap()
                 ),
             )
-        if declared:
+        if declared or context.declared_python_dirs_are_complete:
             return declared
         return self._tool_config.tools.pyright.path_rules.env_dirs
 

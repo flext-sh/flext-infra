@@ -7,16 +7,304 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 from types import ModuleType
 
+import pytest
+
 import flext_infra
+from flext_infra import config
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from tests import c, m, tm, u
 
 
 class TestsFlextInfraClassNestingSuiteScope:
     """A nested class suite cannot see a sibling while the owner is building."""
+
+    @staticmethod
+    def _test_workspace(tmp_path: Path, source: str) -> tuple[Path, Path]:
+        """Declare one natively collected test module with governed patterns."""
+        root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
+        policy = config.Infra.tooling.tools.pytest
+        project = root / c.PYPROJECT_FILENAME
+        project.write_text(
+            project.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            + "\n[tool.pytest.ini_options]\n"
+            + f"python_files = {list(policy.python_files)!r}\n"
+            + f"python_classes = {list(policy.python_classes)!r}\n"
+            + "python_functions = ['test_*', 'check_*']\n"
+            + f"asyncio_default_fixture_loop_scope = {policy.asyncio_default_fixture_loop_scope!r}\n",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        directory = root / c.Infra.DIR_TESTS
+        directory.mkdir(exist_ok=True)
+        path = directory / policy.python_files[0].replace("*", "native_suite")
+        path.write_text(source, encoding=c.Infra.ENCODING_DEFAULT)
+        return root, path
+
+    @staticmethod
+    def _plan_test(root: Path, path: Path, source: str) -> str:
+        """Publish the public planner's proposed bytes and prove its fixed point."""
+        with flext_infra.infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                    rope_workspace=rope,
+                    sources={path: source},
+                ),
+            )
+            published = next(
+                edit.updated_source for edit in edits if edit.file_path == path
+            )
+            tm.that(
+                tm.ok(
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                        rope_workspace=rope,
+                        sources={path: published},
+                    )
+                ),
+                eq=(),
+            )
+        path.write_text(published, encoding=c.Infra.ENCODING_DEFAULT)
+        return published
+
+    @staticmethod
+    def _cold_pytest(root: Path, path: Path, *arguments: str) -> str:
+        """Exercise real native collection/execution in a fresh interpreter."""
+        cache = config.Infra.codegen.make.testmon_cache
+        result = tm.ok(
+            u.Cli.run(
+                (
+                    sys.executable,
+                    "-m",
+                    "pytest",
+                    "-c",
+                    str(root / c.PYPROJECT_FILENAME),
+                    "-p",
+                    "testmon.pytest_testmon",
+                    "--testmon",
+                    "-p",
+                    "pytest_asyncio.plugin",
+                    *arguments,
+                    str(path),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(
+                    env=u.Cli.process_env(
+                        overrides={
+                            "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+                            "PYTEST_ADDOPTS": "",
+                            "PYTEST_PLUGINS": "",
+                            cache.database_environment_variable: str(
+                                root / cache.database_filename
+                            ),
+                        }
+                    ),
+                ),
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(result.outcome),
+            eq=True,
+            msg=result.stdout + result.stderr,
+        )
+        return result.stdout
+
+    @staticmethod
+    @pytest.mark.parametrize("existing", [False, True])
+    def test_native_functions_collect_and_execute_after_nesting(
+        tmp_path: Path,
+        *,
+        existing: bool,
+    ) -> None:
+        """Decorators, async tests, injection, metadata and helpers survive cold pytest."""
+        source = (
+            "import pytest\n\n"
+            "pytestmark = pytest.mark.usefixtures('session_probe')\n\n"
+            "class _Payload:\n    value = 7\n\n"
+            "def _value():\n    return _Payload.value\n\n"
+            "@pytest.mark.parametrize(\n"
+            "    'value', [7, 8], ids=['first', 'second'],\n"
+            ")\n"
+            "def test_values(value, injected):\n"
+            "    assert value >= _value()\n    assert injected == _value()\n\n"
+            "@pytest.mark.asyncio\n"
+            "async def test_async(injected):\n    assert injected == _value()\n\n"
+            "def check_native(injected):\n    assert injected == _value()\n"
+            + (
+                "\nclass TestsExisting:\n"
+                "    def test_existing(self):\n        assert _value() == 7\n"
+                if existing
+                else ""
+            )
+        )
+        root, path = TestsFlextInfraClassNestingSuiteScope._test_workspace(
+            tmp_path, source
+        )
+        conftest = path.parent / "conftest.py"
+        conftest.write_text(
+            "from pathlib import Path\nimport pytest\n\n"
+            "@pytest.fixture(scope='session')\n"
+            "def session_probe():\n"
+            "    path = Path(__file__).with_name('session.log')\n"
+            "    with path.open('a') as stream:\n        stream.write('start\\n')\n"
+            "    yield\n"
+            "    with path.open('a') as stream:\n        stream.write('stop\\n')\n\n"
+            "@pytest.fixture\n"
+            "def injected():\n    return 7\n",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        before = TestsFlextInfraClassNestingSuiteScope._cold_pytest(
+            root,
+            path,
+            "--collect-only",
+            "-q",
+        )
+        TestsFlextInfraClassNestingSuiteScope._cold_pytest(root, path, "-q")
+        published = TestsFlextInfraClassNestingSuiteScope._plan_test(root, path, source)
+        after = TestsFlextInfraClassNestingSuiteScope._cold_pytest(
+            root,
+            path,
+            "--collect-only",
+            "-q",
+        )
+        old_nodes = [line for line in before.splitlines() if "::" in line]
+        new_nodes = [line for line in after.splitlines() if "::" in line]
+        tm.that(
+            [node.rsplit("::", 1)[-1] for node in new_nodes],
+            eq=[node.rsplit("::", 1)[-1] for node in old_nodes],
+        )
+        if existing:
+            tm.that(published.count("class TestsExisting:"), eq=1)
+            tm.that(
+                new_nodes,
+                eq=[
+                    node
+                    if "::TestsExisting::" in node
+                    else node.replace("::", "::TestsExisting::", 1)
+                    for node in old_nodes
+                ],
+            )
+        else:
+            tm.that(all("::Tests" in node for node in new_nodes), eq=True)
+        tm.that("\npytestmark =" in published, eq=True)
+        TestsFlextInfraClassNestingSuiteScope._cold_pytest(root, path, "-q")
+        tm.that(
+            (path.parent / "session.log").read_text().splitlines(),
+            eq=["start", "stop"] * 2,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "declaration",
+        [
+            "@pytest.fixture\ndef injected():\n    return 1\n",
+            "def pytest_generate_tests(metafunc):\n    pass\n",
+            "def setup_function(function):\n    pass\n",
+        ],
+    )
+    def test_unmigrated_framework_registration_fails_loudly(
+        tmp_path: Path,
+        declaration: str,
+    ) -> None:
+        """Admitting native tests never admits unresolved hooks, fixtures or xunit."""
+        source = "import pytest\n\n" + declaration + "\ndef test_native():\n    pass\n"
+        root, path = TestsFlextInfraClassNestingSuiteScope._test_workspace(
+            tmp_path, source
+        )
+        with flext_infra.infra.rope_workspace(root) as rope:
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                rope_workspace=rope,
+                sources={path: source},
+            )
+        tm.fail(planned, has="framework registration contract")
+        tm.that(path.read_text(encoding=c.Infra.ENCODING_DEFAULT), eq=source)
+
+    @staticmethod
+    def test_existing_suite_retains_native_class_fixture_lifecycle(
+        tmp_path: Path,
+    ) -> None:
+        """Helper nesting keeps the actual suite and its class-scoped finalizer."""
+        source = (
+            "from pathlib import Path\nimport pytest\n\n"
+            "class _Payload:\n    value = 7\n\n"
+            "class TestsLifecycle:\n"
+            "    @pytest.fixture(scope='class')\n"
+            "    def payload(self, request):\n"
+            "        assert request.cls is TestsLifecycle\n"
+            "        path = Path(__file__).with_name('class.log')\n"
+            "        with path.open('a') as stream:\n"
+            "            stream.write('start\\n')\n"
+            "        yield _Payload()\n"
+            "        with path.open('a') as stream:\n"
+            "            stream.write('stop\\n')\n\n"
+            "    @pytest.mark.parametrize('value', [7, 8])\n"
+            "    def test_values(self, payload, value):\n"
+            "        assert value >= payload.value\n\n"
+            "    def test_again(self, payload):\n"
+            "        assert payload.value == 7\n"
+        )
+        root, path = TestsFlextInfraClassNestingSuiteScope._test_workspace(
+            tmp_path, source
+        )
+        before = TestsFlextInfraClassNestingSuiteScope._cold_pytest(
+            root,
+            path,
+            "--collect-only",
+            "-q",
+        )
+        TestsFlextInfraClassNestingSuiteScope._cold_pytest(root, path, "-q")
+        published = TestsFlextInfraClassNestingSuiteScope._plan_test(root, path, source)
+        after = TestsFlextInfraClassNestingSuiteScope._cold_pytest(
+            root,
+            path,
+            "--collect-only",
+            "-q",
+        )
+        tm.that(
+            [line for line in after.splitlines() if "::" in line],
+            eq=[line for line in before.splitlines() if "::" in line],
+        )
+        tm.that(published.count("class TestsLifecycle:"), eq=1)
+        TestsFlextInfraClassNestingSuiteScope._cold_pytest(root, path, "-q")
+        tm.that(
+            (path.parent / "class.log").read_text().splitlines(),
+            eq=["start", "stop"] * 2,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "member",
+        [
+            "    def setup_method(self):\n        pass\n",
+            "    pytestmark = pytest.mark.usefixtures('injected')\n",
+            "    @pytest.fixture(scope='class')\n    def injected(self):\n        return 1\n",
+            "    __test__ = False\n",
+        ],
+    )
+    def test_free_tests_do_not_acquire_existing_suite_registration(
+        tmp_path: Path,
+        member: str,
+    ) -> None:
+        """Changed fixture, xunit or mark inheritance fails instead of silently applying."""
+        source = (
+            "import pytest\n\nclass TestsExisting:\n"
+            + member
+            + "\ndef test_native():\n    pass\n"
+        )
+        root, path = TestsFlextInfraClassNestingSuiteScope._test_workspace(
+            tmp_path, source
+        )
+        with flext_infra.infra.rope_workspace(root) as rope:
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                rope_workspace=rope,
+                sources={path: source},
+            )
+        tm.fail(planned, has="registration or lifecycle would change")
 
     @staticmethod
     def _models_owner() -> tuple[str, str, str]:

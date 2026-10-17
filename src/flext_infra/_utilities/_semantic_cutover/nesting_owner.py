@@ -8,8 +8,12 @@ from __future__ import annotations
 
 import ast
 import typing
+from fnmatch import fnmatch
+from shlex import split
 from typing import TYPE_CHECKING
 
+import pytest
+from _pytest.config.findpaths import determine_setup
 from flext_cli import u
 
 from flext_infra import r, t
@@ -29,6 +33,88 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     Functions (including entry points), values and helper classes become members;
     definition-time dependencies remain subject to the same safety checks.
     """
+
+    @staticmethod
+    def _pytest_collection_patterns(
+        root: Path,
+    ) -> t.Triple[t.StrTuple, t.StrTuple, t.StrTuple]:
+        """Read native configuration and defaults without running consumer plugins."""
+        _root, _path, configured, _ignored = determine_setup(
+            inifile=None,
+            override_ini=[],
+            args=[str(root)],
+            rootdir_cmd_arg=None,
+            invocation_dir=root,
+        )
+        manager = pytest.PytestPluginManager()
+        manager.import_plugin("python")
+        defaults = pytest.Config(manager)
+
+        def patterns(key: str) -> t.StrTuple:
+            configured_value = configured.get(key)
+            value = (
+                configured_value.value
+                if configured_value is not None
+                else defaults.getini(key)
+            )
+            if (
+                isinstance(value, str)
+                and configured_value is not None
+                and configured_value.mode == "ini"
+            ):
+                return tuple(split(value))
+            if isinstance(value, list) and all(isinstance(item, str) for item in value):
+                return tuple(item for item in value if isinstance(item, str))
+            msg = f"pytest collection setting {key} must contain strings"
+            raise TypeError(msg)
+
+        return (
+            patterns("python_files"),
+            patterns("python_classes"),
+            patterns("python_functions"),
+        )
+
+    @staticmethod
+    def _pytest_name_matches(name: str, patterns: t.StrSequence) -> bool:
+        """Match pytest's native prefix-or-glob class/function selectors."""
+        return any(
+            name.startswith(pattern) or fnmatch(name, pattern) for pattern in patterns
+        )
+
+    @classmethod
+    def _test_module_owner(
+        cls,
+        convention: m.Infra.RopeModuleConvention,
+        file_path: Path,
+        classes: t.MappingKV[str, ast.ClassDef],
+        patterns: t.StrSequence,
+    ) -> p.Result[str]:
+        """Elect an existing collected suite, otherwise derive Tests<Unit>."""
+        elected = r[str]
+        suites = [name for name in classes if cls._pytest_name_matches(name, patterns)]
+        if len(suites) > 1:
+            return elected.fail(
+                f"class-nesting requires exactly one collected suite for "
+                f"{convention.module_name}: {', '.join(suites)}",
+            )
+        if suites:
+            return elected.ok(suites[0])
+        stem = (
+            file_path.stem
+            .removeprefix("test_")
+            .removesuffix("_tests")
+            .removesuffix("_test")
+        )
+        prefix = convention.module_policy.project_prefix
+        owner = (
+            prefix if prefix.startswith("Tests") else f"Tests{prefix}"
+        ) + u.derive_class_stem(stem)
+        if not owner.isidentifier() or not cls._pytest_name_matches(owner, patterns):
+            return elected.fail(
+                f"class-nesting derived suite {owner} is not collected by pytest "
+                f"in {convention.module_name}",
+            )
+        return elected.ok(owner)
 
     @staticmethod
     def _tail_name(node: ast.expr) -> str:

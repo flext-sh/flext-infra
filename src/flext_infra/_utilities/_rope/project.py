@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Generator, Mapping
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 from errno import ENOENT
 from os.path import normpath, realpath
 from pathlib import Path
@@ -288,6 +288,53 @@ class FlextInfraRopeProject(Project):
             """
             return self._children[Path(self.realpath(path))]
 
+    class SourceConsumption:
+        """Accumulate original receipts for one native consumer, not a set delta."""
+
+        def __init__(self) -> None:
+            self._states: tuple[m.Cli.AtomicFileState, ...] = ()
+            self._directories: tuple[m.Cli.AtomicDirectoryInventory, ...] = ()
+            self._topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = ()
+            self._receipt: m.Infra.CodegenPhaseAnalysis | None = None
+
+        def record(
+            self,
+            states: tuple[m.Cli.AtomicFileState, ...] = (),
+            directories: tuple[m.Cli.AtomicDirectoryInventory, ...] = (),
+            topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = (),
+        ) -> None:
+            """Merge exact observations while retaining their original identities."""
+            if self._receipt is not None:
+                msg = "Rope source consumption is already sealed"
+                raise ValueError(msg)
+            self._states = m.Infra.CodemodBindingSnapshot(
+                states=(*self._states, *states),
+            ).states
+            self._directories, self._topology = (
+                u.Cli.atomic_merge_directory_query_receipts(
+                    (*self._directories, *directories),
+                    (*self._topology, *topology),
+                )
+            )
+
+        def seal(self) -> m.Infra.CodegenPhaseAnalysis:
+            """Freeze the receipt only after the consumer has left its scope."""
+            self._receipt = m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
+                files=(),
+                inputs=self._states,
+                source_directories=self._directories,
+                source_query_topology=self._topology,
+            )
+            return self._receipt
+
+        def receipt(self) -> m.Infra.CodegenPhaseAnalysis:
+            """Require a complete receipt; an active or failed scope is not evidence."""
+            if self._receipt is None:
+                msg = "Rope source consumption has no completed receipt"
+                raise ValueError(msg)
+            return self._receipt
+
     class AtomicReadFiles:
         """Authenticate only sources actually read by the native semantic graph."""
 
@@ -311,6 +358,8 @@ class FlextInfraRopeProject(Project):
             declared_files: tuple[m.Infra.CodegenFilePlan, ...],
         ) -> None:
             self._root = root
+            self._scopes: list[FlextInfraRopeProject.SourceConsumption] = []
+            self._receipts: list[m.Infra.CodegenPhaseAnalysis] = []
             self._originals: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
             self._consumed: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
             self._inventories: t.MutableMappingKV[
@@ -345,6 +394,41 @@ class FlextInfraRopeProject(Project):
                     msg = f"Rope proposed source lacks its original input: {path}"
                     raise ValueError(msg)
             self._overlay = FlextInfraRopeProject.SnapshotFiles(self._sources, ())
+
+        @contextmanager
+        def consumption(self) -> Generator[p.Infra.RopeSourceConsumption]:
+            """Record every read/query, including repeats and nested consumers."""
+            scope = FlextInfraRopeProject.SourceConsumption()
+            self._scopes.append(scope)
+            try:
+                yield scope
+                self._receipts.append(scope.seal())
+            finally:
+                self._scopes.remove(scope)
+
+        def replay(self, receipt: m.Infra.CodegenPhaseAnalysis) -> None:
+            """Replay only evidence minted by this authenticated original epoch."""
+            if not any(issued is receipt for issued in self._receipts):
+                msg = "Rope source receipt does not belong to this original epoch"
+                raise ValueError(msg)
+            if not self._scopes:
+                msg = "Rope source replay requires an active consumer"
+                raise ValueError(msg)
+            self._record(
+                receipt.inputs,
+                receipt.source_directories,
+                receipt.source_query_topology,
+            )
+
+        def _record(
+            self,
+            states: tuple[m.Cli.AtomicFileState, ...] = (),
+            directories: tuple[m.Cli.AtomicDirectoryInventory, ...] = (),
+            topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = (),
+        ) -> None:
+            """Attribute the exact event to every enclosing consumer."""
+            for scope in self._scopes:
+                scope.record(states, directories, topology)
 
         def exists(self, path: str) -> bool:
             """Retain native election, including explicitly planned resources.
@@ -404,9 +488,23 @@ class FlextInfraRopeProject(Project):
                 self._inventories[directory] = inventory.model_copy(
                     update={"membership_queried": True}
                 )
+                self._record(
+                    directories=(
+                        inventory.model_copy(
+                            update={"queries": (), "membership_queried": True},
+                        ),
+                    ),
+                )
             else:
                 self._topology[directory] = self._topology[directory].model_copy(
                     update={"membership_queried": True}
+                )
+                self._record(
+                    topology=(
+                        self._topology[directory].model_copy(
+                            update={"queries": (), "membership_queried": True},
+                        ),
+                    ),
                 )
             if self._overlay.isdir(path):
                 physical_names = frozenset(names)
@@ -449,7 +547,15 @@ class FlextInfraRopeProject(Project):
                 self._topology[directory] = self.require_value(
                     u.Cli.atomic_plan_directory_chain(directory)
                 )
-            return self._topology[directory]
+            witness = self._topology[directory]
+            self._record(
+                topology=(
+                    witness.model_copy(
+                        update={"queries": (), "membership_queried": False},
+                    ),
+                ),
+            )
+            return witness
 
         def _inventory(self, directory: Path) -> m.Cli.AtomicDirectoryInventory | None:
             """Pin the physical parent used by this native election.
@@ -492,6 +598,16 @@ class FlextInfraRopeProject(Project):
                             )
                         }
                     )
+                    self._record(
+                        topology=(
+                            witness.model_copy(
+                                update={
+                                    "queries": ((candidate.name, predicate),),
+                                    "membership_queried": False,
+                                }
+                            ),
+                        ),
+                    )
                     observed = False
                 else:
                     inventory = inventory.model_copy(
@@ -505,6 +621,16 @@ class FlextInfraRopeProject(Project):
                         }
                     )
                     self._inventories[candidate.parent] = inventory
+                    self._record(
+                        directories=(
+                            inventory.model_copy(
+                                update={
+                                    "queries": ((candidate.name, predicate),),
+                                    "membership_queried": False,
+                                }
+                            ),
+                        ),
+                    )
                     observed = u.Cli.atomic_directory_query_value(
                         inventory, candidate.name, predicate
                     )
@@ -555,20 +681,10 @@ class FlextInfraRopeProject(Project):
 
             """
             source = Path(path)
-            state = self._consumed.get(source)
-            if state is None:
-                state = self._originals.get(source)
-                if state is None:
-                    state = self.require_value(
-                        u.Cli.atomic_read_binary_file_state(
-                            source,
-                            required=source not in self._declared_paths,
-                        )
-                    )
-                else:
-                    self.require_value(u.Cli.atomic_verify_binary_file_states((state,)))
-                self._verify_declarations(source)
-                self._consumed[source] = state
+            state = self.source_state(
+                source,
+                required=source not in self._declared_paths,
+            )
             proposed = self._sources.get(source)
             if proposed is not None:
                 return proposed
@@ -576,6 +692,30 @@ class FlextInfraRopeProject(Project):
                 msg = f"Rope required source is absent: {source}"
                 raise FileNotFoundError(msg)
             return state.content
+
+        def source_state(
+            self, source: Path, *, required: bool = True
+        ) -> m.Cli.AtomicFileState:
+            """Read or replay the original state, including an explicit absence."""
+            state = self._consumed.get(source)
+            if state is None:
+                state = self._originals.get(source)
+                if state is None:
+                    state = self.require_value(
+                        u.Cli.atomic_read_binary_file_state(
+                            source,
+                            required=required,
+                        )
+                    )
+                else:
+                    self.require_value(u.Cli.atomic_verify_binary_file_states((state,)))
+                self._verify_declarations(source)
+                self._consumed[source] = state
+            self._record(states=(state,))
+            if required and state.content is None:
+                msg = f"Rope required source is absent: {source}"
+                raise FileNotFoundError(msg)
+            return state
 
         def states(self) -> tuple[m.Cli.AtomicFileState, ...]:
             """Expose original physical receipts for the shared dependent group.
@@ -756,6 +896,31 @@ class FlextInfraRopeProject(Project):
             declared_files,
         )
         return cls._from_files(live.root.real_path, files, election)
+
+    def source_consumption(
+        self,
+    ) -> AbstractContextManager[p.Infra.RopeSourceConsumption]:
+        """Open an exact native consumption scope, rejecting unbound projects."""
+        if not isinstance(self.fscommands, self.AtomicReadFiles):
+            msg = "Rope project does not own authenticated live reads"
+            raise TypeError(msg)
+        return self.fscommands.consumption()
+
+    def replay_source_consumption(self, receipt: m.Infra.CodegenPhaseAnalysis) -> None:
+        """Attribute an authentic cached result's original dependencies."""
+        if not isinstance(self.fscommands, self.AtomicReadFiles):
+            msg = "Rope project does not own authenticated live reads"
+            raise TypeError(msg)
+        self.fscommands.replay(receipt)
+
+    def source_state(
+        self, path: Path, *, required: bool = True
+    ) -> m.Cli.AtomicFileState:
+        """Use the authenticated resource owner for direct source decisions."""
+        if not isinstance(self.fscommands, self.AtomicReadFiles):
+            msg = "Rope project does not own authenticated live reads"
+            raise TypeError(msg)
+        return self.fscommands.source_state(path, required=required)
 
     def consumed_source_states(self) -> tuple[m.Cli.AtomicFileState, ...]:
         """Return the actual-read closure, including native external providers.

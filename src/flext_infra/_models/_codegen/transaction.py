@@ -57,8 +57,8 @@ class FlextInfraModelsCodegenTransactionModels:
         inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
             description="Exact source and configuration observations"
         )
-        updates: t.MappingKV[Path, str] = m.Field(
-            description="Desired source updates keyed by live destination"
+        updates: t.MappingKV[Path, str | None] = m.Field(
+            description="Desired sources keyed by live destination; None retires an artifact"
         )
         layouts: t.VariadicTuple[FlextInfraModelsRope.RopeProjectLayout] = m.Field(
             description="Original project layouts in the desired import closure",

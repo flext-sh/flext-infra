@@ -9,7 +9,7 @@ from __future__ import annotations
 import stat
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlsplit
 
 from flext_infra import c, m, p, r, t, u
@@ -20,9 +20,6 @@ if TYPE_CHECKING:
 
 class FlextInfraMiseArtifactsFiles:
     """Exact filesystem-state primitives for Mise artifact transactions."""
-
-    RECORD_ROW_FIELDS: ClassVar[int] = 3
-    "Native RECORD CSV rows carry exactly path, hash and size columns."
 
     @classmethod
     def editable_project_source(
@@ -200,10 +197,7 @@ class FlextInfraMiseArtifactsFiles:
                     f"producer distribution RECORD is empty: {root}",
                 )
             for row in parsed.value:
-                if (
-                    len(row) != FlextInfraMiseArtifactsFiles.RECORD_ROW_FIELDS
-                    or not row[0]
-                ):
+                if len(row) != c.Infra.DISTRIBUTION_RECORD_ROW_FIELDS or not row[0]:
                     return result_type.fail(
                         f"producer distribution RECORD has an invalid entry: {root}"
                     )

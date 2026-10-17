@@ -133,13 +133,14 @@ class FlextInfraSemanticPublication:
             Published paths, or the original pre-CAS identity failure.
 
         """
-        if {
+        if any(source is None for source in candidate.updates.values()) or {
             plan.path: plan.desired_content
             for plan in plans
             if plan.desired_content is not None
         } != {
             path: source.encode(c.DEFAULT_ENCODING)
             for path, source in candidate.updates.items()
+            if source is not None
         }:
             return r[tuple[Path, ...]].fail(
                 "semantic plans differ from accepted candidate"
@@ -355,9 +356,12 @@ class FlextInfraSemanticPublication:
         planned = transaction.preview_sources(
             repository_root,
             {
-                item.path: item.desired_content.decode(c.DEFAULT_ENCODING)
+                item.path: (
+                    None
+                    if item.desired_content is None
+                    else item.desired_content.decode(c.DEFAULT_ENCODING)
+                )
                 for item in analysis.files
-                if item.desired_content is not None
             },
             plan_exposure,
             inputs=analysis.inputs,
@@ -394,9 +398,12 @@ class FlextInfraSemanticPublication:
         accepted = transaction.preview_sources(
             repository_root,
             {
-                item.path: item.desired_content.decode(c.DEFAULT_ENCODING)
+                item.path: (
+                    None
+                    if item.desired_content is None
+                    else item.desired_content.decode(c.DEFAULT_ENCODING)
+                )
                 for item in analysis.files
-                if item.desired_content is not None
             },
             lambda view_root, _candidate: validator(view_root),
             inputs=analysis.inputs,

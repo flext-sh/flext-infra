@@ -20,6 +20,147 @@ class TestsFlextInfraFacadeAuthoredRuntime:
     """Exercise preservation through generation and a fresh public consumer."""
 
     @staticmethod
+    def test_source_scopes_retain_repeated_original_reads(tmp_path: Path) -> None:
+        """A cache consumer receives the original bytes, never a cumulative delta."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        unrelated = package / "unrelated.py"
+        tm.ok(u.Cli.atomic_write_text_file(source, "__all__ = []\n"))
+        tm.ok(u.Cli.atomic_write_text_file(unrelated, "__all__ = []\n"))
+        with u.Infra.facade_source_project(root) as (project, _, _):
+            with project.source_consumption() as first:
+                original = project.source_state(source)
+            with project.source_consumption() as separate:
+                project.source_state(unrelated)
+            with project.source_consumption() as repeated:
+                tm.that(project.source_state(source), eq=original)
+            with project.source_consumption() as consumer:
+                project.replay_source_consumption(first.receipt())
+            tm.that(first.receipt().inputs, eq=(original,))
+            tm.that(repeated.receipt().inputs, eq=(original,))
+            tm.that(consumer.receipt().inputs, eq=(original,))
+            tm.that(
+                tuple(state.path for state in separate.receipt().inputs),
+                eq=(unrelated,),
+            )
+
+    @staticmethod
+    def test_source_scopes_keep_exact_negative_queries(tmp_path: Path) -> None:
+        """Repeated misses do not inherit unrelated selectors or membership reads."""
+        root, _ = u.Tests.create_lazy_init_workspace(tmp_path)
+        with u.Infra.facade_source_project(root) as (project, _, _):
+            with project.source_consumption() as first:
+                tm.that(project.root.has_child("missing.py"), eq=False)
+            with project.source_consumption():
+                tm.that(project.root.has_child("other.py"), eq=False)
+                project.root.get_children()
+            with project.source_consumption() as repeated:
+                tm.that(project.root.has_child("missing.py"), eq=False)
+            with project.source_consumption() as cached:
+                project.replay_source_consumption(first.receipt())
+            for scope in (first, repeated, cached):
+                inventories = tuple(
+                    inventory
+                    for inventory in scope.receipt().source_directories
+                    if inventory.root.path == root
+                )
+                tm.that(len(inventories), eq=1)
+                tm.that(inventories[0].queries, eq=(("missing.py", "exists"),))
+                tm.that(inventories[0].membership_queried, eq=False)
+
+    @staticmethod
+    def test_source_scopes_reject_unissued_and_incomplete_receipts(
+        tmp_path: Path,
+    ) -> None:
+        """A copied receipt and an unfinished consumer cannot authenticate a hit."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        with u.Infra.facade_source_project(root) as (project, _, _):
+            with project.source_consumption() as scope:
+                project.source_state(package / "absent.py", required=False)
+                with pytest.raises(ValueError, match="no completed receipt"):
+                    scope.receipt()
+            with pytest.raises(ValueError, match="original epoch"):
+                project.replay_source_consumption(scope.receipt().model_copy())
+            with pytest.raises(ValueError, match="active consumer"):
+                project.replay_source_consumption(scope.receipt())
+            failure = RuntimeError("consumer failed")
+            with pytest.raises(RuntimeError, match="consumer failed") as caught:
+                with project.source_consumption() as failed:
+                    project.source_state(package / "absent.py", required=False)
+                    raise failure
+            tm.that(caught.value is failure, eq=True)
+            with pytest.raises(ValueError, match="no completed receipt"):
+                failed.receipt()
+
+    @staticmethod
+    def test_nested_source_scopes_propagate_original_receipts(tmp_path: Path) -> None:
+        """Nested cache work belongs both to its own result and to its consumer."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        tm.ok(u.Cli.atomic_write_text_file(source, "__all__ = []\n"))
+        with u.Infra.facade_source_project(root) as (project, _, _):
+            with project.source_consumption() as outer:
+                with project.source_consumption() as inner:
+                    project.source_state(source)
+                    tm.that(project.root.has_child("missing.py"), eq=False)
+            tm.that(outer.receipt().inputs, eq=inner.receipt().inputs)
+            tm.that(
+                outer.receipt().source_directories,
+                eq=inner.receipt().source_directories,
+            )
+            tm.that(
+                outer.receipt().source_query_topology,
+                eq=inner.receipt().source_query_topology,
+            )
+
+    @staticmethod
+    def test_replayed_source_receipt_never_recaptures_changed_bytes(
+        tmp_path: Path,
+    ) -> None:
+        """A replay retains old evidence and the epoch verifier rejects the edit."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        tm.ok(u.Cli.atomic_write_text_file(source, "__all__ = []\n"))
+        with pytest.raises(ValueError, match="atomic source changed"):
+            with u.Infra.facade_source_project(root) as (project, _, _):
+                with project.source_consumption() as provider:
+                    original = project.source_state(source)
+                tm.ok(u.Cli.atomic_write_text_file(source, "# Changed epoch\n"))
+                with project.source_consumption() as consumer:
+                    project.replay_source_consumption(provider.receipt())
+                    tm.that(project.source_state(source), eq=original)
+                tm.that(consumer.receipt().inputs, eq=(original,))
+
+    @staticmethod
+    def test_negative_query_receipts_keep_original_absent_topology(
+        tmp_path: Path,
+    ) -> None:
+        """An absent candidate under an absent parent is guarded after replay."""
+        root, _ = u.Tests.create_lazy_init_workspace(tmp_path)
+        missing = root / "absent"
+        with pytest.raises(ValueError, match="source directory"):
+            with u.Infra.facade_source_project(root) as (project, _, _):
+                folder = project.get_folder(missing.relative_to(root).as_posix())
+                with project.source_consumption() as provider:
+                    tm.that(folder.has_child("provider.py"), eq=False)
+                with project.source_consumption() as consumer:
+                    project.replay_source_consumption(provider.receipt())
+                witnesses = tuple(
+                    witness
+                    for witness in consumer.receipt().source_query_topology
+                    if witness.target == missing
+                )
+                tm.that(len(witnesses), eq=1)
+                tm.that(witnesses[0].queries, eq=(("provider.py", "exists"),))
+                missing.mkdir()
+                tm.ok(
+                    u.Cli.atomic_write_text_file(
+                        missing / "provider.py",
+                        "__all__ = []\n",
+                    ),
+                )
+
+    @staticmethod
     @pytest.mark.parametrize("depth", [1, 2])
     @pytest.mark.parametrize("relative", [False, True])
     def test_generated_imports_preserve_relative_alias_levels(

@@ -21,7 +21,7 @@ class FlextInfraStagedPackage:
     def plan_sources(
         cls,
         workspace: Path,
-        updates: t.MappingKV[Path, str],
+        updates: t.MappingKV[Path, str | None],
         *,
         inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[m.Infra.StageSourcePlan]:
@@ -29,7 +29,7 @@ class FlextInfraStagedPackage:
 
         Args:
             workspace: The root of the Git workspace containing the projects.
-            updates: A mapping from file paths to their desired content.
+            updates: Desired content by live path; None retires an artifact.
             inputs: Original caller snapshots, never replaced by a fresh observation.
 
         Returns:
@@ -114,7 +114,7 @@ class FlextInfraStagedPackage:
     def _verified_input_originals(
         states: t.MappingKV[Path, m.Cli.AtomicFileState],
         inputs: t.VariadicTuple[m.Cli.AtomicFileState],
-        normalized: t.MappingKV[Path, str],
+        normalized: t.MappingKV[Path, str | None],
     ) -> p.Result[bool]:
         """Verify every caller input kept its pinned original identity.
 
@@ -148,8 +148,8 @@ class FlextInfraStagedPackage:
     @staticmethod
     def _normalized_updates(
         workspace: Path,
-        updates: t.MappingKV[Path, str],
-    ) -> p.Result[dict[Path, str]]:
+        updates: t.MappingKV[Path, str | None],
+    ) -> p.Result[dict[Path, str | None]]:
         """Elect one contained physical destination per desired source.
 
         Every desired destination must be a contained, physical, unambiguous
@@ -159,8 +159,8 @@ class FlextInfraStagedPackage:
             Desired sources or the first ambiguous, foreign or symlinked path.
 
         """
-        result_type = r[dict[Path, str]]
-        normalized: dict[Path, str] = {}
+        result_type = r[dict[Path, str | None]]
+        normalized: dict[Path, str | None] = {}
         for path, content in updates.items():
             if any(item.is_symlink() for item in (path, *path.parents)):
                 return result_type.fail(f"candidate source is a symlink: {path}")
@@ -409,7 +409,7 @@ class FlextInfraStagedPackage:
         layout: m.Infra.RopeProjectLayout,
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
         *,
-        updates: t.MappingKV[Path, str] | None = None,
+        updates: t.MappingKV[Path, str | None] | None = None,
     ) -> p.Result[tuple[str, ...]]:
         paths = cls._source_paths(layout, governed=updates is not None)
         if paths.failure:
@@ -435,11 +435,12 @@ class FlextInfraStagedPackage:
                 return r[tuple[str, ...]].from_failure(observed)
             state = observed.value
             states[path] = state
-            content = (
-                updates[path].encode(c.DEFAULT_ENCODING)
-                if updates is not None and path in updates
-                else state.content
-            )
+            content = state.content
+            if updates is not None and path in updates:
+                desired = updates[path]
+                content = (
+                    None if desired is None else desired.encode(c.DEFAULT_ENCODING)
+                )
             if path.suffix in {c.Infra.EXT_PYTHON, ".pyi"} and content is not None:
                 modules.extend(
                     cls._runtime_imports(
@@ -458,7 +459,7 @@ class FlextInfraStagedPackage:
         selected: list[m.Infra.RopeProjectLayout],
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
         *,
-        updates: t.MappingKV[Path, str] | None = None,
+        updates: t.MappingKV[Path, str | None] | None = None,
     ) -> p.Result[bool]:
         queue = [local.package_name]
         while queue:

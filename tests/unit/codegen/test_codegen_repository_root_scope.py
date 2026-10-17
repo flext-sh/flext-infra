@@ -23,6 +23,74 @@ class TestsFlextInfraCodegenRepositoryRootScope:
     """Tests for ``FlextInfraCodegenRepositoryRootScope``."""
 
     @staticmethod
+    @pytest.mark.parametrize(
+        ("project_name", "authored_root"),
+        [("flext-alpha", "automation"), ("flext-beta", "quality_tools")],
+    )
+    def test_pyproject_generation_retains_owned_python_scope(
+        tmp_path: Path,
+        project_name: str,
+        authored_root: str,
+    ) -> None:
+        """The generated Pyright projection retains authored scopes at fixed point."""
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
+        root = u.Tests.mk_project(
+            tmp_path,
+            project_name,
+            pyproject=f"[project]\nname='{project_name}'\nversion='0.1.0'\n",
+        )
+        project = u.Tests.project_spec(project_name)
+        roots = (
+            config.Infra.tooling.tools.pyright.path_rules.source_dir,
+            "docs",
+            "scripts",
+            "examples",
+            authored_root,
+        )
+        for relative in roots:
+            directory = root / relative / project.package_name
+            directory.mkdir(parents=True, exist_ok=True)
+            (directory / "__init__.py").write_text("", encoding="utf-8")
+        repository = u.Tests.repository_ref(project_name).model_copy(
+            update={"role": c.Infra.MakeProfile.STANDALONE},
+        )
+        request = u.Tests.conform_request(
+            root,
+            what=c.Infra.CodegenConformSurface.PYPROJECT,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        service = FlextInfraCodegenConform(
+            repository_root=root,
+            request=request,
+            initial_workspace=u.Tests.workspace_spec(repository, project=project),
+        )
+        first_plan = tm.ok(service.plan(request))
+        first = next(
+            item for item in first_plan.files if item.path.name == c.PYPROJECT_FILENAME
+        )
+        rendered = u.Tests.codegen_file_text(first)
+        pyright = u.Tests.toml_table_at(rendered, "tool", "pyright")
+        includes = frozenset(u.Tests.toml_strings(pyright["include"]))
+        tm.that(frozenset(roots).issubset(includes), eq=True)
+        tm.that(
+            frozenset(
+                str(u.Tests.toml_mapping(env)["root"])
+                for env in u.Tests.toml_list(pyright["executionEnvironments"])
+            ),
+            eq=includes,
+        )
+        published = root / c.PYPROJECT_FILENAME
+        published.write_bytes(tm.not_none(first.desired_content))
+        published.chmod(tm.not_none(first.desired_mode))
+        second_plan = tm.ok(service.plan(request))
+        second = next(
+            item for item in second_plan.files if item.path.name == c.PYPROJECT_FILENAME
+        )
+        tm.that(second.desired_content, eq=first.desired_content)
+        tm.that(u.Infra.codegen_file_requires_effect(second), eq=False)
+
+    @staticmethod
     @pytest.mark.slow
     def test_selected_member_mod_text_owns_its_real_workspace_scope(
         tmp_path: Path,

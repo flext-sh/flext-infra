@@ -251,16 +251,19 @@ class FlextInfraCodemodSemanticApply:
 
         """
         originals = {state.path: state for state in artifact.candidate.inputs}
+        updates = {
+            edit.file_path.resolve(): edit.updated_source for edit in artifact.edits
+        }
         plans = tuple(
             m.Infra.SemanticFilePlan(
                 project=u.Infra.project_root(path) or root,
                 path=path,
                 before=originals[path],
-                desired_content=source.encode(c.DEFAULT_ENCODING),
+                desired_content=updates[path].encode(c.DEFAULT_ENCODING),
                 desired_mode=originals[path].mode,
                 changes=("authenticated semantic rename artifact",),
             )
-            for path, source in artifact.candidate.updates.items()
+            for path in artifact.candidate.updates
         )
         return FlextInfraSemanticPublication.publish_source_candidate(
             plans,

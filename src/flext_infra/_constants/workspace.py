@@ -128,6 +128,8 @@ class FlextInfraConstantsWorkspace:
     "Interpreter metadata identifying a provisioned virtual environment."
     DISTRIBUTION_DIRECT_URL_FILE: ClassVar[str] = "direct_url.json"
     "PEP 610 installer receipt recording a distribution's direct-reference origin."
+    DISTRIBUTION_RECORD_ROW_FIELDS: ClassVar[int] = 3
+    "Native RECORD CSV rows contain path, hash and size columns."
     BINDING_RESOLUTION_FILES: ClassVar[t.VariadicTuple[t.StrPair]] = (
         ("--overrides", "overrides.txt"),
         ("--constraints", "constraints.txt"),

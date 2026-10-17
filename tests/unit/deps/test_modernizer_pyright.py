@@ -9,6 +9,8 @@ from __future__ import annotations
 from collections.abc import MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra import config
 from flext_infra.deps import (
     FlextInfraEnsurePyrightConfigPhase,
@@ -342,7 +344,7 @@ class TestsFlextInfraDepsModernizerPyright:
         tmp_path: Path,
         tool_config_document: m.Infra.ToolConfigDocument,
     ) -> None:
-        """A complete declaration fixes the include set through the modernizer."""
+        """Declared future roots survive alongside existing source discovery."""
         rules = tool_config_document.tools.pyright.path_rules
         project_dir = self._sample_project(tmp_path, rules.source_dir)
         pyproject = project_dir / "pyproject.toml"
@@ -367,12 +369,12 @@ class TestsFlextInfraDepsModernizerPyright:
             eq=[rules.source_dir, rules.test_like_dirs[0]],
         )
 
-    def test_existing_standalone_complete_empty_roots_do_not_rediscover_disk(
+    def test_existing_standalone_complete_empty_roots_keep_owned_sources(
         self,
         tmp_path: Path,
         tool_config_document: m.Infra.ToolConfigDocument,
     ) -> None:
-        """A complete empty declaration renders no include and no environment."""
+        """An empty scaffold declaration cannot hide existing owned Python."""
         rules = tool_config_document.tools.pyright.path_rules
         project_dir = self._sample_project(tmp_path, rules.source_dir)
 
@@ -385,8 +387,132 @@ class TestsFlextInfraDepsModernizerPyright:
             ),
         )
 
-        tm.that(pyright, lacks="include")
-        tm.that(pyright["executionEnvironments"], eq=[])
+        tm.that(list(u.Tests.toml_strings(pyright["include"])), eq=[rules.source_dir])
+        tm.that(
+            [
+                u.Tests.toml_mapping(environment)["root"]
+                for environment in u.Tests.toml_list(pyright["executionEnvironments"])
+            ],
+            eq=[rules.source_dir],
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("complete", [False, True])
+    @pytest.mark.parametrize(
+        ("project_name", "authored_root", "planned_root"),
+        [
+            ("flext-alpha", "automation", "future_checks"),
+            ("flext-beta", "quality_tools", "generated_checks"),
+        ],
+    )
+    def test_render_context_retains_actual_and_planned_python_scopes(
+        tmp_path: Path,
+        project_name: str,
+        authored_root: str,
+        planned_root: str,
+        *,
+        complete: bool,
+    ) -> None:
+        """Rendering keeps arbitrary source roots before and after planned writes."""
+        rules = config.Infra.tooling.tools.pyright.path_rules
+        project_dir = u.Tests.mk_project(
+            tmp_path,
+            project_name,
+            pyproject=f"[project]\nname='{project_name}'\nversion='0.1.0'\n",
+        )
+        package_name = u.Tests.project_spec(project_name).package_name
+        active_roots = (rules.source_dir, "docs", "scripts", "examples", authored_root)
+        for root in active_roots:
+            directory = project_dir / root / package_name
+            directory.mkdir(parents=True, exist_ok=True)
+            (directory / "probe.py").write_text("VALUE = 1\n", encoding="utf-8")
+        historical = project_dir / "historical_guides"
+        historical.mkdir()
+        (historical / "index.md").write_text("Historical notes.\n", encoding="utf-8")
+        foreign = project_dir / "foreign_project"
+        foreign.mkdir()
+        (foreign / "pyproject.toml").write_text(
+            "[project]\nname='foreign-project'\n",
+            encoding="utf-8",
+        )
+        (foreign / "probe.py").write_text("VALUE = 1\n", encoding="utf-8")
+        artifact_root = next(
+            root
+            for root in config.Infra.codegen.source_scan_ignored
+            if not root.startswith(".")
+        )
+        artifact = project_dir / artifact_root
+        artifact.mkdir(parents=True, exist_ok=True)
+        (artifact / "probe.py").write_text("VALUE = 1\n", encoding="utf-8")
+        path = project_dir / "pyproject.toml"
+        topology = m.Infra.PyprojectDeclaredTopology(
+            declared_python_dirs=(rules.source_dir, planned_root),
+            declared_python_dirs_are_complete=complete,
+        )
+        request = m.Infra.ToolingContextRequest(
+            planned_sources={},
+            project_name=project_name,
+            package_name=package_name,
+            path=path,
+            scaffold_project=config.Infra.codegen.scaffold.project,
+            runtime_dependency_overlay=(),
+            declared_project_dependencies=(),
+            topology=topology,
+        )
+        modernizer = FlextInfraPyprojectModernizer(
+            repository_root=tmp_path,
+            skip_check=True,
+            skip_comments=True,
+        )
+        first_context = tm.ok(modernizer.resolve_tooling_context(request))
+        expected_roots = frozenset((*active_roots, planned_root))
+        tm.that(frozenset(first_context.pyright_include), eq=expected_roots)
+        tm.that(
+            frozenset(env.root for env in first_context.pyright_execution_environments),
+            eq=expected_roots,
+        )
+        first = tm.ok(
+            modernizer.conform_source(
+                path.read_text(encoding="utf-8"),
+                path=path,
+                format_source=False,
+                topology=topology,
+            ),
+        )
+        tm.that(
+            list(u.Tests.toml_strings_at(first, "tool", "pyright", "include")),
+            eq=list(first_context.pyright_include),
+        )
+        tm.that(
+            sorted(
+                str(u.Tests.toml_mapping(env)["root"])
+                for env in u.Tests.toml_list(
+                    u.Tests.toml_table_at(first, "tool", "pyright")[
+                        "executionEnvironments"
+                    ],
+                )
+            ),
+            eq=sorted(expected_roots),
+        )
+        path.write_text(first, encoding="utf-8")
+        planned = project_dir / planned_root
+        planned.mkdir()
+        (planned / "probe.py").write_text("VALUE = 1\n", encoding="utf-8")
+        second_context = tm.ok(modernizer.resolve_tooling_context(request))
+        tm.that(second_context.pyright_include, eq=first_context.pyright_include)
+        tm.that(
+            second_context.pyright_execution_environments,
+            eq=first_context.pyright_execution_environments,
+        )
+        second = tm.ok(
+            modernizer.conform_source(
+                first,
+                path=path,
+                format_source=False,
+                topology=topology,
+            ),
+        )
+        tm.that(second, eq=first)
 
     def test_repository_root_never_adopts_member_analyzer_roots(
         self,

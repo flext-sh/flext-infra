@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
+
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeModules,
@@ -122,6 +124,12 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         selected, scopes = selection[0], selection[1]
         edits: list[m.Infra.SourceRewrite] = []
         members: list[str] = []
+        decorated = {
+            node.name: min(decorator.lineno for decorator in node.decorator_list)
+            for node in ast.parse(source).body
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
+            and node.decorator_list
+        }
         for item in selected:
             name = cls._native_member_name(item)
             scope = scopes.get(name)
@@ -132,6 +140,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
                     module.lines.get_line_number(scope.get_region()[0])
                 )
                 end = min(module.lines.get_line_end(scope.get_end()) + 1, len(source))
+            if name in decorated:
+                begin = min(begin, module.lines.get_line_start(decorated[name]))
             members.append(
                 FlextInfraUtilitiesRopeRuntimeRefactors.reindent_source(
                     cls._nested_member_body(
