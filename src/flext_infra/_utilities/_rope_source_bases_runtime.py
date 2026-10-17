@@ -152,7 +152,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 raise ValueError(message)
             lineage = FlextInfraUtilitiesRopeSourceBasesRuntime.merge_class_lineages(
                 (*(self._linearize(identity) for identity in identities),),
-                message="Inconsistent declared facade owner precedence",
+                message=(
+                    "Inconsistent declared facade owner precedence: declarations="
+                    f"{tuple(item.qualified_base for item in declarations)}"
+                ),
             )
             spellings = {
                 identity: item.qualified_base
