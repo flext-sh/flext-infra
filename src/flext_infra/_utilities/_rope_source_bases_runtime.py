@@ -204,31 +204,34 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         Path(self._project.root.real_path)
                     ).as_posix()
                 )
-                actual = {
-                    Path(child.real_path)
-                    for child in folder.get_children()
-                    if not child.is_folder()
-                    and Path(child.real_path).suffix == c.Infra.EXT_PYTHON
-                }
-                expected = {
-                    path
-                    for path, _source in self._sources.values()
-                    if path.parent == alias_path.parent
-                    and path.suffix == c.Infra.EXT_PYTHON
-                }
-                if actual != expected:
-                    message = (
-                        f"native lazy alias membership differs: {alias_path.parent}"
-                    )
-                    raise ValueError(message)
-                resource = self._project.get_resource(
-                    alias_path.relative_to(
-                        Path(self._project.root.real_path)
-                    ).as_posix()
-                )
-                alias_source = FlextInfraUtilitiesRopeRuntime.require_file_resource(
-                    resource, alias_path
-                ).read()
+                # Only a package the project's file owner holds has a native
+                # membership and an original input epoch. Planned bytes
+                # override disk: a planned-only sibling or package is captured
+                # without a native counterpart, so every native module must be
+                # captured, never the reverse, and the captured alias source
+                # stays authoritative.
+                if folder.has_child(alias_path.name):
+                    native = {
+                        Path(child.real_path)
+                        for child in folder.get_children()
+                        if not child.is_folder()
+                        and Path(child.real_path).suffix == c.Infra.EXT_PYTHON
+                    }
+                    captured_members = {
+                        path
+                        for path, _source in self._sources.values()
+                        if path.parent == alias_path.parent
+                        and path.suffix == c.Infra.EXT_PYTHON
+                    }
+                    if not native <= captured_members:
+                        message = (
+                            "native lazy alias membership differs: "
+                            f"{alias_path.parent}"
+                        )
+                        raise ValueError(message)
+                    FlextInfraUtilitiesRopeRuntime.require_file_resource(
+                        folder.get_child(alias_path.name), alias_path
+                    ).read()
                 for alias, binding in (
                     FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
                         alias_module,
@@ -308,13 +311,20 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
             path, source = captured
             if provider is None:
-                resource = self._project.get_resource(
-                    path.relative_to(Path(self._project.root.real_path)).as_posix()
+                folder = self._project.get_folder(
+                    path.parent.relative_to(
+                        Path(self._project.root.real_path)
+                    ).as_posix()
                 )
                 # Derived facade text retains its original file input epoch.
-                FlextInfraUtilitiesRopeRuntime.require_file_resource(
-                    resource, path
-                ).read()
+                # The project's own file owner decides which captured sources
+                # hold one: authenticated projects overlay their planned
+                # bytes, while a planned-only source on a live project has no
+                # original input to register (planned bytes override disk).
+                if folder.has_child(path.name):
+                    FlextInfraUtilitiesRopeRuntime.require_file_resource(
+                        folder.get_child(path.name), path
+                    ).read()
             request = m.Infra.SourceBindingInventoryRequest(
                 project=self._project,
                 module=module,
