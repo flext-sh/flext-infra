@@ -166,6 +166,11 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             "        if self.result.failure:\n"
             "            return self._recover_failure("
             "layout, self.result.error or 'context')\n"
+            "    def rebound(self, layout, result, other):\n"
+            "        self = other\n"
+            "        if result.failure:\n"
+            "            return self._recover_failure("
+            "layout, result.error or 'context')\n"
             "class Foreign:\n"
             "    def _recover_failure(self, layout, text, **kwargs):\n"
             "        return text\n"
@@ -823,6 +828,25 @@ class TestsFlextInfraModRuleFixtureSnapshots:
                 cls._catalog(package) / c.Infra.CODEMOD_CONFIG_FILENAME,
                 f"{c.Infra.CODEMOD_SCOPE_KEY}: {c.Infra.CODEMOD_SCOPE_UNIVERSAL}\n"
                 "ruleDirs: [rules]\ntestConfigs:\n  - testDir: tests\n",
+            ),
+        )
+        record = metadata / "RECORD"
+        members = (
+            *sorted(
+                path
+                for path in package.rglob("*")
+                if path.is_file()
+                and c.Infra.GIT_DIR not in path.relative_to(package).parts
+            ),
+            metadata / "METADATA",
+            record,
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                record,
+                u.Cli.csv_dumps([
+                    [path.relative_to(site).as_posix(), "", ""] for path in members
+                ]),
             ),
         )
         return package, rule

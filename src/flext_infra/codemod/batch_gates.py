@@ -1448,7 +1448,7 @@ class FlextInfraModGateEngine:
         if receipt.failure:
             return r[m.Infra.ModScanReport].from_failure(receipt)
         cls._report_evidence(receipt.value)
-        if publication.command == c.Infra.ModScanCommand.APPLY:
+        if publication.command == c.Infra.ModScanCommand.APPLY and report.actionable:
             published = cls.apply_report(
                 root,
                 report,

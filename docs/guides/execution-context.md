@@ -936,6 +936,9 @@ governed repository and elected rule.
 The native scanner takes one `selection`: rule identifiers or an already composed
 rule plan. A composed plan must govern the requested root and remains the only
 selection authority for that invocation.
+Catalog election and staging share the same YAML ingress. Validated streams are
+memoized by their exact text as immutable JSON; each caller receives fresh mappings.
+Current file reads and canonical rule digests still detect drift before publication.
 
 Generated facades compose declarations published by their current private family.
 Rope resolves existing bases before composition: upstream bases remain, while an

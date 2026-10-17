@@ -956,18 +956,22 @@ class FlextInfraUtilitiesCodemodProject(
         level: int,
         lookup: m.Infra.CodemodImportResources,
     ) -> t.Infra.RopeResource | None:
-        """Resolve one imported module name relative to the importing package.
+        """Resolve imports in their native absolute or relative search scope.
 
         Returns:
             The imported module resource, or ``None`` when Rope cannot find it.
 
         """
-        key = (name, resource.parent.real_path, level)
+        key = (
+            name,
+            resource.parent.real_path if level else project.root.real_path,
+            level,
+        )
         if key not in lookup.modules:
             lookup.modules[key] = (
                 project.find_relative_module(name, resource.parent, level)
                 if level
-                else project.find_module(name, resource.parent)
+                else project.find_module(name)
             )
         return lookup.modules[key]
 
