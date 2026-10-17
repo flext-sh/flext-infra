@@ -9,7 +9,7 @@ from __future__ import annotations
 import stat
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 from urllib.parse import unquote, urlsplit
 
 from flext_infra import c, m, p, r, t, u
@@ -20,6 +20,9 @@ if TYPE_CHECKING:
 
 class FlextInfraMiseArtifactsFiles:
     """Exact filesystem-state primitives for Mise artifact transactions."""
+
+    RECORD_ROW_FIELDS: ClassVar[int] = 3
+    "Native RECORD CSV rows carry exactly path, hash and size columns."
 
     @classmethod
     def editable_project_source(
@@ -115,6 +118,9 @@ class FlextInfraMiseArtifactsFiles:
     ]:
         """Capture native metadata and bindings before locating ownership paths.
 
+        The captured RECORD owns mandatory bindings even when the native SDK
+        omits missing files. Ownership paths retain the SDK's public manifest.
+
         Returns:
             Physical metadata trees, all source states and declared file paths.
 
@@ -129,10 +135,11 @@ class FlextInfraMiseArtifactsFiles:
         declared = distribution.files
         if declared is None:
             return result_type.fail("producer distribution has no native file manifest")
+        paths = tuple(
+            Path(str(distribution.locate_file(item))).absolute() for item in declared
+        )
         roots = {
-            Path(str(distribution.locate_file(item))).absolute().parent
-            for item in declared
-            if item.parent.name.endswith(".dist-info")
+            path.parent for path in paths if path.parent.name.endswith(".dist-info")
         }
         trees: list[m.Cli.AtomicPhysicalTreeManifest] = []
         sources: list[m.Cli.AtomicFileState] = []
@@ -142,11 +149,9 @@ class FlextInfraMiseArtifactsFiles:
                 return result_type.from_failure(captured)
             trees.append(captured.value[0])
             sources.extend(captured.value[1])
-        bindings = cls.capture_sources(
-            Path(str(distribution.locate_file(item))).absolute()
-            for item in declared
-            if item.suffix == ".pth"
-        )
+        bindings = cls._distribution_binding_paths(
+            distribution, tuple(sorted(roots)), tuple(sources), paths
+        ).flat_map(cls.capture_sources)
         if bindings.failure:
             return result_type.from_failure(bindings)
         name = distribution.metadata.get("Name")
@@ -155,11 +160,59 @@ class FlextInfraMiseArtifactsFiles:
         return result_type.ok((
             tuple(trees),
             (*sources, *bindings.value),
-            tuple(
-                Path(str(distribution.locate_file(item))).absolute()
-                for item in declared
-            ),
+            paths,
         ))
+
+    @staticmethod
+    def _distribution_binding_paths(
+        distribution: Distribution,
+        roots: t.VariadicTuple[Path],
+        sources: t.VariadicTuple[m.Cli.AtomicFileState],
+        paths: t.VariadicTuple[Path],
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Elect mandatory bindings from the captured installed-project manifest.
+
+        Other native manifest formats retain their existing SDK path election.
+        RECORD payload files are not promoted to consumed source inputs.
+
+        Returns:
+            Ordered binding paths, or the first missing or invalid RECORD failure.
+
+        """
+        result_type = r[t.VariadicTuple[Path]]
+        if not roots:
+            return result_type.ok(
+                tuple(path for path in paths if path.suffix == ".pth"),
+            )
+        captured = {state.path: state for state in sources}
+        bindings: list[Path] = []
+        for root in roots:
+            record = captured.get(root / "RECORD")
+            if record is None or record.content is None:
+                return result_type.fail(
+                    f"producer distribution lacks captured RECORD: {root}"
+                )
+            parsed = u.Cli.csv_loads(record.content.decode(c.DEFAULT_ENCODING))
+            if parsed.failure:
+                return result_type.from_failure(parsed)
+            if not parsed.value:
+                return result_type.fail(
+                    f"producer distribution RECORD is empty: {root}",
+                )
+            for row in parsed.value:
+                if (
+                    len(row) != FlextInfraMiseArtifactsFiles.RECORD_ROW_FIELDS
+                    or not row[0]
+                ):
+                    return result_type.fail(
+                        f"producer distribution RECORD has an invalid entry: {root}"
+                    )
+                path = Path(row[0])
+                if path.suffix == ".pth":
+                    bindings.append(
+                        Path(str(distribution.locate_file(path))).absolute()
+                    )
+        return result_type.ok(tuple(bindings))
 
     @classmethod
     def transaction_participants(

@@ -678,7 +678,10 @@ class FlextInfraModGateEngine:
                 if entry.rule_id in facts.binding_rule_ids
                 else entry
                 for entry in report.entries
-                if u.Infra.codemod_context_admits(
+                # A drifted source carries no authenticated state: it stays
+                # deferred evidence and is never graded against the epoch.
+                if entry.source_state is None
+                or u.Infra.codemod_context_admits(
                     m.Infra.CodemodAdmission(
                         root=root,
                         rule=rules_by_id[entry.rule_id],

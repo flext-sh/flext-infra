@@ -175,26 +175,78 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         selected_roots = {
             (item.root / item.repository.path).resolve() for item in tasks
         }
-        desired = {file.path for file in files if file.desired_content is not None}
+        desired = {
+            file.path: file.desired_content
+            for file in files
+            if file.desired_content is not None
+        }
+        repositories: list[m.Infra.RepositoryRef] = []
         for member in (
             project_workspace.value.repository,
             *project_workspace.value.subprojects,
         ):
-            if member is not project_workspace.value.repository and not member.package:
-                continue
-            member_root = (project_root / member.path).resolve()
-            path = member_root / c.PYPROJECT_FILENAME
-            if member_root in selected_roots and path not in desired:
+            path = (project_root / member.path).resolve() / c.PYPROJECT_FILENAME
+            if path in desired:
+                projected = self._desired_resolution_repository(
+                    member,
+                    path,
+                    desired[path],
+                )
+                if projected.failure:
+                    return result_type.from_failure(projected)
+                resolved = projected.value
+            elif path.parent in selected_roots and (
+                member is project_workspace.value.repository or member.package
+            ):
                 return result_type.fail(
                     f"native resolution input has no successful selected plan: {path}",
                 )
+            else:
+                resolved = member
+            repositories.append(resolved)
         return self.native_resolution_plans(
             project_root,
-            project_workspace.value,
+            project_workspace.value.model_copy(
+                update={
+                    "repository": repositories[0],
+                    "subprojects": tuple(repositories[1:]),
+                },
+            ),
             project_inputs.value,
             files,
             rendered_by=self.rendered_by_stamp(),
         ).map(list)
+
+    @staticmethod
+    def _desired_resolution_repository(
+        repository: m.Infra.RepositoryRef,
+        path: Path,
+        content: bytes,
+    ) -> p.Result[m.Infra.RepositoryRef]:
+        """Derive native participation from the metadata being published.
+
+        Returns:
+            Repository identity with desired packaging facts, or its original failure.
+
+        """
+        result_type = r[m.Infra.RepositoryRef]
+        payload = u.Cli.toml_mapping_from_text(content.decode(c.DEFAULT_ENCODING))
+        if payload is None:
+            return result_type.fail(
+                f"native resolution input is not valid TOML: {path}"
+            )
+        try:
+            declaration = m.Infra.ProjectPackagingDeclaration.model_validate(payload)
+        except ValueError as exc:
+            return result_type.fail(
+                f"native resolution packaging is not valid: {path}: {exc}",
+                exception=exc,
+            )
+        return result_type.ok(
+            repository.model_copy(
+                update={"package": u.Infra.project_package_participation(declaration)},
+            ),
+        )
 
     def _plan_facade(
         self,
