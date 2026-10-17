@@ -44,10 +44,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             tm.ok(u.Cli.atomic_write_text_file(path, "# Changed source epoch\n"))
             if consumer_fails:
                 raise failure
-        if consumer_fails:
-            tm.that(caught.value is failure)
-        else:
-            tm.that(caught.value is not failure)
+        tm.that(caught.value is failure, eq=consumer_fails)
 
     @staticmethod
     def test_declared_projection_preserves_authored_bindings(

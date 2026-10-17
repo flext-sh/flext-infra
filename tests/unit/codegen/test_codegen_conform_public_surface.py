@@ -62,11 +62,6 @@ class TestsFlextInfraCodegenConformPublicSurface:
             root=tmp_path,
             what=surface,
             module=module,
-            scope=(
-                None
-                if surface in c.Infra.FILE_ONLY_SURFACES
-                else c.Infra.CodegenConformScope.SELF
-            ),
         )
         restored = m.Infra.CodegenGenerateRequest.model_validate_json(
             request.model_dump_json(),

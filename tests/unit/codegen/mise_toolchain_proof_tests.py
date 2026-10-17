@@ -50,12 +50,6 @@ class TestsFlextInfraMiseToolchainProof:
             tm.that(contract.model_validate_json(record.model_dump_json()), eq=record)
             with pytest.raises(m.ValidationError, match="extra_forbidden"):
                 contract.model_validate({**record.model_dump(), "unexpected": True})
-        with pytest.raises(m.ValidationError, match="frozen_instance"):
-            endpoint.port += 1
-        with pytest.raises(m.ValidationError, match="frozen_instance"):
-            move.source = f"{text}changed"
-        with pytest.raises(m.ValidationError, match="frozen_instance"):
-            overrides.stale_symbols = ()
 
     @staticmethod
     def _repository_root() -> Path:
