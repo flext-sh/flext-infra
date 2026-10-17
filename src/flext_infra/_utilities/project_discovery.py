@@ -234,12 +234,11 @@ class FlextInfraUtilitiesProjectDiscovery(
                 if source_project is None
                 else source_project.source_children(resolved_root)
             )
-            if (
+            if not child.name.startswith(".") and (
                 child.is_dir()
                 if source_project is None
                 else source_project.source_query(child, "isdir")
             )
-            and not child.name.startswith(".")
             and (
                 (child / c.PYPROJECT_FILENAME).is_file()
                 if source_project is None
@@ -344,7 +343,7 @@ class FlextInfraUtilitiesProjectDiscovery(
             for subdir in (
                 sorted(project_dir.iterdir())
                 if source_project is None
-                else source_project.source_children(project_dir)
+                else source_project.source_children(project_dir, follow_aliases=False)
             )
             if (
                 subdir.is_dir()
@@ -406,7 +405,9 @@ class FlextInfraUtilitiesProjectDiscovery(
                 for path in (
                     sorted(project_dir.iterdir())
                     if source_project is None
-                    else source_project.source_children(project_dir)
+                    else source_project.source_children(
+                        project_dir, follow_aliases=False
+                    )
                 )
                 if (
                     path.is_file()

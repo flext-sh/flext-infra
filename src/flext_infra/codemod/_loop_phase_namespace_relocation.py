@@ -41,17 +41,24 @@ class FlextInfraNamespaceRelocationPhase:
             if not u.Infra.namespace_enabled(project_root):
                 continue
             py_files = tuple(
-                path for path in working
+                path
+                for path in working
                 if path.is_relative_to(project_root)
                 and path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
                 and (u.Infra.project_root(path) or project_root) == project_root
             )
             findings = cascade.findings_from_report(
-                project_root, py_files, preflight.entries, scan_root=root,
+                project_root,
+                py_files,
+                preflight.entries,
+                scan_root=root,
             )
             planned = cascade.plan(
-                project_root=project_root, rope_project=rope_workspace.rope_project,
-                findings=findings, py_files=py_files, sources=working,
+                project_root=project_root,
+                rope_project=rope_workspace.rope_project,
+                findings=findings,
+                py_files=py_files,
+                sources=working,
                 source_states=tuple(originals.values()),
                 declared_files=tuple(declarations.values()),
             )
@@ -71,10 +78,13 @@ class FlextInfraNamespaceRelocationPhase:
                         f"declaration relocation unexpectedly retired a module: {plan.path}"
                     )
                 working[plan.path] = plan.desired_content.decode(c.DEFAULT_ENCODING)
-        return r[m.Infra.CodegenPhaseAnalysis].ok(m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-            files=tuple(effects.values()), inputs=tuple(originals.values()),
-        ))
+        return r[m.Infra.CodegenPhaseAnalysis].ok(
+            m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                files=tuple(effects.values()),
+                inputs=tuple(originals.values()),
+            )
+        )
 
     @staticmethod
     def apply(
@@ -88,9 +98,11 @@ class FlextInfraNamespaceRelocationPhase:
             The resulting ``p.Result[bool]`` — ``True`` marks changed sources.
 
         """
-        inventory = u.Infra.iter_python_files(m.Infra.SourceScanRequest(
-            project_roots=tuple(u.Infra.governed_project_roots(root)),
-        ))
+        inventory = u.Infra.iter_python_files(
+            m.Infra.SourceScanRequest(
+                project_roots=tuple(u.Infra.governed_project_roots(root)),
+            )
+        )
         if inventory.failure:
             return r[bool].from_failure(inventory)
         states = tuple(
@@ -98,9 +110,14 @@ class FlextInfraNamespaceRelocationPhase:
             for path in inventory.value
         )
         planned = FlextInfraNamespaceRelocationPhase.plan(
-            root, preflight, rope_workspace,
-            sources={state.path: state.content.decode(c.DEFAULT_ENCODING)
-                     for state in states if state.content is not None},
+            root,
+            preflight,
+            rope_workspace,
+            sources={
+                state.path: state.content.decode(c.DEFAULT_ENCODING)
+                for state in states
+                if state.content is not None
+            },
             source_states=states,
         )
         if planned.failure:

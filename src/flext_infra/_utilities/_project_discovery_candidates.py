@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from os.path import abspath
 from pathlib import Path
 
 from flext_infra import c, m, p, t
@@ -57,7 +58,10 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
         resolved_repository_root = repository_root.resolve()
         configured_entries: set[Path] = set()
         for project in configured_projects:
-            entry = (resolved_repository_root / project).resolve()
+            entry = (
+                (resolved_repository_root / project).resolve() if source_project is None
+                else Path(abspath(resolved_repository_root / project))
+            )
             if (
                 entry.is_dir()
                 if source_project is None

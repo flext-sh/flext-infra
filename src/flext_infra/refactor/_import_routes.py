@@ -101,7 +101,9 @@ class FlextInfraImportNormalizationRoutesMixin(
                     # to the published letter.
                     routed.setdefault(root, []).append(alias.asname or alias.name)
                     continue
-                source = cls._lazy_source(state.scope, node.module, alias.name, sources=sources)
+                source = cls._lazy_source(
+                    state.scope, node.module, alias.name, sources=sources
+                )
                 routed.setdefault(source or node.module, []).append(
                     cls._clause(alias),
                 )
@@ -394,14 +396,21 @@ class FlextInfraImportNormalizationRoutesMixin(
 
         """
         package = module.rpartition(".")[0]
-        directory = u.Infra.import_package_dir(scope.project_root, module, sources=sources)
+        directory = u.Infra.import_package_dir(
+            scope.project_root, module, sources=sources
+        )
         if directory is not None:
             return cls._declared_subpackage_source(scope, module, name, sources=sources)
         if not package or module == scope.module:
             return None
-        if u.Infra.import_lazy_exports(scope.project_root, module, sources=sources) is not None:
+        if (
+            u.Infra.import_lazy_exports(scope.project_root, module, sources=sources)
+            is not None
+        ):
             return None
-        exports = u.Infra.import_lazy_exports(scope.project_root, package, sources=sources)
+        exports = u.Infra.import_lazy_exports(
+            scope.project_root, package, sources=sources
+        )
         if exports is None or exports.get(name) != module:
             return None
         return package
@@ -424,15 +433,21 @@ class FlextInfraImportNormalizationRoutesMixin(
             ValueError: When independent declarations publish the same name.
 
         """
-        directory = u.Infra.import_package_dir(scope.project_root, module, sources=sources)
+        directory = u.Infra.import_package_dir(
+            scope.project_root, module, sources=sources
+        )
         if directory is None:
             return None
         candidates: t.MutableMappingKV[str, str] = {}
         due = 0.0
         scanned = 0
         for source_path in sorted(
-            directory.rglob("*.py") if sources is None else (
-                path for path in sources if path.is_relative_to(directory) and path.suffix == c.Infra.EXT_PYTHON
+            directory.rglob("*.py")
+            if sources is None
+            else (
+                path
+                for path in sources
+                if path.is_relative_to(directory) and path.suffix == c.Infra.EXT_PYTHON
             ),
             key=lambda path: (len(path.parts), path),
         ):
@@ -445,7 +460,11 @@ class FlextInfraImportNormalizationRoutesMixin(
             scanned += 1
             if source_path.name == c.Infra.INIT_PY:
                 continue
-            source = source_path.read_text(encoding=c.DEFAULT_ENCODING) if sources is None else sources[source_path]
+            source = (
+                source_path.read_text(encoding=c.DEFAULT_ENCODING)
+                if sources is None
+                else sources[source_path]
+            )
             if name not in u.Infra.public_export_names_source(source):
                 continue
             declaration = cls._module_bindings(ast.parse(source)).get(name)
@@ -509,7 +528,11 @@ class FlextInfraImportNormalizationRoutesMixin(
             if parent is None:
                 continue
             path = parent / f"{provider.rpartition('.')[2]}.py"
-            tree = ast.parse(path.read_text(encoding=c.DEFAULT_ENCODING) if sources is None else sources[path])
+            tree = ast.parse(
+                path.read_text(encoding=c.DEFAULT_ENCODING)
+                if sources is None
+                else sources[path]
+            )
             declaration = cls._module_bindings(tree).get(symbol)
             if not isinstance(declaration, ast.ClassDef):
                 continue
@@ -605,7 +628,9 @@ class FlextInfraImportNormalizationRoutesMixin(
         if identity in seen:
             msg = f"Cyclic declared public import: {identity}"
             raise ValueError(msg)
-        exports = u.Infra.import_lazy_exports(scope.project_root, module, sources=sources)
+        exports = u.Infra.import_lazy_exports(
+            scope.project_root, module, sources=sources
+        )
         if exports is not None and name in exports:
             return cls._declaration_identity(
                 scope,
@@ -626,7 +651,11 @@ class FlextInfraImportNormalizationRoutesMixin(
             msg = f"Missing declared public import: {identity}"
             raise ValueError(msg)
         binding = cls._module_bindings(
-            ast.parse(path.read_text(encoding=c.DEFAULT_ENCODING) if sources is None else sources[path]),
+            ast.parse(
+                path.read_text(encoding=c.DEFAULT_ENCODING)
+                if sources is None
+                else sources[path]
+            ),
         ).get(name)
         if isinstance(binding, ast.ImportFrom):
             alias = next(

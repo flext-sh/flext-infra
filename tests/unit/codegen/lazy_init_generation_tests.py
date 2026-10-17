@@ -47,9 +47,7 @@ class TestsFlextInfraCodegenGeneration:
         )
         source_root.joinpath(*c.Infra.LAZY_BOOTSTRAP_MODULE.split(".")).with_suffix(
             ".py"
-        ).write_text(
-            f"from {provider} import {export}\n", encoding=c.DEFAULT_ENCODING
-        )
+        ).write_text(f"from {provider} import {export}\n", encoding=c.DEFAULT_ENCODING)
         plan = cls._plan(
             current_pkg,
             (export,),
@@ -477,8 +475,7 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(
             init_content,
             contains=(
-                f"from {c.Infra.LAZY_BOOTSTRAP_MODULE} import "
-                "install_lazy_exports"
+                f"from {c.Infra.LAZY_BOOTSTRAP_MODULE} import install_lazy_exports"
             ),
         )
         tm.that(init_content, contains='__all__: tuple[str, ...] = ("Demo", "Nested")')

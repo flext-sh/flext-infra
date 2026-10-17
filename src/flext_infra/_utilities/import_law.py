@@ -167,10 +167,15 @@ class FlextInfraUtilitiesImportLaw:
         top, *rest = package.split(".")
         bases = (project_root / c.Infra.DEFAULT_SRC_DIR, project_root)
         owner = next(
-            (base for base in bases if (
-                (base / top / c.Infra.INIT_PY).is_file() if sources is None
-                else base / top / c.Infra.INIT_PY in sources
-            )),
+            (
+                base
+                for base in bases
+                if (
+                    (base / top / c.Infra.INIT_PY).is_file()
+                    if sources is None
+                    else base / top / c.Infra.INIT_PY in sources
+                )
+            ),
             None,
         )
         if owner is None:
@@ -180,7 +185,8 @@ class FlextInfraUtilitiesImportLaw:
             return None
         targets, references = (
             FlextInfraUtilitiesRopeAnalysis.lazy_import_mapping_source(
-                init.read_text(encoding=c.DEFAULT_ENCODING) if sources is None
+                init.read_text(encoding=c.DEFAULT_ENCODING)
+                if sources is None
                 else sources[init],
             )
         )
@@ -195,7 +201,9 @@ class FlextInfraUtilitiesImportLaw:
 
     @staticmethod
     def import_package_dir(
-        project_root: Path, package: str, *,
+        project_root: Path,
+        package: str,
+        *,
         sources: t.MappingKV[Path, str] | None = None,
     ) -> Path | None:
         """Return the directory of one dotted package the project owns.
@@ -212,7 +220,11 @@ class FlextInfraUtilitiesImportLaw:
                 continue
             candidate = base.joinpath(top, *rest)
             init = candidate / c.Infra.INIT_PY
-            return candidate if (init.is_file() if sources is None else init in sources) else None
+            return (
+                candidate
+                if (init.is_file() if sources is None else init in sources)
+                else None
+            )
         return None
 
     @staticmethod

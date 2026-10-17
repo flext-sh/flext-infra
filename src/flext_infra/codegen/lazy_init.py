@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from contextlib import contextmanager
+from os.path import commonpath
 from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING, Annotated, override
@@ -151,6 +152,11 @@ class FlextInfraCodegenLazyInit(
                 relative_path=c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH,
             )
             if evidence.failure:
+                if analysis.exception is not None:
+                    return r[m.Infra.CodegenPhaseAnalysis].fail(
+                        f"{analysis.exception}\n{evidence.error}",
+                        exception=analysis.exception,
+                    )
                 return r[m.Infra.CodegenPhaseAnalysis].from_failure(evidence)
         changed = tuple(
             plan
@@ -210,6 +216,19 @@ class FlextInfraCodegenLazyInit(
             )
         )
         if manifests.failure:
+            original = next(
+                (
+                    analysis.exception
+                    for analysis in analyses
+                    if analysis.exception is not None
+                ),
+                None,
+            )
+            if original is not None:
+                return r[m.Infra.CodegenPhaseAnalysis].fail(
+                    f"{original}\n{manifests.error}",
+                    exception=original,
+                )
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(manifests)
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
@@ -239,12 +258,17 @@ class FlextInfraCodegenLazyInit(
         root: Path,
         consumer_root: Path,
         source_project: p.Infra.RopeProject | None,
+        project_roots: t.VariadicTuple[Path],
     ) -> Generator[p.Infra.RopeProject]:
         """Bind consumers before indexing without replacing an injected epoch."""
         if source_project is None:
+            root = Path(
+                commonpath((str(root), *(str(project) for project in project_roots)))
+            )
             with (
                 u.Infra.facade_source_project(
-                    root, project_roots=(consumer_root,)
+                    root,
+                    project_roots=project_roots,
                 ) as binding,
                 binding[0].source_consumer(consumer_root=consumer_root) as consumer,
             ):
@@ -294,7 +318,10 @@ class FlextInfraCodegenLazyInit(
             try:
                 with (
                     self._source_binding(
-                        import_roots[0], root, source_project
+                        import_roots[0],
+                        root,
+                        source_project,
+                        tuple(import_roots),
                     ) as binding,
                     FlextInfraRopeWorkspace.open_workspace(
                         root,
@@ -314,6 +341,18 @@ class FlextInfraCodegenLazyInit(
                             )
                     planned = self._plan_open_workspace(rope)
                     if planned.failure:
+                        original = next(
+                            (
+                                item.exception
+                                for item in analyses
+                                if item.exception is not None
+                            ),
+                            None,
+                        )
+                        if original is not None:
+                            return result_type.fail(
+                                f"{original}\n{planned.error}", exception=original
+                            )
                         return result_type.from_failure(planned)
                     analysis = planned.value
             except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
@@ -328,8 +367,19 @@ class FlextInfraCodegenLazyInit(
                 msg = "lazy-init planning produced no authenticated analysis"
                 raise ValueError(msg)
             analyses.append(analysis)
-            for state in analysis.inputs:
-                inputs[state.path] = state
+            try:
+                merged = m.Infra.CodemodBindingSnapshot(
+                    states=(*inputs.values(), *analysis.inputs)
+                ).states
+            except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+                original = next(
+                    (item.exception for item in analyses if item.exception is not None),
+                    None,
+                )
+                if original is not None:
+                    raise original from exc
+                raise
+            inputs = {state.path: state for state in merged}
         if source_project is not None:
             try:
                 source_project.verify_source_states()
@@ -446,7 +496,9 @@ class FlextInfraCodegenLazyInit(
         )
         with rope.rope_project.source_capture():
             snapshots = self._snapshot_planner_inputs(
-                workspace_index, package_dirs, source_project=rope.rope_project,
+                workspace_index,
+                package_dirs,
+                source_project=rope.rope_project,
             )
         if snapshots.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(snapshots)
@@ -541,7 +593,9 @@ class FlextInfraCodegenLazyInit(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
                 files=all_plans,
-                inputs=tuple(snapshots[path] for path in sorted(snapshots)),
+                inputs=rope.rope_project.consumed_source_states(),
+                source_directories=rope.rope_project.consumed_source_directories(),
+                source_query_topology=rope.rope_project.consumed_source_topology(),
                 publications=package_plans.value,
             ),
         )

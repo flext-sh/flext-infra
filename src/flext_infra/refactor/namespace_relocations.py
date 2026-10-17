@@ -128,21 +128,30 @@ class FlextInfraNamespaceRelocationCascade:
         """Publish the same complete relocation plan once through the shared owner."""
         if not findings:
             return
-        paths = tuple(dict.fromkeys((
-            *py_files,
-            *(Path(resource.real_path).resolve() for resource in rope_project.get_python_files()),
-        )))
+        paths = tuple(
+            dict.fromkeys((
+                *py_files,
+                *(
+                    Path(resource.real_path).resolve()
+                    for resource in rope_project.get_python_files()
+                ),
+            ))
+        )
         states = tuple(
             u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
             for path in paths
         )
         sources = {
             state.path: state.content.decode(c.DEFAULT_ENCODING)
-            for state in states if state.content is not None
+            for state in states
+            if state.content is not None
         }
         analysis = self.plan(
-            project_root=project_root, rope_project=rope_project,
-            findings=findings, py_files=py_files, sources=sources,
+            project_root=project_root,
+            rope_project=rope_project,
+            findings=findings,
+            py_files=py_files,
+            sources=sources,
             source_states=states,
         ).unwrap()
         self.publish_plan(project_root, analysis, gates=gates).unwrap()
@@ -164,8 +173,11 @@ class FlextInfraNamespaceRelocationCascade:
             return r[bool].ok(False)
         prepared = u.Infra.normalize_sources(
             project_root,
-            {plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
-             for plan in analysis.files if plan.desired_content is not None},
+            {
+                plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
+                for plan in analysis.files
+                if plan.desired_content is not None
+            },
             inputs=analysis.inputs,
         )
         if prepared.failure:
@@ -174,18 +186,28 @@ class FlextInfraNamespaceRelocationCascade:
         for plan in analysis.files:
             source = prepared.value.updates[plan.path]
             if source is None:
-                return r[bool].fail(f"relocation formatter retired a source: {plan.path}")
-            plans.append(plan.model_copy(update={
-                "desired_content": source.encode(c.DEFAULT_ENCODING),
-                "source_states": prepared.value.inputs,
-            }))
+                return r[bool].fail(
+                    f"relocation formatter retired a source: {plan.path}"
+                )
+            plans.append(
+                plan.model_copy(
+                    update={
+                        "desired_content": source.encode(c.DEFAULT_ENCODING),
+                        "source_states": prepared.value.inputs,
+                    }
+                )
+            )
+
         def verify(candidate: Path) -> p.Result[bool]:
-            return FlextInfraWorkspaceChecker(repository_root=candidate).execute_payload(
+            return FlextInfraWorkspaceChecker(
+                repository_root=candidate
+            ).execute_payload(
                 m.Infra.RunCommand(repository_root=candidate, gates=tuple(gates or ()))
             )
 
         published = FlextInfraSemanticPublication.publish_semantic_artifact_plans(
-            plans, repository_root=project_root,
+            plans,
+            repository_root=project_root,
             projection_roots=(project_root,),
             dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
             validator=verify if gates is not None else None,
@@ -199,7 +221,9 @@ class FlextInfraNamespaceRelocationCascade:
         *,
         project_root: Path,
         rope_project: p.Infra.RopeProject,
-        findings: t.SequenceOf[t.Pair[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]],
+        findings: t.SequenceOf[
+            t.Pair[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]
+        ],
         py_files: t.SequenceOf[Path],
         sources: t.MappingKV[Path, str],
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
@@ -242,34 +266,56 @@ class FlextInfraNamespaceRelocationCascade:
         )
         for file_path, statement_lines in spans.items():
             working[file_path] = u.Infra.plan_hoist_inline_imports(
-                file_path, working[file_path], statement_lines,
+                file_path,
+                working[file_path],
+                statement_lines,
             )
         for file_path, moves in imports.items():
             for (source_module, target_module), aliases in sorted(moves.items()):
                 snapshot = u.Infra.snapshot_project(
-                    rope_project, working,
+                    rope_project,
+                    working,
                     captured=u.Infra.codemod_source_epoch(
-                        m.Infra.CodemodBindingSnapshot(states=tuple(
-                            state for state in originals.values() if state.path in working
-                            or state.path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
-                        ))
+                        m.Infra.CodemodBindingSnapshot(
+                            states=tuple(
+                                state
+                                for state in originals.values()
+                                if state.path in working
+                                or state.path.suffix
+                                in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
+                            )
+                        )
                     ),
-                    declared_files=tuple(declaration.model_copy(update={
-                        "desired_content": working[declaration.path].encode(c.DEFAULT_ENCODING),
-                    }) for declaration in declared_files
-                    if declaration.path in working and (
-                        isinstance(declaration.before, m.Cli.AtomicDirectoryChainPlan)
-                        or declaration.before.content is None
-                    )),
+                    declared_files=tuple(
+                        declaration.model_copy(
+                            update={
+                                "desired_content": working[declaration.path].encode(
+                                    c.DEFAULT_ENCODING
+                                ),
+                            }
+                        )
+                        for declaration in declared_files
+                        if declaration.path in working
+                        and (
+                            isinstance(
+                                declaration.before, m.Cli.AtomicDirectoryChainPlan
+                            )
+                            or declaration.before.content is None
+                        )
+                    ),
                 )
                 resource = u.Infra.require_file_resource(
                     snapshot.get_resource(
                         file_path.relative_to(Path(snapshot.root.real_path)).as_posix()
-                    ), file_path,
+                    ),
+                    file_path,
                 )
                 updated = u.Infra.plan_from_import_aliases(
-                    snapshot, resource, source_module=source_module,
-                    target_module=target_module, aliases=tuple(sorted(aliases)),
+                    snapshot,
+                    resource,
+                    source_module=source_module,
+                    target_module=target_module,
+                    aliases=tuple(sorted(aliases)),
                 )
                 if updated is None:
                     return r[m.Infra.CodegenPhaseAnalysis].fail(
@@ -283,10 +329,19 @@ class FlextInfraNamespaceRelocationCascade:
                 return r[m.Infra.CodegenPhaseAnalysis].fail(
                     f"facade-class relocation requires a project layout: {project_root}"
                 )
-            declarations.extend((path, name, u.Infra.class_target_file(
-                package_dir=layout.package_dir, source_file=path,
-                class_name=name, family=family,
-            )) for path, name, family, _line in classes)
+            declarations.extend(
+                (
+                    path,
+                    name,
+                    u.Infra.class_target_file(
+                        package_dir=layout.package_dir,
+                        source_file=path,
+                        class_name=name,
+                        family=family,
+                    ),
+                )
+                for path, name, family, _line in classes
+            )
         for relocation, names_by_file in names.items():
             if relocation is c.Infra.CodemodRelocation.FUTURE_ANNOTATIONS:
                 for path in names_by_file:
@@ -299,15 +354,30 @@ class FlextInfraNamespaceRelocationCascade:
                 return r[m.Infra.CodegenPhaseAnalysis].fail(
                     f"relocation has no native planning primitive: {relocation}"
                 )
-            filename = (c.Infra.PROTOCOLS_PY if relocation is c.Infra.CodemodRelocation.PROTOCOL
-                        else c.Infra.TYPINGS_PY)
-            declarations.extend((path, name, u.Infra.canonical_target_file(
-                project_root=project_root, source_file=path, filename=filename,
-            )) for path, declared in names_by_file.items() for name in sorted(declared))
+            filename = (
+                c.Infra.PROTOCOLS_PY
+                if relocation is c.Infra.CodemodRelocation.PROTOCOL
+                else c.Infra.TYPINGS_PY
+            )
+            declarations.extend(
+                (
+                    path,
+                    name,
+                    u.Infra.canonical_target_file(
+                        project_root=project_root,
+                        source_file=path,
+                        filename=filename,
+                    ),
+                )
+                for path, declared in names_by_file.items()
+                for name in sorted(declared)
+            )
         for path, _name, target in declarations:
             if target not in working:
                 if target.parent.is_dir():
-                    state = u.Cli.atomic_read_binary_file_state(target, required=False).unwrap()
+                    state = u.Cli.atomic_read_binary_file_state(
+                        target, required=False
+                    ).unwrap()
                     if state.content is not None:
                         return r[m.Infra.CodegenPhaseAnalysis].fail(
                             f"relocation destination is outside its working view: {target}"
@@ -315,74 +385,119 @@ class FlextInfraNamespaceRelocationCascade:
                     originals[target] = state
                     befores[target] = state
                 else:
-                    befores[target] = u.Cli.atomic_plan_directory_chain(target.parent).unwrap()
+                    befores[target] = u.Cli.atomic_plan_directory_chain(
+                        target.parent
+                    ).unwrap()
                 modes[target] = modes[path]
                 working[target] = f"{c.Infra.FUTURE_ANNOTATIONS}\n"
         for path, name, target in declarations:
             native_declarations: list[m.Infra.CodegenFilePlan] = []
             for destination, source in working.items():
                 before = befores[destination]
-                if isinstance(before, m.Cli.AtomicFileState) and before.content is not None:
+                if (
+                    isinstance(before, m.Cli.AtomicFileState)
+                    and before.content is not None
+                ):
                     continue
-                native_declarations.append(m.Infra.CodegenFilePlan(
-                    project=project_root, path=destination, before=before,
-                    desired_content=source.encode(c.DEFAULT_ENCODING),
-                    desired_mode=modes[destination], source_states=tuple(originals.values()),
-                    owner="namespace-relocations",
-                ))
+                native_declarations.append(
+                    m.Infra.CodegenFilePlan(
+                        project=project_root,
+                        path=destination,
+                        before=before,
+                        desired_content=source.encode(c.DEFAULT_ENCODING),
+                        desired_mode=modes[destination],
+                        source_states=tuple(originals.values()),
+                        owner="namespace-relocations",
+                    )
+                )
             snapshot = u.Infra.snapshot_project(
-                rope_project, working, declared_files=tuple(native_declarations),
+                rope_project,
+                working,
+                declared_files=tuple(native_declarations),
                 captured=u.Infra.codemod_source_epoch(
-                    m.Infra.CodemodBindingSnapshot(states=tuple(
-                        state for state in originals.values() if state.path in working
-                        or state.path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
-                    ))
+                    m.Infra.CodemodBindingSnapshot(
+                        states=tuple(
+                            state
+                            for state in originals.values()
+                            if state.path in working
+                            or state.path.suffix
+                            in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
+                        )
+                    )
                 ),
             )
             coordinate = Path(snapshot.root.real_path)
             resource = u.Infra.require_file_resource(
-                snapshot.get_resource(path.relative_to(coordinate).as_posix()), path,
+                snapshot.get_resource(path.relative_to(coordinate).as_posix()),
+                path,
             )
             module = u.Infra.resolve_pymodule(snapshot, resource)
             binding = module.get_scope().get_defined_names().get(name)
             if binding is None:
-                return r[m.Infra.CodegenPhaseAnalysis].fail(f"native relocation declaration is absent: {path}:{name}")
+                return r[m.Infra.CodegenPhaseAnalysis].fail(
+                    f"native relocation declaration is absent: {path}:{name}"
+                )
             owner, line = binding.get_definition_location()
             if owner is not module or line is None:
-                return r[m.Infra.CodegenPhaseAnalysis].fail(f"native relocation declaration is not local: {path}:{name}")
+                return r[m.Infra.CodegenPhaseAnalysis].fail(
+                    f"native relocation declaration is not local: {path}:{name}"
+                )
             offset = u.Infra.find_identifier_offset_in_lines(
-                working[path].splitlines(keepends=True), line=line, symbol=name,
+                working[path].splitlines(keepends=True),
+                line=line,
+                symbol=name,
             )
             if offset is None:
-                return r[m.Infra.CodegenPhaseAnalysis].fail(f"native relocation identifier is absent: {path}:{name}")
+                return r[m.Infra.CodegenPhaseAnalysis].fail(
+                    f"native relocation identifier is absent: {path}:{name}"
+                )
             changes = u.Infra.create_move(snapshot, resource, offset).get_changes(
                 u.Infra.require_file_resource(
-                    snapshot.get_resource(target.relative_to(coordinate).as_posix()), target,
+                    snapshot.get_resource(target.relative_to(coordinate).as_posix()),
+                    target,
                 ),
-                resources=[u.Infra.require_file_resource(
-                    snapshot.get_resource(candidate.relative_to(coordinate).as_posix()), candidate,
-                ) for candidate in working
-                    if candidate.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}],
+                resources=[
+                    u.Infra.require_file_resource(
+                        snapshot.get_resource(
+                            candidate.relative_to(coordinate).as_posix()
+                        ),
+                        candidate,
+                    )
+                    for candidate in working
+                    if candidate.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
+                ],
             )
             for change in changes.changes:
                 if not isinstance(change, p.Infra.RopeChangeContents):
-                    return r[m.Infra.CodegenPhaseAnalysis].fail("native declaration relocation produced a non-content effect")
+                    return r[m.Infra.CodegenPhaseAnalysis].fail(
+                        "native declaration relocation produced a non-content effect"
+                    )
                 destination = Path(change.resource.real_path).resolve()
                 if destination not in working:
-                    return r[m.Infra.CodegenPhaseAnalysis].fail(f"native relocation escaped its working view: {destination}")
+                    return r[m.Infra.CodegenPhaseAnalysis].fail(
+                        f"native relocation escaped its working view: {destination}"
+                    )
                 working[destination] = change.new_contents
         dependencies = tuple(originals.values())
-        return r[m.Infra.CodegenPhaseAnalysis].ok(m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-            files=tuple(m.Infra.CodegenFilePlan(
-                project=u.Infra.project_root(path) or project_root,
-                path=path, before=befores[path],
-                desired_content=source.encode(c.DEFAULT_ENCODING),
-                desired_mode=modes[path],
-                source_states=dependencies, owner="namespace-relocations",
-            ) for path, source in working.items() if sources.get(path) != source),
-            inputs=dependencies,
-        ))
+        return r[m.Infra.CodegenPhaseAnalysis].ok(
+            m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                files=tuple(
+                    m.Infra.CodegenFilePlan(
+                        project=u.Infra.project_root(path) or project_root,
+                        path=path,
+                        before=befores[path],
+                        desired_content=source.encode(c.DEFAULT_ENCODING),
+                        desired_mode=modes[path],
+                        source_states=dependencies,
+                        owner="namespace-relocations",
+                    )
+                    for path, source in working.items()
+                    if sources.get(path) != source
+                ),
+                inputs=dependencies,
+            )
+        )
 
     @classmethod
     def import_relocation_targets(

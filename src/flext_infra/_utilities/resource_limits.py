@@ -197,14 +197,12 @@ class FlextInfraUtilitiesResourceLimits:
 
         """
         import hashlib
-
         from importlib import metadata
 
         core_version = metadata.version("flext-core")
-        identity = hashlib.sha256(
+        return hashlib.sha256(
             f"{sys.executable}\0{core_version}".encode(),
         ).hexdigest()[:12]
-        return identity
 
     @staticmethod
     def ruff_cache_directory(project_dir: Path) -> Path:

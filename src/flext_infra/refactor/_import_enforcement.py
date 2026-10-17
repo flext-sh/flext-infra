@@ -75,11 +75,15 @@ class FlextInfraImportNormalization(
         )
         sources = {
             state.path: state.content.decode(c.DEFAULT_ENCODING)
-            for state in states if state.content is not None
+            for state in states
+            if state.content is not None
         }
         with u.Infra.open_project(project_root) as project:
             planned = cls.plan_files(
-                project_root, files, sources=sources, source_states=states,
+                project_root,
+                files,
+                sources=sources,
+                source_states=states,
                 rope_project=project,
             ).unwrap()
         return cls.publish_plan(project_root, planned).unwrap()
@@ -99,8 +103,11 @@ class FlextInfraImportNormalization(
             return r[bool].ok(False)
         prepared = u.Infra.normalize_sources(
             project_root,
-            {plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
-             for plan in planned.files if plan.desired_content is not None},
+            {
+                plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
+                for plan in planned.files
+                if plan.desired_content is not None
+            },
             inputs=planned.inputs,
         )
         if prepared.failure:
@@ -110,12 +117,17 @@ class FlextInfraImportNormalization(
             source = prepared.value.updates[plan.path]
             if source is None:
                 return r[bool].fail(f"import formatter retired a source: {plan.path}")
-            files_to_publish.append(plan.model_copy(update={
-                "desired_content": source.encode(c.DEFAULT_ENCODING),
-                "source_states": prepared.value.inputs,
-            }))
+            files_to_publish.append(
+                plan.model_copy(
+                    update={
+                        "desired_content": source.encode(c.DEFAULT_ENCODING),
+                        "source_states": prepared.value.inputs,
+                    }
+                )
+            )
         published = FlextInfraSemanticPublication.publish_semantic_artifact_plans(
-            files_to_publish, repository_root=project_root,
+            files_to_publish,
+            repository_root=project_root,
             projection_roots=(project_root,),
             dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
         )
@@ -143,19 +155,34 @@ class FlextInfraImportNormalization(
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(captured)
         source_states = captured.value
         snapshot = u.Infra.snapshot_project(
-            rope_project, sources,
+            rope_project,
+            sources,
             captured=u.Infra.codemod_source_epoch(
-                m.Infra.CodemodBindingSnapshot(states=tuple(
-                    state for state in source_states if state.path in sources
-                    or state.path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
-                ))
+                m.Infra.CodemodBindingSnapshot(
+                    states=tuple(
+                        state
+                        for state in source_states
+                        if state.path in sources
+                        or state.path.suffix
+                        in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
+                    )
+                )
             ),
-            declared_files=tuple(plan.model_copy(update={
-                "desired_content": sources[plan.path].encode(c.DEFAULT_ENCODING),
-            }) for plan in declared_files if plan.path in sources and (
-                isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
-                or plan.before.content is None
-            )),
+            declared_files=tuple(
+                plan.model_copy(
+                    update={
+                        "desired_content": sources[plan.path].encode(
+                            c.DEFAULT_ENCODING
+                        ),
+                    }
+                )
+                for plan in declared_files
+                if plan.path in sources
+                and (
+                    isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
+                    or plan.before.content is None
+                )
+            ),
         )
         import_graph, _modules = u.Infra.snapshot_import_graph(snapshot)
         originals = {state.path: state for state in source_states}
@@ -166,7 +193,9 @@ class FlextInfraImportNormalization(
                 return r[m.Infra.CodegenPhaseAnalysis].fail(
                     f"import declaration is outside its selected project: {path}"
                 )
-            if path not in sources or (path not in originals and path not in declarations):
+            if path not in sources or (
+                path not in originals and path not in declarations
+            ):
                 return r[m.Infra.CodegenPhaseAnalysis].fail(
                     f"import planning source lacks its original receipt: {path}"
                 )
@@ -174,29 +203,44 @@ class FlextInfraImportNormalization(
             if source.startswith(c.Infra.AUTOGEN_HEADERS):
                 continue
             normalized = cls.normalize_source(
-                project_root=project_root, file_path=path, source=source,
-                import_graph=import_graph, sources=sources,
+                project_root=project_root,
+                file_path=path,
+                source=source,
+                import_graph=import_graph,
+                sources=sources,
             )
             if normalized is None:
                 normalized = source
             if path in declarations:
-                plans.append(declarations[path].model_copy(update={
-                    "desired_content": normalized.encode(c.DEFAULT_ENCODING),
-                    "source_states": source_states,
-                    "owner": "import-normalization",
-                }))
+                plans.append(
+                    declarations[path].model_copy(
+                        update={
+                            "desired_content": normalized.encode(c.DEFAULT_ENCODING),
+                            "source_states": source_states,
+                            "owner": "import-normalization",
+                        }
+                    )
+                )
                 continue
             before = originals[path]
-            plans.append(m.Infra.CodegenFilePlan(
-                project=project_root, path=path, before=before,
-                desired_content=normalized.encode(c.DEFAULT_ENCODING),
-                desired_mode=before.mode, source_states=source_states,
-                owner="import-normalization",
-            ))
-        return r[m.Infra.CodegenPhaseAnalysis].ok(m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-            files=tuple(plans), inputs=source_states,
-        ))
+            plans.append(
+                m.Infra.CodegenFilePlan(
+                    project=project_root,
+                    path=path,
+                    before=before,
+                    desired_content=normalized.encode(c.DEFAULT_ENCODING),
+                    desired_mode=before.mode,
+                    source_states=source_states,
+                    owner="import-normalization",
+                )
+            )
+        return r[m.Infra.CodegenPhaseAnalysis].ok(
+            m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                files=tuple(plans),
+                inputs=source_states,
+            )
+        )
 
     @classmethod
     def normalize_source(
@@ -224,7 +268,9 @@ class FlextInfraImportNormalization(
         if located is None:
             return None
         namespace_dir, module = located
-        root_exports = u.Infra.import_lazy_exports(project_root, namespace_dir.name, sources=sources)
+        root_exports = u.Infra.import_lazy_exports(
+            project_root, namespace_dir.name, sources=sources
+        )
         if root_exports is None:
             msg = f"{namespace_dir} is a namespace without an owned package init"
             raise ValueError(msg)
@@ -358,7 +404,10 @@ class FlextInfraImportNormalization(
 
     @classmethod
     def _one_pass(
-        cls, state: m.Infra.ImportLawPass, source: str, *,
+        cls,
+        state: m.Infra.ImportLawPass,
+        source: str,
+        *,
         sources: t.MappingKV[Path, str] | None = None,
     ) -> str | None:
         """Apply the first rewrite category that changes the module.

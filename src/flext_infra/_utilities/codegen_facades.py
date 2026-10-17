@@ -75,18 +75,27 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         if any(not project.is_relative_to(root) for project in project_roots):
             msg = "Rope declared project root is outside the original authority"
             raise ValueError(msg)
-        if not source_states:
-            paths = (
-                FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(
-                    root,
-                )
-                if root.is_dir()
-                else ()
+        known = {
+            *(state.path for state in source_states),
+            *(plan.path for plan in declared_files),
+            *(state.path for plan in declared_files for state in plan.source_states),
+        }
+        paths = {
+            path
+            for project in project_roots or (root,)
+            if project.is_dir()
+            for path in FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(
+                project
             )
-            source_states = tuple(
+        }
+        source_states = (
+            *source_states,
+            *(
                 u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
-                for path in paths
-            )
+                for path in sorted(paths)
+                if path not in known
+            ),
+        )
         if planned_sources:
             source_states, declared_files = (
                 FlextInfraUtilitiesCodegenFacades._facade_declared_sources(

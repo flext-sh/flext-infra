@@ -36,6 +36,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         native: t.Pair[p.Infra.RopeProject, p.Infra.RopeResource],
         scope: t.Pair[str, bool],
         bindings_by_module: t.MappingKV[str, t.StrMapping],
+        providers_by_module: t.MappingKV[str, p.Infra.RopeResource],
         definitions: t.StrMapping,
         sources: t.MappingKV[Path, str],
         is_pytest: bool = False,
@@ -48,6 +49,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             module_name=module_name,
             is_package_init=is_package_init,
             bindings_by_module=bindings_by_module,
+            providers_by_module=providers_by_module,
             definitions=definitions,
             sources=sources,
         )
@@ -417,9 +419,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             (owner_name, nested, indentation),
             edits,
         )
-        edits.extend(
-            cls._nesting_export_edits(source, facts, owner_name, definitions)
-        )
+        edits.extend(cls._nesting_export_edits(source, facts, owner_name, definitions))
         nested_source = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
             resource, source, edits
         ).new_contents
@@ -488,7 +488,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
                 if (
                     composition
                     and (original_bindings is None or node.name in original_bindings)
-                    and cls._pytest_class_binding(node.name, original.get_attribute(node.name), patterns[1])
+                    and cls._pytest_class_binding(
+                        node.name, original.get_attribute(node.name), patterns[1]
+                    )
                 ):
                     bindings[node.name] = node.name
             elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
@@ -508,9 +510,17 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
                 }
                 if (
                     node.name.startswith("pytest_")
-                    or node.name in {"setup_module", "teardown_module", "setup_function", "teardown_function"}
+                    or node.name
+                    in {
+                        "setup_module",
+                        "teardown_module",
+                        "setup_function",
+                        "teardown_function",
+                    }
                     or tails & fixtures
-                    or composition and cls._pytest_name_matches(node.name, patterns[2])
+                    or (
+                        composition and cls._pytest_name_matches(node.name, patterns[2])
+                    )
                 ):
                     if "staticmethod" not in tails:
                         msg = f"pytest publication requires staticmethod outside fixture/hook decorators: {resource.path}:{node.name}"

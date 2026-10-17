@@ -269,6 +269,8 @@ class FlextInfraConstantsRefactor:
         SAME_BINDING = "same-binding"
         EXECUTABLE_OCCURRENCE = "executable-occurrence"
         UNREFERENCED_IMPORT = "unreferenced-import"
+        IMPLEMENTATION_OWNER = "implementation-owner"
+        ISOLATED_EXECUTION = "isolated-execution"
 
     CODEMOD_RUNTIME_CLOSURE_PREDICATES: ClassVar[frozenset[CodemodContextPredicate]] = (
         frozenset({

@@ -301,7 +301,7 @@ class TestsFlextInfraCodemodContextOwnPackage:
             source = package / relative
             source.parent.mkdir(parents=True, exist_ok=True)
             source.write_text("import os\n", encoding=c.DEFAULT_ENCODING)
-            for root in ((workspace, member) if attached else (member,)):
+            for root in (workspace, member) if attached else (member,):
                 tm.that(
                     u.Infra.codemod_context_admits(
                         m.Infra.CodemodAdmission(
@@ -420,6 +420,192 @@ class TestsFlextInfraCodemodContextOwnPackage:
                 ),
                 eq=True,
             )
+
+    @staticmethod
+    @pytest.mark.parametrize("implementation", ["_native_process", "relocated_owner"])
+    def test_process_implementation_role_follows_native_definitions_not_names(
+        mod_workspace: Path, implementation: str
+    ) -> None:
+        """Public aliases, MRO and helper definitions elect the actual owner."""
+        namespace = u.Infra.project_package_name(mod_workspace)
+        package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace
+        contents = {
+            "_process_base.py": "class ProcessBase:\n    pass\n",
+            "_process_helper.py": "def environment():\n    return {}\n",
+            f"{implementation}.py": (
+                "import subprocess\nfrom ._process_base import ProcessBase\n"
+                "from ._process_helper import environment\n"
+                "class NativeProcess(ProcessBase):\n"
+                "    @staticmethod\n    def start(command):\n"
+                "        return subprocess.Popen(command, env=environment())\n"
+            ),
+            "process_api.py": f"from .{implementation} import NativeProcess as Process\n",
+            "processes.py": "import subprocess\nclass NativeProcess:\n    pass\n",
+            "runtime.py": "from .process_api import Process\nimport subprocess\n",
+            "shadow.py": (
+                "from .process_api import Process\nProcess = None\nimport subprocess\n"
+            ),
+        }
+        for relative, text in contents.items():
+            (package / relative).write_text(text, encoding=c.DEFAULT_ENCODING)
+        rule = (
+            tm
+            .ok(
+                u.Infra.codemod_rule_plan(
+                    mod_workspace, rule_ids=("ban-subprocess-outside-run-owner",)
+                )
+            )
+            .rules[0]
+            .model_copy(
+                update={
+                    "context": (
+                        m.Infra.CodemodContextCondition(
+                            variable="IMPORT",
+                            predicate=c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER,
+                            arg=(f"{namespace}.process_api", "Process.start"),
+                            holds=False,
+                        ),
+                    ),
+                }
+            )
+        )
+        _, modules = u.Infra.codemod_binding_requirements((rule,))
+        snapshot = u.Infra.codemod_binding_snapshot(
+            mod_workspace,
+            tuple(
+                tm.ok(
+                    u.Cli.atomic_read_binary_file_state(package / name, required=True)
+                )
+                for name in contents
+            ),
+            modules,
+        )
+        facts = u.Infra.codemod_project_facts(mod_workspace, (rule,))
+        with u.Infra.codemod_binding_project(
+            mod_workspace, u.Infra.codemod_source_epoch(snapshot)
+        ) as (project, sources):
+            (package / f"{implementation}.py").write_text(
+                "class UnrelatedReplacement:\n    pass\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            for relative, admitted in (
+                (f"{implementation}.py", False),
+                ("_process_base.py", False),
+                ("_process_helper.py", False),
+                ("processes.py", True),
+                ("runtime.py", True),
+                ("shadow.py", True),
+            ):
+                tm.that(
+                    u.Infra.codemod_context_admits(
+                        m.Infra.CodemodAdmission(
+                            root=mod_workspace,
+                            rule=rule,
+                            file_path=package / relative,
+                            captures={"IMPORT": {"text": "import subprocess"}},
+                            facts=facts,
+                            snapshot=snapshot,
+                        ),
+                        project=project,
+                        sources=sources,
+                    ),
+                    eq=admitted,
+                    msg=relative,
+                )
+
+    @staticmethod
+    @pytest.mark.parametrize("implementation", ["_native_hook", "moved_entrypoint"])
+    @pytest.mark.parametrize("framework_import", [False, True])
+    def test_isolated_execution_role_uses_original_producer_and_entrypoint(
+        mod_workspace: Path, implementation: str, *, framework_import: bool
+    ) -> None:
+        """Only a declared native entrypoint with stdlib-only imports has the role."""
+        namespace = u.Infra.project_package_name(mod_workspace)
+        package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace
+        hook = "import os\nclass Hook:\n    pass\nvalue = os.getenv('ROLE_PROBE')\n"
+        contents = {
+            "execution.py": "from flext_cli import m\nE = m.Cli.PythonScriptExecution\n",
+            f"{implementation}.py": hook
+            + ("from flext_cli import u\n" if framework_import else ""),
+            "public_hook.py": f"from .{implementation} import Hook\n",
+            "producer.py": (
+                "from .execution import E\nfrom .public_hook import Hook\n"
+                "def command():\n"
+                "    execution = E(module=Hook.__module__, "
+                "role='isolated-stdlib')\n"
+                "    return execution.python_flags, execution.module\n"
+            ),
+            "hook_client.py": hook,
+            "bootstrap.py": hook,
+            "application.py": "import os\nvalue = os.getenv('ROLE_PROBE')\n",
+        }
+        for relative, text in contents.items():
+            (package / relative).write_text(text, encoding=c.DEFAULT_ENCODING)
+        rule = (
+            tm
+            .ok(
+                u.Infra.codemod_rule_plan(
+                    mod_workspace, rule_ids=("ban-ambient-environ-read",)
+                )
+            )
+            .rules[0]
+            .model_copy(
+                update={
+                    "context": (
+                        m.Infra.CodemodContextCondition(
+                            variable="GETENV",
+                            predicate=c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION,
+                            arg=(f"{namespace}.producer", "command"),
+                            holds=False,
+                        ),
+                    ),
+                }
+            )
+        )
+        _, modules = u.Infra.codemod_binding_requirements((rule,))
+        snapshot = u.Infra.codemod_binding_snapshot(
+            mod_workspace,
+            tuple(
+                tm.ok(
+                    u.Cli.atomic_read_binary_file_state(package / name, required=True)
+                )
+                for name in contents
+            ),
+            modules,
+        )
+        facts = u.Infra.codemod_project_facts(mod_workspace, (rule,))
+        with u.Infra.codemod_binding_project(
+            mod_workspace, u.Infra.codemod_source_epoch(snapshot)
+        ) as (project, sources):
+            (package / "producer.py").write_text(
+                "def command():\n    return None\n", encoding=c.DEFAULT_ENCODING
+            )
+            (package / f"{implementation}.py").write_text(
+                hook if framework_import else hook + "from flext_cli import u\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            for relative, admitted in (
+                (f"{implementation}.py", framework_import),
+                ("hook_client.py", True),
+                ("bootstrap.py", True),
+                ("application.py", True),
+            ):
+                tm.that(
+                    u.Infra.codemod_context_admits(
+                        m.Infra.CodemodAdmission(
+                            root=mod_workspace,
+                            rule=rule,
+                            file_path=package / relative,
+                            captures={"GETENV": {"text": "os.getenv"}},
+                            facts=facts,
+                            snapshot=snapshot,
+                        ),
+                        project=project,
+                        sources=sources,
+                    ),
+                    eq=admitted,
+                    msg=relative,
+                )
 
     @staticmethod
     def _private_import_rule() -> m.Infra.CodemodRule:

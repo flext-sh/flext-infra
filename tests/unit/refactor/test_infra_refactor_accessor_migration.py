@@ -248,16 +248,25 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
                 u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
                 for path in paths
             )
-            sources = {state.path: tm.not_none(state.content).decode(c.DEFAULT_ENCODING)
-                       for state in states}
+            sources = {
+                state.path: tm.not_none(state.content).decode(c.DEFAULT_ENCODING)
+                for state in states
+            }
             frozen = dict(sources)
             planned = phase.plan(
-                project, preflight, rope, sources=sources, source_states=states,
+                project,
+                preflight,
+                rope,
+                sources=sources,
+                source_states=states,
             ).unwrap()
             tm.that(planned.files, empty=False)
             tm.that(sources, eq=frozen)
             for plan in planned.files:
-                tm.that(plan.before, eq=next(state for state in states if state.path == plan.path))
+                tm.that(
+                    plan.before,
+                    eq=next(state for state in states if state.path == plan.path),
+                )
             for state in states:
                 tm.that(state.path.read_bytes(), eq=state.content)
             tm.that(phase.apply(project, preflight, rope).unwrap(), eq=True)

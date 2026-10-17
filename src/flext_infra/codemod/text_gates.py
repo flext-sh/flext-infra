@@ -534,11 +534,19 @@ class FlextInfraModTextGateEngine:
                     return r[t.VariadicTuple[Path]].fail(
                         f"text Markdown include escapes repository: {pattern}",
                     )
-                matches = tuple(sorted(set(root.glob(pattern)) | {
-                    path for path in sources or ()
-                    if path.is_relative_to(root)
-                    and fnmatch.fnmatch(path.relative_to(root).as_posix(), pattern)
-                }))
+                matches = tuple(
+                    sorted(
+                        set(root.glob(pattern))
+                        | {
+                            path
+                            for path in sources or ()
+                            if path.is_relative_to(root)
+                            and fnmatch.fnmatch(
+                                path.relative_to(root).as_posix(), pattern
+                            )
+                        }
+                    )
+                )
                 if not matches:
                     return r[t.VariadicTuple[Path]].fail(
                         f"text Markdown include has no source: {pattern}",
@@ -739,7 +747,11 @@ class FlextInfraModTextGateEngine:
                     ):
                         msg = f"text planning source lacks its original receipt: {path}"
                         raise ValueError(msg)
-                    before = declaration.before if declaration is not None else originals[path]
+                    before = (
+                        declaration.before
+                        if declaration is not None
+                        else originals[path]
+                    )
                     source = sources[path]
                 if isinstance(before, m.Cli.AtomicFileState):
                     if consumed.setdefault(path, before) != before:
@@ -783,16 +795,23 @@ class FlextInfraModTextGateEngine:
                     continue
             if fix and updated != source:
                 if declaration is not None:
-                    plans.append(declaration.model_copy(update={
-                        "desired_content": updated.encode(c.DEFAULT_ENCODING),
-                        "source_states": (*base_states, *declaration.source_states),
-                        "owner": "mod-text",
-                    }))
+                    plans.append(
+                        declaration.model_copy(
+                            update={
+                                "desired_content": updated.encode(c.DEFAULT_ENCODING),
+                                "source_states": (
+                                    *base_states,
+                                    *declaration.source_states,
+                                ),
+                                "owner": "mod-text",
+                            }
+                        )
+                    )
                     continue
                 if not isinstance(before, m.Cli.AtomicFileState):
-                    return r[t.Pair[m.Infra.ModTextReport, m.Infra.CodegenPhaseAnalysis]].fail(
-                        f"text declaration lacks its original file plan: {path}"
-                    )
+                    return r[
+                        t.Pair[m.Infra.ModTextReport, m.Infra.CodegenPhaseAnalysis]
+                    ].fail(f"text declaration lacks its original file plan: {path}")
                 plans.append(
                     cls._rewrite_plan(root, path, before, updated, base_states),
                 )
@@ -917,7 +936,8 @@ class FlextInfraModTextGateEngine:
             exception=first_exception,
         )
         return r[t.Pair[m.Infra.ModTextReport, m.Infra.CodegenPhaseAnalysis]].ok((
-            report, analysis
+            report,
+            analysis,
         ))
 
     @classmethod
@@ -1052,16 +1072,22 @@ class FlextInfraModTextGateEngine:
             ].from_failure(paths)
         scanned = cls._scan_paths(
             root,
-            tuple(sorted(set(paths.value) | {
-                path for path in sources or ()
-                if path.is_relative_to(root)
-                and path.suffix == c.Infra.EXT_PYTHON
-                and not any(
-                    path.is_relative_to(member)
-                    for member in u.Infra.governed_project_roots(root)
-                    if member != root
+            tuple(
+                sorted(
+                    set(paths.value)
+                    | {
+                        path
+                        for path in sources or ()
+                        if path.is_relative_to(root)
+                        and path.suffix == c.Infra.EXT_PYTHON
+                        and not any(
+                            path.is_relative_to(member)
+                            for member in u.Infra.governed_project_roots(root)
+                            if member != root
+                        )
+                    }
                 )
-            })),
+            ),
             rules,
             (*catalogues, identity),
             fix=fix,

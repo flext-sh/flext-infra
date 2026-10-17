@@ -18,7 +18,7 @@ from flext_infra._models import FlextInfraModelsMixins
 class FlextInfraModelsCodegenLazyInitModels:
     """Lazy-init planning and quality-gate models."""
 
-    class LazyInitPackageContext(m.ArbitraryTypesModel):
+    class LazyInitPackageContext(m.ContractModel):
         """Declarative package context for one lazy-init directory."""
 
         pkg_dir: Path = m.Field(description="Directory being processed.")
@@ -40,12 +40,8 @@ class FlextInfraModelsCodegenLazyInitModels:
             ),
         ] = False
 
-    class LazyInitPlan(m.ArbitraryTypesModel):
-        """Fully resolved lazy-init action and render payload.
-
-        Enforcement exemption: internal tooling model with intentional
-        mutable state.
-        """
+    class LazyInitPlan(m.ContractModel):
+        """Immutable resolved decision and its original source consumption."""
 
         context: FlextInfraModelsCodegenLazyInitModels.LazyInitPackageContext = m.Field(
             description="Discovered package context.",

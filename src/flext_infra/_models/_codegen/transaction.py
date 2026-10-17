@@ -70,9 +70,11 @@ class FlextInfraModelsCodegenTransactionModels:
             default_factory=lambda: MappingProxyType[Path, int]({}),
             description="Desired file-effect modes derived from original move sources",
         )
-        declared_files: t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan] = m.Field(
-            default=(),
-            description="Original file/absence witnesses with the current desired effects",
+        declared_files: t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan] = (
+            m.Field(
+                default=(),
+                description="Original file/absence witnesses with the current desired effects",
+            )
         )
         layouts: t.VariadicTuple[FlextInfraModelsRope.RopeProjectLayout] = m.Field(
             description="Original project layouts in the desired import closure",

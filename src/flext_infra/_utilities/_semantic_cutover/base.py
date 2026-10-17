@@ -194,7 +194,9 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         selected: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Compose model-alias retirement with existing API-alias policy."""
-        aliases = FlextInfraUtilitiesSemanticModelAliases.plan_model_aliases(workspace, sources)
+        aliases = FlextInfraUtilitiesSemanticModelAliases.plan_model_aliases(
+            workspace, sources
+        )
         if aliases.failure:
             return aliases
         working = dict(sources)
@@ -203,12 +205,18 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         if api.failure:
             return api
         working.update((edit.file_path, edit.updated_source) for edit in api.value)
-        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(tuple(
-            m.Infra.SemanticMigrationEdit(
-                file_path=path, original_source=source, updated_source=working[path],
-                changes=("composed native alias retirement",),
-            ) for path, source in sources.items() if working[path] != source
-        ))
+        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
+            tuple(
+                m.Infra.SemanticMigrationEdit(
+                    file_path=path,
+                    original_source=source,
+                    updated_source=working[path],
+                    changes=("composed native alias retirement",),
+                )
+                for path, source in sources.items()
+                if working[path] != source
+            )
+        )
 
     @classmethod
     def _plan_ordered_phase(

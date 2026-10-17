@@ -43,13 +43,20 @@ class FlextInfraConfig(FlextCliConfig):
     @classmethod
     @override
     def config_files(cls) -> list[Path]:
-        """Elect only packaged namespace defaults for the library singleton.
+        """Compose the inherited CLI elections under the infra namespace files.
+
+        The inherited ``Cli`` and ``ProcessIsolation`` obligations are published
+        by the flext-cli packaged ``cli.yaml`` and ``process.yaml``; the infra
+        files stay authoritative for the namespaces they own.
 
         Returns:
             The resulting ``list[Path]``.
 
         """
-        return cls._yaml_files_in(cls.ssot_config_dir())
+        cli_package = files(FlextCliConfig.__module__.partition(".")[0])
+        cli_dir = cli_package / c.Infra.CODEGEN_CONFIG_DIR
+        own = cls._yaml_files_in(cls.ssot_config_dir())
+        return [path for path in cls._yaml_files_in(cli_dir) if path not in own] + own
 
     @classmethod
     def config_sources_for_repository(

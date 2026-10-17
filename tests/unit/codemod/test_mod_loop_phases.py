@@ -166,11 +166,17 @@ class TestsFlextInfraCodemodLoopPhases:
                     m.Infra.SourceScanRequest(project_roots=(project,)),
                 ).unwrap()
             )
-            sources = {state.path: tm.not_none(state.content).decode(c.DEFAULT_ENCODING)
-                       for state in states}
+            sources = {
+                state.path: tm.not_none(state.content).decode(c.DEFAULT_ENCODING)
+                for state in states
+            }
             frozen = dict(sources)
             analysis = phase.plan(
-                project, preflight, rope, sources=sources, source_states=states,
+                project,
+                preflight,
+                rope,
+                sources=sources,
+                source_states=states,
             ).unwrap()
             tm.that(analysis.files, empty=False)
             tm.that(analysis.issues, empty=True)
@@ -179,7 +185,10 @@ class TestsFlextInfraCodemodLoopPhases:
                 tm.that(state.path.read_bytes(), eq=state.content)
             for plan in analysis.files:
                 if plan.path in sources:
-                    tm.that(plan.before, eq=next(state for state in states if state.path == plan.path))
+                    tm.that(
+                        plan.before,
+                        eq=next(state for state in states if state.path == plan.path),
+                    )
                 else:
                     tm.that(plan.path.exists(), eq=False)
             changed = phase.apply(project, preflight, rope)

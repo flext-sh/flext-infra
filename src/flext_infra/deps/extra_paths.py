@@ -305,7 +305,9 @@ class FlextInfraExtraPathsManager(
                 self._included_pyrefly_env_dirs(project_dir=project_dir),
             ),
         )
-        if not is_root or (not rules.workspace_include_children):
+        if not is_root or (
+            not config.Infra.tooling.tools.pyrefly.path_rules.workspace_include_children
+        ):
             return sorted(includes)
         for child in sorted(project_dir.iterdir()):
             if not child.is_dir() or not (child / c.PYPROJECT_FILENAME).exists():

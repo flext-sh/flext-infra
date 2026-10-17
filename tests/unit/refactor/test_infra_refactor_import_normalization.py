@@ -30,7 +30,8 @@ class TestsFlextInfraRefactorImportNormalization(
 
     @classmethod
     def test_import_plan_uses_working_sources_without_replacing_original_receipts(
-        cls, tmp_path: Path,
+        cls,
+        tmp_path: Path,
     ) -> None:
         """Working imports and lazy exports remain separate from physical sources."""
         project, package = cls._project(tmp_path)
@@ -41,23 +42,37 @@ class TestsFlextInfraRefactorImportNormalization(
         )
         target = package / "consumer.py"
         target.write_text("value = 'original'\n", encoding=c.DEFAULT_ENCODING)
-        paths = tm.ok(u.Infra.iter_python_files(
-            m.Infra.SourceScanRequest(project_roots=(project,)),
-        ))
-        states = tuple(tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
-                       for path in paths)
-        sources = {state.path: tm.not_none(state.content).decode(c.DEFAULT_ENCODING)
-                   for state in states}
-        working = {**sources, target: (
-            "from demo_pkg._utilities import DemoHelper as imported\n"
-            "value = imported.marker\n"
-        )}
+        paths = tm.ok(
+            u.Infra.iter_python_files(
+                m.Infra.SourceScanRequest(project_roots=(project,)),
+            )
+        )
+        states = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for path in paths
+        )
+        sources = {
+            state.path: tm.not_none(state.content).decode(c.DEFAULT_ENCODING)
+            for state in states
+        }
+        working = {
+            **sources,
+            target: (
+                "from demo_pkg._utilities import DemoHelper as imported\n"
+                "value = imported.marker\n"
+            ),
+        }
         frozen = dict(working)
         with u.Infra.open_project(project) as rope:
-            analysis = tm.ok(FlextInfraImportNormalization.plan_files(
-                project, (target,), sources=working, source_states=states,
-                rope_project=rope,
-            ))
+            analysis = tm.ok(
+                FlextInfraImportNormalization.plan_files(
+                    project,
+                    (target,),
+                    sources=working,
+                    source_states=states,
+                    rope_project=rope,
+                )
+            )
         tm.that(analysis.files, length=1)
         plan = analysis.files[0]
         tm.that(plan.before, eq=next(state for state in states if state.path == target))

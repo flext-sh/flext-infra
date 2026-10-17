@@ -102,6 +102,17 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
             issues.append(self._native_error_issue(project_dir, result.stderr))
         return u.Cli.process_succeeded(result.outcome) and not issues, issues
 
+    @staticmethod
+    @override
+    def _findings_exit_codes() -> t.VariadicTuple[int]:
+        """Exit statuses with which Ruff format reports unformatted files.
+
+        Returns:
+            The findings statuses declared for Ruff in the tooling config.
+
+        """
+        return config.Infra.tooling.tools.ruff.findings_exit_codes
+
     @override
     def _build_fix_command(
         self,

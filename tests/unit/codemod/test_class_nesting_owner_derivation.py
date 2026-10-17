@@ -1086,6 +1086,98 @@ __all__: list[str] = ["LIMIT", "write"]
         )
         tm.that(residue, eq={})
 
+    def test_private_class_cross_module_reference_follows_plain_import(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A dotted private-class reference through a plain module import rewires."""
+        root, module = self._family_module(tmp_path, "atomic_thing", self.LOOSE_MODULE)
+        owner = self._derived_owner(root, "atomic_thing")
+        package = module.parent
+        consumer_owner = self._derived_owner(root, "marker_client")
+        imported = ".".join(
+            module.relative_to(root / c.Infra.DEFAULT_SRC_DIR).with_suffix("").parts,
+        )
+        consumer_source = (
+            '"""Marker client."""\n\n'
+            "from __future__ import annotations\n\n"
+            f"from {imported.rsplit('.', 1)[0]} import atomic_thing\n\n\n"
+            f"class {consumer_owner}:\n"
+            '    """Consumer owner."""\n\n'
+            "    @staticmethod\n"
+            "    def marked(marker: atomic_thing._Marker) -> bool:\n"
+            "        return isinstance(marker, atomic_thing._Marker)\n\n\n"
+            f'__all__: list[str] = ["{consumer_owner}"]\n'
+        )
+        consumer = package / "marker_client.py"
+        tm.ok(u.Cli.atomic_write_text_file(consumer, consumer_source))
+        paths = (str(root / c.Infra.DEFAULT_SRC_DIR),)
+        before = u.Tests.run_lazy_init_probe(
+            f"import {imported} as atomic_thing\n"
+            f"from {imported.rpartition('.')[0]}.marker_client import {consumer_owner}\n"
+            f"print({consumer_owner}.marked(atomic_thing._Marker()))\n",
+            python_paths=paths,
+            cwd=root,
+        )
+
+        updated, residue = self._plan(
+            root,
+            {module: self.LOOSE_MODULE, consumer: consumer_source},
+        )
+
+        rewired = updated[consumer.resolve()]
+        tm.that(rewired, has=f"{owner}._Marker")
+        tm.that(rewired, lacks="atomic_thing._Marker")
+        for path, source in updated.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        after = u.Tests.run_lazy_init_probe(
+            f"import {imported} as atomic_thing\n"
+            f"from {imported.rpartition('.')[0]}.marker_client import {consumer_owner}\n"
+            f"print({consumer_owner}.marked(atomic_thing.{owner}._Marker()))\n",
+            python_paths=paths,
+            cwd=root,
+        )
+        tm.that(before, eq=["True"])
+        tm.that(after, eq=before)
+        tm.that(residue, eq={})
+
+    def test_module_constant_from_import_survives_nesting(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A consumer from-import of a call-free constant follows its owner."""
+        root, module = self._family_module(tmp_path, "atomic_thing", self.LOOSE_MODULE)
+        owner = self._derived_owner(root, "atomic_thing")
+        package = module.parent
+        consumer_owner = self._derived_owner(root, "limit_client")
+        imported = ".".join(
+            module.relative_to(root / c.Infra.DEFAULT_SRC_DIR).with_suffix("").parts,
+        )
+        consumer_source = (
+            '"""Limit client."""\n\n'
+            "from __future__ import annotations\n\n"
+            f"from {imported} import LIMIT\n\n\n"
+            f"class {consumer_owner}:\n"
+            '    """Consumer owner."""\n\n'
+            "    @staticmethod\n"
+            "    def bounded(value: int) -> int:\n"
+            "        return min(value, LIMIT)\n\n\n"
+            f'__all__: list[str] = ["{consumer_owner}"]\n'
+        )
+        consumer = package / "limit_client.py"
+        tm.ok(u.Cli.atomic_write_text_file(consumer, consumer_source))
+
+        updated, residue = self._plan(
+            root,
+            {module: self.LOOSE_MODULE, consumer: consumer_source},
+        )
+
+        rewired = updated[consumer.resolve()]
+        tm.that(rewired, has=f"from {imported} import {owner}")
+        tm.that(rewired, has=f"return min(value, {owner}.LIMIT)")
+        tm.that(rewired, lacks="import LIMIT")
+        tm.that(residue, eq={})
+
     def test_published_record_class_is_a_member(self, tmp_path: Path) -> None:
         """A published record class that is no family owner is a member."""
         root, module = self._family_module(tmp_path, "mode_helpers", "")

@@ -293,7 +293,9 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
 
         """
         inline = cls.runtime_callable("rope.refactor.inline", "InlineVariable")(
-            project, resource, offset,
+            project,
+            resource,
+            offset,
         )
         if not isinstance(inline, p.Infra.RopeInlineVariable):
             message = "Rope InlineVariable does not satisfy its native contract"
