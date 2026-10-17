@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenTransactionGeneration,
+    FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsState,
     FlextInfraMiseArtifactsVerification,
@@ -28,6 +29,9 @@ if TYPE_CHECKING:
 
 class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
     """Keep every generation phase recoverable until one final fixed point."""
+
+    _file_run_identity: m.Infra.GitIdentityReport | None = None
+    _file_run_git_directory: t.Pair[int, int] | None = None
 
     def preview_sources[T](
         self,
@@ -380,22 +384,37 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             The resulting ``p.Result[T]``.
 
         """
+        if (
+            self._file_run_identity is not None
+            or self._file_run_git_directory is not None
+        ):
+            return r[T].fail("file transaction scope already has an active lease")
         identity = self._authorized_run_identity(roots)
         if identity.failure:
             return r[T].from_failure(identity)
-        proposed = self._planner.file_layout(
-            identity.value.repo_root,
-            roots,
-            transaction_id=secrets.token_hex(16),
+        physical = FlextInfraMiseArtifactsFiles.physical_directory_identity(
+            identity.value.git_dir,
+        )
+        proposed = physical.flat_map(
+            lambda _: self._planner.file_layout_from_identity(
+                identity.value,
+                roots,
+                transaction_id=secrets.token_hex(16),
+            ),
         )
         if proposed.failure:
             return r[T].from_failure(proposed)
         with u.Infra.codegen_transaction_lease(
             self._planner.journal_path(identity.value),
         ):
-            participants = self._file_recovery_participants(
-                proposed.value,
-                prepare=prepare,
+            participants = self._file_identity_current(
+                identity.value,
+                physical.value,
+            ).flat_map(
+                lambda _: self._file_recovery_participants(
+                    proposed.value,
+                    prepare=prepare,
+                ),
             )
             if participants.failure:
                 return r[T].from_failure(participants)
@@ -403,24 +422,30 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
                 participants.value,
                 held_roots=frozenset({identity.value.repo_root.resolve()}),
             ):
-                if not prepare:
-                    residue = FlextInfraMiseArtifactsState.transaction_residue(
-                        proposed.value,
-                    )
-                    if residue:
-                        return r[T].fail(
-                            "unregistered generation staging blocks readiness: "
-                            f"{residue[0]}",
+                self._file_run_identity = identity.value
+                self._file_run_git_directory = physical.value
+                try:
+                    if not prepare:
+                        residue = FlextInfraMiseArtifactsState.transaction_residue(
+                            proposed.value,
                         )
-                    u.Cli.info(
-                        "stage=file-transaction-readiness "
-                        "journal=absent residue=0 leased=true",
+                        if residue:
+                            return r[T].fail(
+                                "unregistered generation staging blocks readiness: "
+                                f"{residue[0]}",
+                            )
+                        u.Cli.info(
+                            "stage=file-transaction-readiness "
+                            "journal=absent residue=0 leased=true",
+                        )
+                    return self._run_locked_operation(
+                        identity.value,
+                        prepare=prepare,
+                        operation=operation,
                     )
-                return self._run_locked_operation(
-                    identity.value,
-                    prepare=prepare,
-                    operation=operation,
-                )
+                finally:
+                    self._file_run_identity = None
+                    self._file_run_git_directory = None
 
     def _authorized_run_identity(
         self,
@@ -544,10 +569,19 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         result_type = r[m.Infra.MiseToolchainWorkspaceLayout]
         if set(roots.values()) - self._file_leases.keys():
             return result_type.fail("file session requires every destination lease")
-        prepared = self._planner.file_layout(
-            scope_root,
-            roots,
-            transaction_id=secrets.token_hex(16),
+        identity = self._file_run_identity
+        physical = self._file_run_git_directory
+        if identity is None or physical is None or identity.repo_root != scope_root:
+            return result_type.fail("file session differs from its active scope lease")
+        prepared = self._file_identity_current(
+            identity,
+            physical,
+        ).flat_map(
+            lambda _: self._planner.file_layout_from_identity(
+                identity,
+                roots,
+                transaction_id=secrets.token_hex(16),
+            ),
         )
         if prepared.failure:
             return result_type.from_failure(prepared)
@@ -556,6 +590,38 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         if mismatch is not None:
             return result_type.fail(mismatch)
         return result_type.ok(layout)
+
+    @staticmethod
+    def _file_identity_current(
+        identity: m.Infra.GitIdentityReport,
+        physical: t.Pair[int, int],
+    ) -> p.Result[bool]:
+        """Reprove native Git mapping and original physical journal ownership.
+
+        Returns:
+            The unchanged lease anchor or its first native identity failure.
+
+        """
+        scope = u.Infra.git_mutation_scope(
+            m.Infra.GitRepoRequest(repo_root=identity.repo_root),
+        )
+        if scope.failure:
+            return r[bool].from_failure(scope)
+        if (
+            scope.value.root != identity.repo_root
+            or scope.value.git_dir != identity.git_dir
+        ):
+            return r[bool].fail("file transaction Git ownership changed during lease")
+        observed = FlextInfraMiseArtifactsFiles.physical_directory_identity(
+            identity.git_dir,
+        )
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        if observed.value != physical:
+            return r[bool].fail(
+                "file transaction journal directory changed during lease"
+            )
+        return r[bool].ok(value=True)
 
     def _file_session_authority(self) -> p.Result[bool]:
         """Resolve the current producer or cold source authority receipt.

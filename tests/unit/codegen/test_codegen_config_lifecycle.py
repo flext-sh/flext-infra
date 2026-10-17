@@ -97,6 +97,34 @@ class TestsFlextInfraCodegenConfigLifecycle:
         root = test_codegen_ci_matrix.TestsFlextInfraCodegenCiMatrix.render_project(
             installed_artifact_consumer,
         )
+        test_paths = tuple(
+            sorted({
+                path
+                for directory in config.Infra.tooling.tools.pytest.test_paths
+                for pattern in config.Infra.tooling.tools.pytest.python_files
+                for path in (root / directory).rglob(pattern)
+                if path.is_file()
+            }),
+        )
+        tm.that(
+            bool(test_paths),
+            eq=True,
+            msg="The generated project must own executable Python tests",
+        )
+        for path in test_paths:
+            state = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            tm.ok(
+                u.Cli.atomic_write_binary_file_guarded(
+                    state,
+                    tm.not_none(state.content)
+                    + b"\n# Authored test changes survive managed generation.\n",
+                    permission_mode=tm.not_none(state.mode),
+                ),
+            )
+        retained_tests = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for path in test_paths
+        )
         for verb in ("upg", "setup", "build"):
             output = tm.ok(
                 u.Tests.run_isolated_make(
@@ -294,6 +322,27 @@ print(
             msg=process.stdout + process.stderr,
         )
         tm.that(process.stdout, has="generated config: frozen YAML")
+        for verb in ("gen", "check", "test-full"):
+            output = tm.ok(
+                u.Tests.run_isolated_make(
+                    [verb],
+                    cwd=root,
+                    env={
+                        config.Infra.codegen.make.ci.variable: (
+                            config.Infra.codegen.make.ci.value
+                        ),
+                        config.Infra.codegen.make.uv_resolution.hosted_variable: (
+                            config.Infra.codegen.make.uv_resolution.hosted_value
+                        ),
+                    },
+                ),
+            )
+            tm.that(
+                u.Cli.process_succeeded(output.outcome),
+                eq=True,
+                msg=output.stdout + output.stderr,
+            )
+            tm.ok(u.Cli.atomic_verify_binary_file_states(retained_tests))
 
     @staticmethod
     def test_initializer_no_op_publishes_observable_request_proof(
