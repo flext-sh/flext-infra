@@ -1142,7 +1142,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             Public reference paths bound by the constants facade's Rope graph.
 
         """
-        module = project.get_module(f"{package}.{Path(c.Infra.CONSTANTS_PY).stem}")
+        module = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+            project.get_module(f"{package}.{Path(c.Infra.CONSTANTS_PY).stem}")
+        )
         facade = module.get_attributes().get("c")
         if facade is None:
             return {}

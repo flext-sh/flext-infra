@@ -13,6 +13,9 @@ from rope.refactor.restructure import Restructure
 from rope.refactor.wildcards import DefaultWildcard
 
 from flext_infra import m, p, t
+from flext_infra._utilities._rope_core_pymodule import (
+    FlextInfraUtilitiesRopeCorePyModuleMixin,
+)
 
 
 class FlextInfraRopeRestructure(Restructure):
@@ -109,7 +112,12 @@ class FlextInfraRopeRestructure(Restructure):
         selected = imports
         if isinstance(self.import_policy, Mapping):
             project: p.Infra.RopeProject = self.project
-            names = project.get_pymodule(resource).get_scope().get_defined_names()
+            names = (
+                FlextInfraUtilitiesRopeCorePyModuleMixin
+                .resolve_pymodule(project, resource)
+                .get_scope()
+                .get_defined_names()
+            )
             selected = tuple(
                 declaration
                 for binding, declaration in self.import_policy.items()

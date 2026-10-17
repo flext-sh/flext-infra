@@ -636,31 +636,6 @@ class FlextInfraUtilitiesRepository:
         return r[str].ok(candidate)
 
     @classmethod
-    def _declared_dependency_payload(
-        cls,
-        pyproject_path: Path,
-    ) -> p.Result[t.JsonMapping]:
-        """Read and parse the owner-recovered pyproject declaration.
-
-        Returns:
-            The parsed pyproject mapping as one result payload.
-
-        """
-        # Identity detection consumes the same owner-recovered declaration as
-        # metadata and template composition. Raw projection bytes may still
-        # carry managed merge blocks while the transaction is only planning.
-
-        text = FlextInfraUtilitiesPyproject.live_pyproject_text(pyproject_path)
-        if text.failure:
-            return r[t.JsonMapping].from_failure(text)
-        payload = u.Cli.toml_mapping_from_text(text.value)
-        if payload is None:
-            return r[t.JsonMapping].fail(
-                f"pyproject is not valid TOML: {pyproject_path}",
-            )
-        return r[t.JsonMapping].ok(payload)
-
-    @classmethod
     def _declared_dependency_lines(
         cls,
         payload: t.JsonMapping,
@@ -755,7 +730,9 @@ class FlextInfraUtilitiesRepository:
             The family line the pyproject declares, as a source for one member.
 
         """
-        payload = cls._declared_dependency_payload(pyproject_path)
+        payload = FlextInfraUtilitiesPyproject.declared_dependency_payload(
+            pyproject_path,
+        )
         if payload.failure:
             return r[t.Pair[str, str]].from_failure(payload)
         lines = cls._declared_dependency_lines(
