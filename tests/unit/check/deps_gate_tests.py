@@ -352,6 +352,7 @@ class TestsFlextInfraDepsGate:
             encoding="utf-8",
         )
         before = pyproject.read_bytes()
+        before_lock = inputs.lock.path.read_bytes()
         gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
         context = m.Infra.GateContext(
             repository_root=root,
@@ -360,13 +361,25 @@ class TestsFlextInfraDepsGate:
             runtime_dependency_inputs=inputs,
         )
 
-        repaired = gate.fix(root, context)
+        with pytest.raises(
+            RuntimeError,
+            match="runtime import requires one authored, installed, locked supplier",
+        ) as rejected:
+            gate.fix(root, context)
         checked = gate.check(root, context)
 
-        tm.that(repaired.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
+        tm.that(
+            str(rejected.value),
+            eq=(
+                "Cannot unwrap failed result: runtime import requires one authored, "
+                "installed, locked supplier: requests"
+            ),
+        )
+        tm.that(checked.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
         tm.that(checked.result.passed, eq=False)
-        assert any(issue.code.endswith("DEP004") for issue in checked.issues)
+        tm.that(any(issue.code.endswith("DEP004") for issue in checked.issues), eq=True)
         tm.that(pyproject.read_bytes(), eq=before)
+        tm.that(inputs.lock.path.read_bytes(), eq=before_lock)
         tm.that(inputs.providers, eq=(provider,))
 
     @staticmethod
@@ -439,11 +452,21 @@ class TestsFlextInfraDepsGate:
         ).unwrap()
         before = scan.settings.path.read_bytes()
         if change == "ambiguous":
+            before_lock = inputs.lock.path.read_bytes()
             inputs = inputs.model_copy(update={"providers": inputs.providers * 2})
             plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
             tm.that(plan.unresolved_modules, has="requests")
             tm.that(plan.dependencies, eq=())
-            tm.that(u.Infra.publish_runtime_dependency_plan(plan).unwrap(), eq=False)
+            rejected = u.Infra.publish_runtime_dependency_plan(plan)
+            tm.fail(rejected)
+            tm.that(
+                rejected.error,
+                eq=(
+                    "runtime import requires one authored, installed, "
+                    "locked supplier: requests"
+                ),
+            )
+            tm.that(inputs.lock.path.read_bytes(), eq=before_lock)
         elif change in {"source", "shipped-source"}:
             plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
             changed = "infra" if change == "shipped-source" else "src"

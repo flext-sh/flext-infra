@@ -607,7 +607,17 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         visiting | {target},
                         depth + 1,
                     )
-            binding = module.get_attribute(name)
+            try:
+                binding = module.get_attribute(name)
+            except (
+                FlextInfraUtilitiesRopeRuntime.rope_attribute_not_found_error_types()
+            ) as exc:
+                resource = module.get_resource()
+                exc.add_note(
+                    f"Provider base reference: {target}; source="
+                    f"{resource.real_path if resource is not None else '<native>'}"
+                )
+                raise
             if isinstance(binding, p.Infra.RopeImportedName):
                 return self._provider_imported_name_reference(
                     binding,

@@ -14,7 +14,7 @@ from typing import cast
 import pytest
 
 from flext_infra import main
-from tests import c, t, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraModernizerSourceReferences:
@@ -149,6 +149,99 @@ class TestsFlextInfraModernizerSourceReferences:
         tm.that(published, has="# Authored consumer metadata")
         tm.that(main(arguments), eq=0)
         tm.that(project.read_text(encoding="utf-8"), eq=published)
+
+    @staticmethod
+    def test_public_source_migration_selects_only_declared_manifests(
+        modernizer_workspace_with_projects: Path,
+    ) -> None:
+        """Migrate root and member declarations without traversing nested projects."""
+        migration = m.Infra.GitSourceReferenceMigration(
+            url_prefix="https://github.com/reference-owner/",
+            source_ref="retired-reference",
+            target_ref="next-reference",
+        )
+        requirements = (
+            (
+                f"sample-kit[feature] @ git+{migration.url_prefix}"
+                f"sample-kit.git@{migration.source_ref}#subdirectory=python"
+                '; python_version >= "3.13"'
+            ),
+            (
+                "other-kit @ git+https://github.com/other-owner/kit.git"
+                f"@{migration.source_ref}"
+            ),
+            f"retained-kit @ git+{migration.url_prefix}retained-kit.git@other-ref",
+        )
+        projects = (
+            modernizer_workspace_with_projects,
+            *(
+                modernizer_workspace_with_projects / name
+                for name in u.Infra.workspace_project_paths(
+                    modernizer_workspace_with_projects
+                )
+            ),
+        )
+        for project in projects:
+            document = u.Tests.toml_doc(
+                (project / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
+            )
+            u.Cli.toml_sync_string_list(
+                tm.not_none(u.Cli.toml_table_child(document, c.Infra.PROJECT)),
+                c.Infra.DEPENDENCIES,
+                requirements,
+            )
+            (project / c.PYPROJECT_FILENAME).write_text(
+                document.as_string(), encoding="utf-8"
+            )
+        original = (projects[0] / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
+        untouched = (
+            projects[1] / "nested-product" / c.PYPROJECT_FILENAME,
+            projects[0].parent / "sibling-product" / c.PYPROJECT_FILENAME,
+        )
+        for path in untouched:
+            path.parent.mkdir(parents=True)
+            path.write_text(original, encoding="utf-8")
+        arguments = [
+            "deps",
+            "modernize",
+            "--repository-root",
+            str(modernizer_workspace_with_projects),
+            "--apply",
+            "--git-source-url-prefix",
+            migration.url_prefix,
+            "--git-source-ref-from",
+            migration.source_ref,
+            "--git-source-ref-to",
+            migration.target_ref,
+        ]
+
+        tm.that(main(arguments), eq=c.Cli.EXIT_CODE_SUCCESS)
+
+        published = {
+            project / c.PYPROJECT_FILENAME: (project / c.PYPROJECT_FILENAME).read_text(
+                encoding="utf-8"
+            )
+            for project in projects
+        }
+        for content in published.values():
+            tm.that(
+                u.Tests.toml_strings_at(content, "project", "dependencies"),
+                eq=(
+                    requirements[0].replace(
+                        f"@{migration.source_ref}", f"@{migration.target_ref}", 1
+                    ),
+                    *requirements[1:],
+                ),
+            )
+        tm.that(
+            {path: path.read_text(encoding="utf-8") for path in untouched},
+            eq=dict.fromkeys(untouched, original),
+        )
+        tm.that(main(arguments), eq=c.Cli.EXIT_CODE_SUCCESS)
+        tm.that(
+            {path: path.read_text(encoding="utf-8") for path in published},
+            eq=published,
+        )
 
     @staticmethod
     def test_partial_source_request_fails_before_any_write(tmp_path: Path) -> None:

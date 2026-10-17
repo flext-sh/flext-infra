@@ -1,0 +1,44 @@
+id: pydantic-model-config-m-configdict-classvar
+snapshots:
+  ? |
+    class Model:
+        model_config = m.ConfigDict()
+  : fixed: |
+      class Model:
+          model_config: ClassVar[m.ConfigDict] = m.ConfigDict()
+    labels:
+    - source: model_config = m.ConfigDict()
+      style: primary
+      start: 17
+      end: 46
+    - source: |-
+        class Model:
+            model_config = m.ConfigDict()
+      style: secondary
+      start: 0
+      end: 46
+    - source: model_config = m.ConfigDict()
+      style: secondary
+      start: 17
+      end: 46
+  ? |
+    class Model:
+        model_config = m.ConfigDict(frozen=True, extra='forbid')
+  : fixed: |
+      class Model:
+          model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra='forbid')
+    labels:
+    - source: model_config = m.ConfigDict(frozen=True, extra='forbid')
+      style: primary
+      start: 17
+      end: 73
+    - source: |-
+        class Model:
+            model_config = m.ConfigDict(frozen=True, extra='forbid')
+      style: secondary
+      start: 0
+      end: 73
+    - source: model_config = m.ConfigDict(frozen=True, extra='forbid')
+      style: secondary
+      start: 17
+      end: 73

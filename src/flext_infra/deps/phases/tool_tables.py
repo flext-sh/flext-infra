@@ -15,7 +15,8 @@ from pathlib import Path
 
 from flext_core import FlextRuntime
 
-from flext_infra import c, config, m, t, u
+from flext_infra import c, config, m, p, t, u
+from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
@@ -31,6 +32,7 @@ class FlextInfraToolTablesPhase:
         *,
         path: Path,
         planned_sources: t.SequenceOf[Path] = (),
+        source_project: p.Infra.RopeProject | None = None,
     ) -> t.StrSequence:
         """Compose Ruff's import-order families over owned target namespaces.
 
@@ -42,8 +44,11 @@ class FlextInfraToolTablesPhase:
             *FlextInfraToolTablesPhase.deptry_first_party_namespaces(
                 path=path,
                 planned_sources=planned_sources,
+                source_project=source_project,
             ),
-            *FlextInfraToolTablesPhase._workspace_project_namespaces(path),
+            *FlextInfraToolTablesPhase._workspace_project_namespaces(
+                path, source_project=source_project
+            ),
         })
 
     @staticmethod
@@ -52,6 +57,7 @@ class FlextInfraToolTablesPhase:
         path: Path,
         planned_sources: t.SequenceOf[Path] = (),
         repository_namespace_packages: t.StrSequence = (),
+        source_project: p.Infra.RopeProject | None = None,
     ) -> t.StrSequence:
         """Derive only packages owned by this target's production tree.
 
@@ -74,13 +80,19 @@ class FlextInfraToolTablesPhase:
             if len(parts) > 1 and parts[0].isidentifier()
         }
         return sorted({
-            *u.Infra.discover_first_party_namespaces(path),
+            *u.Infra.discover_first_party_namespaces(
+                path, source_project=source_project
+            ),
             *planned_packages,
             *repository_namespace_packages,
         })
 
     @staticmethod
-    def _workspace_project_namespaces(project_dir: Path) -> t.StrSequence:
+    def _workspace_project_namespaces(
+        project_dir: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> t.StrSequence:
         """Discover child project packages when generating repository root settings.
 
         Returns:
@@ -90,12 +102,36 @@ class FlextInfraToolTablesPhase:
             ValueError: If ``discovered.failure``.
 
         """
-        if not (project_dir / c.PYPROJECT_FILENAME).is_file():
+        if not (
+            (project_dir / c.PYPROJECT_FILENAME).is_file()
+            if source_project is None
+            else source_project.source_query(
+                project_dir / c.PYPROJECT_FILENAME, "isfile"
+            )
+        ):
             return ()
         # Topology law: only a repository that declares .gitmodules composes
         # child projects; a standalone checkout has none to discover.
-        if not (project_dir / c.Infra.GITMODULES).is_file():
+        if not (
+            (project_dir / c.Infra.GITMODULES).is_file()
+            if source_project is None
+            else source_project.source_query(project_dir / c.Infra.GITMODULES, "isfile")
+        ):
             return ()
+        if source_project is not None:
+            return sorted({
+                namespace.replace("-", "_")
+                for project in u.Infra.discover_project_roots(
+                    project_dir, source_project=source_project
+                )
+                if project != project_dir
+                for namespace in (
+                    FlextInfraUtilitiesPyproject.project_package_name(
+                        project, source_project=source_project
+                    ),
+                )
+                if namespace and namespace.replace("-", "_").isidentifier()
+            })
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
             project_dir,
             allow_unprovisioned_members=True,
@@ -142,11 +178,8 @@ class FlextInfraToolTablesPhase:
                 value=config.Infra.codegen.toolchain.python_version,
             ),
             toml.ListOp(key=c.Infra.PLUGINS, values=mypy.plugins, strategy=replace),
-            toml.ListOp(
-                key="disable_error_code",
-                values=mypy.disable_error_code,
-                strategy=replace,
-            ),
+            toml.RemoveOp(key="disable_error_code"),
+            toml.RemoveOp(key="ignore_errors"),
         ]
         operations.append(
             toml.SetOp(
@@ -180,7 +213,7 @@ class FlextInfraToolTablesPhase:
         A workspace that retired a tree declares it once in its manifest
         (``exclusions``, ``content_only`` or ``external_dependency_paths``);
         every root-scoped projection (vulture paths, ruff src/namespace-
-        packages/per-file-ignores) filters on this declared set instead of
+        packages) filters on this declared set instead of
         probing the disk, which oscillates between the deps pass and the
         root-materializing gen pass. An invalid manifest fails loud.
 

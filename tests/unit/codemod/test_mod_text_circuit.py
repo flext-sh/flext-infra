@@ -25,7 +25,7 @@ class TestsFlextInfraModTextGateEngine:
     """Exercise the declarative sed-by-list engine through its public scan."""
 
     @staticmethod
-    def test_unsupported_declared_input_is_red_and_preserves_valid_publication(
+    def test_unsupported_declared_input_is_red_and_preserves_original_sources(
         mod_workspace: Path,
     ) -> None:
         """An unhandled configured input cannot masquerade as a zero-match run."""
@@ -81,7 +81,7 @@ class TestsFlextInfraModTextGateEngine:
         tm.that(isinstance(result.exception, ValueError), eq=True)
         tm.that("unsupported input" in str(result.error), truth=True)
         tm.that(
-            selected.read_text(encoding=c.DEFAULT_ENCODING) == 'value = "after"\n',
+            selected.read_text(encoding=c.DEFAULT_ENCODING) == 'value = "before"\n',
             truth=True,
         )
         tm.that(unsupported.read_bytes() == before, truth=True)
@@ -147,10 +147,10 @@ class TestsFlextInfraModTextGateEngine:
         tm.that(target.read_bytes(), eq=before)
 
     @staticmethod
-    def test_failed_project_catalog_does_not_abort_a_valid_member(
+    def test_failed_project_catalog_preserves_the_unpublished_member_plan(
         tmp_path: Path,
     ) -> None:
-        """An invalid dependency is reported while an independent member is repaired."""
+        """An invalid catalogue keeps independent desired effects unpublished."""
         root = tmp_path / "projects"
         member = u.Tests.WorktreeFixture.governed_workspace_with_member(root)
         catalogue = root / c.Infra.CODEMOD_TEXT_RULES_RELPATH
@@ -170,14 +170,17 @@ class TestsFlextInfraModTextGateEngine:
         )
         result = FlextInfraModTextGateEngine.scan(root, fix=True)
         tm.fail(result)
-        tm.that(target.read_text(encoding="utf-8"), eq='value = "after"\n')
+        _report, analysis = tm.ok(FlextInfraModTextGateEngine.plan(root))
+        tm.that(any(plan.path == target for plan in analysis.files), eq=True)
+        tm.that(analysis.issues, empty=False)
+        tm.that(target.read_text(encoding="utf-8"), eq='value = "before"\n')
         tm.that(catalogue.read_bytes(), eq=original)
 
     @staticmethod
-    def test_invalid_target_keeps_its_first_cause_and_publishes_valid_sibling(
+    def test_invalid_target_keeps_its_first_cause_and_unpublished_valid_effects(
         mod_workspace: Path,
     ) -> None:
-        """One malformed target stays red while an independent target is repaired."""
+        """One malformed target retains its cause without publishing valid siblings."""
         package = mod_workspace / "src" / "mod_workspace"
         invalid = package / "a_invalid.py"
         valid = package / "z_valid.py"
@@ -206,14 +209,17 @@ class TestsFlextInfraModTextGateEngine:
         assert isinstance(exception, SyntaxError)
         tm.that(exception.filename, eq=str(invalid))
         tm.that(invalid.read_text(encoding="utf-8"), eq=malformed)
-        tm.that(valid.read_text(encoding="utf-8"), eq='value = "after"\n')
+        _report, analysis = tm.ok(FlextInfraModTextGateEngine.plan(mod_workspace))
+        tm.that(any(plan.path == valid for plan in analysis.files), eq=True)
+        tm.that(isinstance(analysis.exception, SyntaxError), eq=True)
+        tm.that(valid.read_text(encoding="utf-8"), eq='value = "before"\n')
         metadata = result.error_data
         assert metadata is not None
         tm.that(
             u.type_adapter(TypeForm(t.StrTuple)).validate_python(
                 metadata["written_files"]
             ),
-            eq=(str(valid),),
+            eq=(),
         )
 
     @staticmethod
@@ -599,11 +605,63 @@ class TestsFlextInfraModTextGateEngine:
             u.Cli.atomic_write_text_file(path, 'value = "before"\n').unwrap()
         return first, second
 
-    def test_generated_destination_rejects_only_its_own_text_rewrite(
+    def test_text_plan_retains_working_effects_and_original_physical_receipts(
         self,
         mod_workspace: Path,
     ) -> None:
-        """An authored target is repaired while the generated target stays rejected."""
+        """Planning never publishes working text or substitutes it for originals."""
+        first, second = self._publication_inputs(mod_workspace)
+        states = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for path in tm.ok(FlextInfraModTextGateEngine.source_paths(mod_workspace))
+        )
+        original = {
+            state.path: tm.not_none(state.content).decode(c.DEFAULT_ENCODING)
+            for state in states
+        }
+        working = {**original, first: original[first] + "# prior planned phase\n"}
+        frozen = dict(working)
+        _report, analysis = tm.ok(FlextInfraModTextGateEngine.plan(
+            mod_workspace, sources=working, source_states=states,
+        ))
+        tm.that(analysis.issues, empty=True)
+        targets = {plan.path: plan for plan in analysis.files}
+        for path in (first, second):
+            tm.that(targets[path].before, eq=next(state for state in states if state.path == path))
+            tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original[path])
+            tm.that(tm.not_none(targets[path].desired_content).decode(c.DEFAULT_ENCODING),
+                    eq=working[path].replace("before", "after"))
+        tm.that(working, eq=frozen)
+        virtual = first.parent / "planned" / "candidate.py"
+        absence = tm.ok(u.Cli.atomic_plan_directory_chain(virtual.parent))
+        declaration = m.Infra.CodegenFilePlan(
+            project=mod_workspace, path=virtual, before=absence,
+            desired_content=original[first].encode(c.DEFAULT_ENCODING),
+            desired_mode=tm.not_none(next(state.mode for state in states if state.path == first)),
+            source_states=states,
+        )
+        _report, candidate = tm.ok(FlextInfraModTextGateEngine.plan(
+            mod_workspace,
+            sources={**working, virtual: original[first]},
+            source_states=states, declared_files=(declaration,),
+        ))
+        tm.that(candidate.issues, empty=True)
+        virtual_plan = next(plan for plan in candidate.files if plan.path == virtual)
+        tm.that(virtual_plan.before, eq=absence)
+        tm.that(virtual_plan.desired_content, eq=original[first].replace("before", "after").encode(c.DEFAULT_ENCODING))
+        tm.that(virtual.parent.exists(), eq=False)
+        _report, physical = tm.ok(FlextInfraModTextGateEngine.plan(mod_workspace))
+        tm.ok(FlextInfraModTextGateEngine.scan(mod_workspace, fix=True))
+        for plan in physical.files:
+            tm.that(plan.path.read_bytes(), eq=plan.desired_content)
+        _report, fixed = tm.ok(FlextInfraModTextGateEngine.plan(mod_workspace))
+        tm.that(fixed.files, empty=True)
+
+    def test_generated_destination_keeps_the_text_candidate_unpublished(
+        self,
+        mod_workspace: Path,
+    ) -> None:
+        """A rejected generated target leaves authored siblings unpublished."""
         first, second = self._publication_inputs(mod_workspace)
         generated = f'{c.Infra.AUTOGEN_HEADERS[0]}\nvalue = "before"\n'
         u.Cli.atomic_write_text_file(second, generated).unwrap()
@@ -614,28 +672,28 @@ class TestsFlextInfraModTextGateEngine:
         result = FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
 
         tm.fail(result, has="canonical generator repair")
-        tm.that(first.read_bytes(), eq=b'value = "after"\n')
+        tm.that(first.read_bytes(), eq=b'value = "before"\n')
         tm.that(second.read_text(encoding="utf-8"), eq=generated)
 
     def test_invalid_later_source_retains_its_cause_and_valid_rewrite(
         self,
         mod_workspace: Path,
     ) -> None:
-        """A decoding failure is reported beside the successfully repaired sibling."""
+        """A decoding failure retains its native cause and unpublished sibling."""
         first, second = self._publication_inputs(mod_workspace)
         second.write_bytes(b"\xff")
         result = FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
         tm.fail(result)
         tm.that(isinstance(result.exception, UnicodeDecodeError), eq=True)
 
-        tm.that(first.read_bytes(), eq=b'value = "after"\n')
+        tm.that(first.read_bytes(), eq=b'value = "before"\n')
         tm.that(second.read_bytes(), eq=b"\xff")
 
-    def test_invalid_python_replacement_preserves_valid_sibling_publication(
+    def test_invalid_python_replacement_preserves_unpublished_sibling_effects(
         self,
         mod_workspace: Path,
     ) -> None:
-        """A malformed rewrite cannot prevent the independent valid publication."""
+        """A malformed rewrite preserves valid desired effects without publication."""
         first, second = self._publication_inputs(mod_workspace)
         original_second = second.read_bytes()
         tm.ok(
@@ -672,7 +730,7 @@ class TestsFlextInfraModTextGateEngine:
         tm.that(native.__traceback__ is not None, eq=True)
         tm.that(expected.value.__traceback__ is not None, eq=True)
 
-        tm.that(first.read_bytes(), eq=b'value = "after"\n')
+        tm.that(first.read_bytes(), eq=b'value = "before"\n')
         tm.that(second.read_bytes(), eq=original_second)
 
     def test_linked_destination_failure_preserves_valid_sibling_and_link(
@@ -689,7 +747,7 @@ class TestsFlextInfraModTextGateEngine:
         result = FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
         tm.fail(result, has="regular file")
 
-        tm.that(first.read_bytes(), eq=b'value = "after"\n')
+        tm.that(first.read_bytes(), eq=b'value = "before"\n')
         tm.that(second.is_symlink(), eq=True)
         tm.that(second.read_bytes(), eq=original)
         tm.that(alias.read_bytes(), eq=original)

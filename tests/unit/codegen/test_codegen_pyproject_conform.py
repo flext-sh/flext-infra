@@ -887,6 +887,32 @@ exclude-dependencies = [{exclusion}]
         tm.that("exclude-dependencies" not in uv, eq=True)
 
     @staticmethod
+    def test_scaffold_omits_diagnostic_suppression_catalogs(tmp_path: Path) -> None:
+        """The shipped Jinja surface cannot restore retired exemption tables."""
+        rendered = u.Tests.scaffold_text(
+            tmp_path / "no-suppression-project",
+            c.PYPROJECT_FILENAME,
+            what=c.Infra.CodegenConformSurface.PYPROJECT,
+        )
+        lint = u.Tests.toml_table_at(rendered, "tool", "ruff", "lint")
+        for key in (
+            "extend-ignore",
+            "per-file-ignores",
+            "extend-per-file-ignores",
+        ):
+            tm.that(lint, lacks=key)
+        tm.that(
+            lint["ignore"], eq=sorted(config.Infra.tooling.tools.ruff.lint.rule_owners)
+        )
+        mypy = u.Tests.toml_table_at(rendered, "tool", "mypy")
+        tm.that(mypy, lacks="disable_error_code")
+        tm.that(mypy, lacks="ignore_errors")
+        for entry in u.Tests.toml_list(mypy.get("overrides", [])):
+            override = u.Tests.toml_mapping(entry)
+            tm.that(override, lacks="disable_error_code")
+            tm.that(override, lacks="ignore_errors")
+
+    @staticmethod
     def test_scaffold_mypy_policy_matches_ssot_and_converges(tmp_path: Path) -> None:
         """The actual Jinja scaffold preserves typed policy on repeated rendering."""
         root = tmp_path / "fixture-project"
@@ -898,10 +924,7 @@ exclude-dependencies = [{exclusion}]
             tuple(u.Tests.toml_strings(mypy["plugins"])),
             eq=tuple(policy.plugins),
         )
-        tm.that(
-            tuple(u.Tests.toml_strings(mypy["disable_error_code"])),
-            eq=tuple(policy.disable_error_code),
-        )
+        tm.that(mypy, lacks="disable_error_code")
         for key, value in {**policy.boolean_settings, **policy.string_settings}.items():
             tm.that(mypy[key], eq=value)
         tm.that(

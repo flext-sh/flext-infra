@@ -95,19 +95,12 @@ class FlextInfraConstantsDocs:
         r"(?<![\w./-])/(?:home|Users)/(?P<user>[A-Za-z0-9_.-]+)(?=/|\b)",
     )
     """Regex matching a per-user absolute root (``/home/<user>``, ``/Users/<user>``)."""
-    MACHINE_PATH_CONTAINER_USERS: ClassVar[t.StrSequence] = (
-        "runner",
-        "vscode",
-        "agent",
-        "barman",
-        "scanner",
-        "argocd",
-    )
-    """Container/CI identities whose home is part of the image contract, not a machine.
-
-    ``argocd`` is the in-container HOME of the Argo CD side images
-    (argocd-cmp-plugin / repo-server) referenced in ADR_024 and the release
-    convergence plan; it is an image contract, not an operator machine."""
+    # NOTE: MACHINE_PATH_CONTAINER_USERS was removed: container/CI home
+    # identities are declared documentation-audit contract
+    # (config/codegen.yaml repository.docs_audit.container_home_identities,
+    # rendered into docs_config.json and validated by DocsAuditPolicySpec),
+    # and the detector flags per-user absolute paths outside the checkout
+    # root instead of allowlisting names.
     PYTHON_FENCE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^```python\s*\n(?P<body>.*?)^```\s*$",
         re.MULTILINE | re.DOTALL,

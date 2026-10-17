@@ -48,7 +48,8 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         *,
         source_states: tuple[m.Cli.AtomicFileState, ...] = (),
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
-        planned_sources: t.MappingKV[Path, str] | None = None,
+        planned_sources: t.MappingKV[Path, str | None] | None = None,
+        project_roots: t.VariadicTuple[Path] = (),
     ) -> Generator[
         t.Triple[
             p.Infra.RopeProject,
@@ -68,12 +69,12 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         Yields:
             The native Rope project, original-state reader and planned sources.
 
-        Raises:
-            ValueError: Planned sources compete or a failed required input has no
-                attached native exception.
-
         """
         root = root.resolve()
+        project_roots = tuple(sorted({project.resolve() for project in project_roots}))
+        if any(not project.is_relative_to(root) for project in project_roots):
+            msg = "Rope declared project root is outside the original authority"
+            raise ValueError(msg)
         if not source_states:
             paths = (
                 FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(
@@ -87,40 +88,11 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 for path in paths
             )
         if planned_sources:
-            originals = {state.path: state for state in source_states}
-            declarations = {plan.path: plan for plan in declared_files}
-            for supplied_path, content in (
-                (path, source.encode(c.DEFAULT_ENCODING))
-                for path, source in planned_sources.items()
-            ):
-                path = supplied_path.resolve()
-                if path in declarations:
-                    if declarations[path].desired_content != content:
-                        msg = f"Rope planned source has competing declarations: {path}"
-                        raise ValueError(msg)
-                    continue
-                original = originals.get(path)
-                if original is None:
-                    original = FlextInfraRopeProject.AtomicReadFiles.require_value(
-                        u.Cli.atomic_read_binary_file_state(path)
-                    )
-                    originals[path] = original
-                chain = FlextInfraRopeProject.AtomicReadFiles.require_value(
-                    u.Cli.atomic_plan_directory_chain(path.parent)
+            source_states, declared_files = (
+                FlextInfraUtilitiesCodegenFacades._facade_declared_sources(
+                    root, source_states, declared_files, planned_sources
                 )
-                declarations[path] = m.Infra.CodegenFilePlan(
-                    project=root,
-                    path=path,
-                    before=chain if chain.directories else original,
-                    desired_content=content,
-                    desired_mode=(
-                        original.mode
-                        if original.mode is not None
-                        else config.Infra.codegen.modes.file_default
-                    ),
-                )
-            source_states = tuple(originals.values())
-            declared_files = tuple(declarations.values())
+            )
         original_states = m.Infra.CodemodBindingSnapshot(
             states=(
                 *source_states,
@@ -133,10 +105,13 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ),
         ).states
         proposed = {
-            plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
+            plan.path: plan.desired_content
             for plan in declared_files
             if plan.desired_content is not None
         }
+        retired = frozenset(
+            plan.path for plan in declared_files if plan.desired_content is None
+        )
         # Consumed states include the dependency modules native reads loaded
         # from the checkout-local environment; they stay verified inputs, but
         # only repository-owned sources are planning targets (70dc29f1b9
@@ -148,14 +123,16 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 if state.path.is_relative_to(root)
                 and state.path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
                 if state.content is not None
+                and state.path not in retired
                 and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
                     root, state.path
                 )
             },
             **{
-                plan.path: proposed[plan.path]
+                plan.path: proposed[plan.path].decode(c.DEFAULT_ENCODING)
                 for plan in declared_files
-                if plan.project == root
+                if plan.path.is_relative_to(root)
+                and plan.path.suffix == c.Infra.EXT_PYTHON
                 and plan.path in proposed
                 and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
                     root, plan.path
@@ -164,29 +141,55 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         }
         with (
             FlextInfraUtilitiesRopeCore.open_project(
-                next(path for path in (root, *root.parents) if path.is_dir())
+                next(path for path in (root, *root.parents) if path.is_dir()),
+                project_roots=project_roots or None,
             ) as live,
             closing(
                 FlextInfraRopeProject.from_atomic_reads(
                     live,
                     original_states,
-                    source_folders=sorted({
-                        *(folder.path for folder in live.get_source_folders()),
-                        *(
-                            ""
-                            if folder == Path(live.root.real_path)
-                            else folder.relative_to(live.root.real_path).as_posix()
-                            for folder in (
-                                root,
-                                *(
-                                    root / name
-                                    for name in config.Infra.source_scan.roots
-                                ),
-                            )
-                            if any(path.is_relative_to(folder) for path in proposed)
+                    election=m.Infra.RopeProjectElection(
+                        ignored_resources=tuple(
+                            sorted(config.Infra.codegen.source_scan_ignored)
                         ),
-                    }),
-                    sources=proposed,
+                        source_folders=tuple(
+                            sorted({
+                                *(folder.path for folder in live.get_source_folders()),
+                                *(
+                                    ""
+                                    if folder == Path(live.root.real_path)
+                                    else folder.relative_to(
+                                        live.root.real_path
+                                    ).as_posix()
+                                    for folder in (
+                                        root,
+                                        *project_roots,
+                                        *(
+                                            project / name
+                                            for project in (root, *project_roots)
+                                            for name in config.Infra.source_scan.roots
+                                        ),
+                                    )
+                                    if any(
+                                        path.is_relative_to(folder) for path in proposed
+                                    )
+                                ),
+                            })
+                        ),
+                        extension_modules=tuple(
+                            sorted(
+                                u.type_adapter(set[str]).validate_python(
+                                    live.get_pycore().extension_modules, strict=True
+                                )
+                            )
+                        ),
+                        python_path_folders=tuple(
+                            folder.real_path
+                            for folder in live.get_python_path_folders()
+                            if folder.is_folder()
+                        ),
+                    ),
+                    sources={},
                     declared_files=declared_files,
                 )
             ) as project,
@@ -212,6 +215,58 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             finally:
                 if completed:
                     project.verify_source_states()
+
+    @staticmethod
+    def _facade_declared_sources(
+        root: Path,
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        planned_sources: t.MappingKV[Path, str | None],
+    ) -> t.Pair[
+        t.VariadicTuple[m.Cli.AtomicFileState],
+        t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ]:
+        """Authenticate planned overlays against their original physical inputs.
+
+        Returns:
+            Original source receipts and their consistent publication plans.
+
+        Raises:
+            ValueError: If a declaration competes or a native input cannot be read.
+
+        """
+        originals = {state.path: state for state in source_states}
+        declarations = {plan.path: plan for plan in declared_files}
+        for supplied_path, source in planned_sources.items():
+            path = supplied_path.resolve()
+            content = source.encode(c.DEFAULT_ENCODING) if source is not None else None
+            declared = declarations.get(path)
+            if declared is not None:
+                if declared.desired_content != content:
+                    message = f"Rope planned source has competing declarations: {path}"
+                    raise ValueError(message)
+                continue
+            original = originals.get(path)
+            if original is None:
+                original = FlextInfraRopeProject.AtomicReadFiles.require_value(
+                    u.Cli.atomic_read_binary_file_state(path)
+                )
+                originals[path] = original
+            chain = FlextInfraRopeProject.AtomicReadFiles.require_value(
+                u.Cli.atomic_plan_directory_chain(path.parent)
+            )
+            declarations[path] = m.Infra.CodegenFilePlan(
+                project=root,
+                path=path,
+                before=chain if chain.directories else original,
+                desired_content=content,
+                desired_mode=(
+                    original.mode
+                    if original.mode is not None
+                    else config.Infra.codegen.modes.file_default
+                ),
+            )
+        return tuple(originals.values()), tuple(declarations.values())
 
     @classmethod
     def render_type_facade(
@@ -951,11 +1006,12 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         )
         if not candidates:
             return frozenset()
+        contents = dict(sources.values())
         resource = project.get_resource(
             facade_path.relative_to(Path(project.root.real_path)).as_posix(),
         )
         scope = FlextInfraUtilitiesRopeRuntime.build_string_module(
-            project, dict(sources.values())[facade_path], resource=resource
+            project, contents[facade_path], resource=resource
         ).get_scope()
         retired: set[str] = set()
         for base in candidates:
@@ -985,26 +1041,78 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             holder = binding.get_definition_location()[0]
             provider = holder.get_resource() if holder is not None else None
             if provider is None:
-                if (
-                    FlextInfraUtilitiesRopeRuntime.abstract_class(value)
-                    and not FlextInfraUtilitiesRopeRuntime.py_class(value)
-                ) or FlextInfraUtilitiesCodegenFacades._upstream_binding(
-                    project,
+                if FlextInfraUtilitiesCodegenFacades._departed_projected_binding(
                     project,
                     binding,
+                    roots[1],
+                    (facade_path, ast.unparse(base)),
+                    contents,
                 ):
-                    continue
-                message = (
-                    f"Facade base has no source owner: "
-                    f"{facade_path}:{ast.unparse(base)}"
-                )
-                raise ValueError(message)
+                    retired.add(ast.unparse(base))
+                continue
             path = Path(provider.real_path).resolve()
             if path.is_relative_to(roots[0].resolve()) and not path.is_relative_to(
                 roots[1].resolve(),
             ):
                 retired.add(ast.unparse(base))
         return frozenset(retired)
+
+    @staticmethod
+    def _departed_projected_binding(
+        project: p.Infra.RopeProject,
+        binding: p.Infra.RopePyName,
+        owners_dir: Path,
+        facade: t.Pair[Path, str],
+        contents: t.MappingKV[Path, str],
+    ) -> bool:
+        """Retire undefined generated imports from the elected family boundary.
+
+        Authored facades and unresolved or external module providers stay errors.
+        Rope resolves the exact family resource; spelling grants no ownership.
+
+        Returns:
+            Whether the generated base lost its own family's exported binding.
+
+        Raises:
+            ValueError: If a source-free binding has no native owner.
+
+        """
+        facade_path, expression = facade
+        if (
+            contents[facade_path].startswith(c.Infra.AUTOGEN_HEADERS)
+            and isinstance(binding, p.Infra.RopeImportedName)
+            and binding.get_definition_location()[0] is None
+        ):
+            provider = FlextInfraUtilitiesRopeRuntime.imported_module_path(
+                project, binding
+            )
+            barrel = contents.get(owners_dir / c.Infra.INIT_PY)
+            if (
+                provider
+                in {
+                    owners_dir.resolve(),
+                    (owners_dir / c.Infra.INIT_PY).resolve(),
+                }
+                and barrel is not None
+                and barrel.startswith(c.Infra.AUTOGEN_HEADERS)
+            ):
+                exported = (
+                    FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+                        barrel
+                    )
+                )
+                if binding.imported_name not in exported:
+                    return True
+        value = binding.get_object()
+        if (
+            FlextInfraUtilitiesRopeRuntime.abstract_class(value)
+            and not FlextInfraUtilitiesRopeRuntime.py_class(value)
+        ) or FlextInfraUtilitiesCodegenFacades._upstream_binding(
+            project, project, binding
+        ):
+            return False
+        message = f"Facade base has no source owner: {facade_path}:{expression}"
+        raise ValueError(message)
 
     @staticmethod
     def _upstream_binding(

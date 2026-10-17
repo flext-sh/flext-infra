@@ -188,7 +188,7 @@ class TestsFlextInfraModernizerPyrefly:
         self,
         tmp_path: Path,
     ) -> None:
-        """Project context keeps the source import root first, then the project root."""
+        """Project context keeps the source root first, then included roots, then root."""
         rules = config.Infra.tooling.tools.pyrefly.path_rules
         project_dir = tmp_path / "flext-core"
         for directory in rules.env_dirs:
@@ -202,7 +202,7 @@ class TestsFlextInfraModernizerPyrefly:
 
         tm.that(
             list(u.Tests.strings(pyrefly["search-path"])),
-            eq=[rules.source_dir, rules.project_root],
+            eq=[rules.source_dir, "tests", rules.project_root],
         )
 
     def test_declared_future_roots_are_deterministic(self, tmp_path: Path) -> None:

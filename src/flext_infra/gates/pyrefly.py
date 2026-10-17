@@ -91,7 +91,11 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             "--config",
             c.PYPROJECT_FILENAME,
             "--python-interpreter-path",
-            sys.executable,
+            (
+                sys.executable
+                if ctx.runtime_root is None
+                else str(u.Infra.runtime_python(ctx.runtime_root))
+            ),
             "--output-format",
             c.Infra.OUTPUT_JSON,
             "--min-severity",

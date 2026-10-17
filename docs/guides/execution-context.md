@@ -21,6 +21,49 @@
 
 ## Runtime is the authority
 
+The existing `refactor rename-plan` CLI action accepts `SemanticRenameSelections`
+JSON through `--decisions`. A selection identifies the introducing class,
+callable, or module and its intended name. `consumer_roots` is an optional JSON
+array of absolute checkout roots for this invocation, not a persistent rename
+catalog. The containing workspace and its declared `.gitmodules` members are
+discovered automatically, including invocations from one attached member.
+External consumers are explicit typed run inputs, not reverse-dependency guesses
+or an implicit host-wide inventory. Standalone invocations retain their own scope
+plus those declared consumers.
+
+Native Rope `MultiProjectRefactoring.get_all_changes` computes every elected
+project's changes before publication. Module selections use the native nullable
+offset and produce authenticated create/retire file effects. Planning does not
+move or write source files. The artifact retains the original binding epoch,
+consumer scope and candidate updates. `refactor rename-preview` and `make mod`
+with the existing rename artifact input rederive that candidate and reject
+source drift before publishing through the shared semantic transaction. Each
+consumer retains its own native source-folder election, so independently owned
+`tests` packages do not compete for one module identity. Provider, receivers and
+generated exports form one declared dependency group. Projection planning reads
+the original authenticated native overlay, including proposed module retirement;
+only the fully composed candidate enters the physical runtime. Preparation and
+default staged checks consume that same group before its journal publishes. The
+existing CLI `mod --rename-plan=<artifact> --apply` composes the artifact with
+target-only AST and semantic planning before that group's publication. Ordinary
+`mod` accepts repeated `--consumer-roots <absolute-checkout>` options and builds
+the same captured read scope without a manual rename catalog. The request root
+remains the syntax/declaration target; elected consumers are reference readers
+and receive only proven dependency effects. The common coordinate parent is not
+a discovery root. Staged native module destinations retain the captured origin
+mode, as does publication. A plan
+captured before a producer upgrade is not a portable release migration history;
+a changed epoch must be reconciled causally, never by guessing an old name.
+
+Package-directory renames are refused by this file-effect boundary. Native
+string payloads and framework registration are not implicitly renamed; they
+remain subject to the existing consumer validation and declaration owners.
+
+The AST/semantic candidate is not yet an all-phases atomic guarantee: the legacy
+text, CSV and independent loop callbacks still expose effectful operations.
+Their existing owners need pure planning ports before those effects can join the
+same publication group. Source-only changes are not runtime or gate receipts.
+
 Correct runtime behavior defines the contract; tests verify it. Replace mocks, fake
 tools, private-function access, and assertions that only check how code was written
 with observable inputs and effects through public interfaces, preserving functional
@@ -140,6 +183,34 @@ Rendering a facade returns source only. Package-form imports require publishing
 the owning family's initializer through the existing lazy-init planner before a
 fresh consumer loads the generated facade.
 
+## Namespace migration
+
+Namespace planning, source iteration and analyzer configuration consume the shared
+project discovery owner. Declared scan roots seed discovery; they do not hide active
+Python in other owned directories or at the repository root. Foreign repositories,
+declared nonparticipants, generated payloads and installed environments retain their
+own boundaries. Vendored source is not an installed-environment exclusion.
+
+Class nesting derives one owner from the module's declarations and conventions. It
+preserves native symbol identity when moving functions, values and type aliases and
+rewires executable and deferred type references without rewriting ordinary string
+payloads. Initializers retain their separate export-generation contract. An unresolved
+definition-time dependency or framework registration contract fails planning; it is
+not a successful exemption from namespace ownership.
+
+Shared pytest fixture modules and enforcement expose class objects through the native
+plugin manager. Fixture imports remain deferred until configuration, and the manager
+owns registration identity and idempotence. Module-name loading does not discover a
+nested plugin automatically: consumers load the installed entry-point declaration.
+Registering an auxiliary class is not equivalent to a directory-scoped conftest.
+
+Rule definitions and their generated baselines ship in the same producer artifact.
+Refresh them with `make mod-snapshots`; a source-checkout receipt does not validate a
+wheel that still contains older baselines. After adopting a new plugin declaration,
+reconcile installed metadata through `make setup` before running its consumer tests.
+`make test-file` runs incremental and complete selection for the requested file using
+the same native testmon owner, without the ordinary incremental invocation deadline.
+
 ## New projects
 
 `make project-new` delegates to the same typed `codegen new` service exposed by
@@ -238,7 +309,10 @@ the actual consumer captures typed config and resource inputs separately.
 Class cache writes require an unchanged classmethod receiver or an exact global class
 receiver whose native method writes the declared field. Receiver rebinding prevents
 that classification. The writer's executable code remains part of the proof, and
-changes to ordinary constants remain violations. Declared staging-path mappings apply
+changes to ordinary constants remain violations. Supplier functions are identified
+and ordered only after native receiver and field writes prove their relevance;
+unrelated generated functions do not participate in class-state writer capture.
+Declared staging-path mappings apply
 to wrapper storage and nested code units as well as direct function evidence; a
 filename change outside those mappings remains observable.
 
@@ -531,7 +605,13 @@ generation, `make upg` and the locked-install checks.
 One `make upg` run provisions the frozen producer before corrective pyproject
 projection, without requiring final runtime admission. The elected runtime
 owner resolves both native views; attached members delegate that operation
-to their workspace.
+to their workspace. After projecting the declared pyprojects, Mise configurations
+and Makefiles, the same upgrade owner resolves each writable FLEXT member's tool
+lock and both UV view locks serially. Each member's own Makefile supplies its
+configured view paths while the workspace supplies the UV binary and Python
+runtime. Final convergence reconciles those locks without advancing dependency
+references again. Only the elected workspace runtime receives an installation;
+member runtimes are not provisioned separately.
 It runs generation's producer half, relocks the projected manifests, reinstalls
 and verifies the resulting runtime before generation's activation half. A
 requirement or Mise self-management release that only the upgraded generator
@@ -545,6 +625,8 @@ from existing groups and member contributions;
 declaring the same distribution as a required development floor fails. Retire
 obsolete typing stubs here when their runtime SDK supplies inline typing, then
 regenerate and run `make upg` to reconcile locks and the installed environment.
+Member contributions include the requirements parsed from captured declarations;
+the composed development group uses the same retirement filter.
 Do not uninstall packages manually or weaken the type checker.
 
 PEP 621 optional extras and PEP 735 dependency groups retain their separate
@@ -777,6 +859,25 @@ A planned deletion has no staged replacement, but its successful result still
 carries a journal receipt: absence belongs inside the typed receipt, never in
 `r.ok(None)`. Repeated unchanged generation must converge before publication.
 
+An exception-only repository outcome is a failed plan even when it has no diagnostic
+message yet. Planning progress and persisted evidence must agree on that failure;
+an `OK` planning row never attests publication. The managed executor settles the
+independent bootstrap, lazy-init and documentation targets through their own input
+and dependency guards before returning the aggregate failure. A logical rejection
+does not replace a later first native exception, and secondary failures do not
+replace an earlier native cause. Incomplete operation receipts retain planning and
+publication issues alongside successful batches and cannot qualify as complete.
+
+Input dependency evidence remains fail-closed. In particular, the current lazy-init
+binder retains a repository-wide source snapshot; the executor does not drop those
+guards or exempt `conftest.py` to tolerate concurrent edits. Narrower per-artifact
+provenance requires original-epoch read attribution, negative discovery witnesses
+and cache-dependency replay at the existing Rope capture owner. Until those are
+available, a rejected dependent component remains rejected, while authenticated
+independent components keep their published gains. A fresh canonical invocation
+after repairing the causal input renders from fresh inputs rather than retrying a
+stale candidate inside the failed invocation.
+
 Dependency modernization and conformance both consume the project's typed
 `config/workspace.yaml` declaration for distribution roots and packaged data.
 Modernization must retain those declarations when rebuilding Hatch targets;
@@ -971,6 +1072,12 @@ Physical file changes remain inputs to publication CAS, rather than changing
 the source graph while a plan is being computed.
 Rope owns module, regular-package and namespace precedence; Infra validates the
 native resource it returns without maintaining another election algorithm.
+Absolute and relative lookups share one native-folder validation boundary.
+Absent relative context remains `None`: resource lookup reports absence and
+module lookup raises Rope's native missing-module exception.
+Restructuring overrides use the SDK's native input types. The existing module
+admission exposes semantic capabilities to filters, and identity alternatives
+share one injected default matcher.
 Import capture retains one typed lookup keyed by native root, module and relative
 level; it does not transport unused copies of the SDK's search roots.
 

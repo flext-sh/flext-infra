@@ -76,6 +76,9 @@ class FlextInfraProtocolsRope(Protocol):
         @property
         def workspace_index(self) -> m.Infra.RopeWorkspaceIndex: ...
 
+        @property
+        def source_index_receipt(self) -> m.Infra.CodegenPhaseAnalysis: ...
+
         def refresh(
             self,
             *,
@@ -99,6 +102,17 @@ class FlextInfraProtocolsRope(Protocol):
     @runtime_checkable
     class RopeWorkspaceDsl(RopeSessionLifecycleDsl, Protocol):
         """Public DSL contract for one shared Rope workspace session."""
+
+        @classmethod
+        def open_workspace(
+            cls,
+            repository_root: Path,
+            *,
+            rope_repository_root: Path | None = None,
+            source_project: p.Infra.RopeProject | None = None,
+            workspace_index: m.Infra.RopeWorkspaceIndex | None = None,
+            index_receipt: m.Infra.CodegenPhaseAnalysis | None = None,
+        ) -> Self: ...
 
         def resource(self, file_path: Path) -> t.Infra.RopeFile | None: ...
 

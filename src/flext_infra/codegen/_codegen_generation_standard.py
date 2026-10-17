@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from operator import itemgetter
 
-from flext_infra import c, config, m, t, u
+from flext_infra import c, config, m, p, t, u
 from flext_infra.codegen import FlextInfraCodegenGenerationRenderersMixin
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
 
@@ -219,7 +219,12 @@ class FlextInfraCodegenGenerationStandardMixin(
         return "\n".join(lines)
 
     @classmethod
-    def _root_context(cls, plan: m.Infra.LazyInitPlan) -> m.Infra.LazyInitRootRender:
+    def _root_context(
+        cls,
+        plan: m.Infra.LazyInitPlan,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> m.Infra.LazyInitRootRender:
         """Build one lazy context for a public package root.
 
         Returns:
@@ -243,11 +248,19 @@ class FlextInfraCodegenGenerationStandardMixin(
         project_root = next(
             candidate
             for candidate in (plan.context.pkg_dir, *plan.context.pkg_dir.parents)
-            if (candidate / c.PYPROJECT_FILENAME).is_file()
+            if (
+                (candidate / c.PYPROJECT_FILENAME).is_file()
+                if source_project is None
+                else source_project.source_query(
+                    candidate / c.PYPROJECT_FILENAME, "isfile"
+                )
+            )
         )
         first_party_names = {
             current_pkg,
-            *FlextInfraToolTablesPhase.first_party_namespaces(path=project_root),
+            *FlextInfraToolTablesPhase.first_party_namespaces(
+                path=project_root, source_project=source_project
+            ),
         }
         type_checking_root_names = frozenset(first_party_names)
         type_checking_lines = "\n".join(
@@ -262,9 +275,20 @@ class FlextInfraCodegenGenerationStandardMixin(
         runtime_import_lines = cls._runtime_import_lines(plan, type_checking_root_names)
         return m.Infra.LazyInitRootRender(
             autogen_header=c.Infra.AUTOGEN_HEADER,
+            owner_class=(
+                u.Infra.project_prefix(
+                    plan.context.init_path,
+                    source_project=source_project,
+                )
+                + "Package"
+                if plan.context.surface == c.Infra.DIR_TESTS
+                else ""
+            ),
             docstring=cls._format_root_package_docstring(
                 current_pkg,
-                u.Infra.copyright_notice(plan.context.pkg_dir),
+                u.Infra.copyright_notice(
+                    plan.context.pkg_dir, source_project=source_project
+                ),
             ),
             runtime_import_lines=runtime_import_lines,
             type_checking_lines=type_checking_lines,
@@ -284,7 +308,12 @@ class FlextInfraCodegenGenerationStandardMixin(
         )
 
     @classmethod
-    def _render_root(cls, plan: m.Infra.LazyInitPlan) -> str:
+    def _render_root(
+        cls,
+        plan: m.Infra.LazyInitPlan,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> str:
         """Render one inline lazy public-root initializer.
 
         Returns:
@@ -293,8 +322,9 @@ class FlextInfraCodegenGenerationStandardMixin(
         """
         return cls._render_model(
             c.Infra.TEMPLATE_ROOT_INIT,
-            cls._root_context(plan),
+            cls._root_context(plan, source_project=source_project),
             target_filename=str(plan.context.init_path),
+            source_project=source_project,
         )
 
 

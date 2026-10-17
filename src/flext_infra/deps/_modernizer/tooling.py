@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t, u
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
 from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
 
 if TYPE_CHECKING:
@@ -71,11 +70,9 @@ class FlextInfraPyprojectModernizerTooling:
     ) -> p.Result[str]:
         """Return one canonical pyproject using the same phases as workspace apply.
 
-        ``topology.declared_python_dirs_are_complete`` says the caller enumerated
-        EVERY Python root, so discovery must not widen the set. An atomic
-        scaffold knows its future roots before they exist on disk; filesystem
-        discovery would find none and silently produce a different fixed point
-        than the post-write conformance pass. An empty topology keeps discovery.
+        An atomic scaffold declares future roots before they exist on disk.
+        Pyright combines those declarations with the canonical inventory of
+        existing owned Python sources; a scaffold declaration cannot hide them.
 
         Returns:
             One canonical pyproject using the same phases as workspace apply.
@@ -155,12 +152,8 @@ class FlextInfraPyprojectModernizerTooling:
         tools, payload = conformed.value
         declared_python_dirs = request.topology.declared_python_dirs
         project_dir = request.path.parent
-        raw_environments = (
-            FlextInfraEnsurePyrightConfigPhase(
-                config.Infra.tooling,
-            ).environment_payloads_for_dirs(declared_python_dirs)
-            if declared_python_dirs
-            else u.Cli.json_as_sequence(tools.pyright.get("executionEnvironments"))
+        raw_environments = u.Cli.json_as_sequence(
+            tools.pyright.get("executionEnvironments"),
         )
         # Seed for a project whose analyzer paths were never synced yet. The
         # manager derives from directories that EXIST, so before src/ is
@@ -215,17 +208,6 @@ class FlextInfraPyprojectModernizerTooling:
                     if declared_roots
                     else tools.mypy_path or derived_mypy_path
                 ),
-                # The tree as it stands; a scaffold re-derives this field from
-                # its planned sources before its final pyproject render.
-                "mypy_facade_rebind_modules": u.Infra.facade_rebind_modules(
-                    project_dir,
-                    request.planned_sources,
-                ),
-                "mypy_generated_source_modules": tuple(
-                    pattern
-                    for package in u.Infra.generated_source_packages(project_dir)
-                    for pattern in (package, f"{package}.*")
-                ),
                 "ruff_runtime_evaluated_base_classes": (
                     u.Infra.runtime_evaluated_base_classes(
                         project_dir,
@@ -241,9 +223,7 @@ class FlextInfraPyprojectModernizerTooling:
                 ),
                 "pyright_exclude": tools.pyright.get(c.Infra.EXCLUDE, ()),
                 "pyright_ignore": tools.pyright.get(c.Infra.IGNORE, ()),
-                "pyright_include": (
-                    declared_python_dirs or tools.pyright.get(c.Infra.INCLUDE, ())
-                ),
+                "pyright_include": tools.pyright.get(c.Infra.INCLUDE, ()),
                 "pyright_extra_paths": (
                     tools.pyright.get(c.Infra.EXTRA_PATHS)
                     or seed_manager.pyright_extra_paths(

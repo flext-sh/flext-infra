@@ -100,6 +100,77 @@ class FlextInfraWorkspaceChecker(
             The resulting ``p.Result[bool]``.
 
         """
+        return self._execute_payload(params)
+
+    def execute_candidate(
+        self,
+        params: m.Infra.RunCommand,
+        source_plan: m.Infra.StageSourcePlan,
+        *,
+        project_root: Path,
+    ) -> p.Result[bool]:
+        """Check a sealed candidate using its original physical runtime owner.
+
+        This service boundary is not a CLI field. The original source plan,
+        never a caller-selected interpreter path, owns runtime derivation.
+
+        Returns:
+            Full native admission, or the original authority/check failure.
+
+        """
+        from flext_infra.codegen.staged_package import FlextInfraStagedPackage
+
+        if (
+            params.apply
+            or not params.check_only
+            or params.gates
+            or params.projects
+            or params.file is not None
+            or params.ruff_args is not None
+            or params.pyright_args is not None
+        ):
+            return r[bool].fail(
+                "candidate admission requires all default read-only gates"
+            )
+        current = FlextInfraStagedPackage.source_inputs_current(source_plan)
+        if current.failure:
+            return r[bool].from_failure(current)
+        if project_root not in {layout.project_root for layout in source_plan.layouts}:
+            return r[bool].fail(
+                "candidate checker project has no original source authority"
+            )
+        environment = u.Infra.runtime_environment_dir(project_root)
+        if environment.is_symlink() or not environment.is_dir():
+            return r[bool].fail(f"candidate runtime must be physical: {environment}")
+        identity = u.Cli.atomic_plan_directory_chain(environment)
+        if identity.failure:
+            return r[bool].from_failure(identity)
+        checked = self._execute_payload(params, runtime_root=environment.parent)
+        if checked.failure:
+            return r[bool].from_failure(checked)
+        observed = u.Cli.atomic_plan_directory_chain(environment)
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        if environment.is_symlink() or observed.value != identity.value:
+            return r[bool].fail(
+                "candidate physical runtime identity changed during check"
+            )
+        return FlextInfraStagedPackage.source_inputs_current(source_plan).map(
+            lambda _: checked.value
+        )
+
+    def _execute_payload(
+        self,
+        params: m.Infra.RunCommand,
+        *,
+        runtime_root: Path | None = None,
+    ) -> p.Result[bool]:
+        """Execute the same native gates with an optional service-owned runtime.
+
+        Returns:
+            The complete native checker result.
+
+        """
         selected_files_result = self._resolve_selected_files(params)
         if selected_files_result.failure:
             return r[bool].from_failure(selected_files_result)
@@ -118,6 +189,7 @@ class FlextInfraWorkspaceChecker(
             )
         gate_ctx = m.Infra.GateContext(
             repository_root=params.repository_root,
+            runtime_root=runtime_root,
             reports_dir=params.reports_dir_path,
             apply_fixes=params.apply,
             check_only=params.check_only,
@@ -126,7 +198,11 @@ class FlextInfraWorkspaceChecker(
             pyright_args=tuple(self.parse_tool_args(params.pyright_args)),
             selected_files=selected_files,
             runtime_dependency_collector=FlextInfraRuntimeDependencyCollector(
-                python=Path(sys.executable),
+                python=(
+                    Path(sys.executable)
+                    if runtime_root is None
+                    else u.Infra.runtime_python(runtime_root)
+                ),
                 development_only=(),
             ),
         )
@@ -160,13 +236,12 @@ class FlextInfraWorkspaceChecker(
             )
         requested = u.Infra.normalize_sequence_values(params.projects)
         if (
-            params.apply
-            or params.ruff_args is not None
+            params.ruff_args is not None
             or params.pyright_args is not None
             or (requested and tuple(requested) != (".",))
         ):
             return r[t.VariadicTuple[Path]].fail(
-                "file-gate requires read-only local selection without tool overrides",
+                "file-gate requires local selection without tool overrides",
             )
         return cls._resolve_repository_file(params.repository_root, params.file)
 

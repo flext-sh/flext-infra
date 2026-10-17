@@ -137,11 +137,9 @@ class FlextInfraUtilitiesVersioning:
             The base release of ``version`` (a final version is itself).
 
         """
-        result = FlextInfraUtilitiesVersioning.parse_semver(version)
-        if result.failure:
-            return r[str].from_failure(result)
-        major, minor, patch = result.value
-        return r[str].ok(f"{major}.{minor}.{patch}")
+        return FlextInfraUtilitiesVersioning.parse_semver(version).map(
+            lambda parts: ".".join(str(segment) for segment in parts),
+        )
 
     @staticmethod
     def current_workspace_version(repository_root: Path) -> p.Result[str]:

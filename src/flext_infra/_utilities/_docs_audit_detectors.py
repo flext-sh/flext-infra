@@ -93,18 +93,28 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
         *,
         historical_evidence_files: t.VariadicTuple[Path],
     ) -> t.SequenceOf[m.Infra.AuditIssue]:
-        """Collect per-user absolute paths (``/home/<user>``) frozen into markdown.
+        """Collect per-user absolute paths frozen into markdown outside the root.
 
-        A path rooted at one operator's home binds the document to one machine;
-        container and CI identities declared in ``c.Infra.MACHINE_PATH_CONTAINER_USERS``
-        are image contracts and pass. Only exact declared dated evidence files
-        retain the observed machine path.
+        A path rooted at one operator's home binds the document to one
+        machine. The detector inverts the ownership question: a matched
+        ``/home/<user>`` or ``/Users/<user>`` path is only documentation
+        when it points inside this checkout (the checkout's own declared
+        location) or at a container/CI identity whose home the declared
+        docs-audit contract owns as an image contract
+        (``container_home_identities``). Everything else is a machine-local
+        leak. Only exact declared dated evidence files retain the observed
+        machine path.
 
         Returns:
             The resulting ``t.SequenceOf[m.Infra.AuditIssue]``.
 
         """
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
+        container_identities = frozenset(
+            FlextInfraUtilitiesDocsAuditDetectorsMixin._docs_container_identities(
+                scope,
+            )
+        )
         evidence = set(historical_evidence_files)
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
@@ -113,7 +123,14 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
             text = md_file.read_text(encoding=c.DEFAULT_ENCODING)
             for line_number, line in enumerate(text.splitlines(), start=1):
                 for match in c.Infra.MACHINE_PATH_RE.finditer(line):
-                    if match.group("user") in c.Infra.MACHINE_PATH_CONTAINER_USERS:
+                    user = match.group("user")
+                    if user in container_identities:
+                        continue
+                    if FlextInfraUtilitiesDocsAuditDetectorsMixin._path_inside_root(
+                        line,
+                        match.start(),
+                        scope.path,
+                    ):
                         continue
                     issues.append(
                         m.Infra.AuditIssue(
@@ -127,6 +144,43 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
                         ),
                     )
         return issues
+
+    @staticmethod
+    def _docs_container_identities(scope: m.Infra.DocScope) -> t.StrSequence:
+        """Read the declared container home identities from the audit policy.
+
+        Returns:
+            The resulting ``t.StrSequence``.
+
+        """
+        # The composing facade owns the policy read; the detectors module is
+        # its mixin, so the owner resolves lazily at call time (one import
+        # graph, no cycle at load time).
+        from flext_infra._utilities import FlextInfraUtilitiesDocsAudit
+
+        policy = FlextInfraUtilitiesDocsAudit.docs_audit_policy(scope)
+        return policy.container_home_identities
+
+    @staticmethod
+    def _path_inside_root(line: str, start: int, root: Path) -> bool:
+        """Return whether the absolute path token at ``start`` sits under root.
+
+        The token extends from the match start across the maximal run of
+        path characters the line holds, so nested checkout paths resolve
+        against the checkout root instead of only their home prefix. The
+        detector regex guarantees the token starts with ``/``.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
+        end = start
+        while end < len(line) and (line[end].isalnum() or line[end] in "/._-~"):
+            end += 1
+        try:
+            return Path(line[start:end]).is_relative_to(root.resolve())
+        except OSError:
+            return False
 
     @staticmethod
     def docs_scope_boundary_issues(

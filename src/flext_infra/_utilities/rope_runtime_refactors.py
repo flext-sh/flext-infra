@@ -274,6 +274,33 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         return change
 
     @classmethod
+    def inline_variable_changes(
+        cls,
+        project: p.Infra.RopeProject,
+        resource: p.Infra.RopeResource,
+        offset: int,
+        *,
+        resources: t.SequenceOf[p.Infra.RopeResource],
+        remove: bool = True,
+    ) -> p.Infra.RopeChangeSet:
+        """Plan assigned-name inlining with native occurrence and import handling.
+
+        Returns:
+            The SDK's unapplied content changes, with literal payloads untouched.
+
+        Raises:
+            TypeError: If the installed SDK violates the inlining contract.
+
+        """
+        inline = cls.runtime_callable("rope.refactor.inline", "InlineVariable")(
+            project, resource, offset,
+        )
+        if not isinstance(inline, p.Infra.RopeInlineVariable):
+            message = "Rope InlineVariable does not satisfy its native contract"
+            raise TypeError(message)
+        return inline.get_changes(remove=remove, resources=list(resources), docs=False)
+
+    @classmethod
     def restructure_changes(
         cls,
         rope_project: p.Infra.RopeProject,
@@ -328,7 +355,39 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
 
         """
         finder = cls.semantic_finder(module)
-        return tuple(finder.get_match_regions(pattern, arguments, start=start, end=end))
+        return tuple(
+            region
+            for match in finder.get_matches(pattern, arguments, start=start, end=end)
+            if (region := cls._match_region(match)) is not None
+        )
+
+    @staticmethod
+    def _match_region(match: object) -> t.Pair[int, int] | None:
+        """Return the matched character range, or None when Rope cannot region it.
+
+        Rope's ``SimilarFinder.get_matches`` yields matches whose AST nodes may
+        lack the ``region`` attribute (subscripts, bare names, attribute chains
+        in PEP 695 and lazy-facade patterns). The matcher contract treats an
+        unregionable match as no match rather than a crash.
+
+        The fleet rope's ``Match.get_region`` raises ``AttributeError`` when the
+        matched AST node carries no region (subscripts, bare names, attribute
+        chains in PEP 695 and lazy-facade patterns). The matcher contract treats
+        an unregionable match as no match rather than a crash — the exception is
+        the upstream signal, translated once at this boundary.
+
+        Returns:
+            The resulting ``t.Pair[int, int] | None``.
+
+        """
+        region_getter = getattr(match, "get_region", None)
+        if region_getter is None:
+            return None
+        try:
+            start, end = region_getter()
+        except AttributeError:
+            return None
+        return (start, end)
 
     @classmethod
     def semantic_finder(
@@ -409,7 +468,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         cls,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-        offset: int,
+        offset: int | None,
         new_name: str,
         *,
         options: m.Infra.RopeRenameOptions,
@@ -424,11 +483,61 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
             new_name,
             resources=list(options.resources),
             in_hierarchy=options.in_hierarchy,
+            docs=options.docs,
         )
         if not isinstance(changes, p.Infra.RopeChangeSet):
             msg = "rope Rename returned invalid ChangeSet"
             raise TypeError(msg)
         return changes
+
+    @classmethod
+    def rename_all_changes(
+        cls,
+        projects: t.SequenceOf[p.Infra.RopeProject],
+        resource: p.Infra.RopeResource,
+        offset: int | None,
+        new_name: str,
+    ) -> t.VariadicTuple[t.Pair[p.Infra.RopeProject, p.Infra.RopeChangeSet]]:
+        """Preview every elected project before any publication or Project.do.
+
+        Returns:
+            Native per-project changes, including module resource moves.
+
+        Raises:
+            TypeError: If the native multiproject result violates its contract.
+            ValueError: If no producer project was elected.
+
+        """
+        if not projects:
+            msg = "native rename requires a producer project"
+            raise ValueError(msg)
+        factory = cls.runtime_callable("rope.refactor.rename", "Rename")
+        multiproject = cls.runtime_callable(
+            "rope.refactor.multiproject", "MultiProjectRefactoring"
+        )(factory, list(projects[1:]))
+        if not callable(multiproject):
+            msg = "Rope multiproject factory is not callable"
+            raise TypeError(msg)
+        refactoring = multiproject(projects[0], resource, offset)
+        get_all_changes = getattr(refactoring, "get_all_changes", None)
+        if not callable(get_all_changes):
+            msg = "Rope multiproject does not expose get_all_changes"
+            raise TypeError(msg)
+        result = get_all_changes(new_name, in_hierarchy=True)
+        if not isinstance(result, list) or len(result) != len(projects):
+            msg = "Rope multiproject returned invalid project changes"
+            raise TypeError(msg)
+        changes: list[t.Pair[p.Infra.RopeProject, p.Infra.RopeChangeSet]] = []
+        for project, item in zip(projects, result, strict=True):
+            match item:
+                case (owner, change) if owner is project and isinstance(
+                    change, p.Infra.RopeChangeSet
+                ):
+                    changes.append((project, change))
+                case _:
+                    msg = "Rope multiproject changed its elected project"
+                    raise TypeError(msg)
+        return tuple(changes)
 
     @classmethod
     def create_occurrence_finder(

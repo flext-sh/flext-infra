@@ -264,7 +264,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         return tuple(
             env_dir
             for env_dir in env_dirs
-            if env_dir not in c.Infra.PYTHON_DISCOVERY_SKIP_DIRS
+            if env_dir not in config.Infra.codegen.analysis_excluded_dirs
         )
 
     @staticmethod
@@ -361,7 +361,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         context: m.Infra.PyprojectAnalyzerContext,
         paths_manager: FlextInfraExtraPathsManager | None,
     ) -> t.StrSequence:
-        """Resolve the one analyzer-root set consumed by includes and environments.
+        """Resolve declared directories and discovered Python include targets.
 
         Returns:
             The resulting ``t.StrSequence``.
@@ -390,8 +390,6 @@ class FlextInfraEnsurePyrightConfigPhase:
                     ).unwrap()
                 ),
             )
-        if context.declared_python_dirs_are_complete:
-            return declared
         if context.project_dir is not None:
             return u.Infra.analyzer_python_roots(
                 context.project_dir,
@@ -404,7 +402,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                     ).unwrap()
                 ),
             )
-        if declared:
+        if declared or context.declared_python_dirs_are_complete:
             return declared
         return self._tool_config.tools.pyright.path_rules.env_dirs
 
@@ -434,7 +432,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             context=context,
             paths_manager=paths_manager,
         )
-        # Include only the Python roots owned by the selected project manifest.
+        # Include every Python target owned by the selected project manifest.
         expected_includes = list(expected_roots)
         stub_rules = self._tool_config.tools.pyright.path_rules
         expected_stub_path: str | None = (
@@ -450,7 +448,11 @@ class FlextInfraEnsurePyrightConfigPhase:
             is_root=is_root,
             repository_root=repository_root,
             project_dir=project_dir,
-            project_roots=expected_roots,
+            project_roots=tuple(
+                root
+                for root in expected_roots
+                if project_root is None or not (project_root / root).is_file()
+            ),
         )
         toml = m.Infra.DepsToml
         operations: t.MutableSequenceOf[

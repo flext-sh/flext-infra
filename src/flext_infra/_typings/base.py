@@ -211,18 +211,12 @@ class FlextInfraTypesBase(FlextInfraTypesCollections):
         t.StringConstraints(min_length=1),
         m.AfterValidator(_reject_blanket_mask),
     ]
-    """One named Ruff rule exempted for a path.
+    """One native Ruff rule name used by repair and checking ownership.
 
-    ``ALL`` is excluded by construction. It suppresses every rule, present and
-    future, so it masks real defects and cannot be reviewed: the set it hides
-    is unbounded and grows with each Ruff release. UNIVERSAL_CORE r19 requires
-    an exemption to name its rule and carry its justification, which a mask
-    cannot do. Rendering one into a generated pyproject would push it onto
-    every consumer, so the boundary refuses it instead of a gate reporting it
-    after the fact.
+    ``ALL``, family selectors, and rule codes are not individual rule identities.
+    They cannot identify a repair or checking owner and are rejected before
+    projection. Rule ownership never permits a blanket mask.
     """
-    type PerFileIgnores = t.MappingKV[str, t.SequenceOf[RuffRule]]
-    "Ruff per-file exemptions: {path_glob: [named_rule]}, never a blanket mask."
 
     type LifecycleContext = Literal["local", "ci"]
 

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableMapping
+from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -20,22 +21,23 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
     """Describe stale generated sidecars without publishing any effect."""
 
     if TYPE_CHECKING:
+        source_project: p.Infra.RopeProject
 
         @staticmethod
         def _is_generated(content: bytes | None) -> bool: ...
 
-    @staticmethod
-    def _optional_state(path: Path) -> p.Result[m.Cli.AtomicFileState]:
+    def _optional_state(self, path: Path) -> p.Result[m.Cli.AtomicFileState]:
         """Read one optional physical file state through the atomic owner.
 
         Returns:
             The resulting ``p.Result[m.Cli.AtomicFileState]``.
 
         """
-        return u.Cli.atomic_read_binary_file_state(path, required=False)
+        return r[m.Cli.AtomicFileState].ok(
+            self.source_project.source_state(path, required=False)
+        )
 
-    @staticmethod
-    def _path_flags(path: Path) -> p.Result[t.Quad[bool, bool, bool, bool]]:
+    def _path_flags(self, path: Path) -> p.Result[t.Quad[bool, bool, bool, bool]]:
         """Read one path classification while preserving filesystem failures.
 
         Returns:
@@ -43,7 +45,10 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
 
         """
         try:
-            flags = (path.is_symlink(), path.is_file(), path.exists(), path.is_dir())
+            exists = self.source_project.source_query(path, "exists")
+            file = self.source_project.source_query(path, "isfile")
+            directory = self.source_project.source_query(path, "isdir")
+            flags = (exists and not file and not directory, file, exists, directory)
         except OSError as exc:
             return r[tuple[bool, bool, bool, bool]].fail_op(
                 f"classify lazy-init support path {path}",
@@ -51,8 +56,8 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
             )
         return r[tuple[bool, bool, bool, bool]].ok(flags)
 
-    @staticmethod
     def _glob_paths(
+        self,
         directory: Path,
         pattern: str,
         *,
@@ -65,7 +70,11 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
 
         """
         try:
-            paths = tuple(sorted(directory.glob(pattern)))
+            paths = tuple(
+                child
+                for child in self.source_project.source_children(directory)
+                if fnmatchcase(child.name, pattern)
+            )
         except OSError as exc:
             return r[t.VariadicTuple[Path]].fail_op(operation, exc)
         return r[t.VariadicTuple[Path]].ok(paths)

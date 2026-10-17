@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests import m, tm, u
 
 if TYPE_CHECKING:
@@ -67,69 +69,25 @@ class TestsFlextInfraAuditorLinks:
             tm.that(len(issues), gte=0)
 
         @staticmethod
-        def test_broken_link_issues_with_valid_links(tmp_path: Path) -> None:
-            """Test docs_broken_link_issues ignores valid links."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("[link](test.md)")
-            scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
-            )
-            issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
-
-        @staticmethod
-        def test_broken_link_issues_with_external_links(tmp_path: Path) -> None:
-            """Test docs_broken_link_issues ignores external links."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("[link](https://example.com)")
-            scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
-            )
-            issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
-
-        @staticmethod
-        def test_broken_link_issues_with_fragments(tmp_path: Path) -> None:
-            """Test docs_broken_link_issues ignores fragment-only links."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("[link](#section)")
-            scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
-            )
-            issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
-
-        @staticmethod
-        def test_broken_link_issues_in_code_blocks(tmp_path: Path) -> None:
-            """Test docs_broken_link_issues ignores links in code blocks."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("```\n[link](nonexistent.md)\n```")
-            scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
-            )
-            issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
-
-        @staticmethod
-        def test_broken_link_issues_with_should_skip_target_true(
+        @pytest.mark.parametrize(
+            "markdown",
+            [
+                pytest.param("[link](test.md)", id="valid-links"),
+                pytest.param("[link](https://example.com)", id="external-links"),
+                pytest.param("[link](#section)", id="fragment-links"),
+                pytest.param("```\n[link](nonexistent.md)\n```", id="code-block-links"),
+                pytest.param("[a, b]", id="should-skip-target-text"),
+                pytest.param("[some text]", id="plain-bracket-text"),
+            ],
+        )
+        def test_broken_link_issues_ignore_non_findings(
             tmp_path: Path,
+            markdown: str,
         ) -> None:
-            """Test broken link issues skip targets when should_skip_target is True."""
+            """Test docs_broken_link_issues ignores well-formed non-finding markdown."""
             docs_dir = tmp_path / "docs"
             docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("[a, b]")
+            (docs_dir / "test.md").write_text(markdown)
             scope = m.Infra.DocScope(
                 name="test",
                 path=tmp_path,
@@ -179,20 +137,6 @@ class TestsFlextInfraAuditorLinks:
                 ),
                 eq=True,
             )
-
-        @staticmethod
-        def test_broken_link_issues_skips_some_text(tmp_path: Path) -> None:
-            """Test docs_broken_link_issues skips plain text brackets."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("[some text]")
-            scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
-            )
-            issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
 
         @staticmethod
         def test_broken_link_issues_with_space_in_url_skips(

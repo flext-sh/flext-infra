@@ -343,7 +343,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
         globs: t.StrSequence = tuple(
             f"!{dir_name}/"
             for dir_name in sorted({
-                *c.Infra.CHECK_EXCLUDED_DIRS,
+                *config.Infra.codegen.check_excluded_dirs,
                 *config.Infra.codegen.source_scan_ignored,
             })
         )

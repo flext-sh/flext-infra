@@ -440,18 +440,21 @@ class TestsFlextInfraCodegenMakeUpgrade:
         for needle in (
             "deps modernize",
             "--rewrite-constraints",
-            "--upgrade --refresh",
         ):
             tm.that(
                 self._recipe_targets_containing(makefile, needle),
                 eq={"_upg_lifecycle"},
             )
         tm.that(
+            self._recipe_targets_containing(makefile, "--upgrade --refresh"),
+            eq={"_upg_resolve_locks"},
+        )
+        tm.that(
             self._recipe_targets_containing(
                 makefile,
                 '$(UV) lock --check --project "$$resolution"',
             ),
-            eq={"_upg_reconcile_locks"},
+            eq={"_upg_resolve_locks", "_upg_reconcile_locks"},
         )
         tm.that(makefile, lacks="--constraint-policy")
 
@@ -477,7 +480,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         def first(needle: str) -> int:
             return next(index for index, step in enumerate(steps) if needle in step)
 
-        resolved = first("--upgrade --refresh")
+        resolved = first("_upg_resolve_locks")
         installed = first("_upg_install_runtime")
         corrected = first("--what pyproject --scope all")
         reconciled = first("_upg_reconcile_locks")
@@ -507,13 +510,12 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 if index > start and needle in step
             )
 
-        upgraded = after(-1, "lock --project")
-        bumped = after(upgraded, "lock --bump")
+        upgraded = after(-1, "_upg_resolve_locks")
+        bumped = after(upgraded, "_upg_provision_tools")
         projected = after(bumped, "$(call RUN_PUBLIC_PRODUCE,gen)")
         relocked = after(projected, "_upg_reconcile_locks")
         installed = after(relocked, "_builtin_setup_environment")
 
-        tm.that(steps[upgraded], has="--upgrade")
         tm.that(steps[relocked], lacks="--upgrade")
         tm.that(
             upgraded < bumped < projected < relocked < installed,
@@ -580,9 +582,9 @@ class TestsFlextInfraCodegenMakeUpgrade:
         order = [
             next(i for i, step in enumerate(steps) if needle in step)
             for needle in (
-                "--what mise-config --scope self",
-                "lock --bump",
-                "install --locked --yes",
+                "--what mise-config --scope all",
+                "--what makefile --scope all",
+                "_upg_provision_tools",
                 "deps modernize",
                 "$(call RUN_PUBLIC_PRODUCE,gen)",
                 "deps verify-locks",

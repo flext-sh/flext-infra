@@ -150,6 +150,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         return u.Infra.mypy_limited_command(
             m.Infra.MypyInvocation(
                 targets=tuple(project_dir / target for target in check_dirs),
+                workspace=ctx.runtime_root,
                 config_file=cfg,
                 report_json=True,
                 verbose=True,

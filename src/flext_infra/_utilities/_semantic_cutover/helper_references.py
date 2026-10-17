@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import re
 from collections.abc import MutableMapping
 from pathlib import Path
 
@@ -200,7 +199,6 @@ class FlextInfraUtilitiesSemanticHelperReferences(
                 move,
                 snapshot,
                 prepared,
-                quoted_imports,
             )
         finally:
             snapshot.close()
@@ -210,57 +208,50 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         move: m.Infra.ResolvedClassMove,
         snapshot: p.Infra.RopeProject,
         prepared: t.MutableMappingKV[Path, str],
-        quoted_imports: t.MappingKV[Path, str],
     ) -> None:
         """Point surviving origin imports at the moved declaration.
 
-        Rope's move rewrites the references it can see, but a consumer binding
-        of the form ``from origin import name as alias`` survives the nested
-        move and dies the moment the origin module publishes without the
-        declaration. Every surviving binding is re-bound to the elected
-        destination expression; a consumer without a quoted reference takes the
-        lazy ``from target import name`` form the materialized alias serves.
+        Inspect native import records against the original snapshot identity,
+        never against a surviving line's spelling or a post-move declaration.
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         request = move.request
-        target = move.target_module
         root = Path(snapshot.root.real_path)
-        origin = (
-            request.source_file
-            .relative_to(root)
-            .with_suffix("")
-            .as_posix()
-            .replace("/", ".")
+        origin = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            snapshot,
+            snapshot.get_resource(request.source_file.relative_to(root).as_posix()),
         )
-        pattern = re.compile(
-            rf"^from {re.escape(origin)} import {request.class_name}(?: as (\w+))?$",
-            re.MULTILINE,
-        )
+        expected = origin.get_attribute(request.class_name)
         for path, source in prepared.items():
-            if not pattern.search(source):
-                continue
-            expression = quoted_imports.get(path)
-            if expression is None:
-                resource = snapshot.get_resource(path.relative_to(root).as_posix())
-                module = runtime.build_string_module(
-                    snapshot,
-                    source,
-                    resource=resource,
+            resource = snapshot.get_resource(path.relative_to(root).as_posix())
+            original = FlextInfraUtilitiesRopeCore.resolve_pymodule(snapshot, resource)
+            module = runtime.build_string_module(snapshot, source, resource=resource)
+            imports = runtime.module_imports_for_pymodule(snapshot, module)
+            names = original.get_scope().get_names()
+            moved: list[t.Pair[str, str | None]] = []
+            for statement in tuple(imports.imports):
+                info = statement.import_info
+                if not isinstance(info, p.Infra.RopeFromImport):
+                    continue
+                kept, matched = (
+                    FlextInfraUtilitiesSemanticHelperReferences._partition_helper_import(
+                        info,
+                        names,
+                        expected,
+                        request.class_name,
+                    )
                 )
-                _, expression = runtime.import_binding(
-                    snapshot,
-                    module,
-                    target,
-                    request.class_name,
+                if not matched:
+                    continue
+                statement.import_info = runtime.from_import(
+                    info.module_name,
+                    info.level,
+                    kept,
                 )
-
-            def _rebind(match: re.Match[str], expression: str = expression) -> str:
-                alias = match.group(1)
-                if alias is not None:
-                    return f"{alias} = {expression}"
-                return f"from {target} import {request.class_name}"
-
-            prepared[path] = pattern.sub(_rebind, source)
+                moved.extend(matched)
+            if moved:
+                imports.add_import(runtime.from_import(move.target_module, 0, moved))
+                prepared[path] = imports.get_changed_source()
 
     @staticmethod
     def _without_self_bindings(
@@ -435,6 +426,17 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         kept: list[t.Pair[str, str | None]] = []
         moved: list[t.Pair[str, str | None]] = []
         for imported, alias in info.names_and_aliases:
+            if imported == "*":
+                kept.append((imported, alias))
+                moved.extend(
+                    (name, local if local != name else None)
+                    for local, binding in names.items()
+                    if isinstance(binding, p.Infra.RopeImportedName)
+                    and binding.imported_module.module_name == info.module_name
+                    and binding.imported_module.level == info.level
+                    and runtime.same_name(expected, binding)
+                )
+                continue
             binding = names.get(alias or imported)
             if (
                 isinstance(binding, p.Infra.RopeImportedName)

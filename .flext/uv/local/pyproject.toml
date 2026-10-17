@@ -4,6 +4,7 @@
 # @flext-regenerate: make gen
 # @flext-rendered-by: flext-infra 0.12.0
 [dependency-groups]
+codegen = []
 dev = [
   "mkdocstrings-python>=2.0.9",
   "actionlint-py>=1.7.12.24",
@@ -67,16 +68,15 @@ dev = [
   "types-tabulate>=0.10.0.20260508",
   "types-toml>=0.10.8.20260518",
 ]
-codegen = []
 
 [tool.uv]
 constraint-dependencies = ["mypy<2.4.0"]
 environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
 link-mode = "copy"
 override-dependencies = [
-  "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@upload-20261007",
-  "flext-core @ git+https://github.com/flext-sh/flext-core.git@upload-20261007",
-  "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@upload-20261007",
+  "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
+  "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
+  "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
   "flext-infra",
 ]
 package = false

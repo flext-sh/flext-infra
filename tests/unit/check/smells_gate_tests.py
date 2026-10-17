@@ -295,7 +295,7 @@ class TestsFlextInfraSmellsGate:
             self._ctx(tmp_path),
         )
 
-        tm.that(execution.result.passed, eq=True)
+        tm.that(execution.result.passed, eq=False)
         messages = [issue.message for issue in execution.issues]
         tm.that(any("wide" in message for message in messages), eq=True)
         tm.that(any("{" in message for message in messages), eq=False)

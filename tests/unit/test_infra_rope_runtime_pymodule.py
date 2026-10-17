@@ -6,14 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from contextlib import closing
+import sys
+from contextlib import ExitStack, closing
 from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c
 from flext_infra.workspace import FlextInfraRopeWorkspace
-from tests import tm, u
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -21,6 +21,117 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraRopeRuntimePymodule:
     """Validate the module predicate over rope modules and packages."""
+
+    @staticmethod
+    @pytest.mark.parametrize("reuse_binding", [False, True])
+    @pytest.mark.parametrize("admitted", [False, True])
+    def test_native_restructuring_preserves_admission_and_import_bindings(
+        tmp_path: Path,
+        *,
+        reuse_binding: bool,
+        admitted: bool,
+    ) -> None:
+        """Real native changes respect identity alternatives and import policy."""
+        (tmp_path / "provider.py").write_text(
+            "class Old:\n    value = 'old'\n"
+            "class Alternative:\n    value = 'alternative'\n"
+            "class New:\n    value = 'new'\n"
+            "class Existing:\n    value = 'existing'\n"
+            "class Foreign:\n    value = 'foreign'\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        consumer = tmp_path / "consumer.py"
+        consumer.write_text(
+            "from provider import Old as Alias, Foreign\n"
+            + ("from provider import Existing as New\n" if reuse_binding else "")
+            + "print(Alias.value, Foreign.value)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        expected_module = "consumer" if admitted else "unselected"
+
+        def accept(
+            module: p.Infra.RopePyModule,
+            match: p.Infra.RopeContractMatch,
+        ) -> bool:
+            return (
+                module.get_name() == expected_module
+                and "Alias" in module.get_scope().get_defined_names()
+                and match.get_ast("owner") is not None
+            )
+
+        with closing(u.Infra.init_rope_project(tmp_path)) as project:
+            project.do(
+                u.Infra.restructure_changes(
+                    project,
+                    m.Infra.RopeRestructureRequest(
+                        pattern="${owner}.value",
+                        goal="New.value",
+                        arguments={
+                            "owner": ("name=provider.Old", "name=provider.Alternative")
+                        },
+                        resources=(project.get_resource(consumer.name),),
+                        imports={"New": "from provider import New"},
+                        match_filter=accept,
+                    ),
+                )
+            )
+        expected_value = ("existing" if reuse_binding else "new") if admitted else "old"
+        output = tm.ok(u.Cli.run((sys.executable, str(consumer))))
+        tm.that(output.stdout, eq=f"{expected_value} foreign\n")
+
+    @staticmethod
+    @pytest.mark.parametrize("captured", [False, True])
+    def test_relative_lookup_preserves_native_folder_and_absent_context(
+        tmp_path: Path,
+        *,
+        captured: bool,
+    ) -> None:
+        """Live and captured projects retain one native relative lookup contract."""
+        package = tmp_path / "pkg"
+        package.mkdir()
+        initializer = package / c.Infra.INIT_PY
+        owner = package / "owner.py"
+        initializer.write_text("", encoding=c.DEFAULT_ENCODING)
+        owner.write_text(
+            "class PublishedContract:\n    pass\n", encoding=c.DEFAULT_ENCODING
+        )
+        with ExitStack() as stack:
+            live = stack.enter_context(closing(u.Infra.init_rope_project(tmp_path)))
+            project = (
+                stack.enter_context(
+                    closing(
+                        u.Infra.snapshot_project(
+                            live,
+                            {
+                                initializer: initializer.read_text(
+                                    encoding=c.DEFAULT_ENCODING
+                                ),
+                                owner: owner.read_text(encoding=c.DEFAULT_ENCODING),
+                            },
+                        )
+                    )
+                )
+                if captured
+                else live
+            )
+            folder = project.get_folder(package.name)
+            tm.that(
+                project.find_relative_module("owner", folder, 1),
+                eq=project.get_resource(owner.relative_to(tmp_path).as_posix()),
+            )
+            tm.that(
+                u.Infra
+                .require_semantic_module(
+                    project.get_relative_module("owner", folder, 1)
+                )
+                .get_attribute("PublishedContract")
+                .get_object()
+                .get_name(),
+                eq="PublishedContract",
+            )
+            tm.that(project.find_relative_module("owner", None, 1), none=True)
+            with pytest.raises(u.Infra.rope_module_not_found_error_types()):
+                project.get_relative_module("owner", None, 1)
 
     @staticmethod
     def test_blocked_stdlib_module_preserves_native_import_state(

@@ -175,26 +175,78 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         selected_roots = {
             (item.root / item.repository.path).resolve() for item in tasks
         }
-        desired = {file.path for file in files if file.desired_content is not None}
+        desired = {
+            file.path: file.desired_content
+            for file in files
+            if file.desired_content is not None
+        }
+        repositories: list[m.Infra.RepositoryRef] = []
         for member in (
             project_workspace.value.repository,
             *project_workspace.value.subprojects,
         ):
-            if member is not project_workspace.value.repository and not member.package:
-                continue
-            member_root = (project_root / member.path).resolve()
-            path = member_root / c.PYPROJECT_FILENAME
-            if member_root in selected_roots and path not in desired:
+            path = (project_root / member.path).resolve() / c.PYPROJECT_FILENAME
+            if path in desired:
+                projected = self._desired_resolution_repository(
+                    member,
+                    path,
+                    desired[path],
+                )
+                if projected.failure:
+                    return result_type.from_failure(projected)
+                resolved = projected.value
+            elif path.parent in selected_roots and (
+                member is project_workspace.value.repository or member.package
+            ):
                 return result_type.fail(
                     f"native resolution input has no successful selected plan: {path}",
                 )
+            else:
+                resolved = member
+            repositories.append(resolved)
         return self.native_resolution_plans(
             project_root,
-            project_workspace.value,
+            project_workspace.value.model_copy(
+                update={
+                    "repository": repositories[0],
+                    "subprojects": tuple(repositories[1:]),
+                },
+            ),
             project_inputs.value,
             files,
             rendered_by=self.rendered_by_stamp(),
         ).map(list)
+
+    @staticmethod
+    def _desired_resolution_repository(
+        repository: m.Infra.RepositoryRef,
+        path: Path,
+        content: bytes,
+    ) -> p.Result[m.Infra.RepositoryRef]:
+        """Derive native participation from the metadata being published.
+
+        Returns:
+            Repository identity with desired packaging facts, or its original failure.
+
+        """
+        result_type = r[m.Infra.RepositoryRef]
+        payload = u.Cli.toml_mapping_from_text(content.decode(c.DEFAULT_ENCODING))
+        if payload is None:
+            return result_type.fail(
+                f"native resolution input is not valid TOML: {path}"
+            )
+        try:
+            declaration = m.Infra.ProjectPackagingDeclaration.model_validate(payload)
+        except ValueError as exc:
+            return result_type.fail(
+                f"native resolution packaging is not valid: {path}: {exc}",
+                exception=exc,
+            )
+        return result_type.ok(
+            repository.model_copy(
+                update={"package": u.Infra.project_package_participation(declaration)},
+            ),
+        )
 
     def _plan_facade(
         self,
@@ -659,8 +711,17 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                         for file in outcome.files
                     ),
                     issues=outcome.issues,
-                    error=outcome.error,
-                    error_type=outcome.error_type,
+                    error=outcome.error
+                    or (
+                        str(outcome.exception) if outcome.exception is not None else ""
+                    ),
+                    error_type=outcome.error_type
+                    or (
+                        f"{type(outcome.exception).__module__}."
+                        f"{type(outcome.exception).__qualname__}"
+                        if outcome.exception is not None
+                        else ""
+                    ),
                     elapsed=outcome.elapsed,
                 ),
             )
@@ -695,22 +756,20 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             providers = tuple(
                 file
                 for outcome in lazy_outcomes
-                if not (outcome.error or outcome.error_type or outcome.issues)
+                if not outcome.failed
                 for file in outcome.files
             )
             ready = tuple(
                 task.model_copy(update={"provider_plans": providers})
                 for task, outcome in zip(tasks, lazy_outcomes, strict=True)
-                if not (outcome.error or outcome.error_type or outcome.issues)
+                if not outcome.failed
             )
             planned = {
                 outcome.repository: outcome
                 for outcome in u.Infra.fleet_map(type(self).plan_repository_task, ready)
             }
             outcomes = tuple(
-                outcome
-                if outcome.error or outcome.error_type or outcome.issues
-                else planned[outcome.repository]
+                outcome if outcome.failed else planned[outcome.repository]
                 for outcome in lazy_outcomes
             )
         else:
@@ -721,10 +780,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 None,
             )
         metadata = tuple(
-            file
-            for outcome in outcomes
-            if not (outcome.error or outcome.error_type or outcome.issues)
-            for file in outcome.files
+            file for outcome in outcomes if not outcome.failed for file in outcome.files
         )
         extended_outcomes: list[m.Infra.CodegenRepositoryPlanOutcome] = []
         selected_pyproject = contract.pyproject and (
@@ -732,12 +788,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             or c.PYPROJECT_FILENAME in contract.destinations
         )
         for task, outcome in zip(tasks, outcomes, strict=True):
-            if (
-                outcome.error
-                or outcome.error_type
-                or outcome.issues
-                or not selected_pyproject
-            ):
+            if outcome.failed or not selected_pyproject:
                 extended_outcomes.append(outcome)
                 continue
             extended = self._extended_pyproject_views(task, tasks, inputs, metadata)
@@ -882,7 +933,12 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             if self.planning_exception is None:
                 self.planning_exception = outcome.exception
             u.Cli.progress(index, len(outcomes), outcome.repository, "conform")
-            if outcome.error or outcome.error_type:
+            if (
+                outcome.error
+                or outcome.error_type
+                or outcome.error_traceback
+                or outcome.exception is not None
+            ):
                 u.Cli.status(
                     "conform",
                     outcome.repository,
@@ -890,7 +946,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     elapsed=outcome.elapsed,
                 )
                 u.Cli.error(
-                    f"{outcome.repository}: {outcome.error_type}: {outcome.error}",
+                    f"{outcome.repository}: {outcome.error_type}: "
+                    f"{outcome.error or outcome.exception}",
                 )
                 issues.append(
                     m.Infra.Issue(
@@ -898,7 +955,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                         line=0,
                         column=0,
                         code=c.Infra.ToolOutcome.ERROR.value,
-                        message=outcome.error_traceback or outcome.error,
+                        message=outcome.error_traceback
+                        or outcome.error
+                        or str(outcome.exception),
                     ),
                 )
                 continue
@@ -909,7 +968,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             u.Cli.status(
                 "conform",
                 outcome.repository,
-                result=not outcome.issues,
+                result=not outcome.failed,
                 elapsed=outcome.elapsed,
             )
         return result_type.ok((files, environments, issues))

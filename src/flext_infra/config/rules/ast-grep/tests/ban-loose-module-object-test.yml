@@ -17,6 +17,20 @@ valid:
     config: FlextFooConfig = FlextFooConfig.fetch_global()
     __all__ = ["FlextFooConfig", "config"]
   - |
+    class Script:
+        @staticmethod
+        def main() -> None:
+            return None
+    if __name__ == "__main__":
+        Script.main()
+  - |
+    class Typings:
+        type Alias = int
+        type _PrivateAlias = str
+  - |
+    __version__ = "1"
+invalid:
+  - |
     def main() -> None:
         return None
   - |
@@ -24,8 +38,9 @@ valid:
   - |
     Alias: TypeAlias = int
   - |
-    __version__ = "1"
-invalid:
+    type Alias = int
+  - |
+    type _PrivateAlias = str
   - |
     def helper() -> int:
         return 1

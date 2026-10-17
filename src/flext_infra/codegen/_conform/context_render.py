@@ -106,6 +106,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             The resulting ``p.Result[m.Infra.MakeRenderContext]``.
 
         """
+        from flext_infra.check.gate_registry import FlextInfraGateRegistry
+
         target = render_inputs.target
         workspace = render_inputs.workspace
         codegen = render_inputs.codegen
@@ -131,6 +133,17 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             ),
             frozenset(verb.name for verb in codegen.make.verbs),
         )
+        try:
+            delegated_rules = FlextInfraGateRegistry.default().delegated_lint_rules(
+                config.Infra.tooling.tools.ruff.lint.rule_owners,
+                check_gates=codegen.make.check_gates_default,
+                repair_gates=(
+                    *codegen.make.check_gates_fixable,
+                    *codegen.make.fmt_gates,
+                ),
+            )
+        except ValueError as exc:
+            return r[m.Infra.MakeRenderContext].fail(str(exc))
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 pytest=config.Infra.tooling.tools.pytest,
@@ -144,11 +157,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 examples_module=repository.examples_module,
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=self.link_mode(repository, codegen.toolchain),
-                # ProjectRenderContext replaces this with the composed map.
-                # Pass the neutral value explicitly so Pydantic never deep-copies
-                # the MappingProxyType model default while building the base.
-                ruff_per_file_ignores={},
                 ruff_extend_exclude=(),
+                ruff_delegated_rules=delegated_rules,
                 make_profile=profile,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                 repository_root_rel=self._repository_root_rel(workspace),
@@ -472,7 +482,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 **make_context.value.model_dump(
                     by_alias=True,
                     exclude={
-                        "ruff_per_file_ignores",
                         "ruff_extend_exclude",
                     },
                     exclude_computed_fields=True,
@@ -493,14 +502,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 project_dependencies=project_dependencies,
                 development_dependencies=tuple(development_dependencies),
                 tooling=config.Infra.tooling,
-                # The in-place pyproject edit and this render read the same
-                # fleet exemption map, unchanged for every project.
-                ruff_per_file_ignores=(
-                    u.Infra.compose_ruff_per_file_ignores(
-                        config.Infra.tooling,
-                        render_inputs.managed_artifacts.resolution.artifacts.Ruff,
-                    )
-                ),
                 ruff_extend_exclude=(
                     *config.Infra.tooling.tools.ruff_extend_exclude,
                     *codegen.generated_source_globs,
@@ -516,12 +517,10 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 ),
                 packaged_data_files=packaged_data_paths.files,
                 project_declaration_resource=(
-                    (
-                        c.PYPROJECT_FILENAME,
-                        f"{project.package_name}/{c.PYPROJECT_FILENAME}",
+                    FlextInfraEnsurePackagingPhase.declaration_resource(
+                        package_name=project.package_name,
+                        package=repository.package,
                     )
-                    if repository.package
-                    else None
                 ),
                 packaged_data_excludes=(
                     FlextInfraEnsurePackagingPhase.resolve_data_excludes(

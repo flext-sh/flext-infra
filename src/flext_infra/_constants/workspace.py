@@ -29,6 +29,23 @@ class FlextInfraConstantsWorkspace:
     CPYTHON_IMMUTABLE_TYPE_FLAG: ClassVar[int] = 1 << 8
 
     @unique
+    class OpCode(StrEnum):
+        """CPython dis opcode names consumed by native reference analysis."""
+
+        COPY = "COPY"
+        DELETE_FAST = "DELETE_FAST"
+        DELETE_GLOBAL = "DELETE_GLOBAL"
+        LOAD_ATTR = "LOAD_ATTR"
+        LOAD_FAST = "LOAD_FAST"
+        LOAD_FAST_LOAD_FAST = "LOAD_FAST_LOAD_FAST"
+        LOAD_GLOBAL = "LOAD_GLOBAL"
+        STORE_ATTR = "STORE_ATTR"
+        STORE_FAST = "STORE_FAST"
+        STORE_GLOBAL = "STORE_GLOBAL"
+        STORE_NAME = "STORE_NAME"
+        SWAP = "SWAP"
+
+    @unique
     class BeadIssueStatus(StrEnum):
         """Beads issue status values."""
 
@@ -111,6 +128,8 @@ class FlextInfraConstantsWorkspace:
     "Interpreter metadata identifying a provisioned virtual environment."
     DISTRIBUTION_DIRECT_URL_FILE: ClassVar[str] = "direct_url.json"
     "PEP 610 installer receipt recording a distribution's direct-reference origin."
+    DISTRIBUTION_RECORD_ROW_FIELDS: ClassVar[int] = 3
+    "Native RECORD CSV rows contain path, hash and size columns."
     BINDING_RESOLUTION_FILES: ClassVar[t.VariadicTuple[t.StrPair]] = (
         ("--overrides", "overrides.txt"),
         ("--constraints", "constraints.txt"),

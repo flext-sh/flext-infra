@@ -96,22 +96,9 @@ class FlextInfraConstantsRope:
     )
     "Identities declaration relocation resolves; its planning epoch captures them."
 
-    ROPE_IGNORED_RESOURCES: ClassVar[t.VariadicTuple[str]] = (
-        ".venv",
-        "venv",
-        "node_modules",
-        "*.pyc",
-        "dist/",
-        "build/",
-        ".tox/",
-        ".cache/",
-        "__pycache__",
-        ".mypy_cache",
-        ".pyrefly_cache",
-        ".pytest_cache",
-        ".git",
-    )
-    "Resources rope should ignore when scanning the project tree."
+    # NOTE: ROPE_IGNORED_RESOURCES was removed: the rope project election
+    # derives ignored resources from the codegen artifact SSOT
+    # (source_scan_ignored) through the typed RopeProjectElection owner.
 
     PROPERTY_DECORATORS: ClassVar[frozenset[str]] = frozenset({
         "property",

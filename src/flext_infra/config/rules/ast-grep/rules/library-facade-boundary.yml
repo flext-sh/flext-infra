@@ -14,13 +14,14 @@ language: python
 severity: error
 files:
   - "**/*.py"
-ignores:
-  - "**/_config.py"
-  - "**/_settings.py"
 metadata:
   owner: flext-core
+  context:
+    MODULE:
+      not: layer-zero-file
 rule:
   all:
+    - pattern: $MODULE
     - matches: library-import-name
     - regex: "^(?:pydantic|pydantic_core)(?:\\.|$)"
 message: >-
@@ -31,13 +32,14 @@ language: python
 severity: error
 files:
   - "**/*.py"
-ignores:
-  - "**/_config.py"
-  - "**/_settings.py"
 metadata:
   owner: flext-core
+  context:
+    MODULE:
+      not: layer-zero-file
 rule:
   all:
+    - pattern: $MODULE
     - matches: library-import-name
     - regex: "^(?:structlog)(?:\\.|$)"
 message: >-
@@ -48,13 +50,14 @@ language: python
 severity: error
 files:
   - "**/*.py"
-ignores:
-  - "**/_config.py"
-  - "**/_settings.py"
 metadata:
   owner: flext-core
+  context:
+    MODULE:
+      not: layer-zero-file
 rule:
   all:
+    - pattern: $MODULE
     - matches: library-import-name
     - regex: "^(?:dependency_injector|returns|yaml)(?:\\.|$)"
 message: >-
@@ -65,13 +68,14 @@ language: python
 severity: error
 files:
   - "**/*.py"
-ignores:
-  - "**/_config.py"
-  - "**/*settings.py"
 metadata:
   owner: flext-core
+  context:
+    MODULE:
+      not: layer-zero-file
 rule:
   all:
+    - pattern: $MODULE
     - matches: library-import-name
     - regex: "^(?:pydantic_settings)(?:\\.|$)"
 message: >-

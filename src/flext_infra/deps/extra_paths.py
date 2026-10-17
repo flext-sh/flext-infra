@@ -208,6 +208,17 @@ class FlextInfraExtraPathsManager(
             shared_search_paths=rules.project_shared_search_paths,
             include_generated_roots=True,
         )
+        # Why: inclusion and resolution derive from the same declared set —
+        # every analysis root that project-includes carries also joins the
+        # search path (after ``source_dir``, before ``project_root``), so a
+        # scripts-rooted module tree (``from lib...`` with the module root at
+        # ``scripts/``) resolves. pyrefly resolves first-match, so the extra
+        # roots cannot mask ``source_dir``; mypy keeps its separate derivation
+        # above precisely because it enumerates roots and aborts on a file
+        # reached under two module names.
+        paths.update(self._included_pyrefly_env_dirs(project_dir=project_dir))
+        paths.discard(rules.source_dir)
+        paths.discard(rules.project_root)
         has_source_root = (
             project_dir / source_root
         ).is_dir() or source_root in self.generated_python_roots
@@ -249,6 +260,34 @@ class FlextInfraExtraPathsManager(
             return (source_root, *sorted(paths))
         return tuple(sorted(paths))
 
+    def _included_pyrefly_env_dirs(self, *, project_dir: Path) -> t.StrSequence:
+        """Return the declared env dirs whose Python sources pyrefly analyzes.
+
+        The one declared set behind both pyrefly project-includes and the
+        pyrefly search-path: a root included for analysis is also a root for
+        import resolution. Never reread an on-disk Pyright table while its
+        in-memory payload is being conformed; only real production roots
+        (discovered on disk or materialized by the active codegen plan)
+        participate.
+
+        Returns:
+            The resulting ``t.StrSequence``.
+
+        """
+        rules = config.Infra.tooling.tools.pyrefly.path_rules
+        discovered_python_roots = set(
+            u.Infra.discover_python_dirs(
+                project_dir,
+                workspace_excluded_top_dirs=self.analysis_excluded_top_dirs,
+            ),
+        )
+        return tuple(
+            directory
+            for directory in rules.env_dirs
+            if directory in discovered_python_roots
+            or directory in self.generated_python_roots
+        )
+
     def pyrefly_project_includes(
         self,
         *,
@@ -261,23 +300,9 @@ class FlextInfraExtraPathsManager(
             The resulting ``t.StrSequence``.
 
         """
-        rules = config.Infra.tooling.tools.pyrefly.path_rules
-        # Never reread an on-disk Pyright table while its
-        # in-memory payload is being conformed; include only real production roots.
-        discovered_python_roots = set(
-            u.Infra.discover_python_dirs(
-                project_dir,
-                workspace_excluded_top_dirs=self.analysis_excluded_top_dirs,
-            ),
-        )
         includes: t.Infra.StrSet = set(
             self.pyrefly_include_globs(
-                tuple(
-                    directory
-                    for directory in rules.env_dirs
-                    if directory in discovered_python_roots
-                    or directory in self.generated_python_roots
-                ),
+                self._included_pyrefly_env_dirs(project_dir=project_dir),
             ),
         )
         if not is_root or (not rules.workspace_include_children):

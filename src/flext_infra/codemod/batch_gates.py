@@ -678,7 +678,10 @@ class FlextInfraModGateEngine:
                 if entry.rule_id in facts.binding_rule_ids
                 else entry
                 for entry in report.entries
-                if u.Infra.codemod_context_admits(
+                # A drifted source carries no authenticated state: it stays
+                # deferred evidence and is never graded against the epoch.
+                if entry.source_state is None
+                or u.Infra.codemod_context_admits(
                     m.Infra.CodemodAdmission(
                         root=root,
                         rule=rules_by_id[entry.rule_id],
@@ -1562,12 +1565,17 @@ class FlextInfraModGateEngine:
         plan = u.Infra.codemod_rule_plan(root).unwrap()
         rules_by_id = {rule.id: rule for rule in plan.rules}
         targets = u.Infra.ast_grep_scan_targets(root)
+        updates: dict[Path, bytes] = {}
+        for path, source in candidate.updates.items():
+            if source is None:
+                return r[m.Infra.ModScanReport].fail(
+                    f"semantic scan candidate cannot retire a source: {path}"
+                )
+            updates[path] = source.encode(c.DEFAULT_ENCODING)
         states = tuple(
             state.model_copy(
                 update={
-                    "content": candidate.updates[state.path].encode(c.DEFAULT_ENCODING)
-                    if state.path in candidate.updates
-                    else state.content,
+                    "content": updates.get(state.path, state.content),
                 }
             )
             for state in candidate.inputs

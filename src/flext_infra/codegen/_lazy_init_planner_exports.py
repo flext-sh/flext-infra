@@ -6,13 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import operator
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
-from flext_cli import u
-
-from flext_infra import c, m
+from flext_infra import c, m, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -90,8 +89,8 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 self._add(index, name, target)
         return index
 
-    @staticmethod
     def _enumerated_module_entries(
+        self,
         context: m.Infra.LazyInitPackageContext,
         package_entry: m.Infra.RopePackageIndexEntry | None,
     ) -> t.MutableSequenceOf[t.Pair[Path, str]]:
@@ -131,7 +130,11 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                     if context.current_pkg
                     else child.stem,
                 )
-                for child in sorted(context.pkg_dir.glob("*.py"))
+                for child in self.rope_workspace.rope_project.source_children(
+                    context.pkg_dir,
+                )
+                if child.suffix == c.Infra.EXT_PYTHON
+                and self.rope_workspace.rope_project.source_query(child, "isfile")
                 if child.name != c.Infra.INIT_PY
             ]
         return module_entries
@@ -192,6 +195,33 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         if not names:
             u.Cli.info(f"lazy-init: empty module exports module={module_path}")
         exports = {name: (module_path, name) for name in names}
+        policy = u.Infra.publication_policy(
+            py_file,
+            rope_project=self.rope_workspace.rope_project,
+        )
+        alias = policy.expected_alias
+        if alias is not None:
+            resource = self.rope_workspace.resource(py_file)
+            if resource is None:
+                msg = f"unindexed publication resource: {py_file}"
+                raise ValueError(msg)
+            module = u.Infra.resolve_pymodule(
+                self.rope_workspace.rope_project, resource
+            ).get_module()
+            tree = ast.parse(module.source_code)
+            body = u.Infra.export_declaration_body(tree)
+            if body is not tree.body:
+                owner = next(
+                    node for node in tree.body if isinstance(node, ast.ClassDef)
+                )
+                if owner.name in exports or alias in exports:
+                    # Class-owned facades publish the root; layout owns its alias.
+                    exports[alias] = (
+                        module_path,
+                        alias
+                        if alias in exports and alias in module.get_attributes()
+                        else owner.name,
+                    )
         self._module_exports_cache[cache_key] = exports
         return dict(exports)
 

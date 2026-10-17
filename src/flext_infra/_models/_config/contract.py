@@ -34,6 +34,26 @@ class FlextInfraConfigModelsContract(FlextInfraModelsMiseToolchain):
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Exact generated API paths retaining live symbols"),
         ] = ()
+        forbidden_terms: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Literal retired-surface names forbidden in current "
+                    "documentation, each superseded by a declared canonical "
+                    "owner"
+                ),
+            ),
+        ] = ()
+        container_home_identities: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Container/CI identities whose /home|/Users home is part "
+                    "of the declared image contract, never an operator "
+                    "machine path"
+                ),
+            ),
+        ] = ()
         historical_evidence_files: Annotated[
             t.VariadicTuple[Path],
             m.Field(
@@ -68,10 +88,6 @@ class FlextInfraConfigModelsContract(FlextInfraModelsMiseToolchain):
         placeholder_patterns: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Regexes recognizing unfinished document markers"),
-        ] = ()
-        forbidden_terms: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(description="Literal terms forbidden in current documentation"),
         ] = ()
 
         @m.model_validator(mode="after")

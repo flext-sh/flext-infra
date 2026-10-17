@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import operator
 from collections.abc import MutableMapping
 from contextlib import ExitStack
@@ -41,7 +40,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
 
         """
         ignored = frozenset[str](config.Infra.codegen.source_scan_ignored)
-        return frozenset[str]((*c.Infra.ITERATION_EXCLUDED_PARTS, *ignored))
+        return frozenset[str]((*config.Infra.codegen.analysis_excluded_dirs, *ignored))
 
     @classmethod
     def package_name_for_dir(cls, package_dir: Path, *, project_root: Path) -> str:
@@ -114,115 +113,6 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             project_root=project_root,
         )
         return f"{package_name}.{file_path.stem}" if package_name else ""
-
-    @classmethod
-    def facade_rebind_module(
-        cls,
-        file_path: Path,
-        source: str,
-        *,
-        project_root: Path,
-    ) -> str:
-        """Return the module of one source written in the facade-rebind form.
-
-        The form imports the parent letter, subclasses it and rebinds the
-        letter to the subclass (``from flext_core import u`` /
-        ``class FlextCliUtilities(u)`` / ``u = FlextCliUtilities``). Mypy
-        rejects that rebind, so the checker configuration the operator
-        authorized for it applies to exactly these modules
-        (operator-ruling-2026-10-01-facade-rebind-mypy-scope).
-
-        Returns:
-            The module name, or the empty string when the source is not in
-            that form or names no module.
-
-        """
-        tree = ast.parse(source)
-        imported = {
-            alias.asname or alias.name
-            for node in tree.body
-            if isinstance(node, ast.ImportFrom)
-            for alias in node.names
-        }
-
-        def _base_names(node: ast.ClassDef) -> set[str]:
-            """Resolve direct base names, seeing through ``Generic[T]`` subscripts.
-
-            The canonical facade-rebind form subclasses the imported letter
-            through a PEP 695 generic class, so the base reaches the AST as
-            ``ast.Subscript(value=Name(letter))`` and a plain ``ast.Name``
-            walk misses it.
-
-            Returns:
-                The resulting ``set[str]``.
-
-            """
-            names = set[str]()
-            for base in node.bases:
-                candidate = base.value if isinstance(base, ast.Subscript) else base
-                if isinstance(candidate, ast.Name):
-                    names.add(candidate.id)
-            return names
-
-        bases_by_class = {
-            node.name: _base_names(node)
-            for node in tree.body
-            if isinstance(node, ast.ClassDef)
-        }
-        rebinds = any(
-            isinstance(node, ast.Assign)
-            and isinstance(node.value, ast.Name)
-            and any(
-                isinstance(target, ast.Name)
-                and target.id in imported
-                and target.id in bases_by_class.get(node.value.id, set())
-                for target in node.targets
-            )
-            for node in tree.body
-        )
-        if not rebinds:
-            return ""
-        return cls.module_name_for_file(file_path, project_root=project_root)
-
-    @classmethod
-    def facade_rebind_modules(
-        cls,
-        project_root: Path,
-        planned_sources: t.MappingKV[Path, str],
-    ) -> t.StrTuple:
-        """Return the modules of a project written in the facade-rebind form.
-
-        ``planned_sources`` maps each Python file the active plan publishes to
-        its planned content: a scaffold renders the facades its own
-        configuration must cover, so the planned bytes, not the tree before
-        publication, decide those files. All consumed sources retain their
-        authenticated native read.
-
-        Returns:
-            The modules written in the canonical facade-rebind form.
-
-        """
-        root = project_root.resolve()
-        with FlextInfraUtilitiesCodegenFacades.facade_source_project(
-            root, planned_sources=planned_sources
-        ) as (project, _, _):
-            return tuple(
-                sorted({
-                    module
-                    for file_path, source in cls._project_sources(
-                        root,
-                        planned_sources,
-                        source_project=project,
-                    ).items()
-                    if (
-                        module := cls.facade_rebind_module(
-                            file_path,
-                            source,
-                            project_root=root,
-                        )
-                    )
-                }),
-            )
 
     @classmethod
     def runtime_evaluated_base_classes(
@@ -329,7 +219,11 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         return sources
 
     @staticmethod
-    def _is_generated_init_stub(file_path: Path) -> bool:
+    def _is_generated_init_stub(
+        file_path: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> bool:
         """Return whether ``file_path`` is a codegen-owned package stub.
 
         Returns:
@@ -338,12 +232,22 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         """
         if file_path.name != c.Infra.INIT_PYI:
             return False
-        return file_path.read_text(encoding=c.DEFAULT_ENCODING).startswith(
+        source = (
+            file_path.read_text(encoding=c.DEFAULT_ENCODING)
+            if source_project is None
+            else source_project.source_text(file_path)
+        )
+        return source.startswith(
             c.Infra.AUTOGEN_HEADERS,
         )
 
     @classmethod
-    def _governed_roots(cls, repository_root: Path) -> frozenset[Path]:
+    def _governed_roots(
+        cls,
+        repository_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> frozenset[Path]:
         """Return every declared governed project root, resolved.
 
         The authority is the same election the Rope opener uses
@@ -358,6 +262,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         return frozenset(
             FlextInfraUtilitiesProjectDiscovery.discover_rope_project_roots(
                 repository_root,
+                source_project=source_project,
             ),
         )
 
@@ -367,6 +272,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         directory: Path,
         repository_root: Path,
         governed_roots: frozenset[Path],
+        source_project: p.Infra.RopeProject | None = None,
     ) -> bool:
         """Memoize Git boundaries by directory for one workspace index.
 
@@ -379,12 +285,17 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         ):
             return False
         return (
-            ((directory / ".git").exists() or (directory / ".git").is_symlink())
+            (
+                ((directory / ".git").exists() or (directory / ".git").is_symlink())
+                if source_project is None
+                else source_project.source_query(directory / ".git", "exists")
+            )
             and directory not in governed_roots
         ) or FlextInfraUtilitiesRopeAnalysisWorkspace._foreign_directory(
             directory.parent,
             repository_root,
             governed_roots,
+            source_project,
         )
 
     @classmethod
@@ -394,6 +305,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         repository_root: Path,
         *,
         governed_roots: frozenset[Path],
+        source_project: p.Infra.RopeProject | None = None,
     ) -> bool:
         """Exclude foreign nested Git checkouts, never declared governed members.
 
@@ -408,7 +320,9 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             The resulting ``bool``.
 
         """
-        return cls._foreign_directory(path.parent, repository_root, governed_roots)
+        return cls._foreign_directory(
+            path.parent, repository_root, governed_roots, source_project
+        )
 
     @classmethod
     def _is_pruned_walk_dir(
@@ -489,11 +403,17 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
 
         """
         rope_root = Path(rope_project.root.real_path).resolve()
-        governed_roots = cls._governed_roots(resolved_root)
+        source_project = rope_project if rope_project.authenticated_sources else None
+        governed_roots = cls._governed_roots(
+            resolved_root, source_project=source_project
+        )
         source_paths = (
             (resolved_root / relative).resolve()
             for relative in (
-                FlextInfraUtilitiesProjectDiscovery.ast_grep_scan_targets(resolved_root)
+                FlextInfraUtilitiesProjectDiscovery.ast_grep_scan_targets(
+                    resolved_root,
+                    source_project=source_project,
+                )
             )
         )
         return tuple(
@@ -509,6 +429,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                         path,
                         resolved_root,
                         governed_roots=governed_roots,
+                        source_project=source_project,
                     )
                 },
                 key=Path.as_posix,
@@ -548,7 +469,12 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             key=str,
         ):
             resolved_file_path = file_path.resolve()
-            if cls._is_generated_init_stub(resolved_file_path):
+            if cls._is_generated_init_stub(
+                resolved_file_path,
+                source_project=rope_project
+                if rope_project.authenticated_sources
+                else None,
+            ):
                 continue
             if not resolved_file_path.is_relative_to(resolved_root):
                 continue
@@ -569,6 +495,9 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             project_root = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
                 resolved_root,
                 resolved_file_path,
+                source_project=rope_project
+                if rope_project.authenticated_sources
+                else None,
             )
             module_name = (
                 cls.module_name_for_file(resolved_file_path, project_root=project_root)

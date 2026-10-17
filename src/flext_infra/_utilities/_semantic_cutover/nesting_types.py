@@ -6,11 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from collections.abc import Callable
 from pathlib import Path
 
 from flext_infra import m, p, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesCodemodBindingChain,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
@@ -27,6 +29,96 @@ class FlextInfraUtilitiesSemanticNestingTypes(
     """Share native annotation regions and original lexical binding identity."""
 
     @classmethod
+    def _quoted_type_edits(
+        cls,
+        project: p.Infra.RopeProject,
+        resource: p.Infra.RopeResource,
+        source: str,
+        replacement: Callable[[p.Infra.RopeScope, str], str | None],
+        *,
+        protected: t.Pair[int, int] | None = None,
+    ) -> t.VariadicTuple[m.Infra.SourceRewrite]:
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project,
+            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                resource, resource.path
+            ),
+        )
+        edits: list[m.Infra.SourceRewrite] = []
+        tree = ast.parse(source)
+        generic_scopes = tuple(
+            node
+            for node in ast.walk(tree)
+            if isinstance(
+                node,
+                ast.TypeAlias | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
+            )
+            and node.type_params
+        )
+        lines = source.splitlines(keepends=True)
+        constants: list[t.Triple[int, int, str]] = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
+                continue
+            if node.end_lineno is None or node.end_col_offset is None:
+                msg = "quoted type constant has no complete original source range"
+                raise ValueError(msg)
+            end_prefix = (
+                lines[node.end_lineno - 1].encode()[: node.end_col_offset].decode()
+            )
+            constants.append((
+                FlextInfraUtilitiesRopeRuntimeModules.source_offset(source, node),
+                sum(map(len, lines[: node.end_lineno - 1])) + len(end_prefix),
+                node.value,
+            ))
+        regions: t.MutableMappingKV[
+            t.Pair[int, int], t.Pair[str, p.Infra.RopeScope]
+        ] = {}
+        for begin, end, _literal, scope in cls.quoted_type_regions(
+            source, project, module
+        ):
+            containing = [
+                item for item in constants if item[0] <= begin < end <= item[1]
+            ]
+            if len(containing) != 1:
+                msg = (
+                    f"native quoted type has no unique original constant: {begin}:{end}"
+                )
+                raise ValueError(msg)
+            first, last, literal = containing[0]
+            regions[first, last] = literal, scope
+        for (begin, end), (literal, scope) in regions.items():
+            line = module.lines.get_line_number(begin)
+            if protected is not None and protected[0] <= line <= protected[1]:
+                continue
+            parameters = frozenset(
+                parameter.name
+                for node in generic_scopes
+                if node.end_lineno is not None
+                and node.lineno <= line <= node.end_lineno
+                for parameter in node.type_params
+                if isinstance(parameter, ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple)
+            )
+
+            def scoped_replacement(
+                current: p.Infra.RopeScope,
+                expression: str,
+                shadowed: frozenset[str] = parameters,
+            ) -> str | None:
+                if expression.partition(".")[0] in shadowed:
+                    return None
+                return replacement(current, expression)
+
+            changed = cls.rewrite_type_source(
+                literal, project, scope, scoped_replacement
+            )
+            if changed != literal:
+                edits.append(
+                    m.Infra.SourceRewrite(start=begin, end=end, text=repr(changed))
+                )
+        return tuple(edits)
+
+    @classmethod
     def _rewrite_quoted_types(
         cls,
         project: p.Infra.RopeProject,
@@ -36,80 +128,60 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         *,
         protected: t.Pair[int, int] | None = None,
     ) -> str:
-        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+        edits = cls._quoted_type_edits(
             project,
-            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
-                resource, resource.path
-            ),
+            resource,
+            source,
+            replacement,
+            protected=protected,
         )
-        edits: list[m.Infra.SourceRewrite] = []
-        for begin, end, literal, scope in cls.quoted_type_regions(
-            source, project, module
-        ):
-            line = module.lines.get_line_number(begin)
-            if protected is not None and protected[0] <= line <= protected[1]:
-                continue
-            changed = cls.rewrite_type_source(literal, project, scope, replacement)
-            if changed != literal:
-                edits.append(
-                    m.Infra.SourceRewrite(start=begin, end=end, text=repr(changed))
-                )
         return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
-            resource, source, edits
+            resource,
+            source,
+            edits,
         ).new_contents
 
-    @classmethod
-    def _nesting_quoted_sources(
-        cls,
+    @staticmethod
+    def _require_nesting_binding(
         project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        scope: p.Infra.RopeScope,
+        expression: str,
+        offset: int,
         sources: t.MappingKV[Path, str],
-        definitions: t.MappingKV[Path, t.StrMapping],
-    ) -> t.MappingKV[Path, str]:
+    ) -> None:
+        """Reuse native reaching-definition proof, including star provenance."""
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        root = Path(project.root.real_path)
-        bindings = tuple(
-            (
-                FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                    project, project.get_resource(path.relative_to(root).as_posix())
-                ),
-                name,
-                owner,
-            )
-            for path, names in definitions.items()
-            for name, owner in names.items()
-        )
-
-        def replacement(scope: p.Infra.RopeScope, expression: str) -> str | None:
-            actual = runtime.expression_name(scope, expression)
-            for provider, name, owner in bindings:
-                if not runtime.same_name(provider.get_attribute(name), actual):
-                    continue
-                if isinstance(actual, p.Infra.RopeImportedName):
-                    module = scope.pyobject.get_module()
-                    if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
-                        msg = "quoted type scope has no declaring module"
-                        raise ValueError(msg)
-                    _, destination = runtime.import_binding(
-                        project, module, provider.get_name(), owner
-                    )
-                    selected = f"{destination}.{name}"
-                else:
-                    prefix, separator, _name = expression.rpartition(".")
-                    selected = (
-                        f"{prefix}.{owner}.{name}" if separator else f"{owner}.{name}"
-                    )
-                return cls._checked_type_reference(scope, selected)
-            return None
-
-        return {
-            path: cls._rewrite_quoted_types(
+        proof = FlextInfraUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain
+        actual = runtime.expression_name(scope, expression)
+        if isinstance(actual, p.Infra.RopeImportedName) and not (
+            proof._single_reaching_declarations(module, scope, expression)
+        ):
+            importing = runtime.module_imports_for_pymodule(project, module)
+            stars = [
+                statement
+                for statement in importing.imports
+                if isinstance(statement.import_info, p.Infra.RopeFromImport)
+                and ("*", None) in statement.import_info.names_and_aliases
+                and statement.import_info.module_name
+                == actual.imported_module.module_name
+                and statement.import_info.level == actual.imported_module.level
+            ]
+            if len(stars) == 1 and proof._chain_imported_binding(
                 project,
-                project.get_resource(path.relative_to(root).as_posix()),
-                source,
-                replacement,
-            )
-            for path, source in sources.items()
-        }
+                actual,
+                sources,
+                visited=frozenset(),
+            ):
+                return
+        if not proof._stable_binding_chain(
+            (project, module, scope),
+            expression,
+            offset,
+            sources,
+        ):
+            msg = f"ambiguous or dynamic native nesting binding: {module.get_name()}.{expression}"
+            raise ValueError(msg)
 
     @staticmethod
     def _checked_type_reference(scope: p.Infra.RopeScope, expression: str) -> str:

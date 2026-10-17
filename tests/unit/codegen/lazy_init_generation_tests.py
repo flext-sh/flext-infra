@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from importlib.util import resolve_name
 from pathlib import Path
 from types import MappingProxyType
@@ -16,27 +17,143 @@ import pytest
 from flext_infra import config
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
+from flext_infra.gates import FlextInfraRuffLintGate
 from tests import c, m, t, tm, u
-
-
-def _assert_side_effect_free_lazy_bootstrap(plan: m.Infra.LazyInitPlan) -> None:
-    """Render, compile, and assert a side-effect-free lazy bootstrap initializer.
-
-    A lazy bootstrap root publishes an empty public contract and imports
-    neither the lazy runtime facade nor its installer until a consumer asks
-    for an exported name.
-
-    """
-    init_content = FlextInfraCodegenGeneration.render_init(plan)
-
-    compile(init_content, "__init__.py", "exec")
-    tm.that(init_content, contains="__all__: tuple[str, ...] = ()")
-    tm.that(init_content, lacks="from flext_core.lazy import")
-    tm.that(init_content, lacks="install_lazy_exports")
 
 
 class TestsFlextInfraCodegenGeneration:
     """Validate observable generated Python artifacts without legacy internals."""
+
+    @classmethod
+    def _bootstrap_content(
+        cls, tmp_path: Path, current_pkg: str, provider: str, export: str
+    ) -> str:
+        """Render a real loader dependency and prove its cold bootstrap identity.
+
+        Returns:
+            The initializer rendered against materialized loader source.
+
+        """
+        repository, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-bootstrap",
+            package_name=c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE,
+        )
+        source_root = package.parent
+        package_dir = source_root.joinpath(*current_pkg.split("."))
+        package_dir.mkdir(parents=True)
+        source_root.joinpath(*provider.split(".")).with_suffix(".py").write_text(
+            f"class {export}: pass\n", encoding=c.DEFAULT_ENCODING
+        )
+        source_root.joinpath(*c.Infra.LAZY_BOOTSTRAP_MODULE.split(".")).with_suffix(
+            ".py"
+        ).write_text(
+            f"from {provider} import {export}\n", encoding=c.DEFAULT_ENCODING
+        )
+        plan = cls._plan(
+            current_pkg,
+            (export,),
+            {export: (provider, export)},
+            package_dir=package_dir,
+        )
+        source = FlextInfraCodegenGeneration.render_init(plan)
+        compile(source, str(plan.context.init_path), "exec")
+        tm.that(source, lacks=f"from {c.Infra.LAZY_BOOTSTRAP_MODULE} import")
+        tm.that(source, lacks="install_lazy_exports")
+        tm.that(u.Infra.public_export_names_source(source), eq=(export,))
+        plan.context.init_path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                f"import {c.Infra.LAZY_BOOTSTRAP_MODULE} as loader\n"
+                f"import {current_pkg} as dependency\n"
+                f"from {provider} import {export}\n"
+                f"print(loader.{export} is dependency.{export} is {export})\n",
+                python_paths=(str(source_root),),
+                cwd=repository,
+            ),
+            eq=["True"],
+        )
+        tm.that(FlextInfraCodegenGeneration.render_init(plan), eq=source)
+        return source
+
+    @staticmethod
+    def test_class_owned_test_root_installs_lazy_exports(tmp_path: Path) -> None:
+        """The public renderer emits a real lazy class-body initializer."""
+        repository, _ = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-rendered",
+            package_name="flext_rendered",
+        )
+        testing = repository / c.Infra.DIR_TESTS
+        testing.mkdir()
+        testing.joinpath("constants.py").write_text(
+            "class TestsFlextRenderedConstants:\n"
+            "    __all__ = ('TestsFlextRenderedConstants',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        plan = m.Infra.LazyInitPlan(
+            context=m.Infra.LazyInitPackageContext(
+                pkg_dir=testing,
+                init_path=testing / c.Infra.INIT_PY,
+                current_pkg=c.Infra.DIR_TESTS,
+                surface=c.Infra.DIR_TESTS,
+                importable=True,
+            ),
+            action=c.Infra.LazyInitAction.WRITE,
+            exports=("TestsFlextRenderedConstants", "c"),
+            lazy_map=dict.fromkeys(
+                ("TestsFlextRenderedConstants", "c"),
+                ("tests.constants", "TestsFlextRenderedConstants"),
+            ),
+            eager_dunders={},
+            inline_constants={},
+        )
+        source = FlextInfraCodegenGeneration.render_init(plan)
+        module = ast.parse(source)
+        tm.that(
+            [node.name for node in module.body if isinstance(node, ast.ClassDef)],
+            eq=["TestsFlextRenderedPackage"],
+        )
+        tm.that(
+            all(
+                isinstance(node, (ast.Import, ast.ImportFrom, ast.ClassDef, ast.If))
+                for node in module.body
+            ),
+            eq=True,
+        )
+        testing.joinpath(c.Infra.INIT_PY).write_text(
+            source, encoding=c.DEFAULT_ENCODING
+        )
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                "import sys\nimport tests as package\n"
+                "print('tests.constants' not in sys.modules)\n"
+                "from tests.constants import TestsFlextRenderedConstants\n"
+                "print(package.c is TestsFlextRenderedConstants)\n"
+                "print(package.__all__ == package.TestsFlextRenderedPackage.__all__)\n",
+                python_paths=(str(repository),),
+                cwd=repository,
+            ),
+            eq=["True", "True", "True"],
+        )
+        tm.that(FlextInfraCodegenGeneration.render_init(plan), eq=source)
+        checked = FlextInfraRuffLintGate(repository).check_files(
+            (plan.context.init_path,),
+            repository,
+            m.Infra.GateContext(
+                repository_root=repository,
+                reports_dir=repository,
+                selected_files=(plan.context.init_path,),
+            ),
+        )
+        tm.that(
+            plan.context.init_path.read_text(encoding=c.DEFAULT_ENCODING), eq=source
+        )
+        tm.that(
+            checked.result.passed,
+            eq=True,
+            msg=f"{plan.context.init_path}\n{source}\n{checked.raw_output}",
+        )
 
     @staticmethod
     def _owner_sections(
@@ -79,6 +196,7 @@ class TestsFlextInfraCodegenGeneration:
         *,
         eager_dunders: t.LazyAliasMap | None = None,
         child_packages: t.StrSequence = (),
+        package_dir: Path | None = None,
     ) -> m.Infra.LazyInitPlan:
         """Build one validated render plan for a synthetic package path.
 
@@ -86,7 +204,7 @@ class TestsFlextInfraCodegenGeneration:
             The resulting ``m.Infra.LazyInitPlan``.
 
         """
-        package_dir = Path.cwd() / current_pkg.replace(".", "/")
+        package_dir = package_dir or Path.cwd() / current_pkg.replace(".", "/")
         return m.Infra.LazyInitPlan(
             context=m.Infra.LazyInitPackageContext(
                 pkg_dir=package_dir,
@@ -289,21 +407,16 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
 
-    def test_nested_package_initializer_is_static(self) -> None:
-        """Test nested package initializer is static."""
-        plan = self._plan(
+    def test_nested_package_initializer_is_static(self, tmp_path: Path) -> None:
+        """A loader dependency statically publishes its declared class identity."""
+        content = self._bootstrap_content(
+            tmp_path,
             "flext_core._lazy_parts",
-            ("FlextLazy",),
-            MappingProxyType({
-                "FlextLazy": ("flext_core._lazy_parts.flextlazy_part_02", "FlextLazy"),
-            }),
+            "flext_core._lazy_parts.flextlazy_part_02",
+            "FlextLazy",
         )
-
-        content = FlextInfraCodegenGeneration.render_init(plan)
-
-        compile(content, "__init__.py", "exec")
         tm.that(content, lacks="from flext_core.lazy import")
-        tm.that(content, contains="__all__: tuple[str, ...] = ()")
+        tm.that(content, contains='__all__: tuple[str, ...] = ("FlextLazy",)')
 
     def test_root_initializer_rejects_private_entries_outside_all(self) -> None:
         """Render no package attribute that is absent from the public contract."""
@@ -364,7 +477,7 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(
             init_content,
             contains=(
-                f"from {c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE} import "
+                f"from {c.Infra.LAZY_BOOTSTRAP_MODULE} import "
                 "install_lazy_exports"
             ),
         )
@@ -391,29 +504,27 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(init_content, contains='__all__: tuple[str, ...] = ("DemoFixture",)')
         tm.that(init_content, contains="install_lazy_exports")
 
-    def test_lazy_bootstrap_package_initializer_is_side_effect_free(self) -> None:
+    def test_lazy_bootstrap_package_initializer_is_side_effect_free(
+        self, tmp_path: Path
+    ) -> None:
         """Keep the lazy runtime importable while its implementation initializes."""
-        plan = self._plan(
+        self._bootstrap_content(
+            tmp_path,
             "flext_core._lazy_parts",
-            ("FlextLazy",),
-            MappingProxyType({
-                "FlextLazy": ("flext_core._lazy_parts.flextlazy_part_02", "FlextLazy"),
-            }),
+            "flext_core._lazy_parts.flextlazy_part_02",
+            "FlextLazy",
         )
 
-        _assert_side_effect_free_lazy_bootstrap(plan)
-
-    def test_lazy_typings_bootstrap_initializer_is_side_effect_free(self) -> None:
+    def test_lazy_typings_bootstrap_initializer_is_side_effect_free(
+        self, tmp_path: Path
+    ) -> None:
         """Keep the lazy runtime's typing dependency free of import callbacks."""
-        plan = self._plan(
+        self._bootstrap_content(
+            tmp_path,
             "flext_core._typings",
-            ("FlextTypesLazy",),
-            MappingProxyType({
-                "FlextTypesLazy": ("flext_core._typings.lazy", "FlextTypesLazy"),
-            }),
+            "flext_core._typings.lazy",
+            "FlextTypesLazy",
         )
-
-        _assert_side_effect_free_lazy_bootstrap(plan)
 
     def test_normal_package_initializer_keeps_full_lazy_map(self) -> None:
         """Keep ordinary package boundaries backed by the lazy runtime."""
@@ -421,6 +532,7 @@ class TestsFlextInfraCodegenGeneration:
             "flext_core._models",
             ("FlextModel",),
             MappingProxyType({"FlextModel": ("flext_core._models.base", "FlextModel")}),
+            package_dir=Path(tm.not_none(flext_core.__file__)).parent / "_models",
         )
 
         init_content = FlextInfraCodegenGeneration.render_init(plan)

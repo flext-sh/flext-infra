@@ -48,65 +48,71 @@ class TestsFlextInfraInfraConstantsCore:
         tm.that(c.Infra.ResultStatus.WARN, is_=c.Infra.ResultStatus)
 
     @staticmethod
-    def test_common_excluded_dirs_is_string() -> None:
-        """Test common excluded dirs is string."""
-        excluded = c.Infra.COMMON_EXCLUDED_DIRS
-        tm.that(excluded, is_=frozenset)
+    def test_analysis_excluded_dirs_derive_declared_registry() -> None:
+        """Base walker exclusions derive the declared registry composition.
+
+        The base set is config-owned (P0): it must equal exactly the union
+        of the declared ``analysis_exclude`` artifacts, the declared
+        tool-state roots, and the VCS-derived names, whatever valid values
+        the config holds.
+        """
+        derived = frozenset(config.Infra.codegen.analysis_excluded_dirs)
+        declared = (
+            frozenset(
+                artifact.name
+                for artifact in config.Infra.codegen.artifacts
+                if artifact.analysis_exclude
+            )
+            | frozenset(config.Infra.codegen.exclusions.tool_state)
+            | frozenset((c.Infra.GIT_DIR, c.Infra.WORKTREES_DIRNAME))
+        )
+        tm.that(derived, is_=frozenset)
+        tm.that(derived, eq=declared)
 
     @staticmethod
-    def test_common_excluded_dirs_contains_standard_dirs() -> None:
-        """Test common excluded dirs contains standard dirs."""
-        excluded = c.Infra.COMMON_EXCLUDED_DIRS
-        tm.that(excluded, has=".git")
-        tm.that(excluded, has=".venv")
-        tm.that(excluded, has="__pycache__")
-        tm.that(excluded, has="dist")
-        tm.that(excluded, has="build")
-        tm.that(excluded, has="venv")
+    def test_doc_excluded_dirs_compose_declared_sections() -> None:
+        """Docs exclusions compose base, archive roots, and docs delta."""
+        spec = config.Infra.codegen
+        derived = frozenset(spec.docs_excluded_dirs)
+        expected = (
+            frozenset(spec.analysis_excluded_dirs)
+            | frozenset(spec.exclusions.archive_roots)
+            | frozenset(spec.exclusions.docs)
+        )
+        tm.that(derived, is_=frozenset)
+        tm.that(derived, eq=expected)
 
     @staticmethod
-    def test_doc_excluded_dirs_includes_common() -> None:
-        """Test doc excluded dirs includes common."""
-        doc_excluded = c.Infra.DOC_EXCLUDED_DIRS
-        common = c.Infra.COMMON_EXCLUDED_DIRS
-        tm.that(doc_excluded.issuperset(common), eq=True)
+    def test_pyproject_scan_excluded_dirs_compose_declared_sections() -> None:
+        """Pyproject discovery composes base, archive roots, scan delta."""
+        spec = config.Infra.codegen
+        derived = frozenset(spec.pyproject_scan_excluded_dirs)
+        expected = (
+            frozenset(spec.analysis_excluded_dirs)
+            | frozenset(spec.exclusions.archive_roots)
+            | frozenset(spec.exclusions.pyproject_scan)
+        )
+        tm.that(derived, is_=frozenset)
+        tm.that(derived, eq=expected)
 
     @staticmethod
-    def test_doc_excluded_dirs_includes_site() -> None:
-        """Test doc excluded dirs includes site."""
-        tm.that(c.Infra.DOC_EXCLUDED_DIRS, has="site")
-
-    @staticmethod
-    def test_pyproject_skip_dirs_includes_common() -> None:
-        """Test pyproject skip dirs includes common."""
-        skip_dirs = c.Infra.PYPROJECT_SKIP_DIRS
-        common = c.Infra.COMMON_EXCLUDED_DIRS
-        tm.that(skip_dirs.issuperset(common), eq=True)
-
-    @staticmethod
-    def test_pyproject_skip_dirs_includes_flext_dirs() -> None:
-        """Test pyproject skip dirs includes flext dirs."""
-        skip_dirs = c.Infra.PYPROJECT_SKIP_DIRS
-        tm.that(skip_dirs, has=".claude.disabled")
-        tm.that(skip_dirs, has="context_test")
-        tm.that(skip_dirs, has="rope_ws")
-        tm.that(skip_dirs, has="tmp_flow_test")
-
-    @staticmethod
-    def test_check_excluded_dirs_includes_common() -> None:
-        """Test check excluded dirs includes common."""
-        check_excluded = c.Infra.CHECK_EXCLUDED_DIRS
-        common = c.Infra.COMMON_EXCLUDED_DIRS
-        tm.that(check_excluded.issuperset(common), eq=True)
-
-    @staticmethod
-    def test_check_excluded_dirs_omit_operational_storage() -> None:
-        """Test check excluded dirs omit operational storage."""
-        tm.that(c.Infra.CHECK_EXCLUDED_DIRS, has=".beads")
+    def test_check_excluded_dirs_compose_declared_sections() -> None:
+        """Check exclusions compose base, archive roots, check delta."""
+        spec = config.Infra.codegen
+        derived = frozenset(spec.check_excluded_dirs)
+        expected = (
+            frozenset(spec.analysis_excluded_dirs)
+            | frozenset(spec.exclusions.archive_roots)
+            | frozenset(spec.exclusions.check)
+        )
+        tm.that(derived, is_=frozenset)
+        tm.that(derived, eq=expected)
 
     @staticmethod
     def test_excluded_dirs_are_strings() -> None:
-        """Test excluded dirs are strings."""
-        tm.that(c.Infra.DOC_EXCLUDED_DIRS, is_=frozenset)
-        tm.that(c.Infra.PYPROJECT_SKIP_DIRS, is_=frozenset)
-        tm.that(c.Infra.CHECK_EXCLUDED_DIRS, is_=frozenset)
+        """Derived exclusion projections are string sequences."""
+        spec = config.Infra.codegen
+        tm.that(spec.analysis_excluded_dirs, is_=tuple)
+        tm.that(spec.docs_excluded_dirs, is_=tuple)
+        tm.that(spec.pyproject_scan_excluded_dirs, is_=tuple)
+        tm.that(spec.check_excluded_dirs, is_=tuple)

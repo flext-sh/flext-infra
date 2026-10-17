@@ -6,8 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
+from pathlib import Path
+
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -33,17 +37,23 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         scope: t.Pair[str, bool],
         bindings_by_module: t.MappingKV[str, t.StrMapping],
         definitions: t.StrMapping,
+        sources: t.MappingKV[Path, str],
+        is_pytest: bool = False,
     ) -> str:
         project, resource = native
         module_name, is_package_init = scope
         rewritten = cls._rewrite_class_nesting_references(
             source,
+            native=native,
             module_name=module_name,
             is_package_init=is_package_init,
             bindings_by_module=bindings_by_module,
             definitions=definitions,
+            sources=sources,
         )
-        return cls._nest_definitions(project, resource, rewritten, definitions)
+        return cls._nest_definitions(
+            project, resource, rewritten, definitions, is_pytest=is_pytest
+        )
 
     @classmethod
     def _nesting_selection(
@@ -122,6 +132,12 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         selected, scopes = selection[0], selection[1]
         edits: list[m.Infra.SourceRewrite] = []
         members: list[str] = []
+        decorated = {
+            node.name: min(decorator.lineno for decorator in node.decorator_list)
+            for node in ast.parse(source).body
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
+            and node.decorator_list
+        }
         for item in selected:
             name = cls._native_member_name(item)
             scope = scopes.get(name)
@@ -132,6 +148,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
                     module.lines.get_line_number(scope.get_region()[0])
                 )
                 end = min(module.lines.get_line_end(scope.get_end()) + 1, len(source))
+            if name in decorated:
+                begin = min(begin, module.lines.get_line_start(decorated[name]))
             members.append(
                 FlextInfraUtilitiesRopeRuntimeRefactors.reindent_source(
                     cls._nested_member_body(
@@ -155,22 +173,14 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         Returns:
             Original removal edits with the first owner declaration substituted.
 
-        Raises:
-            TypeError: The actual module has no required docstring summary.
-
         """
         owner_name, nested, indentation = owner
         doc = module.get_doc()
         summary = doc.splitlines()[0].strip() if doc else ""
-        if not summary:
-            msg = f"class-nesting owner {owner_name} needs a module docstring summary"
-            raise TypeError(msg)
         position = min(edit.start for edit in edits)
         replacement = (
             f"class {owner_name}:\n"
-            + " " * indentation
-            + repr(summary)
-            + "\n\n"
+            + (" " * indentation + repr(summary) + "\n\n" if summary else "")
             + nested
         )
         return [
@@ -348,6 +358,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         resource: p.Infra.RopeResource,
         source: str,
         definitions: t.StrMapping,
+        *,
+        is_pytest: bool = False,
     ) -> str:
         if not definitions:
             return source
@@ -356,6 +368,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             msg = f"class-nesting file has multiple owners: {sorted(owners)}"
             raise ValueError(msg)
         owner_name = next(iter(owners))
+        composition = is_pytest and not any(
+            isinstance(node, ast.ClassDef) and node.name == owner_name
+            for node in ast.parse(source).body
+        )
         module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
             project, source, resource=resource
         )
@@ -401,13 +417,169 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             (owner_name, nested, indentation),
             edits,
         )
-        edits.extend(cls._nesting_export_edits(source, facts, owner_name, definitions))
-        return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+        edits.extend(
+            cls._nesting_export_edits(source, facts, owner_name, definitions)
+        )
+        nested_source = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
             resource, source, edits
+        ).new_contents
+        if not is_pytest:
+            return nested_source
+        return cls._publish_test_bindings(
+            project,
+            resource,
+            nested_source,
+            owner_name,
+            original_bindings=None
+            if Path(resource.real_path).name == "conftest.py"
+            else frozenset(definitions),
+            composition=composition,
+        )
+
+    @classmethod
+    def _publish_test_bindings(
+        cls,
+        project: p.Infra.RopeProject,
+        resource: p.Infra.RopeResource,
+        source: str,
+        owner_name: str,
+        *,
+        original_bindings: frozenset[str] | None = None,
+        composition: bool = False,
+    ) -> str:
+        """Keep pytest's original module registration while owning every declaration."""
+        tree = ast.parse(source)
+        owner = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == owner_name
+        )
+        publishers = {
+            alias.asname or alias.name
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom)
+            and node.module == "flext_tests.conftest_plugin"
+            for alias in node.names
+            if alias.name == "FlextTestsConftestPlugin"
+        }
+        if any(
+            isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Attribute)
+            and node.value.func.attr == "publish"
+            and isinstance(node.value.func.value, ast.Name)
+            and node.value.func.value.id in publishers
+            for node in owner.body
+        ):
+            return source
+        fixtures = {"fixture", "hookimpl"} | {
+            alias.asname or alias.name
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom) and node.module == "pytest"
+            for alias in node.names
+            if alias.name in {"fixture", "hookimpl"}
+        }
+        bindings: dict[str, str] = {}
+        metadata: list[str] = []
+        patterns = cls._pytest_collection_patterns(Path(project.root.real_path))
+        original = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
+        for node in owner.body:
+            if isinstance(node, ast.ClassDef):
+                if (
+                    composition
+                    and (original_bindings is None or node.name in original_bindings)
+                    and cls._pytest_class_binding(node.name, original.get_attribute(node.name), patterns[1])
+                ):
+                    bindings[node.name] = node.name
+            elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                if original_bindings is not None and node.name not in original_bindings:
+                    continue
+                decorators = [
+                    decorator.func if isinstance(decorator, ast.Call) else decorator
+                    for decorator in node.decorator_list
+                ]
+                tails = {
+                    decorator.attr
+                    if isinstance(decorator, ast.Attribute)
+                    else decorator.id
+                    if isinstance(decorator, ast.Name)
+                    else ""
+                    for decorator in decorators
+                }
+                if (
+                    node.name.startswith("pytest_")
+                    or node.name in {"setup_module", "teardown_module", "setup_function", "teardown_function"}
+                    or tails & fixtures
+                    or composition and cls._pytest_name_matches(node.name, patterns[2])
+                ):
+                    if "staticmethod" not in tails:
+                        msg = f"pytest publication requires staticmethod outside fixture/hook decorators: {resource.path}:{node.name}"
+                        raise ValueError(msg)
+                    bindings[node.name] = f"{node.name}.__func__"
+            elif isinstance(node, ast.Assign | ast.AnnAssign):
+                targets = (
+                    node.targets if isinstance(node, ast.Assign) else [node.target]
+                )
+                for target in targets:
+                    if isinstance(target, ast.Name) and (
+                        target.id in {"pytestmark", "pytest_plugins"}
+                        or (
+                            target.id != "__all__"
+                            and target.id.startswith("__")
+                            and target.id.endswith("__")
+                        )
+                    ):
+                        if (
+                            original_bindings is not None
+                            and target.id not in original_bindings
+                        ):
+                            continue
+                        bindings[target.id] = target.id
+                        metadata.append(target.id)
+        bindings["__all__"] = repr((owner_name,))
+        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+            project, source, resource=resource
+        )
+        source, publisher = FlextInfraUtilitiesRopeRuntimeModules.import_binding(
+            project,
+            module,
+            "flext_tests.conftest_plugin",
+            "FlextTestsConftestPlugin",
+        )
+        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+            project, source, resource=resource
+        )
+        scope = next(
+            scope
+            for scope in module.get_scope().get_scopes()
+            if scope.pyobject.get_name() == owner_name
+        )
+        occupied = scope.get_defined_names()
+        if "globals" in occupied or publisher.partition(".")[0] in occupied:
+            msg = f"pytest publication bootstrap is shadowed by a class-owned binding: {resource.path}:{owner_name}"
+            raise ValueError(msg)
+        insertion = min(module.lines.get_line_end(scope.get_end()) + 1, len(source))
+        rendered = ", ".join(f"{name!r}: {value}" for name, value in bindings.items())
+        bootstrap = f"\n    {publisher}.publish(module_globals=globals(), bindings={{{rendered}}})\n"
+        if composition:
+            # Only this ordinary composition root is hidden. Original suite and
+            # free-function objects remain children of their original module.
+            bootstrap += "    __test__ = False\n"
+        elif metadata:
+            # Module marks must not also become inherited class marks.
+            bootstrap += "    del " + ", ".join(metadata) + "\n"
+        return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+            resource,
+            source,
+            (m.Infra.SourceRewrite(start=insertion, end=insertion, text=bootstrap),),
         ).new_contents
 
     @staticmethod
     def _native_member_name(statement: m.Infra.LogicalStatement) -> str:
+        if statement.category == c.Infra.StatementCategory.TYPE_ALIAS:
+            return FlextInfraUtilitiesRopeStructure.header_name(
+                statement.text.partition("=")[0],
+            )
         if statement.category in {
             c.Infra.StatementCategory.CLASS_DEF,
             c.Infra.StatementCategory.FUNC_DEF,

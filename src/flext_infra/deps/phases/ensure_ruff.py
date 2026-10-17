@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_core import FlextRuntime
 
-from flext_infra import c, m, t, u
+from flext_infra import c, config, m, t, u
 from flext_infra.deps import FlextInfraExtraPathsManager
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
 from flext_infra.workspace import FlextInfraWorkspaceDetector
@@ -22,14 +22,9 @@ class FlextInfraEnsureRuffConfigPhase:
     def __init__(
         self,
         tool_config: m.Infra.ToolConfigDocument,
-        project_ruff: m.Infra.ProjectRuffConfig,
     ) -> None:
-        """Bind shared policy and the current project's validated additions."""
+        """Bind the shared native policy without repository exemption overlays."""
         self._tool_config = tool_config
-        self._per_file_ignores = u.Infra.compose_ruff_per_file_ignores(
-            tool_config,
-            project_ruff,
-        )
 
     @staticmethod
     def _workspace_exclusion_globs(project_dir: Path) -> t.StrSequence:
@@ -59,7 +54,7 @@ class FlextInfraEnsureRuffConfigPhase:
 
         Deliberately a DIFFERENT authority from
         ``FlextInfraToolTablesPhase.excluded_roots`` (the manifest
-        non-participant set used by the per-file-ignores projection): this
+        non-participant set): this
         set drives the namespace-packages projection and follows the
         workspace detector's analysis-exclusion paths (gitmodules-driven).
         Like the manifest authority it is order-independent: a repository
@@ -94,7 +89,17 @@ class FlextInfraEnsureRuffConfigPhase:
             The resulting ``m.Infra.DepsToml.PhaseConfig``.
 
         """
+        from flext_infra.check.gate_registry import FlextInfraGateRegistry
+
         ruff_cfg = self._tool_config.tools.ruff
+        delegated_rules = FlextInfraGateRegistry.default().delegated_lint_rules(
+            ruff_cfg.lint.rule_owners,
+            check_gates=config.Infra.codegen.make.check_gates_default,
+            repair_gates=(
+                *config.Infra.codegen.make.check_gates_fixable,
+                *config.Infra.codegen.make.fmt_gates,
+            ),
+        )
         workspace_exclusions = (
             self._workspace_exclusion_globs(path.parent)
             if facts.analysis_exclusions is None
@@ -192,6 +197,12 @@ class FlextInfraEnsureRuffConfigPhase:
                                 sorted(ruff_cfg.lint.select),
                             ),
                         ),
+                        toml.SetOp(
+                            key="extend-select",
+                            value=FlextRuntime.normalize_to_json_value(
+                                list(ruff_cfg.lint.extend_select),
+                            ),
+                        ),
                         # make fix never deletes information: the fix-safety
                         # policy comes from the same SSOT the template renders.
                         toml.SetOp(
@@ -206,14 +217,15 @@ class FlextInfraEnsureRuffConfigPhase:
                                 sorted(ruff_cfg.lint.extend_safe_fixes),
                             ),
                         ),
-                        # Only the unscoped operator-authorized exceptions of
-                        # the tooling owner, the same SSOT the template renders.
                         toml.SetOp(
                             key="ignore",
                             value=FlextRuntime.normalize_to_json_value(
-                                list(ruff_cfg.lint.ignore)
+                                list(delegated_rules),
                             ),
                         ),
+                        toml.RemoveOp(key="extend-ignore"),
+                        toml.RemoveOp(key="per-file-ignores"),
+                        toml.RemoveOp(key="extend-per-file-ignores"),
                     ),
                 ),
                 toml.PhaseConfig(
@@ -288,26 +300,6 @@ class FlextInfraEnsureRuffConfigPhase:
                         toml.SetOp(key=key, value=value) for key, value in isort_values
                     ),
                 ),
-                toml.PhaseConfig(
-                    name="ruff",
-                    root_path=(),
-                    table_path=(c.Infra.LINT_SECTION, "per-file-ignores"),
-                    operations=(
-                        *(
-                            toml.SetOp(
-                                key=pattern,
-                                value=FlextRuntime.normalize_to_json_value(
-                                    sorted(rules)
-                                ),
-                            )
-                            for pattern, rules in facts.per_file_ignores.items()
-                        ),
-                        *(
-                            toml.RemoveOp(key=pattern)
-                            for pattern in facts.stale_patterns
-                        ),
-                    ),
-                ),
             ),
         )
 
@@ -328,11 +320,6 @@ class FlextInfraEnsureRuffConfigPhase:
             The resulting ``t.StrSequence``.
 
         """
-        effective_ignores = self._per_file_ignores
-        current_ignores = u.Cli.toml_mapping_path(
-            payload,
-            (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores"),
-        )
         changes = list(
             u.Infra.apply_toml_phases(
                 payload,
@@ -342,12 +329,6 @@ class FlextInfraEnsureRuffConfigPhase:
                         first_party=FlextInfraToolTablesPhase.first_party_namespaces(
                             path=path.parent,
                         ),
-                        stale_patterns=[
-                            pattern
-                            for pattern in current_ignores or ()
-                            if pattern not in effective_ignores
-                        ],
-                        per_file_ignores=effective_ignores,
                         analysis_exclusions=analysis_exclusions,
                         generated_python_roots=generated_python_roots,
                     ),

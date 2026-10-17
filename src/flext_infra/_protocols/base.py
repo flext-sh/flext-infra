@@ -51,13 +51,17 @@ class FlextInfraProtocolsBase(Protocol):
         def preview_sources[T](
             self,
             workspace: Path,
-            updates: t.MappingKV[Path, str],
+            updates: t.MappingKV[Path, str | None],
             validator: Callable[[Path, t.MappingKV[Path, Path]], T],
             *,
             inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
             runtime_root: Path | None = None,
+            workspaces: t.VariadicTuple[Path] = (),
+            runtime_check: bool = True,
+            modes: t.MappingKV[Path, int] | None = None,
+            declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
         ) -> p.Result[T]:
-            """Validate staged candidates while preserving live sources."""
+            """Validate staged updates and retirements while preserving live sources."""
             ...
 
     @runtime_checkable
@@ -197,7 +201,7 @@ class FlextInfraProtocolsBase(Protocol):
 
     @runtime_checkable
     class ModLoopPhase(Protocol):
-        """One repair phase the mod loop invokes as a callback.
+        """One repair owner with pure planning and standalone publication ports.
 
         A phase receives the loop's current scan state and the shared Rope
         workspace, applies its own repairs, and returns whether it changed
@@ -206,6 +210,17 @@ class FlextInfraProtocolsBase(Protocol):
         """
 
         name: str
+
+        def plan(
+            self,
+            root: Path,
+            preflight: m.Infra.ModScanReport,
+            rope_workspace: p.Infra.RopeWorkspaceDsl,
+            *,
+            sources: t.MappingKV[Path, str],
+            source_states: t.VariadicTuple[m.Cli.AtomicFileState],
+            declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+        ) -> p.Result[m.Infra.CodegenPhaseAnalysis]: ...
 
         def apply(
             self,

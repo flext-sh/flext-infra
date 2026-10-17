@@ -58,17 +58,17 @@ that same typed configuration. The project's Pydantic 2 contract requires the
 `pydantic.mypy` plugin; missing, empty, or v1 resolved plugin declarations fail validation
 rather than receiving a silent default.
 
-The operator contract globally suspends only `prop-decorator` and `call-arg`. A complete
-policy payload must declare both and cannot add another global suspension. The model
-does not supply configuration-owned values through declaration defaults. Empty local
-lists retain the tracked policy because the YAML loader concatenates lists. Pyright
-call diagnostics and other unsuspended diagnostics remain active.
+Diagnostic suspension catalogs are forbidden. The typed policy rejects the retired
+`disable-error-code` and `facade-rebind-error-codes` fields. Generated modules and
+facade rebindings receive no `ignore_errors` override. All reported native diagnostics
+remain blocking. Overrides that broaden analysis, such as `follow_untyped_imports`,
+retain their declared behavior.
 
 Generic Mypy options cannot replace `plugins`, `disable_error_code`, `python_version`,
 `overrides`, or generated `mypy_path`. Reserved aliases and duplicate declarations
 within or between the boolean and string maps fail validation. A string-valued
-`enable_error_code` may enable unrelated diagnostics, but cannot re-enable any
-suspended code, including within a comma-separated list. Boolean enabling is invalid.
+`enable_error_code` may enable diagnostics without masking any other finding.
+Boolean enabling is invalid.
 Generic keys must be plain option identifiers, not quoted TOML keys or statements.
 Global `ignore_errors = true` is forbidden; an explicit false boolean remains valid.
 Dependency profiles in `config/codegen.yaml` restrict Pydantic to major version 2;
@@ -77,8 +77,24 @@ dependency locks and project manifests are regenerated through `make upg` and
 
 Regenerate consumers through canonical `make gen` after changing the source owner;
 never patch generated pyprojects. Validate the public consumer with the plugin active
-and an unsuspended negative diagnostic, then run the applicable native gates. A source
+and a negative diagnostic, then run the applicable native gates. A source
 inspection, generation receipt, or merged PR alone is not proof of green delivery.
+
+## Native Ruff Policy
+
+Ruff rule selection and native conventions come from the shared typed tooling owner.
+Neither shared policy nor project-local managed artifacts accepts exemption catalogs,
+free-form ignores, per-file ignores, or informative-only rule maps. The required
+`rule-owners` mapping declares rules enforced by another canonical checking gate.
+The existing gate registry rejects self-owned, unknown, missing, non-repairing, or
+unelected owners before a projection derives Ruff's native ignore from that mapping.
+The owner must participate in the complete default check and the existing repair or
+format contract. `missing-trailing-comma` delegates layout to the native `format`
+gate; it is not a waived rule. Paired lint/format validation checks the final bytes.
+Modernization removes stale exemption tables without narrowing rule selection.
+`unfixable` remains a repair-safety policy: it prevents destructive automatic changes,
+not detection or a failed verdict. Repair completion requires the same native owner's
+read-only verification of the repaired targets.
 
 ## Local dependency binding
 

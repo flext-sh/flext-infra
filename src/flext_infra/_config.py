@@ -42,7 +42,7 @@ class FlextInfraConfig(FlextCliConfig):
 
     @classmethod
     @override
-    def _config_files(cls) -> list[Path]:
+    def config_files(cls) -> list[Path]:
         """Elect only packaged namespace defaults for the library singleton.
 
         Returns:

@@ -31,6 +31,7 @@ from flext_infra.codegen._lazy_init_planner_exports import (
 from flext_infra.codegen._lazy_init_planner_parents import (
     FlextInfraCodegenLazyInitPlannerParentsMixin,
 )
+from flext_infra.workspace import FlextInfraRopeWorkspace
 
 
 class FlextInfraCodegenLazyInitPlanner(
@@ -66,6 +67,9 @@ class FlextInfraCodegenLazyInitPlanner(
     )
     _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan] = u.PrivateAttr(
         default_factory=dict[str, m.Infra.LazyInitPlan],
+    )
+    _plan_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = u.PrivateAttr(
+        default_factory=dict,
     )
     _parent_package_cache: MutableMapping[str, t.StrSequence] = u.PrivateAttr(
         default_factory=dict[str, t.StrSequence],
@@ -110,7 +114,10 @@ class FlextInfraCodegenLazyInitPlanner(
                     else pkg_dir
                 )
                 u.Cli.info(f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}")
-            plan = self.build_plan(pkg_dir, dir_exports=dir_exports)
+            plan, receipt = self._isolated_plan(pkg_dir, dir_exports=dir_exports)
+            package_key = str(pkg_dir.resolve())
+            self._source_plan_cache[package_key] = plan
+            self._plan_receipts[package_key] = receipt
             if report_progress:
                 u.Cli.info(
                     f"lazy-init: resolved {idx}/{len(pkg_dirs)} "
@@ -143,6 +150,51 @@ class FlextInfraCodegenLazyInitPlanner(
             )
         return r[t.VariadicTuple[m.Infra.LazyInitPlan]].ok(tuple(planned))
 
+    def _isolated_plan(
+        self,
+        pkg_dir: Path,
+        *,
+        dir_exports: t.MappingKV[str, t.LazyAliasMap],
+    ) -> t.Pair[m.Infra.LazyInitPlan, m.Infra.CodegenPhaseAnalysis]:
+        """Resolve one artifact with fresh native and planner caches in the same epoch.
+
+        Structural indexes are rebuilt until their live selection owner can supply
+        an authenticated, content-free reusable inventory. No semantic cache is copied.
+        """
+        project = self.rope_workspace.rope_project
+        with (
+            project.source_consumption() as consumption,
+            project.source_consumer() as consumer,
+            FlextInfraRopeWorkspace.open_workspace(
+                self.rope_workspace.repository_root,
+                rope_repository_root=self.rope_workspace.rope_repository_root,
+                source_project=consumer,
+                workspace_index=self.rope_workspace.workspace_index,
+                index_receipt=self.rope_workspace.source_index_receipt,
+            ) as workspace,
+        ):
+            planner = type(self)(rope_workspace=workspace, lazy_init=self.lazy_init)
+            planner._source_plan_cache.update(self._source_plan_cache)
+            planner._plan_receipts.update(self._plan_receipts)
+            plan = planner.build_plan(pkg_dir, dir_exports=dir_exports)
+            self._collision_count += planner._collision_count
+        receipt = consumption.receipt()
+        return plan.model_copy(
+            update={
+                "source_states": receipt.inputs,
+                "source_directories": receipt.source_directories,
+                "source_query_topology": receipt.source_query_topology,
+            }
+        ), receipt
+
+    def source_receipt(self, package_dir: Path) -> m.Infra.CodegenPhaseAnalysis:
+        """Return only the sealed receipt minted for an actual package decision."""
+        receipt = self._plan_receipts.get(str(package_dir.resolve()))
+        if receipt is None:
+            msg = f"lazy-init package lacks original provenance: {package_dir}"
+            raise ValueError(msg)
+        return receipt
+
     @override
     def build_plan(
         self,
@@ -157,11 +209,20 @@ class FlextInfraCodegenLazyInitPlanner(
 
         """
         context = self.context(pkg_dir)
-        current = u.Cli.atomic_read_binary_file_state(
+        self.rope_workspace.rope_project.source_state(
             context.init_path,
             required=False,
-        ).unwrap()
-        if u.Infra.codegen_initializer_is_authored(current.content):
+        )
+        selected = (
+            self.rope_workspace.rope_project.source_text(context.init_path).encode(
+                c.DEFAULT_ENCODING
+            )
+            if self.rope_workspace.rope_project.source_query(
+                context.init_path, "isfile"
+            )
+            else None
+        )
+        if u.Infra.codegen_initializer_is_authored(selected):
             return self._authored_plan(context)
         if not context.importable or self._shadows_stdlib_module(pkg_dir):
             return self._residue_plan(context)
@@ -356,7 +417,10 @@ class FlextInfraCodegenLazyInitPlanner(
         lazy_map: t.MutableLazyAliasMap,
     ) -> None:
         """Merge the package's version module exports into the lazy map."""
-        if not (context.pkg_dir / self._version_module_name).is_file():
+        if not self.rope_workspace.rope_project.source_query(
+            context.pkg_dir / self._version_module_name,
+            "isfile",
+        ):
             return
         lazy_map.update(
             self._module_exports(

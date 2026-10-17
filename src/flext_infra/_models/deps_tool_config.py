@@ -689,9 +689,6 @@ class FlextInfraModelsDepsToolConfig(
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
 
-        bandit: FlextInfraModelsDepsToolConfig.BanditConfig = m.Field(
-            description="Bandit gate authorization policy.",
-        )
         codespell: FlextInfraModelsDepsToolConfig.CodespellConfig = m.Field(
             description="Codespell settings",
         )
@@ -916,19 +913,6 @@ class FlextInfraModelsDepsToolConfig(
             t.StrTuple,
             m.Field(description="Resolved Mypy search paths"),
         ]
-        mypy_facade_rebind_modules: Annotated[
-            t.StrTuple,
-            m.Field(description="Modules written in the canonical facade-rebind form"),
-        ]
-        mypy_generated_source_modules: Annotated[
-            t.StrTuple,
-            m.Field(
-                description=(
-                    "Module patterns of the generated source trees, which Mypy "
-                    "analyzes for their importers but never reports on"
-                ),
-            ),
-        ] = ()
         ruff_runtime_evaluated_base_classes: Annotated[
             t.StrTuple,
             m.Field(

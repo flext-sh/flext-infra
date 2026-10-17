@@ -1252,7 +1252,14 @@ class FlextInfraCodegenPreconditions:
         ]
         declared = distribution.files
         if declared is None:
-            return result_type.fail("producer distribution has no native file manifest")
+            return result_type.fail(
+                "producer distribution has no native file manifest: "
+                f"name={distribution.name!r} version={distribution.version!r} "
+                f"descriptor={type(distribution).__module__}."
+                f"{type(distribution).__qualname__} "
+                f"location={distribution.locate_file('')} "
+                f"elected_namespaces={tuple(sorted(roots.items()))}"
+            )
         paths = tuple(
             Path(str(distribution.locate_file(item))).absolute() for item in declared
         )
