@@ -545,6 +545,8 @@ from existing groups and member contributions;
 declaring the same distribution as a required development floor fails. Retire
 obsolete typing stubs here when their runtime SDK supplies inline typing, then
 regenerate and run `make upg` to reconcile locks and the installed environment.
+Member contributions include the requirements parsed from captured declarations;
+the composed development group uses the same retirement filter.
 Do not uninstall packages manually or weaken the type checker.
 
 PEP 621 optional extras and PEP 735 dependency groups retain their separate

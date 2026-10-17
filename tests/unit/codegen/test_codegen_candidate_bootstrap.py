@@ -167,9 +167,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
     ) -> None:
         """Require every independent resolution view in the plan and its report."""
         planned_paths = {file.path for file in plan.files}
-        reported_paths = {
-            file.path for item in report.outcomes for file in item.files
-        }
+        reported_paths = {file.path for item in report.outcomes for file in item.files}
         for relative in tm.ok(
             u.Infra.load_codegen_inputs(independent)
         ).spec.uv_resolution_pyprojects:
@@ -193,8 +191,10 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             workspace=f"{c.Infra.PKG_PREFIX_HYPHEN}plan-workspace",
             member=f"{c.Infra.PKG_PREFIX_HYPHEN}plan-member",
         )
-        independent = TestsFlextInfraCodegenCandidateBootstrap._attach_independent_member(
-            root,
+        independent = (
+            TestsFlextInfraCodegenCandidateBootstrap._attach_independent_member(
+                root,
+            )
         )
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         request = u.Tests.conform_request(
