@@ -355,7 +355,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         offset: int,
     ) -> t.Pair[p.Infra.RopeScope, t.DictKV[str, p.Infra.RopePyName]] | None:
         source = holder.source_code
-        selected: dict[str, p.Infra.RopePyName] = {}
+        selected: t.DictKV[str, p.Infra.RopePyName] = {}
         prior = scope.get_defined_names().get(primary.id)
         if prior is not None:
             declarations = cls._scope_binding_nodes(tree, scope, primary.id)
@@ -825,6 +825,54 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             msg = "rope FromImport does not satisfy p.Infra.RopeFromImport"
             raise TypeError(msg)
         return from_import
+
+    @classmethod
+    def normal_import(
+        cls,
+        names_and_aliases: t.SequenceOf[t.Pair[str, str | None]],
+    ) -> t.Infra.RopeNormalImport:
+        """Build Rope's native plain ``import`` record.
+
+        Returns:
+            The native ``NormalImport`` for the given names.
+
+        Raises:
+            TypeError: If Rope's record does not satisfy its protocol.
+
+        """
+        normal_import = cls.runtime_callable(
+            "rope.refactor.importutils.importinfo",
+            "NormalImport",
+        )(list(names_and_aliases))
+        if not isinstance(normal_import, p.Infra.RopeNormalImport):
+            msg = "rope NormalImport does not satisfy p.Infra.RopeNormalImport"
+            raise TypeError(msg)
+        return normal_import
+
+    @classmethod
+    def import_statement(
+        cls,
+        import_info: t.Infra.RopeFromImport | t.Infra.RopeNormalImport,
+        start_line: int,
+        end_line: int,
+    ) -> t.Infra.RopeImportStatement:
+        """Build Rope's native import statement over 1-based, end-exclusive lines.
+
+        Returns:
+            The native ``ImportStatement`` Rope's module import table records.
+
+        Raises:
+            TypeError: If Rope's record does not satisfy its protocol.
+
+        """
+        statement = cls.runtime_callable(
+            "rope.refactor.importutils.importinfo",
+            "ImportStatement",
+        )(import_info, start_line, end_line)
+        if not isinstance(statement, p.Infra.RopeImportStatement):
+            msg = "rope ImportStatement does not satisfy p.Infra.RopeImportStatement"
+            raise TypeError(msg)
+        return statement
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeRuntimeModules"]

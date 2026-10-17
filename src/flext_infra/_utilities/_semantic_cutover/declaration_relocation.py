@@ -77,8 +77,15 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         t.VariadicTuple[m.Infra.SemanticMigrationEdit],
         t.VariadicTuple[m.Infra.DeclarationRelocationFinding],
     ]:
+        # One closed epoch serves every snapshot of this pass: the sources, their
+        # import closure and the identities payload relocation resolves.
+        epoch = FlextInfraUtilitiesCodemodProject.identity_source_epoch(
+            Path(workspace.rope_project.root.real_path),
+            tuple(sources),
+            c.Infra.DECLARATION_RELOCATION_IDENTITIES,
+        )
         project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-            workspace.rope_project, sources
+            workspace.rope_project, sources, captured=epoch
         )
         working = dict(sources)
         findings: list[m.Infra.DeclarationRelocationFinding] = []
@@ -91,7 +98,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             if working != sources:
                 project.close()
                 project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                    workspace.rope_project, working
+                    workspace.rope_project, working, captured=epoch
                 )
             for path in sorted(sources):
                 if sources[path].startswith(c.Infra.AUTOGEN_HEADERS):
@@ -143,7 +150,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     # Subsequent candidates bind to the proposed graph and coordinates.
                     project.close()
                     project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                        workspace.rope_project, working
+                        workspace.rope_project, working, captured=epoch
                     )
             cls._preflight_declaration_graph(workspace, sources, working)
             return (
@@ -855,7 +862,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     retained,
                 )
                 if isinstance(information, p.Infra.RopeFromImport)
-                else cls.normal_import(retained)
+                else runtime.normal_import(retained)
             )
             rewrites.append(
                 m.Infra.SourceRewrite(
@@ -1320,7 +1327,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 imported = (
                     runtime.from_import(statement.module_name, statement.level, aliases)
                     if isinstance(statement, p.Infra.RopeFromImport)
-                    else cls.normal_import(aliases)
+                    else runtime.normal_import(aliases)
                 )
                 required.append(imported)
         return tuple(required), dependencies
@@ -1355,7 +1362,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         if len(tokens) != len(records):
             msg = "native import records differ from their lexical occurrences"
             raise ValueError(msg)
-        guard = project.get_module("typing").get_attribute("TYPE_CHECKING")
+        guard = cls.identity_name(project, c.Infra.TYPING_GUARD_IDENTITY)
         facts = FlextInfraUtilitiesRopeStructure.logical_statements(module.source_code)
         selected: list[p.Infra.RopeImportInfo] = []
         conditions: list[t.Pair[int, bool]] = []
@@ -1402,19 +1409,6 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 ):
                     selected.append(record.import_info)
         return tuple(selected)
-
-    @staticmethod
-    def normal_import(
-        aliases: t.VariadicTuple[t.Pair[str, str | None]],
-    ) -> p.Infra.RopeImportInfo:
-        information = FlextInfraUtilitiesRopeRuntimeRefactors.runtime_callable(
-            "rope.refactor.importutils.importinfo",
-            "NormalImport",
-        )(list(aliases))
-        if not isinstance(information, p.Infra.RopeImportInfo):
-            msg = "declaration relocation requires native normal imports"
-            raise TypeError(msg)
-        return information
 
     @staticmethod
     def _dependency_source(
