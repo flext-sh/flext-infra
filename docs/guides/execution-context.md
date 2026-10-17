@@ -969,13 +969,13 @@ native resource it returns without maintaining another election algorithm.
 Import capture retains one typed lookup keyed by native root, module and relative
 level; it does not transport unused copies of the SDK's search roots.
 
-Every Rope project registers the interpreter's loaded frozen stdlib modules
-through native extension preferences before initializing its core. Live and
-captured projects therefore resolve the same sourceless aliases; callers do not
-maintain a second module list. Registration preserves explicitly declared
-extension modules.
-Blocked-import sentinels in `sys.modules` remain blocked and are not module
-declarations to register.
+Rope owns loaded frozen stdlib aliases through its existing extension cache and
+`import_dynload_stdmods` preference. Its native module election preserves explicit
+extension precedence and searches source resources, including the supplied folder,
+before returning a frozen alias. A cached alias cannot shadow a source created
+later. Live and captured projects consume that same SDK contract without copying
+loaded module names into extension preferences.
+Blocked-import sentinels in `sys.modules` remain blocked.
 
 Import normalization treats exception targets and structural pattern captures
 as local bindings. These names do not load a package facade or reintroduce an
