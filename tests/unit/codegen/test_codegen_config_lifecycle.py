@@ -97,7 +97,7 @@ class TestsFlextInfraCodegenConfigLifecycle:
         root = test_codegen_ci_matrix.TestsFlextInfraCodegenCiMatrix.render_project(
             installed_artifact_consumer,
         )
-        for verb in ("build", "setup"):
+        for verb in ("upg", "setup", "build"):
             output = tm.ok(
                 u.Tests.run_isolated_make(
                     [verb],
@@ -105,6 +105,9 @@ class TestsFlextInfraCodegenConfigLifecycle:
                     env={
                         config.Infra.codegen.make.ci.variable: (
                             config.Infra.codegen.make.ci.value
+                        ),
+                        config.Infra.codegen.make.uv_resolution.hosted_variable: (
+                            config.Infra.codegen.make.uv_resolution.hosted_value
                         ),
                     },
                 ),
@@ -114,17 +117,28 @@ class TestsFlextInfraCodegenConfigLifecycle:
                 eq=True,
                 msg=output.stdout + output.stderr,
             )
+            if verb == "upg":
+                u.Tests.commit_git_changes(
+                    root,
+                    "resolve the generated consumer declarations and locks",
+                )
         script = """
+import os
 import sys
 from importlib.metadata import distribution
 from importlib.resources import files
 from pathlib import Path
 
 from flext_cli import FlextCliConfig, u
-from flext_demo import FlextDemoConfig, config, m, settings
+from flext_core import c
+from flext_demo import FlextDemo, FlextDemoConfig, config, m, settings
 
 assert FlextDemoConfig.fetch_global() is config
 assert FlextCliConfig.fetch_global() is not config
+assert type(settings).fetch_global() is settings
+assert Path(str(files("flext_demo"))).resolve().is_relative_to(
+    Path(sys.prefix).resolve(),
+)
 source = u.Cli.yaml_safe_load(Path(str(files("flext_demo") / "config/Demo.yaml")))
 assert source.success, source.error
 assert config.Demo.model_dump() == source.value["Demo"]
@@ -138,6 +152,27 @@ else:
 adjusted = settings.clone(debug=not settings.debug)
 assert adjusted.debug != settings.debug
 assert config.model_dump() == before
+isolated_settings = settings.clone(Demo={"enabled": not settings.Demo.enabled})
+for runtime in (settings, isolated_settings):
+    service = FlextDemo(
+        configuration=config,
+        runtime_options=runtime,
+        runtime_settings=runtime,
+    )
+    assert service.settings is runtime
+    result = service.ping(m.Demo.PingInput())
+    assert result.success, result.error
+    expected = (
+        config.Demo.ping_reply if runtime.Demo.enabled else config.Demo.disabled_reply
+    )
+    assert result.value.message == expected
+assert settings.Demo.enabled != isolated_settings.Demo.enabled
+try:
+    FlextDemo()
+except m.ValidationError as error:
+    assert all(item["type"] == "missing" for item in error.errors())
+else:
+    raise AssertionError("Generated service accepts missing dependency ports")
 message = f"  {config.Demo.ping_reply}\\n"
 reply = m.Demo.PingResult(message=message)
 assert reply.message == message
@@ -164,9 +199,25 @@ for schema, payload, error_type in (
     except m.ValidationError as error:
         assert all(item["type"] == error_type for item in error.errors())
     else:
-        raise AssertionError(f"Generated schema coerces an incompatible input: {schema}")
+        raise AssertionError(
+            f"Generated schema coerces an incompatible input: {schema}"
+        )
 enabled = not settings.Demo.enabled
 prefix = type(settings).model_config["env_prefix"]
+namespace_key = f"{prefix}Demo"
+environment_key = (
+    f"{namespace_key}{type(settings).model_config['env_nested_delimiter']}enabled"
+)
+normalize = str if type(settings).model_config["case_sensitive"] else str.casefold
+namespace_inputs = tuple(
+    key for key in os.environ
+    if normalize(key) == normalize(namespace_key)
+    or normalize(key).startswith(
+        normalize(
+            f"{namespace_key}{type(settings).model_config['env_nested_delimiter']}"
+        ),
+    )
+)
 native = u.Cli.run_raw(
     [
         sys.executable, "-c",
@@ -175,11 +226,42 @@ native = u.Cli.run_raw(
     ],
     cwd=Path.cwd(),
     options=m.Cli.ProcessOptions(
-        env={f"{prefix}Demo__enabled": str(enabled).lower()},
+        env={environment_key: str(enabled).lower()},
+        remove_env_keys=tuple(
+            key for key in namespace_inputs if key != environment_key
+        ),
     ),
 )
 assert native.success, native.error
 assert u.Cli.process_succeeded(native.value.outcome), native.value.stderr
+runtime_root = Path.cwd() / "settings-runtime"
+runtime_root.mkdir()
+(runtime_root / c.ENV_FILE_DEFAULT).write_text(
+    f"{environment_key}={str(enabled).lower()}\\n", encoding="utf-8",
+)
+selected_env_file = Path.cwd() / f"{c.ENV_FILE_DEFAULT}.selected"
+selected_env_file.write_text(
+    f"{environment_key}={str(settings.Demo.enabled).lower()}\\n", encoding="utf-8",
+)
+for expected, overrides, removed in (
+    (enabled, {}, (*namespace_inputs, c.ENV_FILE_ENV_VAR)),
+    (
+        settings.Demo.enabled,
+        {c.ENV_FILE_ENV_VAR: str(selected_env_file)},
+        namespace_inputs,
+    ),
+):
+    observed = u.Cli.run_raw(
+        [
+            sys.executable, "-c",
+            "from flext_demo import settings; "
+            f"assert settings.Demo.enabled is {expected!r}",
+        ],
+        cwd=runtime_root,
+        options=m.Cli.ProcessOptions(env=overrides, remove_env_keys=removed),
+    )
+    assert observed.success, observed.error
+    assert u.Cli.process_succeeded(observed.value.outcome), observed.value.stderr
 entry = next(
     item for item in distribution(config.Demo.name).entry_points
     if item.group == "console_scripts" and item.name == config.Demo.name

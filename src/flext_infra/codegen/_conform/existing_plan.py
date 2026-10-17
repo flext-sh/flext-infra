@@ -1068,7 +1068,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             with u.Infra.facade_source_project(
                 root, source_states=states.value, declared_files=lazy_plans
             ) as binding:
-                _, _, sources = binding
+                project, _, sources = binding
                 package_dirs = {
                     path.parent
                     for path in sources
@@ -1082,7 +1082,12 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                     for family in families:
                         if (
                             layout is None or package_dir != layout.package_dir
-                        ) and u.Infra.facade_module_path(package_dir, family) is None:
+                        ) and u.Infra.facade_module_path(
+                            package_dir,
+                            family,
+                            project=project,
+                            sources=sources,
+                        ) is None:
                             continue
                         plans.extend(
                             self._captured_facade_plan(
@@ -1098,7 +1103,14 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         family: Literal["u", "p", "m"],
         binding: t.Triple[
             p.Infra.RopeProject,
-            Callable[[], tuple[m.Cli.AtomicFileState, ...]],
+            Callable[
+                [],
+                t.Triple[
+                    tuple[m.Cli.AtomicFileState, ...],
+                    tuple[m.Cli.AtomicDirectoryInventory, ...],
+                    tuple[m.Cli.AtomicDirectoryChainPlan, ...],
+                ],
+            ],
             t.MappingKV[Path, str],
         ],
     ) -> t.SequenceOf[m.Infra.CodegenFilePlan]:
@@ -1108,7 +1120,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             The declared facade plans, or no effects for a recorded failure.
 
         """
-        facade_path = u.Infra.facade_module_path(package_dir, family)
+        project, _, sources = binding
+        facade_path = u.Infra.facade_module_path(
+            package_dir, family, project=project, sources=sources
+        )
         failure_path = facade_path if facade_path is not None else package_dir
         try:
             planned = self._utility_facade_plan(root, package_dir, family, binding)
@@ -1165,7 +1180,14 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         family: Literal["u", "p", "m"],
         binding: t.Triple[
             p.Infra.RopeProject,
-            Callable[[], tuple[m.Cli.AtomicFileState, ...]],
+            Callable[
+                [],
+                t.Triple[
+                    tuple[m.Cli.AtomicFileState, ...],
+                    tuple[m.Cli.AtomicDirectoryInventory, ...],
+                    tuple[m.Cli.AtomicDirectoryChainPlan, ...],
+                ],
+            ],
             t.MappingKV[Path, str],
         ],
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
@@ -1188,7 +1210,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         )
         if rendered is None:
             return result_type.ok(())
-        facade_path = u.Infra.facade_module_path(package_dir, family)
+        facade_path = u.Infra.facade_module_path(
+            package_dir, family, project=project, sources=sources
+        )
         if facade_path is None:
             msg = f"rendered {family} facade has no declaring module"
             raise ValueError(msg)
@@ -1196,14 +1220,21 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         utility_plan = self.file_plan(root, relative.as_posix(), rendered)
         if utility_plan.failure:
             return result_type.from_failure(utility_plan)
+        states, directories, topology = consumed_states()
         inputs = FlextInfraCodegenPreconditions.unique_states((
             *utility_plan.value.source_states,
-            *consumed_states(),
+            *states,
         ))
         if inputs.failure:
             return result_type.from_failure(inputs)
         return result_type.ok((
-            utility_plan.value.model_copy(update={"source_states": inputs.value}),
+            utility_plan.value.model_copy(
+                update={
+                    "source_states": inputs.value,
+                    "source_directories": directories,
+                    "source_query_topology": topology,
+                }
+            ),
         ))
 
     def _complete_governed_plans(

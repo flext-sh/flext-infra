@@ -22,6 +22,62 @@ from flext_infra.codegen import (
 class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
     """Durable transaction journal for Mise artifact generation."""
 
+    @staticmethod
+    def source_query_records(
+        journal: m.Infra.CodegenTransactionJournal,
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        *,
+        phase: str | None,
+    ) -> t.Pair[
+        t.VariadicTuple[t.Pair[str, m.Cli.AtomicDirectoryInventory]],
+        t.VariadicTuple[t.Pair[str, m.Cli.AtomicDirectoryChainPlan]],
+    ]:
+        """Retain one original native query receipt per phase and physical parent."""
+        name = phase or journal.phase
+        directories = tuple(
+            receipt for plan in plans for receipt in plan.source_directories
+        )
+        topology = tuple(
+            receipt for plan in plans for receipt in plan.source_query_topology
+        )
+        if name is None and (directories or topology):
+            msg = "native source queries require their publication phase"
+            raise ValueError(msg)
+        directory_records = journal.source_directories
+        topology_records = journal.source_query_topology
+        if name is None:
+            return directory_records, topology_records
+        merged_directories, merged_topology = (
+            u.Cli.atomic_merge_directory_query_receipts(
+                (
+                    *(receipt for owner, receipt in directory_records if owner == name),
+                    *directories,
+                ),
+                (
+                    *(receipt for owner, receipt in topology_records if owner == name),
+                    *topology,
+                ),
+            )
+        )
+        return (
+            (
+                *(
+                    (owner, receipt)
+                    for owner, receipt in directory_records
+                    if owner != name
+                ),
+                *((name, receipt) for receipt in merged_directories),
+            ),
+            (
+                *(
+                    (owner, receipt)
+                    for owner, receipt in topology_records
+                    if owner != name
+                ),
+                *((name, receipt) for receipt in merged_topology),
+            ),
+        )
+
     @classmethod
     def observed_outcome(
         cls,
@@ -787,6 +843,12 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
                 path=selector,
                 desired_staging=desired_staging,
                 source_paths=tuple(source.path for source in publication.source_states),
+                source_directory_paths=tuple(
+                    receipt.root.path for receipt in publication.source_directories
+                ),
+                source_query_topology_paths=tuple(
+                    receipt.target for receipt in publication.source_query_topology
+                ),
                 tracking=publication.tracking,
                 index_before=publication.index_before,
                 tracking_dependencies=publication.tracking_dependencies,

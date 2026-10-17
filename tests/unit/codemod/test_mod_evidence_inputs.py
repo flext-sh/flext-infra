@@ -194,6 +194,25 @@ class TestsFlextInfraModEvidenceInputs:
                 ("right-global", "'right'"),
             ],
         )
+        duplicate_rules = tuple(
+            rule.model_copy(update={"id": rules[0].id})
+            if rule.provider == rules[-1].provider
+            else rule
+            for rule in rules
+        )
+        for index, conflicting in enumerate((
+            m.Infra.CodemodRulePlan(
+                provider_order=plan.provider_order,
+                rules=duplicate_rules,
+                rulesets=plan.rulesets,
+                project_rule_ids=plan.project_rule_ids,
+            ),
+            plan.model_copy(update={"rules": duplicate_rules}),
+        )):
+            destination = tmp_path / f"conflicting-native-{index}"
+            with pytest.raises(ValueError, match="native codemod rule IDs"):
+                u.Infra.codemod_stage_scan_ruleset(conflicting, destination)
+            tm.that(destination.exists(), eq=False)
         before = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
         resource = rules[0].resource
         declaration = tm.ok(u.Cli.yaml_safe_load(resource))
@@ -203,11 +222,12 @@ class TestsFlextInfraModEvidenceInputs:
                 {**declaration, "rule": {"pattern": repr("changed")}},
             ),
         )
-        stale = FlextInfraModGateEngine.scan(
-            mod_workspace, fix=False, plan=plan, source_files=(source,)
-        )
-        tm.fail(stale)
-        tm.that(stale.error, has="catalog membership changed")
+        with pytest.raises(
+            ValueError, match="elected codemod rule changed before projection"
+        ):
+            FlextInfraModGateEngine.scan(
+                mod_workspace, fix=False, plan=plan, source_files=(source,)
+            )
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True)),
             eq=before,

@@ -13,6 +13,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+{% if kind == "Settings" %}from flext_core import p
+
+{% endif %}
 if TYPE_CHECKING:
     from {{ package_name }} import m
 
@@ -21,7 +24,7 @@ class {{ class_stem }}Protocols{{ kind }}:
     """Protocol namespace for validated {{ kind | lower }} data."""
 
     @runtime_checkable
-    class {{ kind }}(Protocol):
+    class {{ kind }}({% if kind == "Settings" %}p.Settings, {% endif %}Protocol):
         """Direct project {{ kind | lower }} singleton surface."""
 
         @property

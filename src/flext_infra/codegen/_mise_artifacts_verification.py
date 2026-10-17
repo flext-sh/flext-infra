@@ -226,7 +226,7 @@ class FlextInfraMiseArtifactsVerification(
         publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
         *,
         reference: m.Infra.NativeImportReference | None = None,
-        destinations: t.SequenceOf[Path] = (),
+        destinations: t.SequenceOf[Path] | None = None,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenJournalSource]]:
         """Authenticate actual prior effects before using them as producer authority.
 
@@ -282,7 +282,7 @@ class FlextInfraMiseArtifactsVerification(
         publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
         *,
         reference: m.Infra.NativeImportReference | None = None,
-        destinations: t.SequenceOf[Path] = (),
+        destinations: t.SequenceOf[Path] | None = None,
     ) -> p.Result[
         t.Pair[
             t.VariadicTuple[m.Infra.CodegenJournalSource],
@@ -305,14 +305,20 @@ class FlextInfraMiseArtifactsVerification(
         if not publications:
             return result_type.ok(((), ()))
         selection: Callable[[Path], bool] | None = None
-        if reference is not None:
+        if reference is not None or destinations is not None:
             files = frozenset((
-                *(state.path for state in reference.source_authority.inputs),
-                *destinations,
+                *(
+                    (state.path for state in reference.source_authority.inputs)
+                    if reference is not None
+                    else ()
+                ),
+                *(destinations if destinations is not None else ()),
             ))
-            directories = {
-                tree.root.path for tree in reference.source_authority.generator_trees
-            }
+            directories = (
+                {tree.root.path for tree in reference.source_authority.generator_trees}
+                if reference is not None
+                else set()
+            )
             roots = tuple(
                 root
                 for root in sorted(directories)
@@ -332,12 +338,22 @@ class FlextInfraMiseArtifactsVerification(
                 frontier,
                 terminal,
                 outcomes,
-                selection,
+                None,
             )
             if history.failure:
                 return result_type.from_failure(history)
-        outputs = tuple(terminal.values())
-        physical = cls._recorded_states_current(tuple(frontier.values()))
+        outputs = tuple(
+            record
+            for path, record in terminal.items()
+            if selection is None or selection(path)
+        )
+        physical = cls._recorded_states_current(
+            tuple(
+                record
+                for path, record in frontier.items()
+                if selection is None or selection(path)
+            )
+        )
         if physical.failure:
             return result_type.from_failure(physical)
         topology = {
@@ -346,6 +362,10 @@ class FlextInfraMiseArtifactsVerification(
             for witness in batch.source_topology
         }
         for batch in outcomes:
+            if selection is not None and not any(
+                selection(output.path) for output in batch.outputs
+            ):
+                continue
             prerequisites = cls._frontier_prerequisites_current(
                 batch, outputs, topology
             )
@@ -524,6 +544,8 @@ class FlextInfraMiseArtifactsVerification(
                 or outcome.generator_modules
                 or outcome.generator_reference is not None
                 or outcome.source_topology
+                or outcome.source_directories
+                or outcome.source_query_topology
                 or outcome.source_scope is not None
                 or outcome.analysis is not None
                 or outcome.admitted_states

@@ -918,6 +918,15 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 description="Exact source states that produced rendered content",
             ),
         ] = ()
+        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
+            default=(), description="Native directory queries consumed by this target"
+        )
+        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
+            m.Field(
+                default=(),
+                description="Physical ancestry of queried source directories",
+            )
+        )
         owner: Annotated[
             str,
             m.Field(description="Canonical artifact owner, empty for scaffold files"),
