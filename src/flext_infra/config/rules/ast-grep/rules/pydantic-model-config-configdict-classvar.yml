@@ -13,6 +13,7 @@ rule:
     - pattern: "model_config = ConfigDict($$$ARGS)"
     - inside:
         kind: block
+        stopBy: end
         inside:
           kind: class_definition
 fix: "model_config: ClassVar[ConfigDict] = ConfigDict($$$ARGS)"

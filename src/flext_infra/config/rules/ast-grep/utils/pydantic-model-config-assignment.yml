@@ -5,16 +5,18 @@
 id: pydantic-model-config-assignment
 language: Python
 rule:
-  kind: assignment
-  has:
-    field: left
-    kind: identifier
-    regex: "^model_config$"
-  has:
-    field: right
-    kind: call
-    regex: "ConfigDict\\("
-  inside:
-    kind: block
-    inside:
-      kind: class_definition
+  all:
+    - kind: assignment
+    - has:
+        field: left
+        kind: identifier
+        regex: "^model_config$"
+    - has:
+        field: right
+        kind: call
+        regex: "ConfigDict\\("
+    - inside:
+        kind: block
+        stopBy: end
+        inside:
+          kind: class_definition

@@ -15,6 +15,7 @@ rule:
     - pattern: "model_config = m.ConfigDict($$$ARGS)"
     - inside:
         kind: block
+        stopBy: end
         inside:
           kind: class_definition
 fix: "model_config: ClassVar[m.ConfigDict] = m.ConfigDict($$$ARGS)"
