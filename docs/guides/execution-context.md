@@ -545,6 +545,8 @@ from existing groups and member contributions;
 declaring the same distribution as a required development floor fails. Retire
 obsolete typing stubs here when their runtime SDK supplies inline typing, then
 regenerate and run `make upg` to reconcile locks and the installed environment.
+Member contributions include the requirements parsed from captured declarations;
+the composed development group uses the same retirement filter.
 Do not uninstall packages manually or weaken the type checker.
 
 PEP 621 optional extras and PEP 735 dependency groups retain their separate
@@ -971,6 +973,9 @@ Physical file changes remain inputs to publication CAS, rather than changing
 the source graph while a plan is being computed.
 Rope owns module, regular-package and namespace precedence; Infra validates the
 native resource it returns without maintaining another election algorithm.
+Absolute and relative lookups share one native-folder validation boundary.
+Absent relative context remains `None`: resource lookup reports absence and
+module lookup raises Rope's native missing-module exception.
 Import capture retains one typed lookup keyed by native root, module and relative
 level; it does not transport unused copies of the SDK's search roots.
 

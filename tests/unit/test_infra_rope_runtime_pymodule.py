@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from contextlib import closing
+from contextlib import ExitStack, closing
 from typing import TYPE_CHECKING
 
 import pytest
@@ -21,6 +21,60 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraRopeRuntimePymodule:
     """Validate the module predicate over rope modules and packages."""
+
+    @staticmethod
+    @pytest.mark.parametrize("captured", [False, True])
+    def test_relative_lookup_preserves_native_folder_and_absent_context(
+        tmp_path: Path,
+        *,
+        captured: bool,
+    ) -> None:
+        """Live and captured projects retain one native relative lookup contract."""
+        package = tmp_path / "pkg"
+        package.mkdir()
+        initializer = package / c.Infra.INIT_PY
+        owner = package / "owner.py"
+        initializer.write_text("", encoding=c.DEFAULT_ENCODING)
+        owner.write_text(
+            "class PublishedContract:\n    pass\n", encoding=c.DEFAULT_ENCODING
+        )
+        with ExitStack() as stack:
+            live = stack.enter_context(closing(u.Infra.init_rope_project(tmp_path)))
+            project = (
+                stack.enter_context(
+                    closing(
+                        u.Infra.snapshot_project(
+                            live,
+                            {
+                                initializer: initializer.read_text(
+                                    encoding=c.DEFAULT_ENCODING
+                                ),
+                                owner: owner.read_text(encoding=c.DEFAULT_ENCODING),
+                            },
+                        )
+                    )
+                )
+                if captured
+                else live
+            )
+            folder = project.get_folder(package.name)
+            tm.that(
+                project.find_relative_module("owner", folder, 1),
+                eq=project.get_resource(owner.relative_to(tmp_path).as_posix()),
+            )
+            tm.that(
+                u.Infra
+                .require_semantic_module(
+                    project.get_relative_module("owner", folder, 1)
+                )
+                .get_attribute("PublishedContract")
+                .get_object()
+                .get_name(),
+                eq="PublishedContract",
+            )
+            tm.that(project.find_relative_module("owner", None, 1), none=True)
+            with pytest.raises(u.Infra.rope_module_not_found_error_types()):
+                project.get_relative_module("owner", None, 1)
 
     @staticmethod
     def test_blocked_stdlib_module_preserves_native_import_state(

@@ -313,7 +313,9 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         )
         dev = cls.read_dependency_group(groups, dev_name)
         existing = frozenset(entry for entry in dev if isinstance(entry, str))
-        additions = tuple(sorted(set(requirements) - existing))
+        additions = tuple(
+            sorted(set(cls.active_development_requirements(requirements)) - existing)
+        )
         u.Cli.toml_sync_value(
             groups,
             dev_name,

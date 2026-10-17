@@ -9,13 +9,39 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import config
-from tests import c, m, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraPyprojectConformTopologySupport:
     """Declare members, workspaces, and requirement forms for topology contracts."""
 
     _ROLE = c.Infra.MakeProfile
+
+    @staticmethod
+    def _conform_options(
+        root: Path,
+        workspace: m.Infra.WorkspaceSpec,
+    ) -> u.Infra.PyprojectConformOptions:
+        """Capture each declared package through the public atomic file owner.
+
+        Returns:
+            Conform inputs bound to the workspace and its captured metadata.
+
+        """
+        return u.Infra.PyprojectConformOptions(
+            repository_root=root,
+            flext_line=workspace.integration,
+            member_declarations=tuple(
+                tm.ok(
+                    u.Cli.atomic_read_binary_file_state(
+                        root / member.path / c.PYPROJECT_FILENAME,
+                        required=True,
+                    )
+                )
+                for member in workspace.subprojects
+                if member.package
+            ),
+        )
 
     def _member_ref(self, distribution: str, path: str) -> m.Infra.RepositoryRef:
         """Declare one standalone-capable member through the provider contract.
