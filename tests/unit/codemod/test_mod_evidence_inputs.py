@@ -19,6 +19,17 @@ class TestsFlextInfraModEvidenceInputs:
     """Validate public evidence round-trips without duplicated input bodies."""
 
     @staticmethod
+    @pytest.mark.parametrize("source", ["  Symbol  ", "block\n", "\tSymbol\t"])
+    def test_native_capture_preserves_exact_source_bytes(source: str) -> None:
+        """Whitespace belongs to the authenticated source, not normalization."""
+        capture = m.Infra.AstGrepCapture.model_validate({
+            "text": source,
+            "range": {"byteOffset": {"start": 0, "end": len(source.encode("utf-8"))}},
+        })
+        tm.that(capture.text, eq=source)
+        tm.that(capture.end_byte, eq=len(capture.text.encode("utf-8")))
+
+    @staticmethod
     @pytest.mark.parametrize(
         ("declarations", "expected_lines"),
         [
