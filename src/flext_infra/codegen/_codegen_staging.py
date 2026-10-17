@@ -151,9 +151,8 @@ class FlextInfraCodegenStaging:
             for plan in plans
             # A directory-chain preimage owns no staged bytes; only real file
             # effects (create/replace/retire) enter the composed source view.
-            if not isinstance(
-                plan.before, cli_m.Cli.AtomicDirectoryChainPlan
-            ) or plan.desired_content is not None
+            if not isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
+            or plan.desired_content is not None
         }
         for staged in staged_files:
             replacement = staged.replacement

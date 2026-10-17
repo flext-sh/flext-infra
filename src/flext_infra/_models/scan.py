@@ -325,7 +325,7 @@ class FlextInfraModelsScan:
             default=None, description="Original rule and configuration input snapshots"
         )
         native_artifacts: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
-            min_length=1, description="Complete authenticated native output inventory"
+            description="Complete authenticated native output inventory"
         )
 
         @m.model_validator(mode="after")

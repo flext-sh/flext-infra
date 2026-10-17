@@ -234,7 +234,8 @@ class FlextInfraUtilitiesProjectDiscovery(
                 if source_project is None
                 else source_project.source_children(resolved_root)
             )
-            if not child.name.startswith(".") and (
+            if not child.name.startswith(".")
+            and (
                 child.is_dir()
                 if source_project is None
                 else source_project.source_query(child, "isdir")

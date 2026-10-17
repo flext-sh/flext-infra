@@ -56,8 +56,13 @@ class FlextInfraUtilitiesDiscovery(
             if current.name == c.Infra.DEFAULT_SRC_DIR:
                 wrapper_root = current.parent
                 continue
-            if current.name in c.Infra.ROOT_WRAPPER_SEGMENTS:
-                wrapper_root = current.parent
+            if current.name in c.Infra.ROOT_WRAPPER_SEGMENTS and (
+                current in {candidate.parent, candidate}
+            ):
+                # VCS-metadata parents (.github, .gitlab, ...) are never a
+                # project boundary: a helper nested there does not wrap one.
+                if not current.parent.name.startswith("."):
+                    wrapper_root = current.parent
                 continue
             if (
                 (current / c.Infra.DEFAULT_SRC_DIR).is_dir()
