@@ -531,7 +531,10 @@ generation, `make upg` and the locked-install checks.
 One `make upg` run provisions the frozen producer before corrective pyproject
 projection, without requiring final runtime admission. The elected runtime
 owner resolves both native views; attached members delegate that operation
-to their workspace.
+to their workspace. After projecting the declared Mise configurations, the same
+upgrade owner resolves each writable FLEXT member's tool lock serially, preserving
+its own declarations for standalone setup and CI. Only the elected workspace
+runtime receives an installation; member runtimes are not provisioned separately.
 It runs generation's producer half, relocks the projected manifests, reinstalls
 and verifies the resulting runtime before generation's activation half. A
 requirement or Mise self-management release that only the upgraded generator
