@@ -1196,21 +1196,18 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 m.Cli.AtomicFileState]]``.
 
         """
-        result_type = r[
-            t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
-        ]
-        layout = session.plan.layout
         unchanged = FlextInfraMiseArtifactsState.unchanged_journal(
             session,
             "generation journal changed before directories",
         )
         if unchanged.failure:
-            return result_type.from_failure(unchanged)
-        session = unchanged.value
+            return r[
+                t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
+            ].from_failure(unchanged)
         return self._persist_directory_journal(
-            layout,
-            session.journal,
-            session.journal_state,
+            session.plan.layout,
+            unchanged.value.journal,
+            unchanged.value.journal_state,
             phase,
             planned,
         )

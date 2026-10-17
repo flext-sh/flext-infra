@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import MutableMapping
+from collections.abc import Iterator, MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra import c
@@ -57,13 +57,9 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             Whether a package owns a module or a manual initializer.
 
         """
-        candidates = (package_entry.package_dir, *package_entry.descendant_child_dirs)
-        for candidate in candidates:
-            entry = self._package_entry(candidate)
-            if entry is None:
-                continue
-            if any(not module.is_package_init for module in entry.modules):
-                return True
+        if self._owns_non_init_module_source(package_entry):
+            return True
+        for entry in self._tree_entries(package_entry):
             if entry.init_path.is_file():
                 source = entry.init_path.read_text(encoding=c.DEFAULT_ENCODING)
                 if source.strip() and not source.startswith(c.Infra.AUTOGEN_HEADER):
@@ -110,14 +106,29 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             Whether the package owns any module other than its initializer.
 
         """
-        candidates = (package_entry.package_dir, *package_entry.descendant_child_dirs)
-        for candidate in candidates:
+        return any(
+            not module.is_package_init
+            for entry in self._tree_entries(package_entry)
+            for module in entry.modules
+        )
+
+    def _tree_entries(
+        self,
+        package_entry: m.Infra.RopePackageIndexEntry,
+    ) -> Iterator[m.Infra.RopePackageIndexEntry]:
+        """Yield the indexed entries of a package and its descendant packages.
+
+        Yields:
+            Each indexed entry of the package directory and its descendants.
+
+        """
+        for candidate in (
+            package_entry.package_dir,
+            *package_entry.descendant_child_dirs,
+        ):
             entry = self._package_entry(candidate)
-            if entry is None:
-                continue
-            if any(not module.is_package_init for module in entry.modules):
-                return True
-        return False
+            if entry is not None:
+                yield entry
 
     def _merge_children(
         self,
