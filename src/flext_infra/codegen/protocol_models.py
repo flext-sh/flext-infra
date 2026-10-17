@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from importlib import import_module
 from itertools import chain
 from pathlib import Path
 from types import UnionType
 from typing import TypeAliasType, Union, get_args, get_origin, override
+
+from typing_extensions import TypeForm
 
 from flext_infra import FlextInfra, FlextInfraServiceBase, c, m, p, r, t, u
 from flext_infra.codegen import FlextInfraCodegenProtocolModelRender
@@ -67,12 +68,9 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
         models: t.MutableMappingKV[str, t.ModelClass[m.BaseModel]] = {}
         declarations: t.MutableMappingKV[str, p.Infra.RopePyName] = {}
         aliases: t.MutableMappingKV[str, t.StrSequence] = {}
-        base = (
-            workspace.rope_project
-            .get_module("pydantic")
-            .get_attribute("BaseModel")
-            .get_object()
-        )
+        base = u.Infra.qualified_name(
+            workspace.rope_project, "BaseModel", module_name="pydantic"
+        ).get_object()
         for name in sorted(cls._referenced_names(workspace, facades["p"], directory)):
             manual = cls._member(facades["p"], name)
             if manual is not None:
@@ -136,9 +134,9 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
             facades[owner[0]] = u.Infra.resolve_pymodule(
                 workspace.rope_project, resource
             ).get_attribute(owner[1])
-            runtime_facades[owner[0]] = getattr(
-                import_module(entry.module_name), owner[1]
-            )
+            runtime_facades[owner[0]] = u.type_adapter(
+                TypeForm(t.ImportString[t.InstanceOf[p.ModuleOwned]])
+            ).validate_python(f"{entry.module_name}:{owner[1]}")
             package_dir = entry.package_dir
         return package_dir, facades, runtime_facades
 
@@ -171,11 +169,12 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
                 return result_type.fail(
                     f"referenced protocol p.{name} is not a model declaration"
                 )
-            module = workspace.rope_project.get_module(leaf.__module__)
+            module = u.Infra.require_semantic_module(
+                workspace.rope_project.get_module(leaf.__module__)
+            )
             first, separator, tail = leaf.__qualname__.partition(".")
-            binding = module.get_attribute(first)
-            if separator:
-                binding = cls._member(binding, tail)
+            declared = module.get_attribute(first)
+            binding = cls._member(declared, tail) if separator else declared
             if binding is None or base not in u.Infra.class_ancestry(
                 binding.get_object()
             ):

@@ -159,7 +159,7 @@ class TestsFlextInfraCodegenGeneration:
             str(target),
         ])
         assert formatted.success, formatted.error
-        assert target.read_text(encoding="utf-8") == rendered
+        tm.that(target.read_text(encoding="utf-8") == rendered, truth=True)
 
     @pytest.mark.parametrize("with_eager_version", [False, True])
     def test_singleton_lazy_map_survives_format_and_regeneration(

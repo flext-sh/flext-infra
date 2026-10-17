@@ -317,7 +317,7 @@ class FlextInfraMiseArtifactsVerification(
                 ),
                 *(destinations if destinations is not None else ()),
             ))
-            directories = (
+            directories: t.Infra.MutableSetOf[Path] = (
                 {tree.root.path for tree in reference.source_authority.generator_trees}
                 if reference is not None
                 else set()

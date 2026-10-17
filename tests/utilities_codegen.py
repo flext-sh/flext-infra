@@ -319,7 +319,12 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         # checkout.  The shared workspace fixture therefore owns a real,
         # repository-local identity instead of letting individual tests depend
         # on whichever checkout happens to contain ``tmp_path``.
-        TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(repository_root)
+        TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(
+            repository_root,
+            TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
+                project_name
+            ).url,
+        )
         return (repository_root, package_root)
 
     @staticmethod

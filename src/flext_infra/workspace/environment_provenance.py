@@ -1193,7 +1193,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         repository_root: Path,
         resolution_root: Path,
     ) -> p.Result[bool]:
-        """Bind the declared local lock source to a clean, committed checkout.
+        """Bind the local lock source to its physical checkout and committed revision.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -1234,7 +1234,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return r[bool].from_failure(identity)
         if (
             identity.value.repo_root.resolve() != expected_root
-            or identity.value.dirty
             or identity.value.origin_remote is None
             or u.Infra.git_remote_identity(identity.value.origin_remote)
             != u.Infra.git_remote_identity(repository.url)

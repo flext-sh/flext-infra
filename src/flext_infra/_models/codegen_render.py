@@ -19,6 +19,7 @@ from flext_infra._models._config.make import FlextInfraConfigModelsMake
 from flext_infra._models._config.provider import FlextInfraConfigModelsProvider
 from flext_infra._models._config.render import FlextInfraConfigModelsRender
 from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolConfig
+from flext_infra._models.mise_toolchain import FlextInfraModelsMiseToolchain
 
 
 class FlextInfraModelsCodegenRender:
@@ -68,7 +69,9 @@ class FlextInfraModelsCodegenRender:
         constraints: t.MutableJsonList = m.Field(
             description="Constraints preserving replaced local sources.",
         )
-        retained_overrides: t.MutableJsonList = m.Field(
+        retained_overrides: t.ListOf[
+            str | FlextInfraModelsMiseToolchain.UvScopedOverride
+        ] = m.Field(
             description="Declared overrides with member requests appended.",
         )
         overridden: MutableSet[str] = m.Field(
@@ -368,7 +371,7 @@ class FlextInfraModelsCodegenRender:
             m.Field(description="Declared constraints; the uv pin is never kept"),
         ]
         override_dependencies: Annotated[
-            t.VariadicTuple[str],
+            t.VariadicTuple[str | FlextInfraModelsMiseToolchain.UvScopedOverride],
             m.Field(
                 description=(
                     "SSOT-declared PEP 508 overrides resolving a transitive "

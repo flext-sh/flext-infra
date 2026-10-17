@@ -93,7 +93,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             if (start, end) not in (
                 FlextInfraUtilitiesRopeRuntimeRefactors.semantic_regions(
                     module,
-                    capture.text,
+                    f"(\n{capture.text}\n)",
                     arguments={},
                     start=start,
                     end=end,
@@ -526,7 +526,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             )
             if binding is None:
                 return False
-            chain = cls._chain_module_text(project, module, sources)
+            chain = cls._chain_module_text(module, sources)
             if chain is None:
                 return False
             path, text = chain
@@ -583,11 +583,10 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
         @staticmethod
         def _chain_module_text(
-            project: p.Infra.RopeProject,
             module: p.Infra.RopePyModule,
             sources: t.MappingKV[Path, str],
         ) -> t.Pair[Path, str] | None:
-            """Locate the module source text inside the closed project.
+            """Locate the module source text inside the authenticated closure.
 
             Returns:
                 The module path and snapshot text, or ``None`` when unavailable.
@@ -599,11 +598,6 @@ class FlextInfraUtilitiesCodemodBindingChain:
             path = Path(resource.real_path).resolve()
             if path.is_dir():
                 path /= c.Infra.INIT_PY
-            if not path.is_relative_to(Path(project.root.real_path).resolve()):
-                # NoProject-backed foreign modules can read disk outside the closed
-                # project's filesystem commands. Their receipts guard publication,
-                # but cannot establish an immutable inference graph: refuse a fixer.
-                return None
             text = sources.get(path)
             if text is None:
                 return None
@@ -624,7 +618,9 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
             """
             if expression.isidentifier() and expression in routes:
-                route = project.get_module(routes[expression])
+                route = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
+                    project.get_module(routes[expression])
+                )
                 target = route.get_attribute(expression)
                 if not FlextInfraUtilitiesRopeRuntimeModules.same_name(
                     target, binding
@@ -713,9 +709,11 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 Whether the binding's single declaration stays stable at its owner.
 
             """
-            holder_context = cls._chain_holder_context(binding, project, sources)
-            if holder_context is None or isinstance(
-                binding, p.Infra.RopeImportedModule
+            holder_context = cls._chain_holder_context(binding, sources)
+            if (
+                holder_context is None
+                or isinstance(binding, p.Infra.RopeImportedModule)
+                or FlextInfraUtilitiesRopeRuntimeTypes.parameter_name(binding)
             ):
                 return holder_context is not None
             holder, line, holder_text = holder_context
@@ -774,14 +772,13 @@ class FlextInfraUtilitiesCodemodBindingChain:
         @staticmethod
         def _chain_holder_context(
             binding: p.Infra.RopePyName,
-            project: p.Infra.RopeProject,
             sources: t.MappingKV[Path, str],
         ) -> t.Triple[p.Infra.RopePyModule, int | None, str] | None:
-            """Locate the definition site text of one binding inside the project.
+            """Locate one binding's definition inside the authenticated closure.
 
             Returns:
                 The defining module, its line, and the snapshot text, or ``None``
-                when the definition site is unavailable or foreign.
+                when the definition site is unavailable or uncaptured.
 
             """
             holder, line = binding.get_definition_location()
@@ -796,8 +793,6 @@ class FlextInfraUtilitiesCodemodBindingChain:
             holder_path = Path(holder_resource.real_path).resolve()
             if holder_path.is_dir():
                 holder_path /= c.Infra.INIT_PY
-            if not holder_path.is_relative_to(Path(project.root.real_path).resolve()):
-                return None
             holder_text = sources.get(holder_path)
             if holder_text is None:
                 return None
@@ -987,6 +982,13 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
             """
             module, scope = frame
+            binding = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
+                scope, expression
+            )
+            parameter = (
+                binding is not None
+                and FlextInfraUtilitiesRopeRuntimeTypes.parameter_name(binding)
+            )
             found_scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
                 module,
                 occurrence.offset,
@@ -997,6 +999,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                         c.Infra.StatementCategory.CLASS_DEF,
                         c.Infra.StatementCategory.FUNC_DEF,
                     }
+                    and not parameter
                     else None
                 ),
             )

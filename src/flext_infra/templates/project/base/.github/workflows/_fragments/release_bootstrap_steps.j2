@@ -1,0 +1,9 @@
+{% macro release_bootstrap_steps() %}
+      - name: Release identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+{%- include "_fragments/mise_install.j2" %}
+      - name: Boot
+        run: make setup
+{%- endmacro %}

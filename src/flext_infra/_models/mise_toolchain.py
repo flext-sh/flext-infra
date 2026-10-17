@@ -20,6 +20,51 @@ from flext_infra._models.mise_toolchain_base import FlextInfraModelsMiseToolchai
 class FlextInfraModelsMiseToolchain:
     """Mise toolchain and beads configuration models."""
 
+    class UvOverridePackage(FlextInfraModelsMiseToolchainBase, strict=True):
+        """Native UV package selector for a scoped dependency override."""
+
+        name: Annotated[
+            t.StrictStr,
+            m.Field(
+                min_length=1, description="Package whose dependencies are replaced"
+            ),
+        ]
+        version: Annotated[
+            t.StrictStr | None,
+            m.Field(
+                min_length=1, description="Optional native package version selector"
+            ),
+        ] = None
+
+        @m.model_validator(mode="after")
+        def _validate_version(self) -> Self:
+            if "version" in self.model_fields_set and self.version is None:
+                msg = "scoped UV override version must be text when declared"
+                raise ValueError(msg)
+            return self
+
+    class UvScopedOverride(FlextInfraModelsMiseToolchainBase, strict=True):
+        """One native UV scoped override, never a global dependency override."""
+
+        package: Annotated[
+            FlextInfraModelsMiseToolchain.UvOverridePackage,
+            m.Field(description="Package selector owning this override's scope"),
+        ]
+        dependencies: Annotated[
+            t.ListOf[t.StrictStr],
+            m.Field(
+                description=(
+                    "Native scoped registry requirements; other dependencies "
+                    "remain unchanged"
+                )
+            ),
+        ]
+
+    class UvOverrideEntries(
+        m.RootModel[t.ListOf[t.NonEmptyStr | UvScopedOverride]], strict=True
+    ):
+        """Native ordered global-string and scoped-table override grammar."""
+
     class BeadsToolSpec(FlextInfraModelsMiseToolchainBase):
         """Beads ledger and Gas City projection contract."""
 
@@ -431,10 +476,12 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = ()
         uv_override_dependencies: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            t.VariadicTuple[
+                t.NonEmptyStr | FlextInfraModelsMiseToolchain.UvScopedOverride
+            ],
             m.Field(
                 description=(
-                    "PEP 508 overrides rendered into every generated "
+                    "Native global or scoped overrides rendered into every generated "
                     "[tool.uv] override-dependencies from this SSOT. Declared "
                     "for consumers whose transitive dependency graph pins a "
                     "flext family member on a different integration ref than "

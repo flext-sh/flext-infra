@@ -55,7 +55,7 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
             evidence_collected=False,
         )
 
-        assert FlextInfraRefactorCensus.is_unused(record) is False
+        assert FlextInfraRefactorCensus.unused(record) is False
 
     def test_zero_references_with_evidence_is_unused(self) -> None:
         """A completed search over zero references classifies the definition."""
@@ -65,7 +65,7 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
             evidence_collected=True,
         )
 
-        assert FlextInfraRefactorCensus.is_unused(record) is True
+        assert FlextInfraRefactorCensus.unused(record) is True
 
     def test_referenced_definition_is_never_unused(self) -> None:
         """Collected references keep the definition classified as used."""
@@ -75,7 +75,7 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
             evidence_collected=True,
         )
 
-        assert FlextInfraRefactorCensus.is_unused(record) is False
+        assert FlextInfraRefactorCensus.unused(record) is False
 
     @staticmethod
     def test_service_composes_validated_options(tmp_path: Path) -> None:
@@ -102,7 +102,7 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
         tm.that(service.impact_map_output_path, eq=impact_map_output)
         tm.that(service.options.include_local_scopes, eq=options.include_local_scopes)
         for name, expected in m.Infra.CensusOptions.model_config.items():
-            assert name in service.model_config
+            tm.that(name in service.model_config, truth=True)
             tm.that(service.model_config.get(name), eq=expected)
 
     @staticmethod

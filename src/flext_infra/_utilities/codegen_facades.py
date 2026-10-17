@@ -48,6 +48,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         *,
         source_states: tuple[m.Cli.AtomicFileState, ...] = (),
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        planned_sources: t.MappingKV[Path, str] | None = None,
     ) -> Generator[
         t.Triple[
             p.Infra.RopeProject,
@@ -67,19 +68,63 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         Yields:
             The native Rope project, original-state reader and planned sources.
 
+        Raises:
+            ValueError: Planned sources compete or a failed required input has no
+                attached native exception.
+
         """
         root = root.resolve()
         if not source_states:
-            paths = FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(
-                root,
+            paths = (
+                FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(
+                    root,
+                )
+                if root.is_dir()
+                else ()
             )
             source_states = tuple(
                 u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
                 for path in paths
             )
-        source_states = m.Infra.CodemodBindingSnapshot(
+        if planned_sources:
+            originals = {state.path: state for state in source_states}
+            declarations = {plan.path: plan for plan in declared_files}
+            for supplied_path, content in (
+                (path, source.encode(c.DEFAULT_ENCODING))
+                for path, source in planned_sources.items()
+            ):
+                path = supplied_path.resolve()
+                if path in declarations:
+                    if declarations[path].desired_content != content:
+                        msg = f"Rope planned source has competing declarations: {path}"
+                        raise ValueError(msg)
+                    continue
+                original = originals.get(path)
+                if original is None:
+                    original = FlextInfraRopeProject.AtomicReadFiles.require_value(
+                        u.Cli.atomic_read_binary_file_state(path)
+                    )
+                    originals[path] = original
+                chain = FlextInfraRopeProject.AtomicReadFiles.require_value(
+                    u.Cli.atomic_plan_directory_chain(path.parent)
+                )
+                declarations[path] = m.Infra.CodegenFilePlan(
+                    project=root,
+                    path=path,
+                    before=chain if chain.directories else original,
+                    desired_content=content,
+                    desired_mode=(
+                        original.mode
+                        if original.mode is not None
+                        else config.Infra.codegen.modes.file_default
+                    ),
+                )
+            source_states = tuple(originals.values())
+            declared_files = tuple(declarations.values())
+        original_states = m.Infra.CodemodBindingSnapshot(
             states=(
                 *source_states,
+                *(state for plan in declared_files for state in plan.source_states),
                 *(
                     plan.before
                     for plan in declared_files
@@ -107,15 +152,40 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     root, state.path
                 )
             },
-            **proposed,
+            **{
+                plan.path: proposed[plan.path]
+                for plan in declared_files
+                if plan.project == root
+                and plan.path in proposed
+                and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                    root, plan.path
+                )
+            },
         }
         with (
-            FlextInfraUtilitiesRopeCore.open_project(root) as live,
+            FlextInfraUtilitiesRopeCore.open_project(
+                next(path for path in (root, *root.parents) if path.is_dir())
+            ) as live,
             closing(
                 FlextInfraRopeProject.from_atomic_reads(
                     live,
-                    source_states,
-                    ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
+                    original_states,
+                    source_folders=sorted({
+                        *(folder.path for folder in live.get_source_folders()),
+                        *(
+                            ""
+                            if folder == Path(live.root.real_path)
+                            else folder.relative_to(live.root.real_path).as_posix()
+                            for folder in (
+                                root,
+                                *(
+                                    root / name
+                                    for name in config.Infra.source_scan.roots
+                                ),
+                            )
+                            if any(path.is_relative_to(folder) for path in proposed)
+                        ),
+                    }),
                     sources=proposed,
                     declared_files=declared_files,
                 )

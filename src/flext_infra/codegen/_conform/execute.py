@@ -61,11 +61,14 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         *,
         ports: m.Infra.CodegenConformPorts | None,
         generation_only: bool = False,
+        repository_root: Path | None = None,
     ) -> p.Result[m.Infra.CodegenResult]:
         """Execute one already validated request with the facade-wired ports.
 
         ``ports`` is required at every call: the complete surface consumes it,
         and a single-file surface declares its absence explicitly with ``None``.
+        An explicit ``repository_root`` owns generation tools while
+        ``request.root`` remains the destination of every planned effect.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenResult]``.
@@ -98,7 +101,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             if initialized.failure:
                 return r[m.Infra.CodegenResult].from_failure(initialized)
         service = cls(
-            repository_root=root,
+            repository_root=(
+                root
+                if repository_root is None
+                else repository_root.expanduser().resolve()
+            ),
             request=request,
             initial_workspace=initial_workspace,
             ports=ports,

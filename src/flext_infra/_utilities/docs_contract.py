@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from markdown import Markdown
 from markdown.extensions.toc import slugify
+from pymdownx.superfences import SuperFencesCodeExtension
 
 from flext_infra import c, m, r, t
 from flext_infra._utilities import (
@@ -137,7 +138,12 @@ class FlextInfraUtilitiesDocsContract:
 
         """
         renderer = Markdown(
-            extensions=["attr_list", "md_in_html", "toc", "pymdownx.superfences"],
+            extensions=[
+                "attr_list",
+                "md_in_html",
+                "toc",
+                SuperFencesCodeExtension(),
+            ],
             extension_configs={"toc": {"toc_depth": "2-3"}},
         )
         body = c.Infra.TOC_BLOCK_RE.sub("", content)

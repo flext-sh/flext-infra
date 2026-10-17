@@ -109,7 +109,7 @@ class TestsFlextInfraModScanSelection:
         )
         rules = ("rewire-mod-scan-selection", "mod-scan-selection-conflict")
         report = tm.ok(
-            FlextInfraModGateEngine.scan(mod_workspace, fix=False, rule_ids=rules)
+            FlextInfraModGateEngine.scan(mod_workspace, fix=False, selection=rules)
         )
         for project, (_source, actionable, conflicts) in zip(
             projects, cases, strict=True

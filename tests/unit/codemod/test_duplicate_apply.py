@@ -67,8 +67,12 @@ class TestsFlextInfraCodemodDuplicateApply:
         assert planned.owner is copy
         assert planned.owner.definition is definition
         assert planned.owner.definition.statement is statement
-        assert planned.owner.definition.source == path.read_text(
-            encoding=c.DEFAULT_ENCODING,
+        tm.that(
+            planned.owner.definition.source
+            == path.read_text(
+                encoding=c.DEFAULT_ENCODING,
+            ),
+            truth=True,
         )
         deletion = m.Infra.DuplicateDeletion(
             path=path,
@@ -76,8 +80,8 @@ class TestsFlextInfraCodemodDuplicateApply:
             line=item.line,
             project=item.project,
         )
-        assert deletion.path == definition.path
-        assert deletion.name == definition.item.name
+        tm.that(deletion.path == definition.path, truth=True)
+        tm.that(deletion.name == definition.item.name, truth=True)
 
     @staticmethod
     def _module(summary: str) -> str:
@@ -425,8 +429,8 @@ class TestsFlextInfraCodemodDuplicateApply:
         plan = outcome.plans[0]
         tm.that(plan.origin, eq="jscpd")
         assert plan.reason
-        assert plan.edits[0].action == c.Infra.DUPLICATE_KEEP_ACTION
-        assert plan.edits[1].action == c.Infra.DUPLICATE_DELETE_ACTION
+        tm.that(plan.edits[0].action == c.Infra.DUPLICATE_KEEP_ACTION, truth=True)
+        tm.that(plan.edits[1].action == c.Infra.DUPLICATE_DELETE_ACTION, truth=True)
         tm.that(plan.owner_file_path, eq=owner)
         tm.that(
             (owner.read_bytes(), clone.read_bytes()),

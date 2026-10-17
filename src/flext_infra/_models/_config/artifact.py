@@ -1001,6 +1001,20 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
     class CodegenRepositoryPlanTask(FlextInfraConfigModelsContract.ConfigContract):
         """One repository's read-only planning inputs sent to a fleet worker."""
 
+        generation_only: Annotated[
+            bool,
+            m.Field(description="Retain the invoking operation's generation boundary"),
+        ] = False
+        provider_plans: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenFilePlan] | None,
+            m.Field(
+                exclude=True,
+                description=(
+                    "Original lazy plans of the selected cohort, supplied as "
+                    "planning data; publication still requires live admission"
+                ),
+            ),
+        ] = None
         selected_inputs: Annotated[
             FlextInfraConfigModelsArtifact.CodegenInputs | None,
             m.Field(

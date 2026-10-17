@@ -64,16 +64,17 @@ class FlextInfraCodegenGenerationStandardMixin(
         current_pkg = plan.context.current_pkg
         statements: t.MutableSequenceOf[tuple[t.StrPair, t.StrSequence]] = []
         for module in sorted(set(plan.wildcard_runtime_modules)):
-            rendered_module = cls._absolute_import_module(current_pkg, module)
+            rendered_module = cls.normalize_type_checking_module_path(
+                module, current_pkg
+            )
             statements.append((
                 cls._type_checking_sort_key(rendered_module, root_names),
                 (f"from {rendered_module} import *",),
             ))
         eager_groups = cls._group_imports(plan.eager_dunders)
         for module in eager_groups:
-            rendered_module = cls._absolute_import_module(
-                current_pkg,
-                cls._compact_lazy_module_path(current_pkg, module),
+            rendered_module = cls.normalize_type_checking_module_path(
+                cls._compact_lazy_module_path(current_pkg, module), current_pkg
             )
             parts = tuple(
                 cls._format_import_part(imported_name, export_name)

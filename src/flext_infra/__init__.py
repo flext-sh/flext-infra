@@ -18,19 +18,19 @@ if TYPE_CHECKING:
     from flext_cli import d, e, h, r, x
 
     from flext_infra import (
-        check,
-        codegen,
-        codemod,
-        deps,
-        docs,
-        gates,
-        maintenance,
-        refactor,
-        release,
-        services,
-        transformers,
-        validate,
-        workspace,
+        check as check,
+        codegen as codegen,
+        codemod as codemod,
+        deps as deps,
+        docs as docs,
+        gates as gates,
+        maintenance as maintenance,
+        refactor as refactor,
+        release as release,
+        services as services,
+        transformers as transformers,
+        validate as validate,
+        workspace as workspace,
     )
     from flext_infra.__version__ import (
         FlextInfraVersion,

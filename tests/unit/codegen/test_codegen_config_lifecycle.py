@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from jinja2 import Template
 
-from flext_infra import config, infra
+from flext_infra import config, infra, settings
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsVerification,
@@ -131,6 +131,7 @@ class TestsFlextInfraCodegenConfigLifecycle:
                     [verb],
                     cwd=root,
                     env={
+                        "GITHUB_TOKEN": settings.env_required("GITHUB_TOKEN"),
                         config.Infra.codegen.make.ci.variable: (
                             "" if verb == "upg" else config.Infra.codegen.make.ci.value
                         ),
@@ -330,6 +331,7 @@ print(
                     [verb],
                     cwd=root,
                     env={
+                        "GITHUB_TOKEN": settings.env_required("GITHUB_TOKEN"),
                         config.Infra.codegen.make.ci.variable: (
                             config.Infra.codegen.make.ci.value if verb == "gen" else ""
                         ),
