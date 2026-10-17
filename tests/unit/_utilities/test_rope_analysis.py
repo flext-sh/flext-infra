@@ -343,9 +343,9 @@ class TestsFlextInfraRopeAnalysis:
         the class attribute through the instance's type, so the planner walks
         the type's MRO instead of rejecting the instance as a non-class base.
         """
-        (tmp_path / "src").mkdir()
-        (tmp_path / "flext-core").mkdir()
-        _, provider = u.Tests.demo_project(tmp_path, name="provider-project")
+        provider_root, provider = u.Tests.demo_project(
+            tmp_path, name="provider-project"
+        )
         (provider / "bases.py").write_text(
             "class ProviderBases:\n    class Tap:\n        pass\n",
             encoding="utf-8",
@@ -375,11 +375,16 @@ class TestsFlextInfraRopeAnalysis:
             "    pass\n",
             encoding="utf-8",
         )
-        bases = u.Infra.runtime_evaluated_base_classes(
-            project,
-            {consumer: consumer.read_text(encoding="utf-8")},
-            ("provider_project.bases.ProviderBases.Tap",),
-        )
+        with u.Infra.open_project(
+            tmp_path,
+            project_roots=(provider_root, project),
+        ) as rope_project:
+            bases = u.Infra.runtime_evaluated_base_classes(
+                project,
+                {consumer: consumer.read_text(encoding="utf-8")},
+                ("provider_project.bases.ProviderBases.Tap",),
+                source_project=rope_project,
+            )
         tm.that(bases, has="provider_project.facade.Tap")
 
     @staticmethod

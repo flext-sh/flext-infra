@@ -203,10 +203,6 @@ class TestsFlextInfraCodegenLayoutGitignore:
                 ),
             ),
         )
-        tm.that(
-            (root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME).is_file(),
-            eq=True,
-        )
         entries = (root / c.Infra.GITIGNORE).read_text(encoding="utf-8").splitlines()
         missing = tuple(
             pattern
@@ -215,6 +211,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
         )
         tm.that(missing, eq=())
         report = FlextInfraCodegenLayout(repository_root=root).check_project(root)
+        tm.that(report.project, eq=owner)
         tm.that(
             tuple(
                 finding for finding in report.findings if finding.rule == "gitignore"

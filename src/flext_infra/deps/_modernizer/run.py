@@ -164,7 +164,11 @@ class FlextInfraPyprojectModernizerRun:
         found = u.Infra.find_all_pyproject_files(
             self.root,
             skip_dirs=c.Infra.PYPROJECT_SKIP_DIRS,
-            project_paths=project_paths.value,
+            project_paths=(
+                tuple(path / c.PYPROJECT_FILENAME for path in project_paths.value)
+                if source_migration is not None
+                else project_paths.value
+            ),
         )
         if found.failure:
             u.Cli.error(found.error or "pyproject discovery failed")

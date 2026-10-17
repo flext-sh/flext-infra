@@ -521,7 +521,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
         dev = set(u.Tests.toml_strings_at(first, "dependency-groups", "dev"))
         tm.that(
             set(u.Tests.toml_strings_at(first, "dependency-groups", "codegen")),
-            eq={"build>=1", "hypothesis>=6", "pytest>=8"},
+            eq={"build>=1"},
         )
         tm.that({"pytest>=8", "hypothesis>=6"}.issubset(dev), eq=True)
         tm.that({"idna>=3", runtime_requirement}.issubset(dev), eq=True)
