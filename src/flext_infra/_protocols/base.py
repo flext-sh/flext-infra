@@ -108,6 +108,7 @@ class FlextInfraProtocolsBase(Protocol):
             params: m.Infra.ApplyRenamesInput,
         ) -> p.Result[m.Infra.ApplyRenamesReport]: ...
 
+    @runtime_checkable
     class SemanticRenameCandidateProvider(Protocol):
         """Select meaningful names from actual declarations, never token counts."""
 
@@ -115,6 +116,76 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             declaration: m.Infra.Object,
         ) -> m.Infra.SemanticRenameDecision | None: ...
+
+    @runtime_checkable
+    class GateAttestationRuntimeContext(Protocol):
+        """Read-only elected resolution inputs the toolchain trust anchor hashes.
+
+        The attestation layer never resolves the workspace itself: the caller
+        elects the current runtime context once at the workspace boundary and
+        provides it explicitly, keeping the dependency direction downward.
+        """
+
+        @property
+        def runtime_root(self) -> Path:
+            """Physical runtime owner of the elected resolution input."""
+            ...
+
+        @property
+        def pyproject_path(self) -> Path:
+            """Declaration file the resolver elected."""
+            ...
+
+        @property
+        def lock_path(self) -> Path:
+            """Lock file the resolver elected."""
+            ...
+
+    @runtime_checkable
+    class RuleDeltaSpec(Protocol):
+        """Read-only structural contract for rule delta comparison options."""
+
+        @property
+        def inventory(self) -> t.VariadicTuple[t.Pair[str, str]]: ...
+
+        @property
+        def repository_root(self) -> Path | None: ...
+
+        @property
+        def projects(self) -> t.SequenceOf[Path]: ...
+
+        @property
+        def publication_chain(
+            self,
+        ) -> t.VariadicTuple[m.Infra.CodegenStagedFile] | None: ...
+
+    @runtime_checkable
+    class ChainDeclarationSpec(Protocol):
+        """Read-only structural contract for binding-chain declaration inputs."""
+
+        @property
+        def project(self) -> p.Infra.RopeProject: ...
+
+        @property
+        def holder(self) -> p.Infra.RopePyModule: ...
+
+        @property
+        def holder_text(self) -> str: ...
+
+        @property
+        def declaration(self) -> m.Infra.LogicalStatement: ...
+
+        @property
+        def holder_offset(self) -> int: ...
+
+        @property
+        def holder_scope(self) -> p.Infra.RopeScope: ...
+
+        @property
+        def expression(self) -> str: ...
+
+        @property
+        def sources(self) -> t.MappingKV[Path, str]: ...
 
     @runtime_checkable
     class ModProgress(Protocol):
@@ -241,14 +312,12 @@ class FlextInfraProtocolsBase(Protocol):
             root: Path,
             *,
             initial_workspace: m.Infra.WorkspaceSpec | None,
-            producer: m.Infra.CodegenPhaseAnalysis,
         ) -> p.Result[m.Infra.CodegenParticipantPolicy]:
             """Read the request's physical topology without acquiring a lease.
 
             ``initial_workspace`` is the declared topology of a scaffold whose
             own workspace configuration is not rendered yet; ``None`` reads
             the repository's committed declaration.
-            ``producer`` carries the executor's already authenticated epoch.
             """
             ...
 
@@ -260,7 +329,7 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
         ) -> p.Result[bool]:
-            """Continue the original producer through its verified effects."""
+            """Continue planning through the invocation's verified effects."""
             ...
 
         def surface_contract(
@@ -287,11 +356,10 @@ class FlextInfraProtocolsBase(Protocol):
         def prepare_batches(
             self,
             *,
-            producer: m.Infra.CodegenPhaseAnalysis | None = None,
             publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
             | None = None,
         ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
-            """Pin the producer eagerly, then capture each settled scope."""
+            """Capture each scope after the preceding publication settles."""
             ...
 
         def publish_batch(
@@ -304,12 +372,8 @@ class FlextInfraProtocolsBase(Protocol):
             """Admit, publish and settle one captured scope batch."""
             ...
 
-        def prepare_bundle(
-            self,
-            *,
-            producer: m.Infra.CodegenPhaseAnalysis | None = None,
-        ) -> p.Result[m.Infra.DocsGenerationBundle]:
-            """Freeze one configured inventory with its original producer epoch."""
+        def prepare_bundle(self) -> p.Result[m.Infra.DocsGenerationBundle]:
+            """Freeze one configured inventory and its consumed inputs."""
             ...
 
         def required_directories(
@@ -408,6 +472,14 @@ class FlextInfraProtocolsBase(Protocol):
     @runtime_checkable
     class CandidateBootstrapTransaction(Protocol):
         """Atomic multi-root file publisher consumed by the campaign."""
+
+        def capability_roots(
+            self,
+            label: str,
+            paths: t.SequenceOf[Path],
+        ) -> t.MappingKV[str, Path]:
+            """Key physical roots by their file capability selector."""
+            ...
 
         def run_files_locked[T](
             self,

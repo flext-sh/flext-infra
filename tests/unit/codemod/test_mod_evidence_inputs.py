@@ -10,13 +10,24 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, infra, m, main
+from flext_infra import c, infra, m, main, t
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import tm, u
 
 
 class TestsFlextInfraModEvidenceInputs:
     """Validate public evidence round-trips without duplicated input bodies."""
+
+    @staticmethod
+    @pytest.mark.parametrize("source", ["  Symbol  ", "block\n", "\tSymbol\t"])
+    def test_native_capture_preserves_exact_source_bytes(source: str) -> None:
+        """Whitespace belongs to the authenticated source, not normalization."""
+        capture = m.Infra.AstGrepCapture.model_validate({
+            "text": source,
+            "range": {"byteOffset": {"start": 0, "end": len(source.encode("utf-8"))}},
+        })
+        tm.that(capture.text, eq=source)
+        tm.that(capture.end_byte, eq=len(capture.text.encode("utf-8")))
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -44,6 +55,16 @@ class TestsFlextInfraModEvidenceInputs:
                     "    yield from (); import first_owner; import second_owner\n"
                 ),
                 ((4, 5), (4, 5)),
+            ),
+            (
+                (
+                    "def load():\n"
+                    "    message = 'café'; from first_owner import (\n"
+                    "        Value as selected,\n"
+                    "    )\n"
+                    "    import second_owner\n"
+                ),
+                ((4, 7), (7, 8)),
             ),
         ],
     )
@@ -97,7 +118,7 @@ class TestsFlextInfraModEvidenceInputs:
         """One invocation keeps provider bindings and local utilities separate."""
         rules: list[m.Infra.CodemodRule] = []
         rulesets: list[m.Infra.CodemodRuleset] = []
-        for provider, literal in (("left", "left"), ("right", "right")):
+        for provider in ("left", "right"):
             catalog = tmp_path / "providers" / provider
             rule_directory = catalog / c.Infra.CODEMOD_RULE_DIRS_KEY
             utility_directory = catalog / c.Infra.CODEMOD_UTIL_DIRS_KEY
@@ -119,7 +140,7 @@ class TestsFlextInfraModEvidenceInputs:
                     {
                         "id": "shared",
                         "language": "Python",
-                        "rule": {"pattern": repr(literal)},
+                        "rule": {"pattern": repr(provider)},
                     },
                 )
             )
@@ -174,8 +195,7 @@ class TestsFlextInfraModEvidenceInputs:
                 mod_workspace, fix=False, plan=plan, source_files=(source,)
             )
         )
-        console = capsys.readouterr()
-        tm.that(console.err.count(f"mod: start {c.Infra.SG} scan"), eq=1)
+        tm.that(capsys.readouterr().err.count(f"mod: start {c.Infra.SG} scan"), eq=1)
         tm.that(
             sorted((entry.rule_id, entry.text) for entry in report.entries),
             eq=[
@@ -183,6 +203,44 @@ class TestsFlextInfraModEvidenceInputs:
                 ("left-local", "'local'"),
                 ("right-global", "'right'"),
             ],
+        )
+        duplicate_rules = tuple(
+            rule.model_copy(update={"id": rules[0].id})
+            if rule.provider == rules[-1].provider
+            else rule
+            for rule in rules
+        )
+        for index, conflicting in enumerate((
+            m.Infra.CodemodRulePlan(
+                provider_order=plan.provider_order,
+                rules=duplicate_rules,
+                rulesets=plan.rulesets,
+                project_rule_ids=plan.project_rule_ids,
+            ),
+            plan.model_copy(update={"rules": duplicate_rules}),
+        )):
+            destination = tmp_path / f"conflicting-native-{index}"
+            with pytest.raises(ValueError, match="native codemod rule IDs"):
+                u.Infra.codemod_stage_scan_ruleset(conflicting, destination)
+            tm.that(destination.exists(), eq=False)
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+        resource = rules[0].resource
+        declaration = tm.ok(u.Cli.yaml_safe_load(resource))
+        tm.ok(
+            u.Cli.yaml_dump(
+                resource,
+                {**declaration, "rule": {"pattern": repr("changed")}},
+            ),
+        )
+        with pytest.raises(
+            ValueError, match="elected codemod rule changed before projection"
+        ):
+            FlextInfraModGateEngine.scan(
+                mod_workspace, fix=False, plan=plan, source_files=(source,)
+            )
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True)),
+            eq=before,
         )
 
     @staticmethod
@@ -439,7 +497,18 @@ class TestsFlextInfraModEvidenceInputs:
         )
         encoded = receipt.path.read_bytes()
         restored = m.Infra.ModScanEvidence.model_validate_json(encoded)
-        tm.that(encoded.count(b"descriptor evidence sentinel"), eq=1)
+        source_state = tm.not_none(report.entries[0].source_state)
+        content = t.Infra.STR_ADAPTER.dump_json(
+            t.Infra.STR_ADAPTER.validate_python(
+                source_state.model_dump(mode="json")["content"],
+                strict=True,
+            ),
+        )
+        tm.that(encoded.count(content), eq=1)
+        tm.that(
+            sum(state.path == source for state in restored.inputs.states),
+            eq=1,
+        )
         tm.that(u.Cli.sha256_bytes(encoded), eq=receipt.sha256)
         tm.that(restored.deferred, eq=1)
         tm.that(

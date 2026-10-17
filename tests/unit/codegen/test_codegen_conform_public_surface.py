@@ -30,6 +30,61 @@ class TestsFlextInfraCodegenConformPublicSurface:
     """The conform public surface: docs bootstrap, CLI routing, dependency scope."""
 
     @staticmethod
+    def test_dependency_apply_rejects_before_creating_target(tmp_path: Path) -> None:
+        """A prohibited partial publication never initializes its target."""
+        root = tmp_path / "uninitialized"
+        result = infra.codegen_conform(
+            u.Tests.conform_request(
+                root,
+                what=c.Infra.CodegenConformSurface.DEPENDENCIES,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            ),
+        )
+        tm.that(result.failure, eq=True)
+        tm.that(root.exists(), eq=False)
+
+    @staticmethod
+    @pytest.mark.parametrize("surface", tuple(c.Infra.CodegenConformSurface))
+    def test_request_constraints_follow_surface_contracts(
+        tmp_path: Path,
+        surface: c.Infra.CodegenConformSurface,
+    ) -> None:
+        """Every closed surface retains its typed selectors and scope boundary."""
+        module = None
+        if surface in c.Infra.FILE_ONLY_SURFACES:
+            module = (
+                "selected"
+                if surface is c.Infra.CodegenConformSurface.FACADES
+                else f"selected/{c.Infra.INIT_PY}"
+            )
+        request = m.Infra.CodegenGenerateRequest(
+            root=tmp_path,
+            what=surface,
+            module=module,
+            scope=(
+                None
+                if surface in c.Infra.FILE_ONLY_SURFACES
+                else c.Infra.CodegenConformScope.SELF
+            ),
+        )
+        restored = m.Infra.CodegenGenerateRequest.model_validate_json(
+            request.model_dump_json(),
+        )
+        tm.that(restored.what is surface, eq=True)
+        tm.that(restored.scope is request.scope, eq=True)
+        if surface in c.Infra.FILE_ONLY_SURFACES:
+            with pytest.raises(ValueError, match="requires --module"):
+                m.Infra.CodegenGenerateRequest(root=tmp_path, what=surface)
+        if surface in c.Infra.SELF_SCOPE_SURFACES:
+            with pytest.raises(ValueError, match="self repository scope"):
+                m.Infra.CodegenGenerateRequest(
+                    root=tmp_path,
+                    what=surface,
+                    scope=c.Infra.CodegenConformScope.ALL,
+                )
+
+    @staticmethod
     def test_bootstrap_kind_belongs_only_to_the_requested_target(
         infra_git_repo: Path,
     ) -> None:

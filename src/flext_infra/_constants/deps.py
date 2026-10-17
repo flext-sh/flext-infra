@@ -85,6 +85,8 @@ class FlextInfraConstantsDeps(FlextInfraConfigVocabulary):
     """Mypy option that analyzes installed packages lacking stubs or py.typed."""
     MYPY_FOLLOW_UNTYPED_IMPORTS_DEFAULT: ClassVar[bool] = False
     """Mypy's own default when neither governed policy nor project declares it."""
+    DEPENDENCY_GROUPS: ClassVar[str] = "dependency-groups"
+    """PEP 735 dependency-groups table key."""
 
 
 __all__: list[str] = ["FlextInfraConstantsDeps"]

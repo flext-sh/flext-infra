@@ -315,15 +315,14 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
         """
         pytest = config.Infra.tooling.tools.pytest
-        selected_node_ids = selection_plan.node_ids if selection_plan else None
-        selection = selected_node_ids or None
+        selection = selection_plan.node_ids if selection_plan is not None else None
         # An empty selection needs no workers, and a selection smaller than the
         # worker budget never needs more workers than items: every extra worker
         # only pays startup cost for an empty queue. Explicit serial execution
         # remains available to callers; cold and warm cache runs share the same
         # manifest.
         budget = self.parallel_worker_budget(pytest)
-        if serialize or selected_node_ids == ():
+        if serialize or selection == ():
             workers = "0"
         elif selection:
             workers = str(min(budget, len(selection)))
@@ -342,7 +341,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                 if (
                     selection_plan is None
                     or selection_plan.whole_target
-                    or selection is None
+                    or not selection
                 )
                 else tuple(selection)
             ),
@@ -355,14 +354,14 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                         FlextInfraPytestCollection.__module__,
                         f"{c.Infra.PYTEST_SELECTED_COLLECTION_OPTION}={selection_plan.manifest_path}",
                     )
-                    if selection_plan is not None and selection
+                    if selection_plan is not None
                     else ()
                 ),
                 "--testmon",
                 *(
                     ("--testmon-noselect",)
-                    if selection_plan is not None
-                    or execution_mode == c.Infra.PytestExecutionMode.FULL
+                    if execution_mode == c.Infra.PytestExecutionMode.FULL
+                    or (selection_plan is not None and bool(selection))
                     else ("--testmon-forceselect",)
                 ),
                 "--testmon-env",
@@ -470,6 +469,10 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             *trailing,
             "-n",
             workers,
+            # Why: xdist queues the shutdown marker behind each worker's
+            # pre-dispatched chunk, so the declared max-failures stop only took
+            # effect after every worker drained its assigned items at fleet
+            # scale. A one-item dispatch step makes that stop immediate.
             *pytest.parallel_arguments,
             "--benchmark-disable",
         )

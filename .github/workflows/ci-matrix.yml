@@ -26,12 +26,9 @@ permissions:
 # End SECTION: permissions
 
 # === SECTION: concurrency (managed) ===
-# Source: template (one run per workflow, event and PR number or ref). A
-# pull_request event delivered after its PR merged resolves github.ref to the
-# base branch; keyed by ref alone it joined the integration push group and
-# cancelled the post-merge run.
+# Source: template (one manual run per workflow, event and ref).
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 # End SECTION: concurrency
 

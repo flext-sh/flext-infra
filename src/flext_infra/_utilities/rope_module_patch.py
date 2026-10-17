@@ -7,8 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from functools import lru_cache
 
-from flext_infra import t
+from flext_infra import c, t
 from flext_infra._utilities._rope_analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
@@ -42,6 +43,7 @@ class FlextInfraUtilitiesRopeModulePatch:
         )
 
     @classmethod
+    @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
     def facade_letter_names_source(
         cls,
         source: str,

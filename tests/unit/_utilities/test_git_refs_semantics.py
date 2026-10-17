@@ -8,12 +8,36 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from flext_infra import c, m
 from tests import tm, u
 
 
 class TestsFlextInfraGitRefsSemantics:
     """Prove the single canonical ref owner per fact through the public facade."""
+
+    @staticmethod
+    def test_repository_requests_preserve_the_public_field_contract(
+        tmp_path: Path,
+    ) -> None:
+        """Repository fields remain required, first, and schema-identical."""
+        request = m.Infra.GitPushRequest(repo_root=tmp_path, branch="fixture-publish")
+        tm.that(
+            tuple(request.model_dump()),
+            eq=("repo_root", "remote", "branch", "source"),
+        )
+        schema = m.Infra.GitPushRequest.model_json_schema()
+        repo_schema = m.Infra.GitRepoRequest.model_json_schema()
+        tm.that(
+            schema["properties"]["repo_root"],
+            eq=repo_schema["properties"]["repo_root"],
+        )
+        tm.that(schema["required"], has="repo_root")
+        restored = type(request).model_validate_json(request.model_dump_json())
+        tm.that(restored, eq=request)
+        with pytest.raises(m.ValidationError, match="repo_root"):
+            m.Infra.GitPushRequest.model_validate({"branch": request.branch})
 
     @staticmethod
     def test_current_branch_reports_the_checked_out_branch(

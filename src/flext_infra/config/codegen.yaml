@@ -145,8 +145,16 @@ Infra:
           binary: uv
           arguments: [ --version ]
           pattern: "^uv {version} "
+      # direnv v2.38.1 publishes its Windows builds as direnv.windows-*.exe;
+      # the aqua registry entry (complete_windows_ext: false, unchanged since
+      # v2.37.0) still asks for the old extensionless name, so the default
+      # aqua resolver cannot lock windows-x64. The GitHub release backend
+      # selects assets by OS/arch; bin declares the installed executable name.
       - name: direnv
+        selector: github:direnv/direnv
         version: latest
+        form: table
+        bin: direnv
         version_probe:
           binary: direnv
           arguments: [ version ]
@@ -371,7 +379,7 @@ Infra:
       - main
       # The one versioned line this fleet integrates on (SSOT — no fallback
       # probe list; the model probes exactly this line against live Git).
-      integration_branch: "0.12.0-dev"
+      integration_branch: "upload-20261007"
     # SonarCloud automatic analysis (GitHub App) honors only the scope keys of
     # .sonarcloud.properties: sonar.sources/tests, exclusions/inclusions,
     # test.exclusions/inclusions, sourceEncoding and cpd.exclusions. Anything
@@ -654,7 +662,7 @@ Infra:
       - name: help
         description: Show the complete selector-free public interface.
       - name: setup
-        description: Provision the declared environment and hooks.
+        description: Install the declared locks, publish local runtime bindings, and provision hooks.
       - name: pre-commit
         description: Approve a commit through the CI check partition and incremental tests with the persistent testmon database.
       - name: upg
@@ -674,7 +682,7 @@ Infra:
       - name: examples
         description: Run this repository's explicitly declared public runtime examples module.
       - name: check
-        description: Run the configured non-test gates except the dedicated smells audit.
+        description: Check the configured quality gates and projection conformance without writes.
       - name: census
         description: Inventory constants, duplicate declarations and placement across every declared first-party project.
       - name: census-constants
@@ -712,13 +720,15 @@ Infra:
       - name: fmt
         description: Apply ruff format --preview and every declared formatter gate. Ruff is the rule; change code, never ruff.
       - name: fix
-        description: Apply the safe fixes of ruff check --fix --preview plus every other configured safe correction; never deletes information. Ruff is the rule; change code, never ruff.
+        description: Apply conformance repairs and the configured fixable gates.
       - name: fix-namespace
         description: Apply the canonical namespace enforcer to the selected workspace; the same relocation cascade runs as a callback phase of make mod.
       - name: fix-accessors
         description: Migrate accessor names owned by the rename catalog's origin package and every resolved consumer; homonyms are skipped with a warning; the same origin-aware rewrite runs as a callback phase of make mod.
+      - name: fix-toolchain
+        description: Reinstall one explicitly selected declared tool from its current lock, then prove the complete native toolchain.
       - name: audit
-        description: Inspect ownership, dependency, and generated-state health.
+        description: Inspect environment, dependency, and workspace ownership health.
       - name: status
         description: Report the resolved runtime and repository state.
       - name: verify-clean
@@ -740,11 +750,11 @@ Infra:
       - name: publication
         description: Publish only receipt-attested release artifacts.
       - name: gen
-        description: Regenerate every managed projection atomically.
-        produces_activation: true
+        description: Regenerate declared projections with guarded publication per participant, without repairing authored inputs or resolving locks.
+        requires_activation: false
       - name: gen-footprint
         description: Inspect the pending generation journal and declared physical effect footprint without leases, recovery, or publication.
-        produces_activation: true
+        requires_activation: false
       - name: initialize
         description: Bootstrap this target's own declaration and canonical Makefile.
       - name: project-new
@@ -871,6 +881,19 @@ Infra:
     - { name: .mcp.json, is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: CLAUDE.local.md, is_dir: false, vscode_exclude: false, watch_exclude: false }
     vscode:
+      # Portable defaults shared by attached and standalone repositories.
+      # The editor owner binds environment tokens to the checkout runtime.
+      additional_settings:
+        python-envs.workspaceSearchPaths:
+        - ./.venv
+        - ./*/.venv
+        terminal.integrated.env.linux:
+          PATH: ${workspaceFolder}/.venv/bin:${env:PATH}
+          VIRTUAL_ENV: ${workspaceFolder}/.venv
+        ruff.interpreter:
+        - ${workspaceFolder}/.venv/bin/python
+        ruff.path:
+        - ${workspaceFolder}/.venv/bin/ruff
       # Canonical .vscode/settings.json content injected with owner semantics:
       # scalar/list keys and artifact maps are exact; explicitly declared
       # non-artifact maps retain project extensions. Recursive "**" venv search
@@ -2208,5 +2231,11 @@ Infra:
         delegate: render
       - source: base/src/_typings/base.py.j2
         destination: "src/{package_name}/_typings/base.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      # New projects receive a real runtime test; subsequent generation preserves
+      # this authored file because only managed_file_specs are reprojected.
+      - source: base/tests/test_api.py.j2
+        destination: tests/test_api.py
         profiles: [ workspace, standalone ]
         delegate: render

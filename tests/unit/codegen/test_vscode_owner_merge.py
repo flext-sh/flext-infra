@@ -21,6 +21,63 @@ class TestsFlextInfraVscodeOwnerMerge:
     """Prove the vscode owner merge renders canonical settings in conform."""
 
     @staticmethod
+    def test_shared_editor_defaults_need_no_repository_override(tmp_path: Path) -> None:
+        """An absent or redundant project layer renders the same portable defaults."""
+        root = tmp_path / "standalone"
+        directory = root / c.CONFIG_DIR_NAME
+        directory.mkdir(parents=True)
+        baseline = tm.ok(FlextInfraCodegen.load_vscode_spec(root))
+        inherited = tm.ok(
+            FlextInfraCodegen.render_vscode_settings(
+                root,
+                runtime_root=root,
+                spec=baseline,
+            ),
+        )
+        tm.that(
+            baseline.additional_settings,
+            eq=config.Infra.codegen.vscode.additional_settings,
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                directory / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "vscode": {
+                                "additional_settings": dict(
+                                    baseline.additional_settings
+                                ),
+                            },
+                        },
+                    },
+                },
+            ),
+        )
+        explicit = tm.ok(FlextInfraCodegen.load_vscode_spec(root))
+        tm.that(explicit, eq=baseline)
+        tm.that(
+            tm.ok(
+                FlextInfraCodegen.render_vscode_settings(
+                    root,
+                    runtime_root=root,
+                    spec=explicit,
+                ),
+            ),
+            eq=inherited,
+        )
+        document = tm.ok(FlextInfraCodegen.parse_vscode_settings(inherited))
+        delta = tm.ok(
+            FlextInfraCodegen.vscode_declaration_delta(
+                root,
+                document,
+                spec=baseline,
+                runtime_root=root,
+            ),
+        )
+        tm.that(delta.values, eq={})
+
+    @staticmethod
     def test_full_config_loader_binds_policy_and_captured_projection(
         tmp_path: Path,
     ) -> None:
@@ -479,8 +536,10 @@ class TestsFlextInfraVscodeOwnerMerge:
         for stripped in config.Infra.codegen.vscode.stripped_keys:
             tm.that(stripped in doc, eq=False)
         search_paths_key = c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
-        tm.that(search_paths_key in config.Infra.codegen.vscode.list_settings, eq=False)
-        tm.that(search_paths_key in doc, eq=False)
+        tm.that(
+            doc[search_paths_key],
+            eq=config.Infra.codegen.vscode.additional_settings[search_paths_key],
+        )
 
     @staticmethod
     def test_merge_reaches_fixed_point_after_apply(tmp_path: Path) -> None:
@@ -648,13 +707,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         declaration = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             migrated.values["additional_settings"],
         )
-        portable_terminal = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-            declaration["terminal.integrated.env.linux"],
-        )
-        tm.that(
-            portable_terminal["VIRTUAL_ENV"],
-            eq=f"${{workspaceFolder}}/{c.Infra.ENVIRONMENT_DIRECTORY}",
-        )
+        tm.that(declaration, eq={"operator.note": doc["operator.note"]})
         standalone = tmp_path / "standalone"
         config_dir = standalone / c.CONFIG_DIR_NAME
         config_dir.mkdir(parents=True)
@@ -675,9 +728,14 @@ class TestsFlextInfraVscodeOwnerMerge:
         )
         tm.that(
             standalone_doc["terminal.integrated.env.linux"],
-            eq=portable_terminal,
+            eq=config.Infra.codegen.vscode.additional_settings[
+                "terminal.integrated.env.linux"
+            ],
         )
-        tm.that(standalone_doc["ruff.interpreter"], eq=declaration["ruff.interpreter"])
+        tm.that(
+            standalone_doc["ruff.interpreter"],
+            eq=config.Infra.codegen.vscode.additional_settings["ruff.interpreter"],
+        )
         tm.that(standalone_doc["operator.note"], eq=doc["operator.note"])
         tm.that(
             path.read_text(encoding=c.DEFAULT_ENCODING),

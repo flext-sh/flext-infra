@@ -80,6 +80,22 @@ class FlextInfraConstantsRope:
     ROPE_PYOBJECTS_MODULE: ClassVar[str] = "rope.base.pyobjects"
     "Rope module owning the native semantic object classes."
 
+    PYDANTIC_MODEL_IDENTITY: ClassVar[str] = "pydantic.BaseModel"
+    "Qualified identity every relocated payload model must inherit."
+
+    PYDANTIC_SETTINGS_IDENTITY: ClassVar[str] = "pydantic_settings.BaseSettings"
+    "Qualified identity that excludes a settings model from payload relocation."
+
+    TYPING_GUARD_IDENTITY: ClassVar[str] = "typing.TYPE_CHECKING"
+    "Qualified identity of the only guard that keeps a guarded import importable."
+
+    DECLARATION_RELOCATION_IDENTITIES: ClassVar[t.VariadicTuple[str]] = (
+        PYDANTIC_MODEL_IDENTITY,
+        PYDANTIC_SETTINGS_IDENTITY,
+        TYPING_GUARD_IDENTITY,
+    )
+    "Identities declaration relocation resolves; its planning epoch captures them."
+
     ROPE_IGNORED_RESOURCES: ClassVar[t.VariadicTuple[str]] = (
         ".venv",
         "venv",

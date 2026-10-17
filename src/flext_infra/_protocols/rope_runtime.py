@@ -39,6 +39,10 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     class RopeRoot(RopeResource, Protocol):
         """Folder resource with the SDK's child lookup contract."""
 
+        def get_children(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeResource]: ...
+
         def get_child(
             self,
             name: str,
@@ -321,7 +325,18 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def pycore(self) -> FlextInfraProtocolsRopeRuntime.RopePyCore: ...
 
     @runtime_checkable
-    class RopeProject(Protocol):
+    class RopeModuleFinder(Protocol):
+        """Native relative module lookup shared by every Rope project flavour."""
+
+        def find_relative_module(
+            self,
+            modname: str,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot,
+            level: int,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
+
+    @runtime_checkable
+    class RopeProject(RopeModuleFinder, Protocol):
         """Rope project shape used by flext-infra."""
 
         @property
@@ -334,6 +349,11 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self,
             resource_name: str,
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource: ...
+
+        def get_folder(
+            self,
+            path: str,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
 
         def get_pymodule(
             self,
@@ -352,13 +372,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self,
             modname: str,
             folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
-        ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
-
-        def find_relative_module(
-            self,
-            modname: str,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot,
-            level: int,
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
 
         def get_module(
@@ -506,22 +519,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         matched_count: int
         admitted_count: int
-
-        def __init__(
-            self,
-            project: FlextInfraProtocolsRopeRuntime.RopeProject,
-            pattern: str,
-            goal: str,
-            *,
-            args: t.MappingKV[str, str | tuple[str, t.StrSequence]] | None = None,
-            imports: t.StrSequence | None = None,
-            wildcards: t.MappingKV[
-                str,
-                FlextInfraProtocolsRopeRuntime.RopeWildcard[str]
-                | FlextInfraProtocolsRopeRuntime.RopeWildcard[t.StrSequence],
-            ]
-            | None = None,
-        ) -> None: ...
 
         def get_changes(
             self,

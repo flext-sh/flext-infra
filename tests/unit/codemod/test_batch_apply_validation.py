@@ -271,7 +271,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             actionable=True,
             classification=c.Infra.ModScanFindingClass.ACTIONABLE,
         )
-        return m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
+        return m.Infra.ModOccurrenceReport(
             files=frozenset({path}),
             entries=(finding,),
         )

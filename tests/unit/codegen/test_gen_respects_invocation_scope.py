@@ -1,8 +1,8 @@
 """Generation uses one root and one owner for the complete declared composition.
 
-The conform owner receives ``PROJECT_ROOT`` with explicit ``ALL`` scope so root
-generation includes every declared member. Other writers must not independently
-escalate to ``REPOSITORY_ROOT`` or duplicate the conform transaction.
+The generation owner receives ``PROJECT_ROOT`` and resolves the invocation scope.
+Other writers must not independently escalate to ``REPOSITORY_ROOT`` or duplicate
+the generation transaction.
 
 Every contract is asserted on the Makefile the public conform owner renders
 for a workspace fixture composing one member.
@@ -98,22 +98,14 @@ class TestsFlextInfraGenRespectsInvocationScope:
         tm.that(mixed, eq={})
 
     def test_gen_has_one_codegen_owner(self, rendered_makefile: str) -> None:
-        """The gen recipe delegates once to the conform owner.
-
-        Apply verifies its own fixed point inside the conform transaction, so a
-        second external check invocation would duplicate ownership.
-        """
+        """The gen recipe delegates once to the generation owner."""
         tm.that(rendered_makefile, lacks="CODEGEN_PROJECT_ARGS")
         body = self._recipe_bodies(rendered_makefile)["_builtin_gen_all"]
-        conform_lines = [line for line in body if "codegen conform" in line]
+        generation_lines = [line for line in body if "codegen generate" in line]
 
-        tm.that(len(conform_lines), eq=1)
-        tm.that(conform_lines[0], has="--mode apply")
-        tm.that(conform_lines[0], has='--root "$(PROJECT_ROOT)"')
-        tm.that(
-            conform_lines[0],
-            has=f"--scope {c.Infra.CodegenConformScope.ALL.value}",
-        )
+        tm.that(len(generation_lines), eq=1)
+        tm.that(generation_lines[0], has='--root "$(PROJECT_ROOT)"')
+        tm.that(generation_lines[0], has='--scope "$$scope"')
         tm.that(any("deps modernize" in line for line in body), eq=False)
         tm.that(any("deps extra-paths" in line for line in body), eq=False)
 
@@ -135,8 +127,12 @@ class TestsFlextInfraGenRespectsInvocationScope:
         tm.that(any("codegen conform" in line for line in init_lines), eq=False)
         rendered_lines = rendered_makefile.splitlines()
         for verb in config.Infra.codegen.make.verbs:
-            if verb.name in {"setup", "upg", "help", "clean"} or (
-                verb.profiles and c.Infra.MakeProfile.WORKSPACE not in verb.profiles
+            if (
+                verb.name in {"setup", "upg", "help", "clean"}
+                or (
+                    verb.profiles and c.Infra.MakeProfile.WORKSPACE not in verb.profiles
+                )
+                or not verb.requires_activation
             ):
                 continue
             activation_target = f"_activated-{verb.name}"
@@ -154,24 +150,23 @@ class TestsFlextInfraGenRespectsInvocationScope:
                     f"observed routes={activation_routes!r}"
                 ),
             )
-            if not verb.produces_activation:
-                expected_invocation = (
-                    f'direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) {activation_target}'
-                )
-                activation_commands = tuple(
-                    line.strip()
-                    for line in rendered_lines
-                    if line.startswith("\t") and activation_target in line
-                )
-                tm.that(
-                    any(expected_invocation in line for line in activation_commands),
-                    eq=True,
-                    msg=(
-                        f"verb={verb.name!r}: expected invocation "
-                        f"{expected_invocation!r}; "
-                        f"observed commands={activation_commands!r}"
-                    ),
-                )
+            expected_invocation = (
+                f'direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) {activation_target}'
+            )
+            activation_commands = tuple(
+                line.strip()
+                for line in rendered_lines
+                if line.startswith("\t") and activation_target in line
+            )
+            tm.that(
+                any(expected_invocation in line for line in activation_commands),
+                eq=True,
+                msg=(
+                    f"verb={verb.name!r}: expected invocation "
+                    f"{expected_invocation!r}; "
+                    f"observed commands={activation_commands!r}"
+                ),
+            )
         tm.that(rendered_makefile, has="_builtin-initialize: _builtin_gen_init")
         tm.that(rendered_makefile, has="ifneq ($(filter initialize,$(MAKECMDGOALS)),)")
         tm.that(rendered_makefile, has="GEN_INIT_ONLY := Y")

@@ -27,6 +27,50 @@ class TestsFlextInfraRopeRuntimePymodule:
     """Validate the module predicate over rope modules and packages."""
 
     @staticmethod
+    def test_regular_package_precedes_namespace_in_captured_sources(
+        tmp_path: Path,
+    ) -> None:
+        """The same source package wins before and after capturing its files."""
+        roots = (tmp_path / "first", tmp_path / "second")
+        namespace, package = (root / "provider" for root in roots)
+        namespace.mkdir(parents=True)
+        package.mkdir(parents=True)
+        (namespace / "portion.py").write_text(
+            "VALUE = 1\n", encoding=c.DEFAULT_ENCODING
+        )
+        initializer = package / c.Infra.INIT_PY
+        source = "class PublishedContract:\n    pass\n"
+        initializer.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with (
+            closing(
+                u.Infra.new_project(
+                    str(tmp_path),
+                    ropefolder="",
+                    save_objectdb=False,
+                    filter_lists=((), tuple(root.name for root in roots), ()),
+                )
+            ) as original,
+            closing(u.Infra.snapshot_project(original, {})) as captured,
+        ):
+            tm.that(
+                original
+                .get_module("provider")
+                .get_attribute("PublishedContract")
+                .get_object()
+                .get_name(),
+                eq="PublishedContract",
+            )
+            initializer.unlink()
+            tm.that(
+                captured
+                .get_module("provider")
+                .get_attribute("PublishedContract")
+                .get_object()
+                .get_name(),
+                eq="PublishedContract",
+            )
+
+    @staticmethod
     def test_snapshot_project_uses_only_captured_sources(tmp_path: Path) -> None:
         """A later disk edit cannot change the closed Rope source view."""
         captured = tmp_path / "captured.py"

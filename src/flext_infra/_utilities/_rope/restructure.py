@@ -22,15 +22,14 @@ class FlextInfraRopeRestructure(Restructure):
         """Delegate every alternative to Rope's exact native identity matcher."""
 
         def __init__(self, project: p.Infra.RopeProject) -> None:
-            wildcard: p.Infra.RopeWildcard[str] = DefaultWildcard(project)
-            self._matches = wildcard.matches
+            self._wildcard: p.Infra.RopeWildcard[str] = DefaultWildcard(project)
 
         @staticmethod
         def get_name() -> str:
             return "identity_choices"
 
         def matches(self, suspect: p.AttributeProbe, arg: t.StrSequence) -> bool:
-            return any(self._matches(suspect, choice) for choice in arg)
+            return any(self._wildcard.matches(suspect, choice) for choice in arg)
 
     def __init__(
         self,
@@ -44,8 +43,7 @@ class FlextInfraRopeRestructure(Restructure):
             else ("identity_choices", tuple(value))
             for name, value in request.arguments.items()
         }
-        native: p.Infra.RopeRestructure = super()
-        native.__init__(
+        super().__init__(
             project,
             request.pattern,
             request.goal,
@@ -87,7 +85,10 @@ class FlextInfraRopeRestructure(Restructure):
         )
         self.matched_count += len(matches)
         self.admitted_count += len(selected)
-        return super()._compute_changes(selected, pymodule)
+        computer: t.Infra.RopeChangeComputer = super()._compute_changes(
+            selected, pymodule
+        )
+        return computer
 
     @override
     def _add_imports(
@@ -101,6 +102,9 @@ class FlextInfraRopeRestructure(Restructure):
         Returns:
             Source emitted by the native import manager.
 
+        Raises:
+            TypeError: The native import manager did not emit source text.
+
         """
         selected = imports
         if isinstance(self.import_policy, Mapping):
@@ -111,7 +115,11 @@ class FlextInfraRopeRestructure(Restructure):
                 for binding, declaration in self.import_policy.items()
                 if binding not in names
             )
-        return super()._add_imports(resource, source, list(selected))
+        emitted = super()._add_imports(resource, source, list(selected))
+        if not isinstance(emitted, str):
+            message = "Rope import manager did not emit source text"
+            raise TypeError(message)
+        return emitted
 
 
 __all__: list[str] = ["FlextInfraRopeRestructure"]

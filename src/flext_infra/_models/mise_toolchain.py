@@ -7,28 +7,20 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
 from flext_core import m
 
 from flext_infra import c, t
+from flext_infra._models.mise_toolchain_base import FlextInfraModelsMiseToolchainBase
 
 
 class FlextInfraModelsMiseToolchain:
     """Mise toolchain and beads configuration models."""
 
-    class _ConfigContract(m.ContractModel):
-        """Private declarative base for schema-loaded codegen records."""
-
-        model_config = m.ConfigDict(
-            strict=False,
-            frozen=True,
-            extra="forbid",
-            str_strip_whitespace=False,
-        )
-
-    class BeadsToolSpec(_ConfigContract):
+    class BeadsToolSpec(FlextInfraModelsMiseToolchainBase):
         """Beads ledger and Gas City projection contract."""
 
         endpoint_origin: Annotated[
@@ -100,7 +92,7 @@ class FlextInfraModelsMiseToolchain:
                 raise ValueError(msg)
             return self
 
-    class MiseToolVersionProbe(_ConfigContract):
+    class MiseToolVersionProbe(FlextInfraModelsMiseToolchainBase):
         """Declared command whose output proves the provisioned tool version.
 
         The setup reality proof resolves ``binary`` through ``mise which``,
@@ -188,7 +180,7 @@ class FlextInfraModelsMiseToolchain:
                     raise ValueError(msg_0)
             return self
 
-    class MiseHttpToolOptions(_ConfigContract):
+    class MiseHttpToolOptions(FlextInfraModelsMiseToolchainBase):
         """Native HTTP backend declarations, projected without URL inference."""
 
         url: Annotated[
@@ -235,7 +227,7 @@ class FlextInfraModelsMiseToolchain:
             m.Field(description="Native install-relative executable directory"),
         ] = None
 
-    class MisePostinstallOptions(_ConfigContract):
+    class MisePostinstallOptions(FlextInfraModelsMiseToolchainBase):
         """Native per-tool postinstall contract, including warm installation policy."""
 
         run: Annotated[t.NonEmptyStr, m.Field(description="Native postinstall command")]
@@ -244,7 +236,7 @@ class FlextInfraModelsMiseToolchain:
             m.Field(description="Run on every installation when explicitly declared"),
         ] = None
 
-    class MiseToolEntry(_ConfigContract):
+    class MiseToolEntry(FlextInfraModelsMiseToolchainBase):
         """One declarative fleet tool rendered into generated ``.mise.toml``.
 
         The entry table is the single toolchain surface: per-tool YAML keys,
@@ -288,14 +280,20 @@ class FlextInfraModelsMiseToolchain:
                 ),
             ),
         ] = None
+        bin: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description="Native backend executable name for single-file artifacts"
+            ),
+        ] = None
         form: Annotated[
             Literal["scalar", "table"],
             m.Field(
                 default="scalar",
                 description=(
                     "Rendered [tools] shape; the projection byte contract. "
-                    "scalar (default) is the bare assignment, table carries "
-                    "version_prefix"
+                    "scalar (default) is the bare assignment; table carries "
+                    "native backend options"
                 ),
             ),
         ] = "scalar"
@@ -342,7 +340,39 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
 
-    class ToolchainSpec(_ConfigContract):
+    class MiseToolchainProofOptions(m.FrozenModel):
+        """Validated immutable inputs for one native toolchain proof."""
+
+        entry: Annotated[
+            FlextInfraModelsMiseToolchain.MiseToolEntry,
+            m.Field(description="Declared tool entry currently under proof."),
+        ]
+        lock: Annotated[
+            t.JsonMapping,
+            m.Field(description="Authenticated Mise lock mapping."),
+        ]
+        platform_name: Annotated[
+            str,
+            m.Field(description="Resolved platform identity of the running host."),
+        ]
+        mise_binary: Annotated[
+            Path,
+            m.Field(
+                description="Managed Mise executable answering read-only queries.",
+            ),
+        ]
+        declared: Annotated[
+            t.SequenceOf[FlextInfraModelsMiseToolchain.MiseToolEntry],
+            m.Field(
+                description="All declared tool entries electable as probe owners.",
+            ),
+        ]
+        proven: Annotated[
+            frozenset[str],
+            m.Field(description="Selectors already proven before this entry."),
+        ]
+
+    class ToolchainSpec(FlextInfraModelsMiseToolchainBase):
         """Language-runtime and native-tool versions shared by generated projects.
 
         Native tools use moving ``latest`` selectors; Python retains its
@@ -762,7 +792,7 @@ class FlextInfraModelsMiseToolchain:
                 raise ValueError(msg)
             return self
 
-    class BeadsEndpointSpec(_ConfigContract):
+    class BeadsEndpointSpec(FlextInfraModelsMiseToolchainBase):
         """Static network endpoint projected into Beads configuration."""
 
         host: Annotated[t.NonEmptyStr, m.Field(description="Beads server host")]

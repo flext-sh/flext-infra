@@ -29,6 +29,12 @@ nesting step keeps `get_type_hints` bound to the moved class. Consumers used onl
 type positions participate in the same plan. Ordinary literals, `Literal` values,
 `Annotated` metadata, and unrelated homonyms retain their values.
 
+`contracts.yaml` here holds universal rules only. A governed repository declares
+rules about its own symbols in `config/rules/rope/contracts.yaml` under its root;
+the catalogue composes packaged rules first, then that overlay, and a duplicate
+rule id fails loud. A packaged rule naming one project's identity would fail every
+consumer that cannot import it, so project rules never live here.
+
 The contract-normalization phase consumes its `phase` rows in `contracts.yaml`
 through the canonical semantic-phase enum; constant-consumers consumes its own
 rows through the same typed catalog and native planner. Unknown phases fail

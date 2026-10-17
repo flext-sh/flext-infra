@@ -350,6 +350,8 @@ class FlextInfraCodegenStaging:
                     before=before,
                     replacement=replacement,
                     source_states=file_plan.source_states,
+                    source_directories=file_plan.source_directories,
+                    source_query_topology=file_plan.source_query_topology,
                     tracking=file_plan.tracking,
                     index_before=file_plan.index_before,
                     tracking_dependencies=file_plan.tracking_dependencies,

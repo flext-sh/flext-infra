@@ -144,6 +144,7 @@ class TestsFlextInfraRootArtifactOwnership:
                     'version = "0.1.0"\n'
                     f'authors = [{{name = "{project.author_name}", '
                     f'email = "{project.author_email}"}}]\n'
+                    f'license = "{project.license}"\n'
                     'requires-python = "'
                     f'{config.Infra.codegen.toolchain.python_required_version}"\n'
                     f'dependencies = ["{u.Tests.flext_source(project.upstream)}"]\n'
@@ -213,6 +214,7 @@ class TestsFlextInfraRootArtifactOwnership:
                     'requires-python = "'
                     f'{config.Infra.codegen.toolchain.python_required_version}"\n'
                     'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+                    f'license = "{u.Tests.project_spec(dist).license}"\n'
                     'dependencies = ["flext-core>=0.1.0"]\n',
                 ),
             )

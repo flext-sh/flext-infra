@@ -60,6 +60,33 @@ declaration/dependency owner, not through local-import demotion, fallback,
 compatibility exports or suppressions. Generated surfaces change only through
 their source and canonical regeneration.
 
+Family-base import enforcement covers both `from` imports and module imports,
+including aliases and imports inside `TYPE_CHECKING`. The semantic import owner
+still elects the package, family base and sanctioned compose modules; native
+matching preserves the family's declared split-parts imports.
+
+Single-class publication excludes the configured test-suite scopes that forbid
+suite exports. Importable source classes still declare their publication; the
+same native AST command verifies both contracts.
+
+Rule catalogs, fixture staging and snapshot reconciliation consume YAML streams
+through `u.Cli.yaml_parse_documents`. Document separators and literal-block
+chomping belong to that shared parser; Infra does not split or normalize their
+source text before parsing.
+
+Captured library, project and local configuration layers use the strict YAML
+source's list-aware merge. Project tool additions retain the base toolchain.
+A projected edit replaces its selected values inside one layer before those
+layers are composed, so a replacement does not retain the previous declaration.
+
+`make fix-toolchain` repairs one explicitly selected native installation through
+Mise, using the exact version and checksum authority of the current lock. Set
+`FLEXT_INFRA_TOOLCHAIN_REPAIR_TOOL` to a tool name already declared by the project.
+Missing or undeclared selections fail before installation. The operation
+revalidates its captured configuration and lock, streams the native installer
+output, then invokes the existing complete toolchain reality proof. Normal
+setup, upgrade and generation do not force reinstallation.
+
 Before accepting a phase, retain evidence of complete consumer rewiring and
 superseded-path removal, domain-correct reuse and net-negative simplification
 without functional reduction. Global make-check/verification-loop own runtime,
@@ -67,12 +94,30 @@ native gates and receipt requirements. A successful publication is not proof of
 lint/type/test success or idempotence: run the applicable gates and repeated
 gen/fix/fmt on the unchanged candidate, and report failed or unexecuted scopes.
 
+Configuration vocabulary belongs to the bootstrap-safe `_constants/config.py`
+owner, exposed through `c.Infra`; schema modules validate that vocabulary rather
+than redeclaring it. Configurable values still come from the effective config or
+settings spec. Conform surface groups share their canonical declarations, and
+already validated request enums pass through planning without reconstruction.
+Dependency-only APPLY is rejected before target initialization; CHECK remains an
+observation of published evidence. YAML rule streams use the shared CLI parser
+so document separators never change multiline fixture contents.
+
 Protected-edit snapshots reobserve the native checker on every call. They do not
 reuse Python-level receipts keyed only by source bytes and gate names: those keys
 cannot authenticate effective configuration, tool runtime or imported dependencies.
 Native checker caches remain owned by their existing runtime/cache owners. Native
 execution and malformed-report failures stay separate from diagnostic occurrences;
 neither a repeated failure nor an unchanged finding count proves validation success.
+
+Facade projection composes constants, utilities and models from the exports and
+base order declared in their configured private family. Protocol projection keeps
+its consumer-based ownership resolution. The utility path delegates directly to
+the declaration planner. Static and runtime consumer checks retain their own
+import-failure verdicts.
+Rendering a facade returns source only. Package-form imports require publishing
+the owning family's initializer through the existing lazy-init planner before a
+fresh consumer loads the generated facade.
 
 ## New projects
 
@@ -93,16 +138,16 @@ belongs to the generated repository.
 ## Environment activation
 
 The `make setup` contract includes approving the `.envrc` with `direnv allow`.
-Operational Make verbs activate that environment before handlers and hooks, except the
-activation producer declared in `make.verbs`. For `gen`, the pin and the provisioned
-physical environment are required before `pre-gen` and the selected handler. The default
-handler runs one conform transaction, which includes generating the `.envrc`; a declared
-`_custom-gen` still replaces that handler. Only then does Make activate the generated
-environment and run `post-gen`. A producer or activation failure prevents the later hook
-and keeps the command red, so `make gen` can repair a broken generated activation
-without another writer outside the journal. Initial provisioning remains the
-responsibility of `make setup`. Real commands work without wrapping each call in
-`direnv exec`.
+Make verbs declare their activation requirement in `make.verbs`; activation is
+required by default before handlers and hooks. Generation and its footprint
+inspection consume the declared physical interpreter and verify its environment
+directly, so they can repair generated activation inputs. The `gen` handler
+delegates to the existing `codegen generate` projection owner, including its
+guarded `.envrc` publication. A declared `_custom-gen` replaces that handler.
+Each invocation runs its pre hook, handler and post hook once, and a failure
+prevents later effects. Initial provisioning remains the responsibility of
+`make setup`. Public Make commands own the activation boundary and can be
+invoked directly.
 
 Library defaults resolve through the concrete config class's import-package resource,
 not its declaration file's depth or the checkout's `config/` directory. Editable and
@@ -182,6 +227,13 @@ and runtime inputs. It accepts source-backed generated functions without interpr
 their factory grammar or replaying imports, decorators, class bodies or callbacks in
 that process. An authored-code mismatch proved directly from pinned source can fail
 before the child import.
+
+Provider election includes the installed runtime dependency closure of the
+observer SDK and the selected producers. Active installed requirements determine
+that closure. Native distribution metadata supplies import names; editable
+providers retain their PEP 610 and project-declaration proof. The same physical
+ownership and source checks apply to these providers before the isolated import
+loads their package initializers.
 
 Full authentication imports the elected sources in an isolated native interpreter.
 The child records the physical source receipts used by that import and passively
@@ -442,6 +494,13 @@ locks and do not create missing ones. External consumer propagation runs its
 declared generation and repair verbs; dependency resolution requires a separate,
 explicit `make upg` at the selected workspace or standalone owner.
 Git dependencies follow their declared integration branches, and `APPLY` stays removed.
+
+The toolchain elects the native `github:direnv/direnv` backend for Direnv's
+official release assets. This keeps platform selection with Mise and the
+publisher rather than an intermediate Aqua descriptor that omits the Windows
+executable suffix. The `latest` selector, release cooldown and platform matrix
+remain declared by the same toolchain owner. Qualify changes through native
+generation, `make upg` and the locked-install checks.
 
 One `make upg` run provisions the frozen producer before corrective pyproject
 projection, without requiring final runtime admission. The elected runtime

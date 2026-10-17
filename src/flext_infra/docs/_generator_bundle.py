@@ -15,7 +15,6 @@ from flext_infra.codegen import (
     FlextInfraCodegenPreconditions,
     FlextInfraMiseArtifactsVerification,
 )
-from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -41,74 +40,25 @@ type _DocsScopeCaptures = t.Triple[
 class FlextInfraDocGeneratorBundleMixin:
     """Freeze one render and every authenticated input before planning."""
 
-    @staticmethod
-    def _producer_covers_entrypoints(
-        producer: m.Infra.CodegenPhaseAnalysis,
-        entrypoint: p.AttributeProbe,
-        collaborators: t.SequenceOf[p.AttributeProbe],
-    ) -> p.Result[bool]:
-        """Require every actual operation to belong to the retained native epoch.
-
-        Returns:
-            Whether the original producer covers the elected operations.
-
-        """
-        selection = FlextInfraWorkspaceNativeReference.producer_selections(
-            entrypoint, collaborators
-        )
-        if selection.failure:
-            return r[bool].from_failure(selection)
-        reference = producer.generator_reference
-        if reference is None or any(
-            item not in reference.modules for item in selection.value
-        ):
-            return r[bool].fail(
-                "docs producer does not authenticate its actual entrypoints"
-            )
-        return FlextInfraCodegenPreconditions.reference_current(reference)
-
     @classmethod
     def _prepare_batches(
         cls,
         request: m.Infra.DocsGenerateRequest,
         *,
-        entrypoint: p.AttributeProbe,
-        collaborators: t.SequenceOf[p.AttributeProbe] = (),
-        producer: m.Infra.CodegenPhaseAnalysis | None = None,
         publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
         | None = None,
     ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
-        """Pin the producer eagerly and capture each scope after its predecessor.
+        """Capture each scope's consumed sources after its predecessor.
 
         Args:
             request: The documentation generation request containing repository root and
               output directory.
-            entrypoint: Public generation operation whose producer is authenticated.
-            collaborators: Actual public operations participating in the invocation.
-            producer: Original authenticated producer retained by the invocation.
             publication_receipts: Actual outcomes accumulated by preceding batches.
 
         Returns:
             The iterator over independently captured documentation scopes.
 
         """
-        if producer is None:
-            captured_producer = FlextInfraCodegenPreconditions.capture_producer(
-                request.repository_root,
-                entrypoint=entrypoint,
-                collaborators=collaborators,
-            )
-            if captured_producer.failure:
-                return iter((
-                    r[m.Infra.DocsGenerationBundle].from_failure(captured_producer),
-                ))
-            producer = captured_producer.value
-        else:
-            coverage = cls._producer_covers_entrypoints(
-                producer, entrypoint, collaborators
-            )
-            if coverage.failure:
-                return iter((r[m.Infra.DocsGenerationBundle].from_failure(coverage),))
         roots = u.Infra.docs_repository_roots(request.repository_root)
         if roots.failure:
             return iter((r[m.Infra.DocsGenerationBundle].from_failure(roots),))
@@ -131,7 +81,6 @@ class FlextInfraDocGeneratorBundleMixin:
             root,
             declaration.value,
             (selected, aggregate),
-            producer=producer,
             publication_receipts=publication_receipts,
         )
 
@@ -145,7 +94,6 @@ class FlextInfraDocGeneratorBundleMixin:
             t.VariadicTuple[m.Infra.DocScope],
         ],
         *,
-        producer: m.Infra.CodegenPhaseAnalysis,
         publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
         | None = None,
     ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
@@ -155,7 +103,6 @@ class FlextInfraDocGeneratorBundleMixin:
             root: The authenticated repository root.
             declaration: The frozen ``.gitmodules`` file state.
             scopes: Selected output scopes and the aggregate project catalog.
-            producer: Original authenticated producer retained by the invocation.
             publication_receipts: Actual outcomes accumulated by preceding batches.
 
         Yields:
@@ -172,16 +119,9 @@ class FlextInfraDocGeneratorBundleMixin:
                 continue
             outputs = FlextInfraMiseArtifactsVerification.publication_outputs_current(
                 tuple(publication_receipts or ()),
-                reference=producer.generator_reference,
             )
             if outputs.failure:
                 yield r[m.Infra.DocsGenerationBundle].from_failure(outputs)
-                return
-            current = FlextInfraCodegenPreconditions.producer_current(
-                producer, outputs=outputs.value
-            )
-            if current.failure:
-                yield r[m.Infra.DocsGenerationBundle].from_failure(current)
                 return
             captured = cls._scope_batch_captures(root, declaration, scope, aggregate)
             if captured.failure:
@@ -222,7 +162,6 @@ class FlextInfraDocGeneratorBundleMixin:
                     scope.path if scope.name != c.Infra.RK_ROOT else None,
                     directories,
                 ),
-                producer=producer,
             )
 
     @classmethod
@@ -339,45 +278,13 @@ class FlextInfraDocGeneratorBundleMixin:
     def _prepare_request(
         cls,
         request: m.Infra.DocsGenerateRequest,
-        *,
-        entrypoint: p.AttributeProbe,
-        collaborators: t.SequenceOf[p.AttributeProbe] = (),
-        producer: m.Infra.CodegenPhaseAnalysis | None = None,
     ) -> p.Result[m.Infra.DocsGenerationBundle]:
-        """Render one canonical docs artifact inventory from the frozen snapshot.
-
-        Publication admits sources and topology once per owning scope batch.
+        """Render one inventory from its consumed source and topology snapshot.
 
         Returns:
-            The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.
+            The captured render bundle, or its original input or rendering failure.
 
         """
-        if producer is None:
-            captured_producer = FlextInfraCodegenPreconditions.capture_producer(
-                request.repository_root,
-                entrypoint=entrypoint,
-                collaborators=collaborators,
-            )
-            if captured_producer.failure:
-                return r[m.Infra.DocsGenerationBundle].from_failure(captured_producer)
-            producer = captured_producer.value
-        else:
-            coverage = cls._producer_covers_entrypoints(
-                producer, entrypoint, collaborators
-            )
-            if coverage.failure:
-                return r[m.Infra.DocsGenerationBundle].from_failure(coverage)
-            current = FlextInfraCodegenPreconditions.producer_current(producer)
-            if current.failure:
-                return r[m.Infra.DocsGenerationBundle].from_failure(current)
-        return cls._captured_request_bundle(request, producer)
-
-    @classmethod
-    def _captured_request_bundle(
-        cls,
-        request: m.Infra.DocsGenerateRequest,
-        producer: m.Infra.CodegenPhaseAnalysis,
-    ) -> p.Result[m.Infra.DocsGenerationBundle]:
         started_at = perf_counter()
         sources = cls._discovered_sources(request, started_at)
         if sources.failure:
@@ -404,7 +311,6 @@ class FlextInfraDocGeneratorBundleMixin:
             repository_root,
             rendered.value,
             (source_states, roots.value, None, directories.value),
-            producer=producer,
         )
 
     @classmethod
@@ -700,8 +606,6 @@ class FlextInfraDocGeneratorBundleMixin:
         repository_root: Path,
         rendered: list[_DocsScopeArtifacts],
         sources: _DocsBundleSources,
-        *,
-        producer: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[m.Infra.DocsGenerationBundle]:
         """Validate the rendered docs generation bundle.
 
@@ -710,7 +614,6 @@ class FlextInfraDocGeneratorBundleMixin:
             rendered: The list of rendered documentation scope artifacts.
             sources: The captured source states, roots, scope and directories
                 of the documentation inventory.
-            producer: The captured producer analysis of the generation.
 
         Returns:
             The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.
@@ -724,7 +627,6 @@ class FlextInfraDocGeneratorBundleMixin:
             m.Infra.DocsGenerationBundle,
             {
                 "scopes": tuple(normalized.value),
-                "producer": producer,
                 "source_states": source_states,
                 "source_roots": source_roots,
                 "source_scope": source_scope,

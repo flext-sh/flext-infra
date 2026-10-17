@@ -346,7 +346,7 @@ class FlextInfraModGateEngine:
         for directory in (*directories.rule_dirs, *directories.util_dirs):
             source_rules.update(directory.rglob(f"*{c.Infra.CODEMOD_RULE_SUFFIX}"))
         for rule in sorted(source_rules):
-            documents = u.Infra.parse_yaml_documents(
+            documents = u.Cli.yaml_parse_documents(
                 u.Cli.files_read_text(rule).unwrap()
             ).unwrap()
             if len(documents) <= 1:
@@ -447,7 +447,6 @@ class FlextInfraModGateEngine:
             (str(binary.value), *command[1:]),
             stdout_file,
             cwd=root,
-            timeout=c.Infra.TIMEOUT_SHORT,
             options=m.Cli.ProcessOptions(stderr_file=stderr_file),
         )
         if run.failure:
@@ -1300,13 +1299,23 @@ class FlextInfraModGateEngine:
             state.path for state in report.source_states
         ):
             return r[bool].fail("native scan source membership changed")
-        current = u.Infra.codemod_rule_plan(
-            root, rule_ids=tuple(rule.id for rule in plan.rules)
-        )
-        if current.failure:
-            return r[bool].from_failure(current)
-        if current.value != plan or cls._catalog_paths(root, current.value) != tuple(
-            state.path for state in report.catalog_states
+        current: dict[tuple[str, str], m.Infra.CodemodRule] = {}
+        for ruleset in plan.rulesets:
+            catalog = u.Infra.codemod_catalog_rules(ruleset.provider, ruleset.config)
+            if catalog.failure:
+                return r[bool].from_failure(catalog)
+            for rule in catalog.value:
+                if rule.id not in ruleset.rule_ids:
+                    continue
+                key = (rule.provider, rule.id)
+                if key in current and current[key] != rule:
+                    return r[bool].fail("native scan catalog membership changed")
+                current[key] = rule
+        if (
+            len(current) != len(plan.rules)
+            or any(current.get((rule.provider, rule.id)) != rule for rule in plan.rules)
+            or cls._catalog_paths(root, plan)
+            != tuple(state.path for state in report.catalog_states)
         ):
             return r[bool].fail("native scan catalog membership changed")
         return u.Cli.atomic_verify_binary_file_states(report.catalog_states)

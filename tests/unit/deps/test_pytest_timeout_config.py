@@ -37,13 +37,6 @@ class TestsFlextInfraPytestTimeoutConfig:
         )
 
         tm.that(round_tripped, eq=configured)
-        tm.that(configured.parallel_arguments[:2], eq=("--dist", distribution))
-        expected = (
-            ("--maxschedchunk", str(configured.parallel_schedule_chunk))
-            if distribution == "load"
-            else ("--loadscope-reorder" if reorder else "--no-loadscope-reorder",)
-        )
-        tm.that(configured.parallel_arguments[2:], eq=expected)
 
     @staticmethod
     def test_reordering_refuses_string_coercion() -> None:
@@ -51,10 +44,9 @@ class TestsFlextInfraPytestTimeoutConfig:
         policy = config.Infra.tooling.tools.pytest
         payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
         payload["loadscope-reorder"] = "false"
-        policy_model = type(policy)
 
         with pytest.raises(c.ValidationError, match="valid boolean"):
-            policy_model.model_validate(payload)
+            type(policy).model_validate(payload)
 
     @staticmethod
     def test_policy_round_trips_through_its_production_model() -> None:

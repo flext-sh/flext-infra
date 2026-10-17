@@ -125,11 +125,10 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             Path,
             m.Field(description="Explicit runtime binary directory owning the scanner"),
         ]
-        sources: Annotated[
+        source: Annotated[
             t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
             m.Field(
-                min_length=1,
-                description="Production trees the declared wheel ships, one per root",
+                min_length=1, description="Production trees consumed by the scanner"
             ),
         ]
         native: Annotated[

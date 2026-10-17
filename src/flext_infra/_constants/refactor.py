@@ -121,12 +121,14 @@ class FlextInfraConstantsRefactor:
         NON_ACTIONABLE_WITH_FIX = "non_actionable_with_fix"
         DEFERRED_SOURCE_DRIFT = "deferred_source_drift"
 
-    MOD_SCAN_CLASS_COUNT_FIELDS: ClassVar[Mapping[ModScanFindingClass, str]] = {
-        ModScanFindingClass.ACTIONABLE: "actionable",
-        ModScanFindingClass.DETECTION_ONLY: "detection_only",
-        ModScanFindingClass.NON_ACTIONABLE_WITH_FIX: "non_actionable_with_fix",
-        ModScanFindingClass.DEFERRED_SOURCE_DRIFT: "deferred",
-    }
+    MOD_SCAN_CLASS_COUNT_FIELDS: ClassVar[Mapping[ModScanFindingClass, str]] = (
+        MappingProxyType({
+            ModScanFindingClass.ACTIONABLE: "actionable",
+            ModScanFindingClass.DETECTION_ONLY: "detection_only",
+            ModScanFindingClass.NON_ACTIONABLE_WITH_FIX: "non_actionable_with_fix",
+            ModScanFindingClass.DEFERRED_SOURCE_DRIFT: "deferred",
+        })
+    )
     """Sole authority mapping one finding class to its report count field.
 
     Every count writer and validator derives from this map; adding a class
@@ -286,6 +288,9 @@ class FlextInfraConstantsRefactor:
     )
     "Public family compose module leaves the family-shape amendment sanctions."
 
+    FAMILY_COMPOSE_MODULE_SEGMENTS: ClassVar[int] = 2
+    "A sanctioned compose module name is exactly ``<package>.<leaf>``."
+
     CODEMOD_PACKAGE_CONTEXT_PREDICATES: ClassVar[frozenset[CodemodContextPredicate]] = (
         frozenset({
             CodemodContextPredicate.STDLIB_MODULE,
@@ -361,6 +366,13 @@ class FlextInfraConstantsRefactor:
         CODEMOD_RULES_RELPATH / "ast-grep" / CODEMOD_CONFIG_FILENAME
     )
     CODEMOD_ROPE_RULES_RELPATH: ClassVar[Path] = CODEMOD_RULES_RELPATH / "rope"
+    # Rope contract catalogue: the packaged universal rules, then the optional
+    # same-path overlay a governed repository declares for its own symbols.
+    CODEMOD_ROPE_CONTRACTS_RELPATH: ClassVar[Path] = (
+        CODEMOD_ROPE_RULES_RELPATH / "contracts.yaml"
+    )
+    # Rope restructure argument that binds a capture to one qualified identity.
+    ROPE_NAME_CONSTRAINT_PREFIX: ClassVar[str] = "name="
     CODEMOD_RULE_DIRS_KEY: ClassVar[str] = "ruleDirs"
     CODEMOD_UTIL_DIRS_KEY: ClassVar[str] = "utilDirs"
     CODEMOD_TEST_CONFIGS_KEY: ClassVar[str] = "testConfigs"

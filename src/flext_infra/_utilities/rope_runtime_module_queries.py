@@ -299,7 +299,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         root = Path(project.root.real_path).resolve()
         declared: dict[Path, str] = {}
         for plan in declared_files:
-            path, content = cls._snapshot_destination(root, plan)
+            path, content = cls.snapshot_destination(root, plan)
             proposed = content.decode("utf-8")
             if path in declared and declared[path] != proposed:
                 msg = f"Rope virtual destination declarations disagree: {path}"
@@ -349,7 +349,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         return snapshot
 
     @staticmethod
-    def _snapshot_destination(
+    def snapshot_destination(
         root: Path,
         plan: m.Infra.CodegenFilePlan,
     ) -> t.Pair[Path, bytes]:

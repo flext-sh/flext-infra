@@ -21,6 +21,7 @@ from flext_infra._models import (
 from flext_infra._models._config import FlextInfraConfigModels
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._git import FlextInfraModelsGitIdentity
+from flext_infra._models.base import FlextInfraModelsBase
 
 
 class FlextInfraModelsWorkspace:
@@ -39,6 +40,14 @@ class FlextInfraModelsWorkspace:
         inputs: t.VariadicTuple[m.Cli.AtomicFileReceipt] = m.Field(
             description="Pinned source/resource/distribution/runtime byte identities"
         )
+        bootstrap_sources: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            default=(),
+            description=(
+                "Original buffered source candidates for atomic-reader bootstrap; "
+                "only consumed candidates enter the sealed native reference"
+            ),
+        )
+        _source_birth: t.Pair[int, str] | None = m.PrivateAttr(default=None)
         generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
             description="Authenticated physical producer membership"
         )
@@ -311,6 +320,7 @@ class FlextInfraModelsWorkspace:
             default=(),
             description="Sources authenticated before compilation in the cold import",
         )
+        _import_birth: t.Pair[int, str] | None = m.PrivateAttr(default=None)
 
     class NativeImportReference(NativeImportObservation):
         """One loaded epoch authenticated against its cold physical source."""
@@ -318,8 +328,11 @@ class FlextInfraModelsWorkspace:
         source_authority: FlextInfraModelsWorkspace.CodegenSourceAuthority = m.Field(
             description="Cold authority pinned by the capture call",
         )
+        _native_birth: t.Pair[int, str] | None = m.PrivateAttr(default=None)
 
-    class NativeImportRequest(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class NativeImportRequest(
+        FlextInfraModelsBase.FrozenArbitrary, strict=True, validate_default=True
+    ):
         """Loaded producer identities and pinned inputs for source authentication."""
 
         repository_root: Path = m.Field(

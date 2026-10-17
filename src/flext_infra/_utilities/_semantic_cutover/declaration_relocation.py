@@ -30,13 +30,13 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
-_COMPOSED_REFERENCE_SEGMENTS = 2
-
 
 class FlextInfraUtilitiesSemanticDeclarationRelocation(
     FlextInfraUtilitiesDeclarationPayload,
 ):
     """Relocate payloads and bind config imports to existing permitted owners."""
+
+    _COMPOSED_REFERENCE_SEGMENTS = 2
 
     @classmethod
     def _plan_declaration_relocation(
@@ -77,8 +77,15 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         t.VariadicTuple[m.Infra.SemanticMigrationEdit],
         t.VariadicTuple[m.Infra.DeclarationRelocationFinding],
     ]:
+        # One closed epoch serves every snapshot of this pass: the sources, their
+        # import closure and the identities payload relocation resolves.
+        epoch = FlextInfraUtilitiesCodemodProject.identity_source_epoch(
+            Path(workspace.rope_project.root.real_path),
+            tuple(sources),
+            c.Infra.DECLARATION_RELOCATION_IDENTITIES,
+        )
         project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-            workspace.rope_project, sources
+            workspace.rope_project, sources, captured=epoch
         )
         working = dict(sources)
         findings: list[m.Infra.DeclarationRelocationFinding] = []
@@ -91,7 +98,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             if working != sources:
                 project.close()
                 project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                    workspace.rope_project, working
+                    workspace.rope_project, working, captured=epoch
                 )
             for path in sorted(sources):
                 if sources[path].startswith(c.Infra.AUTOGEN_HEADERS):
@@ -110,9 +117,8 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     )
                     if candidate is None:
                         break
-                    outer, node, binding = candidate
-                    outer_name = outer.pyobject.get_name()
-                    node_name = node.pyobject.get_name()
+                    outer_name = candidate[0].pyobject.get_name()
+                    node_name = candidate[1].pyobject.get_name()
                     declaration = f"{outer_name}.{node_name}"
                     resolved = (
                         cls._declaration_target(
@@ -137,13 +143,13 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     working = cls._relocate_payload(
                         project,
                         working,
-                        (path, node, binding),
+                        (path, candidate[1], candidate[2]),
                         resolved,
                     )
                     # Subsequent candidates bind to the proposed graph and coordinates.
                     project.close()
                     project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                        workspace.rope_project, working
+                        workspace.rope_project, working, captured=epoch
                     )
             cls._preflight_declaration_graph(workspace, sources, working)
             return (
@@ -399,7 +405,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             information = statement.import_info
             if not isinstance(information, p.Infra.RopeFromImport):
                 continue
-            grouped: dict[str, list[t.Pair[str, str | None]]] = {}
+            grouped: t.MutableMappingKV[str, list[t.Pair[str, str | None]]] = {}
             changed = False
             for name, alias in information.names_and_aliases:
                 destination = exports.get(f"{information.module_name}.{name}")
@@ -485,7 +491,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
     ) -> p.Infra.RopePyName | None:
         provider = project.get_module(module_name)
         visited: set[str] = set()
-        while FlextInfraUtilitiesRopeRuntimeTypes.semantic_module(provider):
+        while True:
             provider_resource = provider.get_resource()
             if provider_resource is None:
                 break
@@ -515,9 +521,6 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             if route is None:
                 break
             provider = project.get_module(route)
-        else:
-            message = "declaration provider has no native semantic module"
-            raise TypeError(message)
         return provider.get_attributes().get(alias_name)
 
     @classmethod
@@ -858,7 +861,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     retained,
                 )
                 if isinstance(information, p.Infra.RopeFromImport)
-                else cls.normal_import(retained)
+                else runtime.normal_import(retained)
             )
             rewrites.append(
                 m.Infra.SourceRewrite(
@@ -1323,7 +1326,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 imported = (
                     runtime.from_import(statement.module_name, statement.level, aliases)
                     if isinstance(statement, p.Infra.RopeFromImport)
-                    else cls.normal_import(aliases)
+                    else runtime.normal_import(aliases)
                 )
                 required.append(imported)
         return tuple(required), dependencies
@@ -1358,7 +1361,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         if len(tokens) != len(records):
             msg = "native import records differ from their lexical occurrences"
             raise ValueError(msg)
-        guard = project.get_module("typing").get_attribute("TYPE_CHECKING")
+        guard = cls.identity_name(project, c.Infra.TYPING_GUARD_IDENTITY)
         facts = FlextInfraUtilitiesRopeStructure.logical_statements(module.source_code)
         selected: list[p.Infra.RopeImportInfo] = []
         conditions: list[t.Pair[int, bool]] = []
@@ -1405,19 +1408,6 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 ):
                     selected.append(record.import_info)
         return tuple(selected)
-
-    @staticmethod
-    def normal_import(
-        aliases: t.VariadicTuple[t.Pair[str, str | None]],
-    ) -> p.Infra.RopeImportInfo:
-        information = FlextInfraUtilitiesRopeRuntimeRefactors.runtime_callable(
-            "rope.refactor.importutils.importinfo",
-            "NormalImport",
-        )(list(aliases))
-        if not isinstance(information, p.Infra.RopeImportInfo):
-            msg = "declaration relocation requires native normal imports"
-            raise TypeError(msg)
-        return information
 
     @staticmethod
     def _dependency_source(
@@ -1645,7 +1635,10 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 Path(project.root.real_path),
                 {},
             )
-            if binding is not None and len(segments) == _COMPOSED_REFERENCE_SEGMENTS:
+            if (
+                binding is not None
+                and len(segments) == cls._COMPOSED_REFERENCE_SEGMENTS
+            ):
                 owned = cls._composed_dependency_owner(
                     binding.get_object(), segments[1], target
                 )

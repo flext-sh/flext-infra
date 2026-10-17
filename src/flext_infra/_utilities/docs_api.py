@@ -400,34 +400,6 @@ class FlextInfraUtilitiesDocsApi:
         return cls._assignment_strings(source, "__all__")
 
     @staticmethod
-    def _export_target_map(
-        source: str,
-        package_name: str,
-        exports: t.StrSequence,
-    ) -> t.StrMapping:
-        """Resolve exported symbols to their defining import modules when possible.
-
-        Returns:
-            The resulting ``t.StrMapping``.
-
-        """
-        return FlextInfraUtilitiesRopeAnalysis.export_target_modules_source(
-            source,
-            package_name,
-            exports,
-        )
-
-    @staticmethod
-    def _has_module_docstring(source: str) -> bool:
-        """Return whether source starts with a module docstring.
-
-        Returns:
-            Whether source starts with a module docstring.
-
-        """
-        return FlextInfraUtilitiesRopeAnalysis.module_has_docstring_source(source)
-
-    @staticmethod
     def _assignment_docstrings(source: str) -> set[str]:
         """Return assignment names followed by a literal docstring expression.
 
@@ -681,7 +653,7 @@ class FlextInfraUtilitiesDocsApi:
             ),
         )
         target_map = dict(
-            FlextInfraUtilitiesDocsApi._export_target_map(
+            FlextInfraUtilitiesRopeAnalysis.export_target_modules_source(
                 source,
                 package_name,
                 all_exports,
@@ -924,10 +896,9 @@ class FlextInfraUtilitiesDocsApi:
         target_map = FlextInfraUtilitiesDocsApi._string_mapping(
             contract.get("target_map", {}),
         )
-        module_exports = set(
-            FlextInfraUtilitiesDocsApi._string_values(
-                contract.get("module_exports", []),
-            ),
+        _, _, symbol_exports = FlextInfraUtilitiesDocsApi._classify_exports(
+            tuple(target_map),
+            target_map,
         )
         results: t.MutableSequenceOf[t.Triple[str, str, bool]] = []
         module_docstring_checks = [
@@ -950,14 +921,10 @@ class FlextInfraUtilitiesDocsApi:
             results.append((
                 module_file.relative_to(project_root).as_posix(),
                 message,
-                FlextInfraUtilitiesDocsApi._has_module_docstring(source),
+                FlextInfraUtilitiesRopeAnalysis.module_has_docstring_source(source),
             ))
         export_docstring_checks = [
-            (export_name, module_name)
-            for export_name, module_name in target_map.items()
-            if export_name not in FlextInfraUtilitiesDocsApi._ALIAS_EXPORTS
-            and not export_name.startswith("__")
-            and export_name not in module_exports
+            (export_name, target_map[export_name]) for export_name in symbol_exports
         ]
         for export_name, module_name in export_docstring_checks:
             module_file = FlextInfraUtilitiesDocsApi._module_file(

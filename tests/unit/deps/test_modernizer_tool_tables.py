@@ -115,7 +115,7 @@ class TestsFlextInfraDepsModernizerToolTables:
             path=tmp_path / "flext-sample" / c.PYPROJECT_FILENAME,
         )
         tm.that(second, eq=payload)
-        tm.that(changes, eq=())
+        tm.that(changes, empty=True)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -375,6 +375,40 @@ class TestsFlextInfraDepsModernizerToolTables:
                 ),
             ),
             eq={"flext_sample"},
+        )
+
+    def test_deptry_includes_declared_repository_namespaces(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Shipped root namespaces are local without absorbing external peers."""
+        payload, _ = self._applied(tmp_path)
+        namespaces = ("deployment_assets", "shared_schema")
+        project_dir = tmp_path / "flext-sample"
+        for namespace in (*namespaces, "unshipped", "flext_core"):
+            (project_dir / namespace).mkdir()
+        phase = FlextInfraToolTablesPhase(config.Infra.tooling)
+        phase.apply_payload(
+            payload,
+            path=project_dir / "pyproject.toml",
+            repository_namespace_packages=namespaces,
+        )
+
+        tm.that(
+            set(
+                u.Tests.toml_strings(
+                    self._table(payload, "deptry")["known_first_party"],
+                ),
+            ),
+            eq={"flext_sample", *namespaces},
+        )
+        tm.that(
+            phase.apply_payload(
+                payload,
+                path=project_dir / "pyproject.toml",
+                repository_namespace_packages=namespaces,
+            ),
+            empty=True,
         )
 
     @staticmethod

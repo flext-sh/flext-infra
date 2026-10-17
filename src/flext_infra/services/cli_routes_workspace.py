@@ -9,6 +9,8 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import ClassVar
 
+from flext_core import FlextRuntime
+
 from flext_infra import FlextInfraGitService, c, infra, m, p, r, t, u
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.release import FlextInfraReleaseOrchestrator
@@ -90,7 +92,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
             The canonical JSON text of the payload.
 
         """
-        encoded = u.Cli.json_dumps(u.normalize_to_json_value(payload))
+        encoded = u.Cli.json_dumps(FlextRuntime.normalize_to_json_value(payload))
         if encoded.failure:
             return encoded.error or "command payload serialization failed"
         return encoded.value

@@ -18,6 +18,7 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerification,
     FlextInfraStagedPackage,
 )
+from flext_infra.validate import FlextInfraValidateFreshImport
 
 
 class FlextInfraSemanticPublication:
@@ -249,7 +250,7 @@ class FlextInfraSemanticPublication:
             analysis.files,
             (*options.projection_roots, *options.input_roots),
         )
-        producer = FlextInfraCodegenPreconditions.capture_producer(
+        producer = FlextInfraValidateFreshImport.capture_producer(
             repository_root,
             entrypoint=cls.publish_source_candidate,
         )
@@ -692,12 +693,10 @@ class FlextInfraSemanticPublication:
             The deterministic pseudo-root mapping of the publication.
 
         """
-        return {
-            f"@semantic-{index}": project
-            for index, project in enumerate(
-                sorted({plan.project for plan in files} | set(projection_roots)),
-            )
-        }
+        return FlextInfraCodegenTransaction.capability_roots(
+            "semantic",
+            sorted({plan.project for plan in files} | set(projection_roots)),
+        )
 
     @staticmethod
     def _concrete_file_plans(

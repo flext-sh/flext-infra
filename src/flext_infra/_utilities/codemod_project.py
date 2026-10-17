@@ -36,11 +36,14 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodemodRules,
     FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesImportLaw,
+    FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesRopeAnalysisWorkspace,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._rope_analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
@@ -54,9 +57,6 @@ from flext_infra._utilities._rope_analysis.importstate import (
 from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
-
-# A sanctioned compose module name is exactly ``<package>.<leaf>``.
-_COMPOSE_MODULE_SEGMENT_COUNT = 2
 
 
 class FlextInfraUtilitiesCodemodProject(
@@ -90,19 +90,47 @@ class FlextInfraUtilitiesCodemodProject(
         imports that run when the module loads can form a cycle. Each target
         is truncated to the longest module the project defines.
 
+        Live nodes use the workspace indexer's governed inventory, not Rope's
+        recursive checkout enumeration. Declared members retain their import
+        roots; unrelated checkouts and managed projections are not graph nodes.
+
         Returns:
             The runtime import graph and the module name of each file.
 
         """
-        with FlextInfraUtilitiesRopeCore.open_project(root) as project:
-            return cls.snapshot_import_graph(project)
+        resolved = root.resolve()
+        with FlextInfraUtilitiesRopeCore.open_project(
+            resolved,
+            project_roots=FlextInfraUtilitiesProjectDiscovery.governed_project_roots(
+                resolved,
+            ),
+        ) as project:
+            resources = tuple(
+                FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                    project.get_resource(path.relative_to(resolved).as_posix()),
+                    path,
+                )
+                for path in (
+                    FlextInfraUtilitiesRopeAnalysisWorkspace.python_and_stub_file_paths(
+                        project,
+                        resolved,
+                    )
+                )
+                if path.suffix == c.Infra.EXT_PYTHON
+            )
+            return cls.snapshot_import_graph(project, resources=resources)
 
     @classmethod
     def snapshot_import_graph(
         cls,
         project: p.Infra.RopeProject,
+        *,
+        resources: t.SequenceOf[t.Infra.RopeFile] | None = None,
     ) -> t.Pair[t.MappingKV[str, frozenset[str]], t.MappingKV[Path, str]]:
         """Read runtime imports from an immutable proposed-source Rope graph.
+
+        A live caller supplies governed resources. An immutable snapshot keeps
+        its complete captured inventory, including proposed virtual modules.
 
         Returns:
             The resulting ``t.Pair[t.MappingKV[str, frozenset[str]], t.MappingKV[Path,
@@ -117,7 +145,11 @@ class FlextInfraUtilitiesCodemodProject(
         aliases: MutableMapping[str, str] = {}
         cls.codemod_progress("import graph start")
         due = 0.0
-        for resource in FlextInfraUtilitiesRopeCore.python_resources(project):
+        for resource in (
+            FlextInfraUtilitiesRopeCore.python_resources(project)
+            if resources is None
+            else resources
+        ):
             due = cls.codemod_progress(
                 f"import graph modules={len(modules)} file={resource.path}",
                 due,
@@ -185,29 +217,6 @@ class FlextInfraUtilitiesCodemodProject(
                 cycles.update(dict.fromkeys(members, members))
         return cycles
 
-    @staticmethod
-    def _source_scan_ignored(root: Path, file_path: Path) -> bool:
-        """Return whether ``file_path`` lies in a source-scan-ignored tree.
-
-        The names are the codegen artifact SSOT (``source_scan_ignored``),
-        the same list Rope uses when it builds the import graph. ``legado``
-        is one of those names.
-
-        Returns:
-            Whether ``file_path`` lies in a source-scan-ignored tree.
-
-        """
-        resolved = file_path.resolve()
-        root_resolved = root.resolve()
-        parts = (
-            resolved.relative_to(root_resolved).parts
-            if resolved.is_relative_to(root_resolved)
-            else resolved.parts
-        )
-        return bool(
-            frozenset(config.Infra.codegen.source_scan_ignored).intersection(parts),
-        )
-
     @classmethod
     def import_closes_cycle(
         cls,
@@ -242,7 +251,9 @@ class FlextInfraUtilitiesCodemodProject(
             if (
                 layout is not None
                 and file_path.is_relative_to(layout.src_dir)
-                and not cls._source_scan_ignored(root, file_path)
+                and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                    root.resolve(), file_path.resolve()
+                )
             ):
                 msg = (
                     f"source module is absent from the project import graph: "
@@ -664,6 +675,43 @@ class FlextInfraUtilitiesCodemodProject(
                 path: content.decode("utf-8") for path, content in contents.items()
             }),
             contents=MappingProxyType(contents),
+        )
+
+    @classmethod
+    def identity_source_epoch(
+        cls,
+        root: Path,
+        source_paths: t.SequenceOf[Path],
+        identities: t.StrSequence,
+    ) -> m.Infra.CodemodSourceEpoch:
+        """Capture sources plus every module a resolved identity needs, once.
+
+        A semantic planning snapshot is a closed inventory: an identity such as
+        ``pydantic.BaseModel`` resolves only when its module closure was
+        captured before planning. Every dotted prefix of each identity is
+        offered; a prefix that is not a module resolves to nothing and captures
+        nothing. The sources' own import closure is captured with them.
+
+        Returns:
+            The immutable epoch every snapshot of one planning pass shares.
+
+        """
+        modules = tuple(
+            dict.fromkeys(
+                ".".join(parts[:end])
+                for parts in (identity.split(".") for identity in identities)
+                for end in range(1, len(parts) + 1)
+            )
+        )
+        return cls.codemod_source_epoch(
+            cls.codemod_binding_snapshot(
+                root,
+                projects=(
+                    m.Infra.CodemodBindingProject(
+                        root=root, source_paths=tuple(source_paths), modules=modules
+                    ),
+                ),
+            )
         )
 
     @staticmethod
@@ -1161,7 +1209,7 @@ class FlextInfraUtilitiesCodemodProject(
         """
         parts = value.split(".")
         if (
-            len(parts) != _COMPOSE_MODULE_SEGMENT_COUNT
+            len(parts) != c.Infra.FAMILY_COMPOSE_MODULE_SEGMENTS
             or parts[1] not in c.Infra.FAMILY_COMPOSE_MODULES
         ):
             return False

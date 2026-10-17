@@ -366,6 +366,7 @@ class TestsFlextInfraCodemodContextOwnPackage:
         source = (
             f"from {namespace}.definer import Public, u\n"
             "note = 'é'\n"
+            'template = f"${{UNSET_FOR_THIS_TEST:-{note}}}"\n'
             "value = Public\n"
             "def independent(Public):\n"
             "    return Public\n"

@@ -67,8 +67,6 @@ class FlextInfraDocGenerator(
         receipts: list[m.Infra.CodegenPhaseOutcome] = []
         for prepared in self._prepare_batches(
             request,
-            entrypoint=self.generate,
-            collaborators=(self.prepare_batches, self.publish_batch),
             publication_receipts=receipts,
         ):
             if prepared.failure:
@@ -99,15 +97,12 @@ class FlextInfraDocGenerator(
             The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
 
         """
-        roots = {
-            f"@docs-{index}": path
-            for index, path in enumerate(
-                sorted({item.scope.path for item in bundle.scopes}),
-            )
-        }
+        roots = FlextInfraCodegenTransaction.capability_roots(
+            "docs",
+            sorted({item.scope.path for item in bundle.scopes}),
+        )
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=bundle.repository_root),
-            producer=bundle.producer,
             prior_publications=tuple(publication_receipts or ()),
         )
         return transaction.run_files_locked(
@@ -265,15 +260,8 @@ class FlextInfraDocGenerator(
         # (DECLARED conform scope); use the bundle's own authenticated root.
         return u.Infra.docs_required_directories(bundle)
 
-    def prepare_bundle(
-        self,
-        *,
-        producer: m.Infra.CodegenPhaseAnalysis | None = None,
-    ) -> p.Result[m.Infra.DocsGenerationBundle]:
+    def prepare_bundle(self) -> p.Result[m.Infra.DocsGenerationBundle]:
         """Freeze the configured render and all of its authenticated inputs.
-
-        Args:
-            producer: Invocation's original authenticated docs producer.
 
         Returns:
             The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.
@@ -281,22 +269,17 @@ class FlextInfraDocGenerator(
         """
         return self._prepare_request(
             self._configured_request(),
-            entrypoint=self.prepare_bundle,
-            collaborators=(self.publish_batch,),
-            producer=producer,
         )
 
     def prepare_batches(
         self,
         *,
-        producer: m.Infra.CodegenPhaseAnalysis | None = None,
         publication_receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome]
         | None = None,
     ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
-        """Pin the producer now and capture each scope after the previous settles.
+        """Capture each scope after the previous publication settles.
 
         Args:
-            producer: Invocation's original authenticated docs producer.
             publication_receipts: Actual preceding outcomes shared with publication.
 
         Returns:
@@ -306,9 +289,6 @@ class FlextInfraDocGenerator(
         """
         return self._prepare_batches(
             self._configured_request(),
-            entrypoint=self.prepare_batches,
-            collaborators=(self.publish_batch,),
-            producer=producer,
             publication_receipts=publication_receipts,
         )
 

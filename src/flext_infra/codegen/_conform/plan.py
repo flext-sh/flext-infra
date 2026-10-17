@@ -16,7 +16,6 @@ from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenPreconditions,
-    FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
@@ -26,141 +25,23 @@ from flext_infra.workspace import FlextInfraWorkspaceDetector
 class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     """Conformance planning across scaffold and existing repositories."""
 
+    @staticmethod
     def continue_after_publication(
-        self,
         receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[bool]:
-        """Advance producer capture only through this producer's live effect proof.
+        """Continue planning through the invocation's authenticated live effects.
 
         Returns:
-            Whether the recaptured producer still owns the published receipts.
+            Whether the actual publication inputs and outputs remain current.
 
         """
-        if self.producer is None or not receipts:
+        if not receipts:
             return r[bool].fail(
-                "producer continuation requires its captured publication receipts",
+                "generation continuation requires its publication receipts",
             )
-        producer = self.producer
-        expected = self._expected_producer_sources(producer)
-        if expected.failure:
-            return r[bool].from_failure(expected)
-        matched = self._matched_producer_receipts(receipts, producer, expected.value)
-        if matched.failure:
-            return matched
-        verified = self._verified_receipt_states(receipts)
-        if verified.failure:
-            return verified
-        return self._advanced_producer_capture(receipts)
-
-    @staticmethod
-    def _expected_producer_sources(
-        producer: m.Infra.CodegenPhaseAnalysis,
-    ) -> p.Result[t.MappingKV[Path, m.Infra.CodegenJournalSource]]:
-        """Encode the captured producer's inputs as expected journal sources.
-
-        Args:
-            producer: The captured producer analysis.
-
-        Returns:
-            The expected generator sources keyed by path, or the first
-            encoding failure.
-
-        """
-        expected_sources: t.MutableMappingKV[Path, m.Infra.CodegenJournalSource] = {}
-        for state in producer.inputs:
-            encoded = FlextInfraMiseArtifactsJournal.source_record("generator", state)
-            if encoded.failure:
-                return r[t.MappingKV[Path, m.Infra.CodegenJournalSource]].from_failure(
-                    encoded
-                )
-            expected_sources[state.path] = encoded.value
-        return r[t.MappingKV[Path, m.Infra.CodegenJournalSource]].ok(expected_sources)
-
-    @staticmethod
-    def _matched_producer_receipts(
-        receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
-        producer: m.Infra.CodegenPhaseAnalysis,
-        expected_sources: t.MappingKV[Path, m.Infra.CodegenJournalSource],
-    ) -> p.Result[bool]:
-        """Reject publication receipts captured by a different producer.
-
-        Args:
-            receipts: Publication receipts of this producer's live effects.
-            producer: The captured producer analysis.
-            expected_sources: Expected generator sources keyed by path.
-
-        Returns:
-            Whether every receipt belongs to the captured producer, or the
-            first mismatch failure.
-
-        """
-        expected_trees = {tree.root.path: tree for tree in producer.generator_trees}
-        for receipt in receipts:
-            if (
-                {
-                    source.path: source.model_copy(update={"role": None})
-                    for source in receipt.generator_sources
-                }
-                != expected_sources
-                or {tree.root.path: tree for tree in receipt.generator_trees}
-                != expected_trees
-                or receipt.generator_modules != producer.generator_modules
-            ):
-                return r[bool].fail(
-                    "publication receipt belongs to a different captured producer",
-                )
-        return r[bool].ok(value=True)
-
-    @staticmethod
-    def _verified_receipt_states(
-        receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
-    ) -> p.Result[bool]:
-        """Verify every publication receipt's source states remain current.
-
-        Args:
-            receipts: Publication receipts of this producer's live effects.
-
-        Returns:
-            Whether every receipt's states remain current, or the first
-            verification failure.
-
-        """
-        for receipt in receipts:
-            verified = FlextInfraMiseArtifactsVerification.publication_states_current(
-                receipt,
-            )
-            if verified.failure:
-                return verified
-        return r[bool].ok(value=True)
-
-    def _advanced_producer_capture(
-        self,
-        receipts: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
-    ) -> p.Result[bool]:
-        """Recapture the producer and prove it still owns its live effects.
-
-        Args:
-            receipts: Publication receipts of this producer's live effects.
-
-        Returns:
-            Whether the recaptured producer is current, or the first capture,
-            verification or currency failure.
-
-        """
-        captured = FlextInfraCodegenPreconditions.capture_producer(
-            self.repository_root,
-            entrypoint=self.plan,
-        )
-        if captured.failure:
-            return r[bool].from_failure(captured)
-        reverified = self._verified_receipt_states(receipts)
-        if reverified.failure:
-            return reverified
-        current = FlextInfraCodegenPreconditions.producer_current(captured.value)
-        if current.failure:
-            return current
-        self.producer = captured.value
-        return r[bool].ok(value=True)
+        return FlextInfraMiseArtifactsVerification.publication_outputs_current(
+            receipts,
+        ).map(lambda _: True)
 
     def plan(
         self,
@@ -172,34 +53,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The resulting ``p.Result[m.Infra.CodegenPlan]``.
 
         """
-        producer = self._required_producer()
-        if producer.failure:
-            return r[m.Infra.CodegenPlan].from_failure(producer)
         inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
         if inputs.failure:
             return r[m.Infra.CodegenPlan].from_failure(inputs)
         return self.plan_repositories(request, inputs.value)
-
-    def _required_producer(self) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Return the current captured producer, capturing one when absent.
-
-        Returns:
-            The current captured producer, or the first capture or currency
-            failure.
-
-        """
-        if self.producer is None:
-            captured = FlextInfraCodegenPreconditions.capture_producer(
-                self.repository_root,
-                entrypoint=self.plan,
-            )
-            if captured.failure:
-                return r[m.Infra.CodegenPhaseAnalysis].from_failure(captured)
-            self.producer = captured.value
-        verified = FlextInfraCodegenPreconditions.producer_current(self.producer)
-        if verified.failure:
-            return r[m.Infra.CodegenPhaseAnalysis].from_failure(verified)
-        return r[m.Infra.CodegenPhaseAnalysis].ok(self.producer)
 
     def _plan_single_surface(
         self,
@@ -235,10 +92,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The complete repository plan or its first planning failure.
 
         """
-        if request.what in {
-            c.Infra.CodegenConformSurface.LAZY_INIT,
-            c.Infra.CodegenConformSurface.FACADES,
-        }:
+        if request.what in c.Infra.FILE_ONLY_SURFACES:
             return self._plan_single_surface(request, inputs=inputs).map(
                 itemgetter(0),
             )
@@ -391,12 +245,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             update={
                 "files": self._bind_codegen_sources(analyzed.value.files, inputs),
                 "inputs": (*analyzed.value.inputs, *inputs.sources),
-            },
-        )
-        analysis = analysis.model_copy(
-            update={
-                "issues": (*analysis.issues, *self.planning_issues),
-                "exception": analysis.exception or self.planning_exception,
+                "issues": (*analyzed.value.issues, *self.planning_issues),
+                "exception": analyzed.value.exception or self.planning_exception,
             },
         )
         plan = m.Infra.CodegenPlan(
@@ -451,29 +301,46 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         snapshots = self._facade_sources(root, destination)
         if snapshots.failure:
             return result_type.from_failure(snapshots)
-        family, states, sources = snapshots.value
-        rendered = self._render_facade(destination, family, sources)
-        if rendered.failure:
-            return result_type.from_failure(rendered)
+        family, states, _sources = snapshots.value
         mode = states[0].mode
         if mode is None:
             return result_type.fail(
                 f"facade input has no authenticated mode: {destination}",
             )
+        with u.Infra.facade_source_project(root, source_states=tuple(states)) as (
+            project,
+            consumed_states,
+            sources,
+        ):
+            rendered = self._render_facade(
+                destination, family, sources, project=project
+            )
+            if rendered.failure:
+                return result_type.from_failure(rendered)
+            inputs, directories, topology = consumed_states()
         file = self.file_plan(
             root,
             destination.relative_to(root).as_posix(),
             rendered.value,
             mode=mode,
-            source_states=tuple(states),
+            source_states=inputs,
         )
         if file.failure:
             return result_type.from_failure(file)
         return result_type.ok(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.CONFORM,
-                files=(file.value,),
-                inputs=tuple(states),
+                files=(
+                    file.value.model_copy(
+                        update={
+                            "source_directories": directories,
+                            "source_query_topology": topology,
+                        }
+                    ),
+                ),
+                inputs=inputs,
+                source_directories=directories,
+                source_query_topology=topology,
             ),
         )
 
@@ -586,6 +453,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         destination: Path,
         family: Literal["c", "t", "u", "p", "m"],
         sources: t.MappingKV[Path, str],
+        *,
+        project: p.Infra.RopeProject,
     ) -> p.Result[str]:
         """Reuse the canonical renderer without selecting a different destination.
 
@@ -594,12 +463,30 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         """
         if family == "t":
+            sources = {
+                path: u.Infra.require_file_resource(
+                    project.get_resource(
+                        path.relative_to(Path(project.root.real_path)).as_posix()
+                    ),
+                    path,
+                ).read()
+                for path in sources
+            }
             return r[str].ok(
-                u.Infra.render_type_facade(destination.parent, destination, sources),
+                u.Infra.render_type_facade(
+                    destination.parent, destination, sources, project=project
+                ),
             )
-        if u.Infra.facade_module_path(destination.parent, family) != destination:
+        if (
+            u.Infra.facade_module_path(
+                destination.parent, family, project=project, sources=sources
+            )
+            != destination
+        ):
             return r[str].fail("selected facade differs from its declaring module")
-        rendered = u.Infra.render_utility_facade(destination.parent, family=family)
+        rendered = u.Infra.render_utility_facade(
+            destination.parent, family=family, project=project, sources=sources
+        )
         if rendered is None:
             return r[str].fail(f"selected facade has no private {family} owners")
         return r[str].ok(rendered)
@@ -647,12 +534,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     inputs,
                 ),
                 "inputs": (*planned.value.inputs, *inputs.sources),
-            },
-        )
-        analysis = analysis.model_copy(
-            update={
-                "issues": (*analysis.issues, *self.planning_issues),
-                "exception": analysis.exception or self.planning_exception,
+                "issues": (*planned.value.issues, *self.planning_issues),
+                "exception": planned.value.exception or self.planning_exception,
             },
         )
         plan = m.Infra.CodegenPlan(
@@ -700,26 +583,17 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 root,
                 inputs=inputs,
                 allow_unprovisioned_members=(
-                    request.what
-                    in {
-                        c.Infra.CodegenConformSurface.MAKEFILE,
-                        c.Infra.CodegenConformSurface.DOCS_CONFIG,
-                        c.Infra.CodegenConformSurface.ENVRC,
-                        c.Infra.CodegenConformSurface.PYPROJECT,
-                        c.Infra.CodegenConformSurface.MISE_CONFIG,
-                    }
+                    request.what in c.Infra.ALLOW_UNPROVISIONED_SURFACES
                 ),
             )
             if workspace_result.failure:
                 return result_type.from_failure(workspace_result)
             workspace = workspace_result.value
         current_repository = workspace.repository
-        if self.initial_workspace is None and request.what not in {
-            c.Infra.CodegenConformSurface.MAKEFILE,
-            c.Infra.CodegenConformSurface.ENVRC,
-            c.Infra.CodegenConformSurface.PYPROJECT,
-            c.Infra.CodegenConformSurface.MISE_CONFIG,
-        }:
+        if (
+            self.initial_workspace is None
+            and request.what not in c.Infra.DECLARED_TARGET_SURFACES
+        ):
             current_target_result = FlextInfraWorkspaceDetector.conform_target(
                 root,
                 workspace,
@@ -1177,35 +1051,24 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The resulting ``p.Result[m.Infra.WorkspaceSpec]``.
 
         """
-        if repository.path != Path():
-            declared_member = FlextInfraWorkspaceDetector.load_workspace_spec(
-                repository_root,
-                inputs=inputs,
-            )
-            if declared_member.failure:
-                return r[m.Infra.WorkspaceSpec].from_failure(declared_member)
-            local_repository = repository.model_copy(update={"path": Path()})
-            # The parent owns topology and selection; the member owns its
-            # project metadata, including the runtime dependency profile
-            # and the namespace production scope it declares.
-            return r[m.Infra.WorkspaceSpec].ok(
-                m.Infra.WorkspaceSpec(
-                    name=repository.name,
-                    docs_audit=declared_member.value.docs_audit,
-                    beads=workspace.beads,
-                    repository=local_repository,
-                    project=declared_member.value.project,
-                    namespace_scan_dirs=(declared_member.value.namespace_scan_dirs),
-                    candidate_dependencies=workspace.candidate_dependencies,
-                ),
-            )
-        local_workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
+        declared_member = FlextInfraWorkspaceDetector.load_workspace_spec(
             repository_root,
             inputs=inputs,
         )
-        if local_workspace_result.failure:
-            return r[m.Infra.WorkspaceSpec].from_failure(local_workspace_result)
-        return r[m.Infra.WorkspaceSpec].ok(local_workspace_result.value)
+        if declared_member.failure or repository.path == Path():
+            return declared_member
+        # The parent owns topology; the member owns its local project metadata.
+        return r[m.Infra.WorkspaceSpec].ok(
+            m.Infra.WorkspaceSpec(
+                name=repository.name,
+                docs_audit=declared_member.value.docs_audit,
+                beads=workspace.beads,
+                repository=repository.model_copy(update={"path": Path()}),
+                project=declared_member.value.project,
+                namespace_scan_dirs=declared_member.value.namespace_scan_dirs,
+                candidate_dependencies=workspace.candidate_dependencies,
+            ),
+        )
 
     def _governed_repository_plans(
         self,

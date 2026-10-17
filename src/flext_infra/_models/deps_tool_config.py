@@ -410,12 +410,15 @@ class FlextInfraModelsDepsToolConfig(
         @property
         def parallel_arguments(self) -> t.StrTuple:
             """Native scheduler arguments derived from the typed policy."""
-            if self.parallel_distribution == "load":
-                scheduling = ("--maxschedchunk", str(self.parallel_schedule_chunk))
-            elif self.loadscope_reorder:
-                scheduling = ("--loadscope-reorder",)
-            else:
-                scheduling = ("--no-loadscope-reorder",)
+            scheduling = (
+                ("--maxschedchunk", str(self.parallel_schedule_chunk))
+                if self.parallel_distribution == "load"
+                else (
+                    "--loadscope-reorder"
+                    if self.loadscope_reorder
+                    else "--no-loadscope-reorder",
+                )
+            )
             return ("--dist", self.parallel_distribution, *scheduling)
 
         @property

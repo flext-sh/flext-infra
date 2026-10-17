@@ -281,7 +281,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
 
     @staticmethod
-    def _literal_exports(
+    def _literal_namespace_exports(
         tree: ast.Module,
         value: ast.expr,
         file_path: Path,
@@ -359,12 +359,12 @@ class FlextInfraUtilitiesCodegenNamespace:
                     isinstance(target, ast.Name) and target.id == c.Infra.DUNDER_ALL
                     for target in targets
                 ):
-                    result = cls._literal_exports(tree, value, file_path)
+                    result = cls._literal_namespace_exports(tree, value, file_path)
                     break
                 case ast.AnnAssign(target=ast.Name(id=name), value=value) if (
                     name == c.Infra.DUNDER_ALL and value is not None
                 ):
-                    result = cls._literal_exports(tree, value, file_path)
+                    result = cls._literal_namespace_exports(tree, value, file_path)
                     break
                 case _:
                     continue

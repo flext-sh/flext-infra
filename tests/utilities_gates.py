@@ -6,13 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import dataclasses
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import infra
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-from flext_infra.refactor.census import FlextInfraRefactorCensus
 from tests import c, m, t, tm
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
 
@@ -22,42 +20,6 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraUtilitiesGatesMixin:
     """Typed quality-gate execution and enforcement fixture helpers."""
-
-    @dataclasses.dataclass(frozen=True)
-    class CensusOptions:
-        """Optional refactor-census knobs grouped into one contract."""
-
-        kinds: t.StrSequence | None = None
-        include_local_scopes: bool = False
-        impact_map_output: str | None = None
-        apply_changes: bool = False
-        dry_run: bool = False
-
-    @staticmethod
-    def detector_context(
-        target: Path,
-        source: str,
-        rope_project: t.Infra.RopeProject,
-        *,
-        project_name: str = "",
-    ) -> m.Infra.DetectorContext:
-        """Write one fixture module and build the context detectors scan.
-
-        Every detector declares its own violation type, so the shared owner
-        stops at the context: the caller keeps its own ``detect_file`` call
-        and therefore its precise return type.
-
-        Returns:
-            The resulting ``m.Infra.DetectorContext``.
-
-        """
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(source, encoding="utf-8")
-        return m.Infra.DetectorContext(
-            file_path=target,
-            rope_project=rope_project,
-            project_name=project_name,
-        )
 
     @staticmethod
     def reject_inaccessible_config_project(tmp_path: Path) -> None:
@@ -230,7 +192,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
         *,
         rules: t.StrSequence,
         kinds: t.StrSequence | None = None,
-        options: CensusOptions | None = None,
+        options: m.Infra.CensusInput | None = None,
     ) -> m.Infra.WorkspaceReport:
         """Execute one refactor census and unwrap its successful report.
 
@@ -238,27 +200,13 @@ class TestsFlextInfraUtilitiesGatesMixin:
             The resulting ``m.Infra.WorkspaceReport``.
 
         """
-        fixture = TestsFlextInfraUtilitiesGatesMixin
-        resolved = fixture.CensusOptions() if options is None else options
+        resolved = m.Infra.CensusInput() if options is None else options
+        values = resolved.model_dump(round_trip=True)
+        values.update(repository_root=workspace, rules=rules)
         if kinds is not None:
-            resolved = dataclasses.replace(resolved, kinds=kinds)
+            values["kinds"] = kinds
         TestsFlextInfraUtilitiesToolingFixtureMixin.provision_checkout(workspace)
-        result = FlextInfraRefactorCensus(
-            workspace_factory=infra.rope_workspace,
-            source_preview=infra.source_preview(workspace),
-            repository_root=workspace,
-            apply_changes=resolved.apply_changes,
-            dry_run=resolved.dry_run,
-            options=m.Infra.CensusOptions(
-                impact_map_output=resolved.impact_map_output,
-                include_local_scopes=resolved.include_local_scopes,
-                kinds=resolved.kinds,
-                rules=rules,
-            ),
-        ).execute()
-        tm.ok(result)
-        report: m.Infra.WorkspaceReport = result.unwrap()
-        return report
+        return tm.ok(infra.census(m.Infra.CensusInput.model_validate(values)))
 
     @staticmethod
     def census_violations(report: m.Infra.WorkspaceReport) -> list[m.Infra.Violation]:

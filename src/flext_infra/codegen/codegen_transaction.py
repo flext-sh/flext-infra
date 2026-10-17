@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenTransactionGeneration,
+    FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsState,
     FlextInfraMiseArtifactsVerification,
@@ -28,6 +29,9 @@ if TYPE_CHECKING:
 
 class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
     """Keep every generation phase recoverable until one final fixed point."""
+
+    _file_run_identity: m.Infra.GitIdentityReport | None = None
+    _file_run_git_directory: t.Pair[int, int] | None = None
 
     def preview_sources[T](
         self,
@@ -64,10 +68,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         if planned.failure:
             return r[T].from_failure(planned)
         plan = planned.value
-        roots = {
-            f"@stage-inputs-{index}": root
-            for index, root in enumerate(sorted(plan.roots))
-        }
+        roots = self.capability_roots("stage-inputs", sorted(plan.roots))
 
         def validate_locked(scope_root: Path) -> p.Result[T]:
             source_barrier = FlextInfraStagedPackage.source_inputs_current(plan)
@@ -357,6 +358,19 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             ))
         return tuple(writes)
 
+    @staticmethod
+    def capability_roots(
+        label: str,
+        paths: t.SequenceOf[Path],
+    ) -> t.MappingKV[str, Path]:
+        """Key physical roots by the selectors validated by file participants.
+
+        Returns:
+            The capability root mapping in the supplied order.
+
+        """
+        return {f"@{label}-{index}": path for index, path in enumerate(paths)}
+
     def run_files_locked[T](
         self,
         roots: t.MappingKV[str, Path],
@@ -370,22 +384,37 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             The resulting ``p.Result[T]``.
 
         """
+        if (
+            self._file_run_identity is not None
+            or self._file_run_git_directory is not None
+        ):
+            return r[T].fail("file transaction scope already has an active lease")
         identity = self._authorized_run_identity(roots)
         if identity.failure:
             return r[T].from_failure(identity)
-        proposed = self._planner.file_layout(
-            identity.value.repo_root,
-            roots,
-            transaction_id=secrets.token_hex(16),
+        physical = FlextInfraMiseArtifactsFiles.physical_directory_identity(
+            identity.value.git_dir,
+        )
+        proposed = physical.flat_map(
+            lambda _: self._planner.file_layout_from_identity(
+                identity.value,
+                roots,
+                transaction_id=secrets.token_hex(16),
+            ),
         )
         if proposed.failure:
             return r[T].from_failure(proposed)
         with u.Infra.codegen_transaction_lease(
             self._planner.journal_path(identity.value),
         ):
-            participants = self._file_recovery_participants(
-                proposed.value,
-                prepare=prepare,
+            participants = self._file_identity_current(
+                identity.value,
+                physical.value,
+            ).flat_map(
+                lambda _: self._file_recovery_participants(
+                    proposed.value,
+                    prepare=prepare,
+                ),
             )
             if participants.failure:
                 return r[T].from_failure(participants)
@@ -393,24 +422,30 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
                 participants.value,
                 held_roots=frozenset({identity.value.repo_root.resolve()}),
             ):
-                if not prepare:
-                    residue = FlextInfraMiseArtifactsState.transaction_residue(
-                        proposed.value,
-                    )
-                    if residue:
-                        return r[T].fail(
-                            "unregistered generation staging blocks readiness: "
-                            f"{residue[0]}",
+                self._file_run_identity = identity.value
+                self._file_run_git_directory = physical.value
+                try:
+                    if not prepare:
+                        residue = FlextInfraMiseArtifactsState.transaction_residue(
+                            proposed.value,
                         )
-                    u.Cli.info(
-                        "stage=file-transaction-readiness "
-                        "journal=absent residue=0 leased=true",
+                        if residue:
+                            return r[T].fail(
+                                "unregistered generation staging blocks readiness: "
+                                f"{residue[0]}",
+                            )
+                        u.Cli.info(
+                            "stage=file-transaction-readiness "
+                            "journal=absent residue=0 leased=true",
+                        )
+                    return self._run_locked_operation(
+                        identity.value,
+                        prepare=prepare,
+                        operation=operation,
                     )
-                return self._run_locked_operation(
-                    identity.value,
-                    prepare=prepare,
-                    operation=operation,
-                )
+                finally:
+                    self._file_run_identity = None
+                    self._file_run_git_directory = None
 
     def _authorized_run_identity(
         self,
@@ -534,10 +569,19 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         result_type = r[m.Infra.MiseToolchainWorkspaceLayout]
         if set(roots.values()) - self._file_leases.keys():
             return result_type.fail("file session requires every destination lease")
-        prepared = self._planner.file_layout(
-            scope_root,
-            roots,
-            transaction_id=secrets.token_hex(16),
+        identity = self._file_run_identity
+        physical = self._file_run_git_directory
+        if identity is None or physical is None or identity.repo_root != scope_root:
+            return result_type.fail("file session differs from its active scope lease")
+        prepared = self._file_identity_current(
+            identity,
+            physical,
+        ).flat_map(
+            lambda _: self._planner.file_layout_from_identity(
+                identity,
+                roots,
+                transaction_id=secrets.token_hex(16),
+            ),
         )
         if prepared.failure:
             return result_type.from_failure(prepared)
@@ -546,6 +590,38 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         if mismatch is not None:
             return result_type.fail(mismatch)
         return result_type.ok(layout)
+
+    @staticmethod
+    def _file_identity_current(
+        identity: m.Infra.GitIdentityReport,
+        physical: t.Pair[int, int],
+    ) -> p.Result[bool]:
+        """Reprove native Git mapping and original physical journal ownership.
+
+        Returns:
+            The unchanged lease anchor or its first native identity failure.
+
+        """
+        scope = u.Infra.git_mutation_scope(
+            m.Infra.GitRepoRequest(repo_root=identity.repo_root),
+        )
+        if scope.failure:
+            return r[bool].from_failure(scope)
+        if (
+            scope.value.root != identity.repo_root
+            or scope.value.git_dir != identity.git_dir
+        ):
+            return r[bool].fail("file transaction Git ownership changed during lease")
+        observed = FlextInfraMiseArtifactsFiles.physical_directory_identity(
+            identity.git_dir,
+        )
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        if observed.value != physical:
+            return r[bool].fail(
+                "file transaction journal directory changed during lease"
+            )
+        return r[bool].ok(value=True)
 
     def _file_session_authority(self) -> p.Result[bool]:
         """Resolve the current producer or cold source authority receipt.
@@ -558,15 +634,23 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             return FlextInfraCodegenPreconditions.source_authority_current(
                 self._source_authority,
             )
-        if self._producer.failure:
-            return r[bool].from_failure(self._producer)
-        return FlextInfraMiseArtifactsVerification.publication_outputs_current(
+        outputs = FlextInfraMiseArtifactsVerification.publication_outputs_current(
             self._prior_publications,
-            reference=self._producer.value.generator_reference,
-        ).flat_map(
-            lambda outputs: FlextInfraCodegenPreconditions.producer_current(
-                self._producer.value, outputs=outputs
-            )
+            reference=(
+                None if self._producer is None else self._producer.generator_reference
+            ),
+            destinations=(
+                ()
+                if self._producer is None
+                else tuple(source.path for source in self._producer.inputs)
+            ),
+        )
+        if outputs.failure:
+            return r[bool].from_failure(outputs)
+        if self._producer is None:
+            return r[bool].ok(value=True)
+        return FlextInfraCodegenPreconditions.producer_current(
+            self._producer, outputs=outputs.value
         )
 
     def _file_lease_mismatch(
@@ -649,7 +733,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             producer=(
                 self._source_authority
                 if self._source_authority is not None
-                else self._producer.value
+                else self._producer
             ),
         )
         if journal.failure:
@@ -701,11 +785,15 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         """
         result_type = r[t.VariadicTuple[Path]]
-        if self._producer.failure:
-            return result_type.from_failure(self._producer)
+        if not analysis.files and (analysis.issues or analysis.exception is not None):
+            return result_type.fail(
+                "\n".join(issue.formatted for issue in analysis.issues)
+                or "generation planning failed",
+                exception=analysis.exception,
+            )
         admitted = FlextInfraMisePublication.admit_batch(
             analysis,
-            producer=self._producer.value,
+            producer=self._producer,
             admission=policy.admission,
             prior_publications=self._prior_publications,
         )
@@ -817,25 +905,26 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         if prepared.failure:
             return result_type.from_failure(prepared)
         layout = prepared.value
-        outcome = self._file_transaction_guard(layout).flat_map(
-            lambda _guarded: FlextInfraMiseArtifactsJournal.observed_outcome(
-                layout,
-                admission,
-                producer=(
-                    self._source_authority
-                    if self._source_authority is not None
-                    else self._producer.value
-                ),
+        outcome = (
+            self
+            ._file_transaction_guard(layout)
+            .flat_map(
+                lambda _guarded: FlextInfraMiseArtifactsJournal.observed_outcome(
+                    layout,
+                    admission,
+                    producer=(
+                        self._source_authority
+                        if self._source_authority is not None
+                        else self._producer
+                    ),
+                )
             )
+            .flat_map(self._owned_publication_outcome)
         )
         if outcome.failure:
             return result_type.from_failure(outcome)
-        reference = self._producer.value.generator_reference
-        if reference is None:
-            return result_type.fail("observed publication lacks its original producer")
         current = FlextInfraMiseArtifactsVerification.publication_outputs_current(
             (*self._prior_publications, outcome.value),
-            reference=self._producer.value.generator_reference,
             destinations=tuple(output.path for output in outcome.value.outputs),
         ).flat_map(lambda _current: self.publish_outcome(scope_root, outcome.value))
         if current.failure:

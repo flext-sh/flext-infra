@@ -6,10 +6,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from ast import Import, ImportFrom
+from ast import ClassDef, Import, ImportFrom
 from collections.abc import Callable
 
 from flext_core import t
+from libcst import (
+    Arg,
+    BaseStatement,
+    ClassDef as CstClassDef,
+    ImportAlias,
+    ImportFrom as CstImportFrom,
+    Module,
+)
+from libcst.metadata import MetadataWrapper
 from rope.refactor.restructure import _ChangeComputer
 
 from flext_infra._protocols import FlextInfraProtocolsRopeRuntime
@@ -19,6 +28,14 @@ class FlextInfraTypesRope:
     """Rope type aliases — accessed via t.Infra.*."""
 
     type PythonImportNode = Import | ImportFrom
+    type PythonClassNode = ClassDef
+    type CstArgument = Arg
+    type CstStatement = BaseStatement
+    type CstImportAlias = ImportAlias
+    type CstModule = Module
+    type CstClass = CstClassDef
+    type CstImport = CstImportFrom
+    type CstMetadata = MetadataWrapper
 
     type RopeProject = FlextInfraProtocolsRopeRuntime.RopeProject
     type RopeResource = FlextInfraProtocolsRopeRuntime.RopeResource

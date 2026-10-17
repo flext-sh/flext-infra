@@ -9,6 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
+from flext_core import FlextRuntime
+
 from flext_infra import c, config, m, r, t, u
 from flext_infra.deps import FlextInfraExtraPathsManager
 from flext_infra.deps.phases import (
@@ -119,7 +121,7 @@ class FlextInfraPyprojectModernizerDocument:
         document = u.Cli.toml_parse_text(recovered.value)
         if document is None:
             return result_type.fail(f"invalid TOML: {path}")
-        payload_source = u.normalize_to_json_value(document.unwrap())
+        payload_source = FlextRuntime.normalize_to_json_value(document.unwrap())
         validated: p.Result[t.MutableJsonMapping] = u.validate_value(
             t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER,
             payload_source,
@@ -353,7 +355,11 @@ class FlextInfraPyprojectModernizerDocument:
         changes: t.MutableSequenceOf[str] = [
             *self._normalize_build_payload(payload),
             *FlextInfraConsolidateGroupsPhase().apply_payload(payload, canonical_dev),
-            *FlextInfraToolTablesPhase(tooling).apply_payload(payload, path=path),
+            *FlextInfraToolTablesPhase(tooling).apply_payload(
+                payload,
+                path=path,
+                repository_namespace_packages=topology.repository_namespace_packages,
+            ),
             # Pyrefly derives its include globs from the canonical Pyright
             # roots, so resolve Pyright first and converge in one pass.
             *FlextInfraEnsurePyrightConfigPhase(tooling).apply_payload(

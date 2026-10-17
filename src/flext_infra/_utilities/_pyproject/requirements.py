@@ -96,10 +96,9 @@ class FlextInfraUtilitiesPyprojectRequirements:
             The resulting ``t.VariadicTuple[str | m.Infra.DependencyGroupInclude]``.
 
         """
-        container_names: tuple[str, ...] = tuple(container)
         value = u.Cli.toml_value(
             container,
-            cls.dependency_group_name(container_names, name),
+            cls.dependency_group_name(container, name),
         )
         return (
             ()
@@ -113,7 +112,12 @@ class FlextInfraUtilitiesPyprojectRequirements:
         generated: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
         custom: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
     ) -> t.VariadicTuple[str | m.Infra.DependencyGroupInclude]:
-        """Add missing full requirements without consuming authored occurrences.
+        """Lead generated floors and retire authored pins of one identity.
+
+        SSOT floors win over existing same-name pins: the first occurrence per
+        extras/marker/origin identity is kept, so authored entries replaced by
+        a leading floor are dropped. Authored direct sources and include groups
+        carry a different identity and always survive.
 
         Returns:
             The resulting ``t.VariadicTuple[str | m.Infra.DependencyGroupInclude]``.
@@ -136,19 +140,34 @@ class FlextInfraUtilitiesPyprojectRequirements:
             if not isinstance(entry, str)
         }
         additions: list[str | m.Infra.DependencyGroupInclude] = []
+        seen: set[tuple[t.Pair[str, str], t.Pair[str | None, str | None]],] = set()
+        replaced: set[tuple[t.Pair[str, str], t.Pair[str | None, str | None]],] = set()
         for entry in generated:
             if isinstance(entry, str):
+                identity = cls._development_requirement_identity(entry)
+                if identity in seen:
+                    continue
+                seen.add(identity)
                 parsed = Requirement(entry)
                 if parsed in requirements:
                     continue
                 requirements.add(parsed)
+                replaced.add(identity)
             else:
                 included = canonicalize_name(entry.include_group)
                 if included in inclusions:
                     continue
                 inclusions.add(included)
             additions.append(entry)
-        return (*additions, *authored)
+        return (
+            *additions,
+            *(
+                entry
+                for entry in authored
+                if not isinstance(entry, str)
+                or cls._development_requirement_identity(entry) not in replaced
+            ),
+        )
 
     @staticmethod
     def _development_requirement_identity(
@@ -675,8 +694,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             msg = "Canonical development requirements include retired distributions"
             raise ValueError(msg)
         groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
-        group_names: tuple[str, ...] = tuple(groups)
-        dev_name = cls.dependency_group_name(group_names, str(c.Infra.DEV))
+        dev_name = cls.dependency_group_name(groups, str(c.Infra.DEV))
         # SSOT required floors win over existing same-name pins: dedupe_specs
         # keeps the first occurrence, so toolchain floors must lead the merge.
         # Otherwise stale member pins override the declared fleet floor. One
@@ -727,7 +745,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             u.Cli.toml_remove_key_if_present(groups, dev_name)
 
         codegen_name = cls.dependency_group_name(
-            group_names,
+            groups,
             str(c.Infra.DependencyGroup.CODEGEN),
         )
         codegen = cls.merge_dependency_group_entries(

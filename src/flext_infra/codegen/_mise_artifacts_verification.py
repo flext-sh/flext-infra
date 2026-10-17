@@ -10,7 +10,7 @@ from collections.abc import Callable, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, codegen, m, r, t, u
+from flext_infra import c, m, r, t, u
 from flext_infra.codegen._mise_artifacts_comparison import (
     FlextInfraMiseArtifactsComparison,
 )
@@ -24,7 +24,6 @@ from flext_infra.codegen._mise_artifacts_verification_manifest import (
 from flext_infra.codegen._mise_artifacts_verification_topology import (
     FlextInfraMiseArtifactsVerificationTopology,
 )
-from flext_infra.workspace.native_reference import FlextInfraWorkspaceNativeReference
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -41,10 +40,8 @@ class FlextInfraMiseArtifactsVerification(
     def publication_current(
         cls,
         request: m.Infra.CodegenConformRequest,
-        *,
-        verifier: m.Infra.CodegenPhaseAnalysis | None = None,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
-        """Authenticate a completed publication without planning or rendering.
+        """Verify a completed publication's physical inputs and effects.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenPhaseOutcome]``.
@@ -52,7 +49,7 @@ class FlextInfraMiseArtifactsVerification(
         """
         root = request.root.expanduser().resolve()
         surface = c.Infra.CodegenConformSurface(request.what)
-        observed = cls._read_publication(root, surface, verifier=verifier)
+        observed = cls._read_publication(root, surface)
         result = r[m.Infra.CodegenPhaseOutcome]
         if observed.failure:
             return result.from_failure(observed)
@@ -124,8 +121,6 @@ class FlextInfraMiseArtifactsVerification(
         cls,
         root: Path,
         surface: c.Infra.CodegenConformSurface,
-        *,
-        verifier: m.Infra.CodegenPhaseAnalysis | None = None,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Authenticate the stored native receipt before testing request coverage.
 
@@ -155,7 +150,7 @@ class FlextInfraMiseArtifactsVerification(
                 f"generation publication does not cover this request: {report}; "
                 "run make gen",
             )
-        current = cls.publication_states_current(outcome, verifier=verifier)
+        current = cls.publication_states_current(outcome)
         if current.failure:
             return result.from_failure(current)
         return cls.states_current((captured.value,)).map(lambda _: outcome)
@@ -209,10 +204,10 @@ class FlextInfraMiseArtifactsVerification(
     def publication_states_current(
         cls,
         outcome: m.Infra.CodegenPhaseOutcome,
-        *,
-        verifier: m.Infra.CodegenPhaseAnalysis | None = None,
     ) -> p.Result[bool]:
         """Verify the terminal frontier of the actual ordered journal batches.
+
+        Recorded data proves physical inputs and effects, never executable code.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -220,55 +215,9 @@ class FlextInfraMiseArtifactsVerification(
         """
         if outcome.root is None:
             return r[bool].fail("publication receipt lacks its actual root")
-        verifier_current = cls._publication_verifier_current(outcome.root, verifier)
-        if verifier_current.failure:
-            return verifier_current
         history = cls._publication_history_current((outcome,))
         if history.failure:
             return r[bool].from_failure(history)
-        outputs, outcomes = history.value
-        for batch in outcomes:
-            producer = cls._producer_closure_current(batch, outputs)
-            if producer.failure:
-                return producer
-        return r[bool].ok(value=True)
-
-    @classmethod
-    def _publication_verifier_current(
-        cls,
-        root: Path,
-        verifier: m.Infra.CodegenPhaseAnalysis | None,
-    ) -> p.Result[bool]:
-        """Authenticate the live checker before consuming historical data.
-
-        Returns:
-            Its current native proof, never authority issued to recorded data.
-
-        """
-        if verifier is None:
-            captured = codegen.FlextInfraCodegenPreconditions.capture_producer(
-                root,
-                entrypoint=cls.publication_states_current,
-            )
-            if captured.failure:
-                return r[bool].from_failure(captured)
-            verifier = captured.value
-        current_verifier = codegen.FlextInfraCodegenPreconditions.producer_current(
-            verifier,
-        )
-        if current_verifier.failure:
-            return current_verifier
-        selected = FlextInfraWorkspaceNativeReference.producer_selections(
-            cls.publication_states_current,
-            (),
-        )
-        if selected.failure:
-            return r[bool].from_failure(selected)
-        reference = verifier.generator_reference
-        if reference is None or any(
-            item not in reference.modules for item in selected.value
-        ):
-            return r[bool].fail("publication verifier does not cover this operation")
         return r[bool].ok(value=True)
 
     @classmethod
@@ -277,7 +226,7 @@ class FlextInfraMiseArtifactsVerification(
         publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
         *,
         reference: m.Infra.NativeImportReference | None = None,
-        destinations: t.SequenceOf[Path] = (),
+        destinations: t.SequenceOf[Path] | None = None,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenJournalSource]]:
         """Authenticate actual prior effects before using them as producer authority.
 
@@ -291,7 +240,7 @@ class FlextInfraMiseArtifactsVerification(
             if publication.batches:
                 pending.extend(publication.batches)
             else:
-                born = cls.publication_producer_current(publication)
+                born = cls.publication_birth_current(publication)
                 if born.failure:
                     return r[
                         t.VariadicTuple[m.Infra.CodegenJournalSource]
@@ -304,27 +253,28 @@ class FlextInfraMiseArtifactsVerification(
         result_type = r[t.VariadicTuple[m.Infra.CodegenJournalSource]]
         if history.failure:
             return result_type.from_failure(history)
-        outputs, outcomes = history.value
-        for outcome in outcomes:
-            current = cls._producer_closure_current(outcome, outputs)
-            if current.failure:
-                return result_type.from_failure(current)
+        outputs, _outcomes = history.value
         return result_type.ok(outputs)
 
     @staticmethod
-    def publication_producer_current(
+    def publication_birth_current(
         outcome: m.Infra.CodegenPhaseOutcome,
     ) -> p.Result[bool]:
-        """Re-prove a publication receipt's producer by value.
+        """Require the exact receipt emitted by its live publication owner.
 
         Returns:
-            Success while the receipt's native producer reference is current.
+            Success for the original receipt, never a JSON or copied model.
 
         """
-        reference = outcome.generator_reference
-        if reference is None:
-            return r[bool].fail("publication receipt lacks its original producer")
-        return codegen.FlextInfraCodegenPreconditions.reference_current(reference)
+        storage = outcome.__pydantic_private__
+        if storage is None or storage.get("_publication_birth") != (
+            id(outcome),
+            u.Cli.sha256_content(outcome.model_dump_json()),
+        ):
+            return r[bool].fail(
+                "publication receipt was not emitted by this live operation",
+            )
+        return r[bool].ok(value=True)
 
     @classmethod
     def _publication_history_current(
@@ -332,7 +282,7 @@ class FlextInfraMiseArtifactsVerification(
         publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
         *,
         reference: m.Infra.NativeImportReference | None = None,
-        destinations: t.SequenceOf[Path] = (),
+        destinations: t.SequenceOf[Path] | None = None,
     ) -> p.Result[
         t.Pair[
             t.VariadicTuple[m.Infra.CodegenJournalSource],
@@ -355,14 +305,20 @@ class FlextInfraMiseArtifactsVerification(
         if not publications:
             return result_type.ok(((), ()))
         selection: Callable[[Path], bool] | None = None
-        if reference is not None:
+        if reference is not None or destinations is not None:
             files = frozenset((
-                *(state.path for state in reference.source_authority.inputs),
-                *destinations,
+                *(
+                    (state.path for state in reference.source_authority.inputs)
+                    if reference is not None
+                    else ()
+                ),
+                *(destinations if destinations is not None else ()),
             ))
-            directories = {
-                tree.root.path for tree in reference.source_authority.generator_trees
-            }
+            directories = (
+                {tree.root.path for tree in reference.source_authority.generator_trees}
+                if reference is not None
+                else set()
+            )
             roots = tuple(
                 root
                 for root in sorted(directories)
@@ -382,12 +338,22 @@ class FlextInfraMiseArtifactsVerification(
                 frontier,
                 terminal,
                 outcomes,
-                selection,
+                None,
             )
             if history.failure:
                 return result_type.from_failure(history)
-        outputs = tuple(terminal.values())
-        physical = cls._recorded_states_current(tuple(frontier.values()))
+        outputs = tuple(
+            record
+            for path, record in terminal.items()
+            if selection is None or selection(path)
+        )
+        physical = cls._recorded_states_current(
+            tuple(
+                record
+                for path, record in frontier.items()
+                if selection is None or selection(path)
+            )
+        )
         if physical.failure:
             return result_type.from_failure(physical)
         topology = {
@@ -396,46 +362,16 @@ class FlextInfraMiseArtifactsVerification(
             for witness in batch.source_topology
         }
         for batch in outcomes:
+            if selection is not None and not any(
+                selection(output.path) for output in batch.outputs
+            ):
+                continue
             prerequisites = cls._frontier_prerequisites_current(
                 batch, outputs, topology
             )
             if prerequisites.failure:
                 return result_type.from_failure(prerequisites)
         return result_type.ok((outputs, tuple(outcomes)))
-
-    @classmethod
-    def _producer_closure_current(
-        cls,
-        outcome: m.Infra.CodegenPhaseOutcome,
-        outputs: t.VariadicTuple[m.Infra.CodegenJournalSource],
-    ) -> p.Result[bool]:
-        """Prove pre-planning producer closure for a batchless outcome.
-
-        Args:
-            outcome: Published phase outcome to authenticate.
-            outputs: Physically authenticated terminal effects of the whole operation.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        if outcome.batches:
-            return r[bool].ok(value=True)
-        reference = outcome.generator_reference
-        if reference is None:
-            return r[bool].fail("recorded publication lacks its native expectation")
-        current = codegen.FlextInfraCodegenPreconditions.authority_current(
-            reference.source_authority,
-            outputs=outputs,
-        )
-        if current.failure:
-            return current
-        return FlextInfraWorkspaceNativeReference.capture(reference.modules).flat_map(
-            lambda observed: FlextInfraWorkspaceNativeReference.compare(
-                observed,
-                reference,
-            ),
-        )
 
     @classmethod
     def _source_topology_current(
@@ -491,7 +427,7 @@ class FlextInfraMiseArtifactsVerification(
         cls,
         states: t.VariadicTuple[m.Infra.CodegenJournalSource],
     ) -> p.Result[bool]:
-        """Prove each terminal input or output state still matches its live identity.
+        """Prove each terminal output still matches its recorded physical identity.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -608,6 +544,8 @@ class FlextInfraMiseArtifactsVerification(
                 or outcome.generator_modules
                 or outcome.generator_reference is not None
                 or outcome.source_topology
+                or outcome.source_directories
+                or outcome.source_query_topology
                 or outcome.source_scope is not None
                 or outcome.analysis is not None
                 or outcome.admitted_states
@@ -616,16 +554,7 @@ class FlextInfraMiseArtifactsVerification(
                 or outcome.effect_targets
                 or outcome.attempted_files
             )
-        reference = outcome.generator_reference
-        return (
-            not outcome.outputs
-            or not outcome.generator_sources
-            or reference is None
-            or not reference.source_authority.inputs
-            or any(source.role is None for source in outcome.generator_sources)
-            or outcome.generator_trees != reference.source_authority.generator_trees
-            or outcome.generator_modules != reference.source_authority.generator_modules
-        )
+        return not outcome.outputs
 
     @classmethod
     def _frontier_prerequisites_current(
@@ -767,10 +696,10 @@ class FlextInfraMiseArtifactsVerification(
         frontier: t.MutableMappingKV[Path, m.Infra.CodegenJournalSource],
         selection: Callable[[Path], bool] | None,
     ) -> p.Result[t.MutableMappingKV[Path, list[m.Infra.CodegenJournalSource]]]:
-        """Prove consumed data snapshots agree with the frontier and each other.
+        """Prove consumed snapshots agree with prior outputs and each other.
 
-        Native producer inputs belong to the original code epoch and are
-        authenticated separately against its physically proven terminal effects.
+        Read-only inputs remain evidence of their completed batch. Only actual
+        output snapshots advance the frontier re-proven by later publications.
 
         Returns:
             The resulting ``p.Result[t.MutableMappingKV[Path,
@@ -803,7 +732,6 @@ class FlextInfraMiseArtifactsVerification(
                 ].fail(
                     f"generation inputs disagree without an owned write: {path}",
                 )
-            frontier[path] = records[0]
         return r[t.MutableMappingKV[Path, list[m.Infra.CodegenJournalSource]]].ok(
             inputs
         )
@@ -827,13 +755,20 @@ class FlextInfraMiseArtifactsVerification(
                     return r[bool].fail(
                         f"generation output has no authenticated preimage: {path}",
                     )
-            elif path in frontier and (
-                frontier[path].model_dump(exclude={"phase", "role"})
-                != output.model_dump(exclude={"phase", "role"})
-            ):
-                return r[bool].fail(
-                    f"generation output changed without an owned write: {path}",
+            else:
+                previous = frontier.get(path)
+                preimages = (
+                    *inputs.get(path, ()),
+                    *((previous,) if previous is not None else ()),
                 )
+                if any(
+                    preimage.model_dump(exclude={"phase", "role"})
+                    != output.model_dump(exclude={"phase", "role"})
+                    for preimage in preimages
+                ):
+                    return r[bool].fail(
+                        f"generation output changed without an owned write: {path}",
+                    )
             frontier[path] = output
         return r[bool].ok(value=True)
 

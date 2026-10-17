@@ -29,22 +29,15 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
     def _observe_publication(
         request: m.Infra.CodegenConformRequest,
     ) -> p.Result[m.Infra.CodegenResult]:
-        """Consume authenticated publication evidence without invoking a planner.
+        """Observe physical publication evidence without a general code audit.
 
         Returns:
             The verified publication result, or the verification failure.
 
         """
-        verifier = FlextInfraCodegenPreconditions.capture_producer(
-            request.root,
-            entrypoint=FlextInfraMiseArtifactsVerification.publication_states_current,
-        )
-        if verifier.failure:
-            return r[m.Infra.CodegenResult].from_failure(verifier)
         with FlextInfraCodegenFileLeases.mutation_lease(request.root):
             observed = FlextInfraMiseArtifactsVerification.publication_current(
                 request,
-                verifier=verifier.value,
             )
             if observed.failure:
                 return r[m.Infra.CodegenResult].from_failure(observed)
@@ -120,7 +113,6 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             return self._observe_publication(request)
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=request.root),
-            producer=self.producer,
         )
         root = request.root.expanduser().resolve()
         engine = FlextInfraCodegenPreconditions.rendering_engine(root)
@@ -171,17 +163,25 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         selected = self._select_repositories(request, workspace, repository)
         if selected.failure:
             return r[t.MappingKV[str, Path]].from_failure(selected)
-        roots = {
-            f"@{request.what}-{index}": (root / participant.path).resolve()
-            for index, participant in enumerate(selected.value)
-            if participant.kind is c.Infra.ProjectKind.INTERNAL_FLEXT
-        }
+        roots = FlextInfraCodegenTransaction.capability_roots(
+            request.what,
+            tuple(
+                (root / participant.path).resolve()
+                for participant in selected.value
+                if participant.kind is c.Infra.ProjectKind.INTERNAL_FLEXT
+            ),
+        )
         if request.what == c.Infra.CodegenConformSurface.FACADES:
             stage_workspace = FlextInfraStagedPackage.workspace_root(request.root)
             if stage_workspace.failure:
                 return r[t.MappingKV[str, Path]].from_failure(stage_workspace)
             if stage_workspace.value != request.root.expanduser().resolve():
-                roots["@stage-inputs-0"] = stage_workspace.value
+                roots = {
+                    **roots,
+                    **FlextInfraCodegenTransaction.capability_roots(
+                        "stage-inputs", (stage_workspace.value,)
+                    ),
+                }
         return r[t.MappingKV[str, Path]].ok(roots)
 
     def _execute_lazy_init_locked(
@@ -241,16 +241,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         """
         roots, scope_root = scope
         plan, analysis, changed = candidate
-        if self.producer is None:
-            return r[m.Infra.CodegenResult].fail(
-                "directed phase lacks pre-planning producer context"
-            )
-        bound = FlextInfraCodegenPreconditions.bind_producer_analysis(
-            analysis, self.producer
-        )
-        if bound.failure:
-            return r[m.Infra.CodegenResult].from_failure(bound)
-        staged = self._directed_stage_inputs(request, bound.value)
+        staged = self._directed_stage_inputs(request, analysis)
         if staged.failure:
             return r[m.Infra.CodegenResult].from_failure(staged)
         analysis, stage_plan = staged.value

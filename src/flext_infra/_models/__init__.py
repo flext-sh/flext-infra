@@ -42,6 +42,9 @@ if TYPE_CHECKING:
     from flext_infra._models._config.make_clean import FlextInfraConfigModelsMakeClean
     from flext_infra._models._config.make_docs import FlextInfraConfigModelsMakeDocs
     from flext_infra._models._config.provider import FlextInfraConfigModelsProvider
+    from flext_infra._models._config.refactor_campaigns import (
+        FlextInfraConfigModelsRefactorCampaigns,
+    )
     from flext_infra._models._config.release import FlextInfraConfigModelsRelease
     from flext_infra._models._config.render import FlextInfraConfigModelsRender
     from flext_infra._models._config.repository import FlextInfraConfigModelsRepository
@@ -94,6 +97,9 @@ if TYPE_CHECKING:
     from flext_infra._models.mise_toolchain_base import (
         FlextInfraModelsMiseToolchainBase,
     )
+    from flext_infra._models.mise_toolchain_repair import (
+        FlextInfraModelsMiseToolchainRepair,
+    )
     from flext_infra._models.mixins import FlextInfraModelsMixins
     from flext_infra._models.promoted import FlextInfraModelsPromoted
     from flext_infra._models.refactor import FlextInfraModelsRefactor
@@ -124,6 +130,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraConfigModelsMakeClean",
     "FlextInfraConfigModelsMakeDocs",
     "FlextInfraConfigModelsProvider",
+    "FlextInfraConfigModelsRefactorCampaigns",
     "FlextInfraConfigModelsRelease",
     "FlextInfraConfigModelsRender",
     "FlextInfraConfigModelsRepository",
@@ -170,6 +177,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsLayout",
     "FlextInfraModelsMiseToolchain",
     "FlextInfraModelsMiseToolchainBase",
+    "FlextInfraModelsMiseToolchainRepair",
     "FlextInfraModelsMixins",
     "FlextInfraModelsNamespaceEnforcer",
     "FlextInfraModelsPromoted",
@@ -203,6 +211,7 @@ install_lazy_exports(
         "FlextInfraConfigModelsMakeClean": "._config.make_clean",
         "FlextInfraConfigModelsMakeDocs": "._config.make_docs",
         "FlextInfraConfigModelsProvider": "._config.provider",
+        "FlextInfraConfigModelsRefactorCampaigns": "._config.refactor_campaigns",
         "FlextInfraConfigModelsRelease": "._config.release",
         "FlextInfraConfigModelsRender": "._config.render",
         "FlextInfraConfigModelsRepository": "._config.repository",
@@ -253,6 +262,7 @@ install_lazy_exports(
         "FlextInfraModelsLayout": ".layout",
         "FlextInfraModelsMiseToolchain": ".mise_toolchain",
         "FlextInfraModelsMiseToolchainBase": ".mise_toolchain_base",
+        "FlextInfraModelsMiseToolchainRepair": ".mise_toolchain_repair",
         "FlextInfraModelsMixins": ".mixins",
         "FlextInfraModelsNamespaceEnforcer": ".refactor_namespace_enforcer",
         "FlextInfraModelsPromoted": ".promoted",

@@ -14,6 +14,7 @@ from flext_cli import cli, u
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesCodemodProject,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
@@ -40,31 +41,46 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
             sources,
             tuple(
                 rule
-                for rule in cls.declared_contract_rules()
+                for rule in cls.declared_contract_rules(
+                    Path(workspace.rope_project.root.real_path)
+                )
                 if rule.phase == c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION
             ),
         )
 
     @staticmethod
-    def declared_contract_rules() -> t.SequenceOf[m.Infra.RopeContractRule]:
+    def declared_contract_rules(
+        repository_root: Path,
+    ) -> t.SequenceOf[m.Infra.RopeContractRule]:
         """Load typed policy; reject duplicate identities and undeclared families.
 
+        The packaged catalogue holds only universal rules. A governed repository
+        declares rules about its own symbols in the same relative path under its
+        root; that overlay is optional, and its absence declares no rule.
+
         Returns:
-            Declared Rope contract rules in configuration order.
+            Packaged rules, then the repository's own rules, in file order.
 
         Raises:
             ValueError: If two rules share an identity or a rule names an
                 undeclared facade family.
 
-
         """
-        rules = m.Infra.RopeContractRules.model_validate(
-            u.Cli.yaml_safe_load(
-                type(config).ssot_config_dir().parent
-                / c.Infra.CODEMOD_ROPE_RULES_RELPATH
-                / "contracts.yaml"
-            ).unwrap()
-        ).rules
+        packaged = (
+            type(config).ssot_config_dir().parent
+            / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
+        )
+        overlay = repository_root / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
+        catalogues = (packaged,) + (
+            (overlay,) if overlay != packaged and overlay.exists() else ()
+        )
+        rules = tuple(
+            rule
+            for catalogue in catalogues
+            for rule in m.Infra.RopeContractRules.model_validate(
+                u.Cli.yaml_safe_load(catalogue).unwrap()
+            ).rules
+        )
         ids = [rule.id for rule in rules]
         if len(ids) != len(set(ids)):
             message = "duplicate Rope contract rule identities"
@@ -94,12 +110,18 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         if not items:
             return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(())
         working = dict(items)
-        applied: dict[Path, list[str]] = {}
-        for rule in rules:
-            project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                workspace.rope_project, working
-            )
-            try:
+        applied: t.MutableMappingKV[Path, t.MutableSequenceOf[str]] = {}
+        epoch = cls._contract_epoch(workspace, working, rules)
+        # A snapshot is a pure function of (working, epoch); restructuring only
+        # plans a ChangeSet, so consecutive rules share one graph until a rule
+        # actually changes a source.
+        project: p.Infra.RopeProject | None = None
+        try:
+            for rule in rules:
+                if project is None:
+                    project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+                        workspace.rope_project, working, captured=epoch
+                    )
                 resources = tuple(
                     project.get_resource(
                         path.relative_to(Path(project.root.real_path)).as_posix()
@@ -120,16 +142,22 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 members = FlextInfraUtilitiesRopeRuntimeRefactors.change_set_members(
                     changes.changes, f"{rule.id}: invalid Rope content changes"
                 ).unwrap()
+                changed = False
                 for change in members:
                     path = Path(change.resource.real_path).resolve()
                     if change.new_contents == working[path]:
                         continue
                     working[path] = change.new_contents
                     applied.setdefault(path, []).append(rule.id)
+                    changed = True
                 cli.display_text(
                     f"mod: Rope contract {rule.id}: changed_files={len(members)}"
                 )
-            finally:
+                if changed:
+                    project.close()
+                    project = None
+        finally:
+            if project is not None:
                 project.close()
         return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
             tuple(
@@ -142,6 +170,37 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 for path, source in items
                 if source != working[path]
             )
+        )
+
+    @staticmethod
+    def _contract_epoch(
+        workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+        rules: t.SequenceOf[m.Infra.RopeContractRule],
+    ) -> m.Infra.CodemodSourceEpoch:
+        """Capture the edited sources and every identity the rules constrain.
+
+        Returns:
+            The immutable source epoch shared by every rule of this plan.
+
+        """
+        prefix = c.Infra.ROPE_NAME_CONSTRAINT_PREFIX
+        return FlextInfraUtilitiesCodemodProject.identity_source_epoch(
+            Path(workspace.rope_project.root.real_path),
+            tuple(sources),
+            (
+                *(
+                    value.removeprefix(prefix)
+                    for rule in rules
+                    for constraint in rule.arguments.values()
+                    for value in (
+                        (constraint,) if isinstance(constraint, str) else constraint
+                    )
+                    if value.startswith(prefix)
+                ),
+                *(identity for rule in rules for identity in rule.bindings.values()),
+                *(base for rule in rules for base in rule.model_bases),
+            ),
         )
 
     @classmethod
@@ -173,17 +232,28 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
             for name in rule.model_bases
         ):
             return False
-        if rule.repeats_annotation or rule.reorders_annotation:
-            calls = FlextInfraUtilitiesRopeRuntimeRefactors.word_call_regions(
-                module.source_code, match.get_region()
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        # Only the capture the goal evaluates again must be free of calls; the
+        # rest of the declaration (Annotated metadata, the field call) runs once.
+        if rule.repeats is not None and refactors.word_call_regions(
+            module.source_code,
+            refactors.semantic_capture_region(match, rule.repeats),
+        ):
+            message = (
+                f"{rule.id}: annotation evaluation cannot repeat authored calls "
+                f"in {module.get_name()}:{scope.get_start()}"
             )
-            if len(calls) != 1:
-                message = (
-                    f"{rule.id}: annotation evaluation cannot repeat or reorder "
-                    f"authored calls "
-                    f"in {module.get_name()}:{scope.get_start()}"
-                )
-                raise ValueError(message)
+            raise ValueError(message)
+        if (
+            rule.reorders_annotation
+            and len(refactors.word_call_regions(module.source_code, match.get_region()))
+            != 1
+        ):
+            message = (
+                f"{rule.id}: annotation evaluation cannot reorder authored calls "
+                f"in {module.get_name()}:{scope.get_start()}"
+            )
+            raise ValueError(message)
         if not cls._admitted_unshadowed_builtins(rule, scope):
             return False
         return cls._admitted_bindings(

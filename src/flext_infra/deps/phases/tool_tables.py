@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_core import FlextRuntime
+
 from flext_infra import c, config, m, t, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
@@ -49,6 +51,7 @@ class FlextInfraToolTablesPhase:
         *,
         path: Path,
         planned_sources: t.SequenceOf[Path] = (),
+        repository_namespace_packages: t.StrSequence = (),
     ) -> t.StrSequence:
         """Derive only packages owned by this target's production tree.
 
@@ -73,6 +76,7 @@ class FlextInfraToolTablesPhase:
         return sorted({
             *u.Infra.discover_first_party_namespaces(path),
             *planned_packages,
+            *repository_namespace_packages,
         })
 
     @staticmethod
@@ -147,7 +151,7 @@ class FlextInfraToolTablesPhase:
         operations.append(
             toml.SetOp(
                 key="overrides",
-                value=u.normalize_to_json_value([
+                value=FlextRuntime.normalize_to_json_value([
                     {
                         "module": list(entry.modules),
                         "follow_untyped_imports": entry.follow_untyped_imports,
@@ -193,6 +197,7 @@ class FlextInfraToolTablesPhase:
         self,
         *,
         path: Path,
+        repository_namespace_packages: t.StrSequence,
     ) -> t.SequenceOf[m.Infra.DepsToml.PhaseConfig]:
         """Build every policy table; coverage is measured, never floor-gated.
 
@@ -331,7 +336,10 @@ class FlextInfraToolTablesPhase:
                 operations=(
                     toml.ListOp(
                         key=c.Infra.KNOWN_FIRST_PARTY_UNDERSCORE,
-                        values=self.deptry_first_party_namespaces(path=path),
+                        values=self.deptry_first_party_namespaces(
+                            path=path,
+                            repository_namespace_packages=repository_namespace_packages,
+                        ),
                         strategy=replace,
                     ),
                 ),
@@ -389,6 +397,7 @@ class FlextInfraToolTablesPhase:
         payload: t.MutableJsonMapping,
         *,
         path: Path,
+        repository_namespace_packages: t.StrSequence = (),
     ) -> t.StrSequence:
         """Apply every policy table to one normalized payload.
 
@@ -400,6 +409,7 @@ class FlextInfraToolTablesPhase:
             payload,
             *self._phases(
                 path=path.parent,
+                repository_namespace_packages=repository_namespace_packages,
             ),
         )
 

@@ -96,7 +96,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             sources,
             tuple(
                 rule
-                for rule in contracts.declared_contract_rules()
+                for rule in contracts.declared_contract_rules(
+                    Path(workspace.rope_project.root.real_path)
+                )
                 if rule.phase == c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
             ),
         )
@@ -1139,14 +1141,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         Returns:
             Public reference paths bound by the constants facade's Rope graph.
 
-        Raises:
-            TypeError: The constants provider lacks the native module capability.
-
         """
         module = project.get_module(f"{package}.{Path(c.Infra.CONSTANTS_PY).stem}")
-        if not FlextInfraUtilitiesRopeRuntimeTypes.semantic_module(module):
-            message = "Rope constants provider has no semantic module"
-            raise TypeError(message)
         facade = module.get_attributes().get("c")
         if facade is None:
             return {}

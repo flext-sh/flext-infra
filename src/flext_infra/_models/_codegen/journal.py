@@ -57,6 +57,18 @@ class FlextInfraModelsCodegenJournalModels:
                 description="Exact dependencies consumed by this destination",
             ),
         ] = ()
+        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
+            default=(),
+            strict=True,
+            description="Native directory queries consumed by this target",
+        )
+        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
+            m.Field(
+                default=(),
+                strict=True,
+                description="Physical ancestry of queried source directories",
+            )
+        )
         tracking: Annotated[
             Literal["versioned", "runtime-local"],
             m.Field(description="Managed artifact persistence policy"),
@@ -549,6 +561,16 @@ class FlextInfraModelsCodegenJournalModels:
                 description="Authenticated source identities consumed by this entry"
             ),
         ] = ()
+        source_directory_paths: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            strict=True,
+            description="Phase-bound native directory query receipt references",
+        )
+        source_query_topology_paths: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            strict=True,
+            description="Phase-bound source query ancestry receipt references",
+        )
         tracking: Annotated[
             Literal["versioned", "runtime-local"],
             m.Field(description="Declared persistence policy for this destination"),

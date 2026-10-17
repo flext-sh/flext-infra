@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from enum import StrEnum, unique
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
@@ -20,6 +21,11 @@ if TYPE_CHECKING:
 
 class FlextInfraConstantsGit:
     """Git-specific constants for the GitPython-backed facet."""
+
+    GIT_COMMIT_OID_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$",
+    )
+    "Full SHA-1 or SHA-256 commit object identity."
 
     GIT_UNBORN_HEAD_ERROR_CODE: ClassVar[str] = "GIT_UNBORN_HEAD"
     "Identity is unavailable because HEAD names a branch that has no ref yet."

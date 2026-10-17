@@ -22,13 +22,77 @@ from flext_infra.codegen import (
 class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
     """Durable transaction journal for Mise artifact generation."""
 
+    @staticmethod
+    def source_query_records(
+        journal: m.Infra.CodegenTransactionJournal,
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        *,
+        phase: str | None,
+    ) -> t.Pair[
+        t.VariadicTuple[t.Pair[str, m.Cli.AtomicDirectoryInventory]],
+        t.VariadicTuple[t.Pair[str, m.Cli.AtomicDirectoryChainPlan]],
+    ]:
+        """Retain one original native query receipt per phase and physical parent.
+
+        Returns:
+            Directory and ancestry query receipts grouped by their owning phase.
+
+        Raises:
+            ValueError: If source queries have no owning publication phase.
+
+        """
+        name = phase or journal.phase
+        directories = tuple(
+            receipt for plan in plans for receipt in plan.source_directories
+        )
+        topology = tuple(
+            receipt for plan in plans for receipt in plan.source_query_topology
+        )
+        if name is None and (directories or topology):
+            msg = "native source queries require their publication phase"
+            raise ValueError(msg)
+        directory_records = journal.source_directories
+        topology_records = journal.source_query_topology
+        if name is None:
+            return directory_records, topology_records
+        merged_directories, merged_topology = (
+            u.Cli.atomic_merge_directory_query_receipts(
+                (
+                    *(receipt for owner, receipt in directory_records if owner == name),
+                    *directories,
+                ),
+                (
+                    *(receipt for owner, receipt in topology_records if owner == name),
+                    *topology,
+                ),
+            )
+        )
+        return (
+            (
+                *(
+                    (owner, receipt)
+                    for owner, receipt in directory_records
+                    if owner != name
+                ),
+                *((name, receipt) for receipt in merged_directories),
+            ),
+            (
+                *(
+                    (owner, receipt)
+                    for owner, receipt in topology_records
+                    if owner != name
+                ),
+                *((name, receipt) for receipt in merged_topology),
+            ),
+        )
+
     @classmethod
     def observed_outcome(
         cls,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         admission: m.Infra.CodegenPhaseOutcome,
         *,
-        producer: m.Infra.CodegenPhaseAnalysis | m.Infra.CodegenSourceAuthority,
+        producer: m.Infra.CodegenPhaseAnalysis | m.Infra.CodegenSourceAuthority | None,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Encode an admitted observation without materializing a transaction.
 
@@ -293,7 +357,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
                 return r[m.Infra.CodegenTransactionJournal].fail(
                     "prepared journal differs from its original producer reference",
                 )
-            return codegen.FlextInfraCodegenPreconditions.reference_current(
+            return codegen.FlextInfraCodegenPreconditions.reference_birth_current(
                 reference
             ).map(
                 lambda _: prepared.model_copy(
@@ -589,9 +653,13 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             return result_type.fail("codegen transaction journal is absent")
         if journal_snapshot.mode != c.Infra.JOURNAL_MODE:
             return result_type.fail("codegen transaction journal mode is not 0600")
-        u.Cli.info(f"codegen journal read bytes={len(journal_snapshot.content)}")
         validated = m.Infra.CodegenTransactionJournal.model_validate_json(
             journal_snapshot.content,
+        )
+        u.Cli.info(
+            f"codegen journal read path={layout.journal_path} "
+            f"bytes={len(journal_snapshot.content)} "
+            f"transaction_id={validated.transaction_id} state={validated.state}"
         )
         relocated = cls._relocate_journal(layout, validated)
         if relocated.failure:
@@ -783,6 +851,12 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
                 path=selector,
                 desired_staging=desired_staging,
                 source_paths=tuple(source.path for source in publication.source_states),
+                source_directory_paths=tuple(
+                    receipt.root.path for receipt in publication.source_directories
+                ),
+                source_query_topology_paths=tuple(
+                    receipt.target for receipt in publication.source_query_topology
+                ),
                 tracking=publication.tracking,
                 index_before=publication.index_before,
                 tracking_dependencies=publication.tracking_dependencies,

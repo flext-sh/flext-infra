@@ -82,12 +82,11 @@ class TestsFlextInfraLazyInitRuntime:
                 "__all__ = ['Standalone']\n"
             )
         if ownership == "entities":
-            sources[facade] = (
-                "from flext_core import m as parent\n"
-                "class Facade(parent):\n"
+            sources[owner] = source.replace(
+                "__all__ = ['PublishedOwner']\n",
                 "    class First: value = 'first'\n"
                 "    class Second: value = 'second'\n"
-                "m = Facade\n__all__ = ['Facade', 'm']\n"
+                "__all__ = ['PublishedOwner']\n",
             )
         if ownership in {"module", "module-only"}:
             sources[package / "ancestor.py"] = (

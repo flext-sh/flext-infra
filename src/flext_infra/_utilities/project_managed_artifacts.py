@@ -14,7 +14,7 @@ from functools import lru_cache, partial
 from pathlib import Path
 
 from flext_cli import u
-from flext_core import FlextStrictYamlConfigSource
+from flext_core.config_sources import FlextStrictYamlConfigSource
 
 from flext_infra import c, m, p, r, t
 from flext_infra._config import FlextInfraConfig
@@ -324,41 +324,39 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         codegen = u.Cli.json_walk_path(document, ("Infra", "codegen"))
         return m.Infra.CodegenConfigSpec.model_validate(codegen)
 
-    @staticmethod
+    @classmethod
     def _repository_config_document(
+        cls,
         sources: tuple[Path, ...],
         snapshots: t.VariadicTuple[m.Cli.AtomicFileState],
         projections: t.VariadicTuple[m.Infra.CodegenLayerProjection],
     ) -> t.JsonMapping:
         """Merge ordered captured F.yaml bytes and explicitly projected layers.
 
+        Projections replace values within their source layer. Distinct layers
+        use the strict YAML source's recursive mapping and list composition.
+
         Returns:
             The composed document; schema consumers validate their owned section.
 
         """
         merged: t.JsonDict = {}
-        parse_document = (
-            FlextInfraUtilitiesProjectManagedArtifacts._parse_codegen_config_document
-        )
         for path in sources:
             captured = next((item for item in snapshots if item.path == path), None)
             if captured is None or captured.content is None:
                 payload: t.JsonMapping = {}
             else:
-                payload = parse_document(captured.content)
+                payload = cls._parse_codegen_config_document(captured.content)
             projected = next(
                 (item for item in projections if item.path == path),
                 None,
             )
             values = (
-                u.config_merge(
-                    dict(payload),
-                    dict(projected.values),
-                )
+                u.config_merge(dict(payload), dict(projected.values))
                 if projected is not None
                 else dict(payload)
             )
-            merged = u.config_merge(merged, values)
+            merged = FlextStrictYamlConfigSource.merge_values(merged, values)
         return merged
 
     @staticmethod

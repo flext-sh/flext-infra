@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from flext_infra._constants.codegen_render_names import (
         FlextInfraConstantsCodegenRenderNames,
     )
+    from flext_infra._constants.config import FlextInfraConstantsConfig
     from flext_infra._constants.deps import FlextInfraConstantsDeps
     from flext_infra._constants.docs import FlextInfraConstantsDocs
     from flext_infra._constants.git import FlextInfraConstantsGit
@@ -53,6 +54,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraConstantsCodegenLazy",
     "FlextInfraConstantsCodegenProject",
     "FlextInfraConstantsCodegenRenderNames",
+    "FlextInfraConstantsConfig",
     "FlextInfraConstantsDeps",
     "FlextInfraConstantsDocs",
     "FlextInfraConstantsGit",
@@ -81,6 +83,7 @@ install_lazy_exports(
         "FlextInfraConstantsCodegenLazy": ".codegen_lazy",
         "FlextInfraConstantsCodegenProject": ".codegen_project",
         "FlextInfraConstantsCodegenRenderNames": ".codegen_render_names",
+        "FlextInfraConstantsConfig": ".config",
         "FlextInfraConstantsDeps": ".deps",
         "FlextInfraConstantsDocs": ".docs",
         "FlextInfraConstantsGit": ".git",

@@ -27,6 +27,14 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         m.Infra.CodegenConformRequest | None,
         m.Field(default=None, exclude=True, description="Validated conform request"),
     ] = None
+    generation_only: Annotated[
+        bool,
+        m.Field(
+            default=False,
+            exclude=True,
+            description="Project declared outputs without repairing authored inputs",
+        ),
+    ] = False
     repository_root: Annotated[
         Path,
         m.Field(default=Path(), exclude=True, description="Conform repository root"),
@@ -45,7 +53,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
             default=None,
             exclude=True,
             description=(
-                "Docs planner and fresh-import probe wired by the facade; the "
+                "Docs planner and participant policy wired by the facade; the "
                 "complete surface fails before any effect without them"
             ),
         ),
@@ -63,18 +71,10 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         exclude=True,
         description="First native file planning cause",
     )
-    producer: m.Infra.CodegenPhaseAnalysis | None = m.Field(
-        default=None, exclude=True, description="Producer captured before planning"
-    )
     docs_planner: p.Infra.DocsArtifactPlanner | None = m.Field(
         default=None,
         exclude=True,
         description="Actual docs planner retained before effects",
-    )
-    docs_producer: m.Infra.CodegenPhaseAnalysis | None = m.Field(
-        default=None,
-        exclude=True,
-        description="Original docs producer captured before effects",
     )
 
     def _record_file_failure(
@@ -187,7 +187,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         if any(not name for name, _root in imports):
             msg = f"declared package namespace is unresolved: {target.root}"
             raise ValueError(msg)
-        return tuple(imports)
+        return imports
 
     @staticmethod
     def _merge_extra_verbs(

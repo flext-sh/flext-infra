@@ -15,6 +15,7 @@ import pytest
 
 from flext_infra import c, config, infra, m
 from flext_infra.codemod import FlextInfraAccessorRenamePhase, FlextInfraModGateEngine
+from flext_infra.refactor import FlextInfraAccessorOriginResolver
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
@@ -545,6 +546,51 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tm.that(findings, len=1)
         tm.that(findings[0].reason, has=f"flext_core.legacy.Owned.{name}")
         tm.that(findings[0].replacement_name, eq="")
+        tm.that(origin_file.read_text(encoding="utf-8"), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize("snapshot_case", ["original", "source", "project"])
+    def test_manual_warnings_authenticate_the_original_snapshot(
+        tmp_path: Path,
+        snapshot_case: str,
+    ) -> None:
+        """Identical source bytes cannot authenticate a different Rope project."""
+        workspace, origin_file, _foreign_file = _materialize_fixture(tmp_path)
+        policy = m.MethodShapeParams.model_validate(
+            c.ENFORCEMENT_PREDICATE_SPECS["no_accessor_methods"]["params"]
+        )
+        name = f"{next(iter(policy.forbidden_prefixes))}owned_probe"
+        source = f"class Owned:\n    def {name}(self):\n        return True\n"
+        origin_file.write_text(source, encoding="utf-8")
+        with u.Infra.open_project(workspace) as project:
+            resolver = FlextInfraAccessorOriginResolver(project)
+            snapshot = u.Infra.snapshot_project(project, {origin_file: source})
+            try:
+                if snapshot_case == "original":
+                    findings = resolver.collect_manual_warnings(
+                        project, origin_file, source, rules=()
+                    )
+                    tm.that(findings, len=1)
+                    tm.that(findings[0].original_name, eq=name)
+                    tm.that(
+                        findings[0].reason,
+                        has=policy.forbidden_prefixes[
+                            next(iter(policy.forbidden_prefixes))
+                        ],
+                    )
+                else:
+                    with pytest.raises(
+                        ValueError,
+                        match="accessor discovery source differs from Rope snapshot",
+                    ):
+                        resolver.collect_manual_warnings(
+                            snapshot if snapshot_case == "project" else project,
+                            origin_file,
+                            source + "\n" if snapshot_case == "source" else source,
+                            rules=(),
+                        )
+            finally:
+                snapshot.close()
         tm.that(origin_file.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
