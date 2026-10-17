@@ -162,15 +162,15 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
                 # own layout directories, not export surfaces: a
                 # child package name never enters their lazy map.
                 continue
+            if is_facade_root and self._is_private_owner(
+                child_pkg_name, root_pkg=parent_pkg
+            ):
+                continue
             self._add(
                 lazy_map,
                 child_pkg_name.rsplit(".", maxsplit=1)[-1],
                 (child_pkg_name, ""),
             )
-            if is_facade_root and self._is_private_owner(
-                child_pkg_name, root_pkg=parent_pkg
-            ):
-                continue
             self._publish_child_exports(lazy_map, child_exports)
         return tuple(sorted(direct))
 

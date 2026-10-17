@@ -324,8 +324,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         codegen = u.Cli.json_walk_path(document, ("Infra", "codegen"))
         return m.Infra.CodegenConfigSpec.model_validate(codegen)
 
-    @staticmethod
+    @classmethod
     def _repository_config_document(
+        cls,
         sources: tuple[Path, ...],
         snapshots: t.VariadicTuple[m.Cli.AtomicFileState],
         projections: t.VariadicTuple[m.Infra.CodegenLayerProjection],
@@ -340,13 +341,12 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         """
         merged: t.JsonDict = {}
-        owner = FlextInfraUtilitiesProjectManagedArtifacts
         for path in sources:
             captured = next((item for item in snapshots if item.path == path), None)
             if captured is None or captured.content is None:
                 payload: t.JsonMapping = {}
             else:
-                payload = owner._parse_codegen_config_document(captured.content)
+                payload = cls._parse_codegen_config_document(captured.content)
             projected = next(
                 (item for item in projections if item.path == path),
                 None,
