@@ -93,7 +93,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             if (start, end) not in (
                 FlextInfraUtilitiesRopeRuntimeRefactors.semantic_regions(
                     module,
-                    capture.text,
+                    f"(\n{capture.text}\n)",
                     arguments={},
                     start=start,
                     end=end,
@@ -624,7 +624,9 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
             """
             if expression.isidentifier() and expression in routes:
-                route = project.get_module(routes[expression])
+                route = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
+                    project.get_module(routes[expression])
+                )
                 target = route.get_attribute(expression)
                 if not FlextInfraUtilitiesRopeRuntimeModules.same_name(
                     target, binding

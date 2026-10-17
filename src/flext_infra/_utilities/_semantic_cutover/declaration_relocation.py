@@ -193,8 +193,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         if public is None:
             return False
         declared = (
-            project
-            .get_pymodule(
+            FlextInfraUtilitiesRopeCore
+            .resolve_pymodule(
+                project,
                 project.get_resource(path.relative_to(root).as_posix()),
             )
             .get_attribute(owner)
@@ -357,7 +358,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         target = Path(resource.real_path).resolve()
         if target.is_relative_to(namespace):
             return None
-        destination = project.get_pymodule(resource)
+        destination = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
         destination_name = destination.get_name().split(".")[0]
         declared = FlextInfraUtilitiesSemanticDeclarationRelocation._resolve_binding(
             project,
@@ -610,7 +611,8 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             if family is None or family != "m":
                 continue
             owner = workspace.convention(path).module_policy.expected_family
-            module = project.get_pymodule(
+            module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                project,
                 project.get_resource(path.relative_to(root).as_posix()),
             )
             if owner is None or owner not in module.get_attributes():
@@ -651,11 +653,12 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         root = Path(project.root.real_path)
         outer, name = declaration[1].split(".", 1)
         declared = (
-            project
-            .get_pymodule(
+            FlextInfraUtilitiesRopeCore
+            .resolve_pymodule(
+                project,
                 project.get_resource(
                     declaration[0].relative_to(root).as_posix(),
-                )
+                ),
             )
             .get_attribute(outer)
             .get_object()
@@ -666,11 +669,12 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         related: list[t.Triple[Path, str, str]] = []
         for path, owner, route in targets:
             value = (
-                project
-                .get_pymodule(
+                FlextInfraUtilitiesRopeCore
+                .resolve_pymodule(
+                    project,
                     project.get_resource(
                         path.relative_to(root).as_posix(),
-                    )
+                    ),
                 )
                 .get_attribute(owner)
                 .get_object()
@@ -692,22 +696,26 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         package: Path,
     ) -> t.SequenceOf[t.Pair[p.Infra.RopePyObject, str]]:
         root = Path(project.root.real_path)
-        facade = project.get_pymodule(
+        facade = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project,
             project.get_resource(
                 (package / c.Infra.MODELS_PY).relative_to(root).as_posix(),
             ),
         )
         initializer = package / c.Infra.INIT_PY
         resource = project.get_resource(initializer.relative_to(root).as_posix())
+        initializer_module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project, resource
+        )
         exports = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
-            project.get_pymodule(resource).get_name(),
+            initializer_module.get_name(),
             initializer,
             FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                 resource,
                 initializer,
             ).read(),
             project=project,
-            pymodule=project.get_pymodule(resource),
+            pymodule=initializer_module,
         )
         if exports.get("m") != facade.get_name():
             return ()
@@ -746,8 +754,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         """
         root = Path(project.root.real_path)
         facade = (
-            project
-            .get_pymodule(
+            FlextInfraUtilitiesRopeCore
+            .resolve_pymodule(
+                project,
                 project.get_resource(
                     (target.parent.parent / c.Infra.MODELS_PY)
                     .relative_to(root)
@@ -1099,7 +1108,8 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             project, resource
         ).get_scope()
         existing = scope.get_names().get("m")
-        expected = project.get_pymodule(
+        expected = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project,
             project.get_resource(
                 (target.parent.parent / c.Infra.MODELS_PY)
                 .relative_to(Path(project.root.real_path))

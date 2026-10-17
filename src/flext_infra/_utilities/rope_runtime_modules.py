@@ -93,7 +93,9 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         if not attributes:
             message = f"Rope identity requires an attribute: {expression}"
             raise ValueError(message)
-        value = project.get_module(module)
+        value = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+            project.get_module(module),
+        )
         identity = value.get_attribute(attributes[0])
         for attribute in attributes[1:]:
             identity = identity.get_object().get_attribute(attribute)
