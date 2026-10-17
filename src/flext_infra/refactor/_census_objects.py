@@ -65,11 +65,11 @@ class FlextInfraRefactorCensusObjectsMixin:
         )
 
     @staticmethod
-    def is_unused(item: m.Infra.Object) -> bool:
-        """Is unused.
+    def unused(item: m.Infra.Object) -> bool:
+        """Report a public object with collected evidence of zero references.
 
         Returns:
-            The resulting ``bool``.
+            Whether the object is proven unused and is no pytest entry point.
 
         """
         return (
@@ -142,7 +142,7 @@ class FlextInfraRefactorCensusObjectsMixin:
             The resulting ``m.Infra.RemovalCandidate | None``.
 
         """
-        if include_unused and cls.is_unused(item):
+        if include_unused and cls.unused(item):
             reason, suggested_action = "unused", "delete_object_definition"
         else:
             return None

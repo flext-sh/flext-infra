@@ -1149,7 +1149,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         if mirror in seen:
             return None
         seen.add(mirror)
-        if not FlextInfraDuplicationGate.is_semantic_clone(duplicate, first, second):
+        if not FlextInfraDuplicationGate.semantic_clone(duplicate, first, second):
             return None
         owner_side, other_side = sorted(sides, key=cls._side_layer_key(layers))
         return cls._clone_plan(report_duplicate.lines, owner_side, other_side)
