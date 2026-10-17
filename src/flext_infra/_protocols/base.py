@@ -303,6 +303,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Validate one project's generated Mise declaration."""
             ...
 
+    @runtime_checkable
     class CodegenPendingPhase(Protocol):
         """Read-only pending-phase contract across the transaction mixins."""
 

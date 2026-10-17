@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLayoutPlanMixin,
     FlextInfraMiseArtifactsVerification,
@@ -37,7 +37,20 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             The resulting ``p.Result[t.Infra.LayoutStatus]``.
 
         """
-        managed = self._managed_profile(project_dir)
+        project_dir = FlextInfraWorkspaceDetector.resolve_repository_root(
+            project_dir,
+        ).unwrap()
+        inputs = u.Infra.load_codegen_inputs(project_dir).unwrap()
+        topology = u.Cli.atomic_read_binary_file_state(
+            project_dir / c.Infra.GITMODULES,
+            required=False,
+        ).unwrap()
+        source_states = (*inputs.sources, topology)
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+            project_dir,
+            inputs=inputs,
+        ).unwrap()
+        managed = self._managed_profile(project_dir, workspace, inputs=inputs)
         if managed.failure:
             return r[t.Infra.LayoutStatus].from_failure(managed)
         profile = managed.value
@@ -54,27 +67,29 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             desired = self._gitignore_append_content(current, patterns)
         else:
             rendered = u.Infra.render_project_gitignore(
-                config.Infra.codegen,
+                inputs.spec,
                 profile=profile,
                 project_name=FlextInfraCodegenLayoutPlanMixin.layout_project_name(
                     project_dir,
                 ),
+                workspace=workspace,
                 project_dir=project_dir,
             )
             if rendered.failure:
                 return r[t.Infra.LayoutStatus].from_failure(rendered)
             desired = rendered.value
-        if desired == current:
+        if desired == current and before.value.mode == inputs.spec.modes.file_default:
             noop_status: t.Infra.LayoutStatus = "noop"
             return FlextInfraMiseArtifactsVerification.states_current(
-                (before.value,),
+                (before.value, *source_states),
             ).map(lambda _: noop_status)
         planned = m.Infra.CodegenFilePlan(
             project=project_dir,
             path=gitignore_path,
             before=before.value,
             desired_content=desired.encode(c.DEFAULT_ENCODING),
-            desired_mode=config.Infra.codegen.modes.file_default,
+            desired_mode=inputs.spec.modes.file_default,
+            source_states=source_states,
             owner="codegen",
             policy="full" if profile is not None else "merge",
         )
@@ -116,21 +131,22 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         return text
 
     @staticmethod
-    def _managed_profile(project_dir: Path) -> p.Result[c.Infra.MakeProfile | None]:
+    def _managed_profile(
+        project_dir: Path,
+        workspace: m.Infra.WorkspaceSpec,
+        *,
+        inputs: m.Infra.CodegenInputs,
+    ) -> p.Result[c.Infra.MakeProfile | None]:
         """Make profile when the project is governed by a workspace.
 
         Returns:
             The resulting ``p.Result[c.Infra.MakeProfile | None]``.
 
         """
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
-            u.Infra.resolve_repository_root_or_cwd(project_dir),
-        )
-        if workspace.failure:
-            return r[c.Infra.MakeProfile | None].from_failure(workspace)
         target = FlextInfraWorkspaceDetector.conform_target(
             project_dir,
-            workspace.value,
+            workspace,
+            inputs=inputs,
         )
         if target.failure:
             return r[c.Infra.MakeProfile | None].from_failure(target)

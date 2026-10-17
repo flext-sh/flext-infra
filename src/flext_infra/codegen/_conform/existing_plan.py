@@ -341,47 +341,38 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         managed_started = time.monotonic()
         u.Cli.info(f"  stage=managed-artifacts repository={repository.name}")
         managed_artifacts = u.Infra.snapshot_committed_project_managed_artifacts(root)
-        if managed_artifacts.failure:
-            return result_type.from_failure(managed_artifacts)
-        u.Cli.info(
-            f"  stage=managed-artifacts repository={repository.name} "
-            f"elapsed={time.monotonic() - managed_started:.2f}s",
-        )
-        if not (contract.tooling or contract.custom):
-            return self._plan_existing_templates(
-                render_inputs=self.resolve_render_inputs(
-                    target=target,
-                    workspace=workspace,
-                    codegen=codegen,
-                    tooling_runtime=None,
-                    managed_artifacts=managed_artifacts.value,
-                ),
-                contract=contract,
+        if managed_artifacts.success:
+            u.Cli.info(
+                f"  stage=managed-artifacts repository={repository.name} "
+                f"elapsed={time.monotonic() - managed_started:.2f}s",
+            )
+        if managed_artifacts.failure or not (contract.tooling or contract.custom):
+            return (
+                result_type.from_failure(managed_artifacts)
+                if managed_artifacts.failure
+                else self._plan_existing_templates(
+                    render_inputs=self.resolve_render_inputs(
+                        target=target,
+                        workspace=workspace,
+                        codegen=codegen,
+                        tooling_runtime=None,
+                        managed_artifacts=managed_artifacts.value,
+                    ),
+                    contract=contract,
+                )
             )
         tooling_started = time.monotonic()
-        lazy_result = (
-            self._planned_lazy_init_files(root)
-            if self.provider_plans is None
-            else r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(
-                tuple(plan for plan in self.provider_plans if plan.project == root)
-            )
-        )
+        lazy_result = self._existing_lazy_sources(root)
         if lazy_result.failure:
             return result_type.from_failure(lazy_result)
         cohort = (
-            tuple(lazy_result.value)
+            tuple(lazy_result.value[0])
             if self.provider_plans is None
             else self.provider_plans
         )
-        sources = FlextInfraCodegenPreconditions.unique_states(
-            tuple(state for plan in lazy_result.value for state in plan.source_states)
-        )
-        if sources.failure:
-            return result_type.from_failure(sources)
         with u.Infra.facade_source_project(
-            root, source_states=sources.value, declared_files=cohort
+            root, source_states=lazy_result.value[1], declared_files=cohort
         ) as binding:
-            source_project, consumed, _source_text = binding
             custom_result = (
                 self._plan_existing_custom(
                     root,
@@ -397,12 +388,14 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             tooling_runtime: m.Infra.ToolingRuntimeContext | None = None
             if contract.tooling:
                 tooling_context = self._existing_tooling_context(
-                    target,
-                    identity,
-                    codegen,
+                    self._existing_tooling_request(
+                        target,
+                        identity,
+                        codegen,
+                        (*lazy_result.value[0], *custom_result.value),
+                    ),
                     managed_artifacts.value.resolution,
-                    (*lazy_result.value, *custom_result.value),
-                    source_project=source_project,
+                    source_project=binding[0],
                 )
                 if tooling_context.failure:
                     return result_type.from_failure(tooling_context)
@@ -418,65 +411,152 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 tooling_runtime=tooling_runtime,
                 managed_artifacts=managed_artifacts.value,
             )
-            managed_result = self._plan_existing_templates(
-                render_inputs=render_inputs,
-                contract=contract,
-            )
-            if managed_result.failure:
-                return result_type.from_failure(managed_result)
-            final_inputs = (
-                self.planned_source_render_inputs(
-                    render_inputs,
-                    [*lazy_result.value, *managed_result.value, *custom_result.value],
-                    source_project=source_project,
-                )
-                if contract.pyproject
-                else render_inputs
-            )
-            final_templates = (
-                self._plan_existing_templates(
-                    render_inputs=final_inputs,
-                    contract=contract,
-                )
-                if contract.pyproject and final_inputs is not render_inputs
-                else managed_result
-            )
-            completed = final_templates.flat_map(
-                lambda templates: self._facade_runtime_plans(
-                    root,
-                    (*templates, *custom_result.value),
-                    custom_result.value,
-                    lazy_result.value,
-                ),
+            completed = self._render_existing_managed(
+                render_inputs,
+                contract,
+                lazy_result.value[0],
+                custom_result.value,
+                source_project=binding[0],
             )
             if completed.failure:
                 return result_type.from_failure(completed)
-            states, directories, topology = consumed()
-            qualified: list[m.Infra.CodegenFilePlan] = []
-            for file in completed.value:
-                if file.path != root / c.PYPROJECT_FILENAME or not contract.tooling:
-                    qualified.append(file)
-                    continue
-                inputs = FlextInfraCodegenPreconditions.unique_states((
-                    *file.source_states,
-                    *states,
-                ))
-                if inputs.failure:
-                    return result_type.from_failure(inputs)
-                queried, chains = u.Cli.atomic_merge_directory_query_receipts(
-                    (*file.source_directories, *directories),
-                    (*file.source_query_topology, *topology),
+            return self._qualified_existing_tooling(
+                render_inputs,
+                contract,
+                completed.value,
+                binding[1](),
+            )
+
+    def _existing_lazy_sources(
+        self,
+        root: Path,
+    ) -> p.Result[
+        t.Pair[
+            t.SequenceOf[m.Infra.CodegenFilePlan],
+            t.VariadicTuple[m.Cli.AtomicFileState],
+        ]
+    ]:
+        """Elect repository providers and retain their original source evidence.
+
+        Returns:
+            Planned initializers and their unique original source states.
+
+        """
+        result_type = r[
+            t.Pair[
+                t.SequenceOf[m.Infra.CodegenFilePlan],
+                t.VariadicTuple[m.Cli.AtomicFileState],
+            ]
+        ]
+        planned = (
+            self._planned_lazy_init_files(root)
+            if self.provider_plans is None
+            else r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(
+                tuple(plan for plan in self.provider_plans if plan.project == root)
+            )
+        )
+        if planned.failure:
+            return result_type.from_failure(planned)
+        sources = FlextInfraCodegenPreconditions.unique_states(
+            tuple(state for plan in planned.value for state in plan.source_states)
+        )
+        if sources.failure:
+            return result_type.from_failure(sources)
+        return result_type.ok((planned.value, sources.value))
+
+    def _render_existing_managed(
+        self,
+        render_inputs: m.Infra.CodegenRenderInputs,
+        contract: m.Infra.CodegenConformSurfaceContract,
+        initializers: t.SequenceOf[m.Infra.CodegenFilePlan],
+        custom: t.SequenceOf[m.Infra.CodegenFilePlan],
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Render both template passes through the same native source project.
+
+        Returns:
+            Final templates and their dependent facade publication groups.
+
+        """
+        managed = self._plan_existing_templates(
+            render_inputs=render_inputs,
+            contract=contract,
+        )
+        if managed.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(managed)
+        final_inputs = (
+            self.planned_source_render_inputs(
+                render_inputs,
+                [*initializers, *managed.value, *custom],
+                source_project=source_project,
+            )
+            if contract.pyproject
+            else render_inputs
+        )
+        templates = (
+            self._plan_existing_templates(
+                render_inputs=final_inputs,
+                contract=contract,
+            )
+            if contract.pyproject and final_inputs is not render_inputs
+            else managed
+        )
+        if templates.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(templates)
+        return self._facade_runtime_plans(
+            render_inputs.target.root,
+            (*templates.value, *custom),
+            custom,
+            initializers,
+        )
+
+    @staticmethod
+    def _qualified_existing_tooling(
+        render_inputs: m.Infra.CodegenRenderInputs,
+        contract: m.Infra.CodegenConformSurfaceContract,
+        planned: t.SequenceOf[m.Infra.CodegenFilePlan],
+        evidence: t.Triple[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            t.VariadicTuple[m.Cli.AtomicDirectoryInventory],
+            t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan],
+        ],
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Bind consumed evidence to the pyproject output inside its source epoch.
+
+        Returns:
+            File plans retaining their original and consumed native receipts.
+
+        """
+        states, directories, topology = evidence
+        qualified: list[m.Infra.CodegenFilePlan] = []
+        for file in planned:
+            if (
+                file.path != render_inputs.target.root / c.PYPROJECT_FILENAME
+                or not contract.tooling
+            ):
+                qualified.append(file)
+                continue
+            inputs = FlextInfraCodegenPreconditions.unique_states((
+                *file.source_states,
+                *states,
+            ))
+            if inputs.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(inputs)
+            queried, chains = u.Cli.atomic_merge_directory_query_receipts(
+                (*file.source_directories, *directories),
+                (*file.source_query_topology, *topology),
+            )
+            qualified.append(
+                file.model_copy(
+                    update={
+                        "source_states": inputs.value,
+                        "source_directories": queried,
+                        "source_query_topology": chains,
+                    }
                 )
-                qualified.append(
-                    file.model_copy(
-                        update={
-                            "source_states": inputs.value,
-                            "source_directories": queried,
-                            "source_query_topology": chains,
-                        }
-                    )
-                )
-            return result_type.ok(tuple(qualified))
+            )
+        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(qualified))
 
     @staticmethod
     def _facade_runtime_plans(
@@ -556,83 +636,91 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(planned.value.files)
 
+    @staticmethod
     def _existing_tooling_context(
+        request: m.Infra.ToolingContextRequest,
+        managed_resolution: m.Infra.ProjectManagedArtifactsResolution,
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> p.Result[m.Infra.ToolingRuntimeContext]:
+        """Resolve tooling through its canonical request and captured artifacts.
+
+        Returns:
+            The modernizer's tooling context or its original failure.
+
+        """
+        modernizer = FlextInfraPyprojectModernizer(
+            repository_root=request.path.parent,
+            skip_check=True,
+            managed_artifacts=managed_resolution,
+        )
+        return modernizer.resolve_tooling_context(
+            request,
+            source_project=source_project,
+        )
+
+    def _existing_tooling_request(
         self,
         target: m.Infra.RepositoryConformTarget,
         identity: t.Pair[m.Infra.ProjectSpec, p.ProjectMetadata],
         codegen: m.Infra.CodegenConfigSpec,
-        managed_resolution: m.Infra.ProjectManagedArtifactsResolution,
-        planned: t.SequenceOf[m.Infra.CodegenFilePlan] = (),
-        *,
-        source_project: p.Infra.RopeProject,
-    ) -> p.Result[m.Infra.ToolingRuntimeContext]:
-        """Resolve the modernizer tooling context for one existing repository.
+        planned: t.SequenceOf[m.Infra.CodegenFilePlan],
+    ) -> m.Infra.ToolingContextRequest:
+        """Declare tooling inputs from the existing repository's native identity.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ToolingRuntimeContext]``.
+            The canonical request consumed by the modernizer.
 
         """
         root = target.root
         repository = target.repository
         project, metadata = identity
-        modernizer = FlextInfraPyprojectModernizer(
-            repository_root=root,
-            skip_check=True,
-            managed_artifacts=managed_resolution,
-        )
-        return modernizer.resolve_tooling_context(
-            m.Infra.ToolingContextRequest(
-                planned_sources={
-                    plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
-                    for plan in planned
-                    if plan.path.suffix == c.Infra.EXT_PYTHON
-                    and plan.desired_content is not None
-                },
-                project_name=repository.distribution,
-                package_name=metadata.package_name,
-                path=root / c.PYPROJECT_FILENAME,
-                scaffold_project=codegen.scaffold.project,
-                runtime_dependency_overlay=project.runtime_dependency_overlay,
-                declared_project_dependencies=metadata.project.dependencies,
-                topology=m.Infra.PyprojectDeclaredTopology(
-                    root_modules=(
-                        target.project.root_modules
-                        if target.project is not None
-                        else ()
-                    ),
-                    root_packages=(
-                        target.project.root_packages
-                        if target.project is not None
-                        else ()
-                    ),
-                    repository_namespace_packages=(
-                        target.project.repository_namespace_packages
-                        if target.project is not None
-                        else ()
-                    ),
-                    packaged_data_paths=(
-                        target.project.packaged_data_paths
-                        if target.project is not None
-                        else ()
-                    ),
-                    packaged_data_excludes=(
-                        target.project.packaged_data_excludes
-                        if target.project is not None
-                        else ()
-                    ),
-                    declared_python_dirs=tuple(
-                        self._scaffold_python_dirs(
-                            codegen.templates.entries,
-                            target.make_profile,
-                            package=repository.package,
-                        ),
-                    ),
-                    analysis_exclusions=tuple(
-                        path.as_posix() for path in target.external_dependency_paths
+        return m.Infra.ToolingContextRequest(
+            planned_sources={
+                plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
+                for plan in planned
+                if plan.path.suffix == c.Infra.EXT_PYTHON
+                and plan.desired_content is not None
+            },
+            project_name=repository.distribution,
+            package_name=metadata.package_name,
+            path=root / c.PYPROJECT_FILENAME,
+            scaffold_project=codegen.scaffold.project,
+            runtime_dependency_overlay=project.runtime_dependency_overlay,
+            declared_project_dependencies=metadata.project.dependencies,
+            topology=m.Infra.PyprojectDeclaredTopology(
+                root_modules=(
+                    target.project.root_modules if target.project is not None else ()
+                ),
+                root_packages=(
+                    target.project.root_packages if target.project is not None else ()
+                ),
+                repository_namespace_packages=(
+                    target.project.repository_namespace_packages
+                    if target.project is not None
+                    else ()
+                ),
+                packaged_data_paths=(
+                    target.project.packaged_data_paths
+                    if target.project is not None
+                    else ()
+                ),
+                packaged_data_excludes=(
+                    target.project.packaged_data_excludes
+                    if target.project is not None
+                    else ()
+                ),
+                declared_python_dirs=tuple(
+                    self._scaffold_python_dirs(
+                        codegen.templates.entries,
+                        target.make_profile,
+                        package=repository.package,
                     ),
                 ),
+                analysis_exclusions=tuple(
+                    path.as_posix() for path in target.external_dependency_paths
+                ),
             ),
-            source_project=source_project,
         )
 
     def _plan_existing_bootstrap(

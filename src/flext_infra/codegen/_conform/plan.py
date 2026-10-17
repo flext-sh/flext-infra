@@ -727,16 +727,16 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             for file in outcome.files
         )
         extended_outcomes: list[m.Infra.CodegenRepositoryPlanOutcome] = []
+        selected_pyproject = contract.pyproject and (
+            contract.destinations is None
+            or c.PYPROJECT_FILENAME in contract.destinations
+        )
         for task, outcome in zip(tasks, outcomes, strict=True):
             if (
                 outcome.error
                 or outcome.error_type
                 or outcome.issues
-                or not contract.pyproject
-                or (
-                    contract.destinations is not None
-                    and c.PYPROJECT_FILENAME not in contract.destinations
-                )
+                or not selected_pyproject
             ):
                 extended_outcomes.append(outcome)
                 continue
@@ -1023,16 +1023,13 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 and repository.name == task.workspace.repository.name
                 else planner._planned_lazy_init_files(repository_root)
             )
-            if planned.failure:
-                return m.Infra.CodegenRepositoryPlanOutcome(
-                    repository=repository.name,
-                    error=planned.error or "lazy planning failed",
-                    exception=planned.exception,
-                    elapsed=time.monotonic() - started,
-                )
             return m.Infra.CodegenRepositoryPlanOutcome(
                 repository=repository.name,
-                files=tuple(planned.value),
+                files=() if planned.failure else tuple(planned.value),
+                error=(
+                    (planned.error or "lazy planning failed") if planned.failure else ""
+                ),
+                exception=planned.exception if planned.failure else None,
                 elapsed=time.monotonic() - started,
             )
         planned = planner._governed_repository_plans(

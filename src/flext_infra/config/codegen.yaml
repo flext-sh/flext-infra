@@ -709,6 +709,10 @@ Infra:
         description: Profile the canonical environment provenance guard without invoking that guard as a prerequisite.
       - name: profile-environment-report
         description: Render the profile retained by the canonical environment provenance guard.
+      - name: profile-lanes
+        description: Profile the complete read-only workspace lane audit and retain its native failure outcome.
+      - name: profile-lanes-report
+        description: Render the retained profile of the complete workspace lane audit.
       - name: profile-mod
         description: Profile the canonical mutating codemod lifecycle and retain the profile on failure.
       - name: profile-mod-report

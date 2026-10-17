@@ -361,6 +361,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             force_errors: bool = False,
         ) -> t.Infra.RopeNativeParsedModule: ...
 
+        def get_pycore(self) -> t.Infra.RopeNativeCore: ...
+
         def get_source_folders(
             self,
         ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeResource]: ...
@@ -380,6 +382,13 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             name: str,
             folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
         ) -> t.Infra.RopeNativeSemanticModule: ...
+
+        def get_relative_module(
+            self,
+            name: str,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot,
+            level: int,
+        ) -> t.Infra.RopeNativeParsedModule: ...
 
         def get_python_files(
             self,

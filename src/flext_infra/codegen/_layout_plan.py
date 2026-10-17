@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from fnmatch import fnmatchcase
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
 
@@ -21,13 +20,9 @@ from flext_infra import c, m, t, u
 class FlextInfraCodegenLayoutPlanMixin:
     """Build the per-project layout plan from the declarative layout SSOT."""
 
-    if TYPE_CHECKING:
-        # Mixin contract: the composing command service owns the resolved root.
-        repository_root: Path
-
-    @property
-    def _layout_spec(self) -> m.Infra.LayoutSpec:
-        """Layout SSOT: the layered repository codegen contract.
+    @staticmethod
+    def _layout_spec(project_dir: Path) -> m.Infra.LayoutSpec:
+        """Layout SSOT: the selected project's layered codegen contract.
 
         Gates and the generator read the SAME ordered strict source (packaged
         defaults + repository layers). The split-brain where the generator
@@ -35,7 +30,7 @@ class FlextInfraCodegenLayoutPlanMixin:
         what dropped standalone repositories' canonical declarations.
 
         """
-        layered = u.Infra.load_codegen_inputs(self.repository_root)
+        layered = u.Infra.load_codegen_inputs(project_dir)
         return layered.map(lambda inputs: inputs.spec.layout).unwrap()
 
     @staticmethod
@@ -78,7 +73,7 @@ class FlextInfraCodegenLayoutPlanMixin:
             The resulting ``m.Infra.LayoutProjectReport``.
 
         """
-        spec = self._layout_spec
+        spec = self._layout_spec(project_dir)
         project_name = self.layout_project_name(project_dir)
         override = self._resolve_override(spec, project_name)
         allowed = self._allowed_root_names(spec, project_dir, project_name, override)

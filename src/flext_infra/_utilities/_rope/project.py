@@ -108,6 +108,31 @@ class FlextInfraRopeProject(Project):
         return module
 
     @override
+    def get_relative_module(
+        self,
+        name: str,
+        folder: Folder | p.Infra.RopeRoot,
+        level: int,
+    ) -> t.Infra.RopeNativeParsedModule:
+        """Resolve a relative import from its native declaring resource.
+
+        Returns:
+            The original native package or source module.
+
+        Raises:
+            TypeError: The folder or module violates the native SDK boundary.
+
+        """
+        if not isinstance(folder, Folder):
+            message = "Rope module lookup requires a native folder"
+            raise TypeError(message)
+        module = super().get_relative_module(name, folder, level)
+        if not isinstance(module, PyModule | PyPackage):
+            message = "Rope lookup did not return a native parsed module"
+            raise TypeError(message)
+        return module
+
+    @override
     def find_module(
         self,
         modname: str,
@@ -411,7 +436,7 @@ class FlextInfraRopeProject(Project):
             """
             directory = Path(path)
             inventory = self._inventory(directory)
-            names = (
+            names: list[str] = (
                 [] if inventory is None else [item.name for item in inventory.entries]
             )
             if inventory is not None:
@@ -683,6 +708,7 @@ class FlextInfraRopeProject(Project):
         source_folders: t.SequenceOf[str],
         ignored_resources: t.SequenceOf[str] = (),
         *,
+        extension_modules: t.SequenceOf[str],
         python_path_folders: t.SequenceOf[str] = (),
     ) -> Self:
         """Construct a fresh Rope identity graph without persistent state.
@@ -695,6 +721,7 @@ class FlextInfraRopeProject(Project):
                 Rope enumerates real disk files the closed inventory does not
                 hold (tool hooks under ignored resources) and every such
                 read dies in the snapshot mapping.
+            extension_modules: Native modules elected by the original project.
             python_path_folders: Authenticated native import roots whose resources
                 must read the same captured inventory as project modules.
 
@@ -721,6 +748,7 @@ class FlextInfraRopeProject(Project):
             files,
             source_folders,
             ignored_resources=ignored_resources,
+            extension_modules=extension_modules,
             python_path_folders=python_path_folders,
         )
 
@@ -734,6 +762,7 @@ class FlextInfraRopeProject(Project):
         source_folders: t.SequenceOf[str],
         *,
         ignored_resources: t.SequenceOf[str],
+        extension_modules: t.SequenceOf[str],
         python_path_folders: t.SequenceOf[str],
     ) -> Self:
         """Compose the native project and external resolver over one read owner.
@@ -743,6 +772,7 @@ class FlextInfraRopeProject(Project):
 
         """
         external = NoProject(fscommands=files)
+        external.prefs.extension_modules = list(extension_modules)
         project = cls(
             root,
             fscommands=files,
@@ -751,6 +781,7 @@ class FlextInfraRopeProject(Project):
             save_objectdb=False,
             save_history=False,
             ignored_resources=list(ignored_resources),
+            extension_modules=list(extension_modules),
             source_folders=source_folders,
         )
         project._snapshot_python_path_folders = [
@@ -768,6 +799,7 @@ class FlextInfraRopeProject(Project):
         source_states: tuple[m.Cli.AtomicFileState, ...],
         ignored_resources: t.SequenceOf[str] = (),
         *,
+        source_folders: t.SequenceOf[str],
         sources: t.MappingKV[Path, str],
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> Self:
@@ -786,8 +818,9 @@ class FlextInfraRopeProject(Project):
         return cls._from_files(
             live.root.real_path,
             files,
-            source_folders=[folder.path for folder in live.get_source_folders()],
+            source_folders=source_folders,
             ignored_resources=ignored_resources,
+            extension_modules=sorted(live.get_pycore().extension_modules),
             python_path_folders=[
                 folder.real_path
                 for folder in live.get_python_path_folders()

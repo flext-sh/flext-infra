@@ -6,16 +6,164 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from contextlib import ExitStack
 from pathlib import Path
 
 import pytest
 
-from flext_infra import c
+from flext_infra import c, config
+from flext_infra.codegen import FlextInfraCodegenGeneration
 from tests import p, tm, u
 
 
 class TestsFlextInfraFacadeAuthoredRuntime:
     """Exercise preservation through generation and a fresh public consumer."""
+
+    @staticmethod
+    @pytest.mark.parametrize("depth", [1, 2])
+    def test_generated_imports_preserve_relative_alias_levels(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+        depth: int,
+    ) -> None:
+        """Execute generated ancestor aliases and absolute external imports."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        children = ("child",) * depth
+        child = package.joinpath(*children)
+        child.mkdir(parents=True)
+        namespace = ".".join((package.name, *children))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / "sibling.py",
+                "SENTINEL = 'native-sibling'\n",
+            )
+        )
+        imports = FlextInfraCodegenGeneration.generate_type_checking(
+            {
+                f"{package.name}.sibling": (("sibling", ""),),
+                "pathlib": (("Path", "Path"),),
+            },
+            include_flext_types=False,
+            local_package_root=namespace,
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                child / c.Infra.INIT_PY,
+                "TYPE_CHECKING = True\n\n" + "\n".join(imports) + "\n",
+            )
+        )
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            "import pathlib\n"
+            f"from {namespace} import Path, sibling\n"
+            "assert Path is pathlib.Path\n"
+            "assert sibling.SENTINEL == 'native-sibling'\n",
+            cwd=root,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("generated_name", config.Infra.codegen.generated_sources)
+    def test_generated_barrel_does_not_elect_an_authored_facade(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+        generated_name: str,
+    ) -> None:
+        """Ignored generated providers remain importable without owning facades."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        generated = package / generated_name
+        generated.mkdir()
+        provider = generated / "provider.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                provider,
+                "class GeneratedProvider:\n"
+                "    marker = 'native-provider'\n"
+                "__all__ = ['GeneratedProvider']\n",
+            )
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / ".gitignore",
+                f"/{generated.relative_to(root).as_posix()}/\n",
+            )
+        )
+        service = u.Tests.create_lazy_init_service(root)
+        analysis = tm.ok(service.plan_files())
+        with u.Infra.facade_source_project(
+            root, declared_files=analysis.files
+        ) as binding:
+            project, consumed, sources = binding
+            tm.that(any(path.is_relative_to(generated) for path in sources), eq=False)
+            planned = {
+                file.path: file.desired_content.decode(c.DEFAULT_ENCODING)
+                for file in analysis.files
+                if file.path.suffix == c.Infra.EXT_PYTHON
+                and file.desired_content is not None
+            }
+            tm.that(
+                u.Infra.runtime_evaluated_base_classes(
+                    root,
+                    {**sources, **planned},
+                    u.Tests.runtime_evaluated_roots(),
+                    source_project=project,
+                ),
+                eq=tuple(sorted(u.Tests.runtime_evaluated_roots())),
+            )
+            tm.that(
+                u.Infra.render_utility_facade(
+                    package, family="p", project=project, sources=sources
+                ),
+                eq=None,
+            )
+            module = project.get_module(
+                f"{package.name}.{generated.name}.{provider.stem}"
+            )
+            tm.not_none(module.get_attribute("GeneratedProvider").get_object())
+            tm.that({state.path for state in consumed()[0]}, has=provider.resolve())
+        tm.ok(u.Tests.materialize_lazy_init(service))
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"provider = importlib.import_module("
+            f"{f'{package.name}.{generated.name}.{provider.stem}'!r})\n"
+            "assert provider.GeneratedProvider.marker == 'native-provider'\n",
+            cwd=root,
+        )
+
+    @staticmethod
+    def test_shared_source_project_keeps_native_stdlib_election(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """The authenticated graph resolves the interpreter's virtual stdlib."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / "consumer.py",
+                "from collections.abc import Mapping\n"
+                "class Consumer(Mapping):\n"
+                '    """Native stdlib inheritance contract."""\n'
+                "__all__ = ['Consumer']\n",
+            )
+        )
+        with u.Infra.facade_source_project(root) as binding:
+            project, _, sources = binding
+            tm.that(
+                u.Infra.runtime_evaluated_base_classes(
+                    root,
+                    sources,
+                    u.Tests.runtime_evaluated_roots(),
+                    source_project=project,
+                ),
+                eq=tuple(sorted(u.Tests.runtime_evaluated_roots())),
+            )
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            "from collections.abc import Mapping\n"
+            f"from {package.name} import Consumer\n"
+            "assert issubclass(Consumer, Mapping)\n",
+            cwd=root,
+        )
 
     @staticmethod
     @pytest.mark.parametrize("consumer_fails", [False, True])
@@ -218,7 +366,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             )
             tm.that(
                 roots,
-                has=f"{provider_namespace}.{family.directory}.base.ProviderBase",
+                has=f"{provider_namespace}.{family.directory}.ProviderBase",
             )
             tm.that(
                 {state.path for state in consumed()[0]},
@@ -237,6 +385,8 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 f"from {provider_namespace}.{family.directory} "
                 "import ProviderBase\n"
                 f"from {package.name} import Consumer\n"
+                "assert ProviderBase.__module__ == "
+                f"{f'{provider_namespace}.{family.directory}.base'!r}\n"
                 "assert issubclass(Consumer, ProviderBase)\n",
                 cwd=root,
             )
