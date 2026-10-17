@@ -10,7 +10,7 @@ from collections import defaultdict
 from pathlib import Path
 from textwrap import dedent, indent
 
-from flext_infra import c, config, p, t, u
+from flext_infra import c, config, m, p, t, u
 from flext_infra.codegen import FlextInfraCodegenProtocolModelAnnotations
 
 
@@ -19,7 +19,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
 
     def render_member_modules(
         self,
-        models: t.MappingKV[str, p.ModelType],
+        models: t.MappingKV[str, t.ModelClass[m.BaseModel]],
         protocol_directory: Path,
         aliases: t.MappingKV[str, t.StrSequence],
     ) -> t.MappingKV[Path, str]:
@@ -33,7 +33,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
                 declaration exceeds configured LOC cap.
 
         """
-        grouped: dict[str, list[tuple[str, str]]] = defaultdict(list)
+        grouped: t.MutableMappingKV[str, t.ListOf[t.Pair[str, str]]] = defaultdict(list)
         for name, model in sorted(models.items()):
             declaration = self.declarations[name].get_object()
             scope = declaration.get_scope()
@@ -42,7 +42,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
                 raise ValueError(msg)
             body = self._render_protocol(name.rpartition(".")[2], model, scope)
             grouped[name.rpartition(".")[0]].append((model.__module__, body))
-        modules: dict[Path, str] = {}
+        modules: t.MutableMappingKV[Path, str] = {}
         for namespace, bodies in grouped.items():
             parts: list[tuple[str, str]] = []
             token = namespace.replace(".", "_").lower()
@@ -101,7 +101,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
     def _render_protocol(
         self,
         name: str,
-        model: p.ModelType,
+        model: t.ModelClass[m.BaseModel],
         scope: p.Infra.RopeScope,
     ) -> str:
         """Preserve field mutability and the model's authored method signatures.
@@ -180,7 +180,9 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             + "\n\n"
         )
 
-    def _field_lines(self, model: p.ModelType, scope: p.Infra.RopeScope) -> list[str]:
+    def _field_lines(
+        self, model: t.ModelClass[m.BaseModel], scope: p.Infra.RopeScope
+    ) -> list[str]:
         lines: list[str] = []
         for field_name, field in model.model_fields.items():
             if field.annotation is None:

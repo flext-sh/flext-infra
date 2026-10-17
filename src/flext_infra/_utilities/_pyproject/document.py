@@ -25,23 +25,23 @@ from flext_infra._utilities._pyproject._requirements_provenance import (
     FlextInfraUtilitiesPyprojectRequirementsProvenance,
 )
 
-_CustomGroupsPair = t.Pair[
-    t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-    t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-]
-_MemberRequirementRows = t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]
-_ConformedProvenance = t.Triple[
-    t.Cli.TomlDocument,
-    str,
-    t.Pair[
-        FlextInfraUtilitiesPyprojectRequirementsProvenance,
-        _MemberRequirementRows,
-    ],
-]
-
 
 class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources):
     """Render root workspace and autonomous library metadata deterministically."""
+
+    type _CustomGroupsPair = t.Pair[
+        t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+        t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+    ]
+    type _MemberRequirementRows = t.Triple[t.StrSequence, t.StrSequence, t.StrSequence]
+    type _ConformedProvenance = t.Triple[
+        t.Cli.TomlDocument,
+        str,
+        t.Pair[
+            FlextInfraUtilitiesPyprojectRequirementsProvenance,
+            _MemberRequirementRows,
+        ],
+    ]
 
     class PyprojectConformOptions(m.ImmutableValueModel):
         """Detected integration provenance for internal requirements and dev floors."""
@@ -199,7 +199,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             provenance, and the member environment requirement triple.
 
         """
-        result = r[_ConformedProvenance]
+        result = r[FlextInfraUtilitiesPyprojectDocument._ConformedProvenance]
         parsed = cls.parsed_pyproject(pyproject_content)
         if parsed.failure:
             return result.from_failure(parsed)
@@ -251,7 +251,10 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
 
         """
         if workspace.repository.role != c.Infra.MakeProfile.WORKSPACE:
-            return r[_CustomGroupsPair].ok(((), ()))
+            return r[FlextInfraUtilitiesPyprojectDocument._CustomGroupsPair].ok((
+                (),
+                (),
+            ))
         return cls._sync_root_environment_groups(
             source,
             pyproject_content,
@@ -307,8 +310,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     ) -> None:
         """Retain marker variants when merging selected member requirements."""
         groups = u.Cli.toml_ensure_table(source, c.Infra.DEPENDENCY_GROUPS)
-        group_names: tuple[str, ...] = tuple(groups)
-        dev_name = cls.dependency_group_name(group_names, str(c.Infra.DEV))
+        dev_name = cls.dependency_group_name(groups, str(c.Infra.DEV))
         dev = cls.read_dependency_group(groups, dev_name)
         existing = frozenset(entry for entry in dev if isinstance(entry, str))
         additions = tuple(sorted(set(requirements) - existing))
@@ -331,19 +333,18 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             Custom DEV and CODEGEN requirements, or the original parse failure.
 
         """
-        result_type = r[_CustomGroupsPair]
+        result_type = r[FlextInfraUtilitiesPyprojectDocument._CustomGroupsPair]
         payload = u.Cli.toml_as_mapping(source)
         if payload is None:
             return result_type.fail(
                 "root metadata is not a TOML mapping",
             )
         groups = u.Cli.toml_ensure_table(source, c.Infra.DEPENDENCY_GROUPS)
-        group_names: tuple[str, ...] = tuple(groups)
         retained: t.MutableMappingKV[
             str, t.SequenceOf[str | m.Infra.DependencyGroupInclude]
         ] = {}
         for group in (str(c.Infra.DEV), c.Infra.DependencyGroup.CODEGEN):
-            authored_name = cls.dependency_group_name(group_names, str(group))
+            authored_name = cls.dependency_group_name(groups, str(group))
             custom = FlextInfraUtilitiesPyprojectOverlay.custom_dev_additions(
                 payload,
                 original,
@@ -423,7 +424,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 member environment requirements.
 
         """
-        result = r[_MemberRequirementRows]
+        result = r[FlextInfraUtilitiesPyprojectDocument._MemberRequirementRows]
         members = (
             tuple(member for member in workspace.subprojects if member.package)
             if workspace.repository.role == c.Infra.MakeProfile.WORKSPACE
@@ -501,7 +502,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             The aggregated requests, groups, and declared requirement lines.
 
         """
-        result = r[_MemberRequirementRows]
+        result = r[FlextInfraUtilitiesPyprojectDocument._MemberRequirementRows]
         requests: list[str] = []
         groups: list[str] = []
         requirements: list[str] = []
@@ -540,7 +541,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             requirement lines.
 
         """
-        result = r[_MemberRequirementRows]
+        result = r[FlextInfraUtilitiesPyprojectDocument._MemberRequirementRows]
         parsed = FlextInfraUtilitiesPyprojectDocument.member_declaration_requirements(
             state,
             member.distribution,
@@ -624,8 +625,6 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         if parsed_document.failure:
             return result.from_failure(parsed_document)
         document, _name, payload = parsed_document.value
-        if payload is None:
-            return result.fail(f"member metadata is not a TOML mapping: {path}")
         parsed = FlextInfraUtilitiesPyprojectDocument._validated_member_requirements(
             payload,
             path,

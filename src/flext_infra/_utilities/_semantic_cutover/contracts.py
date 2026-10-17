@@ -110,13 +110,18 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         if not items:
             return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(())
         working = dict(items)
-        applied: dict[Path, list[str]] = {}
+        applied: t.MutableMappingKV[Path, t.MutableSequenceOf[str]] = {}
         epoch = cls._contract_epoch(workspace, working, rules)
-        for rule in rules:
-            project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                workspace.rope_project, working, captured=epoch
-            )
-            try:
+        # A snapshot is a pure function of (working, epoch); restructuring only
+        # plans a ChangeSet, so consecutive rules share one graph until a rule
+        # actually changes a source.
+        project: p.Infra.RopeProject | None = None
+        try:
+            for rule in rules:
+                if project is None:
+                    project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+                        workspace.rope_project, working, captured=epoch
+                    )
                 resources = tuple(
                     project.get_resource(
                         path.relative_to(Path(project.root.real_path)).as_posix()
@@ -137,16 +142,22 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 members = FlextInfraUtilitiesRopeRuntimeRefactors.change_set_members(
                     changes.changes, f"{rule.id}: invalid Rope content changes"
                 ).unwrap()
+                changed = False
                 for change in members:
                     path = Path(change.resource.real_path).resolve()
                     if change.new_contents == working[path]:
                         continue
                     working[path] = change.new_contents
                     applied.setdefault(path, []).append(rule.id)
+                    changed = True
                 cli.display_text(
                     f"mod: Rope contract {rule.id}: changed_files={len(members)}"
                 )
-            finally:
+                if changed:
+                    project.close()
+                    project = None
+        finally:
+            if project is not None:
                 project.close()
         return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
             tuple(
@@ -167,49 +178,29 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         sources: t.MappingKV[Path, str],
         rules: t.SequenceOf[m.Infra.RopeContractRule],
     ) -> m.Infra.CodemodSourceEpoch:
-        """Capture the edited sources and every module a rule identity names, once.
-
-        The planning snapshot is a closed inventory: a constrained identity such
-        as ``pydantic.Field`` resolves only when its module closure was captured
-        before planning. Every dotted prefix is offered; names that are not
-        modules resolve to nothing and capture nothing.
+        """Capture the edited sources and every identity the rules constrain.
 
         Returns:
             The immutable source epoch shared by every rule of this plan.
 
         """
         prefix = c.Infra.ROPE_NAME_CONSTRAINT_PREFIX
-        identities = (
-            *(
-                value.removeprefix(prefix)
-                for rule in rules
-                for constraint in rule.arguments.values()
-                for value in (
-                    (constraint,) if isinstance(constraint, str) else constraint
-                )
-                if value.startswith(prefix)
-            ),
-            *(identity for rule in rules for identity in rule.bindings.values()),
-            *(base for rule in rules for base in rule.model_bases),
-        )
-        modules = tuple(
-            dict.fromkeys(
-                ".".join(parts[:end])
-                for parts in (identity.split(".") for identity in identities)
-                for end in range(1, len(parts) + 1)
-            )
-        )
-        root = Path(workspace.rope_project.root.real_path)
-        owner = FlextInfraUtilitiesCodemodProject
-        return owner.codemod_source_epoch(
-            owner.codemod_binding_snapshot(
-                root,
-                projects=(
-                    m.Infra.CodemodBindingProject(
-                        root=root, source_paths=tuple(sources), modules=modules
-                    ),
+        return FlextInfraUtilitiesCodemodProject.identity_source_epoch(
+            Path(workspace.rope_project.root.real_path),
+            tuple(sources),
+            (
+                *(
+                    value.removeprefix(prefix)
+                    for rule in rules
+                    for constraint in rule.arguments.values()
+                    for value in (
+                        (constraint,) if isinstance(constraint, str) else constraint
+                    )
+                    if value.startswith(prefix)
                 ),
-            )
+                *(identity for rule in rules for identity in rule.bindings.values()),
+                *(base for rule in rules for base in rule.model_bases),
+            ),
         )
 
     @classmethod

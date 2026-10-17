@@ -377,9 +377,6 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         Returns:
             Whether the statement is a pure module-level definition.
 
-        Raises:
-            TypeError: The builtin module lacks its native semantic interface.
-
         """
         statement = definition.statement
         if statement is None:
@@ -395,11 +392,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             and statement.start_offset <= row.start_offset < statement.end_offset
             and u.Infra.target_name(row)
         )
-        builtin_module = project.get_module("builtins")
-        if not u.Infra.semantic_module(builtin_module):
-            message = "Duplicate binding comparison requires native builtins"
-            raise TypeError(message)
-        builtins = builtin_module.get_attributes()
+        builtins = project.get_module("builtins").get_attributes()
         for start, stop in u.Infra.semantic_regions(
             module,
             "${duplicate_expression}",
@@ -939,7 +932,17 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                 validator=verify,
                 projection_roots=tuple(sorted(u.Infra.governed_project_roots(root))),
             ),
-        ).map(_published_true)
+        ).map(cls._published_true)
+
+    @staticmethod
+    def _published_true(_paths: t.VariadicTuple[Path]) -> bool:
+        """Collapse one published-path tuple to the boolean success the caller owns.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
+        return True
 
     @staticmethod
     def _publication_projects(
@@ -1265,16 +1268,6 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         if not containing:
             return len(layers)
         return max(containing, key=lambda item: len(item[0].parts))[1]
-
-
-def _published_true(_paths: t.VariadicTuple[Path]) -> bool:
-    """Collapse one published-path tuple to the boolean success the caller owns.
-
-    Returns:
-        The resulting ``bool``.
-
-    """
-    return True
 
 
 __all__: list[str] = ["FlextInfraCodemodDuplicateApply"]

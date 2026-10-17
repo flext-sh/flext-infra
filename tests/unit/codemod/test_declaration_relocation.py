@@ -223,7 +223,7 @@ class TestsFlextInfraDeclarationRelocation:
             RuntimeError: If Published payload module has no loader.
 
         """
-        root, sources = TestsFlextInfraDeclarationRelocationSupport._seed(
+        root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(
             tmp_path,
             variants=frozenset({"existing_imports"} if existing_imports else ()),
         )
@@ -331,7 +331,7 @@ class TestsFlextInfraDeclarationRelocation:
         base: str,
     ) -> None:
         """Test behavior and settings are not payload movers."""
-        root, sources = TestsFlextInfraDeclarationRelocationSupport._seed(
+        root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(
             tmp_path,
             body=body,
             base=base,
@@ -348,7 +348,7 @@ class TestsFlextInfraDeclarationRelocation:
     @staticmethod
     def test_cycle_refuses_without_mutation(tmp_path: Path) -> None:
         """Test cycle refuses without mutation."""
-        root, sources = TestsFlextInfraDeclarationRelocationSupport._seed(
+        root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(
             tmp_path,
             variants=frozenset({"cycle"}),
         )
@@ -369,7 +369,7 @@ class TestsFlextInfraDeclarationRelocation:
         tmp_path: Path,
     ) -> None:
         """Test proposed sources not disk own the identity snapshot."""
-        root, disk = TestsFlextInfraDeclarationRelocationSupport._seed(tmp_path)
+        root, disk = TestsFlextInfraDeclarationRelocationSupport.seed(tmp_path)
         sources = {
             path: source.replace("class Payload(", "class Revised(").replace(
                 ".Payload",
@@ -405,7 +405,7 @@ class TestsFlextInfraDeclarationRelocation:
     @staticmethod
     def test_local_destination_capture_refuses_without_mutation(tmp_path: Path) -> None:
         """Test local destination capture refuses without mutation."""
-        root, sources = TestsFlextInfraDeclarationRelocationSupport._seed(tmp_path)
+        root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(tmp_path)
         consumer = next(path for path in sources if path.name == "consumer.py")
         sources[consumer] = sources[consumer].replace("def build()", "def build(m)")
         consumer.write_text(sources[consumer], encoding="utf-8")
@@ -429,7 +429,7 @@ class TestsFlextInfraDeclarationRelocation:
             RuntimeError: If Published decimal payload has no loader.
 
         """
-        root, sources = TestsFlextInfraDeclarationRelocationSupport._seed(
+        root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(
             tmp_path,
             body="amount: 'Decimal'",
         )
@@ -491,7 +491,7 @@ class TestsFlextInfraDeclarationRelocation:
         conflict: bool,
     ) -> None:
         """Guarded aliases resolve at the model owner without capturing local names."""
-        root, sources = TestsFlextInfraDeclarationRelocationSupport._seed(
+        root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(
             tmp_path,
             body=f"amount: '{annotation}'",
         )

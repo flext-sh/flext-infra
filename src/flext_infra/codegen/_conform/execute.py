@@ -337,7 +337,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if surface is c.Infra.CodegenConformSurface.ALL:
             return self._execute_managed(request)
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY:
-            if surface in c.Infra.PARTIAL_PLAN_SURFACES:
+            if surface in c.Infra.CODEGEN_PARTIAL_PLAN_SURFACES:
                 return self._execute_plan(request)
             mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
             transaction = FlextInfraCodegenTransaction(mise_owner)
@@ -561,7 +561,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 exception=plan.exception,
             )
         surface = c.Infra.CodegenConformSurface(request.what)
-        if surface not in c.Infra.PARTIAL_PLAN_SURFACES:
+        if surface not in c.Infra.CODEGEN_PARTIAL_PLAN_SURFACES:
             return r[m.Infra.CodegenResult].fail(
                 "partial codegen apply is prohibited; use the complete all surface",
             )

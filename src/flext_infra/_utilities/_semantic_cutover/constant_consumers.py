@@ -1141,14 +1141,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         Returns:
             Public reference paths bound by the constants facade's Rope graph.
 
-        Raises:
-            TypeError: The constants provider lacks the native module capability.
-
         """
         module = project.get_module(f"{package}.{Path(c.Infra.CONSTANTS_PY).stem}")
-        if not FlextInfraUtilitiesRopeRuntimeTypes.semantic_module(module):
-            message = "Rope constants provider has no semantic module"
-            raise TypeError(message)
         facade = module.get_attributes().get("c")
         if facade is None:
             return {}

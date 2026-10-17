@@ -42,6 +42,7 @@ class TestsFlextInfraCodegenMain:
             'requires-python = "'
             f'{config.Infra.codegen.toolchain.python_required_version}"\n'
             'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+            f'license = "{u.Tests.project_spec(repository.distribution).license}"\n'
             f'dependencies = ["flext-core>=0.1.0", '
             f'"flext-infra @ git+{infra.url}@{integration}"]\n\n'
             f'[project.urls]\nRepository = "{repository.url}"\n',
@@ -250,7 +251,7 @@ class TestsFlextInfraCodegenMain:
             tm.that(" ".join(result.value.stdout.split()), contains=route.help_text)
 
         @staticmethod
-        def _seed_managed_conflict(root: Path) -> Path:
+        def seed_managed_conflict(root: Path) -> Path:
             """Seed a governed checkout whose pyproject drifts from its contract.
 
             Returns:
@@ -266,6 +267,7 @@ class TestsFlextInfraCodegenMain:
                 'requires-python = "'
                 f'{config.Infra.codegen.toolchain.python_required_version}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+                f'license = "{u.Tests.project_spec(distribution).license}"\n'
                 'dependencies = ["flext-cli"]\n'
                 "\n"
                 "[tool.pytest.ini_options]\n"
@@ -284,7 +286,7 @@ class TestsFlextInfraCodegenMain:
         ) -> None:
             """Report a managed conflict without touching live bytes or journals."""
             pyproject = (
-                TestsFlextInfraCodegenMain.TestsMainEntryPoint._seed_managed_conflict(
+                TestsFlextInfraCodegenMain.TestsMainEntryPoint.seed_managed_conflict(
                     infra_git_repo,
                 )
             )
@@ -307,7 +309,7 @@ class TestsFlextInfraCodegenMain:
             """Publish the conformed bytes through the transaction, then hold still."""
             root = infra_git_repo
             pyproject = (
-                TestsFlextInfraCodegenMain.TestsMainEntryPoint._seed_managed_conflict(
+                TestsFlextInfraCodegenMain.TestsMainEntryPoint.seed_managed_conflict(
                     root,
                 )
             )

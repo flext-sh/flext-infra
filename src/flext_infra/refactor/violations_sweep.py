@@ -10,7 +10,7 @@ import shlex
 import sys
 from pathlib import Path
 from time import monotonic
-from typing import override
+from typing import Annotated, override
 from uuid import uuid4
 
 from flext_infra import c, config, m, p, r, s, t, u
@@ -21,10 +21,7 @@ from flext_infra.codemod import (
 )
 
 
-class FlextInfraRefactorViolationsSweep(
-    m.Infra.ViolationsSweepRequest,
-    s[m.Infra.ViolationsSweepReport],
-):
+class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
     """Run canonical repairs and reject introduced finding occurrences.
 
     Rule focus is validated against the elected plan, never passed to the full
@@ -32,6 +29,25 @@ class FlextInfraRefactorViolationsSweep(
     sequence of selector-free Make verbs. Audit inspects each discovered project
     separately and must preserve the governed source and catalog inventory.
     """
+
+    rules: Annotated[
+        str | None,
+        m.Field(description="Comma-separated rule focus; full catalog stays observed"),
+    ] = None
+    audit_rules: Annotated[
+        bool,
+        m.Field(
+            alias="audit-rules",
+            description="Read-only native rule audit for every governed repository",
+        ),
+    ] = False
+    repair_verbs: Annotated[
+        str | None,
+        m.Field(
+            alias="repair-verbs",
+            description="Ordered Make verbs; default from canonical Make policy",
+        ),
+    ] = None
 
     @override
     def execute(self) -> p.Result[m.Infra.ViolationsSweepReport]:

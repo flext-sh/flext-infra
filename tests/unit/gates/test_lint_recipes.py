@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, m, t, u
-from tests import tm
+from flext_infra import config
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraLintRecipes:
@@ -306,10 +306,9 @@ class TestsFlextInfraLintRecipes:
         tmp_path: Path,
     ) -> None:
         """The notice is signed by the author the owning manifest declares."""
-        (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "sample"\nversion = "1.0.0"\n'
-            'authors = [{ name = "Sample Author" }]\n',
-            encoding="utf-8",
+        self._write_manifest(
+            tmp_path,
+            license_id=u.Tests.project_spec("sample").license,
         )
         module = tmp_path / "sample.py"
 
@@ -325,6 +324,123 @@ class TestsFlextInfraLintRecipes:
         tm.that(notice, has="\nsample\nSPDX-License-Identifier:")
         tm.that(sibling, has="\nother\nSPDX-License-Identifier:")
         tm.that(repaired, eq=f'"""Sample module.\n\n{notice}\n"""\n\nVALUE = 1\n')
+
+    @staticmethod
+    def _write_manifest(
+        root: Path,
+        *,
+        license_id: str | None,
+        author: str = "Sample Author",
+    ) -> None:
+        """Write a PEP 621 manifest declaring one author and, optionally, a license."""
+        license_line = "" if license_id is None else f'license = "{license_id}"\n'
+        (root / c.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "sample"\nversion = "1.0.0"\n'
+            f"{license_line}"
+            f'authors = [{{ name = "{author}" }}]\n',
+            encoding="utf-8",
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "license_id",
+        config.Infra.codegen.scaffold.project.supported_licenses,
+    )
+    def test_copyright_notice_signs_with_the_declared_project(
+        tmp_path: Path,
+        license_id: str,
+    ) -> None:
+        """The repository's codegen project declaration owns holder, license, year.
+
+        The manifest names another author and a license outside the supported
+        set: neither reaches the notice once the repository declares its project.
+        """
+        TestsFlextInfraLintRecipes._write_manifest(
+            tmp_path,
+            license_id="LicenseRef-Manifest-Only",
+            author="Manifest Author",
+        )
+        declared = u.Tests.project_spec("sample").model_copy(
+            update={
+                "license": license_id,
+                "author_name": "Declared Holder",
+                "year": config.Infra.codegen.scaffold.project.copyright_year + 1,
+            },
+        )
+        directory = tmp_path / c.CONFIG_DIR_NAME
+        directory.mkdir()
+        tm.ok(
+            u.Cli.yaml_dump(
+                directory / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": {
+                                "project": declared.model_dump(
+                                    mode="json",
+                                    exclude_none=True,
+                                ),
+                            },
+                        },
+                    },
+                },
+            ),
+        )
+
+        notice = u.Infra.copyright_notice(tmp_path)
+
+        tm.that(
+            notice,
+            eq=(
+                f"Copyright (c) {declared.year} {declared.author_name}. "
+                "All rights reserved.\n"
+                f"SPDX-License-Identifier: {declared.license}"
+            ),
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "license_id",
+        config.Infra.codegen.scaffold.project.supported_licenses,
+    )
+    def test_copyright_notice_of_an_undeclared_project_reads_its_manifest(
+        tmp_path: Path,
+        license_id: str,
+    ) -> None:
+        """Without a codegen project the PEP 621 author and license sign it."""
+        TestsFlextInfraLintRecipes._write_manifest(tmp_path, license_id=license_id)
+
+        notice = u.Infra.copyright_notice(tmp_path)
+
+        tm.that(
+            notice,
+            eq=(
+                f"Copyright (c) {config.Infra.codegen.scaffold.project.copyright_year}"
+                " Sample Author. All rights reserved.\n"
+                f"SPDX-License-Identifier: {license_id}"
+            ),
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("license_id", "cause"),
+        [
+            ("LicenseRef-Unsupported", "unsupported scaffold license"),
+            (None, "declares no SPDX project.license"),
+        ],
+    )
+    def test_copyright_notice_rejects_an_undeclared_or_unsupported_license(
+        tmp_path: Path,
+        license_id: str | None,
+        cause: str,
+    ) -> None:
+        """No supported license is picked for a project that declares none."""
+        TestsFlextInfraLintRecipes._write_manifest(tmp_path, license_id=license_id)
+
+        with pytest.raises(ValueError, match=cause) as failure:
+            u.Infra.copyright_notice(tmp_path)
+
+        tm.that(str(failure.value), has=cause)
 
     def test_a_module_without_a_copyright_finding_needs_no_author(
         self,

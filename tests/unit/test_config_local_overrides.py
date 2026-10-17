@@ -1,4 +1,4 @@
-"""Contract for the gitignored per-clone local config override file.
+"""Contract for a repository's own config layers over the packaged policy.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -15,7 +15,7 @@ from tests import c, m, tm, u
 
 
 class TestsFlextInfraConfigLocalOverrides:
-    """Prove the local override file merges last through the public surface."""
+    """Prove repository and local layers merge over packaged defaults."""
 
     @staticmethod
     def test_make_election_preserves_selection_contract() -> None:
@@ -78,13 +78,20 @@ class TestsFlextInfraConfigLocalOverrides:
             )
 
     @staticmethod
-    def test_tracked_configs_keep_fleet_defaults(
+    def _consumer_config(root: Path) -> Path:
+        """Create one consumer repository's own config directory."""
+        directory = root / c.Infra.CODEGEN_CONFIG_DIR
+        directory.mkdir(parents=True)
+        return directory
+
+    def test_absent_repository_layers_keep_the_packaged_policy(
+        self,
         tmp_path: Path,
     ) -> None:
-        """Without a local file the tracked scalar survives untouched.
+        """A repository that declares no layer reads exactly the packaged policy.
 
-        The expectation is the tracked SSOT read itself (P0): any legitimate
-        config change keeps both loads equal, and only a broken merge diverges.
+        The expectation is the packaged SSOT read itself (P0): any legitimate
+        config change keeps both reads equal, and only a broken merge diverges.
         """
         baseline = FlextInfraConfig.fetch_global()
         inputs = tm.ok(u.Infra.load_codegen_inputs(tmp_path))
@@ -131,7 +138,7 @@ class TestsFlextInfraConfigLocalOverrides:
     def test_local_file_dict_entries_add_beside_tracked_ones(
         tmp_path: Path,
     ) -> None:
-        """A dict-typed registry gains the local entry and keeps tracked ones."""
+        """A dict-typed registry gains the local entry and keeps packaged ones."""
         baseline = (
             FlextInfraConfig.fetch_global().Infra.codegen.layout.project_overrides
         )

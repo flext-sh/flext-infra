@@ -352,6 +352,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             f'name = "{name}"\n'
             f'authors = [{{name = "{project_spec.author_name}", '
             f'email = "{project_spec.author_email}"}}]\n'
+            f'license = "{project_spec.license}"\n'
             'version = "0.1.0"\n'
             f'requires-python = "{python_required}"\n'
             f'dependencies = ["{upstream_source}"]\n'
@@ -441,10 +442,12 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         project = tmp_path / name
         project.mkdir()
         (project / "Makefile").touch()
+        spec = TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(name)
         (project / "pyproject.toml").write_text(
             (
                 f"[project]\nname='{name}'\nversion='0.1.0'\n"
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+                f'license = "{spec.license}"\n'
                 "dependencies=['flext-core>=0.1.0']\n"
             ),
             encoding="utf-8",
@@ -879,16 +882,20 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             # A governed project always declares its description: the derived
             # render identity reads it and rejects an empty one, exactly as it
             # does for a real checkout.
-            # Why: conform's existing-checkout ProjectSpec now derives authors and
-            # upstream from live PEP 621 metadata (no fabricated spec) — every
-            # governed fixture must declare both.
+            # Why: conform's existing-checkout ProjectSpec derives authors, the
+            # license and upstream from live PEP 621 metadata (no fabricated
+            # spec) — every governed fixture must declare all three.
             python_required = config.Infra.codegen.toolchain.python_required_version
+            spec = TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(
+                distribution,
+            )
             pyproject.write_text(
                 f'[project]\nname = "{distribution}"\n'
                 f'version = "{config.Infra.initial_project_version}"\n'
                 f'description = "{distribution} governed fixture"\n'
                 f'requires-python = "{python_required}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+                f'license = "{spec.license}"\n'
                 f'dependencies = ["flext-core @ {internal_source}"]\n'
                 f'[project.urls]\nRepository = "{repository_url}"\n{tooling}',
                 encoding="utf-8",

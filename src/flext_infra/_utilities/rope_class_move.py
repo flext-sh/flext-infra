@@ -465,9 +465,6 @@ class FlextInfraUtilitiesRopeClassMove:
         Returns:
             The original packages exposing the declaration's native identity.
 
-        Raises:
-            TypeError: A package lacks the native semantic module interface.
-
         """
         root = Path(project.root.real_path).resolve()
         expected = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
@@ -481,11 +478,7 @@ class FlextInfraUtilitiesRopeClassMove:
                 project,
                 cls._resource(project, root, path),
             ).get_name()
-            published_module = project.get_module(module_name)
-            if not FlextInfraUtilitiesRopeRuntime.semantic_module(published_module):
-                message = "Package reexports require a native semantic module"
-                raise TypeError(message)
-            published = published_module.get_attributes().get(name)
+            published = project.get_module(module_name).get_attributes().get(name)
             if published is not None and FlextInfraUtilitiesRopeRuntime.same_name(
                 expected,
                 published,

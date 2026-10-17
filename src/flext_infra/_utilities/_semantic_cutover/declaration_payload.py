@@ -24,6 +24,20 @@ from flext_infra._utilities._semantic_cutover.family_type_references import (
 class FlextInfraUtilitiesDeclarationPayload:
     """Identify inherited declarations without parsing or spelling heuristics."""
 
+    @staticmethod
+    def identity_name(
+        project: p.Infra.RopeProject,
+        identity: str,
+    ) -> p.Infra.RopePyName:
+        """Resolve one qualified ``module.attribute`` identity in the graph.
+
+        Returns:
+            The native name the identity's module binds.
+
+        """
+        module, _, name = identity.rpartition(".")
+        return project.get_module(module).get_attribute(name)
+
     @classmethod
     def class_ancestry(
         cls,
@@ -302,13 +316,10 @@ class FlextInfraUtilitiesDeclarationPayload:
         module, binding = resolved
         value = binding.get_object()
         ancestry = cls.class_ancestry(value)
-        base = project.get_module("pydantic").get_attribute("BaseModel").get_object()
-        settings = (
-            project
-            .get_module("pydantic_settings")
-            .get_attribute("BaseSettings")
-            .get_object()
-        )
+        base = cls.identity_name(project, c.Infra.PYDANTIC_MODEL_IDENTITY).get_object()
+        settings = cls.identity_name(
+            project, c.Infra.PYDANTIC_SETTINGS_IDENTITY
+        ).get_object()
         if base not in ancestry or settings in ancestry:
             return None
         scope = value.get_scope()

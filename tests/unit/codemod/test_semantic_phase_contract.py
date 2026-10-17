@@ -860,7 +860,7 @@ class TestsFlextInfraSemanticPhaseContract:
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
         )
-        report = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
+        report = m.Infra.ModOccurrenceReport(
             files=frozenset({path}),
             entries=(finding,),
         )

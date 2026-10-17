@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
@@ -17,11 +19,11 @@ from flext_infra._utilities._pyproject.requirements import (
     FlextInfraUtilitiesPyprojectRequirements,
 )
 
-_MEMBER_DEV_PROVENANCE = "flext: derived member environment"
-
 
 class FlextInfraUtilitiesPyprojectOverlay:
     """Merge one rendered pyproject with its live CUSTOM surface."""
+
+    _MEMBER_DEV_PROVENANCE: ClassVar[str] = "flext: derived member environment"
 
     @staticmethod
     def _validated_requirement_lists(
@@ -171,7 +173,8 @@ class FlextInfraUtilitiesPyprojectOverlay:
                 value
                 for value, comment in zip(entries, comments.value, strict=True)
                 if not isinstance(value, str)
-                or comment.removeprefix("#").strip() != _MEMBER_DEV_PROVENANCE
+                or comment.removeprefix("#").strip()
+                != FlextInfraUtilitiesPyprojectOverlay._MEMBER_DEV_PROVENANCE
             ),
         )
 
@@ -208,9 +211,8 @@ class FlextInfraUtilitiesPyprojectOverlay:
     ) -> None:
         """Tag generated additions in the existing dev group, not another registry."""
         groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
-        group_names: tuple[str, ...] = tuple(groups)
         group = FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
-            group_names,
+            groups,
             group,
         )
         values = FlextInfraUtilitiesPyprojectRequirements.read_dependency_group(
@@ -231,7 +233,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
                 comment=(
                     None
                     if not isinstance(value, str) or value in custom_values
-                    else _MEMBER_DEV_PROVENANCE
+                    else FlextInfraUtilitiesPyprojectOverlay._MEMBER_DEV_PROVENANCE
                 ),
             )
         generated.add_line(indent="")

@@ -5,7 +5,7 @@ The tooling owner maps each Ruff rule code to one recipe
 then these recipes to the findings left. Every repair is derived from the
 source itself: a docstring section from the signature, the summary and the
 raise statement, a summary from the declared name, the notice from the
-project's declared author, copyright year and module path, and a static
+project's declared copyright holder, license, year and module path, and a static
 method from a method Ruff reports as never reading its instance: only its
 receiver parameter and its decorator list change, its body keeps every byte. A
 finding the recipe cannot place raises; nothing is skipped.
@@ -22,12 +22,19 @@ import re
 import textwrap
 import tokenize
 from collections.abc import Iterable, MutableMapping
+from functools import lru_cache
 from itertools import pairwise
 from operator import itemgetter
 from pathlib import Path
 
-from flext_infra import c, config, m, t
-from flext_infra._utilities import FlextInfraUtilitiesPyproject
+from flext_cli import u
+
+from flext_infra import c, config, m, p, r, t
+from flext_infra._config import FlextInfraConfig
+from flext_infra._utilities import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesPyproject,
+)
 
 
 class FlextInfraUtilitiesLintRecipes:
@@ -63,15 +70,106 @@ class FlextInfraUtilitiesLintRecipes:
         return tuple(issues)
 
     @staticmethod
-    def copyright_notice(pkg_dir: Path, *, module: Path | None = None) -> str:
+    def project_notice_identity(
+        project_root: Path,
+        declared: m.Infra.ProjectSpec | None,
+        scaffold: m.Infra.ScaffoldProjectSpec,
+    ) -> p.Result[t.Triple[str, str, int]]:
+        """Resolve the copyright holder, license and year a project declares.
+
+        The repository's ``Infra.codegen.repository.project`` declaration owns
+        all three: ``author_name`` is the copyright holder, ``license`` the
+        SPDX identifier and ``year`` the notice year. A tree without that
+        declaration derives them from its live PEP 621 manifest, the
+        existing-tree rule: the first author is the holder, ``project.license``
+        the license, and the scaffold copyright year the year.
+        ``scaffold.supported_licenses`` only validates the result: a license
+        without complete templates is rejected, never replaced.
+
+        Returns:
+            The ``(holder, license, year)`` triple, or the first missing or
+            unsupported declaration.
+
+        """
+        result_type = r[t.Triple[str, str, int]]
+        if declared is not None:
+            identity = (declared.author_name, declared.license, declared.year)
+        else:
+            metadata = FlextInfraUtilitiesPyproject.read_project_metadata_result(
+                project_root,
+            )
+            if metadata.failure:
+                return result_type.from_failure(metadata)
+            authors = metadata.value.project.authors
+            holder = authors[0].name if authors else None
+            if not holder:
+                return result_type.fail(
+                    f"project manifest declares no author name: {project_root}",
+                )
+            license_id = u.Cli.json_walk_path(
+                FlextInfraUtilitiesPyproject.pyproject_payload(
+                    project_root / c.PYPROJECT_FILENAME,
+                ),
+                (c.Infra.PROJECT, c.Infra.LICENSE),
+            )
+            if not isinstance(license_id, str) or not license_id:
+                return result_type.fail(
+                    "project manifest declares no SPDX project.license and the "
+                    f"repository declares no codegen project: {project_root}",
+                )
+            identity = (holder, license_id, scaffold.copyright_year)
+        if identity[1] not in scaffold.supported_licenses:
+            supported = ", ".join(scaffold.supported_licenses)
+            return result_type.fail(
+                f"unsupported scaffold license: {identity[1]}; "
+                f"supported licenses: {supported}",
+            )
+        return result_type.ok(identity)
+
+    @staticmethod
+    @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
+    def _declared_notice_identity(
+        project_root: Path,
+        inputs: t.VariadicTuple[bytes | None],
+    ) -> p.Result[t.Triple[str, str, int]]:
+        """Resolve one project's notice identity once per exact input content.
+
+        ``inputs`` holds the bytes of the repository's own codegen layers and
+        its manifest, so an edited input is a new key, never a stale identity.
+        The repository declaration is still read through its owner, which must
+        observe the same layer bytes the key carries.
+
+        Returns:
+            The ``project_notice_identity`` result for the declared inputs.
+
+        """
+        result_type = r[t.Triple[str, str, int]]
+        artifacts = FlextInfraUtilitiesProjectManagedArtifacts
+        declaration = artifacts.load_repository_declaration_inputs(project_root)
+        if declaration.failure:
+            return result_type.from_failure(declaration)
+        observed = tuple(state.content for state in declaration.value.sources[1:])
+        if observed != inputs[: len(observed)]:
+            return result_type.fail(
+                f"codegen declaration changed during notice resolution: {project_root}",
+            )
+        return FlextInfraUtilitiesLintRecipes.project_notice_identity(
+            project_root,
+            declaration.value.spec.project,
+            config.Infra.codegen.scaffold.project,
+        )
+
+    @classmethod
+    def copyright_notice(cls, pkg_dir: Path, *, module: Path | None = None) -> str:
         """Render the copyright notice of the project that owns ``pkg_dir``.
 
-        The author is the manifest's first declared author and the year is the
-        scaffold copyright year, the same owners the scaffold templates
-        render. ``module`` names the file that carries the notice. Its
-        project-relative path, without the suffix every module shares, is the
-        line between the copyright sentence and the SPDX line: the sentence
-        and the license stay legal, and the notice is not one stamp.
+        The holder, license and year come from the owning repository's
+        declaration through ``project_notice_identity``, the same owner the
+        conform render consumes. ``module`` names the file that carries the
+        notice. Its project-relative path, without the suffix every module
+        shares, is the line between the copyright sentence and the SPDX line:
+        the sentence and the license stay legal, and the notice is not one
+        stamp.
 
         Returns:
             The copyright sentence, that module identity when ``module`` is
@@ -79,29 +177,30 @@ class FlextInfraUtilitiesLintRecipes:
 
         Raises:
             ValueError: If the path is outside any project manifest, the
-                manifest declares no author name, or ``module`` has no
-                identity.
+                project declares no holder or a missing or unsupported
+                license, or ``module`` has no identity.
 
         """
         for candidate in (pkg_dir, *pkg_dir.parents):
             if not (candidate / c.PYPROJECT_FILENAME).is_file():
                 continue
-            authors = (
-                FlextInfraUtilitiesPyproject
-                .read_project_metadata_result(candidate)
-                .unwrap()
-                .project.authors
+            root = candidate.resolve()
+            layers = FlextInfraConfig.config_layer_paths_for_repository(
+                root,
+                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
             )
-            author = authors[0].name if authors else None
-            if not author:
-                msg = f"project manifest declares no author name: {candidate}"
-                raise ValueError(msg)
-            scaffold = config.Infra.codegen.scaffold.project
-            copyright_line = (
-                f"Copyright (c) {scaffold.copyright_year} {author}. "
-                "All rights reserved."
+            notice = cls._declared_notice_identity(
+                root,
+                tuple(
+                    u.Cli.files_read_binary(path).unwrap() if path.is_file() else None
+                    for path in (*layers[1:], root / c.PYPROJECT_FILENAME)
+                ),
             )
-            spdx = f"SPDX-License-Identifier: {scaffold.supported_licenses[0]}"
+            if notice.failure:
+                raise ValueError(notice.error)
+            holder, license_id, year = notice.value
+            copyright_line = f"Copyright (c) {year} {holder}. All rights reserved."
+            spdx = f"SPDX-License-Identifier: {license_id}"
             if module is None:
                 return f"{copyright_line}\n{spdx}"
             try:
