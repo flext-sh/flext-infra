@@ -109,17 +109,17 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
         GATE_TOOLS_BY_KIND[FlextInfraConfigVocabulary.GateKind.TYPE_CHECKER],
     )
     SARIF_TOOL_INFO: ClassVar[t.MappingKV[str, t.StrPair]] = MappingProxyType({
-        gate: tool
+        gate: (tool[0], tool[1])
         for tools in GATE_TOOLS_BY_KIND.values()
         for gate, tool in tools.items()
     })
     ALLOWED_GATES: ClassVar[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     CANONICAL_GATE_IDS: ClassVar[t.VariadicTuple[str]] = tuple(SARIF_TOOL_INFO)
-    CANONICAL_FIXABLE_GATE_IDS: ClassVar[t.VariadicTuple[str]] = (
-        "lint",
-        "markdown",
-        "markdown-code",
-        "deps",
+    CANONICAL_FIXABLE_GATE_IDS: ClassVar[t.VariadicTuple[str]] = tuple(
+        gate
+        for tools in GATE_TOOLS_BY_KIND.values()
+        for gate, tool in tools.items()
+        if tool[2]
     )
     """Independent repair policy; formatting remains owned by Make fmt."""
 
@@ -131,12 +131,6 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
     """Complete CPython code encoding without reference or interning flags."""
     NATIVE_TUPLE_REPEAT_LIMIT: ClassVar[int] = 255
     """Largest literal repeat count read as closed tuple constructor data."""
-    NATIVE_DATACLASS_SDK_CLASSES: ClassVar[tuple[str, ...]] = (
-        "Field",
-        "_DataclassParams",
-        "_FuncBuilder",
-    )
-    """Dataclass SDK classes the closed compiler instantiates during emission."""
 
     PYTEST_SELECTED_COLLECTION_OPTION: ClassVar[str] = "--flext-selected-collection"
     PYTEST_SUITE_STOP_OPTION: ClassVar[str] = "--flext-suite-stop-monotonic"

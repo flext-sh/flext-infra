@@ -27,6 +27,37 @@ class FlextInfraUtilitiesPyproject:
 
     MEMBER_DEV_PROVENANCE: ClassVar[str] = "flext: derived member environment"
 
+    @classmethod
+    def declared_dependency_payload(
+        cls,
+        pyproject_path: Path,
+    ) -> p.Result[t.JsonMapping]:
+        """Read owner-recovered TOML without admitting generated group inputs.
+
+        Returns:
+            The parsed mapping with authored dependency-group entries only.
+
+        """
+        text = cls.live_pyproject_text(pyproject_path)
+        if text.failure:
+            return r[t.JsonMapping].from_failure(text)
+        payload = u.Cli.toml_mapping_from_text(text.value)
+        if payload is None:
+            return r[t.JsonMapping].fail(
+                f"pyproject is not valid TOML: {pyproject_path}",
+            )
+        groups = u.Cli.toml_mapping_path(payload, (c.Infra.DEPENDENCY_GROUPS,))
+        if groups is not None:
+            for group in (str(c.Infra.DEV), c.Infra.DependencyGroup.CODEGEN):
+                selected = cls.dependency_group_name(tuple(groups), str(group))
+                if selected not in groups:
+                    continue
+                custom = cls.custom_dev_additions(payload, text.value, group=selected)
+                if custom.failure:
+                    return r[t.JsonMapping].from_failure(custom)
+                groups[selected] = cls.dependency_group_wire(custom.value)
+        return r[t.JsonMapping].ok(payload)
+
     @staticmethod
     def dependency_group_name(names: t.IterableOf[str], name: str) -> str:
         """Elect an existing native spelling using PEP 735 normalized identity.
