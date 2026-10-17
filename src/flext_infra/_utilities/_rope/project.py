@@ -68,20 +68,6 @@ class FlextInfraRopeProject(Project):
         """
         return super().get_pymodule(resource, force_errors=force_errors)
 
-    @override
-    def find_module(
-        self,
-        modname: str,
-        folder: p.Infra.RopeRoot | None = None,
-    ) -> t.Infra.RopeResource | None:
-        """Declared resolution of one module name to its resource.
-
-        Returns:
-            The resulting ``t.Infra.RopeResource | None``.
-
-        """
-        return super().find_module(modname, folder)
-
     class SnapshotFiles:
         """Closed, read-only input inventory for a semantic planning project.
 
