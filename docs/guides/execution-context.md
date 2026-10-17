@@ -985,6 +985,11 @@ Blocked-import sentinels in `sys.modules` remain blocked.
 Import normalization treats exception targets and structural pattern captures
 as local bindings. These names do not load a package facade or reintroduce an
 unused import removed by `make fix`.
+Static facade imports group symbols and module reexports by their emitted
+absolute owner. Module reexports retain their explicit same-name binding;
+ordinary symbols keep their published names. The rename rule distinguishes
+that static reexport from a changed local name in both runtime and
+`TYPE_CHECKING` imports.
 Imports with the same bound name but different lexical providers cannot be
 hoisted into one global binding. Normalization rejects that collision before
 publishing the candidate.

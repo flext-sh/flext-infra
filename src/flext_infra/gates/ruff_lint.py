@@ -261,6 +261,8 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                 recipes=recipes,
             )
         )
+
+    @staticmethod
     def _repaired_source(
         project_dir: Path,
         before: m.Cli.AtomicFileState,
