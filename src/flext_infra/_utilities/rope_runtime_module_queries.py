@@ -14,7 +14,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import config, m, p, r, t
+from flext_infra import m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeBase,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -336,7 +336,11 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             project.root.real_path,
             contents,
             [folder.path for folder in project.get_source_folders()],
-            ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
+            extension_modules=sorted(
+                u.type_adapter(set[str]).validate_python(
+                    project.get_pycore().extension_modules, strict=True
+                )
+            ),
             python_path_folders=[
                 folder.real_path
                 for folder in project.get_python_path_folders()

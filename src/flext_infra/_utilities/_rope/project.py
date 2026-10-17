@@ -13,10 +13,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from errno import ENOENT
-from os.path import normpath
+from os.path import normpath, realpath
 from pathlib import Path
 from types import MappingProxyType
 from typing import Literal, Self, override
@@ -30,7 +31,7 @@ from rope.base.pyobjectsdef import PyModule, PyPackage
 from rope.base.resourceobserver import ChangeIndicator
 from rope.base.resources import File, Folder, Resource
 
-from flext_infra import c, m, p, t
+from flext_infra import c, config, m, p, t
 from flext_infra._utilities.rope_runtime_module_queries import (
     FlextInfraUtilitiesRopeRuntimeModuleQueries,
 )
@@ -43,24 +44,6 @@ class FlextInfraRopeProject(Project):
     # freezes their resource identities and the external Python path.
     _frozen_folders: tuple[list[File | Folder], list[File | Folder]] | None = None
     _snapshot_python_path_folders: list[File | Folder] | None = None
-
-    @property
-    @override
-    def address(self) -> str:
-        """Declared project root address.
-
-        Returns:
-            The native project address.
-
-        Raises:
-            TypeError: The SDK published a non-string address.
-
-        """
-        address = super().address
-        if not isinstance(address, str):
-            message = "Rope project address must be a string"
-            raise TypeError(message)
-        return address
 
     @property
     @override
@@ -85,7 +68,7 @@ class FlextInfraRopeProject(Project):
         self,
         resource: Resource | p.Infra.RopeResource,
         force_errors: bool = False,
-    ) -> PyModule | PyPackage:
+    ) -> t.Infra.RopeNativeParsedModule:
         """Resolve a native resource while preserving the SDK return classes.
 
         Returns:
@@ -105,7 +88,7 @@ class FlextInfraRopeProject(Project):
         self,
         name: str,
         folder: Folder | p.Infra.RopeRoot | None = None,
-    ) -> BuiltinModule | PyModule | PyPackage:
+    ) -> t.Infra.RopeNativeSemanticModule:
         """Resolve the native semantic module elected by the SDK.
 
         Returns:
@@ -125,16 +108,37 @@ class FlextInfraRopeProject(Project):
         return module
 
     @override
+    def get_relative_module(
+        self,
+        name: str,
+        folder: Folder | p.Infra.RopeRoot,
+        level: int,
+    ) -> t.Infra.RopeNativeParsedModule:
+        """Resolve a relative import from its native declaring resource.
+
+        Returns:
+            The original native package or source module.
+
+        Raises:
+            TypeError: The folder or module violates the native SDK boundary.
+
+        """
+        if not isinstance(folder, Folder):
+            message = "Rope module lookup requires a native folder"
+            raise TypeError(message)
+        module = super().get_relative_module(name, folder, level)
+        if not isinstance(module, PyModule | PyPackage):
+            message = "Rope lookup did not return a native parsed module"
+            raise TypeError(message)
+        return module
+
+    @override
     def find_module(
         self,
         modname: str,
         folder: p.Infra.RopeRoot | Folder | None = None,
     ) -> File | Folder | None:
-        """Resolve native resources without shadowing packages by namespaces.
-
-        Rope's folder query accepts namespace portions before regular packages.
-        Keep its resource and snapshot machinery, but elect a regular package
-        or module before an otherwise matching namespace portion, as Python does.
+        """Admit the resource elected by Rope's native module finder.
 
         Returns:
             The native module resource, or no matching module.
@@ -146,53 +150,7 @@ class FlextInfraRopeProject(Project):
         if folder is not None and not isinstance(folder, Folder):
             message = "Rope module lookup requires a native folder"
             raise TypeError(message)
-        return self._elect_module(
-            self,
-            modname,
-            (
-                *self.get_source_folders(),
-                *self.get_python_path_folders(),
-                *((folder,) if folder is not None else ()),
-            ),
-        )
-
-    @staticmethod
-    def _elect_module(
-        finder: p.Infra.RopeModuleFinder,
-        modname: str,
-        roots: t.SequenceOf[File | Folder],
-    ) -> File | Folder | None:
-        """Elect a regular package or module before a namespace portion.
-
-        Returns:
-            The native module resource, or no matching module.
-
-        Raises:
-            TypeError: The SDK elected a resource that is neither file nor folder.
-
-        """
-        namespace: Folder | None = None
-        for root in roots:
-            if not isinstance(root, Folder):
-                continue
-            resource = finder.find_relative_module(modname, root, 1)
-            if resource is None:
-                continue
-            if isinstance(resource, File):
-                return resource
-            if not isinstance(resource, Folder):
-                message = "Rope module lookup elected a non-native resource"
-                raise TypeError(message)
-            if resource.has_child(c.Infra.INIT_PY):
-                return resource
-            module = f"{resource.name}{c.Infra.EXT_PYTHON}"
-            if resource.parent.has_child(module):
-                sibling = resource.parent.get_child(module)
-                if isinstance(sibling, File):
-                    return sibling
-            if namespace is None:
-                namespace = resource
-        return namespace
+        return super().find_module(modname, folder)
 
     class SnapshotFiles:
         """Closed, read-only input inventory for a semantic planning project.
@@ -322,8 +280,17 @@ class FlextInfraRopeProject(Project):
     class AtomicReadFiles:
         """Authenticate only sources actually read by the native semantic graph."""
 
-        realpath = staticmethod(FileSystemCommands.realpath)
         stat = staticmethod(FileSystemCommands.stat)
+
+        @staticmethod
+        def realpath(path: str) -> str:
+            """Return the physical identity Rope's native filesystem commands use.
+
+            Returns:
+                The user-expanded, symlink-resolved absolute path.
+
+            """
+            return realpath(Path(path).expanduser())
 
         def __init__(
             self,
@@ -333,10 +300,14 @@ class FlextInfraRopeProject(Project):
             declared_files: tuple[m.Infra.CodegenFilePlan, ...],
         ) -> None:
             self._root = root
-            self._originals: dict[Path, m.Cli.AtomicFileState] = {}
-            self._consumed: dict[Path, m.Cli.AtomicFileState] = {}
-            self._inventories: dict[Path, m.Cli.AtomicDirectoryInventory] = {}
-            self._topology: dict[Path, m.Cli.AtomicDirectoryChainPlan] = {}
+            self._originals: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
+            self._consumed: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
+            self._inventories: t.MutableMappingKV[
+                Path, m.Cli.AtomicDirectoryInventory
+            ] = {}
+            self._topology: t.MutableMappingKV[
+                Path, m.Cli.AtomicDirectoryChainPlan
+            ] = {}
             for state in source_states:
                 path = Path(state.path)
                 previous = self._originals.get(path)
@@ -374,7 +345,7 @@ class FlextInfraRopeProject(Project):
                 Whether the overlay or native filesystem contains the path.
 
             """
-            return self._query(path, "exists") or self._overlay.exists(path)
+            return self._query(path, "exists")
 
         def isfile(self, path: str) -> bool:
             """Recognize planned source files and native physical files.
@@ -386,7 +357,7 @@ class FlextInfraRopeProject(Project):
                 Whether the path is a planned or native source file.
 
             """
-            return self._query(path, "isfile") or self._overlay.isfile(path)
+            return self._query(path, "isfile")
 
         def isdir(self, path: str) -> bool:
             """Recognize declared virtual parents and native physical folders.
@@ -398,7 +369,7 @@ class FlextInfraRopeProject(Project):
                 Whether the path is a declared virtual or native folder.
 
             """
-            return self._query(path, "isdir") or self._overlay.isdir(path)
+            return self._query(path, "isdir")
 
         def listdir(self, path: str) -> list[str]:
             """Compose native direct children with declared planned children.
@@ -415,7 +386,7 @@ class FlextInfraRopeProject(Project):
             """
             directory = Path(path)
             inventory = self._inventory(directory)
-            names = (
+            names: list[str] = (
                 [] if inventory is None else [item.name for item in inventory.entries]
             )
             if inventory is not None:
@@ -427,7 +398,11 @@ class FlextInfraRopeProject(Project):
                     update={"membership_queried": True}
                 )
             if self._overlay.isdir(path):
-                names.extend(self._overlay.listdir(path))
+                physical_names = frozenset(names)
+                for child in self._overlay.children(path):
+                    if child.name not in physical_names:
+                        self._observe_overlay(str(child))
+                    names.append(child.name)
             elif inventory is None:
                 raise FileNotFoundError(
                     ENOENT, "Rope source directory was observed absent", path
@@ -435,7 +410,7 @@ class FlextInfraRopeProject(Project):
             return sorted(set(names))
 
         @staticmethod
-        def _required_value[ValueT](result: p.Result[ValueT]) -> ValueT:
+        def require_value[ValueT](result: p.Result[ValueT]) -> ValueT:
             """Preserve the original native cause at this read-only IO boundary.
 
             Returns:
@@ -460,7 +435,7 @@ class FlextInfraRopeProject(Project):
 
             """
             if directory not in self._topology:
-                self._topology[directory] = self._required_value(
+                self._topology[directory] = self.require_value(
                     u.Cli.atomic_plan_directory_chain(directory)
                 )
             return self._topology[directory]
@@ -475,7 +450,7 @@ class FlextInfraRopeProject(Project):
             if self._directory_chain(directory).directories:
                 return None
             if directory not in self._inventories:
-                self._inventories[directory] = self._required_value(
+                self._inventories[directory] = self.require_value(
                     u.Cli.atomic_inventory_physical_directory(directory)
                 )
             return self._inventories[directory]
@@ -491,32 +466,57 @@ class FlextInfraRopeProject(Project):
             """
             candidate = Path(path)
             if candidate in {self._root, candidate.parent}:
-                return (
+                observed = (
                     not self._directory_chain(candidate).directories
                     and predicate != "isfile"
                 )
-            inventory = self._inventory(candidate.parent)
-            if inventory is None:
-                witness = self._topology[candidate.parent]
-                self._topology[candidate.parent] = witness.model_copy(
-                    update={
-                        "queries": tuple(
-                            sorted({*witness.queries, (candidate.name, predicate)})
-                        )
-                    }
-                )
-                return False
-            inventory = inventory.model_copy(
-                update={
-                    "queries": tuple(
-                        sorted({*inventory.queries, (candidate.name, predicate)})
+            else:
+                inventory = self._inventory(candidate.parent)
+                if inventory is None:
+                    witness = self._topology[candidate.parent]
+                    self._topology[candidate.parent] = witness.model_copy(
+                        update={
+                            "queries": tuple(
+                                sorted({*witness.queries, (candidate.name, predicate)})
+                            )
+                        }
                     )
-                }
-            )
-            self._inventories[candidate.parent] = inventory
-            return u.Cli.atomic_directory_query_value(
-                inventory, candidate.name, predicate
-            )
+                    observed = False
+                else:
+                    inventory = inventory.model_copy(
+                        update={
+                            "queries": tuple(
+                                sorted({
+                                    *inventory.queries,
+                                    (candidate.name, predicate),
+                                })
+                            )
+                        }
+                    )
+                    self._inventories[candidate.parent] = inventory
+                    observed = u.Cli.atomic_directory_query_value(
+                        inventory, candidate.name, predicate
+                    )
+            if observed:
+                return True
+            match predicate:
+                case "exists":
+                    proposed = self._overlay.exists(path)
+                case "isfile":
+                    proposed = self._overlay.isfile(path)
+                case "isdir":
+                    proposed = self._overlay.isdir(path)
+            if proposed:
+                self._observe_overlay(path)
+            return proposed
+
+        def _observe_overlay(self, path: str) -> None:
+            """Bind the exact planned sources contributing a virtual resource."""
+            if self._overlay.isfile(path):
+                self.read(path)
+                return
+            for child in self._overlay.children(path):
+                self._observe_overlay(str(child))
 
         def directories(self) -> tuple[m.Cli.AtomicDirectoryInventory, ...]:
             """Return the complete native inventories with consumed query selectors."""
@@ -548,16 +548,14 @@ class FlextInfraRopeProject(Project):
             if state is None:
                 state = self._originals.get(source)
                 if state is None:
-                    state = self._required_value(
+                    state = self.require_value(
                         u.Cli.atomic_read_binary_file_state(
                             source,
                             required=source not in self._declared_paths,
                         )
                     )
                 else:
-                    self._required_value(
-                        u.Cli.atomic_verify_binary_file_states((state,))
-                    )
+                    self.require_value(u.Cli.atomic_verify_binary_file_states((state,)))
                 self._verify_declarations(source)
                 self._consumed[source] = state
             proposed = self._sources.get(source)
@@ -579,8 +577,8 @@ class FlextInfraRopeProject(Project):
 
         def verify(self) -> None:
             """Reprove original inputs and absence witnesses without replacing them."""
-            self._required_value(u.Cli.atomic_verify_binary_file_states(self.states()))
-            self._required_value(
+            self.require_value(u.Cli.atomic_verify_binary_file_states(self.states()))
+            self.require_value(
                 u.Cli.atomic_verify_directory_queries(
                     self.directories(), self.topology()
                 )
@@ -603,7 +601,7 @@ class FlextInfraRopeProject(Project):
                     continue
                 _, content = (
                     FlextInfraUtilitiesRopeRuntimeModuleQueries.snapshot_destination(
-                        self._root,
+                        plan.project,
                         plan,
                     )
                 )
@@ -656,20 +654,20 @@ class FlextInfraRopeProject(Project):
         root: str,
         sources: Mapping[Path, bytes],
         source_folders: t.SequenceOf[str],
-        ignored_resources: t.SequenceOf[str] = (),
         *,
+        extension_modules: t.SequenceOf[str],
         python_path_folders: t.SequenceOf[str] = (),
     ) -> Self:
         """Construct a fresh Rope identity graph without persistent state.
+
+        The snapshot applies the configured scan-ignore policy at its owner,
+        so ignored tool resources never enter the closed source inventory.
 
         Args:
             root: The snapshot root directory.
             sources: The closed source inventory Rope may read.
             source_folders: The declared importable source folders.
-            ignored_resources: The scan-ignore SSOT patterns; without them
-                Rope enumerates real disk files the closed inventory does not
-                hold (tool hooks under ignored resources) and every such
-                read dies in the snapshot mapping.
+            extension_modules: Native modules elected by the original project.
             python_path_folders: Authenticated native import roots whose resources
                 must read the same captured inventory as project modules.
 
@@ -695,7 +693,7 @@ class FlextInfraRopeProject(Project):
             root,
             files,
             source_folders,
-            ignored_resources=ignored_resources,
+            extension_modules=extension_modules,
             python_path_folders=python_path_folders,
         )
 
@@ -708,7 +706,7 @@ class FlextInfraRopeProject(Project):
         ),
         source_folders: t.SequenceOf[str],
         *,
-        ignored_resources: t.SequenceOf[str],
+        extension_modules: t.SequenceOf[str],
         python_path_folders: t.SequenceOf[str],
     ) -> Self:
         """Compose the native project and external resolver over one read owner.
@@ -718,6 +716,7 @@ class FlextInfraRopeProject(Project):
 
         """
         external = NoProject(fscommands=files)
+        external.prefs.extension_modules = list(extension_modules)
         project = cls(
             root,
             fscommands=files,
@@ -725,7 +724,8 @@ class FlextInfraRopeProject(Project):
             ropefolder=None,
             save_objectdb=False,
             save_history=False,
-            ignored_resources=list(ignored_resources),
+            ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
+            extension_modules=list(extension_modules),
             source_folders=source_folders,
         )
         project._snapshot_python_path_folders = [
@@ -741,8 +741,8 @@ class FlextInfraRopeProject(Project):
         cls,
         live: p.Infra.RopeProject,
         source_states: tuple[m.Cli.AtomicFileState, ...],
-        ignored_resources: t.SequenceOf[str] = (),
         *,
+        source_folders: t.SequenceOf[str],
         sources: t.MappingKV[Path, str],
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> Self:
@@ -761,8 +761,12 @@ class FlextInfraRopeProject(Project):
         return cls._from_files(
             live.root.real_path,
             files,
-            source_folders=[folder.path for folder in live.get_source_folders()],
-            ignored_resources=ignored_resources,
+            source_folders=source_folders,
+            extension_modules=sorted(
+                u.type_adapter(set[str]).validate_python(
+                    live.get_pycore().extension_modules, strict=True
+                )
+            ),
             python_path_folders=[
                 folder.real_path
                 for folder in live.get_python_path_folders()
@@ -884,7 +888,22 @@ class FlextInfraRopeProject(Project):
 
     @override
     def _init_other_parts(self) -> None:
-        """Install captured change observations before initializing resources."""
+        """Declare sourceless stdlib modules, then install captured observations.
+
+        A frozen stdlib module has no source file for Rope to elect
+        (``collections.abc`` binds the frozen ``_collections_abc``), so every
+        project, live or captured, declares the interpreter's frozen stdlib
+        modules as Rope's native extension modules before its core caches them.
+        """
+        for name in tuple(sys.modules):
+            module = sys.modules.get(name)
+            if (
+                name.partition(".")[0] in sys.stdlib_module_names
+                and module is not None
+                and module.__spec__ is not None
+                and module.__spec__.origin == "frozen"
+            ):
+                self.prefs.add("extension_modules", name)
         super()._init_other_parts()
         if isinstance(self.fscommands, self.SnapshotFiles | self.AtomicReadFiles):
             core = self.get_pycore()

@@ -548,13 +548,9 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
 
     @classmethod
     def _word_finder(cls, source: str) -> p.AttributeProbe:
-        worder_module = cls._module("rope.base.worder")
-        worder_factory = getattr(worder_module, "Worder", None)
-        if not callable(worder_factory):
-            msg = "rope Worder factory is not callable"
-            raise TypeError(msg)
-        finder: p.AttributeProbe = worder_factory(source, handle_ignores=True)
-        return finder
+        return cls.runtime_callable("rope.base.worder", "Worder")(
+            source, handle_ignores=True
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeRuntimeRefactors"]

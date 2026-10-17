@@ -192,7 +192,7 @@ class TestsFlextInfraModEvidenceInputs:
         source.write_text("a = 'left'\nb = 'right'\nc = 'local'\n", encoding="utf-8")
         report = tm.ok(
             FlextInfraModGateEngine.scan(
-                mod_workspace, fix=False, plan=plan, source_files=(source,)
+                mod_workspace, fix=False, selection=plan, source_files=(source,)
             )
         )
         tm.that(capsys.readouterr().err.count(f"mod: start {c.Infra.SG} scan"), eq=1)
@@ -236,7 +236,7 @@ class TestsFlextInfraModEvidenceInputs:
             ValueError, match="elected codemod rule changed before projection"
         ):
             FlextInfraModGateEngine.scan(
-                mod_workspace, fix=False, plan=plan, source_files=(source,)
+                mod_workspace, fix=False, selection=plan, source_files=(source,)
             )
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True)),
@@ -255,7 +255,7 @@ class TestsFlextInfraModEvidenceInputs:
         )
         report = tm.ok(
             FlextInfraModGateEngine.scan(
-                mod_workspace, fix=False, rule_ids=("ban-pass-through-wrapper",)
+                mod_workspace, fix=False, selection=("ban-pass-through-wrapper",)
             )
         )
         tm.that(report.findings, eq=1)
@@ -285,7 +285,7 @@ class TestsFlextInfraModEvidenceInputs:
         """A zero report still records and authenticates the scanner's real output."""
         report = tm.ok(
             FlextInfraModGateEngine.scan(
-                mod_workspace, fix=False, rule_ids=("ban-pass-through-wrapper",)
+                mod_workspace, fix=False, selection=("ban-pass-through-wrapper",)
             )
         )
         tm.that(report.findings, eq=0)
@@ -315,7 +315,7 @@ class TestsFlextInfraModEvidenceInputs:
         source.write_text(content, encoding="utf-8")
         report = tm.ok(
             FlextInfraModGateEngine.scan(
-                mod_workspace, fix=False, rule_ids=("ban-pass-through-wrapper",)
+                mod_workspace, fix=False, selection=("ban-pass-through-wrapper",)
             )
         )
         tm.that(report.findings, eq=1)
@@ -602,7 +602,7 @@ class TestsFlextInfraModEvidenceInputs:
         )
         report = tm.ok(
             FlextInfraModGateEngine.scan(
-                mod_workspace, fix=False, rule_ids=("ban-pass-through-wrapper",)
+                mod_workspace, fix=False, selection=("ban-pass-through-wrapper",)
             )
         )
         tm.that(report.findings, eq=occurrences)
@@ -757,7 +757,7 @@ class TestsFlextInfraModEvidenceInputs:
         source.write_text("value = 1\n", encoding="utf-8")
         report = tm.ok(
             FlextInfraModGateEngine.scan(
-                mod_workspace, fix=False, rule_ids=("ban-pass-through-wrapper",)
+                mod_workspace, fix=False, selection=("ban-pass-through-wrapper",)
             )
         )
         tm.that(report.findings, eq=0)

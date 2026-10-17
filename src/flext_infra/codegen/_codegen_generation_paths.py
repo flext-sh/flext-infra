@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import c, u
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -128,32 +128,6 @@ class FlextInfraCodegenGenerationPathsMixin:
         return "." * (len(current_parts) - common + 1) + ".".join(module_parts[common:])
 
     @staticmethod
-    def _absolute_import_module(package: str, mod: str) -> str:
-        """Resolve a package-relative module path to its absolute import form.
-
-        One leading dot names ``package`` itself, as Python resolves a relative
-        import inside that package's initializer. Generated import statements
-        are always absolute; only lazy-map data keeps the compact form.
-
-        Returns:
-            The resulting ``str``.
-
-        Raises:
-            ValueError: If relative module.
-
-        """
-        if not mod.startswith("."):
-            return mod
-        level = len(mod) - len(mod.lstrip("."))
-        parts = package.split(".")
-        if not package or level > len(parts):
-            msg = f"relative module {mod!r} escapes package {package!r}"
-            raise ValueError(msg)
-        base = parts[: len(parts) - level + 1]
-        tail = mod[level:]
-        return ".".join((*base, tail) if tail else base)
-
-    @staticmethod
     def _compact_lazy_module_path(current_pkg: str, mod: str) -> str:
         """Compact a lazy module path relative to ``current_pkg`` when valid.
 
@@ -188,7 +162,7 @@ class FlextInfraCodegenGenerationPathsMixin:
         mod: str,
         local_package_root: str | None,
     ) -> str:
-        """Normalize local TYPE_CHECKING owners to package-relative imports.
+        """Resolve every emitted import to its absolute native package owner.
 
         Returns:
             The resulting ``str``.
@@ -196,27 +170,28 @@ class FlextInfraCodegenGenerationPathsMixin:
         """
         if not local_package_root:
             return mod
-        if mod.startswith("."):
-            return mod
-        root_pkg = local_package_root.split(".", maxsplit=1)[0]
-        first_segment = mod.split(".", maxsplit=1)[0]
-        if first_segment == root_pkg:
-            return FlextInfraCodegenGenerationPathsMixin._relative_owned_module(
-                local_package_root,
-                mod,
-            )
-        internal_segments = frozenset(local_package_root.split(".")[1:])
-        if (
-            mod.startswith("_")
-            or first_segment in internal_segments
-            or (
-                local_package_root == root_pkg
-                and "." in mod
-                and first_segment in c.Infra.LOCAL_INFERRED_SEGMENTS
-            )
-        ):
-            return f".{mod}"
-        return mod
+        elected = mod
+        if not mod.startswith("."):
+            root_pkg = local_package_root.split(".", maxsplit=1)[0]
+            first_segment = mod.split(".", maxsplit=1)[0]
+            if first_segment == root_pkg:
+                return mod
+            internal_segments = frozenset(local_package_root.split(".")[1:])
+            if (
+                mod.startswith("_")
+                or first_segment in internal_segments
+                or (
+                    local_package_root == root_pkg
+                    and "." in mod
+                    and first_segment in c.Infra.LOCAL_INFERRED_SEGMENTS
+                )
+            ):
+                elected = f".{mod}"
+        return u.Infra.resolve_import_module(
+            current_package=local_package_root,
+            module_name=elected.lstrip("."),
+            level=len(elected) - len(elected.lstrip(".")),
+        )
 
     @staticmethod
     def _reject_noncanonical_type_checking_import(
@@ -226,10 +201,8 @@ class FlextInfraCodegenGenerationPathsMixin:
     ) -> None:
         """Reject a relative TYPE_CHECKING import with no local package context.
 
-        Same-project sibling, ancestor, and cousin owners use the same relative
-        path in static declarations and the runtime lazy map. Cross-project
-        owners remain absolute. Relative imports require a package context so
-        Python can resolve their declared owner.
+        Relative input requires a package context before the native resolver
+        can produce the absolute import emitted in Python source.
 
         Raises:
             ValueError: If relative TYPE_CHECKING import.

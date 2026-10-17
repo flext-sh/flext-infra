@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra.deps._modernizer.document import RenderPolicy
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
 from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
@@ -18,7 +17,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra import p
-    from flext_infra.deps._modernizer.document import RenderPolicySpec
 
 
 class FlextInfraPyprojectModernizerTooling:
@@ -58,7 +56,9 @@ class FlextInfraPyprojectModernizerTooling:
             state: m.Infra.PyprojectDocumentState,
             changes: t.StrSequence,
             *,
-            policy: RenderPolicySpec,
+            skip_comments: bool,
+            format_source: bool = True,
+            preserve_layout: bool = False,
         ) -> p.Result[t.StrSequence]: ...
 
     def conform_source(
@@ -88,11 +88,8 @@ class FlextInfraPyprojectModernizerTooling:
         rendered = self._render_document_state(
             state,
             changes,
-            policy=RenderPolicy(
-                dry_run=True,
-                skip_comments=False,
-                format_source=format_source,
-            ),
+            skip_comments=False,
+            format_source=format_source,
         )
         if rendered.failure:
             return r[str].from_failure(rendered)
@@ -133,6 +130,8 @@ class FlextInfraPyprojectModernizerTooling:
     def resolve_tooling_context(
         self,
         request: m.Infra.ToolingContextRequest,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Resolve typed Jinja values from the seed conformed to one topology.
 
@@ -232,6 +231,7 @@ class FlextInfraPyprojectModernizerTooling:
                         project_dir,
                         request.planned_sources,
                         config.Infra.tooling.tools.ruff.lint.flake8_type_checking.runtime_evaluated_roots,
+                        source_project=source_project,
                     )
                 ),
                 "pyrefly_search_path": tools.pyrefly_search_path,

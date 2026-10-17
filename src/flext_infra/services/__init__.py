@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.services import _codegen
-    from flext_infra.services._codegen.vscode import FlextInfraCodegenVscodeMixin
+    from flext_infra.services import _codegen as _codegen
+    from flext_infra.services._codegen import FlextInfraCodegenVscodeMixin
     from flext_infra.services.candidate_bootstrap import (
         FlextInfraCandidateBootstrapService,
     )

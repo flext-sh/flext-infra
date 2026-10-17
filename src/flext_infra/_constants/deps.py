@@ -87,6 +87,8 @@ class FlextInfraConstantsDeps(FlextInfraConfigVocabulary):
     """Mypy's own default when neither governed policy nor project declares it."""
     DEPENDENCY_GROUPS: ClassVar[str] = "dependency-groups"
     """PEP 735 dependency-groups table key."""
+    MEMBER_DEV_PROVENANCE: ClassVar[str] = "flext: derived member environment"
+    """Per-entry provenance identifying generated member environment requirements."""
 
 
 __all__: list[str] = ["FlextInfraConstantsDeps"]

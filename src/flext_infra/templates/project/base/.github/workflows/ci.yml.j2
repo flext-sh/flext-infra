@@ -142,7 +142,7 @@ jobs:
           for report_root in .reports apps; do
             if [ -d "${report_root}" ]; then
               find "${report_root}" \
-                \( -path '*/junit.xml' -o -path '*/coverage.xml' -o -path '*/coverage.json' \) \
+                \( -path '*/junit.xml' -o -path '*/coverage.xml' -o -path '*/coverage.json'{% for name in docs_report_filenames %} -o -path '*/{{ name }}'{% endfor %} \) \
                 -type f -exec sh -eu -c '
                   for report_file do
                     printf "::group::%s\n" "${report_file}"
@@ -164,7 +164,8 @@ jobs:
             .reports/**/junit.xml
             .reports/**/coverage.xml
             .reports/**/coverage.json
-            .reports/check/**/*.sarif
+{% for name in docs_report_filenames %}            .reports/**/{{ name }}
+{% endfor %}            .reports/check/**/*.sarif
             .reports/check/**/*.md
             {{ make.gate_receipts_directory }}/**/{{ gate_original_receipt_filename }}
             {{ make.gate_receipts_directory }}/**/check/**/*.sarif

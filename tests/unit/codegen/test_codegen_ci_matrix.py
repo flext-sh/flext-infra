@@ -50,13 +50,9 @@ class TestsFlextInfraCodegenCiMatrix:
             The resulting ``Path``.
 
         """
-        # The scaffold lands inside a governed tree: generation formats through
-        # the committed Mise declaration and lock, never a moving selector.
-        # They land in the output root before the scaffold renders into it;
-        # resolution in a root outside any governed tree is flext-pvhid.
-        root.mkdir(parents=True, exist_ok=True)
-        u.Tests.copy_tracked_mise_seeds(root)
+        # The executor owns its provisioned tools before the destination exists.
         service = FlextInfraCodegenProjectNew(
+            repository_root=Path.cwd(),
             flext_source=u.Tests.flext_source(),
             name="flext-demo",
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,

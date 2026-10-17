@@ -62,25 +62,21 @@ class TestsFlextInfraCodegenConformPublicSurface:
             root=tmp_path,
             what=surface,
             module=module,
-            scope=(
-                None
-                if surface in c.Infra.FILE_ONLY_SURFACES
-                else c.Infra.CodegenConformScope.SELF
-            ),
         )
         restored = m.Infra.CodegenGenerateRequest.model_validate_json(
             request.model_dump_json(),
         )
         tm.that(restored.what is surface, eq=True)
         tm.that(restored.scope is request.scope, eq=True)
-        if surface in c.Infra.FILE_ONLY_SURFACES:
-            with pytest.raises(ValueError, match="requires --module"):
+        if surface is c.Infra.CodegenConformSurface.FACADES:
+            with pytest.raises(ValueError, match=r"requires.*--module"):
                 m.Infra.CodegenGenerateRequest(root=tmp_path, what=surface)
-        if surface in c.Infra.SELF_SCOPE_SURFACES:
+        if surface in c.Infra.SELF_SCOPE_SURFACES | c.Infra.FILE_ONLY_SURFACES:
             with pytest.raises(ValueError, match="self repository scope"):
                 m.Infra.CodegenGenerateRequest(
                     root=tmp_path,
                     what=surface,
+                    module=module,
                     scope=c.Infra.CodegenConformScope.ALL,
                 )
 

@@ -26,6 +26,8 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
     def planned_source_render_inputs(
         render_inputs: m.Infra.CodegenRenderInputs,
         planned: t.SequenceOf[m.Infra.CodegenFilePlan],
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> m.Infra.CodegenRenderInputs:
         """Derive tooling from the Python sources the transaction will publish.
 
@@ -62,6 +64,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 root,
                 sources,
                 policy.runtime_evaluated_roots,
+                source_project=source_project,
             )
         )
         rebinds = u.Infra.facade_rebind_modules(root, sources)

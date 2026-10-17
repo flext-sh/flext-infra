@@ -203,7 +203,9 @@ class FlextInfraUtilitiesDocsFix:
         updated = c.Infra.MARKDOWN_LINK_RE.sub(replace_link, original)
         fence_changed = c.Infra.FENCE_NOTEST_ATTR_RE.subn(r"```{.\1 .notest}", updated)
         updated = fence_changed[0]
-        updated, toc_changed = FlextInfraUtilitiesDocs.update_toc(updated)
+        updated, toc_changed = FlextInfraUtilitiesDocsContract.docs_contract_update_toc(
+            updated,
+        )
         if apply and updated != original:
             _ = md_file.write_text(updated, encoding=c.DEFAULT_ENCODING)
         return m.Infra.DocsPhaseItemModel(

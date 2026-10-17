@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import ClassVar, Protocol
+from typing import ClassVar
 
 from flext_cli import cli
 
@@ -36,63 +36,6 @@ from flext_infra._utilities._rope_source_bases_aliases import (
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
-
-
-class _ChainDeclarationContext(m.Infra.FrozenArbitrary):
-    """Declaration chase inputs for one assigned binding value."""
-
-    project: p.Infra.RopeProject = m.Field(
-        description="Closed Rope project owning the binding chain.",
-    )
-    holder: p.Infra.RopePyModule = m.Field(
-        description="Module holding the chased declaration.",
-    )
-    holder_text: str = m.Field(
-        description="Snapshot text of the holding module.",
-    )
-    declaration: m.Infra.LogicalStatement = m.Field(
-        description="Single reaching declaration of the binding.",
-    )
-    holder_offset: int = m.Field(
-        description="Declaration start offset inside the holder text.",
-    )
-    holder_scope: p.Infra.RopeScope = m.Field(
-        description="Lexical scope enclosing the declaration.",
-    )
-    expression: str = m.Field(
-        description="Full dotted binding expression being chased.",
-    )
-    sources: t.MappingKV[Path, str] = m.Field(
-        description="Mapping of source file paths to their snapshot text.",
-    )
-
-
-class _ChainDeclarationSpec(Protocol):
-    """Read-only structural contract for declaration chase inputs."""
-
-    @property
-    def project(self) -> p.Infra.RopeProject: ...
-
-    @property
-    def holder(self) -> p.Infra.RopePyModule: ...
-
-    @property
-    def holder_text(self) -> str: ...
-
-    @property
-    def declaration(self) -> m.Infra.LogicalStatement: ...
-
-    @property
-    def holder_offset(self) -> int: ...
-
-    @property
-    def holder_scope(self) -> p.Infra.RopeScope: ...
-
-    @property
-    def expression(self) -> str: ...
-
-    @property
-    def sources(self) -> t.MappingKV[Path, str]: ...
 
 
 class FlextInfraUtilitiesCodemodBindingChain:
@@ -150,7 +93,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             if (start, end) not in (
                 FlextInfraUtilitiesRopeRuntimeRefactors.semantic_regions(
                     module,
-                    capture.text,
+                    f"(\n{capture.text}\n)",
                     arguments={},
                     start=start,
                     end=end,
@@ -583,7 +526,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             )
             if binding is None:
                 return False
-            chain = cls._chain_module_text(project, module, sources)
+            chain = cls._chain_module_text(module, sources)
             if chain is None:
                 return False
             path, text = chain
@@ -640,11 +583,10 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
         @staticmethod
         def _chain_module_text(
-            project: p.Infra.RopeProject,
             module: p.Infra.RopePyModule,
             sources: t.MappingKV[Path, str],
         ) -> t.Pair[Path, str] | None:
-            """Locate the module source text inside the closed project.
+            """Locate the module source text inside the authenticated closure.
 
             Returns:
                 The module path and snapshot text, or ``None`` when unavailable.
@@ -656,11 +598,6 @@ class FlextInfraUtilitiesCodemodBindingChain:
             path = Path(resource.real_path).resolve()
             if path.is_dir():
                 path /= c.Infra.INIT_PY
-            if not path.is_relative_to(Path(project.root.real_path).resolve()):
-                # NoProject-backed foreign modules can read disk outside the closed
-                # project's filesystem commands. Their receipts guard publication,
-                # but cannot establish an immutable inference graph: refuse a fixer.
-                return None
             text = sources.get(path)
             if text is None:
                 return None
@@ -681,7 +618,9 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
             """
             if expression.isidentifier() and expression in routes:
-                route = project.get_module(routes[expression])
+                route = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
+                    project.get_module(routes[expression])
+                )
                 target = route.get_attribute(expression)
                 if not FlextInfraUtilitiesRopeRuntimeModules.same_name(
                     target, binding
@@ -770,14 +709,17 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 Whether the binding's single declaration stays stable at its owner.
 
             """
-            holder_context = cls._chain_holder_context(binding, project, sources)
-            if holder_context is None:
-                return False
-            if isinstance(binding, p.Infra.RopeImportedModule):
-                return True
+            holder_context = cls._chain_holder_context(binding, sources)
+            if (
+                holder_context is None
+                or isinstance(binding, p.Infra.RopeImportedModule)
+                or FlextInfraUtilitiesRopeRuntimeTypes.parameter_name(binding)
+            ):
+                return holder_context is not None
             holder, line, holder_text = holder_context
-            name = expression.rpartition(".")[-1]
-            chased = cls._chain_holder_declaration(holder, holder_text, line, name)
+            chased = cls._chain_holder_declaration(
+                holder, holder_text, line, expression.rpartition(".")[-1]
+            )
             if chased is None:
                 return False
             declaration, holder_offset, holder_scope = chased
@@ -790,81 +732,53 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 }
             ):
                 return True
-            return cls._chain_assigned_value_stable(
-                _ChainDeclarationContext(
-                    project=project,
-                    holder=holder,
-                    holder_text=holder_text,
-                    declaration=declaration,
-                    holder_offset=holder_offset,
-                    holder_scope=holder_scope,
-                    expression=expression,
-                    sources=sources,
-                ),
-                visited=visited,
-            )
-
-        @classmethod
-        def _chain_assigned_value_stable(
-            cls,
-            context: _ChainDeclarationSpec,
-            *,
-            visited: frozenset[t.Pair[str, str]],
-        ) -> bool:
-            """Hold the single assigned value of one declaration on the chain.
-
-            Returns:
-                Whether the declared value resolves to one stable binding chain.
-
-            """
-            finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(
-                context.holder
-            )
             pattern = (
                 "${binding_target}: ${binding_annotation} = ${binding_value}"
-                if context.declaration.category == c.Infra.StatementCategory.ANN_ASSIGN
+                if declaration.category == c.Infra.StatementCategory.ANN_ASSIGN
                 else "${binding_target} = ${binding_value}"
             )
-            matches = tuple(finder.get_matches(pattern, {}))
             regions = tuple(
                 FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture_region(
                     match, "binding_value"
                 )
-                for match in matches
-                if context.declaration.start_offset <= match.get_region()[0]
-                and match.get_region()[1] <= context.declaration.end_offset
+                for match in tuple(
+                    FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(
+                        holder
+                    ).get_matches(pattern, {})
+                )
+                if declaration.start_offset <= match.get_region()[0]
+                and match.get_region()[1] <= declaration.end_offset
             )
             if len(regions) != 1:
                 return False
             first, last = regions[0]
-            value = cls._binding_expression(context.holder_text[first:last])
+            value = cls._binding_expression(holder_text[first:last])
             if value is None:
                 return FlextInfraUtilitiesRopeRuntimeRefactors.literal_constant(
-                    context.holder_text[first:last]
+                    holder_text[first:last]
                 )
             # The guard keys the link chased next (the assigned value), never the
             # link already proven: an import hop records (module, name) before this
             # declaration hop holds that same name, which is one chain, not a cycle.
-            key = (context.holder.get_name(), value)
+            key = (holder.get_name(), value)
             return key not in visited and cls._stable_binding_chain(
-                (context.project, context.holder, context.holder_scope),
+                (project, holder, holder_scope),
                 value,
-                context.holder_offset,
-                context.sources,
+                holder_offset,
+                sources,
                 visited=visited | {key},
             )
 
         @staticmethod
         def _chain_holder_context(
             binding: p.Infra.RopePyName,
-            project: p.Infra.RopeProject,
             sources: t.MappingKV[Path, str],
         ) -> t.Triple[p.Infra.RopePyModule, int | None, str] | None:
-            """Locate the definition site text of one binding inside the project.
+            """Locate one binding's definition inside the authenticated closure.
 
             Returns:
                 The defining module, its line, and the snapshot text, or ``None``
-                when the definition site is unavailable or foreign.
+                when the definition site is unavailable or uncaptured.
 
             """
             holder, line = binding.get_definition_location()
@@ -879,8 +793,6 @@ class FlextInfraUtilitiesCodemodBindingChain:
             holder_path = Path(holder_resource.real_path).resolve()
             if holder_path.is_dir():
                 holder_path /= c.Infra.INIT_PY
-            if not holder_path.is_relative_to(Path(project.root.real_path).resolve()):
-                return None
             holder_text = sources.get(holder_path)
             if holder_text is None:
                 return None
@@ -1070,6 +982,13 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
             """
             module, scope = frame
+            binding = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
+                scope, expression
+            )
+            parameter = (
+                binding is not None
+                and FlextInfraUtilitiesRopeRuntimeTypes.parameter_name(binding)
+            )
             found_scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
                 module,
                 occurrence.offset,
@@ -1080,6 +999,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                         c.Infra.StatementCategory.CLASS_DEF,
                         c.Infra.StatementCategory.FUNC_DEF,
                     }
+                    and not parameter
                     else None
                 ),
             )

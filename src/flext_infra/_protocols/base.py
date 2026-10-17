@@ -304,6 +304,36 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class CodegenPendingPhase(Protocol):
+        """Read-only pending-phase contract across the transaction mixins."""
+
+        @property
+        def phase(self) -> str: ...
+
+        @property
+        def changed(self) -> t.VariadicTuple[m.Infra.CodegenFilePlan]: ...
+
+        @property
+        def all_plans(self) -> t.VariadicTuple[m.Infra.CodegenFilePlan]: ...
+
+        @property
+        def staged_validator(
+            self,
+        ) -> (
+            Callable[
+                [
+                    m.Infra.CodegenTransactionSession,
+                    t.VariadicTuple[m.Infra.CodegenStagedFile],
+                ],
+                p.Result[m.Infra.CodegenTransactionSession],
+            ]
+            | None
+        ): ...
+
+        @property
+        def batch_admission(self) -> m.Infra.CodegenPhaseOutcome | None: ...
+
+    @runtime_checkable
     class CodegenParticipantPolicyFactory(Protocol):
         """Composition-root authorization for one generation request."""
 

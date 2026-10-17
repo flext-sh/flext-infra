@@ -626,21 +626,21 @@ class TestsFlextInfraGitFacet:
         head = u.Infra.git_repository_head(
             m.Infra.GitRepoRequest(repo_root=real_git_repo),
         )
-        assert head.success
+        tm.that(head.success, truth=True)
         tm.that(head.value.oid, length=c.Infra.GIT_OID_HEX_LENGTH_SHA1)
         status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=real_git_repo))
-        assert status.success
+        tm.that(status.success, truth=True)
         assert isinstance(status.value.porcelain, str)
         assert status.value.dirty is False
         primary = u.Infra.git_primary_worktree_root(
             m.Infra.GitRepoRequest(repo_root=real_git_repo),
         )
-        assert primary.success
-        assert primary.value.primary_root == real_git_repo.resolve()
+        tm.that(primary.success, truth=True)
+        tm.that(primary.value.primary_root == real_git_repo.resolve(), truth=True)
         report = FlextInfraGitService(repository_root=real_git_repo).execute()
-        assert report.success
+        tm.that(report.success, truth=True)
         assert isinstance(report.value, m.Infra.GitStatusReport)
-        assert report.value.repo_root == real_git_repo.resolve()
+        tm.that(report.value.repo_root == real_git_repo.resolve(), truth=True)
         assert report.value.dirty is False
 
     @staticmethod
@@ -649,23 +649,23 @@ class TestsFlextInfraGitFacet:
         bare_root = tmp_path / "bare"
         bare_root.mkdir()
         init_result = u.Cli.run_checked([c.Infra.GIT, "init", "--bare"], cwd=bare_root)
-        assert init_result.success
+        tm.that(init_result.success, truth=True)
         assert (bare_root / "HEAD").is_file()
         captured = u.Cli.capture([c.Infra.GIT, "rev-parse", "--git-dir"], cwd=bare_root)
-        assert captured.success
-        assert captured.value.strip() in {".", str(bare_root.resolve())}
+        tm.that(captured.success, truth=True)
+        tm.that(captured.value.strip() in {".", str(bare_root.resolve())}, truth=True)
 
     @staticmethod
     def test_service_status_reports_dirty_tree(real_git_repo: Path) -> None:
         """The status-only service flips dirty when the worktree changes."""
         clean = FlextInfraGitService(repository_root=real_git_repo).execute()
-        assert clean.success
+        tm.that(clean.success, truth=True)
         assert clean.value.dirty is False
         (real_git_repo / "dirty.txt").write_text("x", encoding="utf-8")
         dirty = FlextInfraGitService(repository_root=real_git_repo).execute()
-        assert dirty.success
+        tm.that(dirty.success, truth=True)
         assert dirty.value.dirty is True
-        assert "dirty.txt" in dirty.value.porcelain
+        tm.that("dirty.txt" in dirty.value.porcelain, truth=True)
 
     @staticmethod
     @pytest.mark.parametrize("change", ["tracked", "staged", "untracked"])
@@ -888,9 +888,9 @@ class TestsFlextInfraGitFacet:
         empty_path.mkdir()
         with tm.scope(env={"PATH": str(empty_path)}):
             result = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=tmp_path))
-        assert result.failure
+        tm.that(result.failure, truth=True)
         assert result.error is not None
-        assert "git executable not found" in result.error
+        tm.that("git executable not found" in result.error, truth=True)
 
     @staticmethod
     def test_refresh_binary_reports_the_resolved_executable() -> None:
@@ -931,7 +931,10 @@ class TestsFlextInfraGitFacet:
 
         assert lane.is_dir()
         assert (repository / "member").is_dir()
-        assert (repository / ".gitmodules").read_text(encoding="utf-8") == gitmodules
+        tm.that(
+            (repository / ".gitmodules").read_text(encoding="utf-8") == gitmodules,
+            truth=True,
+        )
         assert (
             tm.ok(
                 u.Cli.capture(
@@ -1052,7 +1055,7 @@ class TestsFlextInfraGitFacet:
             ),
         )
 
-        assert result.failure
+        tm.that(result.failure, truth=True)
         assert result.error is not None
 
     @staticmethod

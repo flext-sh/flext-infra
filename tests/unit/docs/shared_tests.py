@@ -80,14 +80,21 @@ class TestsFlextInfraDocsShared:
         tm.that([scope.name for scope in result.value], eq=["workspace"])
 
     @staticmethod
+    @pytest.mark.parametrize(
+        ("policy", "scope_name"),
+        [("", "acme-content"), ("\n[tool.flext.docs]\nenabled=false\n", "root")],
+        ids=["own-root", "disabled-root-policy"],
+    )
     def test_build_scopes_treats_non_flext_project_as_its_own_root(
         tmp_path: Path,
+        policy: str,
+        scope_name: str,
     ) -> None:
-        """Test build scopes treats non flext project as its own root."""
+        """Standalone scope naming respects the repository's explicit docs policy."""
         project_root = tmp_path / "acme-content"
         project_root.mkdir()
         (project_root / c.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='acme-content'\n",
+            "[project]\nname='acme-content'\n" + policy,
             encoding="utf-8",
         )
 
@@ -100,7 +107,7 @@ class TestsFlextInfraDocsShared:
         tm.ok(result)
         tm.that(
             [(scope.name, scope.path) for scope in result.value],
-            eq=[("acme-content", project_root)],
+            eq=[(scope_name, project_root)],
         )
 
     @staticmethod
@@ -153,27 +160,6 @@ class TestsFlextInfraDocsShared:
         tm.that(
             [(scope.name, scope.path) for scope in result.value],
             eq=[("root", workspace)],
-        )
-
-    @staticmethod
-    def test_build_scopes_preserves_disabled_root_policy(tmp_path: Path) -> None:
-        """Test build scopes preserves disabled root policy."""
-        project_root = tmp_path / "acme-content"
-        project_root.mkdir()
-        (project_root / c.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='acme-content'\n\n[tool.flext.docs]\nenabled=false\n",
-            encoding="utf-8",
-        )
-        result = u.Infra.build_scopes(
-            project_root,
-            projects=None,
-            output_dir=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
-        )
-
-        tm.ok(result)
-        tm.that(
-            [(scope.name, scope.path) for scope in result.value],
-            eq=[("root", project_root)],
         )
 
     @staticmethod

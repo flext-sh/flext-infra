@@ -516,11 +516,11 @@ class TestsFlextInfraPytestProfile:
         """The real pytest module exits natively and leaves its raw profile."""
         profile = tmp_path / "collection.pstats"
         result = u.Tests.PytestRunner.profile_collection(profile, arguments)
-        assert result.outcome.raw_return_code == expected_exit
+        tm.that(result.outcome.raw_return_code == expected_exit, truth=True)
         assert not result.outcome.timed_out
         assert result.outcome.forwarded_signal is None
         if expected_exit == pytest.ExitCode.USAGE_ERROR:
-            assert arguments[0] in result.stderr
+            tm.that(arguments[0] in result.stderr, truth=True)
         assert pstats.Stats(str(profile)).get_stats_profile().func_profiles
 
     @staticmethod
@@ -530,10 +530,10 @@ class TestsFlextInfraPytestProfile:
         output = tmp_path / "collection.pstats"
         output.mkdir()
         result = u.Tests.PytestRunner.profile_collection(output, ("--version",))
-        assert result.outcome.raw_return_code != 0
+        tm.that(result.outcome.raw_return_code != 0, truth=True)
         assert not result.outcome.timed_out
         assert result.outcome.forwarded_signal is None
-        assert "IsADirectoryError" in result.stderr
+        tm.that("IsADirectoryError" in result.stderr, truth=True)
 
     @staticmethod
     @pytest.mark.parametrize("complete", [False, True])
@@ -559,12 +559,19 @@ class TestsFlextInfraPytestProfile:
             manifest_path=manifest,
             complete=complete,
         )
-        assert profiled_command == (
-            *profiled.collection_command_prefix,
-            str(manifest.with_suffix(".pstats")),
-            *plain_command[3:],
+        tm.that(
+            profiled_command
+            == (
+                *profiled.collection_command_prefix,
+                str(manifest.with_suffix(".pstats")),
+                *plain_command[3:],
+            ),
+            truth=True,
         )
-        assert c.Infra.PYTEST_PROFILE_LAUNCHER not in profiled.build_command(report)
+        tm.that(
+            c.Infra.PYTEST_PROFILE_LAUNCHER not in profiled.build_command(report),
+            truth=True,
+        )
 
     @staticmethod
     def _assert_parent_profile_evidence(
@@ -613,7 +620,9 @@ class TestsFlextInfraPytestProfile:
         parent_stats = pstats.Stats(str(parent_profile)).get_stats_profile()
         # The class body runs on import, unlike its methods: this proves the
         # public runner was first imported while the parent profiler was active.
-        assert FlextInfraPytestRunner.__name__ in parent_stats.func_profiles
+        tm.that(
+            FlextInfraPytestRunner.__name__ in parent_stats.func_profiles, truth=True
+        )
         report = FlextInfraCProfileReport(
             repository_root=project,
             profile=parent_profile,
@@ -628,8 +637,8 @@ class TestsFlextInfraPytestProfile:
         tm.ok(report.execute())
         latest.write_text(latest_name + "\n", encoding="utf-8")
         text = report.output.read_text(encoding="utf-8")
-        assert str(parent_profile) in text
-        assert str(profile) in text
+        tm.that(str(parent_profile) in text, truth=True)
+        tm.that(str(profile) in text, truth=True)
         receipt_path = profile.with_suffix(".pstats.json")
         original = receipt_path.read_text(encoding="utf-8")
         receipt = m.Infra.PytestRunContext.model_validate_json(original)
@@ -643,14 +652,14 @@ class TestsFlextInfraPytestProfile:
             ).model_dump_json(),
             encoding="utf-8",
         )
-        assert report.execute().failure
+        tm.that(report.execute().failure, truth=True)
         receipt_path.write_text("{", encoding="utf-8")
-        assert report.execute().failure
+        tm.that(report.execute().failure, truth=True)
         receipt_path.unlink()
-        assert report.execute().failure
+        tm.that(report.execute().failure, truth=True)
         receipt_path.write_text(original, encoding="utf-8")
         parent_profile.write_bytes(parent_profile.read_bytes() + b"stale")
-        assert report.execute().failure
+        tm.that(report.execute().failure, truth=True)
 
     @staticmethod
     @pytest.mark.slow
@@ -695,7 +704,7 @@ class TestsFlextInfraPytestProfile:
         reports_root = cached_runner_project / cache.reports_directory
         latest_name = tm.ok(u.Cli.files_read_text(reports_root / "latest.txt")).strip()
         profile = reports_root / latest_name / "testmon-selection.pstats"
-        assert profile.is_file() == profile_collection
+        tm.that(profile.is_file() == profile_collection, truth=True)
         if profile_collection:
             TestsFlextInfraPytestProfile._assert_parent_profile_evidence(
                 cached_runner_project,

@@ -100,7 +100,7 @@ class TestsFlextInfraUvNativeResolution:
         The separate first-party-profile scenario qualifies the SSOT floor set.
         """
         root = tmp_path / "project"
-        root_name = "native-alias-root"
+        repository = u.Tests.repository_ref("native-alias-root")
         leaves = {
             tier: tmp_path / tier
             for tier in ("runtime", "development", "examples", "extra")
@@ -113,13 +113,14 @@ class TestsFlextInfraUvNativeResolution:
         }
         dev = str(c.Infra.DEV).capitalize()
         codegen = str(c.Infra.DependencyGroup.CODEGEN).capitalize()
+        extra_name = "feature"
         u.Tests.write_native_resolution_project(
             root,
-            root_name,
+            repository.distribution,
             dependencies=(requirements["runtime"],),
             groups=(
                 "[project.optional-dependencies]\n"
-                f"extra = [{json.dumps(requirements['extra'])}]\n"
+                f"{extra_name} = [{json.dumps(requirements['extra'])}]\n"
                 "[dependency-groups]\n"
                 f"{dev} = [{json.dumps(requirements['development'])}]\n"
                 f'{codegen} = [{{include-group = "{dev}"}}]\n'
@@ -127,7 +128,6 @@ class TestsFlextInfraUvNativeResolution:
                 f"{json.dumps(requirements['examples'])}]\n"
             ),
         )
-        repository = u.Tests.repository_ref(root_name)
         conformed = TestsFlextInfraUvNativeResolution._conformed_alias_document(
             root,
             repository,
@@ -146,6 +146,7 @@ class TestsFlextInfraUvNativeResolution:
                     directory=root,
                     document=u.Tests.toml_doc(conformed),
                 ),
+                workspace=u.Tests.workspace_spec(repository),
                 members=(),
                 directory=directory,
                 policy=policy,
@@ -154,7 +155,7 @@ class TestsFlextInfraUvNativeResolution:
         groups = u.Tests.toml_mapping(
             u.Tests.toml_doc_mapping(view)["dependency-groups"],
         )
-        tm.that(u.Tests.toml_list(groups[codegen]), eq=[{"include-group": dev}])
+        tm.that(u.Tests.toml_list(groups[codegen]), eq=({"include-group": dev},))
         tm.that(
             u.Tests.toml_list(groups["examples"])[0],
             eq={"include-group": codegen},
@@ -164,13 +165,15 @@ class TestsFlextInfraUvNativeResolution:
             view,
         )
         tm.that(
-            {root_name, *names.values()}.issubset(
+            {repository.distribution, *names.values()}.issubset(
                 {package.name for package in locked.package},
             ),
             eq=True,
         )
         package = next(
-            package for package in locked.package if package.name == root_name
+            package
+            for package in locked.package
+            if package.name == repository.distribution
         )
         tm.that(
             {dependency.name for dependency in package.dependencies},
@@ -179,7 +182,7 @@ class TestsFlextInfraUvNativeResolution:
         tm.that(
             {
                 dependency.name
-                for dependency in package.optional_dependencies["feature"]
+                for dependency in package.optional_dependencies[extra_name]
             },
             eq={names["extra"]},
         )
@@ -494,6 +497,7 @@ class TestsFlextInfraUvNativeResolution:
             view = tm.ok(
                 u.Infra.pyproject_native_resolution_view(
                     inputs[root_name],
+                    workspace=u.Tests.workspace_spec(inputs[root_name].repository),
                     members=(
                         tuple(
                             project
@@ -610,6 +614,7 @@ class TestsFlextInfraUvNativeResolution:
         view = tm.ok(
             u.Infra.pyproject_native_resolution_view(
                 inputs[0],
+                workspace=u.Tests.workspace_spec(inputs[0].repository),
                 members=(inputs[1],) if consumer == "member" else (),
                 directory=directory,
                 policy=config.Infra.codegen.make.uv_resolution,
@@ -699,6 +704,7 @@ class TestsFlextInfraUvNativeResolution:
                             (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
                         ),
                     ),
+                    workspace=u.Tests.workspace_spec(u.Tests.repository_ref(root_name)),
                     members=(),
                     directory=resolution_root,
                     policy=config.Infra.codegen.make.uv_resolution,
@@ -757,6 +763,7 @@ class TestsFlextInfraUvNativeResolution:
         provider = tmp_path / "provider"
         root_name = "identity-root"
         provider_name = "identity-provider"
+        extra_name = "feature"
         leaves = {
             name: tmp_path / name
             for name in (
@@ -774,11 +781,10 @@ class TestsFlextInfraUvNativeResolution:
         revision = tm.ok(
             u.Cli.capture([c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=remote),
         ).strip()
-        backedge = f"{root_name} @ git+{remote.as_uri()}@{revision}"
         u.Tests.write_native_resolution_project(
             provider,
             provider_name,
-            dependencies=(backedge,),
+            dependencies=(f"{root_name} @ git+{remote.as_uri()}@{revision}",),
         )
         u.Tests.initialize_git_repo(provider)
         provider_revision = tm.ok(
@@ -816,7 +822,7 @@ class TestsFlextInfraUvNativeResolution:
                 policy += f"[tool.uv.sources]\n{root_name} = {{workspace = true}}\n"
             case "global-self":
                 policy += (
-                    f'override-dependencies = ["{root_name}[feature]"]\n'
+                    f'override-dependencies = ["{root_name}[{extra_name}]"]\n'
                     f"[tool.uv.sources]\n{root_name} = {{workspace = true}}\n"
                 )
             case "scoped-self" | "scoped-self-unmapped":
@@ -838,7 +844,7 @@ class TestsFlextInfraUvNativeResolution:
             dependencies=(f"identity-runtime @ {leaves['identity-runtime'].as_uri()}",),
             groups=(
                 "[project.optional-dependencies]\n"
-                f"extra = {json.dumps(list(optional))}\n"
+                f"{extra_name} = {json.dumps(list(optional))}\n"
                 f"{groups}"
                 f"{policy}"
             ),

@@ -357,11 +357,12 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         exports_content = self._generated_init(package_root)
 
-        tm.that(exports_content, has="FlextDemoService")
-        tm.that(exports_content, has='"BLUE"')
-        tm.that(exports_content, has="FlextDemoServicesModels")
-        tm.that(exports_content, lacks='"main"')
-        tm.that(exports_content, has='"m"')
+        tm.that(exports_content, has='"services"')
+        child_content = self._generated_init(child_dir)
+        for name in ("FlextDemoService", "BLUE", "FlextDemoServicesModels", "m"):
+            tm.that(exports_content, lacks=f'"{name}"')
+            tm.that(child_content, has=f'"{name}"')
+        tm.that(child_content, lacks='"main"')
 
     def test_generated_constants_owner_never_widens_parent_map(
         self,
@@ -441,15 +442,10 @@ class TestsFlextInfraLazyInitHelpers:
             project_name="flext-meltano",
             package_name="flext_meltano",
         )
-        core_root = tmp_path / "flext-core" / c.Infra.DEFAULT_SRC_DIR / "flext_core"
-        core_root.mkdir(parents=True)
-        core_root.parent.parent.joinpath(c.PYPROJECT_FILENAME).write_text(
-            '[project]\nname = "flext-core"\nversion = "0.1.0"\n',
-            encoding=c.DEFAULT_ENCODING,
-        )
-        core_root.joinpath(c.Infra.INIT_PY).write_text(
-            "",
-            encoding=c.DEFAULT_ENCODING,
+        _, core_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-core",
+            package_name="flext_core",
         )
         u.Tests.write_lazy_init_namespace_module(
             core_root / "result.py",
@@ -464,11 +460,10 @@ class TestsFlextInfraLazyInitHelpers:
             '__all__: list[str] = ["FlextCoreConstants"]\n',
             encoding=c.DEFAULT_ENCODING,
         )
-        cli_root = tmp_path / "flext-cli" / c.Infra.DEFAULT_SRC_DIR / "flext_cli"
-        cli_root.mkdir(parents=True)
-        cli_root.parent.parent.joinpath(c.PYPROJECT_FILENAME).write_text(
-            '[project]\nname = "flext-cli"\nversion = "0.1.0"\n',
-            encoding=c.DEFAULT_ENCODING,
+        _, cli_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-cli",
+            package_name="flext_cli",
         )
         cli_root.joinpath(c.Infra.INIT_PY).write_text(
             '__all__: list[str] = ["c", "r"]\n',
@@ -678,6 +673,7 @@ class TestsFlextInfraLazyInitHelpers:
             package_name="ai_hub",
         )
         package_root.joinpath(c.Infra.INIT_PY).write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n"
             '__all__: tuple[str, ...] = ("AiHubModels", "m")\n',
             encoding=c.DEFAULT_ENCODING,
         )
@@ -700,9 +696,15 @@ class TestsFlextInfraLazyInitHelpers:
         has_all, public_exports = u.Tests.extract_lazy_init_exports(generated)
 
         tm.that(has_all, eq=True)
-        for alias_name in ("c", "d", "e", "h", "m", "p", "r", "s", "t", "u", "x"):
+        for alias_name in c.Infra.ALIAS_NAMES:
             tm.that(public_exports, has=alias_name)
-        tm.that(generated, has="from flext_infra import d, e, h, p, r, s, t, u, x")
+        tm.that(
+            generated,
+            has=(
+                "from flext_infra import "
+                + ", ".join(sorted(c.Infra.ALIAS_NAMES - {"c", "m"}))
+            ),
+        )
 
     def test_root_keeps_declared_public_git_and_work_services(
         self,

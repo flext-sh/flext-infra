@@ -31,9 +31,13 @@ class TestsFlextInfraProjectRuffArtifacts:
 
         resolution = tm.ok(u.Infra.load_project_managed_artifacts(root))
 
-        assert resolution.artifacts.Ruff.per_file_ignores == {
-            "src/pkg/module.py": ("invalid-function-name",),
-        }
+        tm.that(
+            resolution.artifacts.Ruff.per_file_ignores
+            == {
+                "src/pkg/module.py": ("invalid-function-name",),
+            },
+            truth=True,
+        )
 
     @staticmethod
     def test_pattern_declared_by_two_sources_fails(tmp_path: Path) -> None:
@@ -51,4 +55,4 @@ class TestsFlextInfraProjectRuffArtifacts:
 
         error = tm.fail(u.Infra.load_project_managed_artifacts(root))
 
-        assert "duplicate project Ruff per-file ignore" in error
+        tm.that("duplicate project Ruff per-file ignore" in error, truth=True)

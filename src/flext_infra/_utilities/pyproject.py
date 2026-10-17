@@ -12,6 +12,7 @@ from functools import cache, lru_cache
 from pathlib import Path
 
 from flext_cli import u
+from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
@@ -22,6 +23,143 @@ from flext_infra._utilities import (
 
 class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
+
+    @classmethod
+    def declared_dependency_payload(
+        cls,
+        pyproject_path: Path,
+    ) -> p.Result[t.JsonMapping]:
+        """Read owner-recovered TOML without admitting generated group inputs.
+
+        Returns:
+            The parsed mapping with authored dependency-group entries only.
+
+        """
+        text = cls.live_pyproject_text(pyproject_path)
+        if text.failure:
+            return r[t.JsonMapping].from_failure(text)
+        payload = u.Cli.toml_mapping_from_text(text.value)
+        if payload is None:
+            return r[t.JsonMapping].fail(
+                f"pyproject is not valid TOML: {pyproject_path}",
+            )
+        groups = u.Cli.toml_mapping_path(payload, (c.Infra.DEPENDENCY_GROUPS,))
+        if groups is not None:
+            for group in (str(c.Infra.DEV), c.Infra.DependencyGroup.CODEGEN):
+                selected = cls.dependency_group_name(tuple(groups), str(group))
+                if selected not in groups:
+                    continue
+                custom = cls.custom_dev_additions(payload, text.value, group=selected)
+                if custom.failure:
+                    return r[t.JsonMapping].from_failure(custom)
+                groups[selected] = cls.dependency_group_wire(custom.value)
+        return r[t.JsonMapping].ok(payload)
+
+    @staticmethod
+    def dependency_group_name(names: t.IterableOf[str], name: str) -> str:
+        """Elect an existing native spelling using PEP 735 normalized identity.
+
+        Returns:
+            The declared spelling when one matches, else the requested name.
+
+        Raises:
+            ValueError: If dependency group names have colliding normalized
+                identities.
+
+        """
+        matches = tuple(
+            key for key in names if canonicalize_name(key) == canonicalize_name(name)
+        )
+        if len(matches) > 1:
+            msg = "dependency group names have colliding normalized identities"
+            raise ValueError(msg)
+        return matches[0] if matches else name
+
+    @staticmethod
+    def dependency_group_wire(
+        entries: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+    ) -> list[t.JsonValue]:
+        """Serialize native entries without turning inclusion tables into strings.
+
+        Returns:
+            The resulting ``list[t.JsonValue]``.
+
+        """
+        return [
+            entry
+            if isinstance(entry, str)
+            else dict(
+                t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                    entry.model_dump(mode="json", by_alias=True),
+                ),
+            )
+            for entry in entries
+        ]
+
+    @staticmethod
+    def custom_dev_additions(
+        live_payload: t.JsonMapping,
+        live: str | None,
+        *,
+        group: str = str(c.Infra.DEV),
+    ) -> p.Result[t.VariadicTuple[str | m.Infra.DependencyGroupInclude]]:
+        """Remove only entries carrying this generator's explicit provenance.
+
+        Returns:
+            Native ordered CUSTOM entries, or their original parse failure.
+
+        """
+        groups = u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
+        group = FlextInfraUtilitiesPyproject.dependency_group_name(tuple(groups), group)
+        result_type = r[t.VariadicTuple[str | m.Infra.DependencyGroupInclude]]
+        values = u.validate_value(
+            m.Infra.DependencyGroupEntries,
+            groups.get(group, ()),
+        )
+        if values.failure:
+            return result_type.from_failure(values)
+        entries = values.value.root
+        if not entries or live is None:
+            return (
+                result_type.ok(())
+                if not entries
+                else result_type.fail("dev provenance requires its parsed source")
+            )
+        comments = FlextInfraUtilitiesPyproject._dependency_group_comments(live, group)
+        if comments.failure:
+            return result_type.from_failure(comments)
+        if len(comments.value) != len(entries):
+            return result_type.fail("dev provenance occurrence counts differ")
+        return result_type.ok(
+            tuple(
+                value
+                for value, comment in zip(entries, comments.value, strict=True)
+                if not isinstance(value, str)
+                or comment.removeprefix("#").strip() != c.Infra.MEMBER_DEV_PROVENANCE
+            ),
+        )
+
+    @staticmethod
+    def _dependency_group_comments(
+        live: str,
+        group: str,
+    ) -> p.Result[t.StrSequence]:
+        """Read native per-occurrence comments from the parsed dependency group.
+
+        Returns:
+            Ordered array comments or the original missing-source failure.
+
+        """
+        result_type = r[t.StrSequence]
+        document = u.Cli.toml_parse_text(live)
+        if document is None:
+            return result_type.fail("dev provenance source is invalid TOML")
+        group_table = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
+        if group_table is None:
+            return result_type.fail("dev provenance dependency groups are missing")
+        if group not in group_table:
+            return result_type.fail("dev provenance group array is missing")
+        return result_type.ok(u.Cli.toml_array_item_comments(group_table, group))
 
     @staticmethod
     def managed_mise_binary(name: str, owner_root: Path) -> p.Result[Path]:
@@ -374,21 +512,6 @@ class FlextInfraUtilitiesPyproject:
             else declaration.uv_package
         )
 
-    @staticmethod
-    def validate_infra_payload(payload: p.AttributeProbe) -> t.JsonMapping:
-        """Validate one plain mapping through the infra adapter.
-
-        Centralizes the adapter choice so every caller validates through the
-        same typed boundary; validation failures escape with the precise
-        pydantic error instead of a sentinel.
-
-        Returns:
-            The resulting ``t.JsonMapping``.
-
-        """
-        result: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
-        return result
-
     @classmethod
     def format_toml_source(
         cls,
@@ -622,13 +745,13 @@ class FlextInfraUtilitiesPyproject:
 
     @staticmethod
     def pyproject_payload(pyproject_path: Path) -> t.JsonMapping:
-        """Return one parsed ``pyproject.toml`` payload validated against ``t.Infra``.
+        """Return the shared TOML ingress's validated ``pyproject.toml`` mapping.
 
         The payload is parsed from the live text with managed merge
         conflicts resolved (``live_pyproject_text``).
 
         Returns:
-            One parsed ``pyproject.toml`` payload validated against ``t.Infra``.
+            One mapping validated by the shared TOML ingress.
 
         Raises:
             RuntimeError: If failed to read pyproject payload at; or if pyproject
@@ -655,7 +778,7 @@ class FlextInfraUtilitiesPyproject:
         """Parse and validate one manifest text (memoized per exact content).
 
         Returns:
-            The validated ``t.Infra`` payload of ``text``.
+            The validated mapping of ``text``.
 
         Raises:
             RuntimeError: If ``text`` is not valid TOML.
@@ -665,20 +788,20 @@ class FlextInfraUtilitiesPyproject:
         if payload is None:
             msg = f"pyproject payload at {pyproject_path} is not valid TOML"
             raise RuntimeError(msg)
-        return FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
+        return payload
 
     @staticmethod
     def normalized_toml_payload(document: t.Cli.TomlDocument) -> t.JsonMapping:
-        """Return one TOML document normalized through the infra adapter.
+        """Return the shared TOML ingress's validated document mapping.
 
         Returns:
-            One TOML document normalized through the infra adapter.
+            One mapping validated by the shared TOML ingress.
 
         """
         payload = u.Cli.toml_as_mapping(document)
         if not payload:
             return {}
-        return FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
+        return payload
 
     @staticmethod
     def tool_flext_meta(project_root: Path) -> t.JsonMapping:

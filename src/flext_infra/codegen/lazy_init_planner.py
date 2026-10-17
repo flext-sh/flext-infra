@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra._models.rope import FlextInfraModelsRope
 from flext_infra.codegen import FlextInfraCodegenLazyInitPlannerPublicRootMixin
 from flext_infra.codegen._lazy_init_planner_aliases import (
     FlextInfraCodegenLazyInitPlannerAliasesMixin,
@@ -76,7 +75,7 @@ class FlextInfraCodegenLazyInitPlanner(
     )
     _project_layout_cache: MutableMapping[Path, m.Infra.RopeProjectLayout] = (
         u.PrivateAttr(
-            default_factory=dict[Path, FlextInfraModelsRope.RopeProjectLayout],
+            default_factory=dict[Path, m.Infra.RopeProjectLayout],
         )
     )
     _version_module_name: str = u.PrivateAttr(

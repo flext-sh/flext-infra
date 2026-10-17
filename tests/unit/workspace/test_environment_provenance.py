@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config
+from flext_infra import FlextInfraGitService, config
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
@@ -2172,12 +2172,31 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 eq=1,
             )
 
+    def test_locked_provenance_keeps_independent_changes_for_verify_clean(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Installation provenance and Git cleanliness retain separate verdicts."""
+        workspace = self._locked_workspace(tmp_path)
+        member = workspace / "sample-member"
+        unrelated = member / "independent-note.txt"
+        tm.ok(u.Cli.atomic_write_text_file(unrelated, "independent change\n"))
+        manifest = tm.ok(u.Infra.load_workspace_manifest(workspace))[0]
+        tm.ok(self._locked_verdict(workspace), eq=len(manifest.members))
+        tm.that(
+            tm.fail(
+                FlextInfraGitService.verify_clean(
+                    m.Infra.GitStatusRequest(repo_root=member),
+                ),
+            ),
+            has=unrelated.name,
+        )
+
     @pytest.mark.parametrize(
         ("defect", "diagnostic"),
         [
             ("lock_path", "locked workspace source differs"),
             ("origin", "workspace checkout identity differs"),
-            ("dirty", "workspace checkout identity differs"),
             ("head", "workspace checkout differs from locked gitlink"),
             ("gitlink", "governed gitlink is absent"),
             ("staged_gitlink", "workspace checkout differs from locked gitlink"),
@@ -2214,10 +2233,9 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 "origin",
                 u.Tests.WorktreeFixture.governed_repository_url("different-provider"),
             )
-        elif defect in {"dirty", "head"}:
+        elif defect == "head":
             (member / "changed.txt").write_text("changed\n", encoding="utf-8")
-            if defect == "head":
-                u.Tests.commit_git_changes(member, "advance member without gitlink")
+            u.Tests.commit_git_changes(member, "advance member without gitlink")
         elif defect == "gitlink":
             u.Tests.git_run(
                 workspace,

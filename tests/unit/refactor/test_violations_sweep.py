@@ -116,7 +116,7 @@ class TestsFlextInfraRefactorViolationsSweep(
         if quiet_before is not None:
             quiet_after = tm.ok(
                 FlextInfraModGateEngine.scan(
-                    root, fix=False, rule_ids=("repair-marker",)
+                    root, fix=False, selection=("repair-marker",)
                 )
             )
             with pytest.raises(ValueError, match="unexplained removal"):
@@ -164,7 +164,7 @@ class TestsFlextInfraRefactorViolationsSweep(
         quiet_before = (
             tm.ok(
                 FlextInfraModGateEngine.scan(
-                    root, fix=False, rule_ids=("repair-marker",)
+                    root, fix=False, selection=("repair-marker",)
                 )
             )
             if drift == "removed"
@@ -180,7 +180,7 @@ class TestsFlextInfraRefactorViolationsSweep(
                     root,
                     tm.ok(
                         FlextInfraModGateEngine.scan(
-                            root, fix=False, rule_ids=(rule_id,)
+                            root, fix=False, selection=(rule_id,)
                         )
                     ),
                     exact_replacements=True,
@@ -316,7 +316,7 @@ class TestsFlextInfraRefactorViolationsSweep(
                 mod_workspace,
                 tm.ok(
                     FlextInfraModGateEngine.scan(
-                        mod_workspace, fix=False, rule_ids=("repair-marker",)
+                        mod_workspace, fix=False, selection=("repair-marker",)
                     )
                 ),
                 exact_replacements=True,

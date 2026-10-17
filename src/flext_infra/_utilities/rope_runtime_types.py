@@ -17,20 +17,6 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
     """Expose typed predicates for Rope runtime objects."""
 
     @classmethod
-    def semantic_module(
-        cls, value: p.AttributeProbe
-    ) -> TypeIs[p.Infra.RopeSemanticModule]:
-        """Admit module attributes only on the SDK's native module lineage.
-
-        Returns:
-            Whether the native module exposes its complete semantic interface.
-
-        """
-        return isinstance(
-            value, cls.runtime_type(c.Infra.ROPE_PYOBJECTS_MODULE, "AbstractModule")
-        ) and isinstance(value, p.Infra.RopeSemanticModule)
-
-    @classmethod
     def file_resource(cls, value: p.AttributeProbe) -> TypeGuard[t.Infra.RopeFile]:
         return isinstance(value, cls.runtime_type("rope.base.resources", "File"))
 
@@ -91,6 +77,22 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
 
         """
         return isinstance(value, cls.runtime_type("rope.base.pyobjectsdef", "PyModule"))
+
+    @classmethod
+    def require_parsed_module(cls, value: p.AttributeProbe) -> p.Infra.RopeParsedModule:
+        """Admit native parsed modules through the existing runtime predicate.
+
+        Returns:
+            The original module exposing the parsed-module contract.
+
+        Raises:
+            TypeError: The native result is not a parsed module.
+
+        """
+        if not cls.pymodule(value):
+            msg = "rope resource returned a non-parsed module"
+            raise TypeError(msg)
+        return value
 
     @classmethod
     def from_import_info(

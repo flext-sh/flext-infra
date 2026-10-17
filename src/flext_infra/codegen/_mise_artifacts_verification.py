@@ -218,7 +218,10 @@ class FlextInfraMiseArtifactsVerification(
         history = cls._publication_history_current((outcome,))
         if history.failure:
             return r[bool].from_failure(history)
-        return r[bool].ok(value=True)
+        outputs, batches = history.value
+        states = {source.path: source for batch in batches for source in batch.sources}
+        states.update((output.path, output) for output in outputs)
+        return cls._recorded_states_current(tuple(states.values()))
 
     @classmethod
     def publication_outputs_current(
@@ -314,7 +317,7 @@ class FlextInfraMiseArtifactsVerification(
                 ),
                 *(destinations if destinations is not None else ()),
             ))
-            directories = (
+            directories: t.Infra.MutableSetOf[Path] = (
                 {tree.root.path for tree in reference.source_authority.generator_trees}
                 if reference is not None
                 else set()

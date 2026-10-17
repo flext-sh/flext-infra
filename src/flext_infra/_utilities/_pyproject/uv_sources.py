@@ -6,10 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSet
+from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
-from typing import ClassVar
 from urllib.parse import unquote, urlsplit
 
 from flext_cli import u
@@ -17,7 +16,10 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesDependencies
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesPyproject,
+)
 from flext_infra._utilities._pyproject import (
     FlextInfraUtilitiesPyprojectRequirements,
     FlextInfraUtilitiesPyprojectSession,
@@ -25,64 +27,6 @@ from flext_infra._utilities._pyproject import (
 from flext_infra._utilities.dependency_requirements import (
     FlextInfraUtilitiesDependencyRequirements,
 )
-
-
-class _ResolutionViewState(m.ArbitraryTypesModel):
-    """Mutable accumulator for one native resolution view projection."""
-
-    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-        extra="forbid",
-        arbitrary_types_allowed=True,
-    )
-
-    directory: Path = m.Field(
-        description="Generated view root resolving member relative paths.",
-    )
-    policy: m.Infra.MakeUvResolutionSpec = m.Field(
-        description="Declared resolution policy owning member naming.",
-    )
-    native_uv: t.MutableJsonMapping = m.Field(
-        description="Detached root ``[tool.uv]`` table under projection.",
-    )
-    view_project: t.MutableJsonMapping = m.Field(
-        description="Generated virtual project table, empty when absent.",
-    )
-    dependencies: t.MutableJsonList = m.Field(
-        description="Root dependency requests in declaration order.",
-    )
-    member_bindings: t.MutableJsonList = m.Field(
-        description="Member dependency requests in declaration order.",
-    )
-    extras: t.MutableJsonMapping = m.Field(
-        description="View optional-dependency groups by target name.",
-    )
-    groups: t.MutableJsonMapping = m.Field(
-        description="View dependency groups by target name.",
-    )
-    group_metadata: t.MutableJsonMapping = m.Field(
-        description="Renamed group metadata keyed by target name.",
-    )
-    sources: t.MutableJsonMapping = m.Field(
-        description="Context-qualified source entries by dependency name.",
-    )
-    index_entries: t.MutableJsonMapping = m.Field(
-        description="Conflict-checked index declarations by identity.",
-    )
-    constraints: t.MutableJsonList = m.Field(
-        description="Constraints preserving replaced local sources.",
-    )
-    retained_overrides: t.MutableJsonList = m.Field(
-        description="Declared overrides with member requests appended.",
-    )
-    overridden: MutableSet[str] = m.Field(
-        description="Canonical member names already natively bound.",
-    )
-    seen_groups: MutableSet[str] = m.Field(
-        description="Normalized group names already claimed.",
-    )
-    seen_extras: MutableSet[str] = m.Field(
-        description="Normalized extra names already claimed.",
-    )
 
 
 class FlextInfraUtilitiesPyprojectUvSources(
@@ -96,6 +40,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         cls,
         root: m.Infra.UvResolutionProject,
         *,
+        workspace: m.Infra.WorkspaceSpec,
         members: t.SequenceOf[m.Infra.UvResolutionProject],
         directory: Path,
         policy: m.Infra.MakeUvResolutionSpec,
@@ -106,6 +51,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
         with an installed project. Native path bindings therefore replace
         Git backedges without replacing any synthetic group requirement.
         Original package metadata and editable declarations remain unchanged.
+        Declared members without a local binding retain the workspace's
+        elected Git origin and integration line in this resolution alone.
 
         Returns:
             The resulting ``p.Result[t.Cli.TomlDocument]``.
@@ -120,6 +67,9 @@ class FlextInfraUtilitiesPyprojectUvSources(
         state = cls._resolution_view_state(
             root, projects, virtual_name, directory=directory, policy=policy
         )
+        elected = cls._resolution_workspace_bindings(state, root, workspace)
+        if elected.failure:
+            return r[t.Cli.TomlDocument].from_failure(elected)
         for position, project in enumerate(projects):
             projected = cls._resolution_project_view(state, project, position)
             if projected.failure:
@@ -129,7 +79,9 @@ class FlextInfraUtilitiesPyprojectUvSources(
             return r[t.Cli.TomlDocument].from_failure(bound)
         native_uv = state.native_uv
         native_uv["sources"] = dict(state.sources)
-        native_uv["override-dependencies"] = list(state.retained_overrides)
+        native_uv["override-dependencies"] = cls._resolution_override_wire(
+            state.retained_overrides
+        )
         if state.constraints:
             native_uv["constraint-dependencies"] = list(state.constraints)
         if state.group_metadata:
@@ -146,7 +98,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
     @staticmethod
     def _resolution_bound_groups(
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         virtual_name: str,
     ) -> p.Result[bool]:
         """Bind the virtual project tables and the synthetic member group.
@@ -225,7 +177,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         *,
         directory: Path,
         policy: m.Infra.MakeUvResolutionSpec,
-    ) -> _ResolutionViewState:
+    ) -> m.Infra.UvResolutionViewState:
         """Detach the root metadata and scaffold the projection accumulators.
 
         Returns:
@@ -256,15 +208,16 @@ class FlextInfraUtilitiesPyprojectUvSources(
             if root_project
             else {}
         )
-        overrides = t.Cli.JSON_LIST_ADAPTER.validate_python(
+        overrides = m.Infra.UvOverrideEntries.model_validate(
             native_uv.get("override-dependencies", []),
-        )
+            strict=True,
+        ).root
         constraints = list(
             t.Cli.JSON_LIST_ADAPTER.validate_python(
                 native_uv.get("constraint-dependencies", []),
             ),
         )
-        return _ResolutionViewState(
+        return m.Infra.UvResolutionViewState(
             directory=directory,
             policy=policy,
             native_uv=native_uv,
@@ -287,9 +240,66 @@ class FlextInfraUtilitiesPyprojectUvSources(
         )
 
     @classmethod
+    def _resolution_workspace_bindings(
+        cls,
+        state: m.Infra.UvResolutionViewState,
+        root: m.Infra.UvResolutionProject,
+        workspace: m.Infra.WorkspaceSpec,
+    ) -> p.Result[bool]:
+        """Elect declared remote members without replacing their authored metadata.
+
+        Local members already have native path bindings. The standalone view
+        retains the same composition's Git sources instead, so stale transitive
+        refs cannot elect another provider. Explicit URL overrides keep their
+        precedence; version bounds remain owned by the existing constraints.
+
+        Returns:
+            Successful source election or the first provenance failure.
+
+        """
+        requirements = cls.document_requirement_lines(root.document)
+        if requirements.failure:
+            return r[bool].from_failure(requirements)
+        overrides = tuple(
+            entry for entry in state.retained_overrides if isinstance(entry, str)
+        )
+        for requirement in (*requirements.value, *overrides):
+            name = FlextInfraUtilitiesDependencies.dep_name(requirement)
+            if name is not None:
+                admitted = cls._member_provenance(name, requirement, workspace)
+                if admitted.failure:
+                    return admitted
+        explicit = cls._resolution_explicit_overrides(state)
+        direct = {
+            canonicalize_name(entry.name)
+            for entry in map(Requirement, overrides)
+            if entry.url is not None
+        }
+        for member in workspace.subprojects:
+            name = canonicalize_name(member.distribution)
+            if not member.package or name in state.overridden:
+                continue
+            if workspace.integration is None:
+                return r[bool].fail(
+                    "remote member resolution requires declared workspace integration",
+                )
+            if name not in direct:
+                state.sources[name] = {
+                    "git": member.url,
+                    "branch": workspace.integration.branch,
+                }
+            if name not in explicit:
+                extras = FlextInfraUtilitiesDependencyRequirements.dependency_extras(
+                    requirements.value, name
+                )
+                state.retained_overrides.append(f"{name}{extras}")
+            state.overridden.add(name)
+        return r[bool].ok(value=True)
+
+    @classmethod
     def _resolution_project_view(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
         position: int,
     ) -> p.Result[bool]:
@@ -383,7 +393,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_project_exports(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
         project_uv: t.JsonMapping,
         renamed: t.MappingKV[str, str],
@@ -403,7 +413,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_project_constraints(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
     ) -> None:
         """Extend the state constraints over the project's overridden demands."""
@@ -418,27 +428,44 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
     @staticmethod
     def _resolution_explicit_overrides(
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
     ) -> set[str]:
-        """Name the distributions explicitly pinned by declared overrides.
+        """Name distributions pinned by global overrides, excluding scoped tables.
 
         Returns:
             The canonical dependency names of the declared override entries.
 
         """
+        declared = m.Infra.UvOverrideEntries.model_validate(
+            state.native_uv.get("override-dependencies", []), strict=True
+        ).root
         return {
-            name
-            for entry in t.Cli.JSON_LIST_ADAPTER.validate_python(
-                state.native_uv.get("override-dependencies", []),
-            )
+            canonicalize_name(Requirement(entry).name)
+            for entry in declared
             if isinstance(entry, str)
-            and (name := FlextInfraUtilitiesDependencies.dep_name(entry)) is not None
         }
+
+    @staticmethod
+    def _resolution_override_wire(
+        entries: t.SequenceOf[str | m.Infra.UvScopedOverride],
+    ) -> t.JsonValueList:
+        """Serialize the ordered native override variants through their model.
+
+        Returns:
+            Native strings and scoped tables without changing scope or operands.
+
+        """
+        parsed = m.Infra.UvOverrideEntries.model_validate(list(entries), strict=True)
+        return list(
+            t.Cli.JSON_LIST_ADAPTER.validate_python(
+                parsed.model_dump(mode="json", exclude_none=True),
+            )
+        )
 
     @classmethod
     def _resolution_project_request(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
         optional: t.JsonMapping,
         name: str,
@@ -468,7 +495,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_root_dependencies(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
         metadata: t.JsonMapping,
     ) -> p.Result[bool]:
@@ -518,48 +545,48 @@ class FlextInfraUtilitiesPyprojectUvSources(
             {"dependency-groups": declared_groups},
         )
         return {
-            group: cls.dependency_group_wire(entries)
+            group: FlextInfraUtilitiesPyproject.dependency_group_wire(entries)
             for group, entries in validated_groups.dependency_groups.items()
         }
 
     @classmethod
     def _resolution_group_targets(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         declared_groups: t.JsonDict,
         name: str,
         *,
         root: bool,
-    ) -> p.Result[dict[str, str]]:
+    ) -> p.Result[t.StrMapping]:
         """Rename the declared groups and refuse target collisions.
 
         Returns:
             The declared groups mapped to their view-level target names.
 
         """
-        renamed: dict[str, str] = {
+        renamed: t.StrMapping = {
             canonicalize_name(group): (
                 group if root else f"{name}{state.policy.member_group_separator}{group}"
             )
             for group in declared_groups
         }
         if len(renamed) != len(declared_groups):
-            return r[dict[str, str]].fail(
+            return r[t.StrMapping].fail(
                 f"resolution project has colliding normalized group names: {name}",
             )
         for target in renamed.values():
             normalized = canonicalize_name(target)
             if normalized in state.seen_groups:
-                return r[dict[str, str]].fail(
+                return r[t.StrMapping].fail(
                     f"resolution dependency-group names collide: {target}",
                 )
             state.seen_groups.add(normalized)
-        return r[dict[str, str]].ok(renamed)
+        return r[t.StrMapping].ok(renamed)
 
     @classmethod
     def _resolution_root_project_sources(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
         project_sources: t.JsonMapping,
     ) -> None:
@@ -586,13 +613,13 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_extra_requirements(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
         optional: t.JsonMapping,
         name: str,
         *,
         root: bool,
-    ) -> p.Result[dict[str, t.Pair[str, set[str]]]]:
+    ) -> p.Result[t.DictKV[str, t.Pair[str, set[str]]]]:
         """Rewrite the project's extras into view-level target groups.
 
         Returns:
@@ -600,8 +627,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
             dependency names it selects.
 
         """
-        resolved: dict[str, t.Pair[str, set[str]]] = {}
-        failure = r[dict[str, t.Pair[str, set[str]]]]
+        resolved: t.DictKV[str, t.Pair[str, set[str]]] = {}
+        failure = r[t.DictKV[str, t.Pair[str, set[str]]]]
         for extra, raw_requirements in optional.items():
             target = (
                 extra if root else f"{name}{state.policy.member_group_separator}{extra}"
@@ -637,7 +664,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_context_sources(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
         project_sources: t.JsonMapping,
         contexts: t.SequenceOf[t.Triple[str, t.StrSequence, str]],
@@ -696,7 +723,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_group_entries(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
         declared_groups: t.JsonDict,
         renamed: t.MappingKV[str, str],
@@ -719,7 +746,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_group_metadata(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project_uv: t.JsonMapping,
         renamed: t.MappingKV[str, str],
         name: str,
@@ -745,7 +772,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_index_entries(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
         project_uv: t.JsonMapping,
     ) -> p.Result[bool]:
@@ -1051,10 +1078,12 @@ class FlextInfraUtilitiesPyprojectUvSources(
             )
             overrides.append(f"{name}{extras} @ {source}")
         if overrides:
-            u.Cli.toml_sync_string_list(
+            u.Cli.toml_sync_value(
                 uv,
                 "override-dependencies",
-                overrides,
+                FlextInfraUtilitiesPyprojectUvSources._resolution_override_wire(
+                    overrides
+                ),
             )
         else:
             u.Cli.toml_remove_key_if_present(uv, "override-dependencies")

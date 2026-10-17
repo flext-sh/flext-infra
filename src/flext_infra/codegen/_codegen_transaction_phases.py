@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Protocol
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
@@ -100,35 +99,6 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             ),
         )
 
-    class _PendingPhaseSpec(Protocol):
-        """Read-only pending-phase contract across the transaction mixins."""
-
-        @property
-        def phase(self) -> str: ...
-
-        @property
-        def changed(self) -> t.VariadicTuple[m.Infra.CodegenFilePlan]: ...
-
-        @property
-        def all_plans(self) -> t.VariadicTuple[m.Infra.CodegenFilePlan]: ...
-
-        @property
-        def staged_validator(
-            self,
-        ) -> (
-            Callable[
-                [
-                    m.Infra.CodegenTransactionSession,
-                    t.VariadicTuple[m.Infra.CodegenStagedFile],
-                ],
-                p.Result[m.Infra.CodegenTransactionSession],
-            ]
-            | None
-        ): ...
-
-        @property
-        def batch_admission(self) -> m.Infra.CodegenPhaseOutcome | None: ...
-
     class _PendingPhase(m.Infra.FrozenArbitrary):
         """Dependent-phase append request bound by the phase entry point."""
 
@@ -196,7 +166,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                 t.VariadicTuple[m.Cli.AtomicFileState],
             ]
         ],
-        pending: _PendingPhaseSpec,
+        pending: p.Infra.CodegenPendingPhase,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Stage and publish a phase only after its source authority is proven.
 
@@ -257,7 +227,7 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         prepared: m.Infra.CodegenTransactionSession,
         staged: t.VariadicTuple[m.Infra.CodegenStagedFile],
         current: m.Infra.CodegenTransactionSession,
-        pending: _PendingPhaseSpec,
+        pending: p.Infra.CodegenPendingPhase,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Publish the verified phase and bind its proof into the session.
 
@@ -834,21 +804,19 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                     mode=mode,
                 ),
             )
-        journal = m.Infra.CodegenTransactionJournal.model_validate({
-            **current.model_dump(),
-            "staging_intents": tuple(intents),
-        })
-        persisted = self._write_journal(
-            layout,
-            journal,
-            expected=expected,
+        extended = FlextInfraMiseArtifactsJournal.validated_extension(
+            current,
+            current.model_copy(update={"staging_intents": tuple(intents)}),
         )
+        if extended.failure:
+            return result_type.from_failure(extended)
+        persisted = self._write_journal(layout, extended.value, expected=expected)
         if persisted.failure:
             return result_type.from_failure(persisted)
         u.Cli.info(
             f"phase={phase} staging-intentions={len(writes)} durable-before-write",
         )
-        return result_type.ok((journal, persisted.value))
+        return result_type.ok((extended.value, persisted.value))
 
     def _authorize_phase_destinations(
         self,

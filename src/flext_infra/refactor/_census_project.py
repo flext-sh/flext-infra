@@ -32,7 +32,7 @@ class FlextInfraRefactorCensusProjectMixin:
             selected_rules: frozenset[str] | None = None,
         ) -> bool: ...
         @staticmethod
-        def is_unused(item: m.Infra.Object) -> bool: ...
+        def unused(item: m.Infra.Object) -> bool: ...
         @staticmethod
         def _object_key(item: m.Infra.Object) -> str: ...
         @staticmethod
@@ -86,7 +86,7 @@ class FlextInfraRefactorCensusProjectMixin:
         unused_count = 0
         removal_candidates: list[m.Infra.RemovalCandidate] = []
         for item in objects:
-            is_unused = self.is_unused(item)
+            is_unused = self.unused(item)
             if include_duplicate and self._object_key(item) in duplicate_keys:
                 violations.append(
                     self._violation(

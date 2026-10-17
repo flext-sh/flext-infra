@@ -304,10 +304,11 @@ class FlextInfraUtilitiesRopeClassMove:
                 declared_files=virtual,
             )
             try:
-                destination = package_plan.get_pymodule(
+                destination = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+                    package_plan,
                     cls._resource(
                         package_plan, root, request.target_file.parent / c.Infra.INIT_PY
-                    )
+                    ),
                 ).get_name()
                 for path in proposed:
                     if (
@@ -478,7 +479,12 @@ class FlextInfraUtilitiesRopeClassMove:
                 project,
                 cls._resource(project, root, path),
             ).get_name()
-            published = project.get_module(module_name).get_attributes().get(name)
+            published = (
+                FlextInfraUtilitiesRopeRuntime
+                .require_semantic_module(project.get_module(module_name))
+                .get_attributes()
+                .get(name)
+            )
             if published is not None and FlextInfraUtilitiesRopeRuntime.same_name(
                 expected,
                 published,
