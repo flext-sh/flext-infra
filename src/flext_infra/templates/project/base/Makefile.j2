@@ -1305,6 +1305,8 @@ _builtin-fmt: _builtin_fmt_all{{ fleet_fanout("fmt") }}
 _builtin-fix: _builtin_fix_all{{ fleet_fanout("fix") }}
 _builtin-fix-namespace: _builtin_fix_namespace
 _builtin-fix-accessors: _builtin_fix_accessors
+_builtin-fix-toolchain:
+	@$(PROJECT_FLEXT_INFRA) codegen mise-repair --repository-root "$(RUNTIME_ROOT)"
 _builtin-audit:
 ifneq ($({{ make.ci.variable }}),{{ make.ci.value }})
 	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} verify-lanes --repo-root "$(PROJECT_ROOT)"

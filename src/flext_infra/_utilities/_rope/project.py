@@ -566,7 +566,12 @@ class FlextInfraRopeProject(Project):
         ignored_resources: t.SequenceOf[str],
         python_path_folders: t.SequenceOf[str],
     ) -> Self:
-        """Compose the native project and external resolver over one read owner."""
+        """Compose the native project and external resolver over one read owner.
+
+        Returns:
+            The resulting ``Self``.
+
+        """
         external = NoProject(fscommands=files)
         project = cls(
             root,
@@ -598,7 +603,12 @@ class FlextInfraRopeProject(Project):
         python_path_folders: t.SequenceOf[str] = (),
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> Self:
-        """Use native module election with authenticated reads and planned sources."""
+        """Use native module election with authenticated reads and planned sources.
+
+        Returns:
+            The resulting ``Self``.
+
+        """
         files = cls.AtomicReadFiles(
             Path(root),
             source_states,
@@ -614,14 +624,24 @@ class FlextInfraRopeProject(Project):
         )
 
     def consumed_source_states(self) -> tuple[m.Cli.AtomicFileState, ...]:
-        """Return the actual-read closure, including native external providers."""
+        """Return the actual-read closure, including native external providers.
+
+        Raises:
+            TypeError: If Rope project does not own authenticated live reads.
+
+        """
         if not isinstance(self.fscommands, self.AtomicReadFiles):
             msg = "Rope project does not own authenticated live reads"
             raise TypeError(msg)
         return self.fscommands.states()
 
     def verify_source_states(self) -> None:
-        """Verify the original input epoch after semantic planning."""
+        """Verify the original input epoch after semantic planning.
+
+        Raises:
+            TypeError: If Rope project does not own authenticated live reads.
+
+        """
         if not isinstance(self.fscommands, self.AtomicReadFiles):
             msg = "Rope project does not own authenticated live reads"
             raise TypeError(msg)

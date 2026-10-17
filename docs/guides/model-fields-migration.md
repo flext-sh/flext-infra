@@ -100,3 +100,9 @@ Mise reality proofs carry their validated inputs in
 `m.Infra.MiseToolchainProofOptions`, using the shared frozen preset. These inputs
 contain declared models, JSON, paths and collections; they require no arbitrary
 type allowance.
+
+Transaction plans and journals use the existing exact-text frozen contract
+preset instead of combining independent Pydantic presets. Staged source strings
+retain their whitespace and enum identities. Toolchain proof scenarios execute
+the managed native UV binary; version and platform expectations come from its
+declared probe and current lock.

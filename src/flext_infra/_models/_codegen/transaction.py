@@ -24,7 +24,7 @@ from flext_infra._models.workspace import FlextInfraModelsWorkspace
 class FlextInfraModelsCodegenTransactionModels:
     """Transaction and session models for the codegen pipeline."""
 
-    class StagePackagePlan(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class StagePackagePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Pinned package/dependency inputs and the declared public facade contract."""
 
         package: str = m.Field(description="Selected canonical package namespace")
@@ -47,7 +47,7 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Workspace namespaces requiring sealed origins"
         )
 
-    class StageSourcePlan(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class StageSourcePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Pinned project closure and desired bytes for effect-free validation."""
 
         workspace: Path = m.Field(description="Canonical source workspace root")
@@ -67,7 +67,7 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Declared workspace namespaces with sealed candidate origins",
         )
 
-    class StagePackageView(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class StagePackageView(FlextInfraModelsBase.FrozenArbitrary):
         """Journal-owned materialized package view, never another source of truth."""
 
         plan: FlextInfraModelsCodegenTransactionModels.StagePackagePlan = m.Field(
@@ -86,7 +86,7 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Exact desired facade bytes and physical identity"
         )
 
-    class CodegenTransactionJournal(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class CodegenTransactionJournal(FlextInfraModelsBase.FrozenArbitrary):
         """Persisted recovery contract for one workspace-wide generation."""
 
         version: Annotated[
@@ -346,7 +346,7 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Exact journal observation retained for revalidation",
         )
 
-    class CodegenFileSessionPlan(m.ImmutableValueModel, m.ArbitraryTypesModel):
+    class CodegenFileSessionPlan(FlextInfraModelsBase.FrozenArbitrary):
         """File-only transaction topology; contains no Mise artifact snapshot."""
 
         layout: Annotated[
