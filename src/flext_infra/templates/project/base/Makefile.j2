@@ -81,10 +81,9 @@ scratch_tmp="$$(cd "$$scratch/tmp" && pwd -P)"; \
 TMPDIR="$$scratch_tmp"; TMP="$$scratch_tmp"; TEMP="$$scratch_tmp"; \
 export TMPDIR TMP TEMP; \
 {%- endmacro -%}
-{#- Normal incremental verbs admit only the bounded phase. Slow-marked items
-    remain owned by the explicitly requested full verb, which runs locally
-    with the same persistent database and without any time limit, so it is the one runner that
-    is not wrapped in PYTEST_BOUNDED. -#}
+{#- Normal incremental verbs admit only the bounded phase. Explicit full and
+    single-file operations include slow items, use the same persistent database
+    and run without a time limit or PYTEST_BOUNDED wrapper. -#}
 {#- Tests run on the provisioned toolchain: every verb's tools resolve from
     the mise-managed PATH, so a test observes the runtime's tool versions. -#}
 {%- macro pytest_test_runner(operation="", bounded=true) -%}
@@ -97,9 +96,9 @@ fi; \
 {{ pytest_scratch_root() }}
 {{ make.testmon_cache.database_environment_variable }}="$$database" {% if bounded %}$(PYTEST_BOUNDED) {% endif %}$(PROJECT_INFRA_RUN) -m flext_infra._pytest_entry{% if operation %} {{ operation }}{% endif %}
 {%- endmacro -%}
-{#- The single-file verb validates its FILE input and executes the complete
-    requested file once, including its slow tests, in one bounded process
-    using the persistent database. Empty execution remains a failing result.
+{#- The single-file verb validates its FILE input and executes incremental then
+    complete phases, including slow tests, without a deadline using the
+    persistent database. Empty execution remains a failing result.
     The exported variable name mirrors
     c.Infra.PYTEST_ENV_TARGET_FILE in flext-infra/_constants/make.py; the entry
     fails loudly on a mismatch. -#}
@@ -109,7 +108,7 @@ case "$(FILE)" in /*|*..*) printf 'ERROR: FILE must stay a repository-relative p
 if [ ! -f "$(PROJECT_ROOT)/$(FILE)" ]; then printf 'ERROR: FILE is not an existing repository file: %s\n' "$(FILE)" >&2; exit 2; fi; \
 export FLEXT_PYTEST_TARGET_FILE="$(FILE)"; \
 {%- if run_tests %}
-{{ pytest_test_runner("file") | trim }}
+{{ pytest_test_runner("file", bounded=false) | trim }}
 {%- endif %}
 {%- endmacro -%}
 # @flext-generated: continuous

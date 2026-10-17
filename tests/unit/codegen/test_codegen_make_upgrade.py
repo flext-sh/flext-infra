@@ -580,7 +580,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         order = [
             next(i for i, step in enumerate(steps) if needle in step)
             for needle in (
-                "--what mise-config --scope self",
+                "--what mise-config --scope all",
                 "lock --bump",
                 "install --locked --yes",
                 "deps modernize",

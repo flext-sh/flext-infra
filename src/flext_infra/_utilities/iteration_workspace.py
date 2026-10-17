@@ -16,10 +16,7 @@ from pathlib import Path
 from flext_cli import u as cli_u
 
 from flext_infra import c, config, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesGitScopeMixin,
-    FlextInfraUtilitiesIterationDirectory,
-)
+from flext_infra._utilities import FlextInfraUtilitiesIterationDirectory
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
 
@@ -294,40 +291,18 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
 
     @classmethod
     def _project_python_files(cls, project_root: Path) -> t.SequenceOf[Path]:
-        """Return configured Python sources with one Git inventory per project.
+        """Return every active Python source owned by this project.
 
         Returns:
-            Configured Python sources with one Git inventory per project.
+            Python sources from the canonical discovery inventory.
 
         """
-        source_roots = tuple(
-            path
-            for directory_name in config.Infra.source_scan.roots
-            if (path := (project_root / directory_name).resolve()).is_dir()
-        )
-        tracked_files = FlextInfraUtilitiesGitScopeMixin.git_tracked_scope_paths(
-            project_root,
-        )
-        if tracked_files is None:
-            return tuple(
-                file_path
-                for source_root in source_roots
-                for file_path in (
-                    FlextInfraUtilitiesIterationDirectory.iter_directory_python_files
-                )(
-                    source_root,
-                )
-            )
         return tuple(
             file_path
-            for file_path in tracked_files
+            for file_path in FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+                project_root, workspace_excluded_top_dirs=frozenset()
+            )
             if file_path.suffixes == [c.Infra.EXT_PYTHON]
-            and any(
-                file_path.is_relative_to(source_root) for source_root in source_roots
-            )
-            and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
-                project_root, file_path
-            )
         )
 
 

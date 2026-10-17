@@ -875,7 +875,7 @@ Infra:
     - { name: dist-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
     - { name: legado, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
     - { name: site-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
-    - { name: vendor, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
+    - { name: vendor, gitignore: false, vscode_exclude: false, watch_exclude: false }
     - { name: venv, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
     # Gitignore-only entries; they feed no other projection.
     - { name: .flext-sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }

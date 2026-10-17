@@ -1318,7 +1318,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         connections = {file.path: set[Path]() for file in files}
-        groups: dict[str, Path] = {}
+        groups: t.MutableMappingKV[str, Path] = {}
         for file in files:
             dependencies = {source.path for source in file.source_states} | set(
                 file.tracking_dependencies
@@ -1341,7 +1341,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             The output owners that can affect each consumed native candidate.
 
         """
-        owners: dict[Path, set[Path]] = {}
+        owners: t.MutableMappingKV[Path, set[Path]] = {}
         for file in files:
             directories = (
                 file.before.directories
@@ -1360,7 +1360,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
     ) -> None:
         """Keep publications affecting consumed native elections in one component."""
         candidates = cls._generation_candidate_owners(files)
-        membership: dict[Path, set[Path]] = {}
+        membership: t.MutableMappingKV[Path, set[Path]] = {}
         for candidate, owners in candidates.items():
             membership.setdefault(candidate.parent, set()).update(owners)
         for file in files:
@@ -1670,8 +1670,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         )
         written = list(result.written_files)
         receipts = list(batches)
-        first_failure = failure
-        first_exception = failure.exception if failure is not None else None
+        failures = [failure] if failure is not None else []
         issues = list(result.plan.issues)
         if failure is not None:
             issues.append(
@@ -1707,10 +1706,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                     )
                     continue
                 failed = r[m.Infra.CodegenResult].from_failure(published)
-                if first_failure is None:
-                    first_failure = failed
-                if first_exception is None:
-                    first_exception = failed.exception
+                failures.append(failed)
                 issues.append(
                     m.Infra.Issue(
                         file=str(request.root),
@@ -1720,6 +1716,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                         message=failed.error or "documentation publication failed",
                     ),
                 )
+        first_failure = next(iter(failures), None)
+        first_exception = next(
+            (item.exception for item in failures if item.exception is not None),
+            None,
+        )
         qualified = FlextInfraCodegenTransaction.publish_operation_receipt(
             request,
             tuple(receipts),

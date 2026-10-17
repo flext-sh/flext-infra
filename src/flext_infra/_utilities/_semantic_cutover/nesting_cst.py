@@ -155,22 +155,14 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         Returns:
             Original removal edits with the first owner declaration substituted.
 
-        Raises:
-            TypeError: The actual module has no required docstring summary.
-
         """
         owner_name, nested, indentation = owner
         doc = module.get_doc()
         summary = doc.splitlines()[0].strip() if doc else ""
-        if not summary:
-            msg = f"class-nesting owner {owner_name} needs a module docstring summary"
-            raise TypeError(msg)
         position = min(edit.start for edit in edits)
         replacement = (
             f"class {owner_name}:\n"
-            + " " * indentation
-            + repr(summary)
-            + "\n\n"
+            + (" " * indentation + repr(summary) + "\n\n" if summary else "")
             + nested
         )
         return [
@@ -408,6 +400,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
 
     @staticmethod
     def _native_member_name(statement: m.Infra.LogicalStatement) -> str:
+        if statement.category == c.Infra.StatementCategory.TYPE_ALIAS:
+            return FlextInfraUtilitiesRopeStructure.header_name(
+                statement.text.partition("=")[0],
+            )
         if statement.category in {
             c.Infra.StatementCategory.CLASS_DEF,
             c.Infra.StatementCategory.FUNC_DEF,

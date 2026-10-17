@@ -239,6 +239,18 @@ class TestsFlextInfraCodegenConform:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.APPLY,
         )
+        if scenario in {
+            "failure-changed",
+            "exception-replaced",
+            "failure-mixed",
+            "cas",
+            "source-race",
+        }:
+            # The partial surface owns planning under an admitted journal;
+            # managed generation deliberately plans before acquiring that lease.
+            request = request.model_copy(
+                update={"what": c.Infra.CodegenConformSurface.MAKEFILE},
+            )
         return root, request, published, original, journal
 
     @pytest.mark.parametrize(
@@ -259,6 +271,16 @@ class TestsFlextInfraCodegenConform:
         )
         rejected = root / c.Infra.GITIGNORE
         rejected_before = rejected.read_bytes()
+        expected = tm.ok(
+            FlextInfraCodegenConform(repository_root=root).plan(
+                request.model_copy(
+                    update={"what": c.Infra.CodegenConformSurface.MAKEFILE},
+                ),
+            ),
+        )
+        expected_makefile = next(
+            file.desired_content for file in expected.files if file.path == published
+        )
         ports = infra.codegen_conform_collaborators()
         if scenario == "planning-exception":
             with pytest.raises(OSError, match="raised after begin") as raised:
@@ -282,7 +304,7 @@ class TestsFlextInfraCodegenConform:
         tm.that(published.read_bytes() == original, eq=False)
         tm.that(
             published.read_bytes(),
-            eq=(conformed_template / c.Infra.MAKEFILE_FILENAME).read_bytes(),
+            eq=expected_makefile,
         )
         tm.that(rejected.read_bytes(), eq=rejected_before)
         receipt = m.Infra.CodegenPhaseOutcome.model_validate_json(
@@ -376,7 +398,7 @@ class TestsFlextInfraCodegenConform:
             "failure-mixed",
         }
         tm.that(journal.exists(), eq=retained)
-        publication_is_preserved = not retained or scenario == "failure-mixed"
+        publication_is_preserved = not scenario.endswith("-failure")
         tm.that(published.read_bytes() == original, eq=publication_is_preserved)
         if scenario == "failure-changed":
             tm.that(journal.read_bytes().endswith(b"\n"), eq=True)

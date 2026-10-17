@@ -241,14 +241,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
 
         """
         planned = r[t.StrMapping]
-        family = FlextInfraUtilitiesCodegenNamespace.facade_family_of_file(
-            file_path.name,
-        ) or FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
-            file_path.parent.name,
-        )
-        # A dunder module (``__main__``, ``__version__``, a package init) is
-        # never a facade module, whatever family directory holds it.
-        if family is None or file_path.stem.startswith("__"):
+        if file_path.name == "__init__.py":
             return planned.ok({})
         tree = ast.parse(source, filename=str(file_path))
         classes = {
@@ -263,6 +256,30 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         loose = tuple(name for name in loose if name not in class_aliases)
         if len(classes) <= 1 and not loose:
             return planned.ok({})
+        registered = tuple(
+            node.name
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+            and (
+                file_path.name == "conftest.py"
+                or node.name.startswith(("pytest_", "test_"))
+                or any(
+                    cls._tail_name(
+                        decorator.func
+                        if isinstance(decorator, ast.Call)
+                        else decorator,
+                    )
+                    in {"fixture", "hookimpl"}
+                    for decorator in node.decorator_list
+                )
+            )
+        )
+        if registered:
+            return planned.fail(
+                f"class-nesting cannot move framework-registered functions in "
+                f"{convention.module_name}: {', '.join(registered)}; "
+                "the framework registration contract must move with their owner",
+            )
         owned = cls._module_owner(
             convention,
             file_path,
@@ -272,6 +289,13 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         if owned.failure:
             return planned.from_failure(owned)
         owner = owned.value
+        if owner not in classes and any(
+            owner in cls._scope_bindings(node) for node in tree.body
+        ):
+            return planned.fail(
+                f"class-nesting owner {owner} collides with a module binding in "
+                f"{convention.module_name}",
+            )
         movable = cls._movable_members(
             tree,
             loose,
@@ -295,6 +319,32 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             frozenset(definitions),
             owner,
         )
+        family = FlextInfraUtilitiesCodegenNamespace.facade_family_of_file(
+            file_path.name,
+        ) or FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
+            file_path.parent.name,
+        )
+        blocked = bound | pinned | (frozenset(loose) - frozenset(movable.value))
+        if family is None and blocked:
+            return planned.fail(
+                f"class-nesting cannot safely nest {convention.module_name} under ",
+                f"{owner}: definition-time dependencies pin ",
+                f"{', '.join(sorted(blocked))}",
+            )
+        owner_node = classes.get(owner)
+        occupied = (
+            frozenset(
+                name for node in owner_node.body for name in cls._scope_bindings(node)
+            )
+            if owner_node is not None
+            else frozenset()
+        )
+        collisions = occupied & definitions.keys()
+        if collisions:
+            return planned.fail(
+                f"class-nesting owner {owner} already defines "
+                f"{', '.join(sorted(collisions))} in {convention.module_name}",
+            )
         return planned.ok({
             name: owner for name, owner in definitions.items() if name not in pinned
         })
@@ -743,9 +793,17 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             for (path, _source), definitions in zip(owned, planned.value, strict=True)
             if definitions
         }
+        module_names = {
+            path: modules[path].module_name
+            or FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                project,
+                project.get_resource(modules[path].resource_path),
+            ).get_name()
+            for path, _source in owned
+        }
         bindings_by_module: MutableMapping[str, MutableMapping[str, str]] = {}
         for path, definitions in definitions_by_file.items():
-            module_name = modules[path].module_name
+            module_name = module_names[path]
             bindings = bindings_by_module.setdefault(module_name, {})
             for name, owner in definitions.items():
                 if bindings.setdefault(name, owner) != owner:
@@ -779,7 +837,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                         ),
                     ),
                     scope=(
-                        module.module_name if module is not None else "",
+                        module_names.get(path, ""),
                         module.is_package_init if module is not None else False,
                     ),
                     bindings_by_module=bindings_by_module,

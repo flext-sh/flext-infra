@@ -140,12 +140,13 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         self,
         tmp_path: Path,
     ) -> None:
-        """`make test` stays one incremental phase; `test-file` runs its file whole.
+        """`make test` stays bounded; `test-file` runs both phases without a deadline.
 
         `make test` runs in CI and pre-commit, so slow-marked items stay out of
         it (operator 2026-10-01: nothing slow in CI or pre-commit). `test-file`
         is the sole single-file path and runs only locally, so its one ``file``
-        entry runs the complete declared file once, including slow items;
+        entry runs incremental then complete on the declared file, including slow
+        items;
         a file whose items are all slow-marked never ends the verb
         with zero executed tests. Neither recipe appends the full suite.
         """
@@ -163,6 +164,29 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         tm.that(
             recipe,
             has=f'{cache.database_environment_variable}="$$database"',
+        )
+        tm.that(recipe, has="$(PYTEST_BOUNDED)")
+        file_recipe = rendered.split("_builtin_test_file_all:", 1)[1].split("\n\n", 1)[
+            0
+        ]
+        tm.that(file_recipe.count("-m flext_infra._pytest_entry file"), eq=1)
+        tm.that(file_recipe, lacks="$(PYTEST_BOUNDED)")
+        tm.that(
+            file_recipe.count(f'export {c.Infra.PYTEST_ENV_TARGET_FILE}="$(FILE)";'),
+            eq=1,
+        )
+        tm.that(
+            file_recipe,
+            has=f'{cache.database_environment_variable}="$$database"',
+        )
+        full_recipe = rendered.split("_builtin_test_full_all:", 1)[1].split("\n\n", 1)[
+            0
+        ]
+        tm.that(full_recipe.count("-m flext_infra._pytest_entry full"), eq=1)
+        tm.that(full_recipe, lacks="$(PYTEST_BOUNDED)")
+        tm.that(
+            full_recipe.count(f'export {c.Infra.PYTEST_ENV_TARGET_FILE}="$(FILE)";'),
+            eq=1,
         )
 
     def test_file_profile_does_not_execute_bounded_tests(self, tmp_path: Path) -> None:

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -233,6 +233,35 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                 u.Cli.atomic_write_text_file_guarded(before, repaired).unwrap()
 
     @staticmethod
+    def _static_hook_keys(
+        issues: t.SequenceOf[m.Infra.Issue],
+        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
+        resolver: Callable[..., t.VariadicTuple[m.Infra.Issue]],
+        **extras: frozenset[t.Pair[str, str]],
+    ) -> t.StrSequence:
+        """Render the static-method findings one resolver leaves to their owner.
+
+        Returns:
+            ``file:line:code`` of each kept finding.
+
+        """
+        by_file: MutableMapping[Path, list[m.Infra.Issue]] = {}
+        for issue in issues:
+            if recipes.get(issue.code) is c.Infra.LintFixRecipe.STATIC_METHOD:
+                by_file.setdefault(Path(issue.file), []).append(issue)
+        return sorted(
+            f"{issue.file}:{issue.line}:{issue.code}"
+            for path, found in by_file.items()
+            for issue in resolver(
+                path.read_text(encoding=c.DEFAULT_ENCODING),
+                found,
+                path=path,
+                recipes=recipes,
+                **extras,
+            )
+        )
+
+    @staticmethod
     def _service_owned_hooks(
         issues: t.SequenceOf[m.Infra.Issue],
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
@@ -247,19 +276,10 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             ``file:line:code`` of each finding on a service-subclass method.
 
         """
-        by_file: MutableMapping[Path, list[m.Infra.Issue]] = {}
-        for issue in issues:
-            if recipes.get(issue.code) is c.Infra.LintFixRecipe.STATIC_METHOD:
-                by_file.setdefault(Path(issue.file), []).append(issue)
-        return sorted(
-            f"{issue.file}:{issue.line}:{issue.code}"
-            for path, found in by_file.items()
-            for issue in u.Infra.service_operation_findings(
-                path.read_text(encoding=c.DEFAULT_ENCODING),
-                found,
-                path=path,
-                recipes=recipes,
-            )
+        return FlextInfraRuffLintGate._static_hook_keys(
+            issues,
+            recipes,
+            u.Infra.service_operation_findings,
         )
 
     @staticmethod
@@ -383,20 +403,11 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             ``file:line:code`` of each finding the static-method recipe keeps.
 
         """
-        by_file: MutableMapping[Path, list[m.Infra.Issue]] = {}
-        for issue in issues:
-            if recipes.get(issue.code) is c.Infra.LintFixRecipe.STATIC_METHOD:
-                by_file.setdefault(Path(issue.file), []).append(issue)
-        return sorted(
-            f"{issue.file}:{issue.line}:{issue.code}"
-            for path, found in by_file.items()
-            for issue in u.Infra.overridden_findings(
-                path.read_text(encoding=c.DEFAULT_ENCODING),
-                found,
-                path=path,
-                recipes=recipes,
-                overridden=overridden,
-            )
+        return FlextInfraRuffLintGate._static_hook_keys(
+            issues,
+            recipes,
+            u.Infra.overridden_findings,
+            overridden=overridden,
         )
 
     def _lint_command(

@@ -69,9 +69,7 @@ class FlextInfraConstantsSourceCode:
         "venv",
     })
     "Common directories to exclude from analysis across all scripts."
-    PYTHON_DISCOVERY_SKIP_DIRS: ClassVar[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
-        "vendor",
-    }
+    PYTHON_DISCOVERY_SKIP_DIRS: ClassVar[frozenset[str]] = COMMON_EXCLUDED_DIRS
     "Non-productive roots excluded while discovering Python analyzer surfaces."
     DOC_EXCLUDED_DIRS: ClassVar[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
         "crg-reports",
@@ -130,7 +128,6 @@ class FlextInfraConstantsSourceCode:
     ITERATION_EXCLUDED_PARTS: ClassVar[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
         "dist-packages",
         "site-packages",
-        "vendor",
         "venv",
     }
     "Path parts to skip during file iteration (superset of COMMON_EXCLUDED_DIRS)."

@@ -873,9 +873,9 @@ class FlextInfraCodemodSemanticApply:
     @staticmethod
     def source_inventory[FindingT: m.Infra.ModOccurrence](
         root: Path,
-        preflight: m.Infra.ModOccurrenceReport[FindingT],
+        _preflight: m.Infra.ModOccurrenceReport[FindingT],
     ) -> t.MappingKV[Path, str]:
-        """Read governed sources and every Python path reported by preflight.
+        """Read the canonical governed Python inventory used by native scanning.
 
         Returns:
             The resulting ``t.MappingKV[Path, str]``.
@@ -884,41 +884,9 @@ class FlextInfraCodemodSemanticApply:
             ValueError: If authenticated source disappeared during mod preflight.
 
         """
-        project_roots = u.Infra.governed_project_roots(root)
-        refactor_config = u.Infra.load_refactor_config(root)
-        scan_dirs = refactor_config.project_scan_dirs
-        # The scan-ignore SSOT owns source visibility everywhere: preflight
-        # findings and ast-grep targets may name paths under an ignored
-        # resource (a tool hook scanned outside governed roots), and feeding
-        # those into the semantic planners crashes the phase on files that
-        # are declared non-source.
-        paths = {
-            path.resolve()
-            for project_root in project_roots
-            for directory in scan_dirs
-            for path in u.Infra.iter_directory_python_files(project_root / directory)
-            if not u.Infra.source_scan_ignored_path(root, path)
-        }
-        paths.update(
-            path
-            for finding in preflight.entries
-            if (path := (root / finding.file).resolve()).suffix == c.Infra.EXT_PYTHON
-            and not u.Infra.source_scan_ignored_path(root, path)
-        )
-        for target in u.Infra.ast_grep_scan_targets(
-            root, refactor_config=refactor_config
-        ):
-            candidate = root / target
-            if u.Infra.source_scan_ignored_path(root, candidate):
-                continue
-            paths.update(
-                path.absolute()
-                for path in (
-                    candidate.rglob(f"*{c.Infra.EXT_PYTHON}")
-                    if candidate.is_dir()
-                    else (candidate,)
-                )
-            )
+        root = root.resolve()
+        # Findings cannot introduce foreign or generated paths into semantic input.
+        paths = {root / target for target in u.Infra.ast_grep_scan_targets(root)}
         sources: MutableMapping[Path, str] = {}
         for path in sorted(paths):
             state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()

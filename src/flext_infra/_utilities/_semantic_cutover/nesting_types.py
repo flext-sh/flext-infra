@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from collections.abc import Callable
 from pathlib import Path
 
@@ -43,13 +44,42 @@ class FlextInfraUtilitiesSemanticNestingTypes(
             ),
         )
         edits: list[m.Infra.SourceRewrite] = []
+        generic_scopes = tuple(
+            node
+            for node in ast.walk(ast.parse(source))
+            if isinstance(
+                node,
+                ast.TypeAlias | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
+            )
+            and node.type_params
+        )
         for begin, end, literal, scope in cls.quoted_type_regions(
             source, project, module
         ):
             line = module.lines.get_line_number(begin)
             if protected is not None and protected[0] <= line <= protected[1]:
                 continue
-            changed = cls.rewrite_type_source(literal, project, scope, replacement)
+            parameters = frozenset(
+                parameter.name
+                for node in generic_scopes
+                if node.end_lineno is not None
+                and node.lineno <= line <= node.end_lineno
+                for parameter in node.type_params
+                if isinstance(parameter, ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple)
+            )
+
+            def scoped_replacement(
+                current: p.Infra.RopeScope,
+                expression: str,
+                shadowed: frozenset[str] = parameters,
+            ) -> str | None:
+                if expression.partition(".")[0] in shadowed:
+                    return None
+                return replacement(current, expression)
+
+            changed = cls.rewrite_type_source(
+                literal, project, scope, scoped_replacement
+            )
             if changed != literal:
                 edits.append(
                     m.Infra.SourceRewrite(start=begin, end=end, text=repr(changed))

@@ -219,15 +219,14 @@ class TestsFlextInfraUtilitiesCodegenMixin:
             One rendered scaffold artifact, failing when it is not planned.
 
         """
+        plan = TestsFlextInfraUtilitiesCodegenMixin.scaffold_plan(
+            root,
+            members=members,
+            what=what,
+        )
+        tm.that(plan.issues, eq=(), msg=str(plan.issues))
         return tm.not_none(
-            TestsFlextInfraUtilitiesCodegenMixin.planned_text(
-                TestsFlextInfraUtilitiesCodegenMixin.scaffold_plan(
-                    root,
-                    members=members,
-                    what=what,
-                ),
-                destination,
-            ),
+            TestsFlextInfraUtilitiesCodegenMixin.planned_text(plan, destination),
         )
 
     @staticmethod

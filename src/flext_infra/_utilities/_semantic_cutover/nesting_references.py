@@ -10,7 +10,13 @@ from collections.abc import Callable, MutableMapping
 from typing import override
 
 import libcst as cst
-from libcst.metadata import MetadataWrapper, ParentNodeProvider, QualifiedNameProvider
+from libcst.metadata import (
+    Assignment,
+    MetadataWrapper,
+    ParentNodeProvider,
+    QualifiedNameProvider,
+    ScopeProvider,
+)
 
 from flext_infra import m, t
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
@@ -27,7 +33,11 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
     class _NestingTransformer(cst.CSTTransformer):
         """Rewrite one module's imports and references to the nested owners."""
 
-        METADATA_DEPENDENCIES = (ParentNodeProvider, QualifiedNameProvider)
+        METADATA_DEPENDENCIES = (
+            ParentNodeProvider,
+            QualifiedNameProvider,
+            ScopeProvider,
+        )
 
         def __init__(
             self,
@@ -68,6 +78,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 (name, f"{owner}.{name}") for name, owner in definitions.items()
             )
             self.emitted_owner_imports: set[str] = set()
+            self.future_annotations = False
             self.local_expressions: MutableMapping[str, str] = {
                 name: f"{owner}.{name}" for name, owner in definitions.items()
             }
@@ -120,6 +131,17 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         @override
         def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
 
+            if (
+                isinstance(node.module, cst.Name)
+                and node.module.value == "__future__"
+                and not isinstance(node.names, cst.ImportStar)
+                and any(
+                    isinstance(alias.name, cst.Name)
+                    and alias.name.value == "annotations"
+                    for alias in node.names
+                )
+            ):
+                self.future_annotations = True
             bindings = self.bindings_by_module.get(self._import_module(node), {})
             if not bindings or isinstance(node.names, cst.ImportStar):
                 return
@@ -154,7 +176,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             sees those siblings. Walking outward, a function body therefore
             means qualify, an annotation inside a moved class means qualify,
             and any other reference that lands in the owner body keeps the
-            bare name.
+            bare name. Lazy alias values see their immediate class namespace;
+            aliases inside a moved child qualify references to the outer owner.
 
             Returns:
                 The resulting ``bool``.
@@ -168,14 +191,16 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 None,
             )
             while current is not None:
-                if isinstance(current, cst.Annotation):
+                if isinstance(current, cst.Annotation | cst.TypeAlias):
                     in_annotation = True
                 elif isinstance(current, cst.FunctionDef | cst.Lambda):
                     # Decorators and defaults run in the enclosing scope; only
                     # the body is a function scope. Annotations are tracked
                     # separately because a nested class does not bind its name
                     # for the undefined-name gate.
-                    if child is current.body:
+                    if child is current.body or (
+                        in_annotation and self.future_annotations
+                    ):
                         return False
                 elif isinstance(
                     current,
@@ -217,6 +242,22 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 ValueError: If ambiguous class-nesting.
 
             """
+            root = original_node
+            while isinstance(root, cst.Attribute):
+                root = root.value
+            if isinstance(root, cst.Name):
+                scope = self.get_metadata(ScopeProvider, root, None)
+                # AnnotationScope qualified names are transparent; the actual
+                # assignment distinguishes a type parameter from a module alias.
+                if scope is not None and any(
+                    isinstance(binding, Assignment)
+                    and isinstance(
+                        binding.node,
+                        cst.TypeVar | cst.TypeVarTuple | cst.ParamSpec,
+                    )
+                    for binding in scope[root.value]
+                ):
+                    return None
             replacements = {
                 replacement
                 for qualified_name in self.get_metadata(
@@ -255,7 +296,15 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             ):
                 return updated_node
             if (
-                isinstance(parent, cst.ClassDef | cst.FunctionDef)
+                isinstance(
+                    parent,
+                    cst.ClassDef
+                    | cst.FunctionDef
+                    | cst.TypeAlias
+                    | cst.TypeVar
+                    | cst.TypeVarTuple
+                    | cst.ParamSpec,
+                )
                 and parent.name is original_node
             ) or (
                 isinstance(parent, cst.AssignTarget | cst.AnnAssign)
@@ -504,6 +553,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         if not isinstance(node, cst.SimpleStatementLine) or len(node.body) != 1:
             return None
         statement = node.body[0]
+        if isinstance(statement, cst.TypeAlias):
+            return statement.name.value
         targets = cls._assignment_targets(statement)
         if (
             len(targets) != 1

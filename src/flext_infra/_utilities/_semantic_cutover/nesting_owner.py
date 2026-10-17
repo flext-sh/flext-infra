@@ -24,14 +24,10 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     """Derive one module owner and the loose members it absorbs.
 
-    A family module holds exactly one class, its facade-family owner. The
-    owner's name is never listed: it is the declared owner when the module
-    declares one, otherwise the project class stem (the source of
-    ``require-project-class-stem``) followed by the family suffix and, for a
-    module of a private family package, the module stem. Everything else at
-    module level that ``ban-loose-module-object`` reports — a function other
-    than ``main``, a value binding that is not a name alias or a typing
-    declaration, any further class — is a member of that owner.
+    Family owners follow their declared facade contract. Ordinary modules elect
+    their existing unique owner before deriving a new name from the convention.
+    Functions (including entry points), values and helper classes become members;
+    definition-time dependencies remain subject to the same safety checks.
     """
 
     @staticmethod
@@ -94,12 +90,14 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
 
     @classmethod
     def _loose_value_name(cls, node: ast.stmt) -> str | None:
-        """Return the bound name when ``node`` is a loose module value binding.
+        """Return the bound name of a loose value or explicit PEP 695 alias.
 
         Returns:
             The bound identifier, or ``None`` for an allowed or foreign shape.
 
         """
+        if isinstance(node, ast.TypeAlias):
+            return node.name.id
         if isinstance(node, ast.Assign) and len(node.targets) == 1:
             target, value, annotation = node.targets[0], node.value, None
         elif isinstance(node, ast.AnnAssign) and node.value is not None:
@@ -130,10 +128,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         names: list[str] = []
         for node in tree.body:
             if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-                if node.name != "main" and not (
-                    node.name.startswith("__") and node.name.endswith("__")
-                ):
-                    names.append(node.name)
+                names.append(node.name)
+            elif isinstance(node, ast.TypeAlias):
+                names.append(node.name.id)
             elif values and (name := cls._loose_value_name(node)) is not None:
                 names.append(name)
         return tuple(dict.fromkeys(names))
@@ -321,7 +318,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         classes: t.MappingKV[str, ast.ClassDef],
         exports: frozenset[str],
     ) -> p.Result[str]:
-        """Return the declared owner, or the owner the family derivation names.
+        """Return the semantic owner, or derive one from the module convention.
 
         Returns:
             The owner class name, or a failure when the derivation is ambiguous.
@@ -333,6 +330,36 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         families = namespace.facade_families()
         directory_family = namespace.facade_family_of_directory(file_path.parent.name)
         file_family = namespace.facade_family_of_file(file_path.name)
+        if directory_family is None and file_family is None:
+            owner = policy.expected_family
+            if owner is not None and owner in classes:
+                return derived.ok(owner)
+            owner = policy.project_prefix + u.derive_class_stem(
+                file_path.stem.strip("_")
+                if policy.project_prefix
+                else convention.module_name,
+            )
+            if owner in classes:
+                return derived.ok(owner)
+            if len(classes) == 1:
+                return derived.ok(next(iter(classes)))
+            candidates = sorted(name for name in classes if name in exports)
+            if not candidates:
+                candidates = sorted(
+                    name for name in classes if not name.startswith("_")
+                )
+            if len(candidates) == 1:
+                return derived.ok(candidates[0])
+            if candidates:
+                return derived.fail(
+                    "class-nesting requires exactly one declared module owner for "
+                    f"{convention.module_name}; discovered: {', '.join(candidates)}",
+                )
+            if not owner.isidentifier():
+                return derived.fail(
+                    f"class-nesting cannot derive a valid owner for {convention.module_name}",
+                )
+            return derived.ok(owner)
         if directory_family is not None:
             suffix_root = families[directory_family].suffix
             suffix = suffix_root + u.derive_class_stem(file_path.stem.strip("_"))
