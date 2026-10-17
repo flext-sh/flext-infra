@@ -326,13 +326,34 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         encoded_sources = cls._merge_sources(journal.sources, sources)
         if encoded_sources.failure:
             return r[m.Infra.CodegenTransactionJournal].from_failure(encoded_sources)
-        candidate = journal.model_copy(
-            update={
-                "state": "prepared",
-                "sources": encoded_sources.value,
-                "entries": tuple(entries),
-            }
+        return cls.validated_extension(
+            journal,
+            journal.model_copy(
+                update={
+                    "state": "prepared",
+                    "sources": encoded_sources.value,
+                    "entries": tuple(entries),
+                }
+            ),
         )
+
+    @classmethod
+    def validated_extension(
+        cls,
+        journal: m.Infra.CodegenTransactionJournal,
+        candidate: m.Infra.CodegenTransactionJournal,
+    ) -> p.Result[m.Infra.CodegenTransactionJournal]:
+        """Validate one journal extension and keep its original live producer.
+
+        JSON shape validation rebuilds every nested model, so the validated
+        journal is rebound to the exact producer reference ``journal`` carries:
+        a rebuilt reference has no admission birth and fails every later
+        ``reference_birth_current`` check.
+
+        Returns:
+            The validated extension, or its validation or reference mismatch.
+
+        """
         validated = r[m.Infra.CodegenTransactionJournal].create_from_callable(
             lambda: m.Infra.CodegenTransactionJournal.model_validate_json(
                 candidate.model_dump_json()
@@ -341,18 +362,18 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         reference = journal.generator_reference
 
         def retain_reference(
-            prepared: m.Infra.CodegenTransactionJournal,
+            extended: m.Infra.CodegenTransactionJournal,
         ) -> p.Result[m.Infra.CodegenTransactionJournal]:
             """Keep only the original live reference after JSON shape validation.
 
             Returns:
-                The prepared journal or its original-reference mismatch.
+                The extended journal or its original-reference mismatch.
 
             """
             if reference is None:
-                return r[m.Infra.CodegenTransactionJournal].ok(prepared)
-            if prepared.generator_reference is None or (
-                prepared.generator_reference.model_dump() != reference.model_dump()
+                return r[m.Infra.CodegenTransactionJournal].ok(extended)
+            if extended.generator_reference is None or (
+                extended.generator_reference.model_dump() != reference.model_dump()
             ):
                 return r[m.Infra.CodegenTransactionJournal].fail(
                     "prepared journal differs from its original producer reference",
@@ -360,7 +381,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             return codegen.FlextInfraCodegenPreconditions.reference_birth_current(
                 reference
             ).map(
-                lambda _: prepared.model_copy(
+                lambda _: extended.model_copy(
                     update={"generator_reference": reference},
                 ),
             )

@@ -73,8 +73,13 @@ codegen = []
 constraint-dependencies = ["mypy<2.4.0"]
 environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
 link-mode = "copy"
+override-dependencies = [
+  "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@upload-20261007",
+  "flext-core @ git+https://github.com/flext-sh/flext-core.git@upload-20261007",
+  "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@upload-20261007",
+  "flext-infra",
+]
 package = false
-override-dependencies = ["flext-infra"]
 
 [tool.uv.sources.flext-infra]
 path = "../../.."
