@@ -375,13 +375,19 @@ class TestsFlextInfraCodegenCatalogExtensions:
         )
         tm.that(makefile, has="curl --proto '=https' --tlsv1.2 -fsSL -o")
         tm.that(makefile, has="| sha256sum -c -")
-        tm.that(makefile, has='if [ "$$mise_receipt" != "$$mise_pin" ]; then')
+        # Native bootstrap tests exercise receipt qualification; this projection
+        # contract checks its diagnostic without freezing shell expansion syntax.
+        tm.that(
+            makefile,
+            has="ERROR: recovered Mise %s differs from the mise.lock pin %s",
+        )
         mise_toml = u.Tests.scaffold_text(
             tmp_path / "fixture-project",
             c.Infra.MISE_TOML_FILENAME,
         )
-        # The pin the bootstrap recovers is the manifest's own declaration.
-        tm.that(mise_toml, has=f'"{config.Infra.codegen.toolchain.mise_selector}" = "')
+        toolchain = config.Infra.codegen.toolchain
+        tools = u.Tests.toml_mapping(u.Tests.toml_payload(mise_toml)["tools"])
+        tm.that(tools[toolchain.mise_selector], eq=toolchain.mise_version)
 
     @staticmethod
     def test_setup_provisions_only_and_gen_owns_conformance(
@@ -395,16 +401,24 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(setup_env.split("\n\n", 1)[0], lacks="codegen conform")
         toolchain = config.Infra.codegen.toolchain
         mise = tm.not_none(u.Tests.planned_text(plan, c.Infra.MISE_TOML_FILENAME))
-        tm.that(mise, has=f'python = "{toolchain.python_version}"')
-        tm.that(mise, has=f'direnv = "{toolchain.tool_versions["direnv"]}"')
+        payload = u.Tests.toml_payload(mise)
+        tools = u.Tests.toml_mapping(payload["tools"])
+        tm.that(tools["python"], eq=toolchain.python_version)
+        direnv = next(entry for entry in toolchain.tools if entry.name == "direnv")
+        direnv_tool = u.Tests.toml_mapping(tools[toolchain.tool_keys[direnv.name]])
+        tm.that(
+            direnv_tool["version"],
+            eq=toolchain.tool_versions[direnv.name],
+        )
+        tm.that(direnv_tool["bin"], eq=direnv.bin)
         # operator-ruling-2026-10-10-make-system-go-per-project: make is
         # system-owned and go is a per-project addition, never a fleet tool.
-        tm.that(mise, lacks="\nmake = ")
-        tm.that(mise, lacks="\ngo = ")
-        tm.that(mise, lacks="credential_command")
+        tm.that(tools, lacks=["make", "go"])
+        mise_settings = u.Tests.toml_mapping(payload["settings"])
+        tm.that(mise_settings, lacks="credential_command")
         tm.that(
-            mise,
-            has=f'minimum_release_age = "{toolchain.dependency_cooldown_days}d"',
+            mise_settings["minimum_release_age"],
+            eq=f"{toolchain.dependency_cooldown_days}d",
         )
         # S1 (operator law 2026-09-14): gen has one always-apply recipe; the
         # CHECK_ONLY-selected check/apply pair no longer exists.
