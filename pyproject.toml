@@ -499,6 +499,7 @@ runtime-evaluated-base-classes = [
   "flext_infra._models.FlextInfraModelsMixins.WriteMixin",
   "flext_infra._models._codegen.fix.BulkFixItem",
   "flext_infra._models._codegen.pipeline.CodegenCommand",
+  "flext_infra._models._config.FlextInfraConfigModelsContract.ConfigContract",
   "flext_infra._models._config.contexts.MakeCommandContext",
   "flext_infra._models._config.contexts.MakeRenderContext",
   "flext_infra._models._config.contract.ConfigContract",
