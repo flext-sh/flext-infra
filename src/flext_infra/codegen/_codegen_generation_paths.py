@@ -201,8 +201,9 @@ class FlextInfraCodegenGenerationPathsMixin:
     ) -> None:
         """Reject a relative TYPE_CHECKING import with no local package context.
 
-        Relative input requires a package context before the native resolver
-        can produce the absolute import emitted in Python source.
+        Relative inputs require a package context for native resolution.
+        Static declarations emit absolute owners; only runtime lazy lookup
+        strings retain the compact relative form.
 
         Raises:
             ValueError: If relative TYPE_CHECKING import.

@@ -101,8 +101,9 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             )
         )
 
-    @staticmethod
+    @classmethod
     def _merge_root_alias_groups(
+        cls,
         collapsed: t.MappingKV[str, t.MutableSequenceOf[t.StrPair]],
     ) -> MutableMapping[str, t.StrPairSequence]:
         """Group child-module reexports under their absolute package owner.
@@ -114,9 +115,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         merged: MutableMapping[str, t.StrPairSequence] = {}
         declarations: t.StrPairSequence
         for mod, items in collapsed.items():
-            if FlextInfraCodegenGenerationTypeCheckingMixin._is_root_module_alias_group(
-                mod, items
-            ):
+            if cls._is_root_module_alias_group(mod, items):
                 owner = mod.rpartition(".")[0]
                 declarations = tuple((name, name) for name, _ in items)
             else:

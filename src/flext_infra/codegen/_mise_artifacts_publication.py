@@ -844,31 +844,28 @@ class FlextInfraMisePublication:
         current = FlextInfraMiseArtifactsVerification.states_current(tuple(expected))
         if current.failure:
             return current
-        candidates = tuple(
-            inventory.root.path / name
-            for inventory in directories
-            for name, _predicate in inventory.queries
-        ) + tuple(
-            witness.target / name
-            for witness in topology
-            for name, _predicate in witness.queries
+        candidates = (
+            {
+                inventory.root.path / name
+                for inventory in directories
+                for name, _predicate in inventory.queries
+            }
+            | {
+                witness.target / name
+                for witness in topology
+                for name, _predicate in witness.queries
+            }
+            | {
+                inventory.root.path
+                for inventory in directories
+                if inventory.membership_queried
+            }
+            | {witness.target for witness in topology if witness.membership_queried}
         )
         relevant = tuple(
             (before, after)
             for before, after in published.values()
-            if any(
-                after.path == path or after.path.is_relative_to(path)
-                for path in candidates
-            )
-            or any(
-                inventory.membership_queried
-                and after.path.is_relative_to(inventory.root.path)
-                for inventory in directories
-            )
-            or any(
-                witness.membership_queried and after.path.is_relative_to(witness.target)
-                for witness in topology
-            )
+            if after.path in candidates or not candidates.isdisjoint(after.path.parents)
         )
         effects = FlextInfraMiseArtifactsVerification.states_current(
             tuple(after for _before, after in relevant)

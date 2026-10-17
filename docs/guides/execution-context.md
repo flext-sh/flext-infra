@@ -413,6 +413,11 @@ uses the derived `<stem>.project.yaml` file beside that default. The local layer
 remains `<stem>.local.yaml`. This keeps project editor declarations separate from
 the library defaults while preserving the same ordered configuration layers.
 
+When the checkout owns the distributed configuration file, its project declaration
+uses the derived `<stem>.project.yaml` file beside that default. The local layer
+remains `<stem>.local.yaml`. This keeps project editor declarations separate from
+the library defaults while preserving the same ordered configuration layers.
+
 The `flext_core.lazy` loader imports its implementation from root-level source
 modules, never through a generated child initializer. This keeps generation's
 own loader available before child projections are repaired. Recovery uses the
