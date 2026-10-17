@@ -105,6 +105,10 @@ class FlextInfraUtilitiesSemanticNestingTypes(
                 expression: str,
                 shadowed: frozenset[str] = parameters,
             ) -> str | None:
+                import os as _os
+
+                if _os.environ.get("FLEXT_DEBUG_NESTING"):
+                    print(f"DBGEXPR expression={expression!r}")
                 if expression.partition(".")[0] in shadowed:
                     return None
                 return replacement(current, expression)

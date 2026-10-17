@@ -1088,7 +1088,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 error=(
                     (planned.error or "lazy planning failed") if planned.failure else ""
                 ),
-                exception=planned.exception if planned.failure else None,
+                exception=(
+                    planned.exception if planned.failure else planner.planning_exception
+                ),
+                issues=tuple(planner.planning_issues),
                 elapsed=time.monotonic() - started,
             )
         planned = planner._governed_repository_plans(

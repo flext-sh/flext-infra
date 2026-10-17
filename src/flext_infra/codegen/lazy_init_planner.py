@@ -123,7 +123,7 @@ class FlextInfraCodegenLazyInitPlanner(
                     f"lazy-init: resolved {idx}/{len(pkg_dirs)} "
                     f"package={plan.context.current_pkg} "
                     f"importable={plan.context.importable} "
-                    f"action={plan.action.value} exports={len(plan.lazy_map)}"
+                    f"action={plan.action} exports={len(plan.lazy_map)}"
                 )
             if plan.lazy_map:
                 dir_exports[str(pkg_dir.resolve())] = dict(plan.lazy_map)

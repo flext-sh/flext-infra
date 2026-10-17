@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import operator
+import os
 from collections.abc import Callable, Iterator
 
 from flext_infra import c, m, p, t
@@ -349,6 +350,17 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             source,
             "reference regions require Rope Worder",
         )
+        imports = tuple(
+            (row.start_offset, row.end_offset)
+            for row in FlextInfraUtilitiesRopeStructure.logical_statements(source)
+            if row.category
+            in {c.Infra.StatementCategory.IMPORT, c.Infra.StatementCategory.FROM_IMPORT}
+        )
+
+        if os.environ.get("FLEXT_DEBUG_NESTING"):
+            print(
+                f"DBGREFS rows={[(r.category, r.text[:30]) for r in FlextInfraUtilitiesRopeStructure.logical_statements(source)]}"
+            )
         regions: set[t.Pair[int, int]] = set()
         cursor = 0
         while cursor < len(source):
@@ -356,6 +368,11 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
                 (end for start, end, _metadata in opaque if start <= cursor < end),
                 None,
             )
+            if ignored is None:
+                ignored = next(
+                    (end for start, end in imports if start <= cursor < end),
+                    None,
+                )
             if ignored is not None:
                 cursor = ignored
                 continue
@@ -472,7 +489,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             character = source[cursor]
             if character in closings:
                 opening, closing = finder.code_finder.get_word_parens_range(
-                    cursor,
+                    (cursor - 1 if cursor else cursor),
                     character,
                     closings[character],
                 )

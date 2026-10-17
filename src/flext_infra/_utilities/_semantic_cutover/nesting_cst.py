@@ -315,11 +315,16 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         facts: t.SequenceOf[m.Infra.LogicalStatement],
         owner_name: str,
         definitions: t.StrMapping,
+        *,
+        is_pytest: bool = False,
     ) -> t.SequenceOf[m.Infra.SourceRewrite]:
         """Rewrite the actual top-level export statements after nesting the owner.
 
         Returns:
             Exact native source edits preserving existing export statement order.
+            A pytest module never keeps a loose module-level ``__all__``: the
+            canonical registration owner publishes the exports from its own
+            body, so the loose statements are only removed here.
 
         """
         exports = [
@@ -329,6 +334,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             and FlextInfraUtilitiesRopeStructure.target_name(item) == "__all__"
         ]
         if not exports:
+            if is_pytest:
+                return ()
             return (
                 m.Infra.SourceRewrite(
                     start=len(source),
@@ -338,6 +345,15 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             )
         edits: list[m.Infra.SourceRewrite] = []
         for item in exports:
+            if is_pytest:
+                edits.append(
+                    m.Infra.SourceRewrite(
+                        start=item.start_offset,
+                        end=min(item.end_offset + 1, len(source)),
+                        text="",
+                    )
+                )
+                continue
             parts = FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments(
                 item.text, 0, len(item.text), "="
             )
@@ -419,7 +435,11 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             (owner_name, nested, indentation),
             edits,
         )
-        edits.extend(cls._nesting_export_edits(source, facts, owner_name, definitions))
+        edits.extend(
+            cls._nesting_export_edits(
+                source, facts, owner_name, definitions, is_pytest=is_pytest
+            )
+        )
         nested_source = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
             resource, source, edits
         ).new_contents
@@ -454,21 +474,12 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             for node in tree.body
             if isinstance(node, ast.ClassDef) and node.name == owner_name
         )
-        publishers = {
-            alias.asname or alias.name
-            for node in tree.body
-            if isinstance(node, ast.ImportFrom)
-            and node.module == "flext_tests.conftest_plugin"
-            for alias in node.names
-            if alias.name == "FlextTestsConftestPlugin"
-        }
         if any(
             isinstance(node, ast.Expr)
             and isinstance(node.value, ast.Call)
             and isinstance(node.value.func, ast.Attribute)
             and node.value.func.attr == "publish"
             and isinstance(node.value.func.value, ast.Name)
-            and node.value.func.value.id in publishers
             for node in owner.body
         ):
             return source
@@ -481,6 +492,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         }
         bindings: dict[str, str] = {}
         metadata: list[str] = []
+        registrations = False
         patterns = cls._pytest_collection_patterns(Path(project.root.real_path))
         original = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
         for node in owner.body:
@@ -526,6 +538,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
                         msg = f"pytest publication requires staticmethod outside fixture/hook decorators: {resource.path}:{node.name}"
                         raise ValueError(msg)
                     bindings[node.name] = f"{node.name}.__func__"
+                    registrations = True
             elif isinstance(node, ast.Assign | ast.AnnAssign):
                 targets = (
                     node.targets if isinstance(node, ast.Assign) else [node.target]
@@ -546,7 +559,40 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
                             continue
                         bindings[target.id] = target.id
                         metadata.append(target.id)
+                        registrations = True
         bindings["__all__"] = repr((owner_name,))
+        if not registrations:
+            if any(
+                isinstance(node, ast.Assign | ast.AnnAssign)
+                and any(
+                    isinstance(target, ast.Name) and target.id == "__all__"
+                    for target in (
+                        node.targets if isinstance(node, ast.Assign) else [node.target]
+                    )
+                )
+                for node in owner.body
+            ):
+                return source
+            module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+                project, source, resource=resource
+            )
+            scope = next(
+                scope
+                for scope in module.get_scope().get_scopes()
+                if scope.pyobject.get_name() == owner_name
+            )
+            insertion = min(module.lines.get_line_end(scope.get_end()) + 1, len(source))
+            return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+                resource,
+                source,
+                (
+                    m.Infra.SourceRewrite(
+                        start=insertion,
+                        end=insertion,
+                        text=f"\n    __all__: list[str] = {bindings['__all__']}\n",
+                    ),
+                ),
+            ).new_contents
         module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
             project, source, resource=resource
         )
