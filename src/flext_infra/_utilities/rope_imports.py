@@ -56,6 +56,9 @@ class FlextInfraUtilitiesRopeImports:
         Returns:
             A tuple of Rope import statements found in the source.
 
+        Raises:
+            TypeError: If Rope's string module does not parse to a native module.
+
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         tree = runtime.build_string_module(project, source).get_ast()

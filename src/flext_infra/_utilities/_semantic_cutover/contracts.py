@@ -110,7 +110,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         if not items:
             return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(())
         working = dict(items)
-        applied: dict[Path, list[str]] = {}
+        applied: t.MutableMappingKV[Path, t.MutableSequenceOf[str]] = {}
         epoch = cls._contract_epoch(workspace, working, rules)
         # A snapshot is a pure function of (working, epoch); restructuring only
         # plans a ChangeSet, so consecutive rules share one graph until a rule

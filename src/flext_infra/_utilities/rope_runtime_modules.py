@@ -355,7 +355,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         offset: int,
     ) -> t.Pair[p.Infra.RopeScope, t.DictKV[str, p.Infra.RopePyName]] | None:
         source = holder.source_code
-        selected: dict[str, p.Infra.RopePyName] = {}
+        selected: t.DictKV[str, p.Infra.RopePyName] = {}
         prior = scope.get_defined_names().get(primary.id)
         if prior is not None:
             declarations = cls._scope_binding_nodes(tree, scope, primary.id)

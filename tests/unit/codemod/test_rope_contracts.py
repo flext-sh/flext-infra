@@ -41,9 +41,7 @@ class TestsFlextInfraRopeContracts:
         tmp_path: Path,
     ) -> None:
         """A repository's own rules extend the universal catalogue, in order."""
-        packaged = tuple(
-            rule.id for rule in u.Infra.declared_contract_rules(tmp_path)
-        )
+        packaged = tuple(rule.id for rule in u.Infra.declared_contract_rules(tmp_path))
         overlay = tmp_path / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
         overlay.parent.mkdir(parents=True)
         overlay.write_text(
@@ -55,9 +53,7 @@ class TestsFlextInfraRopeContracts:
             "      helper: name=consumer.helpers.Helpers.render\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        composed = tuple(
-            rule.id for rule in u.Infra.declared_contract_rules(tmp_path)
-        )
+        composed = tuple(rule.id for rule in u.Infra.declared_contract_rules(tmp_path))
         tm.that(composed, eq=(*packaged, "consumer-own-helper"))
 
     @staticmethod
