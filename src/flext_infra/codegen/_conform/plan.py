@@ -1162,12 +1162,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         """
         complete: list[m.Infra.CodegenFilePlan] = []
         for file in files:
-            declared = file.model_copy(
-                update={"source_states": (*file.source_states, *inputs.sources)},
-            )
-            sources = FlextInfraCodegenPreconditions.phase_sources(
-                c.Infra.CodegenStagedFilePhase.CONFORM_BOOTSTRAP,
-                (declared,),
+            sources = FlextInfraCodegenPreconditions.unique_states(
+                (*file.source_states, *inputs.sources),
             )
             if sources.failure:
                 self._record_file_failure(
@@ -1177,12 +1173,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 )
                 continue
             complete.append(
-                declared.model_copy(
-                    update={
-                        "source_states": tuple(
-                            state for _phase, state in sources.value
-                        ),
-                    },
+                file.model_copy(
+                    update={"source_states": sources.value},
                 ),
             )
         return tuple(complete)
