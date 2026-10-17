@@ -51,7 +51,14 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
     ) -> Generator[
         t.Triple[
             p.Infra.RopeProject,
-            Callable[[], tuple[m.Cli.AtomicFileState, ...]],
+            Callable[
+                [],
+                t.Triple[
+                    tuple[m.Cli.AtomicFileState, ...],
+                    tuple[m.Cli.AtomicDirectoryInventory, ...],
+                    tuple[m.Cli.AtomicDirectoryChainPlan, ...],
+                ],
+            ],
             t.MappingKV[Path, str],
         ]
     ]:
@@ -80,23 +87,25 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 ),
             ),
         ).states
-        direct_states = tuple(
-            state
-            for state in source_states
-            if state.path.is_relative_to(root)
-            and state.path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
-        )
-        u.Cli.atomic_verify_binary_file_states(direct_states).unwrap()
         proposed = {
             plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
             for plan in declared_files
             if plan.desired_content is not None
         }
+        # Consumed states include the dependency modules native reads loaded
+        # from the checkout-local environment; they stay verified inputs, but
+        # only repository-owned sources are planning targets (70dc29f1b9
+        # republished site-packages/flext_cli/utilities.py otherwise).
         sources = {
             **{
                 state.path: state.content.decode(c.DEFAULT_ENCODING)
-                for state in direct_states
+                for state in source_states
+                if state.path.is_relative_to(root)
+                and state.path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
                 if state.content is not None
+                and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                    root, state.path
+                )
             },
             **proposed,
         }
@@ -120,20 +129,20 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             project.frozen_layout(),
         ):
 
-            def consumed_states() -> tuple[m.Cli.AtomicFileState, ...]:
-                """Retain source-parser inputs and native reads without rebaselining.
+            def consumed() -> t.Triple[
+                tuple[m.Cli.AtomicFileState, ...],
+                tuple[m.Cli.AtomicDirectoryInventory, ...],
+                tuple[m.Cli.AtomicDirectoryChainPlan, ...],
+            ]:
+                """Return original file and native election evidence."""
+                return (
+                    project.consumed_source_states(),
+                    project.consumed_source_directories(),
+                    project.consumed_source_topology(),
+                )
 
-                Returns:
-                    Original physical states consumed by this planning group.
-
-                """
-                return m.Infra.CodemodBindingSnapshot(
-                    states=(*direct_states, *project.consumed_source_states())
-                ).states
-
-            yield project, consumed_states, sources
+            yield project, consumed, sources
             project.verify_source_states()
-            u.Cli.atomic_verify_binary_file_states(direct_states).unwrap()
 
     @classmethod
     def render_type_facade(
@@ -141,6 +150,8 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         pkg_dir: Path,
         facade_path: Path,
         sources: t.MappingKV[Path, str],
+        *,
+        project: p.Infra.RopeProject,
     ) -> str:
         """Project a complete exported type owner without duplicating its body.
 
@@ -217,6 +228,15 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             msg = f"unsupported type facade declarations: {facade_path}"
             raise ValueError(msg)
         directory = FlextInfraUtilitiesCodegenNamespace.facade_families()["t"].directory
+        parents = {
+            path.parent
+            for path in sources
+            if path.is_relative_to(pkg_dir / directory)
+            and path.suffix == c.Infra.EXT_PYTHON
+        }
+        parents.add(pkg_dir / directory)
+        for parent in sorted(parents):
+            cls._facade_source_membership(project, parent, sources)
         owners = tuple(
             path
             for path, content in sources.items()
@@ -260,10 +280,54 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             f"t = {facade.name}\n\n"
             f"{ast.get_source_segment(source, exports[0])}\n"
         )
-        return cls._generated_facade(pkg_dir, rendered, family="t", contents=sources)
+        return cls._generated_facade(
+            pkg_dir, rendered, family="t", contents=sources, project=project
+        )
 
     @staticmethod
-    def facade_module_path(pkg_dir: Path, family: str) -> Path | None:
+    def _facade_source_membership(
+        project: p.Infra.RopeProject,
+        directory: Path,
+        sources: t.MappingKV[Path, str],
+    ) -> tuple[Path, ...]:
+        """Authenticate the native immediate Python election before parsing.
+
+        Returns:
+            Native source paths matching the captured declaration inventory.
+
+        """
+        folder = project.get_folder(
+            directory.relative_to(Path(project.root.real_path)).as_posix()
+        )
+        actual = tuple(
+            sorted(
+                Path(child.real_path)
+                for child in folder.get_children()
+                if not child.is_folder()
+                and Path(child.real_path).suffix == c.Infra.EXT_PYTHON
+            )
+        )
+        expected = tuple(
+            sorted(
+                path
+                for path in sources
+                if path.parent == directory and path.suffix == c.Infra.EXT_PYTHON
+            )
+        )
+        if actual != expected:
+            message = f"native facade source membership differs: {directory}"
+            raise ValueError(message)
+        return actual
+
+    @classmethod
+    def facade_module_path(
+        cls,
+        pkg_dir: Path,
+        family: str,
+        *,
+        project: p.Infra.RopeProject | None = None,
+        sources: t.MappingKV[Path, str] | None = None,
+    ) -> Path | None:
         """Return the package module that declares facade letter ``family``.
 
         The owner of a facade letter is the module that publishes it in its own
@@ -277,16 +341,30 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ValueError: If multiple package modules declare the same facade letter.
 
         """
-        owners = tuple(
-            module
-            for module in sorted(pkg_dir.glob(c.Infra.EXT_PYTHON_GLOB))
-            if module.name != c.Infra.INIT_PY
-            and family
-            in FlextInfraUtilitiesRopeModulePatch.facade_letter_names_source(
-                module.read_text(encoding=c.DEFAULT_ENCODING),
-                filename=str(module),
+        if project is None or sources is None:
+            if project is not None or sources is not None:
+                message = (
+                    "Facade election requires its project and source epoch together"
+                )
+                raise ValueError(message)
+            with cls.facade_source_project(pkg_dir.parent) as (captured, _, contents):
+                return cls.facade_module_path(
+                    pkg_dir, family, project=captured, sources=contents
+                )
+        owners: list[Path] = []
+        for module in cls._facade_source_membership(project, pkg_dir, sources):
+            if module.name == c.Infra.INIT_PY:
+                continue
+            resource = project.get_resource(
+                module.relative_to(Path(project.root.real_path)).as_posix()
             )
-        )
+            source = FlextInfraUtilitiesRopeRuntime.require_file_resource(
+                resource, module
+            ).read()
+            if family in FlextInfraUtilitiesRopeModulePatch.facade_letter_names_source(
+                source, filename=str(module)
+            ):
+                owners.append(module)
         if len(owners) > 1:
             message = (
                 f"facade letter {family!r} is declared by more than one module "
@@ -334,7 +412,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 return cls.render_utility_facade(
                     pkg_dir, family=family, project=captured, sources=contents
                 )
-        facade_path = cls.facade_module_path(pkg_dir, family)
+        facade_path = cls.facade_module_path(
+            pkg_dir, family, project=project, sources=sources
+        )
         owners_dir = (
             pkg_dir
             / FlextInfraUtilitiesCodegenNamespace.facade_families()[family].directory
@@ -353,6 +433,27 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 return None
             message = f"utility owners in {pkg_dir} have no public facade"
             raise ValueError(message)
+        # Parser inputs share the native read receipts. Unresolved module
+        # inventory remains available to the MRO resolver without being read.
+        sources = {
+            path: (
+                FlextInfraUtilitiesRopeRuntime.require_file_resource(
+                    project.get_resource(
+                        path.relative_to(Path(project.root.real_path)).as_posix()
+                    ),
+                    path,
+                ).read()
+                if path.is_relative_to(pkg_dir)
+                and path.suffix == c.Infra.EXT_PYTHON
+                and (
+                    family == "p"
+                    or path.parent in {pkg_dir, owners_dir}
+                    or path.name == c.Infra.INIT_PY
+                )
+                else content
+            )
+            for path, content in sources.items()
+        }
         source = sources[facade_path]
         match family:
             case "c" | "m" | "u":
@@ -370,7 +471,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     source,
                     binding=(project, sources),
                 )
-        return cls._generated_facade(pkg_dir, rendered, family=family, contents=sources)
+        return cls._generated_facade(
+            pkg_dir, rendered, family=family, contents=sources, project=project
+        )
 
     @classmethod
     def _generated_facade(
@@ -380,6 +483,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         *,
         family: Literal["c", "t", "u", "p", "m"],
         contents: t.MappingKV[Path, str],
+        project: p.Infra.RopeProject,
     ) -> str:
         """Publish composition through the declared family export boundaries.
 
@@ -397,6 +501,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             pkg_dir
             / FlextInfraUtilitiesCodegenNamespace.facade_families()[family].directory,
             contents=contents,
+            project=project,
         )
         published = {
             f"{declaration.target}.{declaration.qualified_base}": (
@@ -444,7 +549,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ValueError: If a consumer requires competing provider declarations.
 
         """
-        _project, contents = binding
+        project, contents = binding
         facade, namespace = cls._facade_classes(
             ast.parse(source, filename=str(facade_path)),
             facade_path,
@@ -454,7 +559,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             pkg_dir
             / FlextInfraUtilitiesCodegenNamespace.facade_families()[family].directory
         )
-        owners, ancestors = cls._facade_protocol_owners(owners_dir, contents)
+        owners, ancestors = cls._facade_protocol_owners(
+            owners_dir, contents, project=project
+        )
         reachable = cls._reachable_bases(
             tuple(cls._base_name(base) for base in namespace.bases),
             ancestors,
@@ -547,7 +654,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             / FlextInfraUtilitiesCodegenNamespace.facade_families()[family].directory
         )
         sources, declarations = cls._declared_sources(
-            pkg_dir, owners_dir, contents=contents
+            pkg_dir, owners_dir, contents=contents, project=project
         )
         source = cls._rebind_declared_imports(pkg_dir, owners_dir, source, declarations)
         sources[f"{pkg_dir.name}.{facade_path.stem}"] = (facade_path, source)
@@ -927,12 +1034,14 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 )
         return source
 
-    @staticmethod
+    @classmethod
     def _declared_sources(
+        cls,
         pkg_dir: Path,
         owners_dir: Path,
         *,
         contents: t.MappingKV[Path, str],
+        project: p.Infra.RopeProject,
     ) -> t.Pair[
         t.MutableMappingKV[str, t.Pair[Path, str]],
         list[m.Infra.SourceClassReference],
@@ -946,6 +1055,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ValueError: If distinct publishers compete for a parent facade name.
 
         """
+        cls._facade_source_membership(project, owners_dir, contents)
         sources: t.MutableMappingKV[str, t.Pair[Path, str]] = {}
         declarations: list[m.Infra.SourceClassReference] = []
         captured = {
@@ -1035,8 +1145,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     )
         return frozenset(published)
 
-    @staticmethod
+    @classmethod
     def _required_protocol_members(
+        cls,
         pkg_dir: Path,
         facade_path: Path,
         *,
@@ -1051,6 +1162,12 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
 
         """
         project, contents = binding
+        for parent in sorted({
+            path.parent
+            for path in contents
+            if path.is_relative_to(pkg_dir) and path.suffix == c.Infra.EXT_PYTHON
+        }):
+            cls._facade_source_membership(project, parent, contents)
         family = c.Infra.FacadeFamily.P
         methods: set[str] = set()
         for path, source in sorted(contents.items()):
@@ -1144,14 +1261,25 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 methods.add(reference.attr)
         return frozenset(method for method in methods if not method.startswith("_"))
 
-    @staticmethod
+    @classmethod
     def _facade_protocol_owners(
+        cls,
         owners_dir: Path,
         contents: t.MappingKV[Path, str],
+        *,
+        project: p.Infra.RopeProject,
     ) -> t.Pair[
         t.VariadicTuple[t.Triple[str, str, frozenset[str]]],
         t.MappingKV[str, frozenset[str]],
     ]:
+        parents = {
+            path.parent
+            for path in contents
+            if path.is_relative_to(owners_dir) and path.suffix == c.Infra.EXT_PYTHON
+        }
+        parents.add(owners_dir)
+        for parent in sorted(parents):
+            cls._facade_source_membership(project, parent, contents)
         owners: list[t.Triple[str, str, frozenset[str]]] = []
         ancestors: MutableMapping[str, frozenset[str]] = {}
         for path, source in sorted(contents.items()):

@@ -81,6 +81,15 @@ class FlextInfraModelsCodegenPipelineModels:
             t.VariadicTuple[m.Cli.AtomicFileState],
             m.Field(description="Ordered complete authenticated planner inputs"),
         ]
+        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
+            default=(), description="Native source election query receipts"
+        )
+        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
+            m.Field(
+                default=(),
+                description="Physical ancestry of queried source directories",
+            )
+        )
         generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
             default=(), description="Authenticated producer resource membership"
         )
@@ -239,6 +248,15 @@ class FlextInfraModelsCodegenPipelineModels:
         source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
             default=(),
             description="Captured source directory ancestry and presence",
+        )
+        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
+            default=(), description="Native source election query receipts"
+        )
+        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
+            m.Field(
+                default=(),
+                description="Historical ancestry inputs of native source queries",
+            )
         )
         scope_roots: t.VariadicTuple[Path] = m.Field(
             default=(),

@@ -2233,3 +2233,9 @@ Infra:
         destination: "src/{package_name}/_typings/base.py"
         profiles: [ workspace, standalone ]
         delegate: render
+      # New projects receive a real runtime test; subsequent generation preserves
+      # this authored file because only managed_file_specs are reprojected.
+      - source: base/tests/test_api.py.j2
+        destination: tests/test_api.py
+        profiles: [ workspace, standalone ]
+        delegate: render

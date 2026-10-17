@@ -45,7 +45,7 @@ class FlextInfraCodegenMiseToolchainRepair(s[bool]):
             for name in (c.Infra.MISE_TOML_FILENAME, c.Infra.MISE_LOCK_FILENAME)
         )
         lock = u.Cli.toml_read_json(root / c.Infra.MISE_LOCK_FILENAME).unwrap()
-        version, _ = FlextInfraCodegenMiseToolchainProof.lock_identity(
+        FlextInfraCodegenMiseToolchainProof.lock_identity(
             entry,
             lock,
             FlextInfraCodegenMiseToolchainProof.current_platform().unwrap(),
@@ -53,7 +53,6 @@ class FlextInfraCodegenMiseToolchainRepair(s[bool]):
         return m.Infra.MiseToolchainRepairPlan(
             repository_root=root,
             tool=entry.selector or entry.name,
-            version=version,
             mise_executable=u.Infra.managed_mise_self(root).unwrap(),
             uv_executable=u.Infra.managed_mise_binary(c.Infra.UV, root).unwrap(),
             source_states=(*inputs.sources, *states),
@@ -88,7 +87,7 @@ class FlextInfraCodegenMiseToolchainRepair(s[bool]):
                 "--locked",
                 "--yes",
                 "--force",
-                f"{plan.tool}@{plan.version}",
+                plan.tool,
             ),
             cwd=plan.repository_root,
             timeout=c.Infra.TIMEOUT_LONG,

@@ -26,10 +26,6 @@ class FlextInfraModelsMiseToolchainRepair:
             t.NonEmptyStr,
             m.Field(description="Declared native backend selector."),
         ]
-        version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Exact version authenticated from the current lock."),
-        ]
         mise_executable: Annotated[
             Path,
             m.Field(description="Qualified self-managed Mise executable."),

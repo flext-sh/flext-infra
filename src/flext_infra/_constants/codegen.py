@@ -20,6 +20,7 @@ from flext_infra._constants import (
     FlextInfraConstantsCodegenRenderNames,
     FlextInfraConstantsWorkspace,
 )
+from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -31,6 +32,56 @@ class FlextInfraConstantsCodegen(
     FlextInfraConstantsCodegenRenderNames,
 ):
     """Namespace for all codegen-related constants."""
+
+    FILE_ONLY_SURFACES: ClassVar[
+        frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
+    ] = frozenset((
+        FlextInfraConfigVocabulary.CodegenConformSurface.LAZY_INIT,
+        FlextInfraConfigVocabulary.CodegenConformSurface.FACADES,
+    ))
+    "Surfaces planned for one exact module destination, never repository fans."
+
+    PARTIAL_PLAN_SURFACES: ClassVar[
+        frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
+    ] = frozenset((
+        FlextInfraConfigVocabulary.CodegenConformSurface.MAKEFILE,
+        FlextInfraConfigVocabulary.CodegenConformSurface.DOCS_CONFIG,
+        FlextInfraConfigVocabulary.CodegenConformSurface.ENVRC,
+        FlextInfraConfigVocabulary.CodegenConformSurface.PYPROJECT,
+        FlextInfraConfigVocabulary.CodegenConformSurface.MISE_CONFIG,
+        FlextInfraConfigVocabulary.CodegenConformSurface.RUNTIME_BINDINGS,
+        FlextInfraConfigVocabulary.CodegenConformSurface.WORKFLOWS,
+    ))
+    "Surfaces admitted for partial single-surface apply planning."
+
+    ALLOW_UNPROVISIONED_SURFACES: ClassVar[
+        frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
+    ] = frozenset((
+        FlextInfraConfigVocabulary.CodegenConformSurface.MAKEFILE,
+        FlextInfraConfigVocabulary.CodegenConformSurface.DOCS_CONFIG,
+        FlextInfraConfigVocabulary.CodegenConformSurface.ENVRC,
+        FlextInfraConfigVocabulary.CodegenConformSurface.PYPROJECT,
+        FlextInfraConfigVocabulary.CodegenConformSurface.MISE_CONFIG,
+    ))
+    "Surfaces whose workspace planning tolerates unprovisioned declared members."
+
+    DECLARED_TARGET_SURFACES: ClassVar[
+        frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
+    ] = frozenset((
+        FlextInfraConfigVocabulary.CodegenConformSurface.MAKEFILE,
+        FlextInfraConfigVocabulary.CodegenConformSurface.ENVRC,
+        FlextInfraConfigVocabulary.CodegenConformSurface.PYPROJECT,
+        FlextInfraConfigVocabulary.CodegenConformSurface.MISE_CONFIG,
+    ))
+    "Surfaces whose conformance target is the declared workspace repository itself."
+
+    SELF_SCOPE_SURFACES: ClassVar[
+        frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
+    ] = frozenset((
+        FlextInfraConfigVocabulary.CodegenConformSurface.MISE_CONFIG,
+        FlextInfraConfigVocabulary.CodegenConformSurface.ENVRC,
+    ))
+    "Surfaces restricted to the self repository scope."
 
     MISE_ARTIFACTS_STATE_DIRECTORY: ClassVar[Path] = Path(".state") / "mise-artifacts"
 

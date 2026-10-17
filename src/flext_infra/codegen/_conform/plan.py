@@ -92,10 +92,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The complete repository plan or its first planning failure.
 
         """
-        if request.what in {
-            c.Infra.CodegenConformSurface.LAZY_INIT,
-            c.Infra.CodegenConformSurface.FACADES,
-        }:
+        if request.what in c.Infra.FILE_ONLY_SURFACES:
             return self._plan_single_surface(request, inputs=inputs).map(
                 itemgetter(0),
             )
@@ -308,29 +305,46 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         snapshots = self._facade_sources(root, destination)
         if snapshots.failure:
             return result_type.from_failure(snapshots)
-        family, states, sources = snapshots.value
-        rendered = self._render_facade(destination, family, sources)
-        if rendered.failure:
-            return result_type.from_failure(rendered)
+        family, states, _sources = snapshots.value
         mode = states[0].mode
         if mode is None:
             return result_type.fail(
                 f"facade input has no authenticated mode: {destination}",
             )
+        with u.Infra.facade_source_project(root, source_states=tuple(states)) as (
+            project,
+            consumed_states,
+            sources,
+        ):
+            rendered = self._render_facade(
+                destination, family, sources, project=project
+            )
+            if rendered.failure:
+                return result_type.from_failure(rendered)
+            inputs, directories, topology = consumed_states()
         file = self.file_plan(
             root,
             destination.relative_to(root).as_posix(),
             rendered.value,
             mode=mode,
-            source_states=tuple(states),
+            source_states=inputs,
         )
         if file.failure:
             return result_type.from_failure(file)
         return result_type.ok(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.CONFORM,
-                files=(file.value,),
-                inputs=tuple(states),
+                files=(
+                    file.value.model_copy(
+                        update={
+                            "source_directories": directories,
+                            "source_query_topology": topology,
+                        }
+                    ),
+                ),
+                inputs=inputs,
+                source_directories=directories,
+                source_query_topology=topology,
             ),
         )
 
@@ -443,6 +457,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         destination: Path,
         family: Literal["c", "t", "u", "p", "m"],
         sources: t.MappingKV[Path, str],
+        *,
+        project: p.Infra.RopeProject,
     ) -> p.Result[str]:
         """Reuse the canonical renderer without selecting a different destination.
 
@@ -451,12 +467,30 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         """
         if family == "t":
+            sources = {
+                path: u.Infra.require_file_resource(
+                    project.get_resource(
+                        path.relative_to(Path(project.root.real_path)).as_posix()
+                    ),
+                    path,
+                ).read()
+                for path in sources
+            }
             return r[str].ok(
-                u.Infra.render_type_facade(destination.parent, destination, sources),
+                u.Infra.render_type_facade(
+                    destination.parent, destination, sources, project=project
+                ),
             )
-        if u.Infra.facade_module_path(destination.parent, family) != destination:
+        if (
+            u.Infra.facade_module_path(
+                destination.parent, family, project=project, sources=sources
+            )
+            != destination
+        ):
             return r[str].fail("selected facade differs from its declaring module")
-        rendered = u.Infra.render_utility_facade(destination.parent, family=family)
+        rendered = u.Infra.render_utility_facade(
+            destination.parent, family=family, project=project, sources=sources
+        )
         if rendered is None:
             return r[str].fail(f"selected facade has no private {family} owners")
         return r[str].ok(rendered)
@@ -557,26 +591,17 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 root,
                 inputs=inputs,
                 allow_unprovisioned_members=(
-                    request.what
-                    in {
-                        c.Infra.CodegenConformSurface.MAKEFILE,
-                        c.Infra.CodegenConformSurface.DOCS_CONFIG,
-                        c.Infra.CodegenConformSurface.ENVRC,
-                        c.Infra.CodegenConformSurface.PYPROJECT,
-                        c.Infra.CodegenConformSurface.MISE_CONFIG,
-                    }
+                    request.what in c.Infra.ALLOW_UNPROVISIONED_SURFACES
                 ),
             )
             if workspace_result.failure:
                 return result_type.from_failure(workspace_result)
             workspace = workspace_result.value
         current_repository = workspace.repository
-        if self.initial_workspace is None and request.what not in {
-            c.Infra.CodegenConformSurface.MAKEFILE,
-            c.Infra.CodegenConformSurface.ENVRC,
-            c.Infra.CodegenConformSurface.PYPROJECT,
-            c.Infra.CodegenConformSurface.MISE_CONFIG,
-        }:
+        if (
+            self.initial_workspace is None
+            and request.what not in c.Infra.DECLARED_TARGET_SURFACES
+        ):
             current_target_result = FlextInfraWorkspaceDetector.conform_target(
                 root,
                 workspace,

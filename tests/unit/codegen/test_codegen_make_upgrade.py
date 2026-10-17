@@ -449,11 +449,40 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(
             self._recipe_targets_containing(
                 makefile,
-                '$(UV) lock --check --project "$$project"',
+                '$(UV) lock --check --project "$$resolution"',
             ),
             eq={"_upg_reconcile_locks"},
         )
         tm.that(makefile, lacks="--constraint-policy")
+
+    def test_upg_resolves_the_views_before_installing_the_producer(
+        self,
+        generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
+    ) -> None:
+        """A consumer behind the template upgrades from its own committed state.
+
+        Premise (7e2607f6eb regression): the lifecycle installed the producer
+        pinned by the existing view lock and ran the template's corrective
+        `codegen generate` before resolving. A consumer whose lock pinned an
+        older producer (no `generate` route), or that had no view lock yet,
+        could never upgrade. The views resolve first, the resolved producer
+        runs the corrective projection, and the reconcile re-locks it.
+        """
+        _profile, project_root = generated_make_template
+        makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
+            encoding="utf-8",
+        )
+        steps = self._upg_steps(makefile)
+
+        def first(needle: str) -> int:
+            return next(index for index, step in enumerate(steps) if needle in step)
+
+        resolved = first("--upgrade --refresh")
+        installed = first("_upg_install_runtime")
+        corrected = first("--what pyproject --scope all")
+        reconciled = first("_upg_reconcile_locks")
+
+        tm.that(resolved < installed < corrected < reconciled, eq=True)
 
     def test_upg_relocks_the_manifest_gen_projected_before_installing(
         self,
@@ -483,7 +512,6 @@ class TestsFlextInfraCodegenMakeUpgrade:
         projected = after(bumped, "$(call RUN_PUBLIC_PRODUCE,gen)")
         relocked = after(projected, "_upg_reconcile_locks")
         installed = after(relocked, "_builtin_setup_environment")
-        regenerated = after(installed, "$(SELF_MAKE) gen")
 
         tm.that(steps[upgraded], has="--upgrade")
         tm.that(steps[relocked], lacks="--upgrade")
@@ -491,7 +519,12 @@ class TestsFlextInfraCodegenMakeUpgrade:
             upgraded < bumped < projected < relocked < installed,
             eq=True,
         )
-        tm.that(installed < regenerated, eq=True)
+        # The converge completes against the projections gen just published;
+        # it never repeats generation (4be4096836).
+        tm.that(
+            [step for step in steps[installed:] if "$(SELF_MAKE) gen" in step],
+            empty=True,
+        )
         # Setup leaves a runtime-bindings receipt behind; a standalone gen
         # activation would read it and never cover the gen request. Activation
         # belongs only to the full gen verb, after it republishes its receipt.
@@ -547,12 +580,11 @@ class TestsFlextInfraCodegenMakeUpgrade:
         order = [
             next(i for i, step in enumerate(steps) if needle in step)
             for needle in (
-                "--what mise-config --scope self --mode apply",
+                "--what mise-config --scope self",
                 "lock --bump",
                 "install --locked --yes",
                 "deps modernize",
                 "$(call RUN_PUBLIC_PRODUCE,gen)",
-                "$(SELF_MAKE) gen",
                 "deps verify-locks",
             )
         ]
@@ -561,20 +593,19 @@ class TestsFlextInfraCodegenMakeUpgrade:
         # generated recipe touches the Git index (a directory-scoped add would
         # also stage deletions of retired lock sidecars).
         tm.that(self._recipe_targets_containing(makefile, "git add"), eq=set[str]())
-        tm.that(makefile, has="_activated-gen: _builtin_require_environment")
         tm.that(
             makefile,
             has="_builtin_require_environment: _builtin_require_interpreter\n",
         )
 
-        # GNU Make itself expands the canned halves: the producer half never
-        # re-enters the environment, the activation half does, and the public
-        # verb is exactly the producer half followed by the activation half.
+        # GNU Make itself expands the canned operation: environment activation
+        # is an input prerequisite, never a second operation after a generator
+        # published a new .envrc, so the public gen verb is exactly its
+        # producer half and never re-enters the environment.
         probe = (
             "probe_upg_halves: ; @: "
             "$(info PRODUCE=$(strip $(call RUN_PUBLIC_PRODUCE,gen))) "
-            "$(info ACTIVATE=$(strip $(call RUN_PUBLIC_ACTIVATE,gen))) "
-            "$(info PUBLIC=$(strip $(call RUN_PUBLIC,gen,1)))"
+            "$(info PUBLIC=$(strip $(call RUN_PUBLIC,gen)))"
         )
         expanded = tm.ok(
             u.Tests.run_isolated_make(
@@ -592,15 +623,11 @@ class TestsFlextInfraCodegenMakeUpgrade:
             for name, _, value in (
                 line.partition("=") for line in expanded.stdout.splitlines()
             )
-            if name in {"PRODUCE", "ACTIVATE", "PUBLIC"}
+            if name in {"PRODUCE", "PUBLIC"}
         }
         tm.that(halves["PRODUCE"], has="_builtin-gen")
-        tm.that(halves["PRODUCE"], lacks="_activated-gen")
-        tm.that(halves["ACTIVATE"], has=["direnv exec", "_activated-gen"])
-        tm.that(
-            halves["PUBLIC"].split(),
-            eq=[*halves["PRODUCE"].split(), *halves["ACTIVATE"].split()],
-        )
+        tm.that(halves["PUBLIC"], lacks="direnv exec")
+        tm.that(halves["PUBLIC"].split(), eq=halves["PRODUCE"].split())
 
     @pytest.mark.slow
     @pytest.mark.parametrize("profile", list(c.Infra.MakeProfile))

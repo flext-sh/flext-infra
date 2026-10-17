@@ -291,6 +291,9 @@ class FlextInfraConstantsRefactor:
     )
     "Public family compose module leaves the family-shape amendment sanctions."
 
+    FAMILY_COMPOSE_MODULE_SEGMENTS: ClassVar[int] = 2
+    "A sanctioned compose module name is exactly ``<package>.<leaf>``."
+
     CODEMOD_PACKAGE_CONTEXT_PREDICATES: ClassVar[frozenset[CodemodContextPredicate]] = (
         frozenset({
             CodemodContextPredicate.STDLIB_MODULE,

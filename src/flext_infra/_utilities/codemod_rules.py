@@ -262,7 +262,13 @@ class FlextInfraUtilitiesCodemodRules(
         Returns:
             The staged native scan ruleset and its projected configuration.
 
+        Raises:
+            ValueError: If native rule IDs collide across the elected providers.
+
         """
+        if len({rule.id for rule in plan.rules}) != len(plan.rules):
+            msg = "native codemod rule IDs must be unique across providers"
+            raise ValueError(msg)
         rule_directory = destination / c.Infra.CODEMOD_RULE_DIRS_KEY
         utility_directory = destination / c.Infra.CODEMOD_UTIL_DIRS_KEY
         u.Cli.ensure_dir(rule_directory).unwrap()
@@ -446,10 +452,11 @@ class FlextInfraUtilitiesCodemodRules(
         if runtime_result.failure:
             return r[m.Infra.CodemodRulePlan].from_failure(runtime_result)
         universal, runtime = universal_result.value, runtime_result.value
-        universal_order = cls._provider_order(universal, indexed)
-        runtime_order = cls._provider_order(runtime, indexed)
         providers: list[t.Pair[str, Path]] = []
-        for name in (*universal_order, *runtime_order):
+        for name in (
+            *cls._provider_order(universal, indexed),
+            *cls._provider_order(runtime, indexed),
+        ):
             provider_config = universal.get(name) or runtime.get(name)
             if provider_config is None:
                 return r[m.Infra.CodemodRulePlan].fail(
@@ -1024,12 +1031,16 @@ class FlextInfraUtilitiesCodemodRules(
                     "predicate": condition[verdict.value],
                     "holds": verdict.value == c.Infra.CODEMOD_CONTEXT_HOLDS_KEY,
                     "of": condition.get(c.Infra.CODEMOD_CONTEXT_OF_KEY),
-                    "arg": str(
-                        condition.get(c.Infra.CODEMOD_CONTEXT_ARG_KEY, ""),
-                    ).split(),
-                    "as_": str(
-                        condition.get(c.Infra.CODEMOD_CONTEXT_AS_KEY, ""),
-                    ).split(),
+                    "arg": list[t.JsonValue](
+                        str(
+                            condition.get(c.Infra.CODEMOD_CONTEXT_ARG_KEY, ""),
+                        ).split(),
+                    ),
+                    "as_": list[t.JsonValue](
+                        str(
+                            condition.get(c.Infra.CODEMOD_CONTEXT_AS_KEY, ""),
+                        ).split(),
+                    ),
                 })
                 if payload.failure:
                     return conditions.from_failure(payload)
