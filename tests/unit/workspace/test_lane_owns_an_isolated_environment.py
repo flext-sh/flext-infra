@@ -102,10 +102,15 @@ class TestsFlextInfraLaneOwnsAnIsolatedEnvironment:
         lane_venv = u.Infra.runtime_environment_dir(lane)
         assert lane_venv.is_dir()
         assert not lane_venv.is_symlink()
-        assert lane_venv == lane.resolve() / c.Infra.ENVIRONMENT_DIRECTORY
-        assert primary_sentinel.read_text(encoding=c.DEFAULT_ENCODING) == "untouched\n"
-        assert (lane / "setup-runs.log").read_text(encoding=c.DEFAULT_ENCODING) == (
-            f"{lane.resolve()}|unset|unset|unset\n"
+        tm.that(lane_venv == lane.resolve() / c.Infra.ENVIRONMENT_DIRECTORY, truth=True)
+        tm.that(
+            primary_sentinel.read_text(encoding=c.DEFAULT_ENCODING) == "untouched\n",
+            truth=True,
+        )
+        tm.that(
+            (lane / "setup-runs.log").read_text(encoding=c.DEFAULT_ENCODING)
+            == (f"{lane.resolve()}|unset|unset|unset\n"),
+            truth=True,
         )
 
     def test_foreign_environment_symlink_is_rejected_without_following_target(
@@ -125,7 +130,9 @@ class TestsFlextInfraLaneOwnsAnIsolatedEnvironment:
 
         tm.fail(FlextInfraWorktreeService.setup_lane(lane), has="symlink")
 
-        assert sentinel.read_text(encoding=c.DEFAULT_ENCODING) == "protected\n"
+        tm.that(
+            sentinel.read_text(encoding=c.DEFAULT_ENCODING) == "protected\n", truth=True
+        )
         assert lane_venv.is_symlink()
 
     def test_setup_initializes_lane_gitlink_without_mutating_primary(
@@ -158,7 +165,9 @@ class TestsFlextInfraLaneOwnsAnIsolatedEnvironment:
 
         tm.ok(FlextInfraWorktreeService.setup_lane(lane))
 
-        assert sentinel.read_text(encoding=c.DEFAULT_ENCODING) == "local\n"
+        tm.that(
+            sentinel.read_text(encoding=c.DEFAULT_ENCODING) == "local\n", truth=True
+        )
 
     def test_add_only_creates_git_lane_without_setup(self, tmp_path: Path) -> None:
         """Test add only creates git lane without setup."""

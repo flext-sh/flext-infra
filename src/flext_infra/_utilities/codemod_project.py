@@ -775,28 +775,12 @@ class FlextInfraUtilitiesCodemodProject(
         imports: t.MutableMappingKV[
             Path, t.VariadicTuple[p.Infra.RopeImportStatement]
         ] = {}
-        python_modules: t.MutableMappingKV[
-            t.Pair[str, str], t.Infra.RopeResource | None
-        ] = {}
         for selection in selections:
             with (
                 FlextInfraUtilitiesRopeCore.open_project(selection.root) as project,
                 project.frozen_layout(),
             ):
-                lookup = m.Infra.CodemodImportResources(
-                    modules={},
-                    source_folders=tuple(
-                        folder
-                        for folder in project.get_source_folders()
-                        if isinstance(folder, p.Infra.RopeRoot)
-                    ),
-                    python_folders=tuple(
-                        folder
-                        for folder in project.get_python_path_folders()
-                        if isinstance(folder, p.Infra.RopeRoot)
-                    ),
-                    python_modules=python_modules,
-                )
+                lookup: t.Infra.RopeImportLookup = {}
                 for name in dict.fromkeys(selection.modules):
                     cls._snapshot_imported_resource(
                         project,
@@ -812,9 +796,7 @@ class FlextInfraUtilitiesCodemodProject(
                     for path in selection.source_paths
                 ]
                 pending.extend(
-                    resource
-                    for resource in lookup.modules.values()
-                    if resource is not None
+                    resource for resource in lookup.values() if resource is not None
                 )
                 scheduled = {resource.real_path for resource in pending}
                 visited: set[Path] = set()
@@ -832,7 +814,6 @@ class FlextInfraUtilitiesCodemodProject(
                         if imported.real_path not in scheduled:
                             scheduled.add(imported.real_path)
                             pending.append(imported)
-                python_modules = lookup.python_modules
         return m.Infra.CodemodBindingSnapshot(states=tuple(states.values()))
 
     @staticmethod
@@ -909,7 +890,7 @@ class FlextInfraUtilitiesCodemodProject(
         project: p.Infra.RopeProject,
         resource: t.Infra.RopeResource,
         imports: t.SequenceOf[p.Infra.RopeImportStatement],
-        lookup: m.Infra.CodemodImportResources,
+        lookup: t.Infra.RopeImportLookup,
     ) -> list[t.Infra.RopeResource]:
         """Resolve native import targets through the shared resource cache.
 
@@ -954,22 +935,26 @@ class FlextInfraUtilitiesCodemodProject(
         name: str,
         *,
         level: int,
-        lookup: m.Infra.CodemodImportResources,
+        lookup: t.Infra.RopeImportLookup,
     ) -> t.Infra.RopeResource | None:
-        """Resolve one imported module name relative to the importing package.
+        """Resolve imports in their native absolute or relative search scope.
 
         Returns:
             The imported module resource, or ``None`` when Rope cannot find it.
 
         """
-        key = (name, resource.parent.real_path, level)
-        if key not in lookup.modules:
-            lookup.modules[key] = (
+        key = (
+            name,
+            resource.parent.real_path if level else project.root.real_path,
+            level,
+        )
+        if key not in lookup:
+            lookup[key] = (
                 project.find_relative_module(name, resource.parent, level)
                 if level
-                else project.find_module(name, resource.parent)
+                else project.find_module(name)
             )
-        return lookup.modules[key]
+        return lookup[key]
 
     @staticmethod
     def _captured_text(

@@ -324,7 +324,7 @@ class TestsFlextInfraBatchReplacements:
             FlextInfraModGateEngine.scan(
                 mod_workspace,
                 fix=True,
-                rule_ids=(rule_id,) if selected else None,
+                selection=(rule_id,) if selected else None,
             )
         )
         entries = tuple(entry for entry in applied.entries if entry.rule_id == rule_id)

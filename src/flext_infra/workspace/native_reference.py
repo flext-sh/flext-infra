@@ -4886,3 +4886,6 @@ class FlextInfraWorkspaceNativeReference:
         if not admitted:
             return r[bool].fail("cold producer authority has no authored driver code")
         return r[bool].ok(value=True)
+
+
+__all__: list[str] = ["FlextInfraWorkspaceNativeReference"]

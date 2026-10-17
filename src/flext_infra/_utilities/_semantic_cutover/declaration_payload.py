@@ -139,6 +139,7 @@ class FlextInfraUtilitiesDeclarationPayload:
                 ("typing", "Protocol"),
                 ("typing_extensions", "Protocol"),
             )
+            if module.pycore.project.find_module(provider) is not None
             if (
                 binding := cls
                 .identity_name(module.pycore.project, f"{provider}.{name}")
@@ -441,6 +442,7 @@ class FlextInfraUtilitiesDeclarationPayload:
             if any(
                 cls.identity_name(project, f"{provider}.Protocol").get_object() in bases
                 for provider in ("typing", "typing_extensions")
+                if project.find_module(provider) is not None
             )
             else None
         )

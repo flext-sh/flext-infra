@@ -68,6 +68,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         Yields:
             The native Rope project, original-state reader and planned sources.
 
+        Raises:
+            ValueError: Planned sources compete or a failed required input has no
+                attached native exception.
+
         """
         root = root.resolve()
         if not source_states:
@@ -85,30 +89,25 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         if planned_sources:
             originals = {state.path: state for state in source_states}
             declarations = {plan.path: plan for plan in declared_files}
-            for supplied_path, source in planned_sources.items():
+            for supplied_path, content in (
+                (path, source.encode(c.DEFAULT_ENCODING))
+                for path, source in planned_sources.items()
+            ):
                 path = supplied_path.resolve()
-                content = source.encode(c.DEFAULT_ENCODING)
-                declared = declarations.get(path)
-                if declared is not None:
-                    if declared.desired_content != content:
+                if path in declarations:
+                    if declarations[path].desired_content != content:
                         msg = f"Rope planned source has competing declarations: {path}"
                         raise ValueError(msg)
                     continue
                 original = originals.get(path)
                 if original is None:
-                    captured = u.Cli.atomic_read_binary_file_state(path)
-                    if captured.failure:
-                        if captured.exception is not None:
-                            raise captured.exception
-                        raise ValueError(captured.error)
-                    original = captured.value
+                    original = FlextInfraRopeProject.AtomicReadFiles.require_value(
+                        u.Cli.atomic_read_binary_file_state(path)
+                    )
                     originals[path] = original
-                captured_chain = u.Cli.atomic_plan_directory_chain(path.parent)
-                if captured_chain.failure:
-                    if captured_chain.exception is not None:
-                        raise captured_chain.exception
-                    raise ValueError(captured_chain.error)
-                chain = captured_chain.value
+                chain = FlextInfraRopeProject.AtomicReadFiles.require_value(
+                    u.Cli.atomic_plan_directory_chain(path.parent)
+                )
                 declarations[path] = m.Infra.CodegenFilePlan(
                     project=root,
                     path=path,
@@ -163,20 +162,20 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 )
             },
         }
-        parse_root = next(path for path in (root, *root.parents) if path.is_dir())
         with (
-            FlextInfraUtilitiesRopeCore.open_project(parse_root) as live,
+            FlextInfraUtilitiesRopeCore.open_project(
+                next(path for path in (root, *root.parents) if path.is_dir())
+            ) as live,
             closing(
                 FlextInfraRopeProject.from_atomic_reads(
                     live,
                     original_states,
-                    ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
                     source_folders=sorted({
                         *(folder.path for folder in live.get_source_folders()),
                         *(
                             ""
-                            if folder == parse_root
-                            else folder.relative_to(parse_root).as_posix()
+                            if folder == Path(live.root.real_path)
+                            else folder.relative_to(live.root.real_path).as_posix()
                             for folder in (
                                 root,
                                 *(

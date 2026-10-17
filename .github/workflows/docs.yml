@@ -69,6 +69,7 @@ jobs:
           key: ${{ runner.os }}-3.13-tools-${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', '.mise.toml') }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             ${{ runner.os }}-3.13-tools-${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', '.mise.toml') }}-
+            ${{ runner.os }}-3.13-tools-
 
       - name: Install the mise release pinned by mise.lock
         shell: bash
@@ -267,6 +268,7 @@ jobs:
           key: ${{ runner.os }}-3.13-tools-${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', '.mise.toml') }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             ${{ runner.os }}-3.13-tools-${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', '.mise.toml') }}-
+            ${{ runner.os }}-3.13-tools-
 
       - name: Install the mise release pinned by mise.lock
         shell: bash

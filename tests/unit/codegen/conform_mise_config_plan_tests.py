@@ -90,8 +90,8 @@ class TestsFlextInfraCodegenConformMiseConfigPlans:
 
         selected = FlextInfraCodegenConformFilePlans.mise_config_plans(plan)
 
-        assert selected.failure
-        assert "carries no uv environment plan" in (selected.error or "")
+        tm.that(selected.failure, truth=True)
+        tm.that("carries no uv environment plan" in (selected.error or ""), truth=True)
 
     def test_one_environment_selects_its_configuration(
         self,
@@ -115,9 +115,11 @@ class TestsFlextInfraCodegenConformMiseConfigPlans:
 
         selected = FlextInfraCodegenConformFilePlans.mise_config_plans(plan)
 
-        assert not selected.failure
-        assert tuple(item.path for item in selected.value) == (
-            root / c.Infra.MISE_TOML_FILENAME,
+        tm.that(selected.failure, truth=False)
+        tm.that(
+            tuple(item.path for item in selected.value)
+            == (root / c.Infra.MISE_TOML_FILENAME,),
+            truth=True,
         )
 
     def test_environment_without_its_configuration_fails(
@@ -141,5 +143,8 @@ class TestsFlextInfraCodegenConformMiseConfigPlans:
 
         selected = FlextInfraCodegenConformFilePlans.mise_config_plans(plan)
 
-        assert selected.failure
-        assert "one Mise configuration per repository" in (selected.error or "")
+        tm.that(selected.failure, truth=True)
+        tm.that(
+            "one Mise configuration per repository" in (selected.error or ""),
+            truth=True,
+        )

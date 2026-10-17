@@ -162,7 +162,7 @@ class FlextInfraCodegenGenerationPathsMixin:
         mod: str,
         local_package_root: str | None,
     ) -> str:
-        """Resolve elected TYPE_CHECKING owners to absolute import statements.
+        """Resolve every emitted import to its absolute native package owner.
 
         Returns:
             The resulting ``str``.
@@ -200,9 +200,8 @@ class FlextInfraCodegenGenerationPathsMixin:
     ) -> None:
         """Reject a relative TYPE_CHECKING import with no local package context.
 
-        Relative inputs require a package context for native resolution.
-        Static declarations emit absolute owners; only runtime lazy lookup
-        strings retain the compact relative form.
+        Relative input requires a package context before the native resolver
+        can produce the absolute import emitted in Python source.
 
         Raises:
             ValueError: If relative TYPE_CHECKING import.

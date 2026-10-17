@@ -64,7 +64,7 @@ class TestsFlextInfraGitRefsSemantics:
             m.Infra.GitRepoRequest(repo_root=repository),
         )
 
-        assert result.failure
+        tm.that(result.failure, truth=True)
         assert result.error is not None
 
     @staticmethod
@@ -147,7 +147,7 @@ class TestsFlextInfraGitRefsSemantics:
             ),
         )
 
-        assert result.failure
+        tm.that(result.failure, truth=True)
         assert result.error is not None
 
     @staticmethod
@@ -180,9 +180,9 @@ class TestsFlextInfraGitRefsSemantics:
             u.Infra.git_list_worktrees(m.Infra.GitRepoRequest(repo_root=repository)),
         )
 
-        assert listed.root == repository.resolve()
-        assert str(repository) in listed.porcelain
-        assert str(lane) in listed.porcelain
+        tm.that(listed.root == repository.resolve(), truth=True)
+        tm.that(str(repository) in listed.porcelain, truth=True)
+        tm.that(str(lane) in listed.porcelain, truth=True)
         by_path = {entry.path: entry for entry in listed.entries}
         tm.that(by_path[repository.resolve()].branch, eq=c.Infra.GIT_MAIN)
         tm.that(by_path[lane.resolve()].branch, eq="list-lane")

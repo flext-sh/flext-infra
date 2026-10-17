@@ -24,31 +24,27 @@ class TestsFlextInfraModRuleFixtureSnapshots:
     """Verification rejects snapshot drift; the refresh records it for review."""
 
     def _elected_rule(self, tmp_path: Path, name: str) -> m.Infra.CodemodRule:
-        """Copy one declared rule fixture and return its elected plan entry.
+        """Use the provider's declared rule identity in the fixture's elected plan.
 
         Args:
-            tmp_path: Provisioned workspace root receiving the rule copy.
+            tmp_path: Provisioned workspace root consuming the provider.
             name: Rule fixture file name inside the source catalog.
 
         Returns:
             The plan entry electing the copied rule resource.
 
         """
-        rule = self._catalog(tmp_path) / "rules" / name
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                rule,
-                (
-                    self._source_catalog(Path(__file__).resolve().parents[3])
-                    / "rules"
-                    / rule.name
-                ).read_text(encoding=c.DEFAULT_ENCODING),
-            ),
+        owner = Path(__file__).resolve().parents[3]
+        source = self._source_catalog(owner) / "rules" / name
+        declared = next(
+            item
+            for item in tm.ok(u.Infra.codemod_rule_plan(owner)).rules
+            if item.resource == source
         )
         return next(
             item
             for item in tm.ok(u.Infra.codemod_rule_plan(tmp_path)).rules
-            if item.resource == rule
+            if item.id == declared.id
         )
 
     @pytest.mark.slow
@@ -114,7 +110,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             tm.ok(u.Cli.atomic_write_text_file(sample, source))
             report = tm.ok(
                 FlextInfraModGateEngine.scan(
-                    tmp_path, fix=False, rule_ids=(elected.id,)
+                    tmp_path, fix=False, selection=(elected.id,)
                 )
             )
             names: list[str] = []
@@ -139,33 +135,12 @@ class TestsFlextInfraModRuleFixtureSnapshots:
     ) -> None:
         """The native root guard admits inherited recovery, not foreign homonyms."""
         u.Tests.WorktreeFixture.write_python_project(tmp_path, "failure-transport")
-        demo = self._owner(tmp_path)
+        self._owner(tmp_path)
         owner = Path(__file__).resolve().parents[3]
         source_catalog = self._source_catalog(owner)
-        rule = self._catalog(tmp_path) / "rules" / "result-failure-rebind.yml"
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                rule,
-                (source_catalog / "rules" / rule.name).read_text(
-                    encoding=c.DEFAULT_ENCODING
-                ),
-            )
-        )
-        plan = tm.ok(u.Infra.codemod_rule_plan(tmp_path))
+        rule = source_catalog / "rules" / "result-failure-rebind.yml"
+        plan = tm.ok(u.Infra.codemod_rule_plan(owner))
         selected = tuple(item.id for item in plan.rules if item.resource == rule)
-        for fixture in (source_catalog / "tests").glob("*.yml"):
-            if tm.ok(u.Cli.yaml_safe_load(fixture))["id"] in selected:
-                tm.ok(
-                    u.Cli.atomic_write_text_file(
-                        self._catalog(tmp_path) / "tests" / fixture.name,
-                        fixture.read_text(encoding=c.DEFAULT_ENCODING),
-                    )
-                )
-        tm.ok(
-            FlextInfraModGateEngine.refresh_rule_snapshots(
-                tmp_path, (demo, rule), apply=True
-            )
-        )
         u.Tests.provision_checkout(tmp_path)
         sample = tmp_path / "src" / "consumer.py"
         source = (
@@ -191,6 +166,11 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             "        if self.result.failure:\n"
             "            return self._recover_failure("
             "layout, self.result.error or 'context')\n"
+            "    def rebound(self, layout, result, other):\n"
+            "        self = other\n"
+            "        if result.failure:\n"
+            "            return self._recover_failure("
+            "layout, result.error or 'context')\n"
             "class Foreign:\n"
             "    def _recover_failure(self, layout, text, **kwargs):\n"
             "        return text\n"
@@ -201,7 +181,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         )
         tm.ok(u.Cli.atomic_write_text_file(sample, source))
         report = tm.ok(
-            FlextInfraModGateEngine.scan(tmp_path, fix=False, rule_ids=selected)
+            FlextInfraModGateEngine.scan(tmp_path, fix=False, selection=selected)
         )
         tm.that(len(report.entries), eq=1)
         finding = report.entries[0]
@@ -299,7 +279,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
                 FlextInfraModGateEngine.scan(
                     tmp_path,
                     fix=True,
-                    rule_ids=(rule_id,),
+                    selection=(rule_id,),
                 ),
             )
             tm.that(report.actionable, eq=0)
@@ -367,12 +347,12 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             has="unknown codemod rule IDs",
         )
         before = tm.ok(
-            FlextInfraModGateEngine.scan(tmp_path, fix=False, rule_ids=selected)
+            FlextInfraModGateEngine.scan(tmp_path, fix=False, selection=selected)
         )
         tm.that(before.actionable, eq=1)
         tm.that(before.detection_only, eq=1)
         for _ in range(2):
-            tm.ok(FlextInfraModGateEngine.scan(tmp_path, fix=True, rule_ids=selected))
+            tm.ok(FlextInfraModGateEngine.scan(tmp_path, fix=True, selection=selected))
             published = sample.read_text(encoding=c.DEFAULT_ENCODING)
             tm.that(published, eq=source.replace("value = foo(1)", "value = bar(1)"))
             tm.that(published, has=assertion)
@@ -380,58 +360,39 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             outcome = tm.ok(u.Cli.run_raw((sys.executable, str(sample))))
             tm.that(outcome.exit_code, eq=0, msg=outcome.stderr)
             after = tm.ok(
-                FlextInfraModGateEngine.scan(tmp_path, fix=False, rule_ids=selected)
+                FlextInfraModGateEngine.scan(tmp_path, fix=False, selection=selected)
             )
             tm.that(after.actionable, eq=0)
             tm.that(after.detection_only, eq=before.detection_only)
             tm.that(after.entries[0].replacement, eq=None)
 
     @pytest.mark.slow
-    @pytest.mark.parametrize(("rule_suffix", "operator"), [("eq", "=="), ("ne", "!=")])
+    @pytest.mark.parametrize("operator", ["==", "!="])
     @pytest.mark.parametrize("verdict", [True, False])
-    def test_assert_message_fixes_preserve_comparison_evaluation(
+    def test_native_assertions_preserve_comparison_evaluation(
         self,
-        rule_suffix: str,
+        tmp_path: Path,
         operator: str,
         verdict: bool,
     ) -> None:
-        """Execute native fixes with non-complementary operators and lazy messages.
-
-        Args:
-            rule_suffix: The suffix of the rule being tested.
-            operator: The comparison operator used in the assertion.
-            verdict: The expected boolean outcome of the assertion.
-
-        Raises:
-            TypeError: If the snapshot or fix is not of the expected type.
-
-        """
-        owner = Path(__file__).resolve().parents[3]
+        """Native apply preserves non-complementary operators and lazy messages."""
+        u.Tests.WorktreeFixture.write_python_project(tmp_path, "assertion-fixture")
+        self._owner(tmp_path)
+        u.Tests.provision_checkout(tmp_path)
         original = (
             f"from flext_tests import tm\nassert left() {operator} right(), explain()\n"
         )
-        snapshots = tm.ok(
-            u.Cli.yaml_safe_load(
-                self._source_catalog(owner)
-                / "tests"
-                / c.Infra.CODEMOD_SNAPSHOT_DIRNAME
-                / (
-                    f"rewire-test-assert-{rule_suffix}-message"
-                    f"{c.Infra.CODEMOD_SNAPSHOT_SUFFIX}"
-                )
+        sample = tmp_path / c.Infra.DIR_TESTS / "test_consumer.py"
+        tm.ok(u.Cli.ensure_dir(sample.parent))
+        tm.ok(u.Cli.atomic_write_text_file(sample, original))
+        tm.ok(
+            FlextInfraModGateEngine.scan(
+                tmp_path,
+                fix=True,
+                source_files=(sample,),
             ),
-        )["snapshots"]
-        if not isinstance(snapshots, Mapping):
-            message = "Rule snapshots must be a mapping"
-            raise TypeError(message)
-        snapshot = snapshots[original]
-        if not isinstance(snapshot, Mapping):
-            message = "Rule snapshot must be a mapping"
-            raise TypeError(message)
-        fixed = snapshot["fixed"]
-        if not isinstance(fixed, str):
-            message = "Rule fix must be source text"
-            raise TypeError(message)
+        )
+        fixed = sample.read_text(encoding=c.DEFAULT_ENCODING)
         expected_events = ["left", "right", operator, "truth"]
         if not verdict:
             expected_events.append("message")
@@ -867,6 +828,25 @@ class TestsFlextInfraModRuleFixtureSnapshots:
                 cls._catalog(package) / c.Infra.CODEMOD_CONFIG_FILENAME,
                 f"{c.Infra.CODEMOD_SCOPE_KEY}: {c.Infra.CODEMOD_SCOPE_UNIVERSAL}\n"
                 "ruleDirs: [rules]\ntestConfigs:\n  - testDir: tests\n",
+            ),
+        )
+        record = metadata / "RECORD"
+        members = (
+            *sorted(
+                path
+                for path in package.rglob("*")
+                if path.is_file()
+                and c.Infra.GIT_DIR not in path.relative_to(package).parts
+            ),
+            metadata / "METADATA",
+            record,
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                record,
+                u.Cli.csv_dumps([
+                    [path.relative_to(site).as_posix(), "", ""] for path in members
+                ]),
             ),
         )
         return package, rule

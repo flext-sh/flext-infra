@@ -566,7 +566,7 @@ class TestsFlextInfraDepsGate:
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.ERROR)
         tm.that(result.result.passed, eq=False)
         assert result.issues
-        assert c.Infra.DEPTRY in result.issues[0].message
+        tm.that(c.Infra.DEPTRY in result.issues[0].message, truth=True)
 
     @staticmethod
     def test_missing_config_does_not_consume_stale_report(tmp_path: Path) -> None:
