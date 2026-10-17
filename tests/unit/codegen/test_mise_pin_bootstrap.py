@@ -427,6 +427,44 @@ class TestsFlextInfraMisePinBootstrap:
         tm.that((tmp_path / "recovered.txt").read_text(), eq="recovered")
 
     @pytest.mark.slow
+    def test_hosted_setup_publishes_the_release_shim_farm(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Later hosted steps resolve the declared tools through the setup farm.
+
+        Premise (cosmos-charts CI run 38990572546): setup reshims into the
+        release-scoped farm only, while the runner PATH listed the host farm,
+        so `make check` died with "selected scanner is not provisioned: jscpd"
+        although setup had installed it.
+        """
+        self._project(tmp_path)
+        lock = u.Tests.repo_mise_lock()
+        (tmp_path / "mise.lock").write_text(lock, encoding=c.DEFAULT_ENCODING)
+        github_path = tmp_path / "github-path.txt"
+        github_path.touch()
+        environment = {
+            **self.environment(tmp_path),
+            "PATH": str(self.system_path_without_mise(tmp_path)),
+            "GITHUB_PATH": str(github_path),
+        }
+
+        setup = tm.ok(
+            u.Tests.run_isolated_make(["setup"], cwd=tmp_path, env=environment)
+        )
+
+        tm.that(
+            u.Cli.process_succeeded(setup.outcome),
+            eq=True,
+            msg=setup.stdout + setup.stderr,
+        )
+        published = github_path.read_text(encoding=c.DEFAULT_ENCODING).splitlines()
+        tm.that(published, len=1)
+        farm = Path(published[0])
+        tm.that(farm.is_relative_to(tmp_path / "cache"), eq=True)
+        tm.that(shutil.which("mise", path=str(farm)), none=False)
+
+    @pytest.mark.slow
     def test_wrong_real_cached_release_is_replaced_before_lifecycle(
         self,
         tmp_path: Path,
