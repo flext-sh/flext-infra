@@ -536,11 +536,14 @@ Infra:
         maintenance_threshold_percent: 90
         block_threshold_percent: 95
         key_prefix: flext-testmon
-      # The Mypy gate shares one analysis per project name across checkouts
-      # (u.Infra.mypy_cache_directory). Relocks retain the directory; Mypy
-      # revalidates changed modules by source hash, so a warm cache never masks
-      # a finding. Distinct project names keep their module namespaces in
-      # separate directories.
+      # The Mypy gate shares one analysis per project name inside one
+      # environment (u.Infra.mypy_cache_directory keys the directory with the
+      # interpreter plus the installed core distribution version). Relocks
+      # retain the directory; Mypy revalidates changed modules by source hash,
+      # so a warm cache never masks a finding, while distinct checkouts whose
+      # environments resolve different installed views never share a cache.
+      # Distinct project names keep their module namespaces in separate
+      # directories.
       # Parsed codemod rule catalogs (u.Infra.codemod_rule_plan). Each entry is
       # keyed by the sha256 of the provider, its rule files' paths and text, and
       # the parser's own source, so a catalog is parsed once and re-parsed only

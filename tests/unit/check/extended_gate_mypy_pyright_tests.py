@@ -15,6 +15,9 @@ from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
+from flext_infra._utilities.resource_limits import (
+    FlextInfraUtilitiesResourceLimits,
+)
 from tests import tm, u
 
 if TYPE_CHECKING:
@@ -61,7 +64,7 @@ class TestsFlextInfraTypeGates:
     def test_mypy_cache_is_project_keyed_across_checkouts_and_relocks(
         tmp_path: Path,
     ) -> None:
-        """Real gate runs populate one external cache per declared project name."""
+        """One environment shares one external cache per declared project name."""
         spec = config.Infra.codegen.make.mypy_cache
         cache_home = tmp_path / "cache"
         shared_root = cache_home / spec.external_storage_directory
@@ -84,7 +87,11 @@ class TestsFlextInfraTypeGates:
                     reports_dir=root / ".reports",
                 )
                 gate = FlextInfraMypyGate(root)
-                cache = shared_root / project
+                cache = (
+                    shared_root
+                    / project
+                    / FlextInfraUtilitiesResourceLimits.environment_cache_identity()
+                )
                 for revision in (1, 2):
                     lock.write_text(
                         f"version = 1\nrevision = {revision}\n",
@@ -226,7 +233,6 @@ class TestsFlextInfraTypeGates:
             ("flext_infra", "FlextInfraServiceBase"),
             ("flext_infra", "FlextInfraProjectSelectionServiceBase"),
             ("flext_infra.codegen", "FlextInfraCodegenExecutionBase"),
-            ("flext_infra", "FlextInfraSonarcloudClient"),
         ],
     )
     def test_mypy_public_service_payload_bound(

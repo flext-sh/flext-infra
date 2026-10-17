@@ -160,25 +160,51 @@ class FlextInfraUtilitiesResourceLimits:
 
     @staticmethod
     def mypy_cache_directory(project_dir: Path) -> Path:
-        """Resolve the one shared Mypy cache of a project across relocks.
+        """Resolve the per-environment shared Mypy cache of a project.
 
-        Mypy keys its cache by module and revalidates each entry by source hash,
-        so every checkout and every relock of one project reuse one analysis: a
-        dependency bump recomputes only the modules it changed. Keying by lock
-        content forced a cold full-fleet analysis after every
-        relock and broke the bounded Mypy run. Projects keep distinct
-        directories because their ``tests`` packages share one module name.
+        Mypy keys its cache by module and revalidates each entry by source
+        hash, so every relock of one environment reuses one analysis: a
+        dependency bump recomputes only the modules it changed. Keying by
+        lock content forced a cold full-fleet analysis after every relock
+        and broke the bounded Mypy run. Projects keep distinct directories
+        because their ``tests`` packages share one module name, and the
+        cache key carries the environment identity (interpreter plus the
+        installed core distribution version): distinct checkouts whose
+        environments resolve different installed views never share a cache,
+        while relocks inside one environment stay warm.
 
         Returns:
             The resulting ``Path``.
 
         """
-        return FlextInfraUtilitiesResourceLimits.project_cache_directory(
-            project_dir,
-            FlextInfraUtilitiesResourceLimits.external_cache_directory(
-                config.Infra.codegen.make.mypy_cache,
-            ),
+        identity = FlextInfraUtilitiesResourceLimits.environment_cache_identity()
+        return (
+            FlextInfraUtilitiesResourceLimits.project_cache_directory(
+                project_dir,
+                FlextInfraUtilitiesResourceLimits.external_cache_directory(
+                    config.Infra.codegen.make.mypy_cache,
+                ),
+            )
+            / identity
         )
+
+    @staticmethod
+    def environment_cache_identity() -> str:
+        """Derive the stable identity of the current analysis environment.
+
+        Returns:
+            The resulting ``str`` digest component.
+
+        """
+        import hashlib
+
+        from importlib import metadata
+
+        core_version = metadata.version("flext-core")
+        identity = hashlib.sha256(
+            f"{sys.executable}\0{core_version}".encode(),
+        ).hexdigest()[:12]
+        return identity
 
     @staticmethod
     def ruff_cache_directory(project_dir: Path) -> Path:
