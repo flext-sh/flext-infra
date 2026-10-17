@@ -12,10 +12,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import c, u
-from flext_infra._utilities import (
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeRuntime,
-)
 from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import tm
 
@@ -53,8 +49,8 @@ class TestsFlextInfraRopeRuntimePymodule:
             closing(u.Infra.snapshot_project(original, {})) as captured,
         ):
             tm.that(
-                original
-                .get_module("provider")
+                u.Infra
+                .require_semantic_module(original.get_module("provider"))
                 .get_attribute("PublishedContract")
                 .get_object()
                 .get_name(),
@@ -62,8 +58,8 @@ class TestsFlextInfraRopeRuntimePymodule:
             )
             initializer.unlink()
             tm.that(
-                captured
-                .get_module("provider")
+                u.Infra
+                .require_semantic_module(captured.get_module("provider"))
                 .get_attribute("PublishedContract")
                 .get_object()
                 .get_name(),
@@ -204,16 +200,16 @@ class TestsFlextInfraRopeRuntimePymodule:
             if plain_resource is None or pkg_resource is None:
                 msg = "fixture modules missing from the snapshot project"
                 raise ValueError(msg)
-            pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            pymodule = u.Infra.resolve_pymodule(
                 project,
                 plain_resource,
             )
-            pypackage = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            pypackage = u.Infra.resolve_pymodule(
                 project,
                 pkg_resource,
             )
-            assert FlextInfraUtilitiesRopeRuntime.pymodule(pymodule)
-            assert FlextInfraUtilitiesRopeRuntime.pymodule(pypackage)
+            tm.that(u.Infra.require_parsed_module(pymodule) is pymodule)
+            tm.that(u.Infra.require_parsed_module(pypackage) is pypackage)
             assert pypackage.get_attribute("VALUE") is not None
             for name, member in (
                 ("plain", "VALUE"),
@@ -226,3 +222,39 @@ class TestsFlextInfraRopeRuntimePymodule:
                 tm.not_none(admitted.get_attributes().get(member))
             with pytest.raises(TypeError, match="native semantic module"):
                 u.Infra.require_semantic_module(plain_resource)
+            with pytest.raises(TypeError, match="non-parsed module"):
+                u.Infra.require_parsed_module(project.get_module("builtins"))
+
+    @staticmethod
+    @pytest.mark.parametrize("ambiguous", [False, True])
+    def test_native_definition_token_identity(
+        tmp_path: Path, *, ambiguous: bool
+    ) -> None:
+        """A unique definition resolves; two same-line uses remain ambiguous."""
+        source = "value = 1; print(value)\n" if ambiguous else "value = 1\n"
+        path = tmp_path / "consumer.py"
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with (
+            closing(u.Infra.init_rope_project(tmp_path)) as original,
+            closing(u.Infra.snapshot_project(original, {path: source})) as project,
+        ):
+            module = u.Infra.resolve_pymodule(project, project.get_resource(path.name))
+            binding = module.get_attribute("value")
+            if ambiguous:
+                with pytest.raises(RuntimeError, match="definition binding token"):
+                    u.Infra.find_identifier_offset_in_lines(
+                        source.splitlines(keepends=True),
+                        line=1,
+                        symbol="value",
+                        pyname=binding,
+                    )
+            else:
+                tm.that(
+                    u.Infra.find_identifier_offset_in_lines(
+                        source.splitlines(keepends=True),
+                        line=1,
+                        symbol="value",
+                        pyname=binding,
+                    ),
+                    eq=source.index("value"),
+                )

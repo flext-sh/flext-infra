@@ -54,37 +54,31 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
             return None
         line_start = sum(len(item) for item in lines[: line - 1])
         source_line = lines[line - 1]
-        pymodule = pyname.get_definition_location()[0] if pyname is not None else None
-        if pyname is not None and pymodule is None:
+        offsets = (
+            line_start + match.start()
+            for match in (
+                FlextInfraUtilitiesRopeCorePyModuleMixin._IDENTIFIER_PATTERN.finditer(
+                    source_line,
+                )
+            )
+            if match.group(0) == symbol
+        )
+        if pyname is None:
+            return next(offsets, None)
+        pymodule = pyname.get_definition_location()[0]
+        if pymodule is None:
             msg = f"rope definition binding has no module: {symbol}:{line}"
             raise RuntimeError(msg)
-        matching_offsets: list[int] = []
-        for (
-            match
-        ) in FlextInfraUtilitiesRopeCorePyModuleMixin._IDENTIFIER_PATTERN.finditer(
-            source_line,
-        ):
-            if match.group(0) == symbol:
-                offset: int = line_start + match.start()
-                if pyname is None:
-                    return offset
-                if pymodule is None:
-                    continue
-                try:
-                    anchored = (
-                        FlextInfraUtilitiesRopeRuntime.name_definition_resource_path(
-                            pymodule,
-                            offset,
-                            expected_binding=pyname,
-                        )
-                    )
-                except FlextInfraUtilitiesRopeRuntime.rope_error_types():
-                    # A candidate token Rope cannot evaluate (out-of-package
-                    # scripts, unresolved stubs) is simply not the binding:
-                    # it neither matches nor aborts the anchor search.
-                    continue
-                if anchored is not None:
-                    matching_offsets.append(offset)
+        matching_offsets = tuple(
+            offset
+            for offset in offsets
+            if FlextInfraUtilitiesRopeRuntime.name_definition_resource_path(
+                pymodule,
+                offset,
+                expected_binding=pyname,
+            )
+            is not None
+        )
         if len(matching_offsets) > 1:
             msg = f"rope definition binding token is ambiguous: {symbol}:{line}"
             raise RuntimeError(msg)
@@ -146,10 +140,9 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
                 and path.with_suffix(".py").is_file()
             ):
                 resource = resource.parent.get_child(f"{path.name}.py")
-        pymodule = rope_project.get_pymodule(resource)
-        if not FlextInfraUtilitiesRopeRuntime.pymodule(pymodule):
-            msg = "rope resource returned a non-parsed module"
-            raise TypeError(msg)
+        pymodule = FlextInfraUtilitiesRopeRuntime.require_parsed_module(
+            rope_project.get_pymodule(resource),
+        )
         if FlextInfraUtilitiesRopeRuntime.file_resource(
             resource
         ) and not FlextInfraUtilitiesRopeRuntime.source_module(pymodule):

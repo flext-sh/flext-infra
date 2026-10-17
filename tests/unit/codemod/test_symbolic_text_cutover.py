@@ -65,7 +65,9 @@ class TestsFlextInfraSymbolicTextCutover:
         with u.Infra.codemod_binding_project(
             root, u.Infra.codemod_source_epoch(snapshot)
         ) as (project, _sources):
-            module = project.get_pymodule(project.get_resource(consumer.name))
+            module = u.Infra.resolve_pymodule(
+                project, project.get_resource(consumer.name)
+            )
             module_scope = tm.not_none(module.get_scope())
             scope = module_scope
             if scope_name is not None:

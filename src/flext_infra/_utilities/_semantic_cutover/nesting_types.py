@@ -69,8 +69,8 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         root = Path(project.root.real_path)
         bindings = tuple(
             (
-                project.get_pymodule(
-                    project.get_resource(path.relative_to(root).as_posix())
+                FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                    project, project.get_resource(path.relative_to(root).as_posix())
                 ),
                 name,
                 owner,

@@ -467,8 +467,8 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             site.path.relative_to(cutover.root).as_posix()
         )
         owner = (
-            cutover.project
-            .get_pymodule(resource)
+            FlextInfraUtilitiesRopeCore
+            .resolve_pymodule(cutover.project, resource)
             .get_attribute(site.facade.name)
             .get_object()
         )

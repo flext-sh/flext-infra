@@ -60,6 +60,9 @@ declaration/dependency owner, not through local-import demotion, fallback,
 compatibility exports or suppressions. Generated surfaces change only through
 their source and canonical regeneration.
 
+Shared TOML ingress owns Pydantic mapping validation. Pyproject, documentation and
+text-rule consumers reuse its validated output directly.
+
 Family-base import enforcement covers both `from` imports and module imports,
 including aliases and imports inside `TYPE_CHECKING`. The semantic import owner
 still elects the package, family base and sanctioned compose modules; native
@@ -1334,6 +1337,10 @@ Binding inference captures the source files and symbol owners required by
 rules with actual occurrences. Syntax-only findings need no import closure.
 The check gate and the mod scanner share this input election, deduplicating
 source reads without reducing the rule inventory or its diagnostic evidence.
+Native module queries use the shared parsed and semantic module admission
+owners, retaining SDK object identity while exposing their declared protocols.
+Matcher patterns give captured expressions a parenthesized grammar context;
+their authenticated source bytes and original coordinate checks stay intact.
 
 Facade consumer discovery resolves each native Rope `ImportedModule` once within
 the current source file. Repeated occurrences retain their binding and owner checks;

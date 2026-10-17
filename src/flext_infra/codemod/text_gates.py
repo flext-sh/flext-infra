@@ -122,8 +122,7 @@ class FlextInfraModTextGateEngine:
             return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(
                 f"text rule project identity is invalid TOML: {identity.path}",
             )
-        validated = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
-        distribution = u.Infra.project_name_from_payload(identity.path, validated)
+        distribution = u.Infra.project_name_from_payload(identity.path, payload)
         return r[t.VariadicTuple[m.Infra.ModTextRule]].ok(
             tuple(
                 rule

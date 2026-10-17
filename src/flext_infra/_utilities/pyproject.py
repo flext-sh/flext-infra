@@ -745,13 +745,13 @@ class FlextInfraUtilitiesPyproject:
 
     @staticmethod
     def pyproject_payload(pyproject_path: Path) -> t.JsonMapping:
-        """Return one parsed ``pyproject.toml`` payload validated against ``t.Infra``.
+        """Return the shared TOML ingress's validated ``pyproject.toml`` mapping.
 
         The payload is parsed from the live text with managed merge
         conflicts resolved (``live_pyproject_text``).
 
         Returns:
-            One parsed ``pyproject.toml`` payload validated against ``t.Infra``.
+            One mapping validated by the shared TOML ingress.
 
         Raises:
             RuntimeError: If failed to read pyproject payload at; or if pyproject
@@ -778,7 +778,7 @@ class FlextInfraUtilitiesPyproject:
         """Parse and validate one manifest text (memoized per exact content).
 
         Returns:
-            The validated ``t.Infra`` payload of ``text``.
+            The validated mapping of ``text``.
 
         Raises:
             RuntimeError: If ``text`` is not valid TOML.
@@ -788,20 +788,20 @@ class FlextInfraUtilitiesPyproject:
         if payload is None:
             msg = f"pyproject payload at {pyproject_path} is not valid TOML"
             raise RuntimeError(msg)
-        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
+        return payload
 
     @staticmethod
     def normalized_toml_payload(document: t.Cli.TomlDocument) -> t.JsonMapping:
-        """Return one TOML document normalized through the infra adapter.
+        """Return the shared TOML ingress's validated document mapping.
 
         Returns:
-            One TOML document normalized through the infra adapter.
+            One mapping validated by the shared TOML ingress.
 
         """
         payload = u.Cli.toml_as_mapping(document)
         if not payload:
             return {}
-        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
+        return payload
 
     @staticmethod
     def tool_flext_meta(project_root: Path) -> t.JsonMapping:

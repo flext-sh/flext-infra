@@ -89,8 +89,7 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
             if parsed is None:
                 msg = f"docs pyproject TOML is invalid: {pyproject_path}"
                 raise ValueError(msg)
-            validated = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(parsed)
-            payload = validated
+            payload = parsed
         docs_meta = FlextInfraUtilitiesDocsScopeStateMixin.docs_meta_from_payload(
             payload,
         )

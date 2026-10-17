@@ -304,10 +304,11 @@ class FlextInfraUtilitiesRopeClassMove:
                 declared_files=virtual,
             )
             try:
-                destination = package_plan.get_pymodule(
+                destination = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+                    package_plan,
                     cls._resource(
                         package_plan, root, request.target_file.parent / c.Infra.INIT_PY
-                    )
+                    ),
                 ).get_name()
                 for path in proposed:
                     if (

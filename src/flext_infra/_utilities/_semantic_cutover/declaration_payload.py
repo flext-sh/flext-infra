@@ -36,7 +36,9 @@ class FlextInfraUtilitiesDeclarationPayload:
 
         """
         module, _, name = identity.rpartition(".")
-        return project.get_module(module).get_attribute(name)
+        return FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+            project, name, module_name=module
+        )
 
     @classmethod
     def class_ancestry(
@@ -138,9 +140,8 @@ class FlextInfraUtilitiesDeclarationPayload:
                 ("typing_extensions", "Protocol"),
             )
             if (
-                binding := module.pycore.project
-                .get_module(provider)
-                .get_attribute(name)
+                binding := cls
+                .identity_name(module.pycore.project, f"{provider}.{name}")
                 .get_object()
                 .get_attributes()
                 .get("__class_getitem__")
@@ -438,8 +439,7 @@ class FlextInfraUtilitiesDeclarationPayload:
         return (
             binding
             if any(
-                project.get_module(provider).get_attribute("Protocol").get_object()
-                in bases
+                cls.identity_name(project, f"{provider}.Protocol").get_object() in bases
                 for provider in ("typing", "typing_extensions")
             )
             else None
