@@ -67,9 +67,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         Yields:
             The native Rope project, original-state reader and planned sources.
 
-        Raises:
-            TypeError: If the native project lacks its semantic protocol.
-
         """
         root = root.resolve()
         if not source_states:
@@ -125,10 +122,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ) as project,
             project.frozen_layout(),
         ):
-            if not isinstance(project, p.Infra.RopeProject):
-                message = "native facade project lacks its semantic protocol"
-                raise TypeError(message)
-
             def consumed() -> t.Triple[
                 tuple[m.Cli.AtomicFileState, ...],
                 tuple[m.Cli.AtomicDirectoryInventory, ...],
@@ -695,7 +688,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             namespace,
             facade_target=f"{pkg_dir.name}.{facade_path.stem}",
         )
-        ordered = cls._declared_facade_order(project, sources, declarations)
+        ordered = FlextInfraUtilitiesRopeSourceBasesRuntime.source_class_order(
+            project, sources, declarations
+        )
         existing = tuple(cls._base_name(base) for base in namespace.bases)
         if existing == ordered and not retired:
             return cls._wrap_facade_imports(source)
@@ -789,25 +784,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             if cls._base_name(base) not in declared_names
         )
         return filtered, declared_names, bound_namespace
-
-    @classmethod
-    def _declared_facade_order(
-        cls,
-        project: p.Infra.RopeProject,
-        sources: t.MutableMappingKV[str, t.Pair[Path, str]],
-        declarations: list[m.Infra.SourceClassReference],
-    ) -> t.SequenceOf[str]:
-        """Resolve the C3 base order of the facade's declared owners.
-
-        Returns:
-            The ordered base names the facade namespace must compose.
-
-        """
-        return FlextInfraUtilitiesRopeSourceBasesRuntime.source_class_order(
-            project,
-            sources,
-            declarations,
-        )
 
     @staticmethod
     def _declared_facade_stale_imports(

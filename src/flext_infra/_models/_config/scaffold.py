@@ -10,7 +10,6 @@ from typing import Annotated
 
 from flext_cli import m
 from packaging.requirements import Requirement
-from pydantic import field_validator
 
 from flext_infra import c, t
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
@@ -104,7 +103,7 @@ class FlextInfraConfigModelsScaffold:
             ),
         ]
 
-        @field_validator("dev", "required_flext_dev")
+        @m.field_validator("dev", "required_flext_dev")
         @classmethod
         def validate_requirements(
             cls, requirements: t.VariadicTuple[str]
@@ -191,7 +190,7 @@ class FlextInfraConfigModelsScaffold:
             m.Field(description="Code-generation requirements"),
         ] = ()
 
-        @field_validator("runtime", "codegen")
+        @m.field_validator("runtime", "codegen")
         @classmethod
         def validate_requirements(
             cls, requirements: t.VariadicTuple[str]

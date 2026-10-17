@@ -26,42 +26,7 @@ from flext_infra.refactor import FlextInfraProjectClassifier
 
 if TYPE_CHECKING:
     from pathlib import Path
-    from typing import Protocol
-
     from flext_infra import p
-
-    class RenderPolicySpec(Protocol):
-        """Read-only render policy contract crossing modernizer module bounds."""
-
-        @property
-        def dry_run(self) -> bool: ...
-
-        @property
-        def skip_comments(self) -> bool: ...
-
-        @property
-        def format_source(self) -> bool: ...
-
-        @property
-        def preserve_layout(self) -> bool: ...
-
-
-class RenderPolicy(m.Infra.FrozenArbitrary):
-    """Keyword policy for one document render and optional durable write."""
-
-    dry_run: bool = m.Field(description="Skip the durable write when set.")
-    skip_comments: bool = m.Field(
-        description="Keep the managed inject-comments phase out of the render.",
-    )
-    format_source: bool = m.Field(
-        default=True,
-        description="Run the canonical TOML formatter over the rendered source.",
-    )
-    preserve_layout: bool = m.Field(
-        default=False,
-        description="Synchronize values through the original TOML tree instead of "
-        "reordering.",
-    )
 
 
 class FlextInfraPyprojectModernizerDocument:
@@ -280,12 +245,10 @@ class FlextInfraPyprojectModernizerDocument:
             return self._render_document_state(
                 state,
                 migrated.value,
-                policy=RenderPolicy(
-                    dry_run=dry_run,
-                    skip_comments=True,
-                    format_source=False,
-                    preserve_layout=True,
-                ),
+                dry_run=dry_run,
+                skip_comments=True,
+                format_source=False,
+                preserve_layout=True,
             )
         manifests = u.Infra.load_workspace_manifest(state.pyproject_path.parent)
         if manifests.failure:
@@ -307,7 +270,8 @@ class FlextInfraPyprojectModernizerDocument:
                 canonical_dev=canonical_dev,
                 topology=topology,
             ),
-            policy=RenderPolicy(dry_run=dry_run, skip_comments=skip_comments),
+            dry_run=dry_run,
+            skip_comments=skip_comments,
         )
 
     def _apply_document_phases(
@@ -411,7 +375,10 @@ class FlextInfraPyprojectModernizerDocument:
         state: m.Infra.PyprojectDocumentState,
         changes: t.StrSequence,
         *,
-        policy: RenderPolicySpec,
+        dry_run: bool,
+        skip_comments: bool,
+        format_source: bool = True,
+        preserve_layout: bool = False,
     ) -> p.Result[t.StrSequence]:
         """Order, annotate, and format one payload; write unless ``dry_run``.
 
@@ -420,14 +387,17 @@ class FlextInfraPyprojectModernizerDocument:
         Args:
             state: The parsed document state to render and durably write.
             changes: The already-accumulated change entries to extend.
-            policy: The render-and-write policy for this invocation.
+            dry_run: Skip the durable write when set.
+            skip_comments: Keep the inject-comments phase out of the render.
+            format_source: Run the canonical TOML formatter.
+            preserve_layout: Synchronize values through the original TOML tree.
 
         Returns:
             The resulting ``p.Result[t.StrSequence]``.
 
         """
         path = state.pyproject_path
-        if policy.preserve_layout:
+        if preserve_layout:
             if state.document is None:
                 return r[t.StrSequence].fail(
                     f"original TOML document is unavailable: {path}"
@@ -439,9 +409,9 @@ class FlextInfraPyprojectModernizerDocument:
             self._reorder_document(doc, preferred_first=self.tomlsort_sort_first)
         rendered = doc.as_string()
         comment_changes: t.StrSequence = ()
-        if not policy.skip_comments:
+        if not skip_comments:
             rendered, comment_changes = FlextInfraInjectCommentsPhase().apply(rendered)
-        if policy.format_source:
+        if format_source:
             formatted = u.Infra.format_toml_source(
                 rendered,
                 path=path,
@@ -457,7 +427,7 @@ class FlextInfraPyprojectModernizerDocument:
         state.rendered = rendered.rstrip() + "\n"
         if state.rendered == state.original_rendered.rstrip() + "\n":
             return r[t.StrSequence].ok(())
-        if not policy.dry_run:
+        if not dry_run:
             u.write_file(path, state.rendered, encoding=c.DEFAULT_ENCODING)
         return r[t.StrSequence].ok((*changes, *comment_changes))
 

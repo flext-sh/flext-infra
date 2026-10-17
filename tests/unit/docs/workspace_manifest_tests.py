@@ -20,12 +20,24 @@ class TestsFlextInfraWorkspaceManifest:
     """Classification of a checkout as a fleet umbrella."""
 
     @staticmethod
-    @pytest.mark.parametrize("target_path", [".", "nested/candidate", "${HOME}"])
-    def test_relative_bootstrap_paths_survive_public_manifest_loading(
+    @pytest.mark.parametrize(
+        ("target_path", "valid"),
+        [
+            (".", True),
+            ("nested/candidate", True),
+            ("${HOME}", True),
+            ("", False),
+            (" ", False),
+            ("/absolute/candidate", False),
+        ],
+    )
+    def test_bootstrap_paths_public_manifest_loading(
         tmp_path: Path,
         target_path: str,
+        *,
+        valid: bool,
     ) -> None:
-        """Topology paths stay relative and discovery does not expand YAML inputs."""
+        """Keep relative paths unexpanded and reject empty or absolute paths."""
         manifest = u.Tests.write_standalone_workspace_manifest(tmp_path, _PROBE)
         tm.ok(
             u.Cli.yaml_dump(
@@ -42,7 +54,11 @@ class TestsFlextInfraWorkspaceManifest:
             ),
         )
 
-        loaded = tm.ok(u.Infra.load_workspace_manifest(tmp_path))[0]
+        result = u.Infra.load_workspace_manifest(tmp_path)
+        if not valid:
+            tm.that(result.failure, eq=True)
+            return
+        loaded = tm.ok(result)[0]
         tm.that(loaded.candidate_bootstrap_targets[0].path, eq=Path(target_path))
         tm.that(
             loaded.candidate_bootstrap_targets[0].what
@@ -54,31 +70,6 @@ class TestsFlextInfraWorkspaceManifest:
             u.Infra.load_refactor_config(tmp_path).project_scan_dirs,
             eq=config.Infra.source_scan.roots,
         )
-
-    @staticmethod
-    @pytest.mark.parametrize("target_path", ["", " ", "/absolute/candidate"])
-    def test_invalid_bootstrap_paths_fail_public_manifest_loading(
-        tmp_path: Path,
-        target_path: str,
-    ) -> None:
-        """The legacy transport rejects empty and absolute bootstrap paths."""
-        manifest = u.Tests.write_standalone_workspace_manifest(tmp_path, _PROBE)
-        tm.ok(
-            u.Cli.yaml_dump(
-                manifest,
-                {
-                    **tm.ok(u.Cli.yaml_safe_load(manifest)),
-                    "candidate_bootstrap_targets": [
-                        {
-                            "path": target_path,
-                            "what": c.Infra.CodegenConformSurface.MAKEFILE.value,
-                        },
-                    ],
-                },
-            ),
-        )
-
-        tm.that(u.Infra.load_workspace_manifest(tmp_path).failure, eq=True)
 
     @staticmethod
     @pytest.mark.parametrize("payload", ["version: invalid\n", "{}\n"])

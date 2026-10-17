@@ -46,24 +46,6 @@ class FlextInfraRopeProject(Project):
 
     @property
     @override
-    def address(self) -> str:
-        """Declared project root address.
-
-        Returns:
-            The native project address.
-
-        Raises:
-            TypeError: The SDK published a non-string address.
-
-        """
-        address = super().address
-        if not isinstance(address, str):
-            message = "Rope project address must be a string"
-            raise TypeError(message)
-        return address
-
-    @property
-    @override
     def root(self) -> p.Infra.RopeRoot:
         """Declared project root folder.
 

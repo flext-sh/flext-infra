@@ -6,10 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSet
+from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
-from typing import ClassVar
 from urllib.parse import unquote, urlsplit
 
 from flext_cli import u
@@ -25,64 +24,6 @@ from flext_infra._utilities._pyproject import (
 from flext_infra._utilities.dependency_requirements import (
     FlextInfraUtilitiesDependencyRequirements,
 )
-
-
-class _ResolutionViewState(m.ArbitraryTypesModel):
-    """Mutable accumulator for one native resolution view projection."""
-
-    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-        extra="forbid",
-        arbitrary_types_allowed=True,
-    )
-
-    directory: Path = m.Field(
-        description="Generated view root resolving member relative paths.",
-    )
-    policy: m.Infra.MakeUvResolutionSpec = m.Field(
-        description="Declared resolution policy owning member naming.",
-    )
-    native_uv: t.MutableJsonMapping = m.Field(
-        description="Detached root ``[tool.uv]`` table under projection.",
-    )
-    view_project: t.MutableJsonMapping = m.Field(
-        description="Generated virtual project table, empty when absent.",
-    )
-    dependencies: t.MutableJsonList = m.Field(
-        description="Root dependency requests in declaration order.",
-    )
-    member_bindings: t.MutableJsonList = m.Field(
-        description="Member dependency requests in declaration order.",
-    )
-    extras: t.MutableJsonMapping = m.Field(
-        description="View optional-dependency groups by target name.",
-    )
-    groups: t.MutableJsonMapping = m.Field(
-        description="View dependency groups by target name.",
-    )
-    group_metadata: t.MutableJsonMapping = m.Field(
-        description="Renamed group metadata keyed by target name.",
-    )
-    sources: t.MutableJsonMapping = m.Field(
-        description="Context-qualified source entries by dependency name.",
-    )
-    index_entries: t.MutableJsonMapping = m.Field(
-        description="Conflict-checked index declarations by identity.",
-    )
-    constraints: t.MutableJsonList = m.Field(
-        description="Constraints preserving replaced local sources.",
-    )
-    retained_overrides: t.MutableJsonList = m.Field(
-        description="Declared overrides with member requests appended.",
-    )
-    overridden: MutableSet[str] = m.Field(
-        description="Canonical member names already natively bound.",
-    )
-    seen_groups: MutableSet[str] = m.Field(
-        description="Normalized group names already claimed.",
-    )
-    seen_extras: MutableSet[str] = m.Field(
-        description="Normalized extra names already claimed.",
-    )
 
 
 class FlextInfraUtilitiesPyprojectUvSources(
@@ -146,7 +87,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
     @staticmethod
     def _resolution_bound_groups(
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         virtual_name: str,
     ) -> p.Result[bool]:
         """Bind the virtual project tables and the synthetic member group.
@@ -225,7 +166,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         *,
         directory: Path,
         policy: m.Infra.MakeUvResolutionSpec,
-    ) -> _ResolutionViewState:
+    ) -> m.Infra.UvResolutionViewState:
         """Detach the root metadata and scaffold the projection accumulators.
 
         Returns:
@@ -264,7 +205,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 native_uv.get("constraint-dependencies", []),
             ),
         )
-        return _ResolutionViewState(
+        return m.Infra.UvResolutionViewState(
             directory=directory,
             policy=policy,
             native_uv=native_uv,
@@ -289,7 +230,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_project_view(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
         position: int,
     ) -> p.Result[bool]:
@@ -383,7 +324,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_project_exports(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
         project_uv: t.JsonMapping,
         renamed: t.MappingKV[str, str],
@@ -403,7 +344,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_project_constraints(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
     ) -> None:
         """Extend the state constraints over the project's overridden demands."""
@@ -418,7 +359,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
     @staticmethod
     def _resolution_explicit_overrides(
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
     ) -> set[str]:
         """Name the distributions explicitly pinned by declared overrides.
 
@@ -438,7 +379,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_project_request(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
         optional: t.JsonMapping,
         name: str,
@@ -468,7 +409,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_root_dependencies(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
         metadata: t.JsonMapping,
     ) -> p.Result[bool]:
@@ -525,7 +466,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_group_targets(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         declared_groups: t.JsonDict,
         name: str,
         *,
@@ -559,7 +500,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_root_project_sources(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
         project_sources: t.JsonMapping,
     ) -> None:
@@ -586,7 +527,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_extra_requirements(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
         optional: t.JsonMapping,
         name: str,
@@ -637,7 +578,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_context_sources(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
         project_sources: t.JsonMapping,
         contexts: t.SequenceOf[t.Triple[str, t.StrSequence, str]],
@@ -696,7 +637,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_group_entries(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
         declared_groups: t.JsonDict,
         renamed: t.MappingKV[str, str],
@@ -719,7 +660,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_group_metadata(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project_uv: t.JsonMapping,
         renamed: t.MappingKV[str, str],
         name: str,
@@ -745,7 +686,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
     @classmethod
     def _resolution_index_entries(
         cls,
-        state: _ResolutionViewState,
+        state: m.Infra.UvResolutionViewState,
         project: m.Infra.UvResolutionProject,
         project_uv: t.JsonMapping,
     ) -> p.Result[bool]:
