@@ -603,8 +603,10 @@ all execution therefore remain failures even when the native findings array is
 empty.
 Repairs receive the elected interpreter's import suppliers and its native lock
 through typed injection. Missing or ambiguous suppliers remain native findings;
-installed package names never establish applicability. The existing requirement
-strings retain their markers, extras and sources when promoted from development.
+installed package names never establish applicability. Metadata election uses the
+distribution's native installation location; vendored `.dist-info` payloads do not
+compete with its own metadata identity. The existing requirement strings retain
+their markers, extras and sources when promoted from development.
 The target's explicit contract also identifies development-only suppliers. Their
 metadata remains in the index and their native findings stay visible; an illegal
 production import requires a consumer rewire instead of a runtime declaration.

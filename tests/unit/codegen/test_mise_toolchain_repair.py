@@ -29,9 +29,7 @@ class TestsFlextInfraMiseToolchainRepair:
         binary = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
         before = tm.ok(u.Cli.atomic_inventory_physical_directory(binary.parent))
         name = u.type_adapter(str).validate_python(
-            type(settings.Infra)
-            .model_fields["toolchain_repair_tool"]
-            .validation_alias,
+            type(settings.Infra).model_fields["toolchain_repair_tool"].validation_alias,
         )
         result = tm.ok(
             u.Cli.run_raw(

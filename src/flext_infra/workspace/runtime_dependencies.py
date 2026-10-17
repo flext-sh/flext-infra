@@ -354,13 +354,22 @@ class FlextInfraRuntimeDependencyCollector:
 
         """
         files = distribution.files
+        location = Path(str(distribution.locate_file(""))).resolve()
         metadata = tuple(
-            Path(str(distribution.locate_file(file)))
+            path
             for file in files or ()
-            if file.name == "METADATA" and file.parent.name.endswith(".dist-info")
+            if file.name == "METADATA"
+            and file.parent.name.endswith(".dist-info")
+            and (path := Path(str(distribution.locate_file(file))))
+            .resolve()
+            .parent.parent
+            == location
         )
         if files is None or len(metadata) != 1:
-            msg = "dependency supplier lacks one native metadata inventory"
+            msg = (
+                f"dependency supplier {distribution.name!r} lacks one native "
+                f"metadata inventory: expected=1 observed={len(metadata)}"
+            )
             raise ValueError(msg)
         paths = (
             metadata[0],
