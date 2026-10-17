@@ -80,15 +80,6 @@ class FlextInfraConstantsRope:
     ROPE_PYOBJECTS_MODULE: ClassVar[str] = "rope.base.pyobjects"
     "Rope module owning the native semantic object classes."
 
-    PYTHON_STATEMENT_SUITE_FIELDS: ClassVar[t.VariadicTuple[str]] = (
-        "body",
-        "orelse",
-        "finalbody",
-        "handlers",
-        "cases",
-    )
-    "Native AST fields holding nested statement suites (handlers/cases own a body)."
-
     PYDANTIC_MODEL_IDENTITY: ClassVar[str] = "pydantic.BaseModel"
     "Qualified identity every relocated payload model must inherit."
 

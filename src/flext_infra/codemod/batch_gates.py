@@ -447,7 +447,6 @@ class FlextInfraModGateEngine:
             (str(binary.value), *command[1:]),
             stdout_file,
             cwd=root,
-            timeout=c.Infra.TIMEOUT_SHORT,
             options=m.Cli.ProcessOptions(stderr_file=stderr_file),
         )
         if run.failure:

@@ -187,13 +187,18 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         package_name = metadata.value.package_name
         class_stem = metadata.value.class_stem
         alias = u.Infra.package_alias(package_name=package_name)
-        namespace = class_stem.removeprefix("Flext") or class_stem
-        author = pep621.authors[0] if pep621.authors else None
-        author_name = author.name if author is not None and author.name else ""
-        author_email = author.email if author is not None and author.email else ""
-        if not author_name or not author_email:
+        identity = u.Infra.project_notice_identity(
+            repository_root,
+            None,
+            codegen.scaffold.project,
+        )
+        if identity.failure:
+            return r[m.Infra.ProjectSpec].from_failure(identity)
+        author_name, license_id, year = identity.value
+        author_email = pep621.authors[0].email if pep621.authors else None
+        if not author_email:
             return r[m.Infra.ProjectSpec].fail(
-                f"existing pyproject is missing author name/email: {repository_root}",
+                f"existing pyproject is missing author email: {repository_root}",
             )
         homepage = pep621.urls.homepage or repository.url.removesuffix(".git")
         documentation = pep621.urls.documentation or homepage
@@ -210,26 +215,24 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             return r[m.Infra.ProjectSpec].fail(
                 f"declared dependencies expose no config base at {repository_root}",
             )
-        upstream = candidates[0].module
-        licenses = codegen.scaffold.project.supported_licenses
         return r[m.Infra.ProjectSpec].ok(
             m.Infra.ProjectSpec(
                 package_name=package_name,
                 class_stem=class_stem,
-                namespace=namespace,
+                namespace=class_stem.removeprefix("Flext") or class_stem,
                 constant_name=repository.distribution,
                 namespace_attribute=alias,
                 alias=alias,
                 environment_prefix=f"{package_name.upper()}_",
                 description=pep621.description or repository.distribution,
-                license=licenses[0],
+                license=license_id,
                 author_name=author_name,
                 author_email=author_email,
-                upstream=upstream,
+                upstream=candidates[0].module,
                 homepage=homepage,
                 documentation=documentation,
                 repository_root_rel=".",
-                year=codegen.scaffold.project.copyright_year,
+                year=year,
                 cli_module=(
                     repository_root
                     / c.Infra.DEFAULT_SRC_DIR
@@ -302,18 +305,21 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
     ) -> p.Result[m.Infra.ProjectSpec]:
         """Validate the target's own license against supported artifact templates.
 
+        The notice-identity owner applies the one supported-license rule the
+        generated notices and artifacts share.
+
         Returns:
             The original target declaration, with no runtime requirement injection.
 
         """
-        codegen = render_inputs.codegen
         result_type = r[m.Infra.ProjectSpec]
-        if project.license not in codegen.scaffold.project.supported_licenses:
-            supported = ", ".join(codegen.scaffold.project.supported_licenses)
-            return result_type.fail(
-                f"unsupported scaffold license: {project.license}; "
-                f"supported licenses: {supported}",
-            )
+        identity = u.Infra.project_notice_identity(
+            render_inputs.target.root,
+            project,
+            render_inputs.codegen.scaffold.project,
+        )
+        if identity.failure:
+            return result_type.from_failure(identity)
         return result_type.ok(project)
 
     @classmethod

@@ -958,6 +958,19 @@ class FlextInfraUtilitiesCodemodRules(
         )
 
     @classmethod
+    def parse_yaml_documents(
+        cls,
+        text: str,
+    ) -> p.Result[t.SequenceOf[t.JsonMapping]]:
+        """Parse mapping documents without changing YAML scalar boundaries.
+
+        Returns:
+            The resulting ``p.Result[t.SequenceOf[t.JsonMapping]]``.
+
+        """
+        return u.Cli.yaml_parse_documents(text)
+
+    @classmethod
     def _parse_rules(
         cls,
         provider: str,

@@ -40,11 +40,6 @@ class FlextInfraTypesAdapters:
     INFRA_SEQ_ADAPTER: ClassVar[m.TypeAdapter[t.JsonList]] = t.Cli.JSON_LIST_ADAPTER
     "Validates t.SequenceOf[InfraValue]."
 
-    CONTAINER_DICT_SEQ_ADAPTER: ClassVar[m.TypeAdapter[t.SequenceOf[t.JsonMapping]]] = (
-        u.type_adapter(Sequence[Mapping[str, t.JsonValue]])
-    )
-    "Validates t.SequenceOf[ContainerDict]."
-
     STR_SEQ_ADAPTER: ClassVar[m.TypeAdapter[t.StrSequence]] = u.type_adapter(
         Sequence[str],
     )
@@ -60,9 +55,6 @@ class FlextInfraTypesAdapters:
 
     BOOL_ADAPTER: ClassVar[m.TypeAdapter[bool]] = u.type_adapter(bool)
     "Validates one boolean at boundaries whose upstream stubs expose Any."
-
-    PATH_ADAPTER: ClassVar[m.TypeAdapter[Path]] = u.type_adapter(Path)
-    "Validates one filesystem path at boundaries whose upstream stubs expose Any."
 
 
 __all__: list[str] = ["FlextInfraTypesAdapters"]

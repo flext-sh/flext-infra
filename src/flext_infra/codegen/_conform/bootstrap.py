@@ -187,7 +187,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         if any(not name for name, _root in imports):
             msg = f"declared package namespace is unresolved: {target.root}"
             raise ValueError(msg)
-        return tuple(imports)
+        return imports
 
     @staticmethod
     def _merge_extra_verbs(

@@ -152,7 +152,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 raise ValueError(message)
             lineage = FlextInfraUtilitiesRopeSourceBasesRuntime.merge_class_lineages(
                 (*(self._linearize(identity) for identity in identities),),
-                message="Inconsistent declared facade owner precedence",
+                message=(
+                    "Inconsistent declared facade owner precedence: declarations="
+                    f"{tuple(item.qualified_base for item in declarations)}"
+                ),
             )
             spellings = {
                 identity: item.qualified_base
@@ -187,6 +190,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             (cosmos-docgen tests/unit re-exports a `dcdoc` subpackage; class
             bases declared as `from dcdoc import DcdocServiceBase` mean the
             project one).
+
+            Raises:
+                ValueError: Native package membership differs from captured sources.
+
             """
             for alias_module, captured in self._sources.items():
                 alias_path, alias_source = captured

@@ -32,7 +32,15 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         t.VariadicTuple[t.Pair[str, m.Cli.AtomicDirectoryInventory]],
         t.VariadicTuple[t.Pair[str, m.Cli.AtomicDirectoryChainPlan]],
     ]:
-        """Retain one original native query receipt per phase and physical parent."""
+        """Retain one original native query receipt per phase and physical parent.
+
+        Returns:
+            Directory and ancestry query receipts grouped by their owning phase.
+
+        Raises:
+            ValueError: If source queries have no owning publication phase.
+
+        """
         name = phase or journal.phase
         directories = tuple(
             receipt for plan in plans for receipt in plan.source_directories

@@ -961,6 +961,7 @@ class TestsFlextInfraUtilityFacadeProjection:
                 f'[project]\nname = "{distribution}"\nversion = "1.0.0"\n'
                 f'authors = [{{name = "{project.author_name}", '
                 f'email = "{project.author_email}"}}]\n'
+                f'license = "{project.license}"\n'
                 + (
                     'dependencies = ["provider"]\n'
                     if distribution == "receiver"

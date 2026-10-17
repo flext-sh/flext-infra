@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 import re
 from collections import defaultdict
-from collections.abc import Callable, Iterator, MutableMapping
+from collections.abc import Callable, MutableMapping
 from pathlib import Path
 
 import libcst as cst
@@ -41,13 +41,9 @@ class FlextInfraUtilitiesRopeImports:
     ) -> t.VariadicTuple[p.Infra.RopeImportStatement]:
         """Collect declared imports from Rope's parsed tree in source order.
 
-        Rope parses the module once. Every ``import``/``from`` node of that
-        native tree, in any scope, becomes the native statement Rope's own
-        module import table records for a top-level node (``FromImport`` or
-        ``NormalImport`` over 1-based, end-exclusive lines), in source order.
-        Strings and comments are not nodes; ``yield from`` and exception
-        chaining are not import nodes; inline suites and several imports on one
-        line are separate nodes.
+        The parsed import nodes cover every lexical scope and exclude strings
+        and comments. Rope's import tables retain ownership of the resulting
+        records; occurrence inference is not needed to inventory declarations.
 
         Args:
             project: The Rope project instance.
@@ -57,53 +53,46 @@ class FlextInfraUtilitiesRopeImports:
             A tuple of Rope import statements found in the source.
 
         Raises:
-            TypeError: If Rope's string module does not parse to a native module.
+            ValueError: If a parsed import has no complete source span.
 
         """
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        tree = runtime.build_string_module(project, source).get_ast()
-        if not isinstance(tree, ast.Module):
-            msg = "Rope string module did not parse to a native module tree"
-            raise TypeError(msg)
-        nodes = sorted(
+        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+            project,
+            source,
+        )
+        imports = sorted(
             (
                 node
-                for node in cls._statement_nodes(tree.body)
+                for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
+                    module.get_ast(),
+                )
                 if isinstance(node, ast.Import | ast.ImportFrom)
             ),
             key=lambda node: (node.lineno, node.col_offset),
         )
-        return tuple(
-            runtime.import_statement(
-                runtime.from_import(node.module or "", node.level, names)
-                if isinstance(node, ast.ImportFrom)
-                else runtime.normal_import(names),
-                node.lineno,
-                (node.end_lineno or node.lineno) + 1,
+        statements: list[p.Infra.RopeImportStatement] = []
+        for node in imports:
+            declaration = ast.get_source_segment(source, node)
+            if declaration is None:
+                msg = "Rope import declaration has no complete source span"
+                raise ValueError(msg)
+            fragment = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+                project,
+                declaration,
             )
-            for node in nodes
-            for names in (tuple((alias.name, alias.asname) for alias in node.names),)
-        )
-
-    @classmethod
-    def _statement_nodes(
-        cls,
-        nodes: t.SequenceOf[ast.AST],
-    ) -> Iterator[ast.AST]:
-        """Yield every statement of a suite and of its nested suites.
-
-        An import is a statement, so it only ever appears in a statement suite:
-        a body, an ``else``/``finally`` branch, an exception handler or a
-        ``match`` case. Expression subtrees cannot hold one and are skipped.
-
-        Yields:
-            Each statement-level node, outermost first.
-
-        """
-        for node in nodes:
-            yield node
-            for suite in c.Infra.PYTHON_STATEMENT_SUITE_FIELDS:
-                yield from cls._statement_nodes(getattr(node, suite, ()))
+            table = FlextInfraUtilitiesRopeRuntimeModules.module_imports_for_pymodule(
+                project,
+                fragment,
+            )
+            line_offset = node.lineno - 1
+            for statement in cls.import_statements(table):
+                # Every table owns its fragment records. Preserve the native
+                # import-info object and project the record's coordinates back
+                # to the complete immutable source before returning it.
+                statement.start_line += line_offset
+                statement.end_line += line_offset
+                statements.append(statement)
+        return tuple(statements)
 
     @staticmethod
     def import_statements(

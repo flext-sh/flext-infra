@@ -147,17 +147,13 @@ class FlextInfraCodegenPipelineStagesMixin:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             projects = self._state.discovered_projects
             selected = tuple(project.path.name for project in projects)
-            detector = FlextInfraRuntimeDevDependencyDetector(
-                repository_root=ctx.repository_root,
-                apply_changes=not dry_run,
-                apply_typings=not dry_run,
-                selected_projects=selected,
-            )
-            result = detector.execute()
-            if result.failure:
-                return r[bool].from_failure(result)
-            return r[bool].ok(
-                t.Infra.BOOL_ADAPTER.validate_python(result.value),
+            return FlextInfraRuntimeDevDependencyDetector.execute(
+                m.Infra.DetectCommand(
+                    repository_root=ctx.repository_root,
+                    apply=not dry_run,
+                    apply_typings=not dry_run,
+                    projects=selected,
+                ),
             )
 
         return self._run_stage(

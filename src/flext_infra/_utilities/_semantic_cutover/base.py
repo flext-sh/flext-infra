@@ -64,17 +64,10 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         Returns:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
 
-        """
-        return cls._plan_phases(phase, rope_workspace, sources, findings)
+        Raises:
+            ValueError: If the phase is unsupported.
 
-    @classmethod
-    def _plan_phases(
-        cls,
-        phase: c.Infra.SemanticCutoverPhase,
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModOccurrence] = (),
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        """
         if not phase:
             message = f"unsupported semantic cutover phase: {phase}"
             raise ValueError(message)
@@ -92,7 +85,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                 | c.Infra.SemanticCutoverPhase.FACADE_BASE
                 | c.Infra.SemanticCutoverPhase.MODEL_FIELDS
             ):
-                return cls._plan_selected_phase(
+                return cls._plan_selected_phase_dispatch(
                     phase,
                     rope_workspace,
                     sources,
@@ -104,24 +97,6 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                 | c.Infra.SemanticCutoverPhase.NOTICE_LAST
             ):
                 return cls._plan_ordered_phase(phase, root, sources, selected)
-
-    @classmethod
-    def _plan_selected_phase(
-        cls,
-        phase: c.Infra.SemanticCutoverPhase,
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-        selected: t.SequenceOf[m.Infra.ModOccurrence],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        """Plan one finding-selected cutover phase.
-
-        Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
-
-        """
-        return cls._plan_selected_phase_dispatch(
-            phase, rope_workspace, sources, selected
-        )
 
     @classmethod
     def _plan_behavior_and_declarations(

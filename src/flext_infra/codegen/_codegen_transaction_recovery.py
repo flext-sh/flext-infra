@@ -329,12 +329,8 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
 
     @staticmethod
     def _admitted_operation_receipt(
-        request: m.Infra.CodegenConformRequest,
-        batches: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
-        *,
-        scope_roots: t.VariadicTuple[Path],
+        candidate: m.Infra.CodegenPhaseOutcome,
         operation: m.Infra.CodegenPhaseOutcome | None,
-        completed: bool,
     ) -> p.Result[bool]:
         """Admit an operation receipt before it is composed and published.
 
@@ -346,7 +342,6 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             Success, or the first admission failure.
 
         """
-        root = request.root.expanduser().resolve()
         if operation is not None:
             original = FlextInfraMiseArtifactsVerification.publication_birth_current(
                 operation,
@@ -354,29 +349,31 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             if original.failure:
                 return original
         mismatched = operation is not None and (
-            operation.root != root
-            or operation.surface != request.what
-            or operation.scope != request.scope
-            or operation.module != request.module
+            operation.root != candidate.root
+            or operation.surface != candidate.surface
+            or operation.scope != candidate.scope
+            or operation.module != candidate.module
         )
-        if not scope_roots or mismatched:
+        if not candidate.scope_roots or mismatched:
             return r[bool].fail("operation receipt differs from its actual request")
-        pending = list(batches)
+        pending = list(candidate.batches)
         while pending:
             batch = pending.pop()
             pending.extend(batch.batches)
             outside = tuple(
                 output.path
                 for output in batch.outputs
-                if not any(output.path.is_relative_to(scope) for scope in scope_roots)
+                if not any(
+                    output.path.is_relative_to(scope) for scope in candidate.scope_roots
+                )
             )
             if outside:
                 return r[bool].fail(
                     "batch output is outside the operation participants: "
                     + ", ".join(map(str, outside)),
                 )
-        if completed and (
-            not batches
+        if candidate.completed and (
+            not candidate.batches
             or any(
                 not item.completed
                 or item.error
@@ -385,7 +382,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                 or item.root is None
                 or item.transaction_id is None
                 or not (item.outputs or item.batches)
-                for item in batches
+                for item in candidate.batches
             )
         ):
             return r[bool].fail(
@@ -410,15 +407,6 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
 
         """
         root = request.root.expanduser().resolve()
-        admitted = cls._admitted_operation_receipt(
-            request,
-            batches,
-            scope_roots=scope_roots,
-            operation=operation,
-            completed=completed,
-        )
-        if admitted.failure:
-            return r[m.Infra.CodegenPhaseOutcome].from_failure(admitted)
         outcome = m.Infra.CodegenPhaseOutcome(
             root=root,
             transaction_id=(
@@ -438,6 +426,9 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             ),
             issues=tuple(issue for item in batches for issue in item.issues),
         )
+        admitted = cls._admitted_operation_receipt(outcome, operation)
+        if admitted.failure:
+            return r[m.Infra.CodegenPhaseOutcome].from_failure(admitted)
         with cls.mutation_lease(root):
             if completed:
                 current = (

@@ -86,13 +86,16 @@ class TestsFlextInfraRopeContracts:
             "values: set[str] = Field(default_factory=set)",
             "values: tuple[str, ...] = Field(default_factory=tuple)",
             "values: list[str] = Field(default_factory=list, description='d')",
-            "values: dict[str, int] = Field(default_factory=dict, description='d')",
+            (
+                "values: dict[str, list[int]] = "
+                "Field(default_factory=dict, description='d')"
+            ),
             (
                 "values: Meta[list[str], Field(description='d')] = "
                 "Field(default_factory=list)"
             ),
             (
-                "values: Meta[dict[str, int], Field(min_length=0)] = "
+                "values: Meta[dict[str, list[int]], Field(min_length=0)] = "
                 "Field(default_factory=dict)"
             ),
         ],

@@ -29,6 +29,35 @@ class TestsFlextInfraMiseToolchainProof:
     CHECKSUM = "sha256:00"
 
     @staticmethod
+    def test_configuration_contracts_preserve_coercion_bytes_and_immutability() -> None:
+        """Shared policy keeps schema coercion without trimming rendered payloads."""
+        text = "  preserved payload\n"
+        endpoint = m.Infra.BeadsEndpointSpec.model_validate({
+            "host": text,
+            "port": "1234",
+        })
+        move = m.Infra.LayoutMoveSpec(source=text, target=text)
+        overrides = m.Infra.DocsAuditOverridesSpec.model_validate({
+            "stale_symbols": [text]
+        })
+
+        tm.that(endpoint.host, eq=text)
+        tm.that(endpoint.port, eq=1234)
+        tm.that(move.source, eq=text)
+        tm.that(overrides.stale_symbols, eq=(text,))
+        for record in (endpoint, move, overrides):
+            contract = type(record)
+            tm.that(contract.model_validate_json(record.model_dump_json()), eq=record)
+            with pytest.raises(m.ValidationError, match="extra_forbidden"):
+                contract.model_validate({**record.model_dump(), "unexpected": True})
+        with pytest.raises(m.ValidationError, match="frozen_instance"):
+            endpoint.port += 1
+        with pytest.raises(m.ValidationError, match="frozen_instance"):
+            move.source = f"{text}changed"
+        with pytest.raises(m.ValidationError, match="frozen_instance"):
+            overrides.stale_symbols = ()
+
+    @staticmethod
     def _repository_root() -> Path:
         """Resolve the real checkout supplying the managed tool and lock.
 

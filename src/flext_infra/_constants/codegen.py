@@ -83,6 +83,14 @@ class FlextInfraConstantsCodegen(
     ))
     "Surfaces restricted to the self repository scope."
 
+    "Surfaces planned for one exact module destination, never repository fans."
+
+    "Surfaces restricted to the self repository scope."
+
+    "Self-owned configuration is planned against the declared repository target."
+
+    "Declared configuration and docs can be rendered before member provisioning."
+
     MISE_ARTIFACTS_STATE_DIRECTORY: ClassVar[Path] = Path(".state") / "mise-artifacts"
 
     MISE_BOOTSTRAP_STORAGE_ROOT_VARIABLE: ClassVar[str] = "MISE_DATA_DIR"
@@ -124,14 +132,16 @@ class FlextInfraConstantsCodegen(
         ("utilities.py", "Utilities", "FlextUtilities", "Utility functions"),
     )
     "Base module definitions for src/: (filename, class_suffix, base_class, docstring)."
-    TESTS_MODULES: ClassVar[t.VariadicTuple[t.Quad[str, str, str, str]]] = (
-        ("constants.py", "Constants", "FlextTestsConstants", "Test constants"),
-        ("typings.py", "Types", "FlextTestsTypes", "Test type aliases"),
-        ("protocols.py", "Protocols", "FlextTestsProtocols", "Test protocols"),
-        ("models.py", "Models", "FlextTestsModels", "Test models"),
-        ("utilities.py", "Utilities", "FlextTestsUtilities", "Test utilities"),
+    TESTS_MODULES: ClassVar[t.VariadicTuple[t.Quad[str, str, str, str]]] = tuple(
+        (
+            filename,
+            suffix,
+            base_class.replace("Flext", "FlextTests", 1),
+            f"Test {description.lower()}",
+        )
+        for filename, suffix, base_class, description in SRC_MODULES
     )
-    "Base module definitions for tests/: (filename, class_suffix, base_class, doc)."
+    "Test modules inherit the source family shape through the test foundation."
     # Canonical root config/settings pair: a
     # private `_config.py`/`_settings.py` module exporting the singleton.
     # Consumed by the scaffold generator.
@@ -173,18 +183,10 @@ class FlextInfraConstantsCodegen(
         LAZY_INIT = "lazy_init"
         CENSUS_AFTER = "census_after"
 
-    PIPELINE_STAGE_ORDER: ClassVar[t.VariadicTuple[PipelineStage]] = (
-        PipelineStage.DISCOVER,
-        PipelineStage.TOOLCHAIN,
-        PipelineStage.PY_TYPED,
-        PipelineStage.CENSUS_BEFORE,
-        PipelineStage.SCAFFOLD,
-        PipelineStage.AUTO_FIX,
-        PipelineStage.DEPS,
-        PipelineStage.LAZY_INIT,
-        PipelineStage.CENSUS_AFTER,
+    PIPELINE_STAGE_ORDER: ClassVar[t.VariadicTuple[PipelineStage]] = tuple(
+        PipelineStage
     )
-    "Ordered sequence of pipeline stage identifiers."
+    "Stage execution follows the canonical enumeration's declaration order."
     PIPELINE_KEY_DRY_RUN: ClassVar[str] = "dry_run"
     "Config key for pipeline dry-run mode."
 

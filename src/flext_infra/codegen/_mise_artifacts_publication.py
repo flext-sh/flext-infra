@@ -636,6 +636,7 @@ class FlextInfraMisePublication:
             publications: Every staged publication of the batch.
             written: Destination paths already written by earlier targets.
             published_states: Before and after states of published targets.
+            directory_publications: Directory states published by this batch.
 
         Returns:
             The blocking prerequisite issue with its causal exception, or
