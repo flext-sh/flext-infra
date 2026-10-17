@@ -66,3 +66,45 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             "assert Receiver.read('value') == 'VALUE:receiver'\n",
             cwd=root,
         )
+
+    @staticmethod
+    def test_checkout_environment_is_never_a_planning_source(tmp_path: Path) -> None:
+        """Dependency modules read from the checkout environment stay inputs only.
+
+        Premise (70dc29f1b9 regression): the lazy-init plans carry every state
+        their native reads consumed, including dependency modules installed in
+        the checkout-local environment. Those states entered the planned-source
+        map, so the facade planner treated the installed dependency as a
+        project package and republished its facade inside the environment
+        (cosmos-charts lost an importable flext_cli this way).
+        """
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        installed = (
+            root
+            / c.Infra.ENVIRONMENT_DIRECTORY
+            / "lib"
+            / "site-packages"
+            / "flext_dependency"
+        )
+        files = {
+            package / c.Infra.INIT_PY: "",
+            installed / c.Infra.INIT_PY: "",
+            installed / c.Infra.UTILITIES_PY: "class Dependency:\n    pass\n",
+        }
+        for path, source in files.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        states = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for path in files
+        )
+        with u.Infra.facade_source_project(root, source_states=states) as binding:
+            _, consumed, sources = binding
+            tm.that(
+                {path.resolve() for path in sources},
+                eq={(package / c.Infra.INIT_PY).resolve()},
+            )
+            tm.that(
+                {state.path.resolve() for state in consumed()},
+                has=(installed / c.Infra.UTILITIES_PY).resolve(),
+            )

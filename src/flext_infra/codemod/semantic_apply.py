@@ -284,9 +284,8 @@ class FlextInfraCodemodSemanticApply:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
 
         """
-        inventory = m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
-            files=frozenset(),
-            entries=(),
+        inventory: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence] = (
+            m.Infra.ModOccurrenceReport(files=frozenset(), entries=())
         )
         original = cls.source_inventory(root, inventory)
         phases = (
@@ -476,7 +475,7 @@ class FlextInfraCodemodSemanticApply:
             Whether the accepted batch contains source changes.
 
         """
-        original: dict[Path, str] = {}
+        original: t.MutableMappingKV[Path, str] = {}
         for edit in edits:
             if edit.file_path not in original:
                 original[edit.file_path] = edit.original_source
@@ -893,25 +892,24 @@ class FlextInfraCodemodSemanticApply:
         # resource (a tool hook scanned outside governed roots), and feeding
         # those into the semantic planners crashes the phase on files that
         # are declared non-source.
-        ignored = frozenset(config.Infra.codegen.source_scan_ignored)
         paths = {
             path.resolve()
             for project_root in project_roots
             for directory in scan_dirs
             for path in u.Infra.iter_directory_python_files(project_root / directory)
-            if not ignored.intersection(path.relative_to(root).parts[:-1])
+            if not u.Infra.source_scan_ignored_path(root, path)
         }
         paths.update(
             path
             for finding in preflight.entries
             if (path := (root / finding.file).resolve()).suffix == c.Infra.EXT_PYTHON
-            and not ignored.intersection(path.relative_to(root).parts[:-1])
+            and not u.Infra.source_scan_ignored_path(root, path)
         )
         for target in u.Infra.ast_grep_scan_targets(
             root, refactor_config=refactor_config
         ):
             candidate = root / target
-            if ignored.intersection(candidate.relative_to(root).parts):
+            if u.Infra.source_scan_ignored_path(root, candidate):
                 continue
             paths.update(
                 path.absolute()

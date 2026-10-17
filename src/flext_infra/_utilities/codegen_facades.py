@@ -92,6 +92,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             for plan in declared_files
             if plan.desired_content is not None
         }
+        # Consumed states include the dependency modules native reads loaded
+        # from the checkout-local environment; they stay verified inputs, but
+        # only repository-owned sources are planning targets (70dc29f1b9
+        # republished site-packages/flext_cli/utilities.py otherwise).
         sources = {
             **{
                 state.path: state.content.decode(c.DEFAULT_ENCODING)
@@ -99,6 +103,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 if state.path.is_relative_to(root)
                 and state.path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
                 if state.content is not None
+                and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                    root, state.path
+                )
             },
             **proposed,
         }
