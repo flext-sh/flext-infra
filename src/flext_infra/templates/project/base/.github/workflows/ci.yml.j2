@@ -113,6 +113,7 @@ jobs:
 {%- if ci_tests.selected %}
 {%- include "_fragments/testmon_cache_restore.j2" %}
 {%- endif %}
+{%- include "_fragments/custom_steps.j2" %}
 
 {%- include "_fragments/mise_install.j2" %}
 {%- for verb in make.approval_verbs %}
@@ -221,6 +222,7 @@ jobs:
           submodules: {{ checkout_submodules }}
           persist-credentials: false
 {%- include "_fragments/private_dependency_auth.j2" %}
+{%- include "_fragments/custom_steps.j2" %}
 {%- include "_fragments/mise_install.j2" %}
       - name: Boot
         run: {{ make.ci.variable }}={{ make.ci.value }} make setup
