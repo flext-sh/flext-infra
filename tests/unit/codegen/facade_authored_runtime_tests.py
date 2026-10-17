@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from contextlib import ExitStack
 from pathlib import Path
 
 import pytest
@@ -29,13 +30,14 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         path = package / c.Infra.INIT_PY
         tm.ok(u.Cli.atomic_write_text_file(path, ""))
         failure = RuntimeError("consumer failed before source verification")
-        with (
-            pytest.raises(
-                RuntimeError if consumer_fails else ValueError,
-                match="consumer failed|atomic source changed",
-            ) as caught,
-            u.Infra.facade_source_project(root) as (project, _, _),
-        ):
+        with ExitStack() as stack:
+            caught = stack.enter_context(
+                pytest.raises(
+                    RuntimeError if consumer_fails else ValueError,
+                    match=r"consumer failed|atomic source changed",
+                ),
+            )
+            project, _, _ = stack.enter_context(u.Infra.facade_source_project(root))
             project.get_pymodule(
                 project.get_resource(path.relative_to(root).as_posix())
             )

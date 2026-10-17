@@ -195,8 +195,7 @@ class TestsFlextInfraModEvidenceInputs:
                 mod_workspace, fix=False, plan=plan, source_files=(source,)
             )
         )
-        console = capsys.readouterr()
-        tm.that(console.err.count(f"mod: start {c.Infra.SG} scan"), eq=1)
+        tm.that(capsys.readouterr().err.count(f"mod: start {c.Infra.SG} scan"), eq=1)
         tm.that(
             sorted((entry.rule_id, entry.text) for entry in report.entries),
             eq=[
