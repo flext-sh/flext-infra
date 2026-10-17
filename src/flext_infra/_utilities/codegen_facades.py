@@ -48,6 +48,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         *,
         source_states: tuple[m.Cli.AtomicFileState, ...] = (),
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        planned_sources: t.MappingKV[Path, str] | None = None,
     ) -> Generator[
         t.Triple[
             p.Infra.RopeProject,
@@ -70,13 +71,57 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         """
         root = root.resolve()
         if not source_states:
-            paths = FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(
-                root,
+            paths = (
+                FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(
+                    root,
+                )
+                if root.is_dir()
+                else ()
             )
             source_states = tuple(
                 u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
                 for path in paths
             )
+        if planned_sources:
+            originals = {state.path: state for state in source_states}
+            declarations = {plan.path: plan for plan in declared_files}
+            for supplied_path, source in planned_sources.items():
+                path = supplied_path.resolve()
+                content = source.encode(c.DEFAULT_ENCODING)
+                declared = declarations.get(path)
+                if declared is not None:
+                    if declared.desired_content != content:
+                        msg = f"Rope planned source has competing declarations: {path}"
+                        raise ValueError(msg)
+                    continue
+                original = originals.get(path)
+                if original is None:
+                    captured = u.Cli.atomic_read_binary_file_state(path)
+                    if captured.failure:
+                        if captured.exception is not None:
+                            raise captured.exception
+                        raise ValueError(captured.error)
+                    original = captured.value
+                    originals[path] = original
+                captured_chain = u.Cli.atomic_plan_directory_chain(path.parent)
+                if captured_chain.failure:
+                    if captured_chain.exception is not None:
+                        raise captured_chain.exception
+                    raise ValueError(captured_chain.error)
+                chain = captured_chain.value
+                declarations[path] = m.Infra.CodegenFilePlan(
+                    project=root,
+                    path=path,
+                    before=chain if chain.directories else original,
+                    desired_content=content,
+                    desired_mode=(
+                        original.mode
+                        if original.mode is not None
+                        else config.Infra.codegen.modes.file_default
+                    ),
+                )
+            source_states = tuple(originals.values())
+            declared_files = tuple(declarations.values())
         original_states = m.Infra.CodemodBindingSnapshot(
             states=(
                 *source_states,
@@ -114,13 +159,30 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 if plan.project == root and plan.path in proposed
             },
         }
+        parse_root = next(path for path in (root, *root.parents) if path.is_dir())
         with (
-            FlextInfraUtilitiesRopeCore.open_project(root) as live,
+            FlextInfraUtilitiesRopeCore.open_project(parse_root) as live,
             closing(
                 FlextInfraRopeProject.from_atomic_reads(
                     live,
                     original_states,
                     ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
+                    source_folders=sorted({
+                        *(folder.path for folder in live.get_source_folders()),
+                        *(
+                            ""
+                            if folder == parse_root
+                            else folder.relative_to(parse_root).as_posix()
+                            for folder in (
+                                root,
+                                *(
+                                    root / name
+                                    for name in config.Infra.source_scan.roots
+                                ),
+                            )
+                            if any(path.is_relative_to(folder) for path in proposed)
+                        ),
+                    }),
                     sources=proposed,
                     declared_files=declared_files,
                 )

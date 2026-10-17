@@ -817,7 +817,8 @@ ifneq ($(MAKECMDGOALS),help)
 endif
 
 # Runtime commands authenticate the graph setup provisioned; only setup installs.
-# Generation authenticates after publishing its declared activation inputs.
+# Generation guards its physical runtime and consumed inputs at publication;
+# the complete installed graph remains the explicit audit's responsibility.
 _builtin_require_environment: _builtin_require_interpreter
 ifneq ($(MAKECMDGOALS),help)
 	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
@@ -1028,7 +1029,7 @@ profile-mypy-report: _builtin_require_environment
 
 # Profile the complete generation operation, including its publication.
 .PHONY: profile-gen
-profile-gen: _builtin_require_environment
+profile-gen: _builtin_require_interpreter
 	@mkdir -p "$(PROFILE_REPORTS_DIR)"
 	@set -eu; \
 	scope=all; \
@@ -1230,13 +1231,13 @@ _builtin-project-new: _builtin_require_interpreter
 	@$(PROJECT_FLEXT_INFRA) codegen new --repository-root "$(PROJECT_ROOT)" --apply{% for argument in project_new.arguments %} --{{ argument | lower | replace("_", "-") }} "$$FLEXT_NEW_{{ argument }}"{% endfor %}
 {% endfor %}
 
-_builtin_gen_all: _builtin_require_environment
+_builtin_gen_all: _builtin_require_interpreter
 	@set -eu; \
 	scope=all; \
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then scope=self; fi; \
 	$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --scope "$$scope"
 
-_builtin-gen-footprint: _builtin_require_environment
+_builtin-gen-footprint: _builtin_require_interpreter
 	@$(PROJECT_FLEXT_INFRA) codegen footprint --root "$(PROJECT_ROOT)" --scope all
 
 _builtin-bootstrap-candidate: _builtin_require_environment

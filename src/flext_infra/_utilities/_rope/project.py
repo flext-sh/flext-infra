@@ -682,6 +682,7 @@ class FlextInfraRopeProject(Project):
         source_folders: t.SequenceOf[str],
         ignored_resources: t.SequenceOf[str] = (),
         *,
+        extension_modules: t.SequenceOf[str],
         python_path_folders: t.SequenceOf[str] = (),
     ) -> Self:
         """Construct a fresh Rope identity graph without persistent state.
@@ -694,6 +695,7 @@ class FlextInfraRopeProject(Project):
                 Rope enumerates real disk files the closed inventory does not
                 hold (tool hooks under ignored resources) and every such
                 read dies in the snapshot mapping.
+            extension_modules: Native modules elected by the original project.
             python_path_folders: Authenticated native import roots whose resources
                 must read the same captured inventory as project modules.
 
@@ -720,6 +722,7 @@ class FlextInfraRopeProject(Project):
             files,
             source_folders,
             ignored_resources=ignored_resources,
+            extension_modules=extension_modules,
             python_path_folders=python_path_folders,
         )
 
@@ -733,6 +736,7 @@ class FlextInfraRopeProject(Project):
         source_folders: t.SequenceOf[str],
         *,
         ignored_resources: t.SequenceOf[str],
+        extension_modules: t.SequenceOf[str],
         python_path_folders: t.SequenceOf[str],
     ) -> Self:
         """Compose the native project and external resolver over one read owner.
@@ -742,6 +746,7 @@ class FlextInfraRopeProject(Project):
 
         """
         external = NoProject(fscommands=files)
+        external.prefs.extension_modules = list(extension_modules)
         project = cls(
             root,
             fscommands=files,
@@ -750,6 +755,7 @@ class FlextInfraRopeProject(Project):
             save_objectdb=False,
             save_history=False,
             ignored_resources=list(ignored_resources),
+            extension_modules=list(extension_modules),
             source_folders=source_folders,
         )
         project._snapshot_python_path_folders = [
@@ -767,6 +773,7 @@ class FlextInfraRopeProject(Project):
         source_states: tuple[m.Cli.AtomicFileState, ...],
         ignored_resources: t.SequenceOf[str] = (),
         *,
+        source_folders: t.SequenceOf[str],
         sources: t.MappingKV[Path, str],
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> Self:
@@ -785,8 +792,9 @@ class FlextInfraRopeProject(Project):
         return cls._from_files(
             live.root.real_path,
             files,
-            source_folders=[folder.path for folder in live.get_source_folders()],
+            source_folders=source_folders,
             ignored_resources=ignored_resources,
+            extension_modules=sorted(live.get_pycore().extension_modules),
             python_path_folders=[
                 folder.real_path
                 for folder in live.get_python_path_folders()

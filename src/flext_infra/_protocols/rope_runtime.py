@@ -219,6 +219,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """Native graph owner retaining the original project of scopes and sources."""
 
         @property
+        def extension_modules(self) -> t.Infra.StrSet: ...
+
+        @property
         def project(self) -> FlextInfraProtocolsRopeRuntime.RopeProject: ...
 
     @runtime_checkable
@@ -360,6 +363,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             *,
             force_errors: bool = False,
         ) -> t.Infra.RopeNativeParsedModule: ...
+
+        def get_pycore(self) -> FlextInfraProtocolsRopeRuntime.RopePyCore: ...
 
         def get_source_folders(
             self,

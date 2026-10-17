@@ -9,11 +9,13 @@ from __future__ import annotations
 import ast
 import operator
 from collections.abc import MutableMapping
+from contextlib import ExitStack
 from functools import lru_cache
 from pathlib import Path
 
 from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesIterationWorkspace,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesRopeCore,
@@ -237,80 +239,42 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
 
         """
         root = project_root.resolve()
-        sources = {
-            cls.module_name_for_file(path, project_root=root): (path, source)
-            for path, source in cls._project_sources(root, planned_sources).items()
-            if cls.module_name_for_file(path, project_root=root)
-        }
-        if not sources:
-            # No captured declaration (e.g. a scaffold planned before its
-            # sources exist): nothing derives beyond the declared roots, so no
-            # Rope project is opened and no workspace tree is walked.
-            return tuple(sorted(roots))
-        # Generated package inits are projections excluded from the class
-        # inventory, yet their install_lazy_exports maps own the namespace
-        # aliases (m, p, t and siblings) that facade-qualified bases resolve
-        # through. Read those captured maps so resolution can rewrite
-        # ``<pkg>.<alias>`` targets to their provider modules.
-        extra_module_aliases: t.StrDict = {}
-        for init_module, (init_path, init_source) in sorted(sources.items()):
-            if init_path.name != c.Infra.INIT_PY:
-                continue
-            # Include the project's own barrel aliases; planned bytes already
-            # override disk in the captured source mapping.
-            for (
-                alias,
-                absolute,
-            ) in FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
-                init_module,
-                init_path,
-                init_source,
-            ).items():
-                extra_module_aliases.setdefault(
-                    f"{init_module}.{alias}",
-                    absolute,
+        with ExitStack() as stack:
+            if source_project is None:
+                source_project, _, captured = stack.enter_context(
+                    FlextInfraUtilitiesCodegenFacades.facade_source_project(
+                        root,
+                        planned_sources=planned_sources,
+                    )
                 )
-        if source_project is not None:
+            else:
+                captured = cls._project_sources(root, planned_sources)
+            sources = {
+                cls.module_name_for_file(path, project_root=root): (path, source)
+                for path, source in captured.items()
+                if cls.module_name_for_file(path, project_root=root)
+            }
+            if not sources:
+                return tuple(sorted(roots))
+            # The original or proposed initializer owns each public alias.
+            extra_module_aliases: t.StrDict = {}
+            for init_module, (init_path, init_source) in sorted(sources.items()):
+                if init_path.name != c.Infra.INIT_PY:
+                    continue
+                for (
+                    alias,
+                    absolute,
+                ) in FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
+                    init_module,
+                    init_path,
+                    init_source,
+                ).items():
+                    extra_module_aliases.setdefault(
+                        f"{init_module}.{alias}",
+                        absolute,
+                    )
             return FlextInfraUtilitiesRopeSourceBasesRuntime.runtime_bases(
                 source_project,
-                sources,
-                roots,
-                extra_module_aliases=extra_module_aliases,
-            )
-        # The analysis root opens with the whole declared workspace's member
-        # source roots on the resolution path: member sources legitimately
-        # import sibling fleet packages (tests fixtures import flext_tests,
-        # src modules import flext_core), and a member-only rope path raises
-        # ModuleNotFoundError for every cross-member base resolution.
-        # An unpublished project root (planned bytes only) is never created:
-        # Rope parses from its nearest existing ancestor, which is always one
-        # of the project roots so planned sources need no folder on disk.
-        parse_root = next(path for path in (root, *root.parents) if path.is_dir())
-        workspace_root = next(
-            (
-                parent
-                for parent in (parse_root, *parse_root.parents)
-                if (parent / "src").is_dir() and (parent / "flext-core").is_dir()
-            ),
-            parse_root,
-        )
-        project_roots = [
-            parse_root,
-            *(
-                member
-                for member in sorted(workspace_root.iterdir())
-                if member.is_dir() and (member / "src").is_dir()
-            ),
-        ]
-        with (
-            FlextInfraUtilitiesRopeCore.open_project(
-                workspace_root,
-                project_roots=project_roots,
-            ) as project,
-            project.frozen_layout(),
-        ):
-            return FlextInfraUtilitiesRopeSourceBasesRuntime.runtime_bases(
-                project,
                 sources,
                 roots,
                 extra_module_aliases=extra_module_aliases,

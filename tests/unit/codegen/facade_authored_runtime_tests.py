@@ -19,6 +19,42 @@ class TestsFlextInfraFacadeAuthoredRuntime:
     """Exercise preservation through generation and a fresh public consumer."""
 
     @staticmethod
+    def test_shared_source_project_keeps_native_stdlib_election(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """The authenticated graph resolves the interpreter's virtual stdlib."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / "consumer.py",
+                "from collections.abc import Mapping\n"
+                "class Consumer(Mapping):\n"
+                '    """Native stdlib inheritance contract."""\n'
+                "__all__ = ['Consumer']\n",
+            )
+        )
+        with u.Infra.facade_source_project(root) as binding:
+            project, _, sources = binding
+            tm.that(
+                u.Infra.runtime_evaluated_base_classes(
+                    root,
+                    sources,
+                    u.Tests.runtime_evaluated_roots(),
+                    source_project=project,
+                ),
+                eq=tuple(sorted(u.Tests.runtime_evaluated_roots())),
+            )
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            "from collections.abc import Mapping\n"
+            f"from {package.name} import Consumer\n"
+            "assert issubclass(Consumer, Mapping)\n",
+            cwd=root,
+        )
+
+    @staticmethod
     @pytest.mark.parametrize("consumer_fails", [False, True])
     def test_source_epoch_failure_preserves_consumer_exception(
         tmp_path: Path,
