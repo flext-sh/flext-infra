@@ -138,11 +138,7 @@ class FlextInfraRopeProject(Project):
         modname: str,
         folder: p.Infra.RopeRoot | Folder | None = None,
     ) -> File | Folder | None:
-        """Resolve native resources without shadowing packages by namespaces.
-
-        Rope's folder query accepts namespace portions before regular packages.
-        Keep its resource and snapshot machinery, but elect a regular package
-        or module before an otherwise matching namespace portion, as Python does.
+        """Admit the resource elected by Rope's native module finder.
 
         Returns:
             The native module resource, or no matching module.
@@ -154,53 +150,7 @@ class FlextInfraRopeProject(Project):
         if folder is not None and not isinstance(folder, Folder):
             message = "Rope module lookup requires a native folder"
             raise TypeError(message)
-        return self._elect_module(
-            self,
-            modname,
-            (
-                *self.get_source_folders(),
-                *self.get_python_path_folders(),
-                *((folder,) if folder is not None else ()),
-            ),
-        )
-
-    @staticmethod
-    def _elect_module(
-        finder: p.Infra.RopeModuleFinder,
-        modname: str,
-        roots: t.SequenceOf[File | Folder],
-    ) -> File | Folder | None:
-        """Elect a regular package or module before a namespace portion.
-
-        Returns:
-            The native module resource, or no matching module.
-
-        Raises:
-            TypeError: The SDK elected a resource that is neither file nor folder.
-
-        """
-        namespace: Folder | None = None
-        for root in roots:
-            if not isinstance(root, Folder):
-                continue
-            resource = finder.find_relative_module(modname, root, 1)
-            if resource is None:
-                continue
-            if isinstance(resource, File):
-                return resource
-            if not isinstance(resource, Folder):
-                message = "Rope module lookup elected a non-native resource"
-                raise TypeError(message)
-            if resource.has_child(c.Infra.INIT_PY):
-                return resource
-            module = f"{resource.name}{c.Infra.EXT_PYTHON}"
-            if resource.parent.has_child(module):
-                sibling = resource.parent.get_child(module)
-                if isinstance(sibling, File):
-                    return sibling
-            if namespace is None:
-                namespace = resource
-        return namespace
+        return super().find_module(modname, folder)
 
     class SnapshotFiles:
         """Closed, read-only input inventory for a semantic planning project.
@@ -820,7 +770,11 @@ class FlextInfraRopeProject(Project):
             files,
             source_folders=source_folders,
             ignored_resources=ignored_resources,
-            extension_modules=sorted(live.get_pycore().extension_modules),
+            extension_modules=sorted(
+                u.type_adapter(set[str]).validate_python(
+                    live.get_pycore().extension_modules, strict=True
+                )
+            ),
             python_path_folders=[
                 folder.real_path
                 for folder in live.get_python_path_folders()
@@ -949,9 +903,11 @@ class FlextInfraRopeProject(Project):
         project, live or captured, declares the interpreter's frozen stdlib
         modules as Rope's native extension modules before its core caches them.
         """
-        for name, module in tuple(sys.modules.items()):
+        for name in tuple(sys.modules):
+            module = sys.modules.get(name)
             if (
                 name.partition(".")[0] in sys.stdlib_module_names
+                and module is not None
                 and module.__spec__ is not None
                 and module.__spec__.origin == "frozen"
             ):

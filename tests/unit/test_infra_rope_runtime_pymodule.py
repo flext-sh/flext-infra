@@ -11,9 +11,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, u
+from flext_infra import c
 from flext_infra.workspace import FlextInfraRopeWorkspace
-from tests import tm
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -21,6 +21,26 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraRopeRuntimePymodule:
     """Validate the module predicate over rope modules and packages."""
+
+    @staticmethod
+    def test_blocked_stdlib_module_preserves_native_import_state(
+        tmp_path: Path,
+    ) -> None:
+        """A native blocked-import sentinel does not break project construction."""
+        u.Tests.run_lazy_init_probe(
+            "import sys\n"
+            "from contextlib import closing\n"
+            "from pathlib import Path\n"
+            "from flext_infra import u\n"
+            "factory = u.Infra.init_rope_project\n"
+            "assert 'idlelib' in sys.stdlib_module_names\n"
+            "sys.modules['idlelib'] = None\n"
+            "with closing(factory(Path(sys.argv[1]))) as project:\n"
+            "    assert Path(project.root.real_path) == Path(sys.argv[1]).resolve()\n"
+            "assert sys.modules['idlelib'] is None\n",
+            python_paths=(),
+            arguments=(str(tmp_path),),
+        )
 
     @staticmethod
     def test_regular_package_precedes_namespace_in_captured_sources(
