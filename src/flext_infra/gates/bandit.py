@@ -59,6 +59,31 @@ class FlextInfraBanditGate(FlextInfraGate):
         return [c.Infra.DEFAULT_SRC_DIR]
 
     @override
+    def check_files(
+        self,
+        files: t.SequenceOf[Path],
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> m.Infra.GateExecution:
+        """Audit only the files on the declared ``src`` audit surface.
+
+        Test and script trees never reach this gate: asserts are the pytest
+        idiom the fleet ruff convention already owns, and B101 flags them only
+        when the file-gate vocabulary feeds them past the directory contract.
+
+        Returns:
+            The resulting ``m.Infra.GateExecution``.
+
+        """
+        src_surface = (project_dir / c.Infra.DEFAULT_SRC_DIR).resolve()
+        elected = tuple(
+            path
+            for path in files
+            if path.exists() and src_surface in path.resolve().parents
+        )
+        return super().check_files(elected, project_dir, ctx)
+
+    @override
     def _build_check_command(
         self,
         project_dir: Path,
