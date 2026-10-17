@@ -36,7 +36,9 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             ) as caught,
             u.Infra.facade_source_project(root) as (project, _, _),
         ):
-            project.get_pymodule(project.get_resource(path.relative_to(root).as_posix()))
+            project.get_pymodule(
+                project.get_resource(path.relative_to(root).as_posix())
+            )
             tm.ok(u.Cli.atomic_write_text_file(path, "# Changed source epoch\n"))
             if consumer_fails:
                 raise failure

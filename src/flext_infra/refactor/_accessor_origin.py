@@ -340,7 +340,9 @@ class FlextInfraAccessorOriginResolver:
             if prefix is None or name.startswith("_"):
                 continue
             rule = next((rule for rule in rules if rule.source_name == name), None)
-            if rule is not None and self.within_origin(str(py_file), origin=rule.origin):
+            if rule is not None and self.within_origin(
+                str(py_file), origin=rule.origin
+            ):
                 continue
             warnings.append(
                 m.Infra.AccessorMigrationChange(

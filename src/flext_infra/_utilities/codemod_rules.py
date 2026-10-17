@@ -984,7 +984,7 @@ class FlextInfraUtilitiesCodemodRules(
         """
         rules: list[m.Infra.CodemodRule] = []
         for resource, text in sources:
-            documents = cls.parse_yaml_documents(text)
+            documents = u.Cli.yaml_parse_documents(text)
             if documents.failure:
                 return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(documents)
             for payload in documents.value:

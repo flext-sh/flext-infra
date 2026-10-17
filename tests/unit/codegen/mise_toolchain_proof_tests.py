@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -25,17 +26,20 @@ class TestsFlextInfraMiseToolchainProof:
     """Public behavior of the npm-free toolchain and its reality proof."""
 
     TOOL = "probe-tool"
-    VERSION = "1.2.3"
-    PLATFORM = "linux-x64"
     CHECKSUM = "sha256:00"
 
     @staticmethod
     def test_configuration_contracts_preserve_coercion_bytes_and_immutability() -> None:
         """Shared policy keeps schema coercion without trimming rendered payloads."""
         text = "  preserved payload\n"
-        endpoint = m.Infra.BeadsEndpointSpec.model_validate({"host": text, "port": "1234"})
+        endpoint = m.Infra.BeadsEndpointSpec.model_validate({
+            "host": text,
+            "port": "1234",
+        })
         move = m.Infra.LayoutMoveSpec(source=text, target=text)
-        overrides = m.Infra.DocsAuditOverridesSpec.model_validate({"stale_symbols": [text]})
+        overrides = m.Infra.DocsAuditOverridesSpec.model_validate({
+            "stale_symbols": [text]
+        })
 
         tm.that(endpoint.host, eq=text)
         tm.that(endpoint.port, eq=1234)
@@ -54,13 +58,57 @@ class TestsFlextInfraMiseToolchainProof:
             overrides.stale_symbols = ()
 
     @staticmethod
-    def test_setup_proof_requires_the_declared_runtime_lint_tools() -> None:
-        """The real setup proof validates the lint inventory in its own runtime."""
-        root = tm.ok(
+    def _repository_root() -> Path:
+        """Resolve the real checkout supplying the managed tool and lock.
+
+        Returns:
+            The native repository root.
+
+        """
+        return tm.ok(
             u.Infra.git_repository_root(
                 m.Infra.GitRepoRequest(repo_root=Path(__file__).parent)
             )
         ).repository_root
+
+    @staticmethod
+    def _native_entry() -> m.Infra.MiseToolEntry:
+        """Read the declared UV probe from the production configuration.
+
+        Returns:
+            The configured native tool entry.
+
+        """
+        return next(
+            tool
+            for tool in config.Infra.codegen.toolchain.tools
+            if tool.name == c.Infra.UV
+        )
+
+    @classmethod
+    def _native_version(cls) -> str:
+        """Read the UV version through the public lock-identity boundary.
+
+        Returns:
+            The version authenticated against the current tool declaration.
+
+        """
+        lock = tm.ok(
+            u.Cli.toml_read_json(cls._repository_root() / c.Infra.MISE_LOCK_FILENAME),
+        )
+        version, _ = tm.ok(
+            FlextInfraCodegenMiseToolchainProof.lock_identity(
+                cls._native_entry(),
+                lock,
+                tm.ok(FlextInfraCodegenMiseToolchainProof.current_platform()),
+            ),
+        )
+        return version
+
+    @classmethod
+    def test_setup_proof_requires_the_declared_runtime_lint_tools(cls) -> None:
+        """The real setup proof validates the lint inventory in its own runtime."""
+        root = cls._repository_root()
         uv = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
         tm.ok(
             FlextInfraCodegenMiseToolchainProof(
@@ -68,19 +116,11 @@ class TestsFlextInfraMiseToolchainProof:
             ).execute()
         )
 
-    @staticmethod
-    def test_uv_binary_belongs_to_its_declared_mise_installation() -> None:
+    @classmethod
+    def test_uv_binary_belongs_to_its_declared_mise_installation(cls) -> None:
         """A bundled executable from another tool cannot own UV resolution."""
-        root = tm.ok(
-            u.Infra.git_repository_root(
-                m.Infra.GitRepoRequest(repo_root=Path(__file__).parent)
-            )
-        ).repository_root
-        entry = next(
-            tool
-            for tool in config.Infra.codegen.toolchain.tools
-            if tool.name == c.Infra.UV
-        )
+        root = cls._repository_root()
+        entry = cls._native_entry()
         reader = tm.ok(u.Infra.managed_mise_self(root))
         installation = tm.ok(
             u.Cli.run_raw(
@@ -105,50 +145,60 @@ class TestsFlextInfraMiseToolchainProof:
 
     @classmethod
     def _entry(cls) -> m.Infra.MiseToolEntry:
-        """Declare one scenario tool whose probe prints its version.
+        """Bind the scenario identity to the real configured UV probe.
 
         Returns:
             The scenario tool entry.
 
         """
-        return m.Infra.MiseToolEntry.model_validate({
-            "name": cls.TOOL,
-            "version": "latest",
-            "version_probe": {
-                "binary": cls.TOOL,
-                "arguments": ["--version"],
-                "pattern": f"^{cls.TOOL} {{version}}$",
+        return m.Infra.MiseToolEntry.model_validate(
+            cls._native_entry().model_dump(round_trip=True)
+            | {
+                "name": cls.TOOL,
+                "selector": None,
+                "version": c.Infra.MISE_MOVING_SELECTOR,
             },
-        })
+        )
 
     @classmethod
-    def _lock(cls, *, checksum: bool = True) -> t.JsonMapping:
+    def _lock(
+        cls,
+        *,
+        checksum: bool = True,
+        version: str | None = None,
+    ) -> t.JsonMapping:
         """Build the scenario mise.lock mapping of the tool.
 
         Returns:
             The scenario lock mapping.
 
         """
-        platform_key = c.Infra.MISE_LOCK_PLATFORM_KEY.format(platform=cls.PLATFORM)
+        platform = tm.ok(FlextInfraCodegenMiseToolchainProof.current_platform())
+        platform_key = c.Infra.MISE_LOCK_PLATFORM_KEY.format(platform=platform)
         section: t.JsonDict = (
-            {"checksum": cls.CHECKSUM} if checksum else {"url": cls.PLATFORM}
+            {"checksum": cls.CHECKSUM} if checksum else {"url": platform}
         )
-        locked: t.JsonDict = {"version": cls.VERSION, platform_key: section}
+        locked: t.JsonDict = {
+            "version": cls._native_version() if version is None else version,
+            platform_key: section,
+        }
         versions: list[t.JsonValue] = [locked]
         tools: t.JsonDict = {cls.TOOL: versions}
         return {"tools": tools}
 
     @classmethod
-    def _executable(cls, path: Path, printed: str) -> Path:
-        """Write one real executable that prints ``<tool> <printed>``.
+    def _executable(cls, path: Path) -> Path:
+        """Copy the managed native UV binary into an isolated scenario root.
 
         Returns:
             The executable path.
 
         """
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(f"#!/bin/sh\necho '{cls.TOOL} {printed}'\n", encoding="utf-8")
-        path.chmod(0o755)
+        source = tm.ok(
+            u.Infra.managed_mise_binary(c.Infra.UV, cls._repository_root()),
+        )
+        _ = shutil.copy2(source, path)
         return path
 
     @classmethod
@@ -158,6 +208,7 @@ class TestsFlextInfraMiseToolchainProof:
         binary: Path,
         *,
         checksum: bool = True,
+        version: str | None = None,
     ) -> str | None:
         """Run the public proof and return its first defect, if any.
 
@@ -167,8 +218,8 @@ class TestsFlextInfraMiseToolchainProof:
         """
         result = FlextInfraCodegenMiseToolchainProof.prove(
             cls._entry(),
-            cls._lock(checksum=checksum),
-            cls.PLATFORM,
+            cls._lock(checksum=checksum, version=version),
+            tm.ok(FlextInfraCodegenMiseToolchainProof.current_platform()),
             (root, binary),
         )
         return result.error if result.failure else None
@@ -178,8 +229,8 @@ class TestsFlextInfraMiseToolchainProof:
         tmp_path: Path,
     ) -> None:
         """A self-contained binary that reports the locked version passes."""
-        root = tmp_path / "installs" / self.TOOL / self.VERSION
-        self._executable(root / "libexec" / self.TOOL, self.VERSION)
+        root = tmp_path / "installs" / self.TOOL / self._native_version()
+        self._executable(root / "libexec" / self.TOOL)
         link = root / "bin" / self.TOOL
         link.parent.mkdir(parents=True)
         link.symlink_to(Path("..") / "libexec" / self.TOOL)
@@ -187,7 +238,7 @@ class TestsFlextInfraMiseToolchainProof:
         result = FlextInfraCodegenMiseToolchainProof.prove(
             self._entry(),
             self._lock(),
-            self.PLATFORM,
+            tm.ok(FlextInfraCodegenMiseToolchainProof.current_platform()),
             (root, link),
         )
 
@@ -195,8 +246,8 @@ class TestsFlextInfraMiseToolchainProof:
 
     def test_binary_escaping_its_install_root_fails(self, tmp_path: Path) -> None:
         """A bin link into a foreign tree (the bun walk-up shape) fails."""
-        root = tmp_path / "installs" / self.TOOL / self.VERSION
-        foreign = self._executable(tmp_path / "node_modules" / self.TOOL, self.VERSION)
+        root = tmp_path / "installs" / self.TOOL / self._native_version()
+        foreign = self._executable(tmp_path / "outside" / self.TOOL)
         link = root / "bin" / self.TOOL
         link.parent.mkdir(parents=True)
         link.symlink_to(foreign)
@@ -205,24 +256,36 @@ class TestsFlextInfraMiseToolchainProof:
 
     def test_version_mismatch_fails(self, tmp_path: Path) -> None:
         """A contained binary reporting another release fails."""
-        root = tmp_path / "installs" / self.TOOL / self.VERSION
-        binary = self._executable(root / "bin" / self.TOOL, "9.9.9")
+        root = tmp_path / "installs" / self.TOOL / self._native_version()
+        binary = self._executable(root / "bin" / self.TOOL)
 
-        tm.that(self._prove(root, binary) or "", has="does not report the locked")
+        tm.that(
+            self._prove(root, binary, version=f"{self._native_version()}.mismatch")
+            or "",
+            has="does not report the locked",
+        )
 
     def test_proof_reports_defects_in_order(self, tmp_path: Path) -> None:
         """Lock identity precedes containment, which precedes the version."""
-        root = tmp_path / "installs" / self.TOOL / self.VERSION
-        foreign = self._executable(tmp_path / "outside" / self.TOOL, "9.9.9")
+        version = self._native_version()
+        root = tmp_path / "installs" / self.TOOL / version
+        foreign = self._executable(tmp_path / "outside" / self.TOOL)
         escaping = root / "bin" / self.TOOL
         escaping.parent.mkdir(parents=True)
         escaping.symlink_to(foreign)
-        contained = self._executable(root / "libexec" / self.TOOL, "9.9.9")
+        contained = self._executable(root / "libexec" / self.TOOL)
+        unexpected = f"{version}.mismatch"
 
-        tm.that(self._prove(root, escaping, checksum=False) or "", has="checksum")
-        tm.that(self._prove(root, escaping) or "", has="outside its install root")
         tm.that(
-            self._prove(root, contained) or "",
+            self._prove(root, escaping, checksum=False, version=unexpected) or "",
+            has="checksum",
+        )
+        tm.that(
+            self._prove(root, escaping, version=unexpected) or "",
+            has="outside its install root",
+        )
+        tm.that(
+            self._prove(root, contained, version=unexpected) or "",
             has="does not report the locked",
         )
 

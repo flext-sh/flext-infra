@@ -336,6 +336,15 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return self._execute_lazy_init(request)
         if surface is c.Infra.CodegenConformSurface.ALL:
             return self._execute_managed(request)
+        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY:
+            if surface in c.Infra.PARTIAL_PLAN_SURFACES:
+                return self._execute_plan(request)
+            mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
+            transaction = FlextInfraCodegenTransaction(mise_owner)
+            return transaction.run_locked(
+                prepare=False,
+                operation=lambda _scope_root: self._execute_plan(request),
+            )
         return self._execute_plan(request)
 
     def _migrate_repository_declarations(
@@ -550,6 +559,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 "\n".join(issue.formatted for issue in plan.issues)
                 or "generation planning failed",
                 exception=plan.exception,
+            )
+        surface = c.Infra.CodegenConformSurface(request.what)
+        if surface not in c.Infra.PARTIAL_PLAN_SURFACES:
+            return r[m.Infra.CodegenResult].fail(
+                "partial codegen apply is prohibited; use the complete all surface",
             )
         mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
         transaction = FlextInfraCodegenTransaction(mise_owner)

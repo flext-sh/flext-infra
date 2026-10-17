@@ -2,13 +2,15 @@
 # propagates it. The existing project context proves the canonical class stem.
 # Multi-class modules, explicit exports, loose behavior and module bindings
 # require their existing semantic ownership phase; this rule never elects them.
+# Pytest suites retain their no-export contract and are not publication owners.
 id: declare-single-class-export
 language: python
 severity: error
 metadata:
   context:
     NAME:
-      is: class-stem
+      - is: class-stem
+      - not: pytest-module
 utils:
   import:
     any:

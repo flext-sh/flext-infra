@@ -690,9 +690,9 @@ class TestsFlextInfraRefactorMainCli:
             workspace,
             kinds=("function",),
             rules=("unused",),
-            options=u.Tests.CensusOptions(
-                apply_changes=True,
-                dry_run=True,
+            options=m.Infra.CensusInput(
+                apply=True,
+                dry_run_mode=True,
             ),
         )
 
@@ -717,7 +717,7 @@ class TestsFlextInfraRefactorMainCli:
             workspace,
             kinds=(expectation.kind,),
             rules=(expectation.rule,),
-            options=u.Tests.CensusOptions(
+            options=m.Infra.CensusInput(
                 include_local_scopes=True,
                 impact_map_output=str(impact_map_path),
             ),
@@ -778,7 +778,7 @@ class TestsFlextInfraRefactorMainCli:
             workspace,
             kinds=("function",),
             rules=("unused",),
-            options=u.Tests.CensusOptions(
+            options=m.Infra.CensusInput(
                 impact_map_output=str(impact_map_path),
             ),
         )
@@ -832,7 +832,7 @@ class TestsFlextInfraRefactorMainCli:
             workspace,
             kinds=("function",),
             rules=("unused",),
-            options=u.Tests.CensusOptions(
+            options=m.Infra.CensusInput(
                 impact_map_output=str(impact_map_path),
             ),
         )
@@ -885,8 +885,8 @@ class TestsFlextInfraRefactorMainCli:
             workspace,
             kinds=("function",),
             rules=("unused",),
-            options=u.Tests.CensusOptions(
-                apply_changes=True,
+            options=m.Infra.CensusInput(
+                apply=True,
                 impact_map_output=str(impact_map_path),
             ),
         )

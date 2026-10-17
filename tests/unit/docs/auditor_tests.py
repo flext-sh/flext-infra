@@ -110,7 +110,9 @@ class TestsFlextInfraAuditor:
         summary = summary_path.read_text(encoding=c.DEFAULT_ENCODING)
         markdown = report_path.read_text(encoding=c.DEFAULT_ENCODING)
 
-        report = auditor.audit_scope(scope, params=m.Infra.AuditScopeParams(check=check))
+        report = auditor.audit_scope(
+            scope, params=m.Infra.AuditScopeParams(check=check)
+        )
 
         tm.that(report.model_dump(), eq=baseline.model_dump())
         tm.that(summary_path.read_text(encoding=c.DEFAULT_ENCODING), eq=summary)

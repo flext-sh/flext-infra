@@ -19,11 +19,22 @@ class TestsFlextInfraSnapshotDocuments:
 
     @staticmethod
     @pytest.mark.parametrize("empty_stream", [None, "", "# no documents\n"])
+    @pytest.mark.parametrize(
+        ("block_header", "padding", "second_case"),
+        [
+            ("|", "", "second_case\n"),
+            ("|-", "", "second_case"),
+            ("|+", "\n", "second_case\n\n"),
+        ],
+    )
     def test_all_documents_and_repeated_ids_contribute_snapshot_cases(
         tmp_path: Path,
         empty_stream: str | None,
+        block_header: str,
+        padding: str,
+        second_case: str,
     ) -> None:
-        """Snapshots from later documents and repeated IDs remain valid."""
+        """Native YAML block contents survive document and repeated-ID boundaries."""
         rules = tmp_path / "rule-inputs"
         tests = tmp_path / "fixture-inputs"
         snapshots = tests / c.Infra.CODEMOD_SNAPSHOT_DIRNAME
@@ -43,7 +54,8 @@ class TestsFlextInfraSnapshotDocuments:
         (tests / f"cases{c.Infra.CODEMOD_RULE_SUFFIX}").write_text(
             (
                 "id: first-probe\ninvalid: [first_case]\n"
-                "---\nid: second-probe\ninvalid: [second_case]\n"
+                f"---\nid: second-probe\ninvalid:\n  - {block_header}\n"
+                f"    second_case\n{padding}"
                 "---\nid: first-probe\ninvalid: [additional_case]\n"
                 if empty_stream is None
                 else empty_stream
@@ -52,7 +64,7 @@ class TestsFlextInfraSnapshotDocuments:
         )
         for rule_id, cases in (
             ("first-probe", ("first_case", "additional_case")),
-            ("second-probe", ("second_case",)),
+            ("second-probe", (second_case,)),
         ):
             tm.ok(
                 u.Cli.atomic_write_text_file(

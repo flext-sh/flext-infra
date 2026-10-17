@@ -41,27 +41,54 @@ class FlextInfraConstantsCodegen(
     ))
     "Surfaces planned for one exact module destination, never repository fans."
 
-    SELF_SCOPE_SURFACES: ClassVar[
+    PARTIAL_PLAN_SURFACES: ClassVar[
         frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
     ] = frozenset((
-        FlextInfraConfigVocabulary.CodegenConformSurface.ENVRC,
-        FlextInfraConfigVocabulary.CodegenConformSurface.MISE_CONFIG,
-    ))
-    "Surfaces restricted to the self repository scope."
-
-    DECLARED_TARGET_SURFACES: ClassVar[
-        frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
-    ] = SELF_SCOPE_SURFACES | frozenset((
         FlextInfraConfigVocabulary.CodegenConformSurface.MAKEFILE,
+        FlextInfraConfigVocabulary.CodegenConformSurface.DOCS_CONFIG,
+        FlextInfraConfigVocabulary.CodegenConformSurface.ENVRC,
         FlextInfraConfigVocabulary.CodegenConformSurface.PYPROJECT,
+        FlextInfraConfigVocabulary.CodegenConformSurface.MISE_CONFIG,
+        FlextInfraConfigVocabulary.CodegenConformSurface.RUNTIME_BINDINGS,
+        FlextInfraConfigVocabulary.CodegenConformSurface.WORKFLOWS,
     ))
-    "Self-owned configuration is planned against the declared repository target."
+    "Surfaces admitted for partial single-surface apply planning."
 
     ALLOW_UNPROVISIONED_SURFACES: ClassVar[
         frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
-    ] = DECLARED_TARGET_SURFACES | frozenset((
+    ] = frozenset((
+        FlextInfraConfigVocabulary.CodegenConformSurface.MAKEFILE,
         FlextInfraConfigVocabulary.CodegenConformSurface.DOCS_CONFIG,
+        FlextInfraConfigVocabulary.CodegenConformSurface.ENVRC,
+        FlextInfraConfigVocabulary.CodegenConformSurface.PYPROJECT,
+        FlextInfraConfigVocabulary.CodegenConformSurface.MISE_CONFIG,
     ))
+    "Surfaces whose workspace planning tolerates unprovisioned declared members."
+
+    DECLARED_TARGET_SURFACES: ClassVar[
+        frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
+    ] = frozenset((
+        FlextInfraConfigVocabulary.CodegenConformSurface.MAKEFILE,
+        FlextInfraConfigVocabulary.CodegenConformSurface.ENVRC,
+        FlextInfraConfigVocabulary.CodegenConformSurface.PYPROJECT,
+        FlextInfraConfigVocabulary.CodegenConformSurface.MISE_CONFIG,
+    ))
+    "Surfaces whose conformance target is the declared workspace repository itself."
+
+    SELF_SCOPE_SURFACES: ClassVar[
+        frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
+    ] = frozenset((
+        FlextInfraConfigVocabulary.CodegenConformSurface.MISE_CONFIG,
+        FlextInfraConfigVocabulary.CodegenConformSurface.ENVRC,
+    ))
+    "Surfaces restricted to the self repository scope."
+
+    "Surfaces planned for one exact module destination, never repository fans."
+
+    "Surfaces restricted to the self repository scope."
+
+    "Self-owned configuration is planned against the declared repository target."
+
     "Declared configuration and docs can be rendered before member provisioning."
 
     MISE_ARTIFACTS_STATE_DIRECTORY: ClassVar[Path] = Path(".state") / "mise-artifacts"
@@ -156,7 +183,9 @@ class FlextInfraConstantsCodegen(
         LAZY_INIT = "lazy_init"
         CENSUS_AFTER = "census_after"
 
-    PIPELINE_STAGE_ORDER: ClassVar[t.VariadicTuple[PipelineStage]] = tuple(PipelineStage)
+    PIPELINE_STAGE_ORDER: ClassVar[t.VariadicTuple[PipelineStage]] = tuple(
+        PipelineStage
+    )
     "Stage execution follows the canonical enumeration's declaration order."
     PIPELINE_KEY_DRY_RUN: ClassVar[str] = "dry_run"
     "Config key for pipeline dry-run mode."

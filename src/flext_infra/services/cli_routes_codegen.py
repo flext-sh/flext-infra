@@ -17,6 +17,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenMakeBootstrap,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenMiseToolchainProof,
+    FlextInfraCodegenMiseToolchainRepair,
     FlextInfraCodegenProjectNew,
     FlextInfraCodegenPyTyped,
     FlextInfraCodegenScaffolder,
@@ -186,6 +187,16 @@ class FlextInfraCodegenRoutes:
                         FlextInfraCodegenMiseToolchainProof,
                         FlextInfraCodegenMiseToolchainProof.execute,
                         "Mise toolchain reality proof complete",
+                    ),
+                    (
+                        "mise-repair",
+                        (
+                            "Reinstall one explicitly selected locked tool and prove "
+                            "reality"
+                        ),
+                        FlextInfraCodegenMiseToolchainRepair,
+                        FlextInfraCodegenMiseToolchainRepair.execute,
+                        "Selected tool repaired and complete toolchain proven",
                     ),
                     (
                         "version-file",
