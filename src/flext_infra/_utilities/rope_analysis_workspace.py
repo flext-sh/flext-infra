@@ -19,7 +19,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesIterationWorkspace,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
 )
 from flext_infra._utilities._rope_source_bases_aliases import (

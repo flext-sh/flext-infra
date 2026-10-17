@@ -10,7 +10,6 @@ from collections import defaultdict
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
-from flext_infra import c
 from flext_infra.codegen import FlextInfraCodegenGenerationImportsMixin
 
 if TYPE_CHECKING:
@@ -87,14 +86,14 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
 
     @staticmethod
     def _is_root_module_alias_group(mod: str, items: t.StrPairSequence) -> bool:
-        """Return whether ``mod`` is one direct root child reexporting itself.
+        """Return whether ``mod`` is a direct package child reexporting itself.
 
         Returns:
             Whether ``mod`` is one direct root child reexporting itself.
 
         """
         return (
-            mod.count(".") == 1
+            "." in mod
             and bool(items)
             and all(
                 not attr_name and export_name == mod.rsplit(".", maxsplit=1)[-1]
@@ -106,29 +105,23 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
     def _merge_root_alias_groups(
         collapsed: t.MappingKV[str, t.MutableSequenceOf[t.StrPair]],
     ) -> MutableMapping[str, t.StrPairSequence]:
-        """Fold direct root-child module aliases into one root-relative group.
-
-        Ruff renders consecutive ``from . import <child> as <child>`` statements
-        as one root-relative import; separate per-child groups emitted one line
-        each, so every generation diverged from the formatter's canonical form
-        and only a post-generation autofix converged the published initializer.
+        """Group child-module reexports under their absolute package owner.
 
         Returns:
             The resulting ``MutableMapping[str, t.StrPairSequence]``.
 
         """
         merged: MutableMapping[str, t.StrPairSequence] = {}
-        root_items: t.StrPairSequence = ()
+        declarations: t.StrPairSequence
         for mod, items in collapsed.items():
             if FlextInfraCodegenGenerationTypeCheckingMixin._is_root_module_alias_group(
-                mod,
-                items,
+                mod, items
             ):
-                root_items = (*root_items, *items)
-                continue
-            merged[mod] = items
-        if root_items:
-            merged["."] = (*merged.get(".", ()), *root_items)
+                owner = mod.rpartition(".")[0]
+                declarations = tuple((name, name) for name, _ in items)
+            else:
+                owner, declarations = mod, items
+            merged[owner] = (*merged.get(owner, ()), *declarations)
         return merged
 
     @staticmethod
@@ -155,65 +148,19 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         return mod
 
     @staticmethod
-    def _should_skip_type_checking_module_export(
-        mod: str,
-        export_name: str,
-        attr_name: str,
-        root_name: str,
-    ) -> bool:
-        """Return whether a symbol import is a redundant root self-import.
-
-        Returns:
-            Whether a symbol import is a redundant root self-import.
-
-        """
-        if export_name in c.Infra.ALIAS_NAMES or not export_name:
-            return False
-        if export_name in {"cli", "main", "infra"}:
-            return False
-        if export_name != export_name.lower():
-            return False
-        if not attr_name:
-            # Literal __all__ requires every module alias binding.
-            return False
-        # A lowercase ``from mod import name`` (package-name alias like ``grpc``
-        # or a lowercase module-level function) is a real symbol
-        # that must stay statically visible; only skip a redundant self-import
-        # from the root package itself.
-        return mod == root_name and attr_name == export_name
-
-    @staticmethod
     def _emit_type_checking_module(
         mod: str,
-        rendered_mod: str,
         items: t.StrPairSequence,
-        root_name: str,
         lines: t.MutableSequenceOf[str],
     ) -> None:
-        """Emit one TYPE_CHECKING module import group.
-
-        ``mod`` is the planned owner that decides module-alias exports;
-        ``rendered_mod`` retains its elected relative or external import form.
-        """
+        """Emit one TYPE_CHECKING import from its absolute owner."""
         alias_exports: t.MutableSequenceOf[str] = []
         parts: t.MutableSequenceOf[str] = []
         module_basename = mod.rsplit(".", maxsplit=1)[-1]
-        selected_items = tuple(
-            item
-            for item in sorted(
-                items,
-                key=FlextInfraCodegenGenerationTypeCheckingMixin._import_item_sort_key,
-            )
-            if not (
-                FlextInfraCodegenGenerationTypeCheckingMixin._should_skip_type_checking_module_export
-            )(
-                mod,
-                item[0],
-                item[1],
-                root_name,
-            )
-        )
-        for export_name, attr_name in selected_items:
+        for export_name, attr_name in sorted(
+            items,
+            key=FlextInfraCodegenGenerationTypeCheckingMixin._import_item_sort_key,
+        ):
             if not attr_name:
                 if export_name == module_basename:
                     alias_exports.append(export_name)
@@ -235,7 +182,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             lines.extend(
                 FlextInfraCodegenGenerationTypeCheckingMixin._format_type_checking_module_alias_import(
                     "    ",
-                    rendered_mod,
+                    mod,
                     export_name,
                 ),
             )
@@ -244,7 +191,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             lines.extend(
                 FlextInfraCodegenGenerationTypeCheckingMixin._format_import(
                     "    ",
-                    rendered_mod,
+                    mod,
                     deduped_parts,
                 ),
             )
@@ -310,7 +257,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         def type_checking_module_key(mod: str) -> t.StrPair:
             owner = cls._type_checking_sort_owner(
                 mod,
-                () if mod == "." else merged_groups[mod],
+                merged_groups[mod],
             )
             return cls._type_checking_sort_key(owner, effective_root_names)
 
@@ -331,9 +278,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                 lines.append("")
             cls._emit_type_checking_module(
                 mod,
-                mod,
                 merged_groups[mod],
-                root_name,
                 lines,
             )
             previous_section = current_section

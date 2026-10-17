@@ -53,7 +53,6 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         managed = self._managed_profile(project_dir, workspace, inputs=inputs)
         if managed.failure:
             return r[t.Infra.LayoutStatus].from_failure(managed)
-        profile = managed.value
         gitignore_path = project_dir / c.Infra.GITIGNORE
         before = u.Cli.atomic_read_binary_file_state(gitignore_path, required=False)
         if before.failure:
@@ -63,12 +62,12 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             if before.value.content is None
             else before.value.content.decode(c.DEFAULT_ENCODING)
         )
-        if profile is None:
+        if managed.value is None:
             desired = self._gitignore_append_content(current, patterns)
         else:
             rendered = u.Infra.render_project_gitignore(
                 inputs.spec,
-                profile=profile,
+                profile=managed.value,
                 project_name=FlextInfraCodegenLayoutPlanMixin.layout_project_name(
                     project_dir,
                 ),
@@ -91,7 +90,7 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             desired_mode=inputs.spec.modes.file_default,
             source_states=source_states,
             owner="codegen",
-            policy="full" if profile is not None else "merge",
+            policy="full" if managed.value is not None else "merge",
         )
         written = FlextInfraMisePublication.publish_file_plan(
             planned,

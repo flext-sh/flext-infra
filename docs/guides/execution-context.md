@@ -128,6 +128,9 @@ base order declared in their configured private family. Protocol projection keep
 its consumer-based ownership resolution. The utility path delegates directly to
 the declaration planner. Static and runtime consumer checks retain their own
 import-failure verdicts.
+Generated Python imports use their absolute native package owner. The planner
+selects exports once; rendering groups those declarations without another
+name-based exclusion policy. Compact lazy-loader targets remain loader data.
 Runtime-base discovery treats supplied planned bytes as authoritative, including
 unpublished packages. Original-file reads and package membership checks retain
 their native project-tree scope; planned initializer bytes own alias analysis.
@@ -961,12 +964,18 @@ authenticated source inventory. External providers keep their native Rope
 identity through a snapshot-owned external project and read the captured bytes.
 Physical file changes remain inputs to publication CAS, rather than changing
 the source graph while a plan is being computed.
+Rope owns module, regular-package and namespace precedence; Infra validates the
+native resource it returns without maintaining another election algorithm.
+Import capture retains one typed lookup keyed by native root, module and relative
+level; it does not transport unused copies of the SDK's search roots.
 
 Every Rope project registers the interpreter's loaded frozen stdlib modules
 through native extension preferences before initializing its core. Live and
 captured projects therefore resolve the same sourceless aliases; callers do not
 maintain a second module list. Registration preserves explicitly declared
 extension modules.
+Blocked-import sentinels in `sys.modules` remain blocked and are not module
+declarations to register.
 
 Import normalization treats exception targets and structural pattern captures
 as local bindings. These names do not load a package facade or reintroduce an

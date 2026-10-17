@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, MutableMapping, Sequence
-from functools import lru_cache
+from functools import cache, lru_cache
 from pathlib import Path
 
 from flext_cli import u
@@ -958,7 +958,7 @@ class FlextInfraUtilitiesCodemodRules(
         )
 
     @staticmethod
-    @lru_cache(maxsize=None)
+    @cache
     def _yaml_documents_json(text: str) -> p.Result[str]:
         """Memoize immutable canonical documents from the shared YAML ingress.
 
@@ -969,7 +969,12 @@ class FlextInfraUtilitiesCodemodRules(
         parsed = u.Cli.yaml_parse_documents(text)
         if parsed.failure:
             return r[str].from_failure(parsed)
-        return u.Cli.json_dumps(parsed.value)
+        return r[str].ok(
+            u
+            .type_adapter(tuple[t.JsonMapping, ...])
+            .dump_json(tuple(parsed.value))
+            .decode(c.DEFAULT_ENCODING)
+        )
 
     @classmethod
     def parse_yaml_documents(

@@ -45,6 +45,9 @@ class FlextInfraTypesRope:
     type RopeNativeParsedModule = PyModule | PyPackage
     type RopeNativeSemanticModule = BuiltinModule | RopeNativeParsedModule
     type RopeResource = FlextInfraProtocolsRopeRuntime.RopeResource
+    type RopeImportLookup = t.MutableMappingKV[
+        t.Triple[str, str, int], RopeResource | None
+    ]
     type RopeFile = FlextInfraProtocolsRopeRuntime.RopeFile
     type RopeLocation = FlextInfraProtocolsRopeRuntime.RopeLocation
     type RopeSemanticModule = FlextInfraProtocolsRopeRuntime.RopeSemanticModule

@@ -115,8 +115,8 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 ),
                 eq=None,
             )
-            module = project.get_module(
-                f"{package.name}.{generated.name}.{provider.stem}"
+            module = u.Infra.require_semantic_module(
+                project.get_module(f"{package.name}.{generated.name}.{provider.stem}")
             )
             tm.not_none(module.get_attribute("GeneratedProvider").get_object())
             tm.that({state.path for state in consumed()[0]}, has=provider.resolve())
@@ -314,24 +314,21 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         provider_namespace = (
             f"{provider_root.name}.{c.Infra.DEFAULT_SRC_DIR}.{provider.name}"
         )
-        private_package = provider / family.directory
-        private_package.mkdir()
-        barrel = private_package / c.Infra.INIT_PY
+        barrel = provider / family.directory / c.Infra.INIT_PY
+        barrel.parent.mkdir()
         tm.ok(u.Cli.atomic_write_text_file(barrel, ""))
-        declaration = private_package / "base.py"
         public_name = "ProviderBase" if declared else "OtherProviderBase"
         tm.ok(
             u.Cli.atomic_write_text_file(
-                declaration,
+                barrel.parent / "base.py",
                 u.Tests.runtime_root_import() + f"class {public_name}(RuntimeRoot):\n"
                 '    """Explicitly published empty protocol owner."""\n'
                 f"__all__ = [{public_name!r}]\n",
             ),
         )
-        consumer = package / "consumer.py"
         tm.ok(
             u.Cli.atomic_write_text_file(
-                consumer,
+                package / "consumer.py",
                 f"from {provider_namespace}.{family.directory} "
                 "import ProviderBase\n"
                 "class Consumer(ProviderBase):\n"
