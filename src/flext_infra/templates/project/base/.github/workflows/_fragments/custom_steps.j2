@@ -1,0 +1,8 @@
+{%- if custom_steps %}
+
+      # Project-owned steps, the CI counterpart of custom.mk: the generator
+      # injects this block verbatim from the project's own custom-steps file
+      # and never interprets it, so a project extends its pipeline without the
+      # generator carrying that project's concerns.
+{{ custom_steps }}
+{%- endif -%}
