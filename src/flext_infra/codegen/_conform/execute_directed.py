@@ -241,6 +241,13 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         """
         roots, scope_root = scope
         plan, analysis, changed = candidate
+        inputs = FlextInfraCodegenPreconditions.unique_states(
+            tuple(source for file in analysis.files for source in file.source_states),
+        )
+        if inputs.failure:
+            return r[m.Infra.CodegenResult].from_failure(inputs)
+        # Destination snapshots are authenticated as outputs, not source inputs.
+        analysis = analysis.model_copy(update={"inputs": inputs.value})
         staged = self._directed_stage_inputs(request, analysis)
         if staged.failure:
             return r[m.Infra.CodegenResult].from_failure(staged)

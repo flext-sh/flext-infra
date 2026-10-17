@@ -21,12 +21,31 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     """Rope object contracts used instead of importing untyped Rope classes."""
 
     @runtime_checkable
+    class RopeProjectElection(Protocol):
+        """Readonly native import roots and source-selection policy."""
+
+        @property
+        def source_folders(self) -> t.StrTuple: ...
+
+        @property
+        def ignored_resources(self) -> t.StrTuple: ...
+
+        @property
+        def extension_modules(self) -> t.StrTuple: ...
+
+        @property
+        def python_path_folders(self) -> t.StrTuple: ...
+
+    @runtime_checkable
     class RopeResource(Protocol):
         """Rope project resource shape shared by files and folders."""
 
         def is_folder(self) -> bool: ...
 
         def exists(self) -> bool: ...
+
+        @property
+        def name(self) -> str: ...
 
         @property
         def path(self) -> str: ...
@@ -53,23 +72,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def has_child(self, name: str) -> bool: ...
 
     @runtime_checkable
-    class RopeFile(Protocol):
+    class RopeFile(RopeResource, Protocol):
         """Rope file resource with content access."""
-
-        def exists(self) -> bool: ...
-
-        @property
-        def path(self) -> str: ...
-
-        @property
-        def real_path(self) -> str: ...
-
-        def is_folder(self) -> bool:
-            """Report whether the resource is a folder in the project tree."""
-            ...
-
-        @property
-        def parent(self) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
 
         def read(self) -> str: ...
 
@@ -333,7 +337,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def find_relative_module(
             self,
             modname: str,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None,
             level: int,
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
 
@@ -386,7 +390,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def get_relative_module(
             self,
             name: str,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None,
             level: int,
         ) -> t.Infra.RopeNativeParsedModule: ...
 

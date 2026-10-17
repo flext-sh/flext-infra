@@ -110,6 +110,52 @@ class TestsFlextInfraModEvidenceInputs:
         )
 
     @staticmethod
+    def test_context_requires_a_captured_or_transformed_variable(
+        tmp_path: Path,
+    ) -> None:
+        """A declared transform never admits an unrelated context variable."""
+        rules = tmp_path / c.Infra.CODEMOD_RULE_DIRS_KEY
+        rules.mkdir()
+        configuration = tmp_path / c.Infra.CODEMOD_CONFIG_FILENAME
+        tm.ok(
+            u.Cli.yaml_dump(
+                configuration,
+                {c.Infra.CODEMOD_RULE_DIRS_KEY: [rules.name]},
+            )
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                rules / f"context{c.Infra.CODEMOD_RULE_SUFFIX}",
+                {
+                    "id": "unbound-context",
+                    "language": "Python",
+                    "severity": "error",
+                    "rule": {"pattern": "$CAPTURED"},
+                    "transform": {
+                        "DECLARED": {
+                            "replace": {
+                                "source": "$CAPTURED",
+                                "replace": "^.*$",
+                                "by": "derived",
+                            }
+                        }
+                    },
+                    "metadata": {
+                        "context": {
+                            "UNDECLARED": {
+                                "is": c.Infra.CodemodContextPredicate.FILE_FAMILY.value
+                            }
+                        }
+                    },
+                },
+            )
+        )
+        tm.fail(
+            u.Infra.codemod_catalog_rules("context-provider", configuration),
+            has="UNDECLARED",
+        )
+
+    @staticmethod
     def test_composed_native_scan_preserves_provider_utils_and_local_shadows(
         mod_workspace: Path,
         tmp_path: Path,

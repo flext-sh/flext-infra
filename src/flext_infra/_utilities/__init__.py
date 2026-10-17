@@ -255,6 +255,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.managed_conflicts import (
         FlextInfraUtilitiesManagedConflicts,
     )
+    from flext_infra._utilities.mise_binary import FlextInfraUtilitiesMiseBinary
     from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
     from flext_infra._utilities.namespace_analysis import (
         FlextInfraUtilitiesRefactorNamespaceFlext,
@@ -458,6 +459,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesLintRecipes",
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesManagedConflicts",
+    "FlextInfraUtilitiesMiseBinary",
     "FlextInfraUtilitiesNamespaceConfig",
     "FlextInfraUtilitiesNetwork",
     "FlextInfraUtilitiesPrivateImportAncestry",
@@ -678,6 +680,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesLintRecipes": ".lint_recipes",
         "FlextInfraUtilitiesLogParser": ".log_parser",
         "FlextInfraUtilitiesManagedConflicts": ".managed_conflicts",
+        "FlextInfraUtilitiesMiseBinary": ".mise_binary",
         "FlextInfraUtilitiesNamespaceConfig": ".namespace_config",
         "FlextInfraUtilitiesNetwork": ".network",
         "FlextInfraUtilitiesPrivateImportAncestry": ".private_import_ancestry",

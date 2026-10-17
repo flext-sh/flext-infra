@@ -1746,7 +1746,7 @@ upg:
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make upg to execute it.'
 
 upg-sources:
-	@printf '  %-16s %s\n' 'upg-sources' 'Migrate an explicitly selected dependency Git reference through the current tool owner before the consumer resolves its own locks.'
+	@printf '  %-16s %s\n' 'upg-sources' 'Migrate an explicitly selected dependency Git reference in the root and its declared member manifests before resolving their locks.'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make upg-sources to execute it.'
 
 validate-lifecycle:
@@ -1989,7 +1989,7 @@ _builtin-help:
 
 	@printf '  %-16s %s\n' 'upg' 'Resolve the newest declared releases, write the uv and mise locks, then prove the upgraded tree still converges; gates stay with make check.';
 
-	@printf '  %-16s %s\n' 'upg-sources' 'Migrate an explicitly selected dependency Git reference through the current tool owner before the consumer resolves its own locks.';
+	@printf '  %-16s %s\n' 'upg-sources' 'Migrate an explicitly selected dependency Git reference in the root and its declared member manifests before resolving their locks.';
 
 	@printf '  %-16s %s\n' 'validate-lifecycle' 'Execute the declared public runtime acceptance steps serially, with root-owned mutation fanout and typed first-failure receipts.';
 
@@ -2418,7 +2418,7 @@ _builtin-upg-sources: _builtin_require_environment
 	fi
 
 	@$(PROJECT_FLEXT_INFRA) deps modernize --repository-root "$(SOURCE_ROOT)" \
-		--projects . --apply --git-source-url-prefix "$(SOURCE_URL_PREFIX)" \
+		--apply --git-source-url-prefix "$(SOURCE_URL_PREFIX)" \
 		--git-source-ref-from "$(SOURCE_REF_FROM)" --git-source-ref-to "$(SOURCE_REF_TO)"
 
 _upg_lifecycle: _builtin_setup_submodules

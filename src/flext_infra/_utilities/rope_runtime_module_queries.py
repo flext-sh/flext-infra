@@ -14,7 +14,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import m, p, r, t
+from flext_infra import config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeBase,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -335,17 +335,26 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         snapshot = factory(
             project.root.real_path,
             contents,
-            [folder.path for folder in project.get_source_folders()],
-            extension_modules=sorted(
-                u.type_adapter(set[str]).validate_python(
-                    project.get_pycore().extension_modules, strict=True
-                )
+            m.Infra.RopeProjectElection(
+                source_folders=tuple(
+                    folder.path for folder in project.get_source_folders()
+                ),
+                ignored_resources=tuple(
+                    sorted(config.Infra.codegen.source_scan_ignored)
+                ),
+                extension_modules=tuple(
+                    sorted(
+                        u.type_adapter(set[str]).validate_python(
+                            project.get_pycore().extension_modules, strict=True
+                        )
+                    )
+                ),
+                python_path_folders=tuple(
+                    folder.real_path
+                    for folder in project.get_python_path_folders()
+                    if folder.is_folder()
+                ),
             ),
-            python_path_folders=[
-                folder.real_path
-                for folder in project.get_python_path_folders()
-                if folder.is_folder()
-            ],
         )
         if not isinstance(snapshot, p.Infra.RopeProject):
             msg = "Rope snapshot does not satisfy its project contract"

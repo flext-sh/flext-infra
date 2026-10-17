@@ -8,12 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
-from flext_infra import c, config, m
-from flext_infra.codegen._conform import (
-    FlextInfraCodegenConformFilePlans,
-)
-from tests import tm, u
+from flext_infra import config
+from flext_infra.codegen import FlextInfraCodegenConformFilePlans
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraCodegenConformMiseConfigPlans:

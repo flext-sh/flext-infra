@@ -173,6 +173,15 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                                 ),
                                 "dependencies": [],
                             },
+                            "tool": {
+                                "flext": {
+                                    "docs": {
+                                        "package_name": fixture.project_spec(
+                                            name,
+                                        ).package_name,
+                                    },
+                                },
+                            },
                         },
                     ),
                 )

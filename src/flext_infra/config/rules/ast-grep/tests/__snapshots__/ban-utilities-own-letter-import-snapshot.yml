@@ -62,6 +62,21 @@ snapshots:
       start: 0
       end: 23
   ? |
+    from tests import u
+  : labels:
+    - source: u
+      style: primary
+      start: 18
+      end: 19
+    - source: tests
+      style: secondary
+      start: 5
+      end: 10
+    - source: from tests import u
+      style: secondary
+      start: 0
+      end: 19
+  ? |
     from typing import TYPE_CHECKING
     if TYPE_CHECKING:
         from ai_hub import u
@@ -100,3 +115,14 @@ snapshots:
       style: secondary
       start: 0
       end: 23
+  ? |
+    import tests.utilities
+  : labels:
+    - source: tests.utilities
+      style: primary
+      start: 7
+      end: 22
+    - source: import tests.utilities
+      style: secondary
+      start: 0
+      end: 22

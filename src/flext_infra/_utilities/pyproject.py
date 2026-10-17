@@ -134,8 +134,7 @@ class FlextInfraUtilitiesPyproject:
                 value
                 for value, comment in zip(entries, comments.value, strict=True)
                 if not isinstance(value, str)
-                or comment.removeprefix("#").strip()
-                != c.Infra.MEMBER_DEV_PROVENANCE
+                or comment.removeprefix("#").strip() != c.Infra.MEMBER_DEV_PROVENANCE
             ),
         )
 

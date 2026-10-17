@@ -26,7 +26,7 @@ from flext_infra.workspace import (
 )
 from tests import c, m, p, t, tm, u
 
-_FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
+_FIXTURES_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 

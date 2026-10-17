@@ -167,9 +167,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
     ) -> None:
         """Require every independent resolution view in the plan and its report."""
         planned_paths = {file.path for file in plan.files}
-        reported_paths = {
-            file.path for item in report.outcomes for file in item.files
-        }
+        reported_paths = {file.path for item in report.outcomes for file in item.files}
         for relative in tm.ok(
             u.Infra.load_codegen_inputs(independent)
         ).spec.uv_resolution_pyprojects:
@@ -193,10 +191,18 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             workspace=f"{c.Infra.PKG_PREFIX_HYPHEN}plan-workspace",
             member=f"{c.Infra.PKG_PREFIX_HYPHEN}plan-member",
         )
-        independent = TestsFlextInfraCodegenCandidateBootstrap._attach_independent_member(
-            root,
+        independent = (
+            TestsFlextInfraCodegenCandidateBootstrap._attach_independent_member(
+                root,
+            )
         )
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        workspace = workspace.model_copy(
+            update={
+                "project": u.Tests.project_spec(workspace.repository.distribution),
+                "integration": u.Tests.integration(),
+            },
+        )
         request = u.Tests.conform_request(
             root,
             what=c.Infra.CodegenConformSurface.PYPROJECT,
@@ -237,6 +243,13 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
         failed_outcome = next(item for item in report.outcomes if item.root == failed)
         tm.that(bool(failed_outcome.error or failed_outcome.issues), eq=True)
+        if failure == "root-source":
+            tm.that(failed_outcome.error, has="live pyproject is not valid TOML")
+        elif failure == "root-view":
+            tm.that(
+                failed_outcome.error,
+                has="native resolution view escapes its repository",
+            )
         tm.that(failed_outcome.files, empty=True)
         TestsFlextInfraCodegenCandidateBootstrap._assert_independent_views_planned(
             independent,
@@ -290,6 +303,24 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             u.Cli.atomic_read_binary_file_state(pyproject, required=True),
         )
         command = m.Infra.CandidateBootstrapCommand(repository_root=root)
+        plan = tm.ok(
+            FlextInfraCodegenConform(repository_root=root).plan(
+                u.Tests.conform_request(
+                    root,
+                    what=c.Infra.CodegenConformSurface.PYPROJECT,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                    mode=c.Infra.CodegenConformMode.CHECK,
+                ),
+            ),
+        )
+        tm.that(plan.issues, empty=True)
+        resolution = tm.ok(
+            u.Infra.load_codegen_inputs(root)
+        ).spec.uv_resolution_pyprojects
+        views = tuple(
+            file for file in plan.files if file.path.relative_to(root) in resolution
+        )
+        tm.that(len(views), eq=len(resolution))
 
         tm.ok(infra.bootstrap_candidate(command))
         projected = tm.ok(
@@ -299,7 +330,11 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             ),
         )
         tm.that(projected.content, ne=before.content)
+        for view in views:
+            tm.that(view.path.read_bytes(), eq=view.desired_content)
         tm.ok(infra.bootstrap_candidate(command))
+        for view in views:
+            tm.that(view.path.read_bytes(), eq=view.desired_content)
 
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(declaration, required=True)),
@@ -323,7 +358,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         *,
         foreign_change: bool,
     ) -> None:
-        """A real journal receipt permits continuation only while sources are live."""
+        """A real journal receipt permits continuation only while outputs are live."""
         root, _ = u.Tests.render_make_environment(
             tmp_path / "continuation",
             c.Infra.MakeProfile.STANDALONE,
@@ -369,14 +404,22 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         tm.ok(transaction.run_files_locked(roots, publish))
         tm.that(bool(receipts), eq=True)
         if foreign_change:
-            source.write_text("foreign source mutation\n", encoding=c.DEFAULT_ENCODING)
+            destination.write_text(
+                "foreign publication mutation\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
 
         continued = planner.continue_after_publication(tuple(receipts))
 
         tm.that(continued.success, eq=not foreign_change)
         if foreign_change:
-            tm.that(continued.error, has=str(source))
-        tm.that(destination.read_bytes(), eq=state.content)
+            tm.that(continued.error, has=str(destination))
+            tm.that(
+                destination.read_bytes(),
+                eq=b"foreign publication mutation\n",
+            )
+        else:
+            tm.that(destination.read_bytes(), eq=state.content)
 
     @staticmethod
     @pytest.mark.slow

@@ -1141,6 +1141,17 @@ class FlextInfraConfigModelsMake(
 
         @m.computed_field
         @property
+        def check_gates_file(self) -> t.VariadicTuple[str]:
+            """Gates whose checker accepts one declared file.
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
+            return c.Infra.CANONICAL_FILE_GATE_IDS
+
+        @m.computed_field
+        @property
         def custom_handler_policies(
             self,
         ) -> Mapping[str, FlextInfraConfigModelsMake.CustomHandlerPolicy]:

@@ -30,7 +30,7 @@ class FlextInfraCodegenLayoutPlanMixin:
         what dropped standalone repositories' canonical declarations.
 
         Returns:
-            The resulting ``m.Infra.LayoutSpec``.
+            The selected project's validated layered layout policy.
 
         """
         layered = u.Infra.load_codegen_inputs(project_dir)

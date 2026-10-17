@@ -11,11 +11,73 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config, m
+from flext_infra.codemod import FlextInfraModGateEngine
 from tests import t, tm, u
 
 
 class TestsFlextInfraCodemodContextOwnPackage:
     """An import between a project's own namespaces never crosses an owner."""
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize("producer", [False, True])
+    @pytest.mark.parametrize("module_import", [False, True])
+    def test_own_utility_import_requires_the_declared_producer_family(
+        mod_workspace: Path,
+        *,
+        producer: bool,
+        module_import: bool,
+    ) -> None:
+        """Consumer categories never borrow a real facade producer's role."""
+        family = u.Infra.facade_families()["u"]
+        tests_root = mod_workspace / c.Infra.DIR_TESTS
+        tm.ok(u.Cli.ensure_dir(tests_root))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                tests_root / c.Infra.INIT_PY,
+                f"from .{family.module} import u\n",
+            )
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                tests_root / f"{family.module}.py",
+                "from flext_core import u\n__all__ = ['u']\n",
+            )
+        )
+        source = (
+            (tests_root if producer else tests_root / "unit")
+            / f"_{family.module}"
+            / "probe.py"
+        )
+        tm.ok(u.Cli.ensure_dir(source.parent))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                source,
+                f"import {tests_root.name}.{family.module}\n"
+                if module_import
+                else f"from {tests_root.name} import u\n",
+            )
+        )
+        plan = tm.ok(u.Infra.codemod_rule_plan(mod_workspace))
+        selection = tuple(
+            rule.id
+            for rule in plan.rules
+            if any(
+                condition.predicate is c.Infra.CodemodContextPredicate.FILE_FAMILY
+                and condition.holds
+                for condition in rule.context
+            )
+        )
+        tm.that(selection, empty=False)
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                mod_workspace,
+                fix=False,
+                selection=selection,
+                source_files=(source,),
+            )
+        )
+        tm.that(bool(report.entries), eq=producer)
 
     @pytest.mark.parametrize(
         "dependencies",

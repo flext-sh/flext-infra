@@ -531,7 +531,10 @@ generation, `make upg` and the locked-install checks.
 One `make upg` run provisions the frozen producer before corrective pyproject
 projection, without requiring final runtime admission. The elected runtime
 owner resolves both native views; attached members delegate that operation
-to their workspace.
+to their workspace. After projecting the declared Mise configurations, the same
+upgrade owner resolves each writable FLEXT member's tool lock serially, preserving
+its own declarations for standalone setup and CI. Only the elected workspace
+runtime receives an installation; member runtimes are not provisioned separately.
 It runs generation's producer half, relocks the projected manifests, reinstalls
 and verifies the resulting runtime before generation's activation half. A
 requirement or Mise self-management release that only the upgraded generator
@@ -545,6 +548,8 @@ from existing groups and member contributions;
 declaring the same distribution as a required development floor fails. Retire
 obsolete typing stubs here when their runtime SDK supplies inline typing, then
 regenerate and run `make upg` to reconcile locks and the installed environment.
+Member contributions include the requirements parsed from captured declarations;
+the composed development group uses the same retirement filter.
 Do not uninstall packages manually or weaken the type checker.
 
 PEP 621 optional extras and PEP 735 dependency groups retain their separate
@@ -777,6 +782,25 @@ A planned deletion has no staged replacement, but its successful result still
 carries a journal receipt: absence belongs inside the typed receipt, never in
 `r.ok(None)`. Repeated unchanged generation must converge before publication.
 
+An exception-only repository outcome is a failed plan even when it has no diagnostic
+message yet. Planning progress and persisted evidence must agree on that failure;
+an `OK` planning row never attests publication. The managed executor settles the
+independent bootstrap, lazy-init and documentation targets through their own input
+and dependency guards before returning the aggregate failure. A logical rejection
+does not replace a later first native exception, and secondary failures do not
+replace an earlier native cause. Incomplete operation receipts retain planning and
+publication issues alongside successful batches and cannot qualify as complete.
+
+Input dependency evidence remains fail-closed. In particular, the current lazy-init
+binder retains a repository-wide source snapshot; the executor does not drop those
+guards or exempt `conftest.py` to tolerate concurrent edits. Narrower per-artifact
+provenance requires original-epoch read attribution, negative discovery witnesses
+and cache-dependency replay at the existing Rope capture owner. Until those are
+available, a rejected dependent component remains rejected, while authenticated
+independent components keep their published gains. A fresh canonical invocation
+after repairing the causal input renders from fresh inputs rather than retrying a
+stale candidate inside the failed invocation.
+
 Dependency modernization and conformance both consume the project's typed
 `config/workspace.yaml` declaration for distribution roots and packaged data.
 Modernization must retain those declarations when rebuilding Hatch targets;
@@ -971,6 +995,12 @@ Physical file changes remain inputs to publication CAS, rather than changing
 the source graph while a plan is being computed.
 Rope owns module, regular-package and namespace precedence; Infra validates the
 native resource it returns without maintaining another election algorithm.
+Absolute and relative lookups share one native-folder validation boundary.
+Absent relative context remains `None`: resource lookup reports absence and
+module lookup raises Rope's native missing-module exception.
+Restructuring overrides use the SDK's native input types. The existing module
+admission exposes semantic capabilities to filters, and identity alternatives
+share one injected default matcher.
 Import capture retains one typed lookup keyed by native root, module and relative
 level; it does not transport unused copies of the SDK's search roots.
 
