@@ -888,7 +888,7 @@ class FlextInfraUtilitiesCodemodProject(
             return None
         state = states.get(path)
         if state is None:
-            u.Cli.info(
+            _ = u.fetch_logger(__name__).debug(
                 f"mod: binding capture sources={len(states)} path={path}",
             )
             state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()

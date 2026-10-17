@@ -102,14 +102,15 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             )
         )
 
-    @staticmethod
+    @classmethod
     def _merge_root_alias_groups(
+        cls,
         collapsed: t.MappingKV[str, t.MutableSequenceOf[t.StrPair]],
     ) -> MutableMapping[str, t.StrPairSequence]:
-        """Fold direct root-child module aliases into one root-relative group.
+        """Fold direct root-child aliases into their absolute parent groups.
 
-        Ruff renders consecutive ``from . import <child> as <child>`` statements
-        as one root-relative import; separate per-child groups emitted one line
+        Ruff renders consecutive ``from root import <child> as <child>`` statements
+        as one parent import; separate per-child groups emitted one line
         each, so every generation diverged from the formatter's canonical form
         and only a post-generation autofix converged the published initializer.
 
@@ -118,17 +119,13 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
 
         """
         merged: MutableMapping[str, t.StrPairSequence] = {}
-        root_items: t.StrPairSequence = ()
         for mod, items in collapsed.items():
-            if FlextInfraCodegenGenerationTypeCheckingMixin._is_root_module_alias_group(
-                mod,
-                items,
-            ):
-                root_items = (*root_items, *items)
-                continue
-            merged[mod] = items
-        if root_items:
-            merged["."] = (*merged.get(".", ()), *root_items)
+            target = (
+                mod.rpartition(".")[0]
+                if cls._is_root_module_alias_group(mod, items)
+                else mod
+            )
+            merged[target] = (*merged.get(target, ()), *items)
         return merged
 
     @staticmethod
@@ -193,7 +190,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         """Emit one TYPE_CHECKING module import group.
 
         ``mod`` is the planned owner that decides module-alias exports;
-        ``rendered_mod`` retains its elected relative or external import form.
+        ``rendered_mod`` retains its elected absolute import form.
         """
         alias_exports: t.MutableSequenceOf[str] = []
         parts: t.MutableSequenceOf[str] = []

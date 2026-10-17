@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import c, u
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -162,7 +162,7 @@ class FlextInfraCodegenGenerationPathsMixin:
         mod: str,
         local_package_root: str | None,
     ) -> str:
-        """Normalize local TYPE_CHECKING owners to package-relative imports.
+        """Resolve elected TYPE_CHECKING owners to absolute import statements.
 
         Returns:
             The resulting ``str``.
@@ -170,31 +170,27 @@ class FlextInfraCodegenGenerationPathsMixin:
         """
         if not local_package_root:
             return mod
-        if mod.startswith("."):
-            level = len(mod) - len(mod.lstrip("."))
-            if level > len(local_package_root.split(".")):
-                msg = f"relative module {mod!r} escapes package {local_package_root!r}"
-                raise ValueError(msg)
-            return mod
-        root_pkg = local_package_root.split(".", maxsplit=1)[0]
-        first_segment = mod.split(".", maxsplit=1)[0]
-        if first_segment == root_pkg:
-            return FlextInfraCodegenGenerationPathsMixin._relative_owned_module(
-                local_package_root,
-                mod,
-            )
-        internal_segments = frozenset(local_package_root.split(".")[1:])
-        if (
-            mod.startswith("_")
-            or first_segment in internal_segments
-            or (
+        elected = mod
+        if not mod.startswith("."):
+            root_pkg = local_package_root.split(".", maxsplit=1)[0]
+            first_segment = mod.split(".", maxsplit=1)[0]
+            internal_segments = frozenset(local_package_root.split(".")[1:])
+            inferred_local = (
                 local_package_root == root_pkg
                 and "." in mod
                 and first_segment in c.Infra.LOCAL_INFERRED_SEGMENTS
             )
-        ):
-            return f".{mod}"
-        return mod
+            if first_segment != root_pkg and (
+                mod.startswith("_")
+                or first_segment in internal_segments
+                or inferred_local
+            ):
+                elected = f".{mod}"
+        return u.Infra.resolve_import_module(
+            current_package=local_package_root,
+            module_name=elected.lstrip("."),
+            level=len(elected) - len(elected.lstrip(".")),
+        )
 
     @staticmethod
     def _reject_noncanonical_type_checking_import(
@@ -204,10 +200,9 @@ class FlextInfraCodegenGenerationPathsMixin:
     ) -> None:
         """Reject a relative TYPE_CHECKING import with no local package context.
 
-        Same-project sibling, ancestor, and cousin owners use the same relative
-        path in static declarations and the runtime lazy map. Cross-project
-        owners remain absolute. Relative imports require a package context so
-        Python can resolve their declared owner.
+        Relative inputs require a package context for native resolution.
+        Static declarations emit absolute owners; only runtime lazy lookup
+        strings retain the compact relative form.
 
         Raises:
             ValueError: If relative TYPE_CHECKING import.
