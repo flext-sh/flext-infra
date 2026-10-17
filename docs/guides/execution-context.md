@@ -140,6 +140,34 @@ Rendering a facade returns source only. Package-form imports require publishing
 the owning family's initializer through the existing lazy-init planner before a
 fresh consumer loads the generated facade.
 
+## Namespace migration
+
+Namespace planning, source iteration and analyzer configuration consume the shared
+project discovery owner. Declared scan roots seed discovery; they do not hide active
+Python in other owned directories or at the repository root. Foreign repositories,
+declared nonparticipants, generated payloads and installed environments retain their
+own boundaries. Vendored source is not an installed-environment exclusion.
+
+Class nesting derives one owner from the module's declarations and conventions. It
+preserves native symbol identity when moving functions, values and type aliases and
+rewires executable and deferred type references without rewriting ordinary string
+payloads. Initializers retain their separate export-generation contract. An unresolved
+definition-time dependency or framework registration contract fails planning; it is
+not a successful exemption from namespace ownership.
+
+Shared pytest fixture modules and enforcement expose class objects through the native
+plugin manager. Fixture imports remain deferred until configuration, and the manager
+owns registration identity and idempotence. Module-name loading does not discover a
+nested plugin automatically: consumers load the installed entry-point declaration.
+Registering an auxiliary class is not equivalent to a directory-scoped conftest.
+
+Rule definitions and their generated baselines ship in the same producer artifact.
+Refresh them with `make mod-snapshots`; a source-checkout receipt does not validate a
+wheel that still contains older baselines. After adopting a new plugin declaration,
+reconcile installed metadata through `make setup` before running its consumer tests.
+`make test-file` runs incremental and complete selection for the requested file using
+the same native testmon owner, without the ordinary incremental invocation deadline.
+
 ## New projects
 
 `make project-new` delegates to the same typed `codegen new` service exposed by
