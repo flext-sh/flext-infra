@@ -77,8 +77,15 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         t.VariadicTuple[m.Infra.SemanticMigrationEdit],
         t.VariadicTuple[m.Infra.DeclarationRelocationFinding],
     ]:
+        # One closed epoch serves every snapshot of this pass: the sources, their
+        # import closure and the identities payload relocation resolves.
+        epoch = FlextInfraUtilitiesCodemodProject.identity_source_epoch(
+            Path(workspace.rope_project.root.real_path),
+            tuple(sources),
+            c.Infra.DECLARATION_RELOCATION_IDENTITIES,
+        )
         project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-            workspace.rope_project, sources
+            workspace.rope_project, sources, captured=epoch
         )
         working = dict(sources)
         findings: list[m.Infra.DeclarationRelocationFinding] = []
@@ -91,7 +98,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             if working != sources:
                 project.close()
                 project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                    workspace.rope_project, working
+                    workspace.rope_project, working, captured=epoch
                 )
             for path in sorted(sources):
                 if sources[path].startswith(c.Infra.AUTOGEN_HEADERS):
@@ -143,7 +150,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     # Subsequent candidates bind to the proposed graph and coordinates.
                     project.close()
                     project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                        workspace.rope_project, working
+                        workspace.rope_project, working, captured=epoch
                     )
             cls._preflight_declaration_graph(workspace, sources, working)
             return (
@@ -1358,7 +1365,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         if len(tokens) != len(records):
             msg = "native import records differ from their lexical occurrences"
             raise ValueError(msg)
-        guard = project.get_module("typing").get_attribute("TYPE_CHECKING")
+        guard = cls.identity_name(project, c.Infra.TYPING_GUARD_IDENTITY)
         facts = FlextInfraUtilitiesRopeStructure.logical_statements(module.source_code)
         selected: list[p.Infra.RopeImportInfo] = []
         conditions: list[t.Pair[int, bool]] = []
