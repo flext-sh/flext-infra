@@ -413,6 +413,11 @@ uses the derived `<stem>.project.yaml` file beside that default. The local layer
 remains `<stem>.local.yaml`. This keeps project editor declarations separate from
 the library defaults while preserving the same ordered configuration layers.
 
+When the checkout owns the distributed configuration file, its project declaration
+uses the derived `<stem>.project.yaml` file beside that default. The local layer
+remains `<stem>.local.yaml`. This keeps project editor declarations separate from
+the library defaults while preserving the same ordered configuration layers.
+
 The `flext_core.lazy` loader imports its implementation from root-level source
 modules, never through a generated child initializer. This keeps generation's
 own loader available before child projections are repaired. Recovery uses the
@@ -969,17 +974,22 @@ native resource it returns without maintaining another election algorithm.
 Import capture retains one typed lookup keyed by native root, module and relative
 level; it does not transport unused copies of the SDK's search roots.
 
-Every Rope project registers the interpreter's loaded frozen stdlib modules
-through native extension preferences before initializing its core. Live and
-captured projects therefore resolve the same sourceless aliases; callers do not
-maintain a second module list. Registration preserves explicitly declared
-extension modules.
-Blocked-import sentinels in `sys.modules` remain blocked and are not module
-declarations to register.
+Rope owns loaded frozen stdlib aliases through its existing extension cache and
+`import_dynload_stdmods` preference. Its native module election preserves explicit
+extension precedence and searches source resources, including the supplied folder,
+before returning a frozen alias. A cached alias cannot shadow a source created
+later. Live and captured projects consume that same SDK contract without copying
+loaded module names into extension preferences.
+Blocked-import sentinels in `sys.modules` remain blocked.
 
 Import normalization treats exception targets and structural pattern captures
 as local bindings. These names do not load a package facade or reintroduce an
 unused import removed by `make fix`.
+Static facade imports group symbols and module reexports by their emitted
+absolute owner. Module reexports retain their explicit same-name binding;
+ordinary symbols keep their published names. The rename rule distinguishes
+that static reexport from a changed local name in both runtime and
+`TYPE_CHECKING` imports.
 Imports with the same bound name but different lexical providers cannot be
 hoisted into one global binding. Normalization rejects that collision before
 publishing the candidate.

@@ -7,18 +7,19 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shutil
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 
-from flext_infra.codegen import FlextInfraMisePublication
+from flext_infra.codegen import (
+    FlextInfraMiseArtifactsFiles,
+    FlextInfraMiseArtifactsJournal,
+    FlextInfraMisePublication,
+)
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import c, m, p, r, t, tm, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class TestsFlextInfraFileParticipantRecovery:
@@ -28,7 +29,6 @@ class TestsFlextInfraFileParticipantRecovery:
     def _injected_validator_verdict(
         failure_kind: str,
         cause: RuntimeError,
-        targets: tuple[Path, ...],
         current: m.Infra.CodegenTransactionSession,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Inject the parametrized validator failure into the staged phase.
@@ -36,15 +36,12 @@ class TestsFlextInfraFileParticipantRecovery:
         Args:
             failure_kind: The parametrized failure injection kind.
             cause: The explicit rejection cause.
-            targets: The governed publication target paths.
             current: The staged session admitted when no failure applies.
 
         Returns:
             The validator verdict for the staged session.
 
         """
-        if failure_kind == "target":
-            targets[1].write_bytes(b"concurrent\n")
         if failure_kind == "exception":
             raise cause
         if failure_kind == "validator":
@@ -167,7 +164,7 @@ class TestsFlextInfraFileParticipantRecovery:
             ) -> p.Result[m.Infra.CodegenTransactionSession]:
                 return (
                     TestsFlextInfraFileParticipantRecovery._injected_validator_verdict(
-                        failure_kind, cause, targets, current
+                        failure_kind, cause, current
                     )
                 )
 
@@ -182,6 +179,8 @@ class TestsFlextInfraFileParticipantRecovery:
             if appended.failure:
                 return r[t.VariadicTuple[Path]].from_failure(appended)
             session = appended.value
+            if failure_kind == "target":
+                targets[1].write_bytes(b"concurrent\n")
             if failure_kind == "evidence":
                 TestsFlextInfraFileParticipantRecovery._replaced_report_directory(
                     root,
@@ -206,6 +205,80 @@ class TestsFlextInfraFileParticipantRecovery:
         TestsFlextInfraFileParticipantRecovery._verified_retained_receipts(
             receipts, originals, targets, failure_kind, deleted=deleted
         )
+
+    @staticmethod
+    def test_failed_append_preserves_independent_effect_and_concurrent_target(
+        tmp_path: Path,
+    ) -> None:
+        """A rejected append preserves its gain and the exact foreign input."""
+        root = u.Tests.git_repository(tmp_path)
+        owner = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        roots = {"@semantic": root}
+        targets = (root / "first.py", root / "second.py")
+        for target in targets:
+            target.write_bytes(b"before\n")
+        originals = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+            for target in targets
+        )
+        observed: list[m.Cli.AtomicFileState] = []
+        foreign: list[m.Cli.AtomicFileState] = []
+
+        def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
+            session = tm.ok(owner.begin_files_locked(scope, roots, ()))
+            plans = tuple(
+                m.Infra.CodegenFilePlan(
+                    project=root,
+                    path=before.path,
+                    before=before,
+                    desired_content=b"after\n",
+                    desired_mode=before.mode,
+                    owner="semantic",
+                )
+                for before in originals
+            )
+
+            def staged(
+                current: m.Infra.CodegenTransactionSession,
+                _files: t.VariadicTuple[m.Infra.CodegenStagedFile],
+            ) -> p.Result[m.Infra.CodegenTransactionSession]:
+                targets[1].write_bytes(b"concurrent\n")
+                foreign.append(
+                    tm.ok(
+                        u.Cli.atomic_read_binary_file_state(targets[1], required=True)
+                    )
+                )
+                return r[m.Infra.CodegenTransactionSession].ok(current)
+
+            appended = owner.append_phase_locked(
+                session,
+                "semantic",
+                plans,
+                publication_policy=m.Infra.CodegenPhasePublicationPolicy(
+                    directories=(), staged_validator=staged
+                ),
+            )
+            tm.fail(appended)
+            observed.extend(
+                tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+                for target in targets
+            )
+            return r[t.VariadicTuple[Path]].from_failure(appended)
+
+        tm.fail(owner.run_files_locked(roots, publish))
+        tm.that(observed[0].content, eq=b"after\n")
+        tm.that(observed[0].mode, eq=originals[0].mode)
+        tm.that(observed[0].parent_device, eq=originals[0].parent_device)
+        tm.that(observed[0].parent_inode, eq=originals[0].parent_inode)
+        tm.that(observed[1], eq=foreign[0])
+        for target, expected in zip(targets, observed, strict=True):
+            tm.that(
+                tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
+                eq=expected,
+            )
+        tm.that(tm.ok(owner.inspect_journal()).journal_state, eq="prepared")
 
     @staticmethod
     def _verified_retained_receipts(
@@ -264,6 +337,7 @@ class TestsFlextInfraFileParticipantRecovery:
         )
         roots = {"@semantic": root}
         receipts: list[m.Infra.CodegenStagedFile] = []
+        current_states: list[m.Cli.AtomicFileState] = []
 
         def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
             session = tm.ok(owner.begin_files_locked(scope, roots, ()))
@@ -289,13 +363,30 @@ class TestsFlextInfraFileParticipantRecovery:
                 return r[bool].fail("consumer rejected")
 
             rejected = reject()
+            current_states.append(
+                tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+            )
             settled = owner.commit_locked(session, published_files=receipts)
-            if settled.failure:
+            if drift != "none":
+                tm.fail(
+                    settled,
+                    has="live generation destination differs from staged identity",
+                )
                 return settled
+            tm.ok(settled)
             return r[t.VariadicTuple[Path]].from_failure(rejected)
 
-        tm.fail(owner.run_files_locked(roots, publish), has="consumer rejected")
+        tm.fail(
+            owner.run_files_locked(roots, publish),
+            has="consumer rejected"
+            if drift == "none"
+            else "live generation destination differs from staged identity",
+        )
         tm.that(len(receipts), eq=1 if drift == "none" else 0)
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
+            eq=current_states[0],
+        )
         if drift == "none":
             tm.that(receipts[0].before, eq=original)
             tm.that(
@@ -335,12 +426,17 @@ class TestsFlextInfraFileParticipantRecovery:
         tm.that(target.read_bytes(), eq=authored)
 
     @staticmethod
+    @pytest.mark.parametrize("edit_before_capture", [False, True])
     def test_publication_adopts_current_destination_before_one_write(
         tmp_path: Path,
+        *,
+        edit_before_capture: bool,
     ) -> None:
-        """An external edit before publication is input, not a fleet failure."""
+        """Publish an elected current input and reject changes after its capture."""
         target = tmp_path / "generated.md"
         target.write_bytes(b"original\n")
+        if edit_before_capture:
+            target.write_bytes(b"external edit\n")
         before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
         replacement = tmp_path / "replacement.md"
         replacement.write_bytes(b"generated\n")
@@ -352,13 +448,32 @@ class TestsFlextInfraFileParticipantRecovery:
                 u.Cli.atomic_read_binary_file_state(replacement, required=True),
             ),
         )
-        target.write_bytes(b"external edit\n")
+        if not edit_before_capture:
+            target.write_bytes(b"external edit\n")
+        current = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
 
         outcome = tm.ok(FlextInfraMisePublication.publish((staged,)))
 
-        tm.that(outcome.written_files, eq=(target,))
-        tm.that(outcome.issues, eq=())
-        tm.that(target.read_bytes(), eq=b"generated\n")
+        if edit_before_capture:
+            tm.that(outcome.written_files, eq=(target,))
+            tm.that(outcome.issues, eq=())
+            tm.that(outcome.published_files, len=1)
+            tm.that(outcome.published_files[0].before, eq=before)
+            tm.that(
+                outcome.published_files[0].replacement,
+                eq=tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
+            )
+            tm.that(target.read_bytes(), eq=b"generated\n")
+        else:
+            tm.that(outcome.written_files, eq=())
+            tm.that(outcome.published_files, eq=())
+            tm.that(outcome.issues, len=1)
+            tm.that(outcome.issues[0].file, eq=str(target))
+            tm.that(outcome.issues[0].code, eq=c.Infra.ToolOutcome.ERROR.value)
+            tm.that(
+                tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
+                eq=current,
+            )
 
     @staticmethod
     def test_publication_reports_failed_target_and_preserves_other_gains(
@@ -451,7 +566,7 @@ class TestsFlextInfraFileParticipantRecovery:
             failed,
             has="no transaction participant"
             if invalid_later_plan == "participant"
-            else "destination",
+            else f"generation output differs from its authenticated preimage: {second}",
         )
         tm.that(first.exists(), eq=False)
         if invalid_later_plan == "destination":
@@ -468,8 +583,9 @@ class TestsFlextInfraFileParticipantRecovery:
     ) -> None:
         """Reject the complete candidate without publishing an invalid initializer."""
         root = u.Tests.git_repository(tmp_path)
-        package = root / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
-        package.mkdir(parents=True)
+        distribution = "flext-import-probe"
+        u.Tests.WorktreeFixture.write_python_project(root, distribution)
+        package = root / c.Infra.DEFAULT_SRC_DIR / distribution.replace("-", "_")
         initializer = package / c.Infra.INIT_PY
         header = c.Infra.AUTOGEN_HEADERS[0]
         initializer.write_text(
@@ -596,6 +712,310 @@ class TestsFlextInfraFileParticipantRecovery:
             tm.that((staging / "foreign.bin").read_bytes(), eq=b"preserve")
             tm.that(target.read_bytes(), eq=b"owned publication\n")
             tm.that(session.journal_state.path.exists(), eq=True)
+
+    @staticmethod
+    @pytest.mark.parametrize("operation", ["replace", "create", "delete"])
+    @pytest.mark.parametrize("drift", ["none", "published-inode", "pending-inode"])
+    def test_interrupted_group_retirement_preserves_exact_current_destinations(
+        tmp_path: Path,
+        operation: str,
+        drift: str,
+    ) -> None:
+        """Adopt current inputs without replaying or approving an interrupted group."""
+        root = u.Tests.git_repository(tmp_path)
+        owner = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        roots = {"@semantic": root}
+        targets = (root / "first.py", root / "second.py")
+        producer = root / "producer.py"
+        producer.write_bytes(b"original producer\n")
+        for target in targets:
+            if operation != "create" or target != targets[0]:
+                target.write_bytes(b"before\n")
+        before = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(target, required=False))
+            for target in targets
+        )
+        interrupted: list[m.Infra.CodegenTransactionSession] = []
+
+        def stop_after_first(
+            current: m.Infra.CodegenTransactionSession,
+            staged: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        ) -> p.Result[m.Infra.CodegenTransactionSession]:
+            interrupted.append(current)
+            published = tm.ok(
+                FlextInfraMisePublication.publish(staged[:1], journal=current.journal)
+            )
+            tm.that(published.written_files, eq=targets[:1])
+            message = "interrupted after one guarded publication"
+            raise InterruptedError(message)
+
+        def publish(scope: Path) -> p.Result[m.Infra.CodegenTransactionSession]:
+            source = tm.ok(u.Cli.atomic_read_binary_file_state(producer, required=True))
+            session = tm.ok(owner.begin_files_locked(scope, roots, (source,)))
+            plans = tuple(
+                m.Infra.CodegenFilePlan(
+                    project=root,
+                    path=original.path,
+                    before=original,
+                    desired_content=None if operation == "delete" else b"after\n",
+                    desired_mode=(
+                        None
+                        if operation == "delete"
+                        else original.mode
+                        if original.mode is not None
+                        else session.journal_state.mode
+                    ),
+                    owner="semantic",
+                    dependency_group="interrupted-group",
+                )
+                for original in before
+            )
+            return owner.append_phase_locked(
+                session,
+                "semantic",
+                plans,
+                publication_policy=m.Infra.CodegenPhasePublicationPolicy(
+                    directories=(),
+                    staged_validator=stop_after_first,
+                ),
+            )
+
+        with pytest.raises(InterruptedError, match="one guarded publication"):
+            owner.run_files_locked(roots, publish)
+        session = interrupted[0]
+        producer.write_bytes(b"current producer\n")
+        observed = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(target, required=False))
+            for target in targets
+        )
+        tm.that(observed[0].content, eq=None if operation == "delete" else b"after\n")
+        tm.that(observed[1], eq=before[1])
+        if drift != "none":
+            target = targets[0 if drift == "published-inode" else 1]
+            original = observed[targets.index(target)]
+            if original.content is not None:
+                target.rename(target.with_suffix(".preserved"))
+            target.write_bytes(
+                original.content if original.content is not None else b"foreign\n"
+            )
+            target.chmod(
+                tm.not_none(
+                    original.mode
+                    if original.mode is not None
+                    else session.journal_state.mode
+                )
+            )
+        retained = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(target, required=False))
+            for target in targets
+        )
+        recovered = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        ).run_files_locked(roots, lambda _scope: r[bool].ok(value=True))
+        tm.ok(recovered)
+        tm.that(session.journal_state.path.exists(), eq=False)
+        tm.that(
+            session.plan.layout.file_participants[0].transaction_root.exists(),
+            eq=False,
+        )
+        for target, expected in zip(targets, retained, strict=True):
+            tm.that(
+                tm.ok(u.Cli.atomic_read_binary_file_state(target, required=False)),
+                eq=expected,
+            )
+        tm.that(producer.read_bytes(), eq=b"current producer\n")
+
+    @staticmethod
+    def test_proposal_cleanup_rejects_replaced_current_input_before_any_cleanup(
+        tmp_path: Path,
+    ) -> None:
+        """A captured input's replacement preserves staging and journal authority."""
+        root = u.Tests.git_repository(tmp_path)
+        target = root / "generated.py"
+        owner = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        roots = {"@semantic": root}
+
+        def reject_cleanup(scope: Path) -> p.Result[bool]:
+            session = tm.ok(owner.begin_files_locked(scope, roots, ()))
+            plan = m.Infra.CodegenFilePlan(
+                project=root,
+                path=target,
+                before=tm.ok(
+                    u.Cli.atomic_read_binary_file_state(target, required=False)
+                ),
+                desired_content=b"published\n",
+                desired_mode=session.journal_state.mode,
+                owner="semantic",
+            )
+            session = tm.ok(owner.append_phase_locked(session, "semantic", (plan,)))
+            captured = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+            target.rename(target.with_suffix(".preserved"))
+            target.write_bytes(tm.not_none(captured.content))
+            target.chmod(tm.not_none(captured.mode))
+            current = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+            tm.fail(
+                FlextInfraMiseArtifactsJournal.cleanup(
+                    session.plan.layout,
+                    session.journal,
+                    session.journal_state,
+                    preserved_states=(captured,),
+                ),
+                has="generation authenticated state changed",
+            )
+            tm.that(session.journal_state.path.exists(), eq=True)
+            tm.that(
+                session.plan.layout.file_participants[0].transaction_root.exists(),
+                eq=True,
+            )
+            tm.that(
+                tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
+                eq=current,
+            )
+            return r[bool].ok(value=True)
+
+        tm.ok(owner.run_files_locked(roots, reject_cleanup))
+
+    @staticmethod
+    def test_explicit_group_failure_preserves_first_cause_and_foreign_destination(
+        tmp_path: Path,
+    ) -> None:
+        """Compensate the rejected group without consuming another writer's bytes."""
+        root = u.Tests.git_repository(tmp_path)
+        targets = (root / "first.py", root / "second.py")
+        for target in targets:
+            target.write_bytes(b"before\n")
+        originals = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+            for target in targets
+        )
+        owner = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        roots = {"@semantic": root}
+        foreign: list[m.Cli.AtomicFileState] = []
+        compensated: list[m.Cli.AtomicFileState] = []
+        failures: list[p.FailureLike] = []
+
+        def change_second(
+            current: m.Infra.CodegenTransactionSession,
+            _staged: t.VariadicTuple[m.Infra.CodegenStagedFile],
+        ) -> p.Result[m.Infra.CodegenTransactionSession]:
+            targets[1].write_bytes(b"foreign writer\n")
+            foreign.append(
+                tm.ok(u.Cli.atomic_read_binary_file_state(targets[1], required=True))
+            )
+            return r[m.Infra.CodegenTransactionSession].ok(current)
+
+        def publish(scope: Path) -> p.Result[t.VariadicTuple[Path]]:
+            session = tm.ok(owner.begin_files_locked(scope, roots, ()))
+            plans = tuple(
+                m.Infra.CodegenFilePlan(
+                    project=root,
+                    path=original.path,
+                    before=original,
+                    desired_content=b"after\n",
+                    desired_mode=original.mode,
+                    owner="semantic",
+                    dependency_group="explicit-failure-group",
+                )
+                for original in originals
+            )
+            appended = owner.append_phase_locked(
+                session,
+                "semantic",
+                plans,
+                publication_policy=m.Infra.CodegenPhasePublicationPolicy(
+                    directories=(),
+                    staged_validator=change_second,
+                ),
+            )
+            tm.fail(appended, has=str(targets[1]))
+            failures.append(appended)
+            tm.that(targets[0].read_bytes(), eq=originals[0].content)
+            current = tm.ok(
+                u.Cli.atomic_read_binary_file_state(targets[0], required=True)
+            )
+            journal, _snapshot = tm.ok(
+                FlextInfraMiseArtifactsJournal.read(session.plan.layout)
+            )
+            entry = next(
+                item
+                for item in journal.entries
+                if tm.ok(
+                    FlextInfraMiseArtifactsFiles.resolve_transaction(
+                        session.plan.layout,
+                        item.path,
+                        purpose="compensated group destination",
+                    )
+                )
+                == targets[0]
+            )
+            backup = tm.ok(
+                FlextInfraMiseArtifactsFiles.resolve_transaction(
+                    session.plan.layout,
+                    tm.not_none(entry.original_staging),
+                    purpose="compensated group preimage",
+                )
+            )
+            intent = next(
+                intent
+                for intent in journal.staging_intents
+                if intent.before.path == backup
+            )
+            receipt = tm.not_none(intent.created)
+            tm.that(
+                (
+                    current.device,
+                    current.inode,
+                    current.mode,
+                    current.link_count,
+                    current.file_attributes,
+                    current.reparse_tag,
+                ),
+                eq=(
+                    receipt.device,
+                    receipt.inode,
+                    receipt.mode,
+                    receipt.link_count,
+                    receipt.file_attributes,
+                    receipt.reparse_tag,
+                ),
+            )
+            compensated.append(current)
+            tm.that(
+                tm.ok(u.Cli.atomic_read_binary_file_state(targets[1], required=True)),
+                eq=foreign[0],
+            )
+            tm.that(entry.recover_group, eq=True)
+            tm.that(session.journal_state.path.exists(), eq=True)
+            tm.that(
+                session.plan.layout.file_participants[0].transaction_root.exists(),
+                eq=True,
+            )
+            return r[t.VariadicTuple[Path]].from_failure(appended)
+
+        failed = owner.run_files_locked(roots, publish)
+        tm.fail(failed)
+        tm.that(failed.exception is failures[0].exception, eq=True)
+        tm.that(failed.error, eq=failures[0].error)
+        tm.that(tm.ok(owner.inspect_journal()).journal_state, eq="prepared")
+        recovered = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        tm.ok(recovered.run_files_locked(roots, lambda _scope: r[bool].ok(value=True)))
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(targets[0], required=True)),
+            eq=compensated[0],
+        )
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(targets[1], required=True)),
+            eq=foreign[0],
+        )
+        tm.that(tm.ok(recovered.inspect_journal()).journal_state, eq="absent")
 
     @staticmethod
     def test_owned_cleanup_rejects_a_different_transaction_layout(
@@ -798,7 +1218,7 @@ class TestsFlextInfraFileParticipantRecovery:
                 tm.that(journal.is_dir(), eq=True)
                 tm.that(target.read_bytes(), eq=before.content)
             else:
-                assert foreign is not None
+                foreign = tm.not_none(foreign)
                 tm.that(
                     tm.ok(u.Cli.atomic_read_binary_file_state(journal, required=False)),
                     eq=foreign,

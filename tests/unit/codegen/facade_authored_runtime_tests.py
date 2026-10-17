@@ -21,10 +21,13 @@ class TestsFlextInfraFacadeAuthoredRuntime:
 
     @staticmethod
     @pytest.mark.parametrize("depth", [1, 2])
+    @pytest.mark.parametrize("relative", [False, True])
     def test_generated_imports_preserve_relative_alias_levels(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         depth: int,
+        *,
+        relative: bool,
     ) -> None:
         """Execute generated ancestor aliases and absolute external imports."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -40,7 +43,11 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         )
         imports = FlextInfraCodegenGeneration.generate_type_checking(
             {
-                f"{package.name}.sibling": (("sibling", ""),),
+                (
+                    f"{'.' * (depth + 1)}sibling"
+                    if relative
+                    else f"{package.name}.sibling"
+                ): (("sibling", ""),),
                 "pathlib": (("Path", "Path"),),
             },
             include_flext_types=False,
@@ -311,9 +318,6 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             package_name="provider_package",
         )
         family = u.Infra.facade_family_declared_by(c.Infra.PROTOCOLS_PY)
-        provider_namespace = (
-            f"{provider_root.name}.{c.Infra.DEFAULT_SRC_DIR}.{provider.name}"
-        )
         barrel = provider / family.directory / c.Infra.INIT_PY
         barrel.parent.mkdir()
         tm.ok(u.Cli.atomic_write_text_file(barrel, ""))
@@ -329,7 +333,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 package / "consumer.py",
-                f"from {provider_namespace}.{family.directory} "
+                f"from {provider.name}.{family.directory} "
                 "import ProviderBase\n"
                 "class Consumer(ProviderBase):\n"
                 '    """Consumer of the generated provider barrel."""\n'
@@ -342,6 +346,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             u.Cli.atomic_read_binary_file_state(barrel, required=True)
         )
         with ExitStack() as stack:
+            stack.enter_context(tm.scope(python_paths=(str(provider.parent),)))
             if not declared:
                 stack.enter_context(
                     pytest.raises(
@@ -363,7 +368,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             )
             tm.that(
                 roots,
-                has=f"{provider_namespace}.{family.directory}.ProviderBase",
+                has=f"{provider.name}.{family.directory}.ProviderBase",
             )
             tm.that(
                 {state.path for state in consumed()[0]},
@@ -374,16 +379,21 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             eq=original_barrel,
         )
         if declared:
-            tm.ok(u.Tests.materialize_lazy_init(provider_service))
-            tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+            with tm.scope(python_paths=(str(provider.parent),)):
+                tm.ok(u.Tests.materialize_lazy_init(provider_service))
+                tm.ok(
+                    u.Tests.materialize_lazy_init(
+                        u.Tests.create_lazy_init_service(root)
+                    )
+                )
             native_consumer(
-                f"sys.path.insert(0, {str(installed_dependency_path)!r})\n"
+                f"sys.path.insert(0, {str(provider.parent)!r})\n"
                 f"sys.path.insert(0, {str(package.parent)!r})\n"
-                f"from {provider_namespace}.{family.directory} "
+                f"from {provider.name}.{family.directory} "
                 "import ProviderBase\n"
                 f"from {package.name} import Consumer\n"
                 "assert ProviderBase.__module__ == "
-                f"{f'{provider_namespace}.{family.directory}.base'!r}\n"
+                f"{f'{provider.name}.{family.directory}.base'!r}\n"
                 "assert issubclass(Consumer, ProviderBase)\n",
                 cwd=root,
             )
