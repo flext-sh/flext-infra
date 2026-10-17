@@ -84,8 +84,14 @@ inspection, generation receipt, or merged PR alone is not proof of green deliver
 
 Ruff rule selection and native conventions come from the shared typed tooling owner.
 Neither shared policy nor project-local managed artifacts accepts exemption catalogs,
-global ignores, per-file ignores, or informative-only rule maps. Modernization removes
-stale native suppression tables without narrowing the declared rule selection.
+free-form ignores, per-file ignores, or informative-only rule maps. The required
+`rule-owners` mapping declares rules enforced by another canonical checking gate.
+The existing gate registry rejects self-owned, unknown, missing, non-repairing, or
+unelected owners before a projection derives Ruff's native ignore from that mapping.
+The owner must participate in the complete default check and the existing repair or
+format contract. `missing-trailing-comma` delegates layout to the native `format`
+gate; it is not a waived rule. Paired lint/format validation checks the final bytes.
+Modernization removes stale exemption tables without narrowing rule selection.
 `unfixable` remains a repair-safety policy: it prevents destructive automatic changes,
 not detection or a failed verdict. Repair completion requires the same native owner's
 read-only verification of the repaired targets.

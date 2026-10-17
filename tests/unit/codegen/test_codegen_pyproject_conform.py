@@ -896,12 +896,14 @@ exclude-dependencies = [{exclusion}]
         )
         lint = u.Tests.toml_table_at(rendered, "tool", "ruff", "lint")
         for key in (
-            "ignore",
             "extend-ignore",
             "per-file-ignores",
             "extend-per-file-ignores",
         ):
             tm.that(lint, lacks=key)
+        tm.that(
+            lint["ignore"], eq=sorted(config.Infra.tooling.tools.ruff.lint.rule_owners)
+        )
         mypy = u.Tests.toml_table_at(rendered, "tool", "mypy")
         tm.that(mypy, lacks="disable_error_code")
         tm.that(mypy, lacks="ignore_errors")

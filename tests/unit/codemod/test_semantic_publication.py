@@ -246,6 +246,121 @@ class TestsFlextInfraSemanticPublication:
         tm.that(driver.path.read_bytes(), eq=driver.content)
 
     @staticmethod
+    def test_automatic_nesting_rewrites_declared_consumers_without_syntax_fanout(
+        tmp_path: Path,
+    ) -> None:
+        """Rule authority selects the owner while external read scope stays bounded."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        receiver, receiver_package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="native-receiver",
+            package_name="native_receiver",
+        )
+        for checkout in (root, receiver):
+            u.Tests.provision_checkout(checkout)
+            u.Tests.provision_runtime_environment(checkout)
+        alias = next(
+            letter
+            for letter, family in u.Infra.facade_families().items()
+            if family.module == "models"
+        )
+        source = package / f"{u.Tests.family_public_module(alias)}.py"
+        source.write_text("", encoding=c.DEFAULT_ENCODING)
+        with infra.rope_workspace(root) as graph:
+            owner = graph.convention(source).implementation_class
+        source.write_text(
+            f'class {owner}:\n    """Native public family owner."""\n\n'
+            'class Payload:\n    """Native introducing declaration."""\n'
+            '    VALUE = "native"\n\n'
+            f'__all__ = ({owner!r}, "Payload")\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        consumer = receiver_package / "consumer.py"
+        consumer.write_text(
+            f"from {package.name}.{source.stem} import Payload as Bound\n"
+            "VALUE = Bound.VALUE\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        unrelated = receiver_package / "unrelated.py"
+        unrelated.write_text(
+            'class Payload:\n    VALUE = "local"\nVALUE = Payload.VALUE\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        original = tm.ok(u.Cli.atomic_read_binary_file_state(unrelated, required=True))
+        tm.ok(
+            infra.mod(
+                m.Infra.ModCommand(
+                    repository_root=root,
+                    consumer_roots=(receiver,),
+                    apply=True,
+                )
+            )
+        )
+        tm.ok(u.Cli.atomic_verify_binary_file_states((original,)))
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                "from native_receiver.consumer import VALUE\nprint(VALUE)\n",
+                python_paths=(str(package.parent), str(receiver_package.parent)),
+            ),
+            eq=["native"],
+        )
+        tm.that(source.read_text(encoding=c.DEFAULT_ENCODING), has="    class Payload:")
+
+    @staticmethod
+    @pytest.mark.parametrize("failure", ["missing", "collision", "drift"])
+    def test_mod_refuses_invalid_cross_root_campaign_before_source_publication(
+        tmp_path: Path,
+        failure: str,
+    ) -> None:
+        """Missing scope, occupied native name and stale epochs stay unpublished."""
+        artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(
+            tmp_path,
+            kind="class",
+            external_consumers=1,
+        )
+        root = artifact.candidate.workspaces[0]
+        roots = artifact.consumer_roots
+        if failure == "missing":
+            roots = (*roots, tmp_path / "missing-consumer")
+        elif failure == "collision":
+            declaration = next(
+                state.path
+                for state in artifact.candidate.inputs
+                if state.path.name == "service.py"
+            )
+            declaration.write_text(
+                declaration.read_text(encoding=c.DEFAULT_ENCODING)
+                + "\nclass FlextMeaningfulService:\n    pass\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        else:
+            consumer = next(
+                state.path
+                for state in artifact.candidate.inputs
+                if state.path.name == "consumer.py"
+                and state.path.is_relative_to(roots[0])
+            )
+            consumer.write_bytes(
+                consumer.read_bytes() + b"# a different physical epoch\n"
+            )
+        originals = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for scope in (root, *artifact.consumer_roots)
+            for path in u.Infra.discover_python_files(scope)
+        )
+        tm.fail(
+            infra.mod(
+                m.Infra.ModCommand(
+                    repository_root=root,
+                    consumer_roots=roots,
+                    rename_plan=driver.path,
+                    apply=True,
+                )
+            )
+        )
+        tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
+
+    @staticmethod
     @pytest.mark.parametrize("drift", ["none", "driver", "source", "snapshot"])
     def test_candidate_publication_keeps_driver_separate_and_authenticated(
         tmp_path: Path, drift: str

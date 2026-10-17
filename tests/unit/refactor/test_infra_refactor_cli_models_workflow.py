@@ -23,6 +23,37 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
     """Behavior contract for test_infra_refactor_cli_models_workflow."""
 
     @staticmethod
+    def test_mod_cli_accepts_repeated_typed_consumer_roots_and_rejects_missing_scope(
+        tmp_path: Path,
+    ) -> None:
+        """Repeated run roots reach the canonical action without CSV or env inputs."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        receiver, _receiver_package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="native-receiver",
+            package_name="native_receiver",
+        )
+        source = package / "consumer.py"
+        source.write_text("VALUE = 'original'\n", encoding=c.DEFAULT_ENCODING)
+        original = source.read_bytes()
+        output = StringIO()
+        with redirect_stdout(output):
+            result = main([
+                "refactor",
+                "mod",
+                f"--repository-root={root}",
+                f"--consumer-roots={receiver}",
+                f"--consumer-roots={tmp_path / 'absent-receiver'}",
+                "--apply",
+            ])
+        tm.that(result != 0, eq=True)
+        tm.that(
+            output.getvalue(),
+            has="consumer roots must be existing absolute checkout roots",
+        )
+        tm.that(source.read_bytes(), eq=original)
+
+    @staticmethod
     @pytest.mark.parametrize("kind", ["class", "module"])
     def test_native_rename_plan_captures_three_roots_before_any_effect(
         tmp_path: Path,

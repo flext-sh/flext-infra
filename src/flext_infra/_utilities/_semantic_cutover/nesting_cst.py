@@ -538,6 +538,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             for scope in module.get_scope().get_scopes()
             if scope.pyobject.get_name() == owner_name
         )
+        occupied = scope.get_defined_names()
+        if "globals" in occupied or publisher.partition(".")[0] in occupied:
+            msg = f"pytest publication bootstrap is shadowed by a class-owned binding: {resource.path}:{owner_name}"
+            raise ValueError(msg)
         insertion = min(module.lines.get_line_end(scope.get_end()) + 1, len(source))
         rendered = ", ".join(f"{name!r}: {value}" for name, value in bindings.items())
         bootstrap = f"\n    {publisher}.publish(module_globals=globals(), bindings={{{rendered}}})\n"

@@ -131,7 +131,7 @@ class TestsFlextInfraDepsModernizerTooling:
             list(u.Tests.toml_strings(lint["extend-safe-fixes"])),
             eq=sorted(ruff_policy.lint.extend_safe_fixes),
         )
-        tm.that(lint, lacks="ignore")
+        tm.that(lint["ignore"], eq=sorted(ruff_policy.lint.rule_owners))
         tm.that(
             list(
                 u.Tests.toml_strings(

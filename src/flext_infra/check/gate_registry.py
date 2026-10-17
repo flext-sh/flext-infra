@@ -134,6 +134,7 @@ class FlextInfraGateRegistry:
             if (
                 owner == c.Infra.LINT
                 or owner not in c.Infra.ALLOWED_GATES
+                or owner not in c.Infra.CANONICAL_FILE_GATE_IDS
                 or gate is None
                 or not gate.can_fix
                 or owner not in check_gates
