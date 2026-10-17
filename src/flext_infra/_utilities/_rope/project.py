@@ -46,24 +46,6 @@ class FlextInfraRopeProject(Project):
 
     @property
     @override
-    def address(self) -> str:
-        """Declared project root address.
-
-        Returns:
-            The native project address.
-
-        Raises:
-            TypeError: The SDK published a non-string address.
-
-        """
-        address = super().address
-        if not isinstance(address, str):
-            message = "Rope project address must be a string"
-            raise TypeError(message)
-        return address
-
-    @property
-    @override
     def root(self) -> p.Infra.RopeRoot:
         """Declared project root folder.
 
@@ -85,7 +67,7 @@ class FlextInfraRopeProject(Project):
         self,
         resource: Resource | p.Infra.RopeResource,
         force_errors: bool = False,
-    ) -> PyModule | PyPackage:
+    ) -> t.Infra.RopeNativeParsedModule:
         """Resolve a native resource while preserving the SDK return classes.
 
         Returns:
@@ -105,7 +87,7 @@ class FlextInfraRopeProject(Project):
         self,
         name: str,
         folder: Folder | p.Infra.RopeRoot | None = None,
-    ) -> BuiltinModule | PyModule | PyPackage:
+    ) -> t.Infra.RopeNativeSemanticModule:
         """Resolve the native semantic module elected by the SDK.
 
         Returns:

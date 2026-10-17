@@ -16,6 +16,7 @@ from packaging.utils import canonicalize_name
 from flext_infra import c, config, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesRepository,
 )
 from flext_infra._utilities._pyproject._requirements_provenance import (
@@ -32,26 +33,6 @@ class FlextInfraUtilitiesPyprojectRequirements:
     """Render internal requirements for the active workspace topology."""
 
     @staticmethod
-    def dependency_group_name(names: t.IterableOf[str], name: str) -> str:
-        """Elect an existing native spelling using PEP 735 normalized identity.
-
-        Returns:
-            The declared spelling when one matches, else the requested name.
-
-        Raises:
-            ValueError: If dependency group names have colliding normalized
-                identities.
-
-        """
-        matches = tuple(
-            key for key in names if canonicalize_name(key) == canonicalize_name(name)
-        )
-        if len(matches) > 1:
-            msg = "dependency group names have colliding normalized identities"
-            raise ValueError(msg)
-        return matches[0] if matches else name
-
-    @staticmethod
     def dependency_group_entries(
         value: t.JsonPayload,
     ) -> t.VariadicTuple[str | m.Infra.DependencyGroupInclude]:
@@ -62,27 +43,6 @@ class FlextInfraUtilitiesPyprojectRequirements:
 
         """
         return m.Infra.DependencyGroupEntries.model_validate(value).root
-
-    @staticmethod
-    def dependency_group_wire(
-        entries: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-    ) -> list[t.JsonValue]:
-        """Serialize native entries without turning inclusion tables into strings.
-
-        Returns:
-            The resulting ``list[t.JsonValue]``.
-
-        """
-        return [
-            entry
-            if isinstance(entry, str)
-            else dict(
-                t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                    entry.model_dump(mode="json", by_alias=True),
-                ),
-            )
-            for entry in entries
-        ]
 
     @classmethod
     def read_dependency_group(
@@ -98,7 +58,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         """
         value = u.Cli.toml_value(
             container,
-            cls.dependency_group_name(container, name),
+            FlextInfraUtilitiesPyproject.dependency_group_name(container, name),
         )
         return (
             ()
@@ -288,7 +248,9 @@ class FlextInfraUtilitiesPyprojectRequirements:
                     return r[bool].from_failure(normalized)
                 values.append(normalized.value)
             u.Cli.toml_sync_value(
-                section, group_name, cls.dependency_group_wire(values)
+                section,
+                group_name,
+                FlextInfraUtilitiesPyproject.dependency_group_wire(values),
             )
         return r[bool].ok(value=True)
 
@@ -694,7 +656,9 @@ class FlextInfraUtilitiesPyprojectRequirements:
             msg = "Canonical development requirements include retired distributions"
             raise ValueError(msg)
         groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
-        dev_name = cls.dependency_group_name(groups, str(c.Infra.DEV))
+        dev_name = FlextInfraUtilitiesPyproject.dependency_group_name(
+            groups, str(c.Infra.DEV)
+        )
         # SSOT required floors win over existing same-name pins: dedupe_specs
         # keeps the first occurrence, so toolchain floors must lead the merge.
         # Otherwise stale member pins override the declared fleet floor. One
@@ -739,12 +703,12 @@ class FlextInfraUtilitiesPyprojectRequirements:
             u.Cli.toml_sync_value(
                 groups,
                 dev_name,
-                cls.dependency_group_wire(dev),
+                FlextInfraUtilitiesPyproject.dependency_group_wire(dev),
             )
         else:
             u.Cli.toml_remove_key_if_present(groups, dev_name)
 
-        codegen_name = cls.dependency_group_name(
+        codegen_name = FlextInfraUtilitiesPyproject.dependency_group_name(
             groups,
             str(c.Infra.DependencyGroup.CODEGEN),
         )
@@ -756,7 +720,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             u.Cli.toml_sync_value(
                 groups,
                 codegen_name,
-                cls.dependency_group_wire(codegen),
+                FlextInfraUtilitiesPyproject.dependency_group_wire(codegen),
             )
         else:
             u.Cli.toml_remove_key_if_present(groups, codegen_name)

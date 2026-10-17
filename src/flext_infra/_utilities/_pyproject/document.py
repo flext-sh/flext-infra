@@ -16,6 +16,7 @@ from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesDependencyRequirements,
+    FlextInfraUtilitiesPyproject,
 )
 from flext_infra._utilities._pyproject import (
     FlextInfraUtilitiesPyprojectOverlay,
@@ -310,14 +311,16 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     ) -> None:
         """Retain marker variants when merging selected member requirements."""
         groups = u.Cli.toml_ensure_table(source, c.Infra.DEPENDENCY_GROUPS)
-        dev_name = cls.dependency_group_name(groups, str(c.Infra.DEV))
+        dev_name = FlextInfraUtilitiesPyproject.dependency_group_name(
+            groups, str(c.Infra.DEV)
+        )
         dev = cls.read_dependency_group(groups, dev_name)
         existing = frozenset(entry for entry in dev if isinstance(entry, str))
         additions = tuple(sorted(set(requirements) - existing))
         u.Cli.toml_sync_value(
             groups,
             dev_name,
-            cls.dependency_group_wire((*dev, *additions)),
+            FlextInfraUtilitiesPyproject.dependency_group_wire((*dev, *additions)),
         )
 
     @classmethod
@@ -344,8 +347,10 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             str, t.SequenceOf[str | m.Infra.DependencyGroupInclude]
         ] = {}
         for group in (str(c.Infra.DEV), c.Infra.DependencyGroup.CODEGEN):
-            authored_name = cls.dependency_group_name(groups, str(group))
-            custom = FlextInfraUtilitiesPyprojectOverlay.custom_dev_additions(
+            authored_name = FlextInfraUtilitiesPyproject.dependency_group_name(
+                groups, str(group)
+            )
+            custom = FlextInfraUtilitiesPyproject.custom_dev_additions(
                 payload,
                 original,
                 group=group,
@@ -362,7 +367,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             u.Cli.toml_sync_value(
                 groups,
                 authored_name,
-                cls.dependency_group_wire(values),
+                FlextInfraUtilitiesPyproject.dependency_group_wire(values),
             )
         return result_type.ok(
             (retained[str(c.Infra.DEV)], retained[c.Infra.DependencyGroup.CODEGEN]),
@@ -742,7 +747,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             for group in (str(c.Infra.DEV), c.Infra.DependencyGroup.CODEGEN):
                 if u.Cli.toml_value(groups, group) is None:
                     continue
-                custom = FlextInfraUtilitiesPyprojectOverlay.custom_dev_additions(
+                custom = FlextInfraUtilitiesPyproject.custom_dev_additions(
                     payload,
                     original,
                     group=group,

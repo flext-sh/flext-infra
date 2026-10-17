@@ -1016,10 +1016,9 @@ class FlextInfraUtilitiesCodegenNamespace:
         lines = source.splitlines()
         if import_line in lines:
             return source
-        insert_at = (
-            FlextInfraUtilitiesRopeSource.index_after_docstring_and_future_imports(
-                lines,
-            )
+        insert_at = FlextInfraUtilitiesRopeSource.find_import_insert_position(
+            lines,
+            past_existing=False,
         )
         before = lines[:insert_at]
         after = lines[insert_at:]

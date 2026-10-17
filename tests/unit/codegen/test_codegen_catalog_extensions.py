@@ -145,6 +145,121 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(line.organization, eq=provider.organization)
 
     @staticmethod
+    @pytest.mark.parametrize("group", ["dev", "codegen", "DeV", "CODEGEN"])
+    def test_flext_line_ignores_only_generated_group_occurrences(
+        tmp_path: Path,
+        group: str,
+    ) -> None:
+        """Stale member projections cannot compete with the authored family line."""
+        provider = u.Tests.provider()
+        branch = u.Tests.provider_branch()
+        distribution = config.Infra.codegen.infra_repository.distribution
+        requirement = f"{distribution} @ git+{provider.base_url}/{distribution}.git"
+        stale = f"{requirement}@retired-member-line"
+        source = (
+            '[project]\nname = "consumer"\nversion = "0.1.0"\n'
+            f'dependencies = ["{requirement}@{branch}"]\n'
+            "[dependency-groups]\n"
+            f"{group} = [\n"
+            f'    "{stale}", # flext: derived member environment\n'
+            '    {include-group = "authored"},\n'
+            "]\n"
+            f'authored = ["{requirement}@{branch}"]\n'
+        )
+        path = tmp_path / c.PYPROJECT_FILENAME
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+
+        line = tm.ok(
+            u.Infra.flext_integration_line(
+                codegen=config.Infra.codegen,
+                repository_root=tmp_path,
+            ),
+        )
+
+        tm.that((line.base_url, line.branch), eq=(provider.base_url, branch))
+        admitted = tm.ok(u.Infra.declared_dependency_payload(path))
+        tm.that(
+            admitted[c.Infra.DEPENDENCY_GROUPS],
+            eq={
+                group: [{"include-group": "authored"}],
+                "authored": [f"{requirement}@{branch}"],
+            },
+        )
+        tm.that(
+            admitted[c.Infra.PROJECT],
+            eq={
+                "name": "consumer",
+                "version": "0.1.0",
+                "dependencies": [f"{requirement}@{branch}"],
+            },
+        )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "groups",
+        ["", "[dependency-groups]\n", '[dependency-groups]\nqa = ["authored>=1"]\n'],
+    )
+    def test_dependency_admission_preserves_absent_native_groups(
+        tmp_path: Path,
+        groups: str,
+    ) -> None:
+        """Reading provenance never invents dev/codegen groups or a root table."""
+        source = '[project]\nname = "consumer"\nversion = "0.1.0"\n' + groups
+        path = tmp_path / c.PYPROJECT_FILENAME
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+
+        tm.that(
+            tm.ok(u.Infra.declared_dependency_payload(path)),
+            eq=tm.not_none(u.Cli.toml_mapping_from_text(source)),
+        )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("group", "comment"),
+        [
+            ("dev", ""),
+            ("codegen", ""),
+            ("dev", "# note # flext: derived member environment"),
+            ("codegen", "# note # flext: derived member environment"),
+            ("qa", "# flext: derived member environment"),
+        ],
+    )
+    def test_flext_line_retains_authored_conflicts_beside_generated_occurrences(
+        tmp_path: Path,
+        group: str,
+        comment: str,
+    ) -> None:
+        """Ownership is per native occurrence, not per value or comment substring."""
+        provider = u.Tests.provider()
+        branch = u.Tests.provider_branch()
+        distribution = config.Infra.codegen.infra_repository.distribution
+        requirement = f"{distribution} @ git+{provider.base_url}/{distribution}.git"
+        stale = f"{requirement}@retired-member-line"
+        source = (
+            '[project]\nname = "consumer"\nversion = "0.1.0"\n'
+            f'dependencies = ["{requirement}@{branch}"]\n'
+            "[dependency-groups]\n"
+            f"{group} = [\n"
+            f'    # "{stale}", # flext: derived member environment\n'
+            f'    "{stale}", # flext: derived member environment\n'
+            f'    "{stale}", {comment}\n'
+            "]\n"
+        )
+        path = tmp_path / c.PYPROJECT_FILENAME
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+
+        tm.fail(
+            u.Infra.flext_integration_line(
+                codegen=config.Infra.codegen,
+                repository_root=tmp_path,
+            ),
+            has="conflicting flext-* line sources",
+        )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
     def test_flext_line_fails_loud_on_conflicting_infra_sources(
         tmp_path: Path,
     ) -> None:
