@@ -29,6 +29,23 @@ class FlextInfraConstantsWorkspace:
     CPYTHON_IMMUTABLE_TYPE_FLAG: ClassVar[int] = 1 << 8
 
     @unique
+    class OpCode(StrEnum):
+        """CPython dis opcode names consumed by native reference analysis."""
+
+        COPY = "COPY"
+        DELETE_FAST = "DELETE_FAST"
+        DELETE_GLOBAL = "DELETE_GLOBAL"
+        LOAD_ATTR = "LOAD_ATTR"
+        LOAD_FAST = "LOAD_FAST"
+        LOAD_FAST_LOAD_FAST = "LOAD_FAST_LOAD_FAST"
+        LOAD_GLOBAL = "LOAD_GLOBAL"
+        STORE_ATTR = "STORE_ATTR"
+        STORE_FAST = "STORE_FAST"
+        STORE_GLOBAL = "STORE_GLOBAL"
+        STORE_NAME = "STORE_NAME"
+        SWAP = "SWAP"
+
+    @unique
     class BeadIssueStatus(StrEnum):
         """Beads issue status values."""
 

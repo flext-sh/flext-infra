@@ -531,7 +531,10 @@ generation, `make upg` and the locked-install checks.
 One `make upg` run provisions the frozen producer before corrective pyproject
 projection, without requiring final runtime admission. The elected runtime
 owner resolves both native views; attached members delegate that operation
-to their workspace.
+to their workspace. After projecting the declared Mise configurations, the same
+upgrade owner resolves each writable FLEXT member's tool lock serially, preserving
+its own declarations for standalone setup and CI. Only the elected workspace
+runtime receives an installation; member runtimes are not provisioned separately.
 It runs generation's producer half, relocks the projected manifests, reinstalls
 and verifies the resulting runtime before generation's activation half. A
 requirement or Mise self-management release that only the upgraded generator
@@ -778,6 +781,25 @@ publication report, and the final error verdict retains the original causal exce
 A planned deletion has no staged replacement, but its successful result still
 carries a journal receipt: absence belongs inside the typed receipt, never in
 `r.ok(None)`. Repeated unchanged generation must converge before publication.
+
+An exception-only repository outcome is a failed plan even when it has no diagnostic
+message yet. Planning progress and persisted evidence must agree on that failure;
+an `OK` planning row never attests publication. The managed executor settles the
+independent bootstrap, lazy-init and documentation targets through their own input
+and dependency guards before returning the aggregate failure. A logical rejection
+does not replace a later first native exception, and secondary failures do not
+replace an earlier native cause. Incomplete operation receipts retain planning and
+publication issues alongside successful batches and cannot qualify as complete.
+
+Input dependency evidence remains fail-closed. In particular, the current lazy-init
+binder retains a repository-wide source snapshot; the executor does not drop those
+guards or exempt `conftest.py` to tolerate concurrent edits. Narrower per-artifact
+provenance requires original-epoch read attribution, negative discovery witnesses
+and cache-dependency replay at the existing Rope capture owner. Until those are
+available, a rejected dependent component remains rejected, while authenticated
+independent components keep their published gains. A fresh canonical invocation
+after repairing the causal input renders from fresh inputs rather than retrying a
+stale candidate inside the failed invocation.
 
 Dependency modernization and conformance both consume the project's typed
 `config/workspace.yaml` declaration for distribution roots and packaged data.

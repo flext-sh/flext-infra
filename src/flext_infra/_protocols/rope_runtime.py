@@ -45,6 +45,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def exists(self) -> bool: ...
 
         @property
+        def name(self) -> str: ...
+
+        @property
         def path(self) -> str: ...
 
         @property
@@ -69,23 +72,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def has_child(self, name: str) -> bool: ...
 
     @runtime_checkable
-    class RopeFile(Protocol):
+    class RopeFile(RopeResource, Protocol):
         """Rope file resource with content access."""
-
-        def exists(self) -> bool: ...
-
-        @property
-        def path(self) -> str: ...
-
-        @property
-        def real_path(self) -> str: ...
-
-        def is_folder(self) -> bool:
-            """Report whether the resource is a folder in the project tree."""
-            ...
-
-        @property
-        def parent(self) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
 
         def read(self) -> str: ...
 

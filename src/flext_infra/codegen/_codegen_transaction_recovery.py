@@ -373,7 +373,10 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                     + ", ".join(map(str, outside)),
                 )
         if candidate.completed and (
-            not candidate.batches
+            candidate.error
+            or candidate.issues
+            or candidate.exception is not None
+            or not candidate.batches
             or any(
                 not item.completed
                 or item.error
@@ -399,6 +402,8 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         scope_roots: t.VariadicTuple[Path],
         operation: m.Infra.CodegenPhaseOutcome | None = None,
         completed: bool = False,
+        issues: t.VariadicTuple[m.Infra.Issue] = (),
+        exception: BaseException | None = None,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Compose actual native batches without reopening their settled journals.
 
@@ -424,7 +429,9 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             written_files=tuple(
                 path for item in batches for path in item.written_files
             ),
-            issues=tuple(issue for item in batches for issue in item.issues),
+            issues=(*issues, *(issue for item in batches for issue in item.issues)),
+            exception=exception,
+            error=str(exception) if exception is not None else "",
         )
         admitted = cls._admitted_operation_receipt(outcome, operation)
         if admitted.failure:

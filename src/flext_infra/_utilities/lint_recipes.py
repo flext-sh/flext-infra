@@ -35,9 +35,10 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesPyproject,
 )
+from flext_infra._utilities._lint_recipes_part import FlextInfraUtilitiesLintRecipesPart
 
 
-class FlextInfraUtilitiesLintRecipes:
+class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
     """Lint-gate policy and repair utilities behind the ``u.Infra`` facade."""
 
     @staticmethod
@@ -437,55 +438,7 @@ class FlextInfraUtilitiesLintRecipes:
         return None
 
     @classmethod
-    def _documented_at(
-        cls,
-        tree: ast.Module,
-        line: int,
-        path: Path,
-    ) -> ast.FunctionDef | ast.AsyncFunctionDef:
-        """Return the function whose docstring starts at ``line``.
-
-        Returns:
-            The function whose docstring starts at ``line``.
-
-        Raises:
-            ValueError: Always.
-
-        """
-        for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-                docstring = cls._docstring_expr(node)
-                if docstring is not None and docstring.lineno == line:
-                    return node
-        msg = f"{path}: no function docstring starts at line {line}"
-        raise ValueError(msg)
-
     @staticmethod
-    def _enclosing_function(
-        tree: ast.Module,
-        line: int,
-        path: Path,
-    ) -> ast.FunctionDef | ast.AsyncFunctionDef:
-        """Return the innermost function whose body spans ``line``.
-
-        Returns:
-            The innermost function whose body spans ``line``.
-
-        Raises:
-            ValueError: If ``not enclosing``.
-
-        """
-        enclosing = [
-            node
-            for node in ast.walk(tree)
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
-            and node.lineno <= line <= (node.end_lineno or node.lineno)
-        ]
-        if not enclosing:
-            msg = f"{path}: no function encloses line {line}"
-            raise ValueError(msg)
-        return max(enclosing, key=lambda node: node.lineno)
-
     @classmethod
     def _summary_edit(
         cls,
@@ -531,46 +484,6 @@ class FlextInfraUtilitiesLintRecipes:
             start + len(line),
             f'{line[:colon]}\n{block}"""{text}"""\n{block}{suite}\n',
         )
-
-    @staticmethod
-    def _utf8_chars(line: str, col_offset: int) -> int:
-        """Return the character index of a UTF-8 AST column on ``line``.
-
-        Returns:
-            The character index of a UTF-8 AST column on ``line``.
-
-        """
-        return len(
-            line.encode(c.DEFAULT_ENCODING)[:col_offset].decode(
-                c.DEFAULT_ENCODING,
-            ),
-        )
-
-    @staticmethod
-    def _defined_at(
-        tree: ast.Module,
-        line: int,
-        path: Path,
-    ) -> ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef:
-        """Return the class or function defined at ``line``.
-
-        An inline body is a legal definition. The summary edit expands it.
-
-        Returns:
-            The class or function defined at ``line``.
-
-        Raises:
-            ValueError: If no class or function is defined at ``line``.
-
-        """
-        for node in ast.walk(tree):
-            if (
-                isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef)
-                and node.lineno == line
-            ):
-                return node
-        msg = f"{path}: no class or function is defined at line {line}"
-        raise ValueError(msg)
 
     @classmethod
     def _static_method_plan(
@@ -688,13 +601,41 @@ class FlextInfraUtilitiesLintRecipes:
             The findings the static-method recipe leaves to their owner.
 
         """
-        tree = ast.parse(source)
         return tuple(
             issue
+            for issue, owner, method in cls._static_method_candidates(
+                source,
+                issues,
+                path=path,
+                recipes=recipes,
+            )
+            if (owner.name, method.name) in overridden or cls._reads_receiver(method)
+        )
+
+    @classmethod
+    def _static_method_candidates(
+        cls,
+        source: str,
+        issues: t.SequenceOf[m.Infra.Issue],
+        *,
+        path: Path,
+        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
+    ) -> t.VariadicTuple[
+        t.Triple[ast.ClassDef, ast.FunctionDef | ast.AsyncFunctionDef]
+    ]:
+        """Pair each static-method finding with its owner and method.
+
+        Returns:
+            The ``(issue, owner, method)`` triples the static-method recipe
+            targets.
+
+        """
+        tree = ast.parse(source)
+        return tuple(
+            (issue, owner, method)
             for issue in issues
             if recipes.get(issue.code) is c.Infra.LintFixRecipe.STATIC_METHOD
             for owner, method in (cls._receiver_method_at(tree, issue, path),)
-            if (owner.name, method.name) in overridden or cls._reads_receiver(method)
         )
 
     @staticmethod
@@ -736,12 +677,14 @@ class FlextInfraUtilitiesLintRecipes:
             The findings the static-method recipe leaves to their owner.
 
         """
-        tree = ast.parse(source)
         return tuple(
             issue
-            for issue in issues
-            if recipes.get(issue.code) is c.Infra.LintFixRecipe.STATIC_METHOD
-            for owner, _method in (cls._receiver_method_at(tree, issue, path),)
+            for issue, owner, _method in cls._static_method_candidates(
+                source,
+                issues,
+                path=path,
+                recipes=recipes,
+            )
             if cls._declares_service_base(owner)
         )
 

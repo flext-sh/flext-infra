@@ -97,8 +97,17 @@ class TestsFlextInfraGenRespectsInvocationScope:
         tm.that(project_scoped, has="_builtin_gen_all")
         tm.that(mixed, eq={})
 
-    def test_gen_has_one_codegen_owner(self, rendered_makefile: str) -> None:
-        """The gen recipe delegates once to the generation owner."""
+    @pytest.mark.parametrize("members", [(), (_MEMBER,)])
+    def test_gen_has_one_codegen_owner(
+        self, tmp_path: Path, members: t.StrTuple
+    ) -> None:
+        """Both profiles delegate once to generation, never declaration repair."""
+        rendered_makefile = u.Tests.scaffold_text(
+            tmp_path / "fixture-project",
+            c.Infra.MAKEFILE_FILENAME,
+            members=members,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+        )
         tm.that(rendered_makefile, lacks="CODEGEN_PROJECT_ARGS")
         body = self._recipe_bodies(rendered_makefile)["_builtin_gen_all"]
         generation_lines = [line for line in body if "codegen generate" in line]
@@ -106,6 +115,7 @@ class TestsFlextInfraGenRespectsInvocationScope:
         tm.that(len(generation_lines), eq=1)
         tm.that(generation_lines[0], has='--root "$(PROJECT_ROOT)"')
         tm.that(generation_lines[0], has='--scope "$$scope"')
+        tm.that(any("codegen conform" in line for line in body), eq=False)
         tm.that(any("deps modernize" in line for line in body), eq=False)
         tm.that(any("deps extra-paths" in line for line in body), eq=False)
 

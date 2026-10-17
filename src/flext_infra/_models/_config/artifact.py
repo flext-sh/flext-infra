@@ -1088,6 +1088,18 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             m.Field(ge=0, description="Planning wall seconds"),
         ] = 0.0
 
+        @m.computed_field
+        @property
+        def failed(self) -> bool:
+            """Include native causes even when no diagnostic was constructed."""
+            return bool(
+                self.error
+                or self.error_type
+                or self.error_traceback
+                or self.issues
+                or self.exception is not None
+            )
+
     class CodegenPlanningFileEvidence(FlextInfraConfigModelsContract.ConfigContract):
         """One planned destination without source bytes or captured file state."""
 

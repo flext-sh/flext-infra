@@ -49,6 +49,20 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConform):
 
     __test__ = False
 
+    @classmethod
+    @override
+    def plan_repository_task(
+        cls,
+        task: m.Infra.CodegenRepositoryPlanTask,
+    ) -> m.Infra.CodegenRepositoryPlanOutcome:
+        """Exercise a native cause with no preconstructed diagnostic fields."""
+        if task.root.name == "exception-only-outcome":
+            return m.Infra.CodegenRepositoryPlanOutcome(
+                repository=task.repository.name,
+                exception=_LIFECYCLE_EXCEPTION,
+            )
+        return super().plan_repository_task(task)
+
     @override
     def plan(
         self,
@@ -63,13 +77,57 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConform):
         planned = super().plan(request)
         if planned.failure:
             return planned
+        scenario = request.root.name
+        if scenario in {"planning-exception", "publication-source-race"}:
+            selected = tuple(
+                file
+                for file in planned.value.files
+                if file.path.name
+                in {
+                    c.Infra.GITIGNORE,
+                    c.Infra.MAKEFILE_FILENAME,
+                    c.Infra.MISE_TOML_FILENAME,
+                }
+            )
+            rejected = next(
+                file for file in selected if file.path.name == c.Infra.GITIGNORE
+            )
+            independent = tuple(file for file in selected if file is not rejected)
+            if scenario == "planning-exception":
+                return r[m.Infra.CodegenPlan].ok(
+                    planned.value.model_copy(
+                        update={
+                            "files": independent,
+                            "exception": _LIFECYCLE_EXCEPTION,
+                            "issues": (
+                                m.Infra.Issue(
+                                    file=str(rejected.path),
+                                    line=0,
+                                    column=0,
+                                    code=c.Infra.ToolOutcome.ERROR.value,
+                                    message=str(_LIFECYCLE_EXCEPTION),
+                                ),
+                            ),
+                        },
+                    ),
+                )
+            source = request.root / ".lifecycle-source"
+            before = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+            source.write_bytes(b"foreign source\n")
+            rejected = rejected.model_copy(
+                update={"source_states": (*rejected.source_states, before)},
+            )
+            return r[m.Infra.CodegenPlan].ok(
+                planned.value.model_copy(
+                    update={"files": (rejected, *independent)},
+                ),
+            )
         identity = tm.ok(
             u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=request.root)),
         )
         journal_path = FlextInfraMiseWorkspacePlanner.journal_path(identity)
         if not journal_path.is_file():
             return planned
-        scenario = request.root.name
         if scenario in {"cas", "source-race"}:
             marker = request.root / ".lifecycle-cas"
             if marker.read_bytes() != b"before\n":
@@ -170,6 +228,10 @@ class TestsFlextInfraCodegenConform:
             docs_config.write_text("{invalid", encoding="utf-8")
         if scenario in {"cas", "source-race"}:
             (root / ".lifecycle-cas").write_bytes(b"before\n")
+        if scenario in {"planning-exception", "publication-source-race"}:
+            ignored = root / c.Infra.GITIGNORE
+            ignored.write_bytes(ignored.read_bytes() + b"\n# rejected drift\n")
+            (root / ".lifecycle-source").write_bytes(b"before\n")
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
         journal = FlextInfraMiseWorkspacePlanner.journal_path(identity)
         request = u.Tests.conform_request(
@@ -178,6 +240,86 @@ class TestsFlextInfraCodegenConform:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         return root, request, published, original, journal
+
+    @pytest.mark.parametrize(
+        "scenario",
+        ["planning-exception", "publication-source-race"],
+    )
+    def test_public_generation_preserves_independent_gains_after_failure(
+        self,
+        tmp_path: Path,
+        conformed_template: Path,
+        scenario: str,
+    ) -> None:
+        """Reject a causal target without abandoning independent authenticated work."""
+        root, request, published, original, _journal = self._lifecycle_fixture(
+            tmp_path,
+            scenario,
+            conformed_template,
+        )
+        rejected = root / c.Infra.GITIGNORE
+        rejected_before = rejected.read_bytes()
+        ports = infra.codegen_conform_collaborators()
+        if scenario == "planning-exception":
+            with pytest.raises(OSError, match="raised after begin") as raised:
+                TestsFlextInfraCodegenConformLifecycleProbe.execute_request(
+                    request,
+                    ports=ports,
+                    generation_only=True,
+                )
+            tm.that(raised.value is _LIFECYCLE_EXCEPTION, eq=True)
+        else:
+            failed = TestsFlextInfraCodegenConformLifecycleProbe.execute_request(
+                request,
+                ports=ports,
+                generation_only=True,
+            )
+            tm.fail(failed, has="atomic source changed")
+            tm.that(
+                (root / ".lifecycle-source").read_bytes(),
+                eq=b"foreign source\n",
+            )
+        tm.that(published.read_bytes() == original, eq=False)
+        tm.that(
+            published.read_bytes(),
+            eq=(conformed_template / c.Infra.MAKEFILE_FILENAME).read_bytes(),
+        )
+        tm.that(rejected.read_bytes(), eq=rejected_before)
+        receipt = m.Infra.CodegenPhaseOutcome.model_validate_json(
+            (root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH).read_bytes(),
+        )
+        tm.that(receipt.completed, eq=False)
+        tm.that(receipt.written_files, has=published)
+        tm.that(rejected in receipt.written_files, eq=False)
+        tm.that(bool(receipt.issues), eq=True)
+
+    def test_public_planning_reports_exception_only_outcome_as_failed(
+        self,
+        tmp_path: Path,
+        conformed_template: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Progress and persisted evidence cannot call an exception-only worker OK."""
+        root, request, _published, _original, _journal = self._lifecycle_fixture(
+            tmp_path,
+            "exception-only-outcome",
+            conformed_template,
+        )
+        _ = capsys.readouterr()
+        plan = tm.ok(
+            TestsFlextInfraCodegenConformLifecycleProbe(repository_root=root).plan(
+                request,
+            ),
+        )
+        tm.that(str(plan.exception), eq=str(_LIFECYCLE_EXCEPTION))
+        tm.that(bool(plan.issues), eq=True)
+        evidence = m.Infra.CodegenPlanningReport.model_validate_json(
+            (root / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH).read_bytes(),
+        )
+        tm.that(evidence.outcomes, len=1)
+        tm.that(evidence.outcomes[0].error, eq=str(_LIFECYCLE_EXCEPTION))
+        tm.that(evidence.outcomes[0].error_type, eq="builtins.OSError")
+        tm.that(capsys.readouterr().out, lacks="[OK]")
 
     @pytest.mark.parametrize(
         "scenario",
