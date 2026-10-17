@@ -51,13 +51,13 @@ class FlextInfraProtocolsBase(Protocol):
         def preview_sources[T](
             self,
             workspace: Path,
-            updates: t.MappingKV[Path, str],
+            updates: t.MappingKV[Path, str | None],
             validator: Callable[[Path, t.MappingKV[Path, Path]], T],
             *,
             inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
             runtime_root: Path | None = None,
         ) -> p.Result[T]:
-            """Validate staged candidates while preserving live sources."""
+            """Validate staged updates and retirements while preserving live sources."""
             ...
 
     @runtime_checkable

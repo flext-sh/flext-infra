@@ -933,7 +933,12 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             if self.planning_exception is None:
                 self.planning_exception = outcome.exception
             u.Cli.progress(index, len(outcomes), outcome.repository, "conform")
-            if outcome.error or outcome.error_type or outcome.exception is not None:
+            if (
+                outcome.error
+                or outcome.error_type
+                or outcome.error_traceback
+                or outcome.exception is not None
+            ):
                 u.Cli.status(
                     "conform",
                     outcome.repository,

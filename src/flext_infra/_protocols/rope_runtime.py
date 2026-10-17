@@ -11,9 +11,11 @@ from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, ClassVar, Protocol, Self, runtime_checkable
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from flext_core import p
 
-    from flext_infra import t
+    from flext_infra import m, t
 
 
 @runtime_checkable
@@ -342,6 +344,12 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
 
     @runtime_checkable
+    class RopeSourceConsumption(Protocol):
+        """One consumer's original reads and exact native query receipts."""
+
+        def receipt(self) -> m.Infra.CodegenPhaseAnalysis: ...
+
+    @runtime_checkable
     class RopeProject(RopeModuleFinder, Protocol):
         """Rope project shape used by flext-infra."""
 
@@ -408,6 +416,20 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def close(self) -> None: ...
 
         def frozen_layout(self) -> AbstractContextManager[Self]: ...
+
+        def source_consumption(
+            self,
+        ) -> AbstractContextManager[
+            FlextInfraProtocolsRopeRuntime.RopeSourceConsumption
+        ]: ...
+
+        def replay_source_consumption(
+            self, receipt: m.Infra.CodegenPhaseAnalysis
+        ) -> None: ...
+
+        def source_state(
+            self, path: Path, *, required: bool = True
+        ) -> m.Cli.AtomicFileState: ...
 
     @runtime_checkable
     class RopeLocation(Protocol):

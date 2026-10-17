@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 import traceback
 from collections.abc import MutableMapping
+from fnmatch import fnmatch
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -233,6 +234,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         source: str,
         *,
         project: p.Infra.RopeProject,
+        pytest_patterns: t.Triple[t.StrTuple, t.StrTuple, t.StrTuple],
     ) -> p.Result[t.StrMapping]:
         """Map each loose top-level class to the owner Rope's module policy elects.
 
@@ -241,37 +243,146 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
 
         """
         planned = r[t.StrMapping]
-        family = FlextInfraUtilitiesCodegenNamespace.facade_family_of_file(
-            file_path.name,
-        ) or FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
-            file_path.parent.name,
-        )
-        # A dunder module (``__main__``, ``__version__``, a package init) is
-        # never a facade module, whatever family directory holds it.
-        if family is None or file_path.stem.startswith("__"):
+        if file_path.name == "__init__.py":
             return planned.ok({})
         tree = ast.parse(source, filename=str(file_path))
         classes = {
             node.name: node for node in tree.body if isinstance(node, ast.ClassDef)
         }
         convention = rope_workspace.convention(file_path)
+        test_module = any(
+            fnmatch(file_path.name, pattern) for pattern in pytest_patterns[0]
+        )
         loose = cls._loose_members(
             tree,
             values=not convention.module_policy.allow_type_alias,
         )
         class_aliases = cls._class_value_aliases(project, file_path, tree)
-        loose = tuple(name for name in loose if name not in class_aliases)
+        loose = tuple(
+            name
+            for name in loose
+            if name not in class_aliases
+            and name not in {"pytestmark", "pytest_plugins"}
+        )
         if len(classes) <= 1 and not loose:
             return planned.ok({})
-        owned = cls._module_owner(
-            convention,
-            file_path,
-            classes,
-            cls._declared_names(tree),
+        registered_decorators = {"fixture", "hookimpl"} | {
+            alias.asname or alias.name
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom) and node.module == "pytest"
+            for alias in node.names
+            if alias.name in {"fixture", "hookimpl"}
+        }
+        registered = tuple(
+            node.name
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+            and (
+                file_path.name == "conftest.py"
+                or node.name.startswith("pytest_")
+                or (
+                    test_module
+                    and node.name
+                    in {
+                        "setup_module",
+                        "teardown_module",
+                        "setup_function",
+                        "teardown_function",
+                    }
+                )
+                or (
+                    node.name.startswith("test_")
+                    and not (
+                        test_module
+                        and cls._pytest_name_matches(node.name, pytest_patterns[2])
+                    )
+                )
+                or any(
+                    cls._tail_name(
+                        decorator.func
+                        if isinstance(decorator, ast.Call)
+                        else decorator,
+                    )
+                    in registered_decorators
+                    for decorator in node.decorator_list
+                )
+            )
+        )
+        if registered:
+            return planned.fail(
+                f"class-nesting cannot move framework-registered functions in "
+                f"{convention.module_name}: {', '.join(registered)}; "
+                "the framework registration contract must move with their owner",
+            )
+        owned = (
+            cls._test_module_owner(convention, file_path, classes, pytest_patterns[1])
+            if test_module
+            else cls._module_owner(
+                convention,
+                file_path,
+                classes,
+                cls._declared_names(tree),
+            )
         )
         if owned.failure:
             return planned.from_failure(owned)
         owner = owned.value
+        suite = classes.get(owner)
+        if (
+            test_module
+            and suite is not None
+            and any(
+                isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                and cls._pytest_name_matches(node.name, pytest_patterns[2])
+                for node in tree.body
+            )
+            and (
+                suite.bases
+                or suite.keywords
+                or suite.decorator_list
+                or any(
+                    any(
+                        name in {"__test__", "pytestmark"}
+                        for name in cls._scope_bindings(node)
+                    )
+                    or (
+                        isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                        and (
+                            node.name
+                            in {
+                                "__init__",
+                                "__new__",
+                                "setup_class",
+                                "teardown_class",
+                                "setup_method",
+                                "teardown_method",
+                            }
+                            or any(
+                                cls._tail_name(
+                                    decorator.func
+                                    if isinstance(decorator, ast.Call)
+                                    else decorator
+                                )
+                                in registered_decorators
+                                for decorator in node.decorator_list
+                            )
+                        )
+                    )
+                    for node in suite.body
+                )
+            )
+        ):
+            return planned.fail(
+                f"class-nesting cannot add free tests to {convention.module_name}.{owner}: "
+                "existing suite registration or lifecycle would change",
+            )
+        if owner not in classes and any(
+            owner in cls._scope_bindings(node) for node in tree.body
+        ):
+            return planned.fail(
+                f"class-nesting owner {owner} collides with a module binding in "
+                f"{convention.module_name}",
+            )
         movable = cls._movable_members(
             tree,
             loose,
@@ -289,12 +400,55 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             name: owner for name in classes if name != owner and name not in bound
         }
         definitions.update((name, owner) for name in movable.value)
+        metadata_dependencies = (
+            frozenset(
+                name
+                for node in tree.body
+                if any(
+                    binding in {"pytestmark", "pytest_plugins"}
+                    for binding in cls._scope_bindings(node)
+                )
+                for name in cls._definition_time_names(node)
+            )
+            & definitions.keys()
+        )
+        if metadata_dependencies:
+            return planned.fail(
+                f"class-nesting cannot move pytest metadata dependencies in "
+                f"{convention.module_name}: {', '.join(sorted(metadata_dependencies))}",
+            )
         pinned = cls._suite_reference_pins(
             tree,
             classes,
             frozenset(definitions),
             owner,
         )
+        family = FlextInfraUtilitiesCodegenNamespace.facade_family_of_file(
+            file_path.name,
+        ) or FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
+            file_path.parent.name,
+        )
+        blocked = bound | pinned | (frozenset(loose) - frozenset(movable.value))
+        if family is None and blocked:
+            return planned.fail(
+                f"class-nesting cannot safely nest {convention.module_name} under "
+                f"{owner}: definition-time dependencies pin "
+                f"{', '.join(sorted(blocked))}",
+            )
+        owner_node = classes.get(owner)
+        occupied = (
+            frozenset(
+                name for node in owner_node.body for name in cls._scope_bindings(node)
+            )
+            if owner_node is not None
+            else frozenset()
+        )
+        collisions = occupied & definitions.keys()
+        if collisions:
+            return planned.fail(
+                f"class-nesting owner {owner} already defines "
+                f"{', '.join(sorted(collisions))} in {convention.module_name}",
+            )
         return planned.ok({
             name: owner for name, owner in definitions.items() if name not in pinned
         })
@@ -718,6 +872,11 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         }
         editable = cls._editable_sources(sources)
         owned = tuple(item for item in editable if item[0] in modules)
+        # Parse native collection policy without importing consumer conftests or
+        # installed plugins. Planning must not execute their registration hooks.
+        pytest_patterns = cls._pytest_collection_patterns(
+            Path(rope_workspace.rope_project.root.real_path),
+        )
         project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
             rope_workspace.rope_project,
             sources,
@@ -729,6 +888,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     rope_workspace,
                     *item,
                     project=project,
+                    pytest_patterns=pytest_patterns,
                 )
             except Exception:
                 traceback.print_exc()
@@ -743,9 +903,17 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             for (path, _source), definitions in zip(owned, planned.value, strict=True)
             if definitions
         }
+        module_names = {
+            path: modules[path].module_name
+            or FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                project,
+                project.get_resource(modules[path].resource_path),
+            ).get_name()
+            for path, _source in owned
+        }
         bindings_by_module: MutableMapping[str, MutableMapping[str, str]] = {}
         for path, definitions in definitions_by_file.items():
-            module_name = modules[path].module_name
+            module_name = module_names[path]
             bindings = bindings_by_module.setdefault(module_name, {})
             for name, owner in definitions.items():
                 if bindings.setdefault(name, owner) != owner:
@@ -779,7 +947,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                         ),
                     ),
                     scope=(
-                        module.module_name if module is not None else "",
+                        module_names.get(path, ""),
                         module.is_package_init if module is not None else False,
                     ),
                     bindings_by_module=bindings_by_module,

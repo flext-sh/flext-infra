@@ -10,6 +10,7 @@ import ast
 from typing import TYPE_CHECKING
 
 import flext_core
+import pytest
 
 from flext_infra import infra
 from tests import c, t, tm, u
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
 
 
 class TestsFlextInfraClassNestingOwnerDerivation:
-    """A loose family module gains its derived owner; consumers follow it."""
+    """Modules elect one owner and their consumers follow the moved identities."""
 
     LOOSE_MODULE = '''"""Loose helpers of one family module."""
 
@@ -199,6 +200,310 @@ __all__: list[str] = ["LIMIT", "write"]
         tm.that(nested, has="    class _Second(_First):")
         tm.that(residue, eq={})
         compile(nested, str(module), "exec")
+
+    @pytest.mark.parametrize("directory", ["", "scripts", "examples", "tests", "src"])
+    @pytest.mark.parametrize("stem", ["worker", "__main__"])
+    def test_ordinary_entry_points_keep_runtime_behavior(
+        self,
+        tmp_path: Path,
+        directory: str,
+        stem: str,
+    ) -> None:
+        """Ordinary roots share owner derivation and do not run main at import."""
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="sample-engine",
+            package_name="sample_engine",
+        )
+        parent = package if directory == "src" else root / directory
+        tm.ok(u.Cli.ensure_dir(parent))
+        module = parent / f"{stem}.py"
+        source = (
+            "LIMIT = 3\n\n"
+            "def helper(value: int) -> int:\n    return value + LIMIT\n\n"
+            "async def async_helper(value: int) -> int:\n    return helper(value)\n\n"
+            "def main() -> None:\n    print(helper(4))\n\n"
+            'if __name__ == "__main__":\n    main()\n'
+        )
+        tm.ok(u.Cli.atomic_write_text_file(module, source))
+        probe = (
+            "import asyncio, runpy\n"
+            f"namespace = runpy.run_path({str(module)!r})\n"
+            f"runpy.run_path({str(module)!r}, run_name='__main__')\n"
+        )
+        before = u.Tests.run_lazy_init_probe(probe, python_paths=(), cwd=root)
+
+        updated, residue = self._plan(root, {module: source})
+
+        nested = updated[module.resolve()]
+        owners = [
+            node.name
+            for node in ast.parse(nested).body
+            if isinstance(node, ast.ClassDef)
+        ]
+        tm.that(len(owners), eq=1)
+        owner = owners[0]
+        tm.that(self._top_level(nested), eq=(owner, "__all__"))
+        tm.that(nested, has="    @staticmethod\n    def main(")
+        tm.that(nested, has=f"    {owner}.main()")
+        tm.ok(u.Cli.atomic_write_text_file(module, nested))
+        after = u.Tests.run_lazy_init_probe(
+            probe + f"print(asyncio.run(namespace[{owner!r}].async_helper(4)))\n",
+            python_paths=(),
+            cwd=root,
+        )
+        tm.that(after, eq=[*before, *before])
+        tm.that(residue, eq={})
+
+    @pytest.mark.parametrize("extra_class", ["", "\nclass _Record:\n    pass\n"])
+    def test_ordinary_unique_owner_is_not_wrapped(
+        self,
+        tmp_path: Path,
+        extra_class: str,
+    ) -> None:
+        """One declared service absorbs helpers without an organizational wrapper."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        module = package / "processor.py"
+        source = (
+            '"""Processing behavior."""\n\n'
+            "def clean(value: str) -> str:\n    return value.strip()\n\n"
+            "class Processor:\n"
+            "    @staticmethod\n"
+            "    def run(value: str) -> str:\n        return clean(value)\n"
+        ) + extra_class
+        tm.ok(u.Cli.atomic_write_text_file(module, source))
+
+        updated, residue = self._plan(root, {module: source})
+
+        nested = updated[module.resolve()]
+        tm.that(self._top_level(nested), eq=("Processor", "__all__"))
+        tm.that(nested, has="return Processor.clean(value)")
+        tm.ok(u.Cli.atomic_write_text_file(module, nested))
+        lines = u.Tests.run_lazy_init_probe(
+            f"import runpy\nnamespace = runpy.run_path({str(module)!r})\n"
+            "print(namespace['Processor'].run(' value '))\n",
+            python_paths=(),
+            cwd=root,
+        )
+        tm.that(lines, eq=["value"])
+        tm.that(residue, eq={})
+
+    def test_root_modules_keep_distinct_native_binding_identities(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Same-named functions in independent root modules rewire independently."""
+        root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
+        helper = "def compute(value: int) -> int:\n    return value + 1\n"
+        consumer = (
+            "from alpha import compute as left\n"
+            "from beta import compute as right\n\n"
+            "class Consumer:\n"
+            "    @staticmethod\n"
+            "    def run() -> int:\n        return left(1) + right(2)\n"
+        )
+        sources = {
+            root / "alpha.py": helper,
+            root / "beta.py": helper,
+            root / "reader.py": consumer,
+        }
+        for path, source in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        probe = "import reader\nprint(reader.Consumer.run())\n"
+        before = u.Tests.run_lazy_init_probe(probe, python_paths=(), cwd=root)
+
+        updated, residue = self._plan(root, sources)
+
+        for path, source in updated.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        after = u.Tests.run_lazy_init_probe(probe, python_paths=(), cwd=root)
+        tm.that(after, eq=before)
+        tm.that(residue, eq={})
+
+    def test_ordinary_competing_owners_fail_before_edits(self, tmp_path: Path) -> None:
+        """Unresolved public class ownership is causal, not an empty success."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        module = package / "processor.py"
+        source = (
+            '"""Competing owners."""\nclass First:\n    pass\nclass Second:\n    pass\n'
+        )
+        tm.ok(u.Cli.atomic_write_text_file(module, source))
+
+        with infra.rope_workspace(root) as rope:
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                rope_workspace=rope,
+                sources={module: source},
+            )
+
+        tm.fail(planned, has="requires exactly one declared module owner")
+        tm.that(module.read_text(), eq=source)
+
+    def test_initializer_remains_the_only_module_exemption(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Package initialization is not rewritten as an ordinary namespace."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        module = package / "__init__.py"
+        source = '"""Initialization."""\ndef main() -> int:\n    return 1\n'
+        tm.ok(u.Cli.atomic_write_text_file(module, source))
+
+        updated, residue = self._plan(root, {module: source})
+
+        tm.that(updated[module.resolve()], eq=source)
+        tm.that(residue, eq={})
+
+    @pytest.mark.parametrize("module_kind", ["ordinary", "utilities", "typings"])
+    def test_pep695_aliases_preserve_lazy_values_and_generic_scope(
+        self,
+        tmp_path: Path,
+        module_kind: str,
+    ) -> None:
+        """Cold consumers resolve recursive aliases and unshadowed type parameters."""
+        source = (
+            '"""Recursive and generic payloads."""\n'
+            "from __future__ import annotations\n\n"
+            "from collections.abc import Callable\n\n"
+            "type Leaf = str | int\n"
+            "type Payload = Leaf | list[Payload] | dict[str, Payload]\n"
+            "type Item = int\n"
+            "type Box[Item] = tuple[Item, Payload]\n"
+            "type Items[*Item] = tuple[*Item]\n"
+            "type Callback[**Item] = Callable[Item, Payload]\n"
+            'type Quoted[Item] = tuple["Item", Payload]\n'
+            "type Defaults[T: Leaf = str] = tuple[T, Leaf]\n"
+            "type Forward = list[Later]\n"
+            "type Later = tuple[Forward]\n\n"
+            "class _Record:\n    type Field = Payload\n"
+            "\ndef echo(value: Payload) -> Payload:\n    return value\n"
+        )
+        if module_kind == "utilities":
+            root, module = self._family_module(tmp_path, "payload", source)
+        else:
+            root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+            module = package / (
+                c.Infra.TYPINGS_PY if module_kind == "typings" else "payload.py"
+            )
+        tm.ok(u.Cli.atomic_write_text_file(module, source))
+        imported = ".".join(
+            module.relative_to(root / c.Infra.DEFAULT_SRC_DIR).with_suffix("").parts,
+        )
+        consumer = module.parent / "consumer.py"
+        consumer_source = (
+            '"""Alias consumer."""\n'
+            "from __future__ import annotations\n"
+            "from typing import get_args, get_type_hints\n"
+            f"from {imported} import (\n"
+            "    Payload as Data, Leaf, Item, Box, Items, Callback, Quoted, Defaults,\n"
+            "    Forward, Later, _Record, echo,\n)\n\n"
+            "class Consumer:\n"
+            "    @staticmethod\n"
+            "    def run(value: Data) -> Data:\n        return value\n\n"
+            "    @staticmethod\n"
+            "    def inspect() -> tuple[bool, ...]:\n"
+            "        return (\n"
+            "            get_args(Data.__value__)[0] is Leaf,\n"
+            "            get_args(get_args(Data.__value__)[1])[0] is Data,\n"
+            "            Item.__value__ is int,\n"
+            "            get_args(Box.__value__)[0] is Box.__type_params__[0],\n"
+            "            get_args(Box.__value__)[1] is Data,\n"
+            "            get_args(get_args(Items.__value__)[0])[0] is Items.__type_params__[0],\n"
+            "            get_args(Callback.__value__)[0] is Callback.__type_params__[0],\n"
+            '            get_args(Quoted.__value__)[0] == "Item",\n'
+            "            Defaults.__type_params__[0].__bound__ is Leaf,\n"
+            "            Defaults.__type_params__[0].__default__ is str,\n"
+            "            get_args(Forward.__value__)[0] is Later,\n"
+            "            get_args(Later.__value__)[0] is Forward,\n"
+            "            _Record.Field.__value__ is Data,\n"
+            "            get_type_hints(Consumer.run)['return'] is Data,\n"
+            "            get_type_hints(echo)['return'] is Data,\n"
+            "            echo('value') == 'value',\n"
+            "        )\n"
+        )
+        tm.ok(u.Cli.atomic_write_text_file(consumer, consumer_source))
+        probe = (
+            f"from {imported.rpartition('.')[0]}.consumer import Consumer\n"
+            "print(all(Consumer.inspect()))\n"
+            "print(Consumer.run({'items': ['value', 1]}))\n"
+        )
+        paths = (str(root / c.Infra.DEFAULT_SRC_DIR),)
+        before = u.Tests.run_lazy_init_probe(probe, python_paths=paths, cwd=root)
+
+        updated, residue = self._plan(
+            root,
+            {module: source, consumer: consumer_source},
+        )
+
+        tm.that(
+            any(
+                isinstance(node, ast.TypeAlias)
+                for node in ast.parse(updated[module]).body
+            ),
+            eq=False,
+        )
+        for path, nested in updated.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, nested))
+        after = u.Tests.run_lazy_init_probe(probe, python_paths=paths, cwd=root)
+        tm.that(before[0], eq="True")
+        tm.that(after, eq=before)
+        tm.that(residue, eq={})
+
+    @pytest.mark.parametrize(
+        ("stem", "declaration"),
+        [
+            ("conftest", "def configure() -> None:\n    pass\n"),
+            ("plugin", "def pytest_configure(config) -> None:\n    pass\n"),
+            ("test_behavior", "def test_behavior() -> None:\n    pass\n"),
+            ("fixtures", "@pytest.fixture\ndef resource() -> int:\n    return 1\n"),
+        ],
+    )
+    def test_framework_registration_requires_a_coordinated_cutover(
+        self,
+        tmp_path: Path,
+        stem: str,
+        declaration: str,
+    ) -> None:
+        """Implicit module discovery must not silently lose hooks or fixtures."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        module = package / f"{stem}.py"
+        source = '"""Framework registration."""\nimport pytest\n\n' + declaration
+        tm.ok(u.Cli.atomic_write_text_file(module, source))
+
+        with infra.rope_workspace(root) as rope:
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                rope_workspace=rope,
+                sources={module: source},
+            )
+
+        tm.fail(planned, has="framework registration contract must move")
+        tm.that(module.read_text(), eq=source)
+
+    def test_ordinary_suite_dependencies_fail_before_partial_nesting(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """An owner's nested suite cannot evaluate a moved sibling too early."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        module = package / "processor.py"
+        source = (
+            '"""Immediate suite dependencies."""\n'
+            "class Processor:\n    pass\n\n"
+            "class _Payload:\n    pass\n\n"
+            "class _Holder:\n    payload = _Payload\n"
+        )
+        tm.ok(u.Cli.atomic_write_text_file(module, source))
+
+        with infra.rope_workspace(root) as rope:
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                rope_workspace=rope,
+                sources={module: source},
+            )
+
+        tm.fail(planned, has="definition-time dependencies pin")
+        tm.that(module.read_text(), eq=source)
 
     def test_module_alias_consumers_read_the_owner(self, tmp_path: Path) -> None:
         """Module-alias and member imports are rewired to the owner."""

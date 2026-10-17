@@ -19,6 +19,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenConform,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenProjectNew,
+    FlextInfraCodegenTransaction,
     FlextInfraMiseWorkspacePlanner,
 )
 from flext_infra.docs import FlextInfraDocGenerator
@@ -93,6 +94,14 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConform):
                 file for file in selected if file.path.name == c.Infra.GITIGNORE
             )
             independent = tuple(file for file in selected if file is not rejected)
+            expected = next(
+                file
+                for file in independent
+                if file.path.name == c.Infra.MAKEFILE_FILENAME
+            )
+            (request.root.parent / ".lifecycle-expected").write_bytes(
+                tm.not_none(expected.desired_content),
+            )
             if scenario == "planning-exception":
                 return r[m.Infra.CodegenPlan].ok(
                     planned.value.model_copy(
@@ -269,20 +278,22 @@ class TestsFlextInfraCodegenConform:
                 )
             tm.that(raised.value is _LIFECYCLE_EXCEPTION, eq=True)
         else:
-            failed = TestsFlextInfraCodegenConformLifecycleProbe.execute_request(
-                request,
-                ports=ports,
-                generation_only=True,
-            )
-            tm.fail(failed, has="atomic source changed")
+            with pytest.raises(ValueError) as changed:
+                TestsFlextInfraCodegenConformLifecycleProbe.execute_request(
+                    request,
+                    ports=ports,
+                    generation_only=True,
+                )
+            tm.that(str(changed.value), has=str(root / ".lifecycle-source"))
             tm.that(
                 (root / ".lifecycle-source").read_bytes(),
                 eq=b"foreign source\n",
             )
         tm.that(published.read_bytes() == original, eq=False)
         tm.that(
-            published.read_bytes(),
-            eq=(conformed_template / c.Infra.MAKEFILE_FILENAME).read_bytes(),
+            published.read_bytes()
+            == (root.parent / ".lifecycle-expected").read_bytes(),
+            eq=True,
         )
         tm.that(rejected.read_bytes(), eq=rejected_before)
         receipt = m.Infra.CodegenPhaseOutcome.model_validate_json(
@@ -347,22 +358,49 @@ class TestsFlextInfraCodegenConform:
             conformed_template,
         )
         _ = capsys.readouterr()
-        execute = (
-            FlextInfraCodegenConform.execute_request
-            if scenario.endswith("-failure")
-            else TestsFlextInfraCodegenConformLifecycleProbe.execute_request
-        )
         ports = infra.codegen_conform_collaborators()
+
+        def execute() -> p.Result[m.Infra.CodegenResult]:
+            if scenario.endswith("-failure"):
+                return FlextInfraCodegenConform.execute_request(request, ports=ports)
+            owner = FlextInfraCodegenTransaction(
+                FlextInfraCodegenMiseArtifacts(repository_root=root),
+            )
+            roots = owner.capability_roots("bootstrap", (root,))
+            planned = tm.ok(
+                FlextInfraCodegenConform(repository_root=root).plan(request)
+            )
+            target = next(file for file in planned.files if file.path == published)
+
+            def fail_prepared(scope: Path) -> p.Result[m.Infra.CodegenResult]:
+                initial = tm.ok(
+                    owner.begin_files_locked(scope, roots, target.source_states)
+                )
+                tm.ok(
+                    owner.append_phase_locked(initial, "conform-bootstrap", (target,))
+                )
+                return owner.publish_prepared_locked(
+                    initial,
+                    lambda _session: (
+                        TestsFlextInfraCodegenConformLifecycleProbe(
+                            repository_root=root,
+                        )
+                        .plan(request)
+                        .map(lambda plan: m.Infra.CodegenResult(plan=plan))
+                    ),
+                )
+
+            return owner.run_files_locked(roots, fail_prepared)
 
         if scenario.startswith("exception-"):
             with pytest.raises(OSError, match="raised after begin") as raised:
-                execute(request, ports=ports)
+                execute()
             tm.that(raised.value is _LIFECYCLE_EXCEPTION, eq=True)
         elif scenario == "docs-failure":
             with pytest.raises(ValueError, match="Invalid JSON"):
-                execute(request, ports=ports)
+                execute()
         else:
-            failed = execute(request, ports=ports)
+            failed = execute()
             expected = {
                 "cas": "atomic destination content changed",
                 "source-race": "atomic source changed",
@@ -376,8 +414,7 @@ class TestsFlextInfraCodegenConform:
             "failure-mixed",
         }
         tm.that(journal.exists(), eq=retained)
-        publication_is_preserved = not retained or scenario == "failure-mixed"
-        tm.that(published.read_bytes() == original, eq=publication_is_preserved)
+        tm.that(published.read_bytes() == original, eq=False)
         if scenario == "failure-changed":
             tm.that(journal.read_bytes().endswith(b"\n"), eq=True)
         elif scenario == "exception-replaced":

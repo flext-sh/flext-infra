@@ -2,7 +2,7 @@ id: rewire-cli-internal-process-outcome-success-check
 language: Python
 severity: error
 files:
-  - "flext-cli/src/flext_cli/_utilities/_toml_parts/flextcliutilitiestoml_part_06.py"
+- "flext-cli/src/flext_cli/_utilities/_toml/flextcliutilitiestoml_part_06.py"
 rule:
   pattern: $OUTCOME.raw_return_code == $SUCCESS
 constraints:

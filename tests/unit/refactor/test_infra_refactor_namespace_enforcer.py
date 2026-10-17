@@ -144,10 +144,10 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         )
 
     @staticmethod
-    def test_namespace_enforcer_respects_tool_flext_namespace_scan_dirs(
+    def test_namespace_enforcer_keeps_active_sources_beyond_declared_scan_dirs(
         tmp_path: Path,
     ) -> None:
-        """Respect configured namespace scan directories."""
+        """A declared source root cannot hide active example declarations."""
         workspace, project, _pkg = u.Tests.namespace_workspace(
             tmp_path,
             pyproject=(
@@ -166,17 +166,18 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         _ = alias_file.write_text(alias_source, encoding="utf-8")
 
         report = FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(
-            apply=True,
+            apply=False,
         )
 
         tm.that(report.projects, empty=False)
+        tm.that(report.projects[0].relocation_findings > 0, eq=True)
         tm.that(alias_file.read_text(encoding="utf-8"), eq=alias_source)
 
     @staticmethod
-    def test_namespace_enforcer_skips_dynamic_dirs_by_default(
+    def test_namespace_enforcer_includes_discovered_python_tiers(
         tmp_path: Path,
     ) -> None:
-        """Skip dynamic directories when no scan override is declared."""
+        """Discover Python declarations without an allowlist of tier names."""
         workspace, project, _pkg = u.Tests.namespace_workspace(tmp_path)
         docs_dir = project / "docs"
         docs_dir.mkdir(parents=True)
@@ -194,7 +195,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             apply=False,
         )
 
-        tm.that(report.projects[0].relocation_findings, eq=0)
+        tm.that(report.projects[0].relocation_findings > 0, eq=True)
 
     @staticmethod
     def test_namespace_enforcer_apply_keeps_script_shebang_when_adding_future(

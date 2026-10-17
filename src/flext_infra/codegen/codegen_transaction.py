@@ -36,7 +36,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
     def preview_sources[T](
         self,
         workspace: Path,
-        updates: t.MappingKV[Path, str],
+        updates: t.MappingKV[Path, str | None],
         validator: Callable[[Path, t.MappingKV[Path, Path]], T],
         *,
         inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
@@ -46,7 +46,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
 
         Args:
             workspace: The declared source workspace.
-            updates: Desired source content keyed by live paths.
+            updates: Desired sources keyed by live paths; None retires an artifact.
             validator: A callable that validates the source view.
             inputs: Original caller source states required to remain unchanged.
             runtime_root: Declared physical runtime for pre-check candidate imports.
@@ -344,11 +344,12 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         for before in plan.inputs:
             if not before.path.is_relative_to(plan.workspace):
                 continue
-            content = (
-                plan.updates[before.path].encode(c.DEFAULT_ENCODING)
-                if before.path in plan.updates
-                else before.content
-            )
+            content = before.content
+            if before.path in plan.updates:
+                desired = plan.updates[before.path]
+                content = (
+                    None if desired is None else desired.encode(c.DEFAULT_ENCODING)
+                )
             if content is None:
                 continue
             writes.append((

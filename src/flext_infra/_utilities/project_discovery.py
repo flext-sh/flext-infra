@@ -20,6 +20,8 @@ from flext_infra._utilities import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from flext_infra import p
 
 
@@ -238,12 +240,9 @@ class FlextInfraUtilitiesProjectDiscovery(
     ) -> t.StrSequence:
         """Return only governed handwritten Python surfaces as scan targets.
 
-        A workspace root is not itself a Python source surface. Passing ``.`` to
-        ast-grep also traverses generated agent hooks and other managed
-        projections, so a project-local ``make mod`` could rewrite files owned by
-        another generator. The refactor config is the single scope owner for
-        source trees; root Python modules cover public entry points such as
-        ``conftest.py`` without opening hidden directories.
+        Configured roots cannot hide active Python sources. Enumerating files
+        instead of passing ``.`` keeps foreign repositories, hidden histories,
+        and the artifact SSOT's ignored trees outside the rewrite inventory.
 
         Returns:
             Only governed handwritten Python surfaces as scan targets.
@@ -255,29 +254,16 @@ class FlextInfraUtilitiesProjectDiscovery(
         resolved_root = repository_root.resolve()
         if refactor_config is None:
             refactor_config = cls.load_refactor_config(resolved_root)
-        scan_dirs = refactor_config.project_scan_dirs
-        targets: set[str] = set()
-        for project in cls.governed_project_roots(resolved_root):
-            for suffix in c.Infra.PYTHON_SOURCE_SUFFIXES:
-                # Python files directly in the project root (e.g., conftest.py)
-                for target in project.glob(f"*{suffix}"):
-                    if target.exists():
-                        targets.add(target.relative_to(resolved_root).as_posix())
-                # Recursively scan configured directories for Python sources:
-                # modules and the stubs the catalog rules also govern.
-                for directory in scan_dirs:
-                    cls._collect_scan_dir_targets(
-                        project / directory,
-                        f"*{suffix}",
-                        resolved_root,
-                        targets,
-                    )
         nonparticipants = cls.repository_nonparticipant_paths(resolved_root)
         eligible = {
-            target
-            for target in targets
-            if not cls._is_nonparticipant(
-                resolved_root / target, resolved_root, nonparticipants
+            path.relative_to(resolved_root).as_posix()
+            for project in cls.governed_project_roots(resolved_root)
+            for path in cls.discover_python_files(
+                project, workspace_excluded_top_dirs=frozenset()
+            )
+            if not cls._is_nonparticipant(path, resolved_root, nonparticipants)
+            and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                resolved_root, path
             )
         }
         if source_files is not None:
@@ -294,29 +280,183 @@ class FlextInfraUtilitiesProjectDiscovery(
             eligible.intersection_update(selected)
         return tuple(sorted(eligible))
 
-    @staticmethod
-    def _collect_scan_dir_targets(
-        scan_dir: Path,
-        pattern: str,
-        resolved_root: Path,
-        targets: set[str],
-    ) -> None:
-        """Add every Python file under one configured scan directory.
+    @classmethod
+    def discover_python_dirs(
+        cls,
+        project_dir: Path,
+        *,
+        workspace_excluded_top_dirs: frozenset[str],
+        skip_dirs: frozenset[str] | None = None,
+    ) -> t.StrSequence:
+        """Return owned top-level directories containing active Python sources.
 
-        Trees the codegen artifact SSOT ignores for source scans (generated
-        sources included) are outside the inventory the semantic phases
-        index, so they never become scan or rewrite targets either.
+        Returns:
+            Directory names in deterministic order.
+
         """
-        if not scan_dir.exists():
-            return
-        for target in scan_dir.rglob(pattern):
-            if (
-                target.is_file()
+        if not project_dir.is_dir():
+            return []
+        effective_skip = (
+            c.Infra.PYTHON_DISCOVERY_SKIP_DIRS if skip_dirs is None else skip_dirs
+        ) | frozenset(config.Infra.codegen.source_scan_ignored)
+        nonparticipants = cls.repository_nonparticipant_paths(project_dir)
+        return [
+            subdir.name
+            for subdir in sorted(project_dir.iterdir())
+            if subdir.is_dir()
+            and not subdir.is_symlink()
+            and not subdir.name.startswith(".")
+            and subdir.name not in effective_skip
+            and subdir.name not in workspace_excluded_top_dirs
+            and not cls._is_nonparticipant(subdir, project_dir, nonparticipants)
+            and not (subdir / c.PYPROJECT_FILENAME).is_file()
+            and not (subdir / c.Infra.GIT_DIR).exists()
+            and any(cls._walk_python_files(subdir, effective_skip))
+        ]
+
+    @classmethod
+    def discover_python_targets(
+        cls,
+        project_dir: Path,
+        *,
+        workspace_excluded_top_dirs: frozenset[str],
+    ) -> t.StrSequence:
+        """Return owned Python directories and standalone root modules.
+
+        Returns:
+            Every active source target owned by one project.
+
+        """
+        if not project_dir.is_dir():
+            return []
+        return [
+            *cls.discover_python_dirs(
+                project_dir,
+                workspace_excluded_top_dirs=workspace_excluded_top_dirs,
+            ),
+            *(
+                path.name
+                for path in sorted(project_dir.iterdir())
+                if path.is_file()
+                and not path.is_symlink()
+                and not path.name.startswith(".")
+                and path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+                and cls._python_file_belongs_to_project(project_dir, path)
                 and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
-                    scan_dir, target
+                    project_dir, path
                 )
-            ):
-                targets.add(target.relative_to(resolved_root).as_posix())
+            ),
+        ]
+
+    @classmethod
+    def discover_python_files(
+        cls,
+        project_dir: Path,
+        *,
+        workspace_excluded_top_dirs: frozenset[str],
+    ) -> t.SequenceOf[Path]:
+        """Expand canonical targets without crossing project or artifact boundaries.
+
+        Returns:
+            Sorted absolute Python source and stub paths.
+
+        """
+        project_dir = project_dir.resolve()
+        skip_dirs = c.Infra.PYTHON_DISCOVERY_SKIP_DIRS | frozenset(
+            config.Infra.codegen.source_scan_ignored
+        )
+        nonparticipants = cls.repository_nonparticipant_paths(project_dir)
+        return tuple(
+            sorted({
+                path.resolve()
+                for target in cls.discover_python_targets(
+                    project_dir,
+                    workspace_excluded_top_dirs=workspace_excluded_top_dirs,
+                )
+                for candidate in (project_dir / target,)
+                for path in (
+                    cls._walk_python_files(candidate, skip_dirs)
+                    if candidate.is_dir()
+                    else (candidate,)
+                )
+                if cls._python_file_belongs_to_project(project_dir, path)
+                and not cls._is_nonparticipant(path, project_dir, nonparticipants)
+                and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                    project_dir, path.resolve()
+                )
+            })
+        )
+
+    @staticmethod
+    def _walk_python_files(
+        directory: Path,
+        skip_dirs: frozenset[str],
+    ) -> Iterator[Path]:
+        """Yield sources while pruning hidden, ignored, and nested repository trees.
+
+        Yields:
+            Each eligible Python source path.
+
+        """
+        for parent, child_dirs, file_names in directory.walk():
+            child_dirs[:] = [
+                name
+                for name in child_dirs
+                if name not in skip_dirs
+                and not name.startswith(".")
+                and not (parent / name).is_symlink()
+                and not (parent / name / c.PYPROJECT_FILENAME).is_file()
+                and not (parent / name / c.Infra.GIT_DIR).exists()
+            ]
+            for file_name in file_names:
+                if (
+                    not file_name.startswith(".")
+                    and file_name not in skip_dirs
+                    and Path(file_name).suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+                    and not (parent / file_name).is_symlink()
+                ):
+                    yield parent / file_name
+
+    @staticmethod
+    def _python_file_belongs_to_project(project_dir: Path, source: Path) -> bool:
+        """Return whether a source resolves inside this project's own boundary.
+
+        Returns:
+            Whether the path belongs to the supplied project.
+
+        """
+        project_dir = project_dir.resolve()
+        source = source.resolve()
+        if not source.is_relative_to(project_dir):
+            return False
+        for parent in source.parents:
+            if parent == project_dir:
+                return True
+            if (parent / c.PYPROJECT_FILENAME).is_file() or (
+                parent / c.Infra.GIT_DIR
+            ).exists():
+                return False
+        return False
+
+    @classmethod
+    def analyzer_python_roots(
+        cls,
+        project_dir: Path,
+        declared: t.StrSequence,
+        *,
+        workspace_excluded_top_dirs: frozenset[str],
+    ) -> t.StrSequence:
+        """Keep declared root order and append every discovered active source root.
+
+        Returns:
+            The Python roots all analyzer surfaces share.
+
+        """
+        discovered = cls.discover_python_dirs(
+            project_dir,
+            workspace_excluded_top_dirs=workspace_excluded_top_dirs,
+        )
+        return (*declared, *(root for root in discovered if root not in declared))
 
     @classmethod
     def governed_project_roots(cls, repository_root: Path) -> t.SequenceOf[Path]:

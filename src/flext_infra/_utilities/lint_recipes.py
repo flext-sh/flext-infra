@@ -438,8 +438,6 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
         return None
 
     @classmethod
-    @staticmethod
-    @classmethod
     def _summary_edit(
         cls,
         lines: t.StrSequence,

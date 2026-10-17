@@ -11,6 +11,8 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config, m
+from flext_infra.codemod import FlextInfraCodemodSemanticApply
+from flext_infra.validate import FlextInfraNamespaceValidator
 from tests import tm, u
 
 
@@ -194,3 +196,148 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
 
         tm.that(targets, has=live.relative_to(project).as_posix())
         tm.that(targets, lacks=generated.relative_to(project).as_posix())
+
+    @staticmethod
+    @pytest.mark.parametrize("git_project", [False, True])
+    def test_active_sources_share_one_inventory(
+        tmp_path: Path,
+        git_project: bool,
+    ) -> None:
+        """Root modules and arbitrary tiers cannot disappear behind configured roots."""
+        project = u.Tests.mk_project(
+            tmp_path,
+            "inventory",
+            pyproject=(
+                '[project]\nname = "inventory"\nversion = "0.1.0"\n'
+                '[tool.flext.namespace]\nscan_dirs = ["src"]\n'
+            ),
+            with_src=True,
+        ).resolve()
+        if git_project:
+            u.Tests.initialize_git_repo(project)
+        live_paths = (
+            project / "root.py",
+            project / "arbitrary" / "deep" / "tier" / "worker.py",
+            project / "arbitrary" / "deep" / "tier" / "__init__.py",
+        )
+        for path in live_paths:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("value = 1\n", encoding="utf-8")
+        stub = live_paths[1].with_suffix(".pyi")
+        stub.write_text("value: int\n", encoding="utf-8")
+        foreign = u.Tests.git_repository(project / "arbitrary", "foreign")
+        isolated = project / "arbitrary" / "independent"
+        isolated.mkdir()
+        (isolated / c.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "independent"\nversion = "0.1.0"\n',
+            encoding="utf-8",
+        )
+        unmanaged = project / "arbitrary" / "unmanaged"
+        (project / c.Infra.GITMODULES).write_text(
+            '[submodule "unmanaged"]\npath = arbitrary/unmanaged\n'
+            "url = https://example.invalid/unmanaged.git\nflext-managed = false\n",
+            encoding="utf-8",
+        )
+        outsiders = (
+            foreign / "foreign.py",
+            isolated / "independent.py",
+            unmanaged / "unmanaged.py",
+            project / ".historical" / "retired.py",
+            project / "arbitrary" / ".hidden" / "retired.py",
+            *(
+                project / "arbitrary" / name / "ignored.py"
+                for name in config.Infra.codegen.source_scan_ignored
+            ),
+        )
+        for path in outsiders:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("value = 2\n", encoding="utf-8")
+
+        targets = u.Infra.ast_grep_scan_targets(
+            project,
+            refactor_config=m.Infra.RefactorConfigSpec(project_scan_dirs=("src",)),
+        )
+        target_paths = {project / target for target in targets}
+        discovered = set(
+            u.Infra.discover_python_files(
+                project, workspace_excluded_top_dirs=frozenset()
+            )
+        )
+        iterated = set(
+            tm.ok(
+                u.Infra.iter_python_files(
+                    m.Infra.SourceScanRequest(project_roots=(project,))
+                )
+            )
+        )
+        inventory = FlextInfraCodemodSemanticApply.source_inventory(
+            project,
+            m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
+                files=frozenset(), entries=()
+            ),
+        )
+
+        tm.that(set(live_paths) <= target_paths, eq=True)
+        tm.that(target_paths, has=stub)
+        tm.that(target_paths, eq=discovered)
+        tm.that(set(outsiders).isdisjoint(target_paths), eq=True)
+        python_targets = {
+            path for path in target_paths if path.suffix == c.Infra.EXT_PYTHON
+        }
+        tm.that(iterated, eq=python_targets)
+        tm.that(set(inventory), eq=target_paths)
+        tm.that(u.Infra.namespace_scan_dirs(project), has="arbitrary")
+        tm.that(
+            u.Infra.analyzer_python_roots(
+                project, ("src",), workspace_excluded_top_dirs=frozenset()
+            ),
+            has="arbitrary",
+        )
+        with pytest.raises(ValueError, match="outside governed inventory"):
+            u.Infra.ast_grep_scan_targets(project, source_files=(outsiders[0],))
+
+    @staticmethod
+    def test_namespace_declarations_do_not_suppress_active_source_findings(
+        tmp_path: Path,
+    ) -> None:
+        """Namespace validation reports arbitrary and root modules despite src-only config."""
+        project = u.Tests.mk_project(
+            tmp_path,
+            "namespace-inventory",
+            pyproject=(
+                '[project]\nname = "namespace-inventory"\nversion = "0.1.0"\n'
+                '[tool.flext.namespace]\nscan_dirs = ["src"]\n'
+            ),
+            with_src=True,
+        )
+        config_path = project / c.Infra.CODEMOD_CONFIG_RELPATH
+        rules = config_path.parent / c.Cli.RULES_DIR_NAME
+        rules.mkdir(parents=True, exist_ok=True)
+        config_path.write_text(
+            f"ruleDirs: [{c.Cli.RULES_DIR_NAME}]\n", encoding="utf-8"
+        )
+        rule_id = "active-source-probe"
+        (rules / "active-source.yml").write_text(
+            f"id: {rule_id}\nlanguage: Python\nseverity: error\n"
+            "message: Active source finding\nrule:\n  pattern: probe($VALUE)\n",
+            encoding="utf-8",
+        )
+        paths = (project / "root.py", project / "arbitrary" / "deep" / "worker.py")
+        for path in paths:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("probe(1)\n", encoding="utf-8")
+        u.Tests.copy_tracked_mise_seeds(project)
+
+        report = tm.ok(
+            FlextInfraNamespaceValidator(repository_root=project).build_report()
+        )
+
+        tm.that(report.passed, eq=False)
+        for path in paths:
+            tm.that(
+                any(
+                    f"[{rule_id}] {path.relative_to(project).as_posix()}:" in violation
+                    for violation in report.violations
+                ),
+                eq=True,
+            )

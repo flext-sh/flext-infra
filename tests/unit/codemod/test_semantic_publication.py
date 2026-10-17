@@ -170,7 +170,7 @@ class TestsFlextInfraSemanticPublication:
                 project=candidate.workspace,
                 path=path,
                 before=originals[path],
-                desired_content=source.encode(c.DEFAULT_ENCODING),
+                desired_content=tm.not_none(source).encode(c.DEFAULT_ENCODING),
                 desired_mode=originals[path].mode,
                 source_states=(driver,),
             )
@@ -197,7 +197,10 @@ class TestsFlextInfraSemanticPublication:
         if drift == "none":
             tm.that(tm.ok(published), eq=tuple(candidate.updates))
             for path, desired in candidate.updates.items():
-                tm.that(path.read_bytes(), eq=desired.encode(c.DEFAULT_ENCODING))
+                tm.that(
+                    path.read_bytes(),
+                    eq=tm.not_none(desired).encode(c.DEFAULT_ENCODING),
+                )
             before = tuple(
                 tm.ok(u.Cli.atomic_read_binary_file_state(state.path))
                 for state in candidate.inputs
@@ -235,7 +238,10 @@ class TestsFlextInfraSemanticPublication:
             )
             published = {path: path.read_bytes() for path in artifact.candidate.updates}
             for path, desired in artifact.candidate.updates.items():
-                tm.that(published[path], eq=desired.encode(c.DEFAULT_ENCODING))
+                tm.that(
+                    published[path],
+                    eq=tm.not_none(desired).encode(c.DEFAULT_ENCODING),
+                )
             tm.fail(
                 FlextInfraCodemodSemanticApply.consume_rename_plan(
                     request, workspace, infra.source_preview(root)
@@ -471,6 +477,92 @@ class TestsFlextInfraSemanticPublication:
             )
             tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
             tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize("accepted", [False, True])
+    def test_artifact_candidate_retires_old_package_before_acceptance(
+        mod_workspace: Path,
+        *,
+        accepted: bool,
+    ) -> None:
+        """Preview a package move without exposing retired sources or live effects."""
+        package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / mod_workspace.name
+        previous = package / "previous" / "service.py"
+        current = package / "current" / previous.name
+        previous.parent.mkdir()
+        previous.write_text('VALUE = "previous"\n', encoding=c.DEFAULT_ENCODING)
+        original = tm.ok(u.Cli.atomic_read_binary_file_state(previous, required=True))
+        absent = tm.ok(u.Cli.atomic_read_binary_file_state(current))
+        parents = tm.ok(u.Cli.atomic_plan_directory_chain(current.parent))
+        desired = 'VALUE = "current"\n'
+        inputs = (original, absent)
+        plans = (
+            m.Infra.CodegenFilePlan(
+                project=mod_workspace,
+                path=previous,
+                before=original,
+                desired_content=None,
+                desired_mode=None,
+                source_states=inputs,
+            ),
+            m.Infra.CodegenFilePlan(
+                project=mod_workspace,
+                path=current,
+                before=parents,
+                desired_content=desired.encode(c.DEFAULT_ENCODING),
+                desired_mode=original.mode,
+                source_states=inputs,
+            ),
+        )
+        previews: list[Path] = []
+
+        def validate(candidate_root: Path) -> p.Result[bool]:
+            candidate = candidate_root / current.relative_to(mod_workspace)
+            retired = candidate_root / previous.relative_to(mod_workspace)
+            tm.that(candidate.read_text(encoding=c.DEFAULT_ENCODING), eq=desired)
+            tm.that(retired.exists(), eq=False)
+            if candidate_root != mod_workspace:
+                previews.append(candidate_root)
+                tm.ok(u.Cli.atomic_verify_binary_file_states(inputs))
+                tm.that(current.parent.exists(), eq=False)
+            consumer = tm.ok(
+                u.Cli.run(
+                    (
+                        sys.executable,
+                        "-c",
+                        (
+                            f"from {package.name}.{current.parent.name}.service "
+                            f"import VALUE; assert VALUE == {current.parent.name!r}"
+                        ),
+                    ),
+                    cwd=candidate_root,
+                    options=m.Cli.ProcessOptions(
+                        env={
+                            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
+                                candidate_root
+                                / package.parent.relative_to(mod_workspace)
+                            ),
+                        },
+                    ),
+                ),
+            )
+            tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
+            return r[bool].ok(accepted)
+
+        published = FlextInfraSemanticPublication.publish_semantic_artifact_plans(
+            plans,
+            repository_root=mod_workspace,
+            validator=validate,
+        )
+        tm.that(len(previews), eq=1)
+        if accepted:
+            tm.that(set(tm.ok(published)), eq={previous, current})
+            tm.that(previous.exists(), eq=False)
+            tm.that(current.read_text(encoding=c.DEFAULT_ENCODING), eq=desired)
+        else:
+            tm.fail(published, has="candidate acceptance rejected")
+            tm.ok(u.Cli.atomic_verify_binary_file_states(inputs))
+            tm.that(current.parent.exists(), eq=False)
 
     def test_preflight_and_commit_accept_the_real_published_consumer(
         self,
