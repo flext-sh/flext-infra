@@ -11,9 +11,6 @@ from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, ClassVar, Protocol, Self, runtime_checkable
 
 if TYPE_CHECKING:
-    from rope.base.builtins import BuiltinModule
-    from rope.base.pyobjectsdef import PyModule, PyPackage
-
     from flext_infra import p, t
 
 
@@ -361,8 +358,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def get_pymodule(
             self,
             resource: FlextInfraProtocolsRopeRuntime.RopeResource,
+            *,
             force_errors: bool = False,
-        ) -> PyModule | PyPackage: ...
+        ) -> t.Infra.RopeNativeParsedModule: ...
 
         def get_source_folders(
             self,
@@ -382,7 +380,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self,
             name: str,
             folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
-        ) -> BuiltinModule | PyModule | PyPackage: ...
+        ) -> t.Infra.RopeNativeSemanticModule: ...
 
         def get_python_files(
             self,

@@ -10,6 +10,7 @@ from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._semantic_cutover import (
@@ -359,7 +360,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             project, source, resource=resource
         )
         facts = FlextInfraUtilitiesRopeStructure.logical_statements(source)
-        typing = project.get_module("typing")
+        typing = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+            project.get_module("typing")
+        )
         selection = cls._nesting_selection(module, facts, definitions)
         if any(
             item.category

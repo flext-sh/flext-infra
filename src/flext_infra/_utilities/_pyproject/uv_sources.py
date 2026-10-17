@@ -16,7 +16,10 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesDependencies
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesPyproject,
+)
 from flext_infra._utilities._pyproject import (
     FlextInfraUtilitiesPyprojectRequirements,
     FlextInfraUtilitiesPyprojectSession,
@@ -459,7 +462,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
             {"dependency-groups": declared_groups},
         )
         return {
-            group: cls.dependency_group_wire(entries)
+            group: FlextInfraUtilitiesPyproject.dependency_group_wire(entries)
             for group, entries in validated_groups.dependency_groups.items()
         }
 

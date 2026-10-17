@@ -643,7 +643,7 @@ class FlextInfraUtilitiesRepository:
         """Read and parse the owner-recovered pyproject declaration.
 
         Returns:
-            The parsed pyproject mapping as one result payload.
+            The parsed mapping with only authored dependency-group inputs.
 
         """
         # Identity detection consumes the same owner-recovered declaration as
@@ -658,6 +658,27 @@ class FlextInfraUtilitiesRepository:
             return r[t.JsonMapping].fail(
                 f"pyproject is not valid TOML: {pyproject_path}",
             )
+        groups = u.Cli.toml_mapping_path(payload, (c.Infra.DEPENDENCY_GROUPS,))
+        if groups is not None:
+            for group in (str(c.Infra.DEV), c.Infra.DependencyGroup.CODEGEN):
+                selected = FlextInfraUtilitiesPyproject.dependency_group_name(
+                    tuple(groups),
+                    str(group),
+                )
+                if selected not in groups:
+                    continue
+                custom = FlextInfraUtilitiesPyproject.custom_dev_additions(
+                    payload,
+                    text.value,
+                    group=selected,
+                )
+                if custom.failure:
+                    return r[t.JsonMapping].from_failure(custom)
+                groups[selected] = (
+                    FlextInfraUtilitiesPyproject.dependency_group_wire(
+                        custom.value,
+                    )
+                )
         return r[t.JsonMapping].ok(payload)
 
     @classmethod

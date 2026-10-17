@@ -63,7 +63,6 @@ class FlextInfraPyprojectModernizerRun:
             state: m.Infra.PyprojectDocumentState,
             changes: t.StrSequence,
             *,
-            dry_run: bool,
             skip_comments: bool,
             format_source: bool = True,
             preserve_layout: bool = False,
@@ -537,7 +536,6 @@ class FlextInfraPyprojectModernizerRun:
         rendered = self._render_document_state(
             root_state,
             tuple(changes),
-            dry_run=True,
             skip_comments=True,
             format_source=False,
             preserve_layout=True,

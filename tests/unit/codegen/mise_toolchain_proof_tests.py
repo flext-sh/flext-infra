@@ -52,7 +52,7 @@ class TestsFlextInfraMiseToolchainProof:
                 contract.model_validate({**record.model_dump(), "unexpected": True})
             for field, value in record.model_dump().items():
                 with pytest.raises(m.ValidationError, match="frozen_instance"):
-                    record.__setattr__(field, value)
+                    setattr(record, field, value)
 
     @staticmethod
     def _repository_root() -> Path:

@@ -67,7 +67,7 @@ class FlextInfraRopeProject(Project):
         self,
         resource: Resource | p.Infra.RopeResource,
         force_errors: bool = False,
-    ) -> PyModule | PyPackage:
+    ) -> t.Infra.RopeNativeParsedModule:
         """Resolve a native resource while preserving the SDK return classes.
 
         Returns:
@@ -87,7 +87,7 @@ class FlextInfraRopeProject(Project):
         self,
         name: str,
         folder: Folder | p.Infra.RopeRoot | None = None,
-    ) -> BuiltinModule | PyModule | PyPackage:
+    ) -> t.Infra.RopeNativeSemanticModule:
         """Resolve the native semantic module elected by the SDK.
 
         Returns:

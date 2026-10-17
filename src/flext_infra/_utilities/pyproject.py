@@ -10,8 +10,10 @@ import shutil
 from collections.abc import Mapping
 from functools import cache, lru_cache
 from pathlib import Path
+from typing import ClassVar
 
 from flext_cli import u
+from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
@@ -22,6 +24,115 @@ from flext_infra._utilities import (
 
 class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
+
+    MEMBER_DEV_PROVENANCE: ClassVar[str] = "flext: derived member environment"
+
+    @staticmethod
+    def dependency_group_name(names: t.IterableOf[str], name: str) -> str:
+        """Elect an existing native spelling using PEP 735 normalized identity.
+
+        Returns:
+            The declared spelling when one matches, else the requested name.
+
+        Raises:
+            ValueError: If dependency group names have colliding normalized
+                identities.
+
+        """
+        matches = tuple(
+            key for key in names if canonicalize_name(key) == canonicalize_name(name)
+        )
+        if len(matches) > 1:
+            msg = "dependency group names have colliding normalized identities"
+            raise ValueError(msg)
+        return matches[0] if matches else name
+
+    @staticmethod
+    def dependency_group_wire(
+        entries: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+    ) -> list[t.JsonValue]:
+        """Serialize native entries without turning inclusion tables into strings.
+
+        Returns:
+            The resulting ``list[t.JsonValue]``.
+
+        """
+        return [
+            entry
+            if isinstance(entry, str)
+            else dict(
+                t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                    entry.model_dump(mode="json", by_alias=True),
+                ),
+            )
+            for entry in entries
+        ]
+
+    @staticmethod
+    def custom_dev_additions(
+        live_payload: t.JsonMapping,
+        live: str | None,
+        *,
+        group: str = str(c.Infra.DEV),
+    ) -> p.Result[t.VariadicTuple[str | m.Infra.DependencyGroupInclude]]:
+        """Remove only entries carrying this generator's explicit provenance.
+
+        Returns:
+            Native ordered CUSTOM entries, or their original parse failure.
+
+        """
+        groups = u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
+        group = FlextInfraUtilitiesPyproject.dependency_group_name(tuple(groups), group)
+        result_type = r[t.VariadicTuple[str | m.Infra.DependencyGroupInclude]]
+        values = u.validate_value(
+            m.Infra.DependencyGroupEntries,
+            groups.get(group, ()),
+        )
+        if values.failure:
+            return result_type.from_failure(values)
+        entries = values.value.root
+        if not entries or live is None:
+            return (
+                result_type.ok(())
+                if not entries
+                else result_type.fail("dev provenance requires its parsed source")
+            )
+        comments = FlextInfraUtilitiesPyproject._dependency_group_comments(live, group)
+        if comments.failure:
+            return result_type.from_failure(comments)
+        if len(comments.value) != len(entries):
+            return result_type.fail("dev provenance occurrence counts differ")
+        return result_type.ok(
+            tuple(
+                value
+                for value, comment in zip(entries, comments.value, strict=True)
+                if not isinstance(value, str)
+                or comment.removeprefix("#").strip()
+                != FlextInfraUtilitiesPyproject.MEMBER_DEV_PROVENANCE
+            ),
+        )
+
+    @staticmethod
+    def _dependency_group_comments(
+        live: str,
+        group: str,
+    ) -> p.Result[t.StrSequence]:
+        """Read native per-occurrence comments from the parsed dependency group.
+
+        Returns:
+            Ordered array comments or the original missing-source failure.
+
+        """
+        result_type = r[t.StrSequence]
+        document = u.Cli.toml_parse_text(live)
+        if document is None:
+            return result_type.fail("dev provenance source is invalid TOML")
+        group_table = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
+        if group_table is None:
+            return result_type.fail("dev provenance dependency groups are missing")
+        if group not in group_table:
+            return result_type.fail("dev provenance group array is missing")
+        return result_type.ok(u.Cli.toml_array_item_comments(group_table, group))
 
     @staticmethod
     def managed_mise_binary(name: str, owner_root: Path) -> p.Result[Path]:

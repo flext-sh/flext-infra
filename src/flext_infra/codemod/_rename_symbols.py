@@ -117,8 +117,11 @@ class FlextInfraRenameSymbols:
                 break
             module = candidate
         attributes = parts[len(module.split(".")) :]
-        root = project.get_module(module)
-        value: p.Infra.RopeSemanticModule | p.Infra.RopePyObject = root
+        value: p.Infra.RopeSemanticModule | p.Infra.RopePyObject = (
+            FlextInfraUtilitiesRopeRuntime.require_semantic_module(
+                project.get_module(module)
+            )
+        )
         binding: p.Infra.RopePyName | None = None
         for attribute in (*attributes, *suffix.split(".")):
             if attribute not in value.get_attributes():

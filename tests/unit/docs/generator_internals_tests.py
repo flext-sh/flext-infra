@@ -57,7 +57,9 @@ class TestsFlextInfraDocsGeneratorInternals:
     @staticmethod
     def test_build_toc_lists_h2_and_h3_sections() -> None:
         """Test build toc lists h2 and h3 sections."""
-        toc = u.Infra.docs_contract_build_toc("# Main\n\n## Section 1\n\n### Subsection\n")
+        toc = u.Infra.docs_contract_build_toc(
+            "# Main\n\n## Section 1\n\n### Subsection\n",
+        )
 
         tm.that(toc, has="<!-- TOC START -->")
         tm.that(toc, has="Section 1")

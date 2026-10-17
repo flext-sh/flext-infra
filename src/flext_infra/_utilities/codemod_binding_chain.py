@@ -714,13 +714,12 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
             """
             holder_context = cls._chain_holder_context(binding, project, sources)
-            if holder_context is None:
-                return False
-            if isinstance(binding, p.Infra.RopeImportedModule):
-                return True
+            if holder_context is None or isinstance(binding, p.Infra.RopeImportedModule):
+                return holder_context is not None
             holder, line, holder_text = holder_context
-            name = expression.rpartition(".")[-1]
-            chased = cls._chain_holder_declaration(holder, holder_text, line, name)
+            chased = cls._chain_holder_declaration(
+                holder, holder_text, line, expression.rpartition(".")[-1]
+            )
             if chased is None:
                 return False
             declaration, holder_offset, holder_scope = chased
@@ -733,18 +732,20 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 }
             ):
                 return True
-            finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(holder)
             pattern = (
                 "${binding_target}: ${binding_annotation} = ${binding_value}"
                 if declaration.category == c.Infra.StatementCategory.ANN_ASSIGN
                 else "${binding_target} = ${binding_value}"
             )
-            matches = tuple(finder.get_matches(pattern, {}))
             regions = tuple(
                 FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture_region(
                     match, "binding_value"
                 )
-                for match in matches
+                for match in tuple(
+                    FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(
+                        holder
+                    ).get_matches(pattern, {})
+                )
                 if declaration.start_offset <= match.get_region()[0]
                 and match.get_region()[1] <= declaration.end_offset
             )
