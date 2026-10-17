@@ -139,7 +139,6 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         custom_groups = cls._workspace_custom_groups(
             source,
             pyproject_content=pyproject_content,
-            member_groups=member_groups,
             workspace=workspace,
         )
         if custom_groups.failure:
@@ -242,7 +241,6 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         source: t.Cli.TomlDocument,
         *,
         pyproject_content: str,
-        member_groups: t.StrSequence,
         workspace: m.Infra.WorkspaceSpec,
     ) -> p.Result[_CustomGroupsPair]:
         """Synchronize root environment groups for workspace-role repositories.
@@ -259,7 +257,6 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         return cls._sync_root_environment_groups(
             source,
             pyproject_content,
-            member_groups,
         )
 
     @classmethod
@@ -328,7 +325,6 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         cls,
         source: t.Cli.TomlDocument,
         original: str,
-        member_groups: t.StrSequence,
     ) -> p.Result[_CustomGroupsPair]:
         """Retain custom development groups before adding current member requirements.
 
@@ -358,16 +354,10 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             if custom.failure:
                 return result_type.from_failure(custom)
             retained[group] = cls.merge_dependency_group_entries((), custom.value)
-            values = retained[group]
-            if group == c.Infra.DependencyGroup.CODEGEN:
-                values = cls.merge_dependency_group_entries(
-                    tuple(sorted(set(member_groups))),
-                    values,
-                )
             u.Cli.toml_sync_value(
                 groups,
                 authored_name,
-                FlextInfraUtilitiesPyproject.dependency_group_wire(values),
+                FlextInfraUtilitiesPyproject.dependency_group_wire(retained[group]),
             )
         return result_type.ok(
             (retained[str(c.Infra.DEV)], retained[c.Infra.DependencyGroup.CODEGEN]),

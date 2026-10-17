@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.codegen import _conform as _conform
     from flext_infra.codegen._codegen_generation_file import (
         FlextInfraCodegenGenerationFileMixin,
     )
@@ -45,6 +44,7 @@ if TYPE_CHECKING:
     from flext_infra.codegen._codegen_transaction_recovery import (
         FlextInfraCodegenTransactionRecovery,
     )
+    from flext_infra.codegen import _conform as _conform
     from flext_infra.codegen._conform import (
         FlextInfraCodegenConformArtifactRender,
         FlextInfraCodegenConformBeadsRoutes,

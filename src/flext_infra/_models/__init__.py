@@ -13,11 +13,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._models import (
-        _codegen as _codegen,
-        _config as _config,
-        _git as _git,
-    )
+    from flext_infra._models import _codegen as _codegen
     from flext_infra._models._codegen import (
         FlextInfraCodegen,
         FlextInfraModelsCodegenFixModels,
@@ -27,6 +23,7 @@ if TYPE_CHECKING:
         FlextInfraModelsCodegenScaffoldModels,
         FlextInfraModelsCodegenTransactionModels,
     )
+    from flext_infra._models import _config as _config
     from flext_infra._models._config import (
         FlextInfraConfigModels,
         FlextInfraConfigModelsArtifact,
@@ -50,6 +47,7 @@ if TYPE_CHECKING:
         FlextInfraConfigVocabulary,
         FlextInfraExternalCacheDirectorySpec,
     )
+    from flext_infra._models import _git as _git
     from flext_infra._models._git import (
         FlextInfraModelsGitIdentity,
         FlextInfraModelsGitWorktreeFacts,

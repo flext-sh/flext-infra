@@ -669,7 +669,7 @@ Infra:
         description: Resolve the newest declared releases, write the uv and mise locks, then prove the upgraded tree still converges; gates stay with make check.
       - name: upg-sources
         arguments: [ SOURCE_ROOT, SOURCE_URL_PREFIX, SOURCE_REF_FROM, SOURCE_REF_TO ]
-        description: Migrate an explicitly selected dependency Git reference through the current tool owner before the consumer resolves its own locks.
+        description: Migrate an explicitly selected dependency Git reference in the root and its declared member manifests before resolving their locks.
       - name: validate-lifecycle
         description: Execute the declared public runtime acceptance steps serially, with root-owned mutation fanout and typed first-failure receipts.
       # Workspace-only (topology owns applicability): a standalone Makefile
