@@ -85,11 +85,13 @@ class FlextInfraUtilitiesSemanticHelperReferences(
 
         project = request.rope_project
         root = Path(project.root.real_path)
-        origin = project.get_pymodule(
+        origin = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project,
             project.get_resource(request.source_file.relative_to(root).as_posix()),
         )
         expected = origin.get_attribute(request.class_name)
-        target = project.get_pymodule(
+        target = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project,
             project.get_resource(request.target_file.relative_to(root).as_posix()),
         )
         move = m.Infra.ResolvedClassMove(
