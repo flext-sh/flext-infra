@@ -288,6 +288,22 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         return m.Infra.MypyInvocation(targets=(source,), config_file=config_file)
 
     @staticmethod
+    def managed_uv() -> str:
+        """Resolve the checkout's Mise-managed UV executable, never a PATH shim.
+
+        A fixture runs UV with its working directory inside disposable scratch,
+        outside every Mise manifest. A shim resolved there has no declared
+        version (CI installs tools only for this checkout), so the executable
+        is resolved once through the toolchain owner against this checkout.
+
+        Returns:
+            The absolute UV executable the committed toolchain pins.
+
+        """
+        checkout = Path(__file__).resolve().parents[1]
+        return str(tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, checkout)))
+
+    @staticmethod
     def create_python_environment(
         root: Path,
         *,
@@ -301,15 +317,16 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         """
         environment = u.Infra.runtime_environment_dir(root)
         environment.parent.mkdir(parents=True, exist_ok=True)
+        uv = TestsFlextInfraUtilitiesToolingFixtureMixin.managed_uv()
         created = u.Cli.run_checked(
-            ["uv", "venv", "--python", sys.executable, str(environment)],
+            [uv, "venv", "--python", sys.executable, str(environment)],
             cwd=root,
         )
         if created.failure or not dependency_projects:
             return created
         return u.Cli.run_checked(
             (
-                c.Infra.UV,
+                uv,
                 "pip",
                 "install",
                 "--python",
@@ -332,7 +349,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             return r[bool].from_failure(created)
         return u.Cli.run_checked(
             (
-                c.Infra.UV,
+                cls.managed_uv(),
                 "pip",
                 "install",
                 "--no-deps",
