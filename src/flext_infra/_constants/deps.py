@@ -21,22 +21,8 @@ class FlextInfraConstantsDeps(FlextInfraConfigVocabulary):
     # NOTE: Hardcoded base path constants removed.
     # All tool settings phases now use dynamic discovery via
     # u.Infra.discover_python_dirs() (SSOT in FlextInfraUtilitiesDiscovery).
-    SKIP_DIRS: ClassVar[frozenset[str]] = frozenset({
-        ".archive",
-        ".claude.disabled",
-        ".git",
-        ".mypy_cache",
-        ".pytest_cache",
-        ".ruff_cache",
-        ".venv",
-        "__pycache__",
-        "build",
-        "dist",
-        "htmlcov",
-        "node_modules",
-        "site",
-        "vendor",
-    })
+    # SKIP_DIRS was removed with the declared exclusion registry
+    # (config/codegen.yaml exclusions -> CodegenConfigSpec projection).
     DEP_NAME_RE: ClassVar[t.RegexPattern] = re.compile(r"^\s*([A-Za-z0-9_.-]+)")
     PYPROJECT_DOCUMENT_MAPPING_ERROR: ClassVar[str] = (
         "pyproject document is not a TOML mapping"

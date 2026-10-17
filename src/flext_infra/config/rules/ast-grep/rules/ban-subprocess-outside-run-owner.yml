@@ -1,9 +1,8 @@
 # Operator ruling 2026-10-08 (operator-ruling-2026-10-08-subprocess-test-imports):
 # only the u.Cli.run process owner in flext-cli and the flext-core source may
 # import subprocess; every other module runs processes through u.Cli.run (or
-# the u.Cli process family). The same owner scope is the Bandit authorized
-# exception at config/tooling.yaml Infra.tooling.tools.bandit; the ignores
-# below name it in both scan contexts (project root and workspace root).
+# the u.Cli process family). Bandit independently audits the implementation
+# and its consumers without owner exemptions.
 #
 # Detection only: the u.Cli process member that replaces a direct use is
 # chosen per call site.

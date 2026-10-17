@@ -15,6 +15,7 @@ from flext_infra import c, main
 from flext_infra.deps import FlextInfraPyprojectModernizer
 from tests import m, t, tm, u
 
+
 class TestsFlextInfraDepsModernizerPackaging:
     """Conformance contract for declared Python distribution roots."""
 

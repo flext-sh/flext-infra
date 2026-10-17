@@ -1356,14 +1356,16 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         connections = {file.path: set[Path]() for file in files}
+        effects = {
+            file.path for file in files if u.Infra.codegen_file_requires_effect(file)
+        }
         groups: t.MutableMappingKV[str, Path] = {}
         for file in files:
-            dependencies = {source.path for source in file.source_states} | set(
-                file.tracking_dependencies
-            )
+            dependencies = {source.path for source in file.source_states} & effects
+            dependencies.update(set(file.tracking_dependencies) & connections.keys())
             if file.dependency_group is not None:
                 dependencies.add(groups.setdefault(file.dependency_group, file.path))
-            for dependency in dependencies & connections.keys():
+            for dependency in dependencies:
                 connections[file.path].add(dependency)
                 connections[dependency].add(file.path)
         cls._generation_election_connections(files, connections)
@@ -1381,6 +1383,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         """
         owners: t.MutableMappingKV[Path, set[Path]] = {}
         for file in files:
+            if not u.Infra.codegen_file_requires_effect(file):
+                continue
             directories = (
                 file.before.directories
                 if isinstance(file.before, m.Cli.AtomicDirectoryChainPlan)

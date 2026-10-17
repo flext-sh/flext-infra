@@ -61,7 +61,11 @@ class FlextInfraPyrightGate(FlextInfraGate):
         return self._python_module_command(
             c.Infra.PYRIGHT,
             "--pythonpath",
-            sys.executable,
+            (
+                sys.executable
+                if ctx.runtime_root is None
+                else str(u.Infra.runtime_python(ctx.runtime_root))
+            ),
             *check_dirs,
             *ctx.pyright_args,
             "--outputjson",

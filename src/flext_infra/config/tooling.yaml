@@ -1,23 +1,8 @@
 Infra:
   tooling:
-    # Canonical validated tooling and suppression-policy SSOT.
+    # Canonical validated native tooling policy; diagnostics remain blocking.
     raw-check-receipt-suffix: .raw.log
     tools:
-      bandit:
-        # Each exception exists only with the operator ruling that authorized
-        # it and its reason. Bandit reads no per-path exception, so the
-        # security gate audits the files an entry matches in their own
-        # invocation that skips only the entry's tests; every other file keeps
-        # every test. Repositories declare no exception of their own.
-        authorized-exceptions:
-        - tests: [ B404, B603 ]
-          files:
-          - src/flext_cli/_utilities/processes.py
-          - src/flext_cli/_utilities/runtime.py
-          - src/flext_core/**/*.py
-          authority: operator-ruling-2026-10-08-subprocess-test-imports
-          reason: >-
-            Only the u.Cli.run process owner in flext-cli and the flext-core source may import and spawn subprocess; every other module runs processes through u.Cli.run. The codemod rule ban-subprocess-outside-run-owner bans subprocess everywhere else, with the same owner scope.
       codespell:
         check-filenames: true
         ignore-words-list: crate,nd
@@ -192,6 +177,10 @@ Infra:
         lint:
           select:
           - ALL
+          # The native format gate owns layout in the complete canonical
+          # check/repair contract. Projection verifies that owner's election.
+          rule-owners:
+            missing-trailing-comma: format
           # make fix never deletes information. The lint
           # repair applies safe fixes only (make.ruff.lint_fix rejects
           # --unsafe-fixes), and these rules are never auto-fixed at all,
@@ -314,20 +303,6 @@ Infra:
         # Missing, empty, and v1 plugin declarations fail validation rather
         # than being silently repaired by schema defaults.
         plugins: [ pydantic.mypy ]
-        # Operator 2026-10-05, flext-8i57m: suspend only these two codes
-        # globally, not additional diagnostics. Proven code workarounds for
-        # these codes are repaired at their runtime owners, not accommodated.
-        disable-error-code: [ prop-decorator, call-arg ]
-        # The canonical facade form imports the parent letter, subclasses it
-        # and rebinds the letter (`from flext_core import u`,
-        # `class FlextCliUtilities(u)`, `u = FlextCliUtilities`). Mypy 2.3.1
-        # rejects that module-level rebind with these codes even under
-        # allow_redefinition — `assignment` because the rebound letter's type
-        # (the subclass) is by design never the imported alias's type
-        # (type[FlextService] vs type[FlextApiServiceBase]); codegen disables
-        # them only in the modules it detects in that form
-        # (operator-ruling-2026-10-01-facade-rebind-mypy-scope).
-        facade-rebind-error-codes: [ misc, no-redef, assignment ]
         boolean-settings:
           allow_redefinition: true
           namespace_packages: true

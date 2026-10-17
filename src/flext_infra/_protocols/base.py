@@ -56,6 +56,9 @@ class FlextInfraProtocolsBase(Protocol):
             *,
             inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
             runtime_root: Path | None = None,
+            workspaces: t.VariadicTuple[Path] = (),
+            runtime_check: bool = True,
+            modes: t.MappingKV[Path, int] | None = None,
         ) -> p.Result[T]:
             """Validate staged updates and retirements while preserving live sources."""
             ...

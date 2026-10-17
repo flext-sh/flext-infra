@@ -209,11 +209,20 @@ class FlextInfraCodegenLazyInitPlanner(
 
         """
         context = self.context(pkg_dir)
-        current = self.rope_workspace.rope_project.source_state(
+        self.rope_workspace.rope_project.source_state(
             context.init_path,
             required=False,
         )
-        if u.Infra.codegen_initializer_is_authored(current.content):
+        selected = (
+            self.rope_workspace.rope_project.source_text(context.init_path).encode(
+                c.DEFAULT_ENCODING
+            )
+            if self.rope_workspace.rope_project.source_query(
+                context.init_path, "isfile"
+            )
+            else None
+        )
+        if u.Infra.codegen_initializer_is_authored(selected):
             return self._authored_plan(context)
         if not context.importable or self._shadows_stdlib_module(pkg_dir):
             return self._residue_plan(context)

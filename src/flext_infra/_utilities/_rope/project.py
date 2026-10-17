@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Generator, Mapping
-from contextlib import AbstractContextManager, closing, contextmanager
+from contextlib import AbstractContextManager, closing, contextmanager, nullcontext
 from errno import ELOOP, ENOENT
 from os.path import normpath, realpath
 from pathlib import Path
@@ -44,7 +44,6 @@ class FlextInfraRopeProject(Project):
     _frozen_folders: tuple[list[File | Folder], list[File | Folder]] | None = None
     _snapshot_python_path_folders: list[File | Folder] | None = None
     _source_election: p.Infra.RopeProjectElection | None = None
-    _source_epoch_failure: BaseException | None = None
 
     @property
     @override
@@ -410,6 +409,8 @@ class FlextInfraRopeProject(Project):
             declared_files: tuple[m.Infra.CodegenFilePlan, ...],
         ) -> None:
             self._root = root
+            self.epoch_failure: BaseException | None = None
+            self._structural_queries = 0
             self._scopes: list[FlextInfraRopeProject.SourceConsumption] = []
             self._receipts: list[m.Infra.CodegenPhaseAnalysis] = []
             self._originals: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
@@ -434,10 +435,17 @@ class FlextInfraRopeProject(Project):
                 or plan.before.content is None
             )
             self._declared_paths = frozenset(plan.path for plan in self._declared)
+            self._effects = {plan.path: plan for plan in declared_files}
+            self._retired = frozenset(
+                plan.path for plan in declared_files if plan.desired_content is None
+            )
             self._sources = MappingProxyType({
                 path: source.encode(c.DEFAULT_ENCODING)
                 for path, source in sources.items()
             })
+            if self._retired.intersection(self._sources):
+                msg = "Rope retired source has competing proposed bytes"
+                raise ValueError(msg)
             for path in self._sources:
                 original = self._originals.get(path)
                 if path not in self._declared_paths and (
@@ -446,6 +454,15 @@ class FlextInfraRopeProject(Project):
                     msg = f"Rope proposed source lacks its original input: {path}"
                     raise ValueError(msg)
             self._overlay = FlextInfraRopeProject.SnapshotFiles(self._sources, ())
+
+        @contextmanager
+        def selection(self) -> Generator[None]:
+            """Elect paths without treating an overlay's unread payload as consumed."""
+            self._structural_queries += 1
+            try:
+                yield
+            finally:
+                self._structural_queries -= 1
 
         @contextmanager
         def consumption(self) -> Generator[p.Infra.RopeSourceConsumption]:
@@ -481,6 +498,39 @@ class FlextInfraRopeProject(Project):
             """Attribute the exact event to every enclosing consumer."""
             for scope in self._scopes:
                 scope.record(states, directories, topology)
+
+        def _consume_effect(self, path: Path) -> None:
+            """Attribute a declared overlay effect's original proof to its consumer."""
+            plan = self._effects.get(path)
+            if plan is None:
+                return
+            states = (
+                *plan.source_states,
+                *(
+                    (plan.before,)
+                    if isinstance(plan.before, m.Cli.AtomicFileState)
+                    else ()
+                ),
+            )
+            for original in states:
+                if self.source_state(original.path, required=False) != original:
+                    msg = f"Rope overlay effect has conflicting original input: {original.path}"
+                    raise ValueError(msg)
+            chains = (
+                *plan.source_query_topology,
+                *(
+                    (plan.before,)
+                    if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
+                    else ()
+                ),
+            )
+            directories, topology = u.Cli.atomic_merge_directory_query_receipts(
+                (*self.directories(), *plan.source_directories),
+                (*self.topology(), *chains),
+            )
+            self._inventories.update((item.root.path, item) for item in directories)
+            self._topology.update((item.target, item) for item in topology)
+            self._record(directories=plan.source_directories, topology=chains)
 
         def exists(self, path: str) -> bool:
             """Retain native election, including explicitly planned resources.
@@ -561,14 +611,22 @@ class FlextInfraRopeProject(Project):
             if self._overlay.isdir(path):
                 physical_names = frozenset(names)
                 for child in self._overlay.children(path):
-                    if child.name not in physical_names:
+                    if (
+                        child.name not in physical_names
+                        and not self._structural_queries
+                    ):
                         self._observe_overlay(str(child))
                     names.append(child.name)
             elif inventory is None:
                 raise FileNotFoundError(
                     ENOENT, "Rope source directory was observed absent", path
                 )
-            return sorted(set(names))
+            for retired in self._retired:
+                if retired.parent == directory and not self._structural_queries:
+                    self._consume_effect(retired)
+            return sorted(
+                name for name in set(names) if directory / name not in self._retired
+            )
 
         @staticmethod
         def require_value[ValueT](result: p.Result[ValueT]) -> ValueT:
@@ -697,6 +755,10 @@ class FlextInfraRopeProject(Project):
                                 ),
                             ),
                         )
+            if not self._structural_queries:
+                self._consume_effect(candidate)
+            if candidate in self._retired:
+                return False
             if observed:
                 return True
             match predicate:
@@ -706,7 +768,7 @@ class FlextInfraRopeProject(Project):
                     proposed = self._overlay.isfile(path)
                 case "isdir":
                     proposed = self._overlay.isdir(path)
-            if proposed:
+            if proposed and not self._structural_queries:
                 self._observe_overlay(path)
             return proposed
 
@@ -769,6 +831,10 @@ class FlextInfraRopeProject(Project):
                 source,
                 required=source not in self._declared_paths,
             )
+            self._consume_effect(source)
+            if source in self._retired:
+                msg = f"Rope source is explicitly retired: {source}"
+                raise FileNotFoundError(msg)
             proposed = self._sources.get(source)
             if proposed is not None:
                 return proposed
@@ -953,9 +1019,14 @@ class FlextInfraRopeProject(Project):
         project._snapshot_python_path_folders = [
             external.get_folder(path) for path in election.python_path_folders
         ]
-        project._custom_source_folders = [
-            project.get_resource(path) for path in election.source_folders
-        ]
+        with (
+            files.selection()
+            if isinstance(files, cls.AtomicReadFiles)
+            else nullcontext()
+        ):
+            project._custom_source_folders = [
+                project.get_resource(path) for path in election.source_folders
+            ]
         project._source_election = m.Infra.RopeProjectElection(
             source_folders=tuple(election.source_folders),
             ignored_resources=tuple(election.ignored_resources),
@@ -989,7 +1060,7 @@ class FlextInfraRopeProject(Project):
         return cls._from_files(live.root.real_path, files, election)
 
     @contextmanager
-    def source_consumer(self) -> Generator[Self]:
+    def source_consumer(self, *, consumer_root: Path | None = None) -> Generator[Self]:
         """Isolate native semantic caches while sharing the original read authority.
 
         Yields:
@@ -1005,11 +1076,35 @@ class FlextInfraRopeProject(Project):
         ):
             msg = "Rope source consumer requires an authenticated original election"
             raise TypeError(msg)
+        election = self._source_election
+        if consumer_root is not None:
+            root = Path(self.root.real_path)
+            preferred = tuple(
+                folder
+                for folder in election.source_folders
+                if (root / folder).is_relative_to(consumer_root)
+            )
+            if not preferred:
+                msg = f"Rope consumer has no originally elected source folder: {consumer_root}"
+                raise ValueError(msg)
+            election = m.Infra.RopeProjectElection(
+                source_folders=(
+                    *preferred,
+                    *(
+                        folder
+                        for folder in election.source_folders
+                        if folder not in preferred
+                    ),
+                ),
+                ignored_resources=election.ignored_resources,
+                extension_modules=election.extension_modules,
+                python_path_folders=election.python_path_folders,
+            )
         with closing(
             type(self)._from_files(
                 self.root.real_path,
                 self.fscommands,
-                self._source_election,
+                election,
             ),
         ) as consumer:
             yield consumer
@@ -1022,7 +1117,11 @@ class FlextInfraRopeProject(Project):
     @property
     def source_epoch_failure(self) -> BaseException | None:
         """Expose only the original exception raised by the global epoch verifier."""
-        return self._source_epoch_failure
+        return (
+            self.fscommands.epoch_failure
+            if isinstance(self.fscommands, self.AtomicReadFiles)
+            else None
+        )
 
     def source_consumption(
         self,
@@ -1032,6 +1131,13 @@ class FlextInfraRopeProject(Project):
             msg = "Rope project does not own authenticated live reads"
             raise TypeError(msg)
         return self.fscommands.consumption()
+
+    def source_selection(self) -> AbstractContextManager[None]:
+        """Scope native structural election; actual reads still record full proofs."""
+        if not isinstance(self.fscommands, self.AtomicReadFiles):
+            msg = "Rope project does not own authenticated live reads"
+            raise TypeError(msg)
+        return self.fscommands.selection()
 
     def replay_source_consumption(self, receipt: m.Infra.CodegenPhaseAnalysis) -> None:
         """Attribute an authentic cached result's original dependencies."""
@@ -1144,9 +1250,15 @@ class FlextInfraRopeProject(Project):
             raise TypeError(msg)
         try:
             self.fscommands.verify()
+            if self.fscommands.epoch_failure is not None:
+                raise self.fscommands.epoch_failure
         except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
-            self._source_epoch_failure = exc
-            raise
+            if self.fscommands.epoch_failure is None:
+                self.fscommands.epoch_failure = exc
+                raise
+            if self.fscommands.epoch_failure is exc:
+                raise
+            raise self.fscommands.epoch_failure from exc
 
     @contextmanager
     def frozen_layout(self) -> Generator[Self]:

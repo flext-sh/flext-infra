@@ -441,8 +441,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             ),
         ))
 
-    @staticmethod
     def _planned_lazy_init_files(
+        self,
         root: Path,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Plan the lazy-init projection the declarations determine, read-only.
@@ -466,6 +466,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         ).plan_files()
         if planned.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
+        self.planning_issues.extend(planned.value.issues)
+        if self.planning_exception is None:
+            self.planning_exception = planned.value.exception
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(planned.value.files)
 
     @staticmethod

@@ -332,7 +332,9 @@ class FlextInfraUtilitiesProjectDiscovery(
         ):
             return []
         effective_skip = (
-            c.Infra.PYTHON_DISCOVERY_SKIP_DIRS if skip_dirs is None else skip_dirs
+            frozenset(config.Infra.codegen.analysis_excluded_dirs)
+            if skip_dirs is None
+            else skip_dirs
         ) | frozenset(config.Infra.codegen.source_scan_ignored)
         nonparticipants = cls.repository_nonparticipant_paths(
             project_dir, source_project=source_project
@@ -438,7 +440,7 @@ class FlextInfraUtilitiesProjectDiscovery(
 
         """
         project_dir = project_dir.resolve()
-        skip_dirs = c.Infra.PYTHON_DISCOVERY_SKIP_DIRS | frozenset(
+        skip_dirs = frozenset(config.Infra.codegen.analysis_excluded_dirs) | frozenset(
             config.Infra.codegen.source_scan_ignored
         )
         nonparticipants = cls.repository_nonparticipant_paths(

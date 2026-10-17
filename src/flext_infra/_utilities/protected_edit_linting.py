@@ -67,6 +67,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         updates: t.MappingKV[Path, str | None],
         *,
         inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
+        workspaces: t.VariadicTuple[Path] = (),
     ) -> p.Result[m.Infra.StageSourcePlan]:
         """Prepare composed sources before sealing their publication identity.
 
@@ -77,7 +78,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 
         planned = FlextInfraStagedPackage.plan_sources(
-            repository_root, updates, inputs=inputs
+            repository_root, updates, inputs=inputs, workspaces=workspaces
         )
         if planned.failure:
             return r[m.Infra.StageSourcePlan].from_failure(planned)
@@ -248,11 +249,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
     @staticmethod
     def _workspace_tool_command(tool_name: str) -> t.StrSequence:
         """Resolve one fleet lint tool from the active runtime environment.
-
-        The gate protects edits with the fleet's own tools, so it resolves
-        them from the interpreter running the pipeline — never from the lint
-        target, whose environment may not exist (a census target is an
-        arbitrary repository, not necessarily a provisioned workspace).
 
         Returns:
             The resulting ``t.StrSequence``.
@@ -897,9 +893,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Candidate stdin retains the destination's filename and configuration;
         it never materializes the proposed bytes on the live filesystem.
-        Every call observes the native tool again. A file hash cannot authenticate
-        configuration, runtime or imported dependency changes; only the native
-        checker owns reuse of its complete analysis inputs.
 
         Returns:
             The resulting ``t.Infra.LintSnapshot``.

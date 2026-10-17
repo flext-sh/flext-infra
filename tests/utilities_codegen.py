@@ -35,12 +35,12 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         return u.Infra.facade_families()[family].module
 
     @staticmethod
-    def ruff_per_file_ignores_toml() -> str:
+    def ruff_policy_toml() -> str:
         """Render the fleet Ruff policy as a pyproject fragment.
 
         Reads the same typed SSOT production reads (P0): fixture
-        workspaces carry the real policy — select, the global ignore table,
-        preview and the per-file-ignores map — never a hand-rolled fragment.
+        workspaces carry the real rule selection, native convention, preview,
+        and import policy without suppression tables.
 
         Returns:
             The resulting ``str``.
@@ -48,14 +48,6 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         """
         ruff_cfg = config.Infra.tooling.tools.ruff
         select = ", ".join(f'"{rule}"' for rule in sorted(ruff_cfg.lint.select))
-        ignore = ", ".join(f'"{rule}"' for rule in sorted(ruff_cfg.lint.ignore))
-        quoted_rules = {
-            pattern: ", ".join(f'"{rule}"' for rule in rules)
-            for pattern, rules in sorted(ruff_cfg.lint.per_file_ignores.items())
-        }
-        rows = "\n".join(
-            f'"{pattern}" = [{names}]' for pattern, names in quoted_rules.items()
-        )
         isort = ruff_cfg.lint.isort
         src = ", ".join(f'"{root}"' for root in ruff_cfg.src)
         # Why: without the fleet's isort settings (combine-as-imports in
@@ -65,13 +57,14 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         return (
             f"[tool.ruff]\nsrc = [{src}]\n"
             f"preview = {str(ruff_cfg.preview).lower()}\n\n"
-            f"[tool.ruff.lint]\nselect = [{select}]\nignore = [{ignore}]\n\n"
+            f"[tool.ruff.lint]\nselect = [{select}]\n\n"
+            "[tool.ruff.lint.pydocstyle]\n"
+            f'convention = "{ruff_cfg.lint.pydocstyle.convention}"\n\n'
             "[tool.ruff.lint.isort]\n"
             f"combine-as-imports = {str(isort.combine_as_imports).lower()}\n"
             f"force-single-line = {str(isort.force_single_line).lower()}\n"
             f"split-on-trailing-comma = "
             f"{str(isort.split_on_trailing_comma).lower()}\n\n"
-            f"[tool.ruff.lint.per-file-ignores]\n{rows}\n"
         )
 
     @staticmethod
@@ -311,7 +304,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                 f'license = "{project.license}"\n'
                 f'authors = [{{name = "{project.author_name}", '
                 f'email = "{project.author_email}"}}]\n\n'
-                + TestsFlextInfraUtilitiesCodegenMixin.ruff_per_file_ignores_toml()
+                + TestsFlextInfraUtilitiesCodegenMixin.ruff_policy_toml()
             ),
             encoding=c.Infra.ENCODING_DEFAULT,
         )

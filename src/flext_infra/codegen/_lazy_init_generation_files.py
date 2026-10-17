@@ -52,8 +52,13 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 u.Cli.info(f"lazy-init: snapshot inputs {index}/{len(paths)} — {path}")
             snapshots[path] = source_project.source_state(
                 path,
-                required=path in required_paths,
+                required=False,
             )
+            if path in required_paths and not source_project.source_query(
+                path, "isfile"
+            ):
+                msg = f"lazy-init required source is absent: {path}"
+                raise FileNotFoundError(msg)
         return r[MutableMapping[Path, m.Cli.AtomicFileState]].ok(snapshots)
 
     @classmethod
@@ -77,6 +82,13 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             if entry.package_dir.resolve() in selected_dirs
         }
         template_paths = set(FlextInfraCodegenGeneration.init_template_paths())
+        for root in {path.parent for path in tuple(template_paths)}:
+            for directory, _, names in source_project.source_walk(root):
+                template_paths.update(
+                    directory / name
+                    for name in names
+                    if source_project.source_query(directory / name, "isfile")
+                )
         project_metadata_paths = {
             entry.project_root.resolve() / c.PYPROJECT_FILENAME
             for entry in index.packages_by_dir.values()
@@ -180,7 +192,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         return u.Cli.atomic_verify_directory_queries(directories, topology)
 
     @classmethod
-    def _verified_source_analysis(
+    def classify_source_conflict(
         cls,
         analysis: m.Infra.CodegenPhaseAnalysis,
         project: p.Infra.RopeProject,
@@ -191,6 +203,8 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         Every failing global constraint must be represented by scoped evidence.
         Unknown failures escape unchanged; classification never blesses a new epoch.
         """
+        if project.source_epoch_failure is not cause:
+            raise cause
         scopes = (*analysis.files, *analysis.publications)
         states = m.Infra.CodemodBindingSnapshot(
             states=tuple(state for scope in scopes for state in scope.source_states)
@@ -379,7 +393,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         if plan.action in {
             c.Infra.LazyInitAction.SKIP,
             c.Infra.LazyInitAction.RETAIN,
-        } or u.Infra.codegen_initializer_is_authored(init_before.content):
+        }:
             return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(())
         if plan.action is c.Infra.LazyInitAction.REMOVE:
             init_plan = self._file_plan(
@@ -431,7 +445,12 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
                     f"lazy-init target was not snapshotted: {init_path}",
                 )
-            if u.Infra.codegen_initializer_is_authored(init_before.content):
+            selected = (
+                self.source_project.source_text(init_path).encode(c.DEFAULT_ENCODING)
+                if self.source_project.source_query(init_path, "isfile")
+                else None
+            )
+            if u.Infra.codegen_initializer_is_authored(selected):
                 u.Cli.info(
                     f"ownership=authored disposition=retained target={init_path}",
                 )
@@ -445,7 +464,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                         init_path=init_path,
                         current_pkg=f"{plan.context.current_pkg}.{generated_dir.name}",
                         surface=plan.context.surface,
-                        generated_init=self._is_generated(init_before.content),
+                        generated_init=self._is_generated(selected),
                         importable=True,
                     ),
                     action=c.Infra.LazyInitAction.WRITE,
@@ -457,7 +476,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                     generated_plan,
                     source_project=self.source_project,
                 ).encode(c.DEFAULT_ENCODING)
-            elif self._is_generated(init_before.content):
+            elif self._is_generated(selected):
                 desired = None
             else:
                 continue
@@ -485,7 +504,13 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
 
         """
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
-        retired = self._retired_support_plans(plans, index, source_receipts)
+        cleanup_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = {}
+        retired = self._retired_support_plans(
+            plans,
+            index,
+            source_receipts,
+            cleanup_receipts=cleanup_receipts,
+        )
         if retired.failure:
             return result_type.from_failure(retired)
         by_path = retired.value
@@ -494,6 +519,9 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 self.source_project.replay_source_consumption(
                     source_receipts[str(plan.context.pkg_dir.resolve())],
                 )
+                cleanup = cleanup_receipts.get(str(plan.context.pkg_dir.resolve()))
+                if cleanup is not None:
+                    self.source_project.replay_source_consumption(cleanup)
                 artifact_plans = self._package_file_plans(
                     plan,
                     index,
@@ -519,6 +547,8 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         plans: t.SequenceOf[m.Infra.LazyInitPlan],
         index: m.Infra.RopeWorkspaceIndex,
         source_receipts: t.MappingKV[str, m.Infra.CodegenPhaseAnalysis],
+        *,
+        cleanup_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis],
     ) -> p.Result[MutableMapping[Path, m.Infra.CodegenFilePlan]]:
         """Plan the generator-owned support files retired before artifact plans.
 
@@ -546,6 +576,9 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                     source_receipts[str(plan.context.pkg_dir.resolve())],
                 )
                 support_states = self._cleanup_generated_support_file_states(plan)
+            cleanup_receipts[str(plan.context.pkg_dir.resolve())] = (
+                consumption.receipt()
+            )
             if support_states.failure:
                 return r[MutableMapping[Path, m.Infra.CodegenFilePlan]].from_failure(
                     support_states,

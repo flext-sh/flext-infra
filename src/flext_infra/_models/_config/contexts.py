@@ -212,15 +212,6 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             t.NonEmptyStr,
             m.Field(description="Configured uv installation link mode"),
         ]
-        ruff_per_file_ignores: Annotated[
-            t.MappingKV[str, t.StrSequence],
-            m.Field(
-                description=(
-                    "Effective Ruff exemptions: fleet policy composed with this "
-                    "repository's own ManagedArtifacts overlay"
-                ),
-            ),
-        ]
         ruff_extend_exclude: Annotated[
             t.StrSequence,
             m.Field(
@@ -234,6 +225,10 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         make_profile: Annotated[
             c.Infra.MakeProfile,
             m.Field(description="Generated Make execution profile"),
+        ]
+        ruff_delegated_rules: Annotated[
+            t.StrTuple,
+            m.Field(description="Native rules checked by elected canonical owners"),
         ]
         repository_root_rel: Annotated[
             t.NonEmptyStr,

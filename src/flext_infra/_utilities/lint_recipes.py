@@ -21,7 +21,7 @@ import io
 import re
 import textwrap
 import tokenize
-from collections.abc import Iterable, MutableMapping
+from collections.abc import MutableMapping
 from functools import lru_cache
 from itertools import pairwise
 from operator import itemgetter
@@ -32,7 +32,6 @@ from flext_cli import u
 from flext_infra import c, config, m, p, r, t
 from flext_infra._config import FlextInfraConfig
 from flext_infra._utilities import (
-    FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesPyproject,
 )
@@ -41,23 +40,6 @@ from flext_infra._utilities._lint_recipes_part import FlextInfraUtilitiesLintRec
 
 class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
     """Lint-gate policy and repair utilities behind the ``u.Infra`` facade."""
-
-    @staticmethod
-    def ruff_finding_severity(code: str, advisory: Iterable[str]) -> str:
-        """Severity one Ruff finding reports at.
-
-        The declared warning classification is retained in every report.
-        Severity never exempts a finding from the blocking gate verdict.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        return (
-            c.Infra.GateSeverity.WARNING.value
-            if code in frozenset(advisory)
-            else c.Infra.GateSeverity.ERROR.value
-        )
 
     @staticmethod
     def blocking_gate_findings(
@@ -113,16 +95,8 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
                 )
             license_id = u.Cli.json_walk_path(
                 FlextInfraUtilitiesPyproject.pyproject_payload(
-                    project_root / c.PYPROJECT_FILENAME
-                )
-                if source_project is None
-                else FlextInfraUtilitiesDocsScope.project_payload(
-                    project_root,
-                    source_states=(
-                        source_project.source_state(
-                            project_root / c.PYPROJECT_FILENAME
-                        ),
-                    ),
+                    project_root / c.PYPROJECT_FILENAME,
+                    source_project=source_project,
                 ),
                 (c.Infra.PROJECT, c.Infra.LICENSE),
             )

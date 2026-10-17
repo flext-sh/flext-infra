@@ -32,7 +32,6 @@ from flext_infra.codemod import (
     FlextInfraAccessorRenamePhase,
     FlextInfraApplyRenames,
     FlextInfraCodemodBatchApply,
-    FlextInfraCodemodSemanticApply,
     FlextInfraDuplicateApplyPhase,
     FlextInfraImportNormalizationPhase,
     FlextInfraModTextGateEngine,
@@ -330,22 +329,16 @@ class FlextInfra(
                     exclude_globs=declared.exclude_globs,
                 ),
             )
-        source_preview = self.source_preview(root)
-        with self.rope_workspace(root) as rope:
+        structural_root = u.Infra.import_project_roots(root)[0].resolve()
+        source_preview = self.source_preview(structural_root)
+        with self.rope_workspace(root, structural_root) as rope:
             rename_plan = request.rename_plan or config.semantic_plan
-            if rename_plan is not None:
-                renamed = FlextInfraCodemodSemanticApply.consume_rename_plan(
-                    request.model_copy(update={"rename_plan": rename_plan}),
-                    rope,
-                    source_preview,
-                )
-                if renamed.failure:
-                    return r[t.Cli.ResultValue].from_failure(renamed)
-                rope.refresh()
             return FlextInfraCodemodBatchApply(
                 workspace_factory=self.rope_workspace,
                 source_preview=source_preview,
                 repository_root=root,
+                consumer_roots=request.consumer_roots,
+                rename_plan=rename_plan,
                 apply_changes=request.apply,
                 check_only=request.check,
                 dry_run=request.dry_run_mode,

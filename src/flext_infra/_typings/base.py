@@ -221,7 +221,6 @@ class FlextInfraTypesBase(FlextInfraTypesCollections):
     every consumer, so the boundary refuses it instead of a gate reporting it
     after the fact.
     """
-    type PerFileIgnores = t.MappingKV[str, t.SequenceOf[RuffRule]]
     "Ruff per-file exemptions: {path_glob: [named_rule]}, never a blanket mask."
 
     type LifecycleContext = Literal["local", "ci"]

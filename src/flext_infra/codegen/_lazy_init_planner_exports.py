@@ -6,13 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import operator
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
-from flext_cli import u
-
-from flext_infra import c, m
+from flext_infra import c, m, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -196,6 +195,26 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         if not names:
             u.Cli.info(f"lazy-init: empty module exports module={module_path}")
         exports = {name: (module_path, name) for name in names}
+        policy = u.Infra.publication_policy(
+            py_file,
+            rope_project=self.rope_workspace.rope_project,
+        )
+        alias = policy.expected_alias
+        if alias is not None and alias in exports:
+            resource = self.rope_workspace.resource(py_file)
+            if resource is None:
+                msg = f"unindexed publication resource: {py_file}"
+                raise ValueError(msg)
+            module = u.Infra.resolve_pymodule(
+                self.rope_workspace.rope_project, resource
+            ).get_module()
+            tree = ast.parse(module.source_code)
+            body = u.Infra.export_declaration_body(tree)
+            if body is not tree.body and alias not in module.get_attributes():
+                owner = next(
+                    node for node in tree.body if isinstance(node, ast.ClassDef)
+                )
+                exports[alias] = (module_path, owner.name)
         self._module_exports_cache[cache_key] = exports
         return dict(exports)
 

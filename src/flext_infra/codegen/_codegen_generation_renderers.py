@@ -7,12 +7,19 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
-from flext_infra import FlextInfraConfig, m, u
+from jinja2 import BaseLoader, TemplateNotFound
+from jinja2.loaders import split_template_path
+
+from flext_infra import FlextInfraConfig, u
 from flext_infra.codegen import FlextInfraCodegenGenerationLazyEntriesMixin
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from jinja2 import Environment
+
     from flext_infra import p
 
 
@@ -22,6 +29,24 @@ class FlextInfraCodegenGenerationRenderersMixin(
     FlextInfraCodegenGenerationLazyEntriesMixin,
 ):
     """Render codegen models through the canonical CLI template facade."""
+
+    class SourceLoader(BaseLoader):
+        """Feed canonical Jinja exclusively from the shared original source owner."""
+
+        def __init__(self, root: Path, project: p.Infra.RopeProject) -> None:
+            self._root = root
+            self._project = project
+
+        @override
+        def get_source(
+            self,
+            environment: Environment,
+            template: str,
+        ) -> tuple[str, str, Callable[[], bool] | None]:
+            path = self._root.joinpath(*split_template_path(template))
+            if not self._project.source_query(path, "isfile"):
+                raise TemplateNotFound(template)
+            return self._project.source_text(path), str(path), None
 
     @staticmethod
     def _template_path(template_name: str) -> Path:
@@ -64,13 +89,15 @@ class FlextInfraCodegenGenerationRenderersMixin(
             u.Cli.template_render(template_path, context).unwrap()
             if source_project is None
             else u.Cli
-            .template_render_authenticated(
-                m.Cli.TemplateRenderRequest(template=template_path),
-                context,
-                source_states=(source_project.source_state(template_path),),
+            .template_environment(template_path.parent)
+            .overlay(
+                loader=FlextInfraCodegenGenerationRenderersMixin.SourceLoader(
+                    template_path.parent,
+                    source_project,
+                ),
             )
-            .unwrap()
-            .rendered
+            .get_template(template_path.name)
+            .render(context.model_dump(mode="json"))
         )
         compile(rendered, target_filename, "exec")
         return rendered.rstrip() + "\n"

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import FlextInfraConfig, c, r
+from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenStaging
 from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate
@@ -310,3 +311,103 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         properties = schema["properties"]
         tm.that("runtime_root" in properties, eq=False)
         tm.that("runtime-root" in properties, eq=False)
+
+    @staticmethod
+    def test_project_preparation_does_not_merge_independent_policy_contexts(
+        tmp_path: Path,
+    ) -> None:
+        """Each owning project receives only its own planned lint policy."""
+        workspace, _package = u.Tests.create_lazy_init_workspace(tmp_path)
+        plans: list[m.Infra.CodegenFilePlan] = []
+        destinations: list[Path] = []
+        metadata_paths: list[Path] = []
+        for name, selected in (("first", "F"), ("second", "UP")):
+            root, package = u.Tests.create_lazy_init_workspace(
+                workspace,
+                project_name=f"prepared-{name}",
+                package_name=f"prepared_{name}",
+            )
+            metadata = root / c.PYPROJECT_FILENAME
+            document = tm.not_none(
+                u.Cli.toml_parse_text(metadata.read_text(encoding=c.DEFAULT_ENCODING))
+            )
+            document["tool"] = {"ruff": {"lint": {"select": [selected]}}}
+            destination = package / "prepared.py"
+            destinations.append(destination)
+            metadata_paths.append(metadata)
+            for path, content in (
+                (metadata, u.Cli.toml_dumps(document)),
+                (destination, "import os\n\nvalue = 1\n"),
+            ):
+                plans.append(
+                    m.Infra.CodegenFilePlan(
+                        project=root,
+                        path=path,
+                        before=tm.ok(
+                            u.Cli.atomic_read_binary_file_state(path, required=False)
+                        ),
+                        desired_content=content.encode(c.DEFAULT_ENCODING),
+                        desired_mode=c.Infra.CONFIG_SPEC[1],
+                    )
+                )
+
+        prepared = tm.ok(
+            FlextInfraCodegenStaging.prepare_python_plans(workspace, tuple(plans))
+        )
+        by_path = {plan.path: plan for plan in prepared}
+        first, second = (by_path[path] for path in destinations)
+        tm.that(b"import os" in tm.not_none(first.desired_content), eq=False)
+        tm.that(b"import os" in tm.not_none(second.desired_content), eq=True)
+        tm.that(
+            metadata_paths[1] in {state.path for state in first.source_states}, eq=False
+        )
+        tm.that(
+            metadata_paths[0] in {state.path for state in second.source_states},
+            eq=False,
+        )
+        tm.that(
+            tuple(plan.dependency_group for plan in prepared),
+            eq=tuple(plan.dependency_group for plan in plans),
+        )
+        tm.that(any(path.exists() for path in destinations), eq=False)
+        joint = tm.ok(
+            FlextInfraStagedPackage.plan_sources(
+                workspace,
+                {
+                    plan.path: tm.not_none(plan.desired_content).decode(
+                        c.DEFAULT_ENCODING
+                    )
+                    for plan in prepared
+                },
+            )
+        )
+        elected = tm.ok(FlextInfraStagedPackage.project_layouts(joint, first.project))
+        tm.that(first.project in {layout.project_root for layout in elected}, eq=True)
+        tm.that(second.project in {layout.project_root for layout in elected}, eq=False)
+
+    @staticmethod
+    def test_candidate_checker_requires_original_physical_environment(
+        tmp_path: Path,
+    ) -> None:
+        """A staged checkout cannot borrow the running checker's environment."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        destination = package / "consumer.py"
+        source_plan = tm.ok(
+            FlextInfraStagedPackage.plan_sources(root, {destination: "value = 1\n"})
+        )
+        candidate = tmp_path / "candidate"
+        candidate.mkdir()
+        rejected = FlextInfraWorkspaceChecker(
+            repository_root=candidate
+        ).execute_candidate(
+            m.Infra.RunCommand(
+                repository_root=candidate,
+                reports_dir=str(tmp_path / "reports"),
+                check_only=True,
+            ),
+            source_plan,
+            project_root=root,
+        )
+        tm.that(rejected.failure, eq=True)
+        tm.that(str(rejected.error), has=str(u.Infra.runtime_environment_dir(root)))
+        tm.that(destination.exists(), eq=False)

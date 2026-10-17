@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
 from flext_cli import m
@@ -51,6 +52,10 @@ class FlextInfraModelsCodegenTransactionModels:
         """Pinned project closure and desired bytes for effect-free validation."""
 
         workspace: Path = m.Field(description="Canonical source workspace root")
+        workspaces: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Explicit composition scopes, never a parent-directory scan",
+        )
         roots: t.VariadicTuple[Path] = m.Field(
             description="Discovered project roots covering the pinned source closure"
         )
@@ -59,6 +64,10 @@ class FlextInfraModelsCodegenTransactionModels:
         )
         updates: t.MappingKV[Path, str | None] = m.Field(
             description="Desired sources keyed by live destination; None retires an artifact"
+        )
+        modes: t.MappingKV[Path, int] = m.Field(
+            default_factory=lambda: MappingProxyType[Path, int]({}),
+            description="Desired file-effect modes derived from original move sources",
         )
         layouts: t.VariadicTuple[FlextInfraModelsRope.RopeProjectLayout] = m.Field(
             description="Original project layouts in the desired import closure",

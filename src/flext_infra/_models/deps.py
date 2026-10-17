@@ -422,14 +422,6 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             t.StrSequence,
             m.Field(description="Detected first-party namespaces"),
         ]
-        stale_patterns: Annotated[
-            t.StrSequence,
-            m.Field(description="Legacy per-file ignore patterns to retire"),
-        ]
-        per_file_ignores: Annotated[
-            t.MappingKV[str, t.StrSequence],
-            m.Field(description="Effective managed per-file ignores"),
-        ]
         analysis_exclusions: Annotated[
             t.StrSequence | None,
             m.Field(

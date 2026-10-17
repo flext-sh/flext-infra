@@ -471,61 +471,18 @@ class FlextInfraConstantsRefactor:
         FlextInfraConstantsBase.RK_ENABLED,
         FlextInfraConstantsBase.RK_SEVERITY,
     )
-    DOMAIN_PACKAGES: ClassVar[frozenset[str]] = frozenset({
-        "flext-ldap",
-        "flext-ldif",
-        "flext-db-oracle",
-        "flext-oracle-wms",
-        "flext-oracle-oic",
-    })
-    "Known domain-layer packages."
-    PLATFORM_PACKAGES: ClassVar[frozenset[str]] = frozenset({
-        "flext-cli",
-        "flext-meltano",
-        "flext-api",
-        "flext-auth",
-        "flext-web",
-        "flext-grpc",
-    })
-    "Known platform-layer packages."
+    # NOTE: DOMAIN_PACKAGES/PLATFORM_PACKAGES were removed: member layers
+    # derive from the declared per-member `flext-layer` attribute in
+    # .gitmodules through u.Infra.workspace_member_layer_names (standalone
+    # = no members, same topology contract as the modernizer). The
+    # violation-classification token/priority lists had zero consumers and
+    # were exterminated.
     INTEGRATION_CLASS_PREFIXES: ClassVar[t.VariadicTuple[str]] = (
         "FlextTap",
         "FlextTarget",
         "FlextDbt",
     )
     "Class name prefixes that identify integration projects."
-    MODEL_TOKENS: ClassVar[t.StrSequence] = (
-        "model",
-        "schema",
-        "entity",
-        "pydantic",
-        "dataclass",
-    )
-    "Tokens indicating model-related code."
-    DECORATOR_TOKENS: ClassVar[t.StrSequence] = ("decorator", "inject", "provide")
-    "Tokens indicating decorator-related code."
-    DISPATCHER_TOKENS: ClassVar[t.StrSequence] = (
-        "dispatcher",
-        "dispatch",
-        "command",
-        "query",
-        "event",
-    )
-    "Tokens indicating dispatcher-related code."
-    NAMESPACE_PREFIXES: ClassVar[t.StrMapping] = MappingProxyType({
-        "utility": "FlextUtilities",
-        "models": "FlextModels",
-        "decorators": "d",
-        "dispatcher": "FlextDispatcher",
-    })
-    "Namespace → class prefix mapping for violation classification."
-    CLASSIFICATION_PRIORITY: ClassVar[t.StrSequence] = (
-        "dispatcher",
-        "decorators",
-        "models",
-        "utility",
-    )
-    "Priority order for violation classification."
     MIN_PATH_DEPTH: int = 2
     "Minimum relative path depth for module prefix detection."
 

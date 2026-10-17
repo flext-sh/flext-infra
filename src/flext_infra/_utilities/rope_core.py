@@ -83,9 +83,7 @@ class FlextInfraUtilitiesRopeCore(
                 str(scan_path.relative_to(resolved_root))
                 for project_root in project_roots
                 for dir_name in config.Infra.source_scan.roots
-                if consumer_root is None
-                or project_root == consumer_root
-                or dir_name == c.Infra.DEFAULT_SRC_DIR
+                if consumer_root is None or project_root == consumer_root
                 if (scan_path := project_root / dir_name).is_dir()
                 and scan_path.resolve().is_relative_to(resolved_root)
             }
@@ -94,22 +92,37 @@ class FlextInfraUtilitiesRopeCore(
                 if project_root == resolved_root
                 else str(project_root.relative_to(resolved_root))
                 for project_root in project_roots
-                if consumer_root is None
-                or project_root == consumer_root
-                or not (project_root / c.Infra.DEFAULT_SRC_DIR).is_dir()
+                if consumer_root is None or project_root == consumer_root
                 if project_root.is_dir()
                 and project_root.resolve().is_relative_to(resolved_root)
             },
         )
-        return FlextInfraUtilitiesRopeRuntime.new_project(
+        project = FlextInfraUtilitiesRopeRuntime.new_project(
             str(resolved_root),
             ropefolder="",
             save_objectdb=False,
             filter_lists=(
-                sorted(config.Infra.codegen.source_scan_ignored),
+                sorted({
+                    *config.Infra.codegen.source_scan_ignored,
+                    *(
+                        owner.relative_to(resolved_root).as_posix()
+                        for owner in project_roots
+                        if consumer_root is not None
+                        and owner != consumer_root
+                        and owner.is_relative_to(consumer_root)
+                    ),
+                }),
                 source_folders,
             ),
         )
+        for owner in project_roots:
+            if consumer_root is not None and owner != consumer_root:
+                source = owner / c.Infra.DEFAULT_SRC_DIR
+                project.get_prefs().add(
+                    "python_path",
+                    str(source if source.is_dir() else owner),
+                )
+        return project
 
     @staticmethod
     def import_project_roots(

@@ -2,6 +2,28 @@ Infra:
   codegen:
     # Generic packaged defaults for deterministic project conformance.
     version: 1
+    # Universal documentation-audit declarations every repository composes.
+    # Each forbidden term names a retired surface and the canonical owner
+    # that superseded it: per-project change selection is owned by the
+    # `make check` verb itself (the Make verb SSOT); the retired
+    # text-rules filename is superseded by the declarative sed-by-list
+    # catalogue (config/rules/mod/sed.yaml); scripts/hooks is superseded
+    # by promoted `scripts/<verb>/<WHAT>` commands and agentsctl hook
+    # projections. Container/CI home identities are image contracts whose
+    # home is part of the declared runtime, not an operator machine.
+    repository:
+      docs_audit:
+        forbidden_terms:
+        - check_changed_projects
+        - text_rules.yml
+        - scripts/hooks
+        container_home_identities:
+        - runner
+        - vscode
+        - agent
+        - barman
+        - scanner
+        - argocd
     # Projections no template renders any more; generation removes the
     # generated copy from every consumer (renamed: install-git-hooks.sh ->
     # validate-git-hook.sh; flext-law-loop.sh validated the whole workspace
@@ -807,7 +829,7 @@ Infra:
     # computed fields. Add a tool cache/build dir here only — never in the
     # consuming projections. Ordering reproduces the historical derived maps.
     artifacts:
-    - { name: __pycache__, source_scan_ignore: true }
+    - { name: __pycache__, source_scan_ignore: true, analysis_exclude: true }
     - { name: __pyrefly_virtual__ }
     # Governance content (.agents/.claude) and direnv runtime state stay
     # visible to the editor and watcher; source_scan keeps its dotdir skip.
@@ -833,13 +855,13 @@ Infra:
     # Agent tool state (hook-state/hook-status) is machine-local cache, never
     # production input.
     - { name: .mimosa, source_scan_ignore: true }
-    - { name: .mypy_cache, source_scan_ignore: true }
+    - { name: .mypy_cache, source_scan_ignore: true, analysis_exclude: true }
     - { name: .omo }
     - { name: .pylance_cache, vscode_exclude: false }
-    - { name: .pytest_cache, source_scan_ignore: true }
-    - { name: .reports, source_scan_ignore: true }
+    - { name: .pytest_cache, source_scan_ignore: true, analysis_exclude: true }
+    - { name: .reports, source_scan_ignore: true, analysis_exclude: true }
     - { name: .ropeproject }
-    - { name: .ruff_cache, source_scan_ignore: true }
+    - { name: .ruff_cache, source_scan_ignore: true, analysis_exclude: true }
     - { name: .scope }
     - { name: .serena }
     - { name: .sisyphus }
@@ -847,7 +869,7 @@ Infra:
     - { name: .superpowers }
     - { name: .trash }
     - { name: .turbo }
-    - { name: .venv, source_scan_ignore: true }
+    - { name: .venv, source_scan_ignore: true, analysis_exclude: true }
     - { name: .venv.* }
     - { name: "*.egg-info", vscode_exclude: false }
     # Transient extraction scratch (e.g. legacy _tmp_mdpy_* fenced-block and
@@ -861,9 +883,9 @@ Infra:
     - { name: "*.orig" }
     - { name: "*.rej" }
     - { name: "*.swp" }
-    - { name: build, source_scan_ignore: true }
-    - { name: dist, source_scan_ignore: true }
-    - { name: node_modules, source_scan_ignore: true }
+    - { name: build, source_scan_ignore: true, analysis_exclude: true }
+    - { name: dist, source_scan_ignore: true, analysis_exclude: true }
+    - { name: node_modules, source_scan_ignore: true, analysis_exclude: true }
     # protoc-generated wire-protocol modules ("DO NOT EDIT"): tracked and
     # imported as a regular package, never first-party code. generated_source
     # is the one key every analyzer exclusion, scan, and init derives from.
@@ -872,11 +894,14 @@ Infra:
     - { name: target }
     - { name: .pyrefly_cache, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
     - { name: .tox, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
-    - { name: dist-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
+    - { name: dist-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true, analysis_exclude: true }
     - { name: legado, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
-    - { name: site-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
+    - { name: site-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true, analysis_exclude: true }
     - { name: vendor, gitignore: false, vscode_exclude: false, watch_exclude: false }
-    - { name: venv, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
+    # npm's lockfile emission: the resolver owns sibling-shared resolved
+    # dependency lines; clone detection never reads it (resolver_owned).
+    - { name: package-lock.json, is_dir: false, vscode_exclude: false, watch_exclude: false, gitignore: false, resolver_owned: true }
+    - { name: venv, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true, analysis_exclude: true }
     # Gitignore-only entries; they feed no other projection.
     - { name: .flext-sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: .sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
@@ -885,6 +910,71 @@ Infra:
     - { name: .debug-journal.md, is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: .mcp.json, is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: CLAUDE.local.md, is_dir: false, vscode_exclude: false, watch_exclude: false }
+    # Declared directory-exclusion registry: the one exclusion SSOT. Names
+    # here are declared topology facts (tool state, archive contracts,
+    # per-scanner deltas); every scanner set derives by composing them with
+    # the artifact analysis_exclude flags and the VCS-derived names
+    # (.git, .worktrees). Add an exclusion by declaring it here — never in
+    # code.
+    exclusions:
+      tool_state:
+      - .agents-sync-home
+      - .test-tmp
+      archive_roots:
+      - incoming
+      - legado
+      docs:
+      - crg-reports
+      - site
+      pyproject_scan:
+      - .claude.disabled
+      - context_test
+      - rope_ws
+      - tmp_flow_test
+      - tests
+      - examples
+      check:
+      - .agents
+      - .archive
+      - .claude
+      - .codex
+      - .cursor
+      - .gemini
+      - .opencode
+      - .beads
+      - .serena
+      - .kilo
+      - .omo
+      - .tmp
+      - .snapshots
+      - .benchmarks
+      - .hypothesis
+      - .vscode
+      - .pyrefly_cache
+      - htmlcov
+      - reports
+      - site
+      - target
+      validation_clone:
+      - .archive
+      - .ropeproject
+      - htmlcov
+      worktree_transaction:
+      - .pyrefly_cache
+      - .cache
+      deps_discovery:
+      - .archive
+      - .claude.disabled
+      - htmlcov
+      - site
+      - vendor
+      parameterized_case_dirs:
+      - api_cases
+      - _cases
+      part_container_dirs:
+      - _parts
+      helper_modules:
+      - _cov.py
     vscode:
       # Portable defaults shared by attached and standalone repositories.
       # The editor owner binds environment tokens to the checkout runtime.
@@ -1309,7 +1399,6 @@ Infra:
       - tool.uv
       - tool.ruff
       - tool.ruff.lint.isort
-      - tool.ruff.lint.per-file-ignores
       - tool.mypy
       - tool.pyright
       - tool.pyrefly

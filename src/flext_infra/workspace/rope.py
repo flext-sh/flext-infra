@@ -115,7 +115,6 @@ class FlextInfraRopeWorkspace(
             if source_project is None or index_receipt is None:
                 msg = "Rope structural index reuse requires its original source receipt"
                 raise ValueError(msg)
-            source_project.replay_source_consumption(index_receipt)
             workspace._workspace_index = workspace_index
             workspace._index_receipt = index_receipt
             workspace._reused_index = True
@@ -155,10 +154,13 @@ class FlextInfraRopeWorkspace(
                 f"rope: indexing python workspace at {self._rope_repository_root}",
             )
             if self.rope_project.authenticated_sources:
-                with self.rope_project.source_consumption() as consumption:
+                with (
+                    self.rope_project.source_consumption() as consumption,
+                    self.rope_project.source_selection(),
+                ):
                     workspace_index = u.Infra.index_rope_workspace(
                         self.rope_project,
-                        self._rope_repository_root,
+                        self.repository_root,
                     )
                 self._index_receipt = consumption.receipt()
             else:
@@ -175,6 +177,7 @@ class FlextInfraRopeWorkspace(
             )
         if self._reused_index:
             self.rope_project.replay_source_consumption(self.source_index_receipt)
+            self._reused_index = False
         return workspace_index
 
     @property

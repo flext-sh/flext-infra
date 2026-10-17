@@ -395,7 +395,6 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         if not isinstance(report, list):
             msg = f"Ruff JSON report is not a list: {type(report).__name__}"
             raise TypeError(msg)
-        advisory = frozenset(config.Infra.tooling.tools.ruff.informative_rules)
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for entry in report:
             if not isinstance(entry, Mapping):
@@ -409,7 +408,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                     column=u.Cli.json_nested_int(entry, "location", "column"),
                     code=code,
                     message=u.Cli.json_pick_str(entry, "message"),
-                    severity=u.Infra.ruff_finding_severity(code, advisory),
+                    severity=c.Infra.GateSeverity.ERROR.value,
                 ),
             )
         passed, parsed = self._finalize_parse_result(

@@ -30,17 +30,36 @@ class TestsFlextInfraGateAcceptance:
     def test_tooling_contract_rejects_retired_residual_policy() -> None:
         """The live typed owner round-trips without accepting residual exemptions."""
         lint = config.Infra.tooling.tools.ruff.lint
-        restored = type(lint).model_validate_json(lint.model_dump_json())
+        restored = type(lint).model_validate_json(
+            lint.model_dump_json(by_alias=True, exclude_computed_fields=True),
+        )
         tm.that(restored.model_dump(), eq=lint.model_dump())
         with pytest.raises(ValueError, match="fix-recipe-residual"):
             type(lint).model_validate_json(
                 tm.ok(
                     u.Cli.json_dumps({
-                        **lint.model_dump(mode="json", by_alias=True),
+                        **lint.model_dump(
+                            mode="json",
+                            by_alias=True,
+                            exclude_computed_fields=True,
+                        ),
                         "fix-recipe-residual": [],
                     }),
                 ),
             )
+
+    @staticmethod
+    def test_tooling_contract_rejects_retired_bandit_catalog() -> None:
+        """An owner-specific security exemption cannot return through config."""
+        tools = config.Infra.tooling.tools
+        payload = tools.model_dump(
+            mode="json",
+            by_alias=True,
+            exclude_computed_fields=True,
+        )
+        payload["bandit"] = {"authorized-exceptions": []}
+        with pytest.raises(m.ValidationError, match="bandit"):
+            type(tools).model_validate_json(tm.ok(u.Cli.json_dumps(payload)))
 
     @staticmethod
     @pytest.mark.parametrize("verdict", [False, True])

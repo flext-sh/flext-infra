@@ -15,7 +15,7 @@ from typing import ClassVar
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesProtectedEdit,
     FlextInfraUtilitiesRopeAnalysis,
@@ -937,7 +937,9 @@ class FlextInfraUtilitiesRefactorCensus:
         shutil.copytree(
             resolved_source,
             resolved_destination,
-            ignore=shutil.ignore_patterns(*c.Infra.VALIDATION_CLONE_EXCLUDES),
+            ignore=shutil.ignore_patterns(
+                *config.Infra.codegen.validation_clone_excluded_dirs,
+            ),
             symlinks=False,
         )
         return resolved_destination

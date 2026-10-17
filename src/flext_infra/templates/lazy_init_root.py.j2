@@ -1,5 +1,7 @@
 {{ autogen_header }}
+{%- if not owner_class %}
 {{ docstring }}
+{%- endif %}
 
 from __future__ import annotations
 
@@ -13,6 +15,19 @@ from typing import TYPE_CHECKING
 {{ type_checking_lines }}
 
 {% endif %}
+{% if owner_class -%}
+class {{ owner_class }}:
+{{ docstring | indent(4, true) }}
+
+    __all__: tuple[str, ...] = {{ exports_tuple | indent(4) }}
+
+    install_lazy_exports(
+        __name__,
+        globals(),
+{{ lazy_export_mapping | indent(4, true) }}
+        public_exports=__all__,
+    )
+{% else -%}
 __all__: tuple[str, ...] = {{ exports_tuple }}
 
 install_lazy_exports(
@@ -21,3 +36,4 @@ install_lazy_exports(
 {{ lazy_export_mapping }}
     public_exports=__all__,
 )
+{% endif %}

@@ -9,19 +9,20 @@ from __future__ import annotations
 import ast
 import traceback
 from collections.abc import MutableMapping
+from difflib import SequenceMatcher
 from fnmatch import fnmatch
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import libcst as cst
 
-from flext_infra import m, r, t
+from flext_infra import m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverClassScope,
@@ -33,9 +34,6 @@ from flext_infra._utilities._semantic_cutover import (
 from flext_infra._utilities._semantic_cutover.test_helpers import (
     FlextInfraUtilitiesSemanticTestHelpers,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesSemanticCutoverNesting(
@@ -243,27 +241,90 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
 
         """
         planned = r[t.StrMapping]
-        if file_path.name == "__init__.py":
+        convention = rope_workspace.convention(file_path)
+        strict = (
+            convention.module_policy.project_prefix.startswith("Tests")
+            or file_path.name == "conftest.py"
+        )
+        if file_path.name == "__init__.py" and not strict:
             return planned.ok({})
         tree = ast.parse(source, filename=str(file_path))
         classes = {
             node.name: node for node in tree.body if isinstance(node, ast.ClassDef)
         }
-        convention = rope_workspace.convention(file_path)
         test_module = any(
             fnmatch(file_path.name, pattern) for pattern in pytest_patterns[0]
         )
         loose = cls._loose_members(
             tree,
-            values=not convention.module_policy.allow_type_alias,
+            values=strict or not convention.module_policy.allow_type_alias,
+            strict=strict,
         )
-        class_aliases = cls._class_value_aliases(project, file_path, tree)
+        class_aliases = (
+            frozenset()
+            if strict
+            else cls._class_value_aliases(project, file_path, tree)
+        )
         loose = tuple(
             name
             for name in loose
             if name not in class_aliases
-            and name not in {"pytestmark", "pytest_plugins"}
+            and (strict or name not in {"pytestmark", "pytest_plugins"})
         )
+        if strict:
+            unsupported = tuple(
+                type(node).__name__
+                for node in tree.body
+                if not isinstance(
+                    node,
+                    ast.Import
+                    | ast.ImportFrom
+                    | ast.ClassDef
+                    | ast.FunctionDef
+                    | ast.AsyncFunctionDef
+                    | ast.Assign
+                    | ast.AnnAssign
+                    | ast.TypeAlias,
+                )
+                and not (
+                    isinstance(node, ast.Expr)
+                    and isinstance(node.value, ast.Constant)
+                    and isinstance(node.value.value, str)
+                )
+                and not cls._type_checking_import_block(node, tree)
+            )
+            if unsupported:
+                return planned.fail(
+                    f"strict test module {convention.module_name} has unsupported "
+                    f"module statements: {', '.join(unsupported)}",
+                )
+            unowned = tuple(
+                name
+                for node in tree.body
+                if isinstance(node, ast.Assign | ast.AnnAssign)
+                for name in cls._scope_bindings(node)
+                if name not in loose
+            )
+            if unowned:
+                return planned.fail(
+                    f"strict test module {convention.module_name} requires a single "
+                    f"owned assignment target: {', '.join(unowned)}",
+                )
+            if any(
+                name in {"setup_function", "teardown_function"} for name in loose
+            ) and any(
+                isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                and cls._pytest_name_matches(node.name, pytest_patterns[2])
+                for node in tree.body
+            ):
+                return planned.fail(
+                    f"strict test module {convention.module_name} requires a coordinated "
+                    "function-to-method xunit lifecycle cutover",
+                )
+            if not classes and not loose:
+                return planned.fail(
+                    f"strict test module {convention.module_name} has no meaningful root owner",
+                )
         if len(classes) <= 1 and not loose:
             return planned.ok({})
         registered_decorators = {"fixture", "hookimpl"} | {
@@ -290,13 +351,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                         "teardown_function",
                     }
                 )
-                or (
-                    node.name.startswith("test_")
-                    and not (
-                        test_module
-                        and cls._pytest_name_matches(node.name, pytest_patterns[2])
-                    )
-                )
+                or node.name.startswith("test_")
                 or any(
                     cls._tail_name(
                         decorator.func
@@ -316,15 +371,22 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 )
             )
         )
-        if registered:
+        if registered and not strict:
             return planned.fail(
                 f"class-nesting cannot move framework-registered functions in "
                 f"{convention.module_name}: {', '.join(registered)}; "
                 "the framework registration contract must move with their owner",
             )
         owned = (
-            cls._test_module_owner(convention, file_path, classes, pytest_patterns[1])
-            if test_module
+            cls._test_module_owner(
+                convention,
+                file_path,
+                classes,
+                pytest_patterns[1],
+                pytest_patterns[2],
+                require_collection=test_module,
+            )
+            if test_module or strict
             else cls._module_owner(
                 convention,
                 file_path,
@@ -396,6 +458,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             loose,
             owner=owner,
             module_name=convention.module_name,
+            strict=strict,
         )
         if movable.failure:
             return planned.from_failure(movable)
@@ -420,7 +483,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             )
             & definitions.keys()
         )
-        if metadata_dependencies:
+        if metadata_dependencies and not strict:
             return planned.fail(
                 f"class-nesting cannot move pytest metadata dependencies in "
                 f"{convention.module_name}: {', '.join(sorted(metadata_dependencies))}",
@@ -437,7 +500,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             file_path.parent.name,
         )
         blocked = bound | pinned | (frozenset(loose) - frozenset(movable.value))
-        if family is None and blocked:
+        if (strict or family is None) and blocked:
             return planned.fail(
                 f"class-nesting cannot safely nest {convention.module_name} under "
                 f"{owner}: definition-time dependencies pin "
@@ -460,6 +523,348 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         return planned.ok({
             name: owner for name, owner in definitions.items() if name not in pinned
         })
+
+    @classmethod
+    def _type_checking_import_block(cls, node: ast.stmt, tree: ast.Module) -> bool:
+        """Admit only an imported typing.TYPE_CHECKING guard containing imports."""
+        if not isinstance(node, ast.If) or node.orelse or not node.body:
+            return False
+        if not all(isinstance(item, ast.Import | ast.ImportFrom) for item in node.body):
+            return False
+        guarded_name = (
+            node.test.id
+            if isinstance(node.test, ast.Name)
+            else node.test.value.id
+            if isinstance(node.test, ast.Attribute)
+            and isinstance(node.test.value, ast.Name)
+            else None
+        )
+        if guarded_name is None or any(
+            guarded_name in cls._scope_bindings(statement)
+            for statement in tree.body
+            if statement is not node
+            and not isinstance(statement, ast.Import | ast.ImportFrom)
+        ):
+            return False
+        for statement in tree.body:
+            if isinstance(statement, ast.ImportFrom) and statement.module == "typing":
+                if any(
+                    alias.name == "TYPE_CHECKING"
+                    and isinstance(node.test, ast.Name)
+                    and node.test.id == (alias.asname or alias.name)
+                    for alias in statement.names
+                ):
+                    return True
+            if isinstance(statement, ast.Import) and any(
+                alias.name == "typing"
+                and isinstance(node.test, ast.Attribute)
+                and node.test.attr == "TYPE_CHECKING"
+                and isinstance(node.test.value, ast.Name)
+                and node.test.value.id == (alias.asname or alias.name)
+                for alias in statement.names
+            ):
+                return True
+        return False
+
+    @classmethod
+    def _test_prefix_edits(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+        """Rename every local test class through native Rope, including local scopes."""
+        working = dict(sources)
+        patterns = cls._pytest_collection_patterns(
+            Path(workspace.rope_project.root.real_path)
+        )
+        for path, _source in cls._editable_sources(sources):
+            if not path.is_relative_to(Path(workspace.repository_root).resolve()):
+                continue
+            prefix = workspace.convention(path).module_policy.project_prefix
+            if not prefix.startswith("Tests") and path.name != "conftest.py":
+                continue
+            if not prefix.startswith("Tests"):
+                prefix = f"Tests{prefix}"
+            while True:
+                previous_source = working[path]
+                tree = ast.parse(previous_source)
+                declaration = next(
+                    (
+                        node
+                        for node in ast.walk(tree)
+                        if isinstance(node, ast.ClassDef)
+                        and not node.name.startswith(prefix)
+                    ),
+                    None,
+                )
+                if declaration is None:
+                    break
+                replacement = prefix + declaration.name.removeprefix(
+                    "Tests"
+                ).removeprefix("Test").lstrip("_")
+                if (
+                    any(fnmatch(path.name, pattern) for pattern in patterns[0])
+                    and not cls._pytest_name_matches(declaration.name, patterns[1])
+                    and cls._pytest_name_matches(replacement, patterns[1])
+                    and cls._new_suite_collection_risk(tree, declaration, patterns[2])
+                ):
+                    msg = (
+                        f"test class prefix rename would newly collect helper {path}:{declaration.name}; "
+                        "an explicit class-owned non-suite lifecycle contract is required"
+                    )
+                    raise ValueError(msg)
+                project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+                    workspace.rope_project,
+                    working,
+                )
+                try:
+                    root = Path(project.root.real_path)
+                    resource = project.get_resource(path.relative_to(root).as_posix())
+                    module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                        project, resource
+                    )
+                    pending = [module.get_scope()]
+                    defining: p.Infra.RopeScope | None = None
+                    while pending:
+                        scope = pending.pop()
+                        if (
+                            scope.get_kind() == "Class"
+                            and scope.pyobject.get_name() == declaration.name
+                            and scope.get_start() == declaration.lineno
+                        ):
+                            defining = scope.parent
+                            break
+                        pending.extend(scope.get_scopes())
+                    if defining is None:
+                        msg = f"test class has no unique native defining scope: {path}:{declaration.name}"
+                        raise ValueError(msg)
+                    if replacement in defining.get_defined_names():
+                        msg = f"test class prefix rename collides: {path}:{replacement}"
+                        raise ValueError(msg)
+                    expected = defining.get_defined_names()[declaration.name]
+                    offset = (
+                        FlextInfraUtilitiesRopeCore.find_identifier_offset_in_lines(
+                            working[path].splitlines(keepends=True),
+                            line=declaration.lineno,
+                            symbol=declaration.name,
+                            pyname=expected,
+                        )
+                    )
+                    if offset is None:
+                        msg = f"test class has no native identifier: {path}:{declaration.name}"
+                        raise ValueError(msg)
+                    changes = FlextInfraUtilitiesRopeRuntimeRefactors.rename_changes(
+                        project,
+                        resource,
+                        offset,
+                        replacement,
+                        options=m.Infra.RopeRenameOptions(
+                            resources=tuple(
+                                project.get_resource(item.relative_to(root).as_posix())
+                                for item in working
+                            ),
+                            in_hierarchy=True,
+                        ),
+                    )
+                    rewrites: MutableMapping[Path, list[m.Infra.SourceRewrite]] = {}
+                    for change in changes.changes:
+                        if not isinstance(change, p.Infra.RopeChangeContents):
+                            msg = "test class rename produced a non-content effect"
+                            raise TypeError(msg)
+                        consumer = Path(change.resource.real_path).resolve()
+                        if consumer not in working:
+                            msg = f"test class rename escaped source inventory: {consumer}"
+                            raise ValueError(msg)
+                        rewrites[consumer] = [
+                            m.Infra.SourceRewrite(
+                                start=begin,
+                                end=end,
+                                text=change.new_contents[first:last],
+                            )
+                            for kind, begin, end, first, last in SequenceMatcher(
+                                a=working[consumer],
+                                b=change.new_contents,
+                                autojunk=False,
+                            ).get_opcodes()
+                            if kind != "equal"
+                        ]
+
+                    def quoted_replacement(
+                        current: p.Infra.RopeScope, expression: str
+                    ) -> str | None:
+                        parts = expression.split(".")
+                        for count in range(1, len(parts) + 1):
+                            actual = (
+                                FlextInfraUtilitiesRopeRuntimeModules.expression_name(
+                                    current, ".".join(parts[:count])
+                                )
+                            )
+                            if (
+                                parts[count - 1] == declaration.name
+                                and FlextInfraUtilitiesRopeRuntimeModules.same_name(
+                                    expected, actual
+                                )
+                            ):
+                                return ".".join((
+                                    *parts[: count - 1],
+                                    replacement,
+                                    *parts[count:],
+                                ))
+                        return None
+
+                    for consumer, text in working.items():
+                        candidate = project.get_resource(
+                            consumer.relative_to(root).as_posix()
+                        )
+                        quotes = cls._quoted_type_edits(
+                            project, candidate, text, quoted_replacement
+                        )
+                        if quotes:
+                            rewrites.setdefault(consumer, []).extend(quotes)
+                    exports = cls._test_export_rename_edits(
+                        project,
+                        resource,
+                        offset,
+                        replacement,
+                        working,
+                    )
+                    for consumer, edits in exports.items():
+                        rewrites.setdefault(consumer, []).extend(edits)
+                    changed = False
+                    for consumer, edits in rewrites.items():
+                        candidate = project.get_resource(
+                            consumer.relative_to(root).as_posix()
+                        )
+                        updated = (
+                            FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+                                candidate, working[consumer], edits
+                            ).new_contents
+                        )
+                        changed |= working[consumer] != updated
+                        working[consumer] = updated
+                    if not changed or working[path] == previous_source:
+                        msg = f"native test class rename made no progress: {path}"
+                        raise ValueError(msg)
+                finally:
+                    project.close()
+        return tuple(
+            m.Infra.SemanticMigrationEdit(
+                file_path=path,
+                original_source=source,
+                updated_source=working[path],
+                changes=("native Rope test class prefix cutover",),
+            )
+            for path, source in sources.items()
+            if working[path] != source
+        )
+
+    @classmethod
+    def _new_suite_collection_risk(
+        cls,
+        tree: ast.Module,
+        declaration: ast.ClassDef,
+        function_patterns: t.StrSequence,
+    ) -> bool:
+        """Do not turn helper constructors, protocols or inherited tests into suites."""
+        if any(
+            isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda)
+            and declaration in ast.walk(node)
+            for node in ast.walk(tree)
+        ):
+            return False
+        if any(
+            isinstance(member, ast.Assign | ast.AnnAssign)
+            and isinstance(member.value, ast.Constant)
+            and member.value.value is False
+            and any(
+                isinstance(target, ast.Name) and target.id == "__test__"
+                for target in (
+                    member.targets
+                    if isinstance(member, ast.Assign)
+                    else [member.target]
+                )
+            )
+            for member in declaration.body
+        ):
+            return False
+        return bool(declaration.bases or declaration.decorator_list) or any(
+            isinstance(member, ast.FunctionDef | ast.AsyncFunctionDef)
+            and (
+                member.name in {"__init__", "__new__"}
+                or cls._pytest_name_matches(member.name, function_patterns)
+            )
+            for member in declaration.body
+        )
+
+    @classmethod
+    def _test_export_rename_edits(
+        cls,
+        project: p.Infra.RopeProject,
+        resource: p.Infra.RopeResource,
+        offset: int,
+        replacement: str,
+        sources: t.MappingKV[Path, str],
+    ) -> t.MappingKV[Path, t.VariadicTuple[m.Infra.SourceRewrite]]:
+        """Retain native string renames only inside declared export literals."""
+        root = Path(project.root.real_path)
+        changes = FlextInfraUtilitiesRopeRuntimeRefactors.rename_changes(
+            project,
+            resource,
+            offset,
+            replacement,
+            options=m.Infra.RopeRenameOptions(
+                resources=tuple(
+                    project.get_resource(path.relative_to(root).as_posix())
+                    for path in sources
+                ),
+                in_hierarchy=True,
+                docs=True,
+            ),
+        )
+        planned: dict[Path, t.VariadicTuple[m.Infra.SourceRewrite]] = {}
+        for change in changes.changes:
+            if not isinstance(change, p.Infra.RopeChangeContents):
+                msg = "native export rename produced a non-content effect"
+                raise TypeError(msg)
+            path = Path(change.resource.real_path).resolve()
+            if path not in sources:
+                msg = f"native export rename escaped source inventory: {path}"
+                raise ValueError(msg)
+            source = sources[path]
+            exports = tuple(
+                item
+                for item in FlextInfraUtilitiesRopeStructure.logical_statements(source)
+                if cls._native_member_name(item) == "__all__"
+            )
+            regions = tuple(
+                (begin, end)
+                for begin, end, _kind in FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(
+                    source
+                )
+                if FlextInfraUtilitiesRopeRuntimeRefactors.literal_string(
+                    source[begin:end]
+                )
+                is not None
+                and any(
+                    item.start_offset <= begin < end <= item.end_offset + 1
+                    for item in exports
+                )
+            )
+            edits = tuple(
+                m.Infra.SourceRewrite(
+                    start=begin, end=end, text=change.new_contents[first:last]
+                )
+                for kind, begin, end, first, last in SequenceMatcher(
+                    a=source,
+                    b=change.new_contents,
+                    autojunk=False,
+                ).get_opcodes()
+                if kind != "equal"
+                and any(start <= begin <= end <= stop for start, stop in regions)
+            )
+            if edits:
+                planned[path] = edits
+        return planned
 
     @classmethod
     def _plan_class_nesting(
@@ -492,6 +897,9 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         merged = {edit.file_path: edit for edit in promoted}
         for edit in promoted:
             proposed[edit.file_path] = edit.updated_source
+        renamed = cls._test_prefix_edits(rope_workspace, proposed)
+        for edit in renamed:
+            proposed[edit.file_path] = edit.updated_source
         consolidated = cls._facade_namespace_edits(rope_workspace, proposed)
         for edit in consolidated:
             proposed[edit.file_path] = edit.updated_source
@@ -501,7 +909,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         nested = cls._plan_orphan_nesting(rope_workspace, proposed)
         if nested.failure:
             return planned.from_failure(nested)
-        for edit in (*consolidated, *flattened, *nested.value):
+        for edit in (*renamed, *consolidated, *flattened, *nested.value):
             previous = merged.get(edit.file_path)
             merged[edit.file_path] = m.Infra.SemanticMigrationEdit(
                 file_path=edit.file_path,
@@ -513,7 +921,144 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 if previous
                 else edit.changes,
             )
+            proposed[edit.file_path] = edit.updated_source
+        for edit in cls._test_registration_edits(rope_workspace, proposed):
+            previous = merged.get(edit.file_path)
+            merged[edit.file_path] = m.Infra.SemanticMigrationEdit(
+                file_path=edit.file_path,
+                original_source=previous.original_source
+                if previous
+                else edit.original_source,
+                updated_source=edit.updated_source,
+                changes=(*previous.changes, *edit.changes)
+                if previous
+                else edit.changes,
+            )
         return planned.ok(tuple(merged[path] for path in sorted(merged)))
+
+    @classmethod
+    def _test_registration_edits(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+        """Publish already class-owned plugins as well as newly nested declarations."""
+        edits: list[m.Infra.SemanticMigrationEdit] = []
+        project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+            workspace.rope_project, sources
+        )
+        try:
+            root = Path(project.root.real_path)
+            for path, source in cls._editable_sources(sources):
+                if not path.is_relative_to(Path(workspace.repository_root).resolve()):
+                    continue
+                if (
+                    not workspace.convention(
+                        path
+                    ).module_policy.project_prefix.startswith("Tests")
+                    and path.name != "conftest.py"
+                ):
+                    continue
+                tree = ast.parse(source)
+                owners = [node for node in tree.body if isinstance(node, ast.ClassDef)]
+                if len(owners) != 1:
+                    msg = f"strict test module has no sole root owner: {path}"
+                    raise ValueError(msg)
+                if not owners[0].bases and not any(
+                    not isinstance(node, ast.Pass)
+                    and not (
+                        isinstance(node, ast.Expr)
+                        and isinstance(node.value, ast.Constant)
+                        and isinstance(node.value.value, str)
+                    )
+                    for node in owners[0].body
+                ):
+                    msg = f"strict test module has no meaningful root behavior or data: {path}"
+                    raise ValueError(msg)
+                resource = project.get_resource(path.relative_to(root).as_posix())
+                updated = (
+                    cls._publish_test_bindings(
+                        project, resource, source, owners[0].name
+                    )
+                    if path.name == "conftest.py"
+                    else source
+                )
+                current = ast.parse(updated)
+                if (
+                    current.body
+                    and isinstance(current.body[0], ast.Expr)
+                    and isinstance(current.body[0].value, ast.Constant)
+                    and isinstance(current.body[0].value.value, str)
+                ):
+                    module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+                        project,
+                        updated,
+                        resource=resource,
+                    )
+                    documentation = current.body[0]
+                    module_doc = ast.get_docstring(current, clean=False)
+                    if module_doc is None:
+                        msg = f"module documentation is not a string: {path}"
+                        raise ValueError(msg)
+                    if documentation.end_lineno is None:
+                        msg = f"module documentation has no native end: {path}"
+                        raise ValueError(msg)
+                    scope = next(
+                        scope
+                        for scope in module.get_scope().get_scopes()
+                        if scope.pyobject.get_name() == owners[0].name
+                    )
+                    begin = module.lines.get_line_start(documentation.lineno)
+                    end = min(
+                        module.lines.get_line_end(documentation.end_lineno) + 1,
+                        len(updated),
+                    )
+                    owner_edits = cls._existing_owner_edits(
+                        updated,
+                        module,
+                        FlextInfraUtilitiesRopeStructure.logical_statements(updated),
+                        scope,
+                        ("    " + repr(module_doc) + "\n", 4),
+                    )
+                    updated = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+                        resource,
+                        updated,
+                        (
+                            m.Infra.SourceRewrite(start=begin, end=end, text=""),
+                            *owner_edits,
+                        ),
+                    ).new_contents
+                final_tree = ast.parse(updated)
+                outside = tuple(
+                    type(node).__name__
+                    for node in final_tree.body
+                    if not isinstance(node, ast.Import | ast.ImportFrom | ast.ClassDef)
+                    and not cls._type_checking_import_block(node, final_tree)
+                )
+                if outside:
+                    msg = f"strict test module retains declarations outside its owner: {path}: {', '.join(outside)}"
+                    raise ValueError(msg)
+                prefix = workspace.convention(path).module_policy.project_prefix
+                if not prefix.startswith("Tests"):
+                    prefix = f"Tests{prefix}"
+                if any(
+                    isinstance(node, ast.ClassDef) and not node.name.startswith(prefix)
+                    for node in ast.walk(final_tree)
+                ):
+                    msg = f"strict test module retains a local class without prefix {prefix}: {path}"
+                    raise ValueError(msg)
+                if updated != source:
+                    edits.append(
+                        m.Infra.SemanticMigrationEdit(
+                            file_path=path,
+                            original_source=source,
+                            updated_source=updated,
+                            changes=("published original pytest module registration",),
+                        )
+                    )
+        finally:
+            project.close()
+        return tuple(edits)
 
     @classmethod
     def _facade_namespace_edits(
@@ -542,6 +1087,8 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         )
         try:
             for path, source in cls._editable_sources(sources):
+                if not path.is_relative_to(Path(workspace.repository_root).resolve()):
+                    continue
                 site = cls._facade_namespace_site(workspace, path, source)
                 if site is not None:
                     cls._apply_facade_namespace_site(cutover, site)
@@ -879,7 +1426,12 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             entry.file_path.resolve(): entry for entry in rope_workspace.modules()
         }
         editable = cls._editable_sources(sources)
-        owned = tuple(item for item in editable if item[0] in modules)
+        owned = tuple(
+            item
+            for item in editable
+            if item[0] in modules
+            and item[0].is_relative_to(Path(rope_workspace.repository_root).resolve())
+        )
         # Parse native collection policy without importing consumer conftests or
         # installed plugins. Planning must not execute their registration hooks.
         pytest_patterns = cls._pytest_collection_patterns(
@@ -937,17 +1489,12 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             project.close()
             return planned_edits.ok(())
         try:
-            quoted = cls._nesting_quoted_sources(
-                project,
-                dict(editable),
-                definitions_by_file,
-            )
 
             def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
                 module = modules.get(path)
                 definitions = definitions_by_file.get(path, {})
                 updated = cls._rewrite_class_nesting_source(
-                    quoted[path],
+                    source,
                     native=(
                         project,
                         project.get_resource(
@@ -960,6 +1507,14 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     ),
                     bindings_by_module=bindings_by_module,
                     definitions=definitions,
+                    sources=sources,
+                    strict=module is not None
+                    and (
+                        rope_workspace.convention(
+                            path
+                        ).module_policy.project_prefix.startswith("Tests")
+                        or path.name == "conftest.py"
+                    ),
                 )
                 if definitions and updated == source:
                     msg = "class-nesting owner produced no structural edit"
@@ -970,13 +1525,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 ) or ("rewired nested-class consumer",)
 
             return cls._semantic_edits(
-                tuple(
-                    (path, source)
-                    for path, source in editable
-                    if path in definitions_by_file
-                    or quoted[path] != source
-                    or any(name in source for name in nested_names)
-                ),
+                tuple((path, source) for path, source in editable),
                 rewrite,
             )
         finally:

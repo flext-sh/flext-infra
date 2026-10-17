@@ -6,22 +6,31 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableMapping
+from collections.abc import Callable
+from pathlib import Path
 from typing import override
 
 import libcst as cst
 from libcst.metadata import (
     Assignment,
+    ImportAssignment,
     MetadataWrapper,
     ParentNodeProvider,
-    QualifiedNameProvider,
+    PositionProvider,
     ScopeProvider,
 )
 
-from flext_infra import m, t
-from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
+from flext_infra import c, m, p, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodemodBindingChain,
+    FlextInfraUtilitiesQualifiedNames,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeTypes,
+)
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverNestingModuleAliases,
+    FlextInfraUtilitiesSemanticNestingTypes,
 )
 
 
@@ -35,8 +44,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
 
         METADATA_DEPENDENCIES = (
             ParentNodeProvider,
-            QualifiedNameProvider,
             ScopeProvider,
+            PositionProvider,
         )
 
         def __init__(
@@ -45,43 +54,222 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             scope: t.Pair[str, bool],
             bindings_by_module: t.MappingKV[str, t.StrMapping],
             definitions: t.StrMapping,
-            scan: m.Infra.NestingModuleAliasScan,
+            native: t.Pair[p.Infra.RopeProject, p.Infra.RopeResource],
+            source: str,
+            sources: t.MappingKV[Path, str],
             resolvers: t.Triple[
                 Callable[..., str],
-                Callable[..., str],
                 Callable[[cst.BaseStatement], str | None],
+                Callable[..., t.Pair[str, str]],
             ],
         ) -> None:
-            self.imported_module, self.resolved_relative, self.member_name = resolvers
-            self.scan = scan
+            self.imported_module, self.member_name, self.import_route = resolvers
             self.module_name, self.is_package_init = scope
-            # A nested module has exactly one owner (the planner rejects a
-            # file with several), so its bindings name it once.
-            self.owners_by_module = {
-                module: next(iter(set(bindings.values())))
-                for module, bindings in bindings_by_module.items()
-                if bindings
-            }
-            self.module_aliases = {
-                local: module
-                for local, module in scan.aliases.items()
-                if module in self.owners_by_module
-            }
             self.bindings_by_module = bindings_by_module
             self.definitions = definitions
-            self.qualified = {
-                f"{module}.{name}": f"{owner}.{name}"
-                for module, bindings in bindings_by_module.items()
-                for name, owner in bindings.items()
-            }
-            self.qualified.update(
-                (name, f"{owner}.{name}") for name, owner in definitions.items()
+            self.sources = sources
+            self.project, self.resource = native
+            self.original = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                self.project,
+                self.resource,
             )
-            self.emitted_owner_imports: set[str] = set()
+            self.module_name = self.original.get_name()
+            self.is_package_init = Path(self.resource.real_path).name == c.Infra.INIT_PY
+            if source != self.original.source_code:
+                msg = "nesting reference proof requires the immutable original source"
+                raise ValueError(msg)
+            self.line_offsets = [0]
+            for line in source.splitlines(keepends=True):
+                self.line_offsets.append(self.line_offsets[-1] + len(line))
+            self.quoted: t.MutableMappingKV[
+                t.Pair[int, int], m.Infra.SourceRewrite
+            ] = {}
+            self.elected_source = source
+            self.identities: list[
+                t.Triple[p.Infra.RopePyName, p.Infra.RopePyModule, str]
+            ] = []
+            for module, bindings in bindings_by_module.items():
+                provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                    self.project.get_module(module),
+                )
+                self.identities.extend(
+                    (provider.get_attribute(name), provider, f"{owner}.{name}")
+                    for name, owner in bindings.items()
+                )
             self.future_annotations = False
-            self.local_expressions: MutableMapping[str, str] = {
-                name: f"{owner}.{name}" for name, owner in definitions.items()
-            }
+            self.wildcard_names: set[str] = set()
+            self.retired_imports: set[str] = set()
+
+        def _destination(
+            self, module: str, prefix: str, scope: p.Infra.RopeScope
+        ) -> str:
+            runtime = FlextInfraUtilitiesRopeRuntimeModules
+            root, separator, suffix = prefix.partition(".")
+            if module == self.original.get_name():
+                selected = prefix
+            else:
+                elected_module = runtime.build_string_module(
+                    self.project,
+                    self.elected_source,
+                    resource=self.resource,
+                )
+                self.elected_source, selected = runtime.import_binding(
+                    self.project,
+                    elected_module,
+                    module,
+                    root,
+                )
+                if separator:
+                    selected = f"{selected}.{suffix}"
+            current = runtime.build_string_module(
+                self.project,
+                self.elected_source,
+                resource=self.resource,
+            )
+            selected_root = selected.partition(".")[0]
+            previous = runtime.expression_name(self.original.get_scope(), selected_root)
+            elected_binding = runtime.expression_name(
+                current.get_scope(), selected_root
+            )
+            if (
+                module != self.original.get_name()
+                and previous is not None
+                and not runtime.same_name(previous, elected_binding)
+            ):
+                msg = f"occupied native nesting destination: {selected}"
+                raise ValueError(msg)
+            return FlextInfraUtilitiesSemanticNestingTypes._checked_type_reference(
+                scope,
+                selected,
+            )
+
+        def _replacement(
+            self,
+            scope: p.Infra.RopeScope,
+            expression: str,
+            offset: int,
+        ) -> str | None:
+            runtime = FlextInfraUtilitiesRopeRuntimeModules
+            root = expression.partition(".")[0]
+            actual = runtime.expression_name(scope, expression)
+            matches = [
+                (origin, bound)
+                for identity, origin, bound in self.identities
+                if runtime.same_name(identity, actual)
+            ]
+            root_binding = runtime.expression_name(scope, root)
+            if not matches and not isinstance(root_binding, p.Infra.RopeAssignedName):
+                return None
+            proof = FlextInfraUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain
+            declarations = proof._single_reaching_declarations(
+                self.original,
+                scope,
+                root,
+            )
+            if len(declarations) > 1:
+                for row, _offset in declarations:
+                    if row.category not in {
+                        c.Infra.StatementCategory.IMPORT,
+                        c.Infra.StatementCategory.FROM_IMPORT,
+                    }:
+                        continue
+                    imported = runtime.build_string_module(
+                        self.project,
+                        row.text.strip(),
+                        resource=self.resource,
+                    )
+                    candidate = runtime.expression_name(
+                        imported.get_scope(), expression
+                    )
+                    if any(
+                        runtime.same_name(identity, candidate)
+                        for identity, _origin, _bound in self.identities
+                    ):
+                        msg = f"ambiguous or reassigned native nesting alias: {expression}"
+                        raise ValueError(msg)
+            if not matches:
+                return None
+            FlextInfraUtilitiesSemanticNestingTypes._require_nesting_binding(
+                self.project,
+                self.original,
+                scope,
+                expression,
+                offset,
+                self.sources,
+            )
+            replacements: set[str] = set()
+            for origin, bound in matches:
+                owner, member = bound.split(".", maxsplit=1)
+                receiver, separator, _name = expression.rpartition(".")
+                provider = origin
+                if separator:
+                    receiver_name = runtime.expression_name(scope, receiver)
+                    if receiver_name is None:
+                        msg = f"unresolved native nesting receiver: {expression}"
+                        raise ValueError(msg)
+                    provider = (
+                        FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                            receiver_name.get_object(),
+                        )
+                    )
+                elif isinstance(actual, p.Infra.RopeImportedName):
+                    provider = (
+                        FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                            actual.imported_module.get_object(),
+                        )
+                    )
+                module, prefix = self.import_route(
+                    self.project,
+                    provider,
+                    owner,
+                    origin,
+                    self.sources,
+                    consumer=self.original.get_name(),
+                )
+                destination = (
+                    f"{receiver}.{prefix}"
+                    if separator and module == provider.get_name()
+                    else self._destination(module, prefix, scope)
+                )
+                replacements.add(f"{destination}.{member}")
+            if len(replacements) != 1:
+                msg = f"ambiguous native nesting destinations: {expression}: {sorted(replacements)}"
+                raise ValueError(msg)
+            return replacements.pop()
+
+        def _type_reference(
+            self,
+            scope: p.Infra.RopeScope,
+            expression: str,
+        ) -> str | None:
+            return self._replacement(scope, expression, len(self.original.source_code))
+
+        def _quoted_literal(
+            self,
+            original_node: cst.BaseExpression,
+            updated_node: cst.BaseExpression,
+        ) -> cst.BaseExpression:
+            position = self.get_metadata(PositionProvider, original_node)
+            start = self.line_offsets[position.start.line - 1] + position.start.column
+            end = self.line_offsets[position.end.line - 1] + position.end.column
+            edit = self.quoted.pop((start, end), None)
+            return cst.parse_expression(edit.text) if edit is not None else updated_node
+
+        @override
+        def leave_SimpleString(
+            self,
+            original_node: cst.SimpleString,
+            updated_node: cst.SimpleString,
+        ) -> cst.BaseExpression:
+            return self._quoted_literal(original_node, updated_node)
+
+        @override
+        def leave_ConcatenatedString(
+            self,
+            original_node: cst.ConcatenatedString,
+            updated_node: cst.ConcatenatedString,
+        ) -> cst.BaseExpression:
+            return self._quoted_literal(original_node, updated_node)
 
         @staticmethod
         def _alias_name(asname: cst.AsName) -> str:
@@ -111,22 +299,51 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 is_package_init=self.is_package_init,
             )
 
-        def _absolute_name(self, name: str) -> str:
-            """Resolve a relative qualified name against the current module.
-
-            Returns:
-                The absolute dotted name.
-
-            """
-            relative = name.removeprefix(name.lstrip("."))
-            if not relative:
-                return name
-            return self.resolved_relative(
-                len(relative),
-                name[len(relative) :],
-                module_name=self.module_name,
-                is_package_init=self.is_package_init,
+        def _import_owner(self, node: cst.ImportFrom, name: str) -> str | None:
+            """Admit an import only through its original native declaration."""
+            runtime = FlextInfraUtilitiesRopeRuntimeModules
+            imported = runtime.build_string_module(
+                self.project,
+                cst.Module([]).code_for_node(node),
+                resource=self.resource,
             )
+            if isinstance(node.names, cst.ImportStar):
+                msg = "star import binding requires its native reference occurrence"
+                raise ValueError(msg)
+            local = next(
+                self._alias_name(alias.asname) if alias.asname else name
+                for alias in node.names
+                if FlextInfraUtilitiesQualifiedNames.dotted_name(alias.name) == name
+            )
+            actual = imported.get_scope().get_names().get(local)
+            matches = [
+                (origin, bound)
+                for identity, origin, bound in self.identities
+                if runtime.same_name(identity, actual)
+            ]
+            if not matches:
+                return None
+            if not isinstance(actual, p.Infra.RopeImportedName):
+                msg = f"native nesting import has no imported-name provenance: {name}"
+                raise ValueError(msg)
+            provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                actual.imported_module.get_object(),
+            )
+            if len(matches) != 1:
+                msg = f"ambiguous native nesting import: {provider.get_name()}.{name}"
+                raise ValueError(msg)
+            origin, bound = matches[0]
+            owner, _member = bound.split(".", maxsplit=1)
+            module, prefix = self.import_route(
+                self.project,
+                provider,
+                owner,
+                origin,
+                self.sources,
+                consumer=self.original.get_name(),
+            )
+            self._destination(module, prefix, self.original.get_scope())
+            return owner
 
         @override
         def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
@@ -143,19 +360,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             ):
                 self.future_annotations = True
             bindings = self.bindings_by_module.get(self._import_module(node), {})
-            if not bindings or isinstance(node.names, cst.ImportStar):
+            if not bindings:
                 return
-            for imported in node.names:
-                name = (
-                    FlextInfraUtilitiesQualifiedNames.dotted_name(imported.name) or ""
-                )
-                if name not in bindings:
-                    continue
-                local_name = (
-                    self._alias_name(imported.asname) if imported.asname else name
-                )
-                owner_name = local_name if imported.asname else bindings[name]
-                self.local_expressions[local_name] = f"{owner_name}.{name}"
+            if isinstance(node.names, cst.ImportStar):
+                self.wildcard_names.update(bindings)
 
         def _resolves_bare_after_nesting(self, node: cst.CSTNode) -> bool:
             """Report whether a moved class stays reachable by its bare name here.
@@ -227,21 +435,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         def _single_binding(
             self,
             original_node: cst.CSTNode,
-            *,
-            ambiguity: str,
         ) -> str | None:
-            """Return the one class-nesting replacement bound to ``original_node``.
-
-            ``None`` when the node carries no nesting binding; two competing
-            bindings are ambiguous and raise with ``ambiguity`` naming the site.
-
-            Returns:
-                The one class-nesting replacement bound to ``original_node``.
-
-            Raises:
-                ValueError: If ambiguous class-nesting.
-
-            """
+            """Authorize one reference in the immutable original native scope."""
             root = original_node
             while isinstance(root, cst.Attribute):
                 root = root.value
@@ -258,26 +453,40 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                     for binding in scope[root.value]
                 ):
                     return None
-            replacements = {
-                replacement
-                for qualified_name in self.get_metadata(
-                    QualifiedNameProvider,
-                    original_node,
-                    (),
-                )
-                if (
-                    replacement := self.qualified.get(
-                        self._absolute_name(qualified_name.name),
-                    )
-                )
-                is not None
-            }
-            if not replacements:
+            current = self.get_metadata(ParentNodeProvider, original_node, None)
+            while isinstance(current, cst.Attribute | cst.ImportAlias | cst.AsName):
+                current = self.get_metadata(ParentNodeProvider, current, None)
+            if isinstance(current, cst.Import | cst.ImportFrom):
                 return None
-            if len(replacements) != 1:
-                msg = f"ambiguous class-nesting {ambiguity}: {sorted(replacements)}"
-                raise ValueError(msg)
-            return replacements.pop()
+            expression = FlextInfraUtilitiesQualifiedNames.dotted_name(original_node)
+            if expression is None:
+                return None
+            position = self.get_metadata(PositionProvider, original_node).start
+            runtime = FlextInfraUtilitiesRopeRuntimeModules
+            offset = self.line_offsets[position.line - 1] + position.column
+            scope = runtime.scope_at(
+                self.original,
+                offset,
+            )
+            actual = runtime.expression_name(scope, expression)
+            if actual is None and expression in self.wildcard_names:
+                lexical = self.get_metadata(ScopeProvider, original_node, None)
+                if lexical is None or not lexical[expression]:
+                    msg = f"unresolved native wildcard nesting reference: {expression}"
+                    raise ValueError(msg)
+            if actual is None and isinstance(root, cst.Name):
+                lexical = self.get_metadata(ScopeProvider, root, None)
+                if (
+                    lexical is not None
+                    and any(
+                        isinstance(binding, ImportAssignment)
+                        for binding in lexical[root.value]
+                    )
+                    and expression in self.wildcard_names
+                ):
+                    msg = f"unresolved native nesting import reference: {expression}"
+                    raise ValueError(msg)
+            return self._replacement(scope, expression, offset)
 
         @override
         def leave_Name(
@@ -286,9 +495,6 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             updated_node: cst.Name,
         ) -> cst.BaseExpression:
 
-            bound = self._single_binding(original_node, ambiguity="binding")
-            if bound is None:
-                return updated_node
             parent = self.get_metadata(ParentNodeProvider, original_node)
             if FlextInfraUtilitiesQualifiedNames.rebinds_name_in_place(
                 parent,
@@ -315,10 +521,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 self._resolves_bare_after_nesting(original_node)
             ):
                 return updated_node
-            replacement = self.local_expressions.get(original_node.value)
-            if replacement is None:
-                replacement = bound
-            return cst.parse_expression(replacement)
+            bound = self._single_binding(original_node)
+            return cst.parse_expression(bound) if bound is not None else updated_node
 
         @override
         def leave_Attribute(
@@ -326,27 +530,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             original_node: cst.Attribute,
             updated_node: cst.Attribute,
         ) -> cst.BaseExpression:
-            value = original_node.value
-            module = (
-                self.module_aliases.get(value.value)
-                if isinstance(value, cst.Name)
-                else None
-            )
-            if (
-                module is not None
-                and original_node.attr.value in self.bindings_by_module[module]
-            ):
-                return updated_node.with_changes(
-                    value=cst.Name(self.owners_by_module[module]),
-                )
-            bound = self._single_binding(original_node, ambiguity="attribute")
+            bound = self._single_binding(original_node)
             if bound is None:
                 return updated_node
-            owner, name = bound.split(".", maxsplit=1)
-            return cst.Attribute(
-                value=cst.Attribute(value=updated_node.value, attr=cst.Name(owner)),
-                attr=cst.Name(name),
-            )
+            return cst.parse_expression(bound)
 
         @override
         def leave_ImportFrom(
@@ -355,26 +542,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             updated_node: cst.ImportFrom,
         ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
 
-            if not isinstance(updated_node.names, cst.ImportStar):
-                kept = tuple(
-                    imported
-                    for imported in updated_node.names
-                    if not self._retires_module_binding(imported)
-                )
-                if not kept:
-                    return cst.RemoveFromParent()
-                if len(kept) != len(updated_node.names):
-                    updated_node = updated_node.with_changes(
-                        names=FlextInfraUtilitiesQualifiedNames.normalized_import_aliases(
-                            kept,
-                            parenthesized=bool(updated_node.lpar),
-                        ),
-                    )
-            bindings = self.bindings_by_module.get(
-                self._import_module(original_node),
-                {},
-            )
-            if not bindings or isinstance(updated_node.names, cst.ImportStar):
+            if isinstance(updated_node.names, cst.ImportStar):
                 return updated_node
             aliases: list[cst.ImportAlias] = []
             seen: set[t.Pair[str, str]] = set()
@@ -382,10 +550,13 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 name = (
                     FlextInfraUtilitiesQualifiedNames.dotted_name(imported.name) or ""
                 )
-                owner = bindings.get(name)
-                rewritten = (
-                    imported.with_changes(name=cst.Name(owner)) if owner else imported
-                )
+                owner = self._import_owner(original_node, name)
+                if owner is not None:
+                    self.retired_imports.add(
+                        self._alias_name(imported.asname) if imported.asname else name,
+                    )
+                    continue
+                rewritten = imported
                 identity = (
                     FlextInfraUtilitiesQualifiedNames.dotted_name(rewritten.name) or "",
                     self._alias_name(rewritten.asname) if rewritten.asname else "",
@@ -402,103 +573,6 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 ),
             )
 
-        def _retires_module_binding(self, imported: cst.ImportAlias) -> bool:
-            """Whether an import only binds a module no longer read as one.
-
-            Returns:
-                The resulting ``bool``.
-
-            """
-            local = (
-                self._alias_name(imported.asname)
-                if imported.asname
-                else FlextInfraUtilitiesQualifiedNames.dotted_name(imported.name) or ""
-            )
-            return local in self.module_aliases and local not in self.scan.residual
-
-        @override
-        def leave_Import(
-            self,
-            original_node: cst.Import,
-            updated_node: cst.Import,
-        ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
-
-            kept = tuple(
-                imported
-                for imported in updated_node.names
-                if not self._retires_module_binding(imported)
-            )
-            if not kept:
-                return cst.RemoveFromParent()
-            if len(kept) == len(updated_node.names):
-                return updated_node
-            return updated_node.with_changes(
-                names=FlextInfraUtilitiesQualifiedNames.normalized_import_aliases(
-                    kept,
-                    parenthesized=False,
-                ),
-            )
-
-        def _bound_locals(
-            self,
-            statement: cst.BaseSmallStatement,
-        ) -> t.VariadicTuple[str]:
-            """Return the local names one import statement binds.
-
-            Returns:
-                The bound names, or an empty tuple for other statements.
-
-            """
-            if not isinstance(statement, cst.Import | cst.ImportFrom):
-                return ()
-            names = statement.names
-            if isinstance(names, cst.ImportStar):
-                return ()
-            return tuple(
-                self._alias_name(imported.asname)
-                if imported.asname
-                else FlextInfraUtilitiesQualifiedNames.dotted_name(imported.name) or ""
-                for imported in names
-            )
-
-        @override
-        def leave_SimpleStatementLine(
-            self,
-            original_node: cst.SimpleStatementLine,
-            updated_node: cst.SimpleStatementLine,
-        ) -> (
-            cst.BaseStatement
-            | cst.FlattenSentinel[cst.BaseStatement]
-            | cst.RemovalSentinel
-        ):
-            bound = tuple(
-                local
-                for statement in original_node.body
-                for local in self._bound_locals(statement)
-            )
-            modules = tuple(
-                dict.fromkeys(
-                    self.module_aliases[local]
-                    for local in bound
-                    if local in self.module_aliases and local in self.scan.read
-                ),
-            )
-            owner_imports = tuple(
-                cst.parse_statement(
-                    f"from {module} import {self.owners_by_module[module]}\n",
-                )
-                for module in modules
-                if module not in self.emitted_owner_imports
-                and module not in self.scan.owner_imports
-            )
-            if not owner_imports:
-                return updated_node
-            self.emitted_owner_imports.update(modules)
-            kept: tuple[cst.BaseStatement, ...] = (
-                (updated_node,) if updated_node.body else ()
-            )
-            return cst.FlattenSentinel((*kept, *owner_imports))
-
         @override
         def leave_Assign(
             self,
@@ -508,7 +582,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
 
             return FlextInfraUtilitiesQualifiedNames.filter_exports(
                 updated_node,
-                self.definitions,
+                self.definitions.keys() | self.retired_imports,
             )
 
         @override
@@ -520,7 +594,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
 
             return FlextInfraUtilitiesQualifiedNames.filter_exports(
                 updated_node,
-                self.definitions,
+                self.definitions.keys() | self.retired_imports,
             )
 
     @staticmethod
@@ -569,10 +643,12 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         cls,
         source: str,
         *,
+        native: t.Pair[p.Infra.RopeProject, p.Infra.RopeResource],
         module_name: str,
         is_package_init: bool,
         bindings_by_module: t.MappingKV[str, t.StrMapping],
         definitions: t.StrMapping,
+        sources: t.MappingKV[Path, str],
     ) -> str:
         """Return binding-proven import and usage rewrites without effects.
 
@@ -580,29 +656,71 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             Binding-proven import and usage rewrites without effects.
 
         """
-        scan = cls._module_alias_scan(
-            source,
-            module_name=module_name,
-            is_package_init=is_package_init,
+        transformer = cls._NestingTransformer(
+            scope=(module_name, is_package_init),
             bindings_by_module=bindings_by_module,
+            definitions=definitions,
+            native=native,
+            source=source,
+            sources=sources,
+            resolvers=(
+                cls._imported_module,
+                cls._member_name,
+                cls._nesting_import_route,
+            ),
         )
-        return (
-            MetadataWrapper(cst.parse_module(source))
-            .visit(
-                cls._NestingTransformer(
-                    scope=(module_name, is_package_init),
-                    bindings_by_module=bindings_by_module,
-                    definitions=definitions,
-                    scan=scan,
-                    resolvers=(
-                        cls._imported_module,
-                        cls._resolved_relative,
-                        cls._member_name,
-                    ),
-                ),
-            )
-            .code
+        edits = FlextInfraUtilitiesSemanticNestingTypes._quoted_type_edits(
+            native[0],
+            native[1],
+            source,
+            transformer._type_reference,
         )
+        transformer.quoted.update(((edit.start, edit.end), edit) for edit in edits)
+        updated = MetadataWrapper(cst.parse_module(source)).visit(transformer).code
+        if transformer.quoted:
+            msg = f"unmatched native nesting quote ranges: {sorted(transformer.quoted)}"
+            raise ValueError(msg)
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        original = runtime.module_imports_for_pymodule(native[0], transformer.original)
+        elected = runtime.module_imports_for_pymodule(
+            native[0],
+            runtime.build_string_module(
+                native[0],
+                transformer.elected_source,
+                resource=native[1],
+            ),
+        )
+        imports = runtime.module_imports_for_pymodule(
+            native[0],
+            runtime.build_string_module(native[0], updated, resource=native[1]),
+        )
+        for statement in elected.imports:
+            info = statement.import_info
+            previous = [
+                old.import_info
+                for old in original.imports
+                if type(old.import_info) is type(info)
+                and (
+                    not isinstance(info, p.Infra.RopeFromImport)
+                    or (
+                        isinstance(old.import_info, p.Infra.RopeFromImport)
+                        and old.import_info.module_name == info.module_name
+                        and old.import_info.level == info.level
+                    )
+                )
+            ]
+            added = [
+                pair
+                for pair in info.names_and_aliases
+                if not any(pair in old.names_and_aliases for old in previous)
+            ]
+            if added:
+                imports.add_import(
+                    runtime.from_import(info.module_name, info.level, added)
+                    if isinstance(info, p.Infra.RopeFromImport)
+                    else runtime.normal_import(added),
+                )
+        return imports.get_changed_source()
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticCutoverNestingReferences"]

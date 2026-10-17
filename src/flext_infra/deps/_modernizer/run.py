@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, config, m, r, t, u
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -163,7 +163,7 @@ class FlextInfraPyprojectModernizerRun:
             return self._rewrite_constraints(validated.value, dry_run=dry_run)
         found = u.Infra.find_all_pyproject_files(
             self.root,
-            skip_dirs=c.Infra.PYPROJECT_SKIP_DIRS,
+            skip_dirs=frozenset(config.Infra.codegen.pyproject_scan_excluded_dirs),
             project_paths=(
                 tuple(path / c.PYPROJECT_FILENAME for path in project_paths.value)
                 if source_migration is not None

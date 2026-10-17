@@ -48,7 +48,8 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         *,
         source_states: tuple[m.Cli.AtomicFileState, ...] = (),
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
-        planned_sources: t.MappingKV[Path, str] | None = None,
+        planned_sources: t.MappingKV[Path, str | None] | None = None,
+        project_roots: t.VariadicTuple[Path] = (),
     ) -> Generator[
         t.Triple[
             p.Infra.RopeProject,
@@ -70,6 +71,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
 
         """
         root = root.resolve()
+        project_roots = tuple(sorted({project.resolve() for project in project_roots}))
+        if any(not project.is_relative_to(root) for project in project_roots):
+            msg = "Rope declared project root is outside the original authority"
+            raise ValueError(msg)
         if not source_states:
             paths = (
                 FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(
@@ -104,6 +109,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             for plan in declared_files
             if plan.desired_content is not None
         }
+        retired = frozenset(
+            plan.path for plan in declared_files if plan.desired_content is None
+        )
         # Consumed states include the dependency modules native reads loaded
         # from the checkout-local environment; they stay verified inputs, but
         # only repository-owned sources are planning targets (70dc29f1b9
@@ -115,6 +123,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 if state.path.is_relative_to(root)
                 and state.path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
                 if state.content is not None
+                and state.path not in retired
                 and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
                     root, state.path
                 )
@@ -131,7 +140,8 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         }
         with (
             FlextInfraUtilitiesRopeCore.open_project(
-                next(path for path in (root, *root.parents) if path.is_dir())
+                next(path for path in (root, *root.parents) if path.is_dir()),
+                project_roots=project_roots or None,
             ) as live,
             closing(
                 FlextInfraRopeProject.from_atomic_reads(
@@ -152,8 +162,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                                     ).as_posix()
                                     for folder in (
                                         root,
+                                        *project_roots,
                                         *(
-                                            root / name
+                                            project / name
+                                            for project in (root, *project_roots)
                                             for name in config.Infra.source_scan.roots
                                         ),
                                     )
@@ -208,7 +220,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         root: Path,
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
-        planned_sources: t.MappingKV[Path, str],
+        planned_sources: t.MappingKV[Path, str | None],
     ) -> t.Pair[
         t.VariadicTuple[m.Cli.AtomicFileState],
         t.VariadicTuple[m.Infra.CodegenFilePlan],
@@ -226,7 +238,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         declarations = {plan.path: plan for plan in declared_files}
         for supplied_path, source in planned_sources.items():
             path = supplied_path.resolve()
-            content = source.encode(c.DEFAULT_ENCODING)
+            content = source.encode(c.DEFAULT_ENCODING) if source is not None else None
             declared = declarations.get(path)
             if declared is not None:
                 if declared.desired_content != content:

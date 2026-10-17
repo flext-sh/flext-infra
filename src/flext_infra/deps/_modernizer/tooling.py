@@ -208,17 +208,6 @@ class FlextInfraPyprojectModernizerTooling:
                     if declared_roots
                     else tools.mypy_path or derived_mypy_path
                 ),
-                # The tree as it stands; a scaffold re-derives this field from
-                # its planned sources before its final pyproject render.
-                "mypy_facade_rebind_modules": u.Infra.facade_rebind_modules(
-                    project_dir,
-                    request.planned_sources,
-                ),
-                "mypy_generated_source_modules": tuple(
-                    pattern
-                    for package in u.Infra.generated_source_packages(project_dir)
-                    for pattern in (package, f"{package}.*")
-                ),
                 "ruff_runtime_evaluated_base_classes": (
                     u.Infra.runtime_evaluated_base_classes(
                         project_dir,

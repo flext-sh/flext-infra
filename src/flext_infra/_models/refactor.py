@@ -109,6 +109,12 @@ class FlextInfraModelsRefactor(
             bool,
             m.Field(description="Whether the rename includes inherited declarations"),
         ] = False
+        docs: Annotated[
+            bool,
+            m.Field(
+                description="Include native identity-visible string and comment occurrences"
+            ),
+        ] = False
 
     class SemanticRenameDecision(m.ImmutableValueModel):
         """Domain-selected name for an observed introducing declaration."""
@@ -136,7 +142,7 @@ class FlextInfraModelsRefactor(
         """Explicit domain naming intent, resolved by the actual object inventory."""
 
         qualified_name: t.NonEmptyStr = m.Field(
-            description="Introducing callable identity"
+            description="Introducing class, callable, or module identity"
         )
         replacement_name: t.NonEmptyStr = m.Field(description="Canonical domain name")
         reason: t.NonEmptyStr = m.Field(description="Semantic justification")
@@ -152,6 +158,10 @@ class FlextInfraModelsRefactor(
                 min_length=1, description="Explicit domain names for inventoried owners"
             )
         )
+        consumer_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Explicit external consumer checkout roots for this run",
+        )
 
     class SemanticRenamePlan(m.ImmutableValueModel):
         """Reversible native rename artifact with its complete authenticated closure."""
@@ -166,6 +176,26 @@ class FlextInfraModelsRefactor(
         )
         candidate: FlextInfraModelsCodegenTransactionModels.StageSourcePlan = m.Field(
             description="Authenticated complete source and runtime candidate closure"
+        )
+        consumer_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="External scopes elected before producer publication",
+        )
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            default=(), description="Original physical binding and consumption epoch"
+        )
+        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
+            default=(),
+            description="Original native directory-election receipts",
+        )
+        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
+            m.Field(
+                default=(),
+                description="Original native path-election topology receipts",
+            )
+        )
+        moves: t.VariadicTuple[t.Pair[Path, Path]] = m.Field(
+            default=(), description="Native module source and destination effects"
         )
 
     class RuleDeltaOptions(FlextInfraModelsBase.FrozenArbitrary):
@@ -807,6 +837,10 @@ class FlextInfraModelsRefactor(
             Path | None,
             m.Field(description="Authenticated semantic rename artifact to consume"),
         ] = None
+        consumer_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Explicit external consumer checkout roots for this run",
+        )
 
     class SemanticRenamePlanCommand(m.ContractModel):
         """Produce an inventory-derived rename artifact without applying changes."""

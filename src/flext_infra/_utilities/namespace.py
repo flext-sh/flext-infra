@@ -26,6 +26,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeSource,
 )
+from flext_infra._utilities._rope_analysis.sourcescan import (
+    FlextInfraUtilitiesRopeAnalysisSourceScan,
+)
 
 
 class FlextInfraUtilitiesCodegenNamespace:
@@ -308,7 +311,9 @@ class FlextInfraUtilitiesCodegenNamespace:
 
         """
         assignments: MutableMapping[str, ast.expr] = {}
-        for node in tree.body:
+        for node in FlextInfraUtilitiesRopeAnalysisSourceScan.export_declaration_body(
+            tree
+        ):
             if isinstance(node, ast.Assign):
                 assignments.update(
                     (target.id, node.value)
@@ -376,7 +381,9 @@ class FlextInfraUtilitiesCodegenNamespace:
             filename=str(file_path),
         )
         result: t.StrSequence = ()
-        for node in tree.body:
+        for node in FlextInfraUtilitiesRopeAnalysisSourceScan.export_declaration_body(
+            tree
+        ):
             match node:
                 case ast.Assign(targets=targets, value=value) if any(
                     isinstance(target, ast.Name) and target.id == c.Infra.DUNDER_ALL

@@ -40,7 +40,10 @@ class FlextInfraMarkdownGateBase(FlextInfraGate):
         markdown_files: list[Path] = []
         for path in u.Infra.iter_matching_files(project_dir, includes=["*.md"]):
             relative_parts = path.relative_to(project_dir).parts
-            if any(part in c.Infra.CHECK_EXCLUDED_DIRS for part in relative_parts):
+            if any(
+                part in config.Infra.codegen.check_excluded_dirs
+                for part in relative_parts
+            ):
                 continue
             if (
                 len(relative_parts) > 1

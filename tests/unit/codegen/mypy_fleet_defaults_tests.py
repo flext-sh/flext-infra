@@ -25,35 +25,18 @@ class TestsMypyFleetMandatoryDefaults:
         policy = config.Infra.tooling.tools.mypy
         validated = m.Infra.MypyConfig.model_validate(policy.model_dump(by_alias=True))
         tm.that(tuple(validated.plugins), eq=tuple(policy.plugins))
-        tm.that(
-            tuple(validated.disable_error_code),
-            eq=tuple(policy.disable_error_code),
-        )
 
     @staticmethod
-    @pytest.mark.parametrize("change", ["empty", "missing", "additional"])
-    def test_selected_policy_rejects_unauthorized_suspensions(
-        change: str,
+    @pytest.mark.parametrize(
+        "field", ["disable-error-code", "facade-rebind-error-codes"]
+    )
+    def test_selected_policy_rejects_retired_suspensions(
+        field: str,
     ) -> None:
-        """No complete payload may remove a required code or suspend another."""
+        """No suppression catalog can return through the owned typed boundary."""
         payload = config.Infra.tooling.tools.mypy.model_dump(by_alias=True)
-        codes = list(config.Infra.tooling.tools.mypy.disable_error_code)
-        if change == "empty":
-            codes.clear()
-        elif change == "missing":
-            codes.pop()
-        else:
-            codes.append("assignment")
-        payload["disable-error-code"] = codes
-        with pytest.raises(e.PydanticValidationError, match="Mypy ruling"):
-            m.Infra.MypyConfig.model_validate(payload)
-
-    @staticmethod
-    def test_selected_policy_requires_a_declared_suspension_field() -> None:
-        """Missing policy does not silently introduce schema-owned defaults."""
-        payload = config.Infra.tooling.tools.mypy.model_dump(by_alias=True)
-        del payload["disable-error-code"]
-        with pytest.raises(e.PydanticValidationError, match="disable-error-code"):
+        payload[field] = []
+        with pytest.raises(e.PydanticValidationError, match=field):
             m.Infra.MypyConfig.model_validate(payload)
 
     @staticmethod
@@ -62,8 +45,6 @@ class TestsMypyFleetMandatoryDefaults:
         [
             ("string-settings", "plugins", "pydantic.v1.mypy"),
             ("string-settings", "disable_error_code", "assignment"),
-            ("string-settings", "enable_error_code", "call-arg"),
-            ("string-settings", "enable-error-code", "prop-decorator"),
             ("string-settings", "disable-error-code", "assignment"),
             ("string-settings", "plugins ", "pydantic.v1.mypy"),
             ("string-settings", "python_version", "0.0"),
@@ -127,22 +108,18 @@ class TestsMypyFleetMandatoryDefaults:
         tm.that(validated.string_settings["enable_error_code"], eq="arg-type")
         tm.that(validated.boolean_settings["ignore_errors"], eq=False)
         tm.that(tuple(validated.plugins), eq=tuple(policy.plugins))
-        tm.that(
-            tuple(validated.disable_error_code),
-            eq=tuple(policy.disable_error_code),
-        )
 
     @staticmethod
-    def test_generic_options_reject_mixed_enabled_suspended_codes() -> None:
-        """A comma-separated list cannot hide a suspended code among others."""
+    def test_generic_options_allow_enabling_formerly_suspended_codes() -> None:
+        """A stricter native diagnostic selection never suppresses another code."""
         policy = config.Infra.tooling.tools.mypy
         payload = policy.model_dump(by_alias=True)
         payload["string-settings"] = {
             **policy.string_settings,
-            "enable_error_code": f"arg-type, {policy.disable_error_code[0]} ",
+            "enable_error_code": "arg-type, call-arg",
         }
-        with pytest.raises(e.PydanticValidationError, match="re-enable suspended"):
-            m.Infra.MypyConfig.model_validate(payload)
+        validated = m.Infra.MypyConfig.model_validate(payload)
+        tm.that(validated.string_settings["enable_error_code"], eq="arg-type, call-arg")
 
     @staticmethod
     @pytest.mark.parametrize(

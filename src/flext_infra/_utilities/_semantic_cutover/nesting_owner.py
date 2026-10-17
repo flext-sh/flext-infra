@@ -116,28 +116,54 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         file_path: Path,
         classes: t.MappingKV[str, ast.ClassDef],
         patterns: t.StrSequence,
+        function_patterns: t.StrSequence,
+        *,
+        require_collection: bool,
     ) -> p.Result[str]:
         """Elect an existing collected suite, otherwise derive Tests<Unit>."""
         elected = r[str]
-        suites = [name for name in classes if cls._pytest_name_matches(name, patterns)]
+        suites = [
+            name
+            for name, node in classes.items()
+            if cls._pytest_name_matches(name, patterns)
+            and any(
+                isinstance(member, ast.FunctionDef | ast.AsyncFunctionDef)
+                and cls._pytest_name_matches(member.name, function_patterns)
+                for member in node.body
+            )
+        ]
         if len(suites) > 1:
             return elected.fail(
                 f"class-nesting requires exactly one collected suite for "
                 f"{convention.module_name}: {', '.join(suites)}",
             )
-        if suites:
+        prefix = convention.module_policy.project_prefix
+        prefix = prefix if prefix.startswith("Tests") else f"Tests{prefix}"
+        if suites and suites[0].startswith(prefix):
             return elected.ok(suites[0])
+        if suites:
+            return elected.fail(
+                f"class-nesting requires native Rope prefix rename before electing "
+                f"{convention.module_name}.{suites[0]} (required prefix {prefix})",
+            )
+        if len(classes) == 1:
+            existing = next(iter(classes))
+            if existing.startswith(prefix) and (
+                not require_collection or cls._pytest_name_matches(existing, patterns)
+            ):
+                return elected.ok(existing)
         stem = (
             file_path.stem
             .removeprefix("test_")
             .removesuffix("_tests")
             .removesuffix("_test")
         )
-        prefix = convention.module_policy.project_prefix
         owner = (
             prefix if prefix.startswith("Tests") else f"Tests{prefix}"
         ) + u.derive_class_stem(stem)
-        if not owner.isidentifier() or not cls._pytest_name_matches(owner, patterns):
+        if not owner.isidentifier() or (
+            require_collection and not cls._pytest_name_matches(owner, patterns)
+        ):
             return elected.fail(
                 f"class-nesting derived suite {owner} is not collected by pytest "
                 f"in {convention.module_name}",
@@ -203,7 +229,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         return isinstance(value, ast.Name)
 
     @classmethod
-    def _loose_value_name(cls, node: ast.stmt) -> str | None:
+    def _loose_value_name(cls, node: ast.stmt, *, strict: bool = False) -> str | None:
         """Return the bound name of a loose value or explicit PEP 695 alias.
 
         Returns:
@@ -212,17 +238,25 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         """
         if isinstance(node, ast.TypeAlias):
             return node.name.id
+        if (
+            strict
+            and isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+        ):
+            return node.target.id
         if isinstance(node, ast.Assign) and len(node.targets) == 1:
             target, value, annotation = node.targets[0], node.value, None
         elif isinstance(node, ast.AnnAssign) and node.value is not None:
             target, value, annotation = node.target, node.value, node.annotation
         else:
             return None
-        loose = (
-            isinstance(target, ast.Name)
-            and not (target.id.startswith("__") and target.id.endswith("__"))
-            and not cls._is_pure_reference(value)
-            and not cls._is_typing_declaration(value, annotation)
+        loose = isinstance(target, ast.Name) and (
+            strict
+            or (
+                not (target.id.startswith("__") and target.id.endswith("__"))
+                and not cls._is_pure_reference(value)
+                and not cls._is_typing_declaration(value, annotation)
+            )
         )
         return target.id if loose and isinstance(target, ast.Name) else None
 
@@ -232,6 +266,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         tree: ast.Module,
         *,
         values: bool,
+        strict: bool = False,
     ) -> t.VariadicTuple[str]:
         """Return loose functions and value bindings in module order.
 
@@ -245,7 +280,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
                 names.append(node.name)
             elif isinstance(node, ast.TypeAlias):
                 names.append(node.name.id)
-            elif values and (name := cls._loose_value_name(node)) is not None:
+            elif (
+                values
+                and (name := cls._loose_value_name(node, strict=strict)) is not None
+            ):
                 names.append(name)
         return tuple(dict.fromkeys(names))
 
@@ -308,6 +346,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         *,
         owner: str,
         module_name: str,
+        strict: bool = False,
     ) -> p.Result[t.VariadicTuple[str]]:
         """Return the loose members the owner body can hold, in module order.
 
@@ -334,7 +373,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             name = (
                 node.name
                 if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
-                else cls._loose_value_name(node)
+                else cls._loose_value_name(node, strict=strict)
             )
             if name is not None and name in selected:
                 nodes_by_member[name] = node
@@ -343,7 +382,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             name = (
                 node.name
                 if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
-                else cls._loose_value_name(node)
+                else cls._loose_value_name(node, strict=strict)
             )
             if name is None or name not in selected or name in bound:
                 continue

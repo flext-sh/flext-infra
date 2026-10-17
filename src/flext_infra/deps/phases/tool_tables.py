@@ -178,11 +178,8 @@ class FlextInfraToolTablesPhase:
                 value=config.Infra.codegen.toolchain.python_version,
             ),
             toml.ListOp(key=c.Infra.PLUGINS, values=mypy.plugins, strategy=replace),
-            toml.ListOp(
-                key="disable_error_code",
-                values=mypy.disable_error_code,
-                strategy=replace,
-            ),
+            toml.RemoveOp(key="disable_error_code"),
+            toml.RemoveOp(key="ignore_errors"),
         ]
         operations.append(
             toml.SetOp(
@@ -216,7 +213,7 @@ class FlextInfraToolTablesPhase:
         A workspace that retired a tree declares it once in its manifest
         (``exclusions``, ``content_only`` or ``external_dependency_paths``);
         every root-scoped projection (vulture paths, ruff src/namespace-
-        packages/per-file-ignores) filters on this declared set instead of
+        packages) filters on this declared set instead of
         probing the disk, which oscillates between the deps pass and the
         root-materializing gen pass. An invalid manifest fails loud.
 

@@ -21,6 +21,49 @@
 
 ## Runtime is the authority
 
+The existing `refactor rename-plan` CLI action accepts `SemanticRenameSelections`
+JSON through `--decisions`. A selection identifies the introducing class,
+callable, or module and its intended name. `consumer_roots` is an optional JSON
+array of absolute checkout roots for this invocation, not a persistent rename
+catalog. The containing workspace and its declared `.gitmodules` members are
+discovered automatically, including invocations from one attached member.
+External consumers are explicit typed run inputs, not reverse-dependency guesses
+or an implicit host-wide inventory. Standalone invocations retain their own scope
+plus those declared consumers.
+
+Native Rope `MultiProjectRefactoring.get_all_changes` computes every elected
+project's changes before publication. Module selections use the native nullable
+offset and produce authenticated create/retire file effects. Planning does not
+move or write source files. The artifact retains the original binding epoch,
+consumer scope and candidate updates. `refactor rename-preview` and `make mod`
+with the existing rename artifact input rederive that candidate and reject
+source drift before publishing through the shared semantic transaction. Each
+consumer retains its own native source-folder election, so independently owned
+`tests` packages do not compete for one module identity. Provider, receivers and
+generated exports form one declared dependency group. Projection planning reads
+the original authenticated native overlay, including proposed module retirement;
+only the fully composed candidate enters the physical runtime. Preparation and
+default staged checks consume that same group before its journal publishes. The
+existing CLI `mod --rename-plan=<artifact> --apply` composes the artifact with
+target-only AST and semantic planning before that group's publication. Ordinary
+`mod` accepts repeated `--consumer-roots <absolute-checkout>` options and builds
+the same captured read scope without a manual rename catalog. The request root
+remains the syntax/declaration target; elected consumers are reference readers
+and receive only proven dependency effects. The common coordinate parent is not
+a discovery root. Staged native module destinations retain the captured origin
+mode, as does publication. A plan
+captured before a producer upgrade is not a portable release migration history;
+a changed epoch must be reconciled causally, never by guessing an old name.
+
+Package-directory renames are refused by this file-effect boundary. Native
+string payloads and framework registration are not implicitly renamed; they
+remain subject to the existing consumer validation and declaration owners.
+
+The AST/semantic candidate is not yet an all-phases atomic guarantee: the legacy
+text, CSV and independent loop callbacks still expose effectful operations.
+Their existing owners need pure planning ports before those effects can join the
+same publication group. Source-only changes are not runtime or gate receipts.
+
 Correct runtime behavior defines the contract; tests verify it. Replace mocks, fake
 tools, private-function access, and assertions that only check how code was written
 with observable inputs and effects through public interfaces, preserving functional

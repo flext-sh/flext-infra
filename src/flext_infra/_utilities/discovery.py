@@ -11,7 +11,7 @@ from importlib.machinery import PathFinder
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import c, r, t
+from flext_infra import c, config, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesNamespaceConfig,
     FlextInfraUtilitiesProjectDiscovery,
@@ -298,7 +298,11 @@ class FlextInfraUtilitiesDiscovery(
         """
         if not repository_root.exists() or not repository_root.is_dir():
             return r[t.SequenceOf[Path]].ok([])
-        effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
+        effective_skip = (
+            skip_dirs
+            if skip_dirs is not None
+            else frozenset(config.Infra.codegen.deps_discovery_excluded_dirs)
+        )
         # Explicit project paths are a hard write-scope boundary. Without one,
         # discovery is strictly local to the repository supplied by the caller.
         scan_roots = (

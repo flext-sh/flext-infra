@@ -27,12 +27,18 @@ class FlextInfraCodegenStaging:
 
     _phases: ClassVar[frozenset[str]] = frozenset(c.Infra.CodegenStagedFilePhase)
 
-    @staticmethod
+    @classmethod
     def prepare_python_plans(
+        cls,
         workspace: Path,
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
-        """Prepare joint producer bytes against planned policy before sealing.
+        """Prepare each owning project's joint bytes against its planned policy.
+
+        Each project consumes its own complete Python and metadata plans. Shared
+        read-only workspace context does not join independent publication groups.
+        The publisher must keep each project's prepared metadata and Python in
+        one component, preserving any explicitly declared cross-project groups.
 
         Returns:
             Prepared plans retaining their original authority and topology.
@@ -43,6 +49,17 @@ class FlextInfraCodegenStaging:
         )
 
         result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        projects = tuple(dict.fromkeys(plan.project for plan in plans))
+        if len(projects) > 1:
+            prepared_by_path: MutableMapping[Path, m.Infra.CodegenFilePlan] = {}
+            for project in projects:
+                local = cls.prepare_python_plans(
+                    workspace, tuple(plan for plan in plans if plan.project == project)
+                )
+                if local.failure:
+                    return result_type.from_failure(local)
+                prepared_by_path.update((plan.path, plan) for plan in local.value)
+            return result_type.ok(tuple(prepared_by_path[plan.path] for plan in plans))
         if not any(
             plan.path.suffix in {".py", ".pyi"} and plan.desired_content is not None
             for plan in plans
@@ -69,6 +86,9 @@ class FlextInfraCodegenStaging:
                 for plan in plans
             },
             inputs=sources.value,
+            workspaces=(projects[0],)
+            if projects and not projects[0].is_relative_to(workspace)
+            else (),
         )
         if prepared.failure:
             return result_type.from_failure(prepared)
@@ -102,7 +122,6 @@ class FlextInfraCodegenStaging:
         *,
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         workspace: Path,
-        runtime_root: Path,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Admit exact composed staged bytes with every native default gate.
 
@@ -142,38 +161,51 @@ class FlextInfraCodegenStaging:
         )
         if inputs.failure:
             return result_type.from_failure(inputs)
+        projects = tuple(dict.fromkeys(plan.project for plan in plans))
+        scopes: list[Path] = []
+        for project in projects:
+            scope = FlextInfraStagedPackage.workspace_root(project)
+            if scope.failure:
+                return result_type.from_failure(scope)
+            if scope.value not in scopes:
+                scopes.append(scope.value)
         planned = FlextInfraStagedPackage.plan_sources(
-            workspace, updates, inputs=inputs.value
+            workspace,
+            updates,
+            inputs=inputs.value,
+            workspaces=tuple(
+                scope
+                for scope in scopes
+                if not any(
+                    scope != parent and scope.is_relative_to(parent)
+                    for parent in scopes
+                )
+            ),
         )
         if planned.failure:
             return result_type.from_failure(planned)
-        owned_runtime = u.Infra.runtime_environment_dir(planned.value.workspace).parent
-        if runtime_root.resolve() != owned_runtime.resolve():
-            return result_type.fail(
-                "candidate runtime differs from its original source owner"
-            )
-        projects = tuple(dict.fromkeys(plan.project for plan in plans))
         with TemporaryDirectory(prefix="flext-source-admission-reports-") as directory:
 
             def validate(root: Path) -> p.Result[bool]:
-                consumed = FlextInfraCodegenTransaction.consume_source_runtime(
-                    planned.value, root, runtime_root
-                )
-                if consumed.failure:
-                    return r[bool].from_failure(consumed)
                 for project in projects:
-                    candidate = root / project.relative_to(workspace)
+                    runtime_root = u.Infra.runtime_environment_dir(project).parent
+                    consumed = FlextInfraCodegenTransaction.consume_source_runtime(
+                        planned.value, root, runtime_root, project_root=project
+                    )
+                    if consumed.failure:
+                        return r[bool].from_failure(consumed)
+                    relative = project.relative_to(planned.value.workspace)
+                    candidate = root / relative
                     checked = FlextInfraWorkspaceChecker(
                         repository_root=candidate
                     ).execute_candidate(
                         m.Infra.RunCommand(
                             repository_root=candidate,
-                            reports_dir=str(
-                                Path(directory) / project.relative_to(workspace)
-                            ),
+                            reports_dir=str(Path(directory) / relative),
                             check_only=True,
                         ),
                         planned.value,
+                        project_root=project,
                     )
                     if checked.failure:
                         return r[bool].from_failure(checked)

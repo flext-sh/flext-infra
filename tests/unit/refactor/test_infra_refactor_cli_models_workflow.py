@@ -23,6 +23,157 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
     """Behavior contract for test_infra_refactor_cli_models_workflow."""
 
     @staticmethod
+    @pytest.mark.parametrize("kind", ["class", "module"])
+    def test_native_rename_plan_captures_three_roots_before_any_effect(
+        tmp_path: Path,
+        kind: str,
+    ) -> None:
+        """The public action derives every reference without a consumer map."""
+        producer, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        declaration = package / "original.py"
+        declaration.write_text(
+            "class Original:\n"
+            "    @staticmethod\n"
+            "    def value() -> str:\n"
+            "        return 'native'\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        roots = []
+        consumers = []
+        for index in range(2):
+            root, consumer_package = u.Tests.create_lazy_init_workspace(
+                tmp_path,
+                project_name=f"native-consumer-{index}",
+                package_name=f"native_consumer_{index}",
+            )
+            consumer = consumer_package / "consumer.py"
+            consumer.write_text(
+                f"from {package.name}.original import Original as Bound\n"
+                "class Foreign:\n"
+                "    class Original:\n"
+                "        pass\n"
+                "VALUE = Bound.value()\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            roots.append(root)
+            consumers.append(consumer)
+        unselected = tmp_path / "unselected.py"
+        unselected.write_text("Original = 'unselected'\n", encoding=c.DEFAULT_ENCODING)
+        originals = {
+            path: path.read_bytes() for path in (declaration, *consumers, unselected)
+        }
+        selections = m.Infra.SemanticRenameSelections(
+            decisions=(
+                m.Infra.SemanticRenameSelection(
+                    qualified_name=f"{package.name}.original"
+                    + (".Original" if kind == "class" else ""),
+                    replacement_name="Renamed" if kind == "class" else "renamed",
+                    reason="Native identity propagation before the coordinated cut",
+                ),
+            ),
+            consumer_roots=tuple(roots),
+        )
+        artifact_path = producer / "native.artifact"
+        arguments = [
+            "refactor",
+            "rename-plan",
+            f"--repository-root={producer}",
+            f"--output={artifact_path.name}",
+            f"--decisions={selections.model_dump_json()}",
+        ]
+        tm.that(main(arguments), eq=0)
+        artifact = m.Infra.SemanticRenamePlan.model_validate_json(
+            artifact_path.read_bytes()
+        )
+        tm.that(artifact.candidate.workspaces, eq=(producer, *roots))
+        for consumer in consumers:
+            proposed = tm.not_none(artifact.candidate.updates[consumer])
+            tm.that(proposed, has="class Original:")
+            tm.that(proposed, has="VALUE = Bound.value()")
+            tm.that(
+                proposed,
+                has="import Renamed as Bound"
+                if kind == "class"
+                else ".renamed import Original as Bound",
+            )
+        if kind == "module":
+            destination = declaration.with_name("renamed.py")
+            tm.that(artifact.moves, eq=((declaration, destination),))
+            tm.that(artifact.candidate.updates[declaration], eq=None)
+            tm.that(artifact.candidate.updates[destination], eq=declaration.read_text())
+            tm.that(destination.exists(), eq=False)
+        else:
+            tm.that(
+                tm.not_none(artifact.candidate.updates[declaration]),
+                has="class Renamed:",
+            )
+        tm.that(main(arguments), eq=0)
+        tm.that(
+            m.Infra.SemanticRenamePlan.model_validate_json(artifact_path.read_bytes()),
+            eq=artifact,
+        )
+        for path, content in originals.items():
+            tm.that(path.read_bytes(), eq=content)
+
+    @staticmethod
+    def test_member_rename_plan_discovers_internal_consumers_from_composition(
+        tmp_path: Path,
+    ) -> None:
+        """A member invocation elects the existing containing-workspace owner."""
+        root, _ = u.Tests.create_lazy_init_workspace(tmp_path)
+        producer, package = u.Tests.create_lazy_init_workspace(
+            root,
+            project_name="member-producer",
+            package_name="member_producer",
+        )
+        consumer_root, consumer_package = u.Tests.create_lazy_init_workspace(
+            root,
+            project_name="member-consumer",
+            package_name="member_consumer",
+        )
+        (root / c.Infra.GITMODULES).write_text(
+            f'[submodule "{producer.name}"]\npath = {producer.name}\n'
+            f"url = https://example.invalid/{producer.name}.git\n"
+            f'[submodule "{consumer_root.name}"]\npath = {consumer_root.name}\n'
+            f"url = https://example.invalid/{consumer_root.name}.git\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        source = package / "service.py"
+        source.write_text("class Original:\n    pass\n", encoding=c.DEFAULT_ENCODING)
+        consumer = consumer_package / "consumer.py"
+        consumer.write_text(
+            f"from {package.name}.service import Original\nVALUE = Original()\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        selections = m.Infra.SemanticRenameSelections(
+            decisions=(
+                m.Infra.SemanticRenameSelection(
+                    qualified_name=f"{package.name}.service.Original",
+                    replacement_name="Renamed",
+                    reason="Native containing-workspace cut",
+                ),
+            )
+        )
+        tm.that(
+            main([
+                "refactor",
+                "rename-plan",
+                f"--repository-root={producer}",
+                "--output=native.artifact",
+                f"--decisions={selections.model_dump_json()}",
+            ]),
+            eq=0,
+        )
+        artifact = m.Infra.SemanticRenamePlan.model_validate_json(
+            (producer / "native.artifact").read_bytes()
+        )
+        tm.that(artifact.candidate.workspace, eq=root)
+        tm.that(
+            tm.not_none(artifact.candidate.updates[consumer]), has="VALUE = Renamed()"
+        )
+        tm.that(source.read_text(), has="class Original:")
+
+    @staticmethod
     @pytest.mark.parametrize(
         "output_kind", ["artifact", "source", "config", "metadata", "symlink"]
     )

@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 
 from flext_cli import u
 
-from flext_infra import c, m, r, t
+from flext_infra import c, config, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesDocsScopeBuildMixin,
@@ -83,7 +83,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
             path
             for path in search_root.rglob("*.md")
             if not any(
-                part in c.Infra.DOC_EXCLUDED_DIRS or part.startswith(".")
+                part in config.Infra.codegen.docs_excluded_dirs or part.startswith(".")
                 for part in path.relative_to(search_root).parts
             )
         )

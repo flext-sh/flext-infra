@@ -53,6 +53,15 @@ class FlextInfraConfigModelsWorkspace:
                 ),
             ),
         ]
+        layer: Annotated[
+            FlextInfraConfigVocabulary.MemberArchitectureLayer | None,
+            m.Field(
+                description=(
+                    "Declared architecture layer (domain or platform); "
+                    "absent leaves the member outside the layered sets"
+                ),
+            ),
+        ] = None
 
     class RefactorConfigSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Refactor file-selection configuration."""

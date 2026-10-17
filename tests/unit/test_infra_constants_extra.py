@@ -11,7 +11,7 @@ import inspect
 import sys
 from pathlib import Path
 
-from flext_infra import c, m
+from flext_infra import c, config, m
 from tests import tm, u
 
 
@@ -153,8 +153,8 @@ class TestsFlextInfraInfraConstantsExtra:
     @staticmethod
     def test_excluded_dirs_are_immutable() -> None:
         """Test excluded dirs are immutable."""
-        excluded = c.Infra.COMMON_EXCLUDED_DIRS
-        tm.that(excluded, is_=frozenset)
+        excluded = config.Infra.codegen.analysis_excluded_dirs
+        tm.that(excluded, is_=tuple)
 
     @staticmethod
     def test_all_status_values_are_uppercase() -> None:
@@ -182,7 +182,7 @@ class TestsFlextInfraInfraConstantsExtra:
     @staticmethod
     def test_excluded_dirs_no_duplicates() -> None:
         """Test excluded dirs no duplicates."""
-        common = c.Infra.COMMON_EXCLUDED_DIRS
-        doc = c.Infra.DOC_EXCLUDED_DIRS
+        common = config.Infra.codegen.analysis_excluded_dirs
+        doc = config.Infra.codegen.docs_excluded_dirs
         tm.that(len(common), eq=len(set(common)))
         tm.that(len(doc), eq=len(set(doc)))

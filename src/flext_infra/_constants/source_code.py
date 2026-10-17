@@ -49,75 +49,11 @@ class FlextInfraConstantsSourceCode:
     )
     "Regex: one complete TOML table header with an optional comment."
 
-    # --- Directory exclusion sets (was: class Excluded) ---
-    COMMON_EXCLUDED_DIRS: ClassVar[frozenset[str]] = frozenset({
-        ".git",
-        ".agents-sync-home",
-        ".test-tmp",
-        ".venv",
-        ".worktrees",
-        "node_modules",
-        "__pycache__",
-        "dist",
-        "dist-packages",
-        "build",
-        ".reports",
-        ".mypy_cache",
-        ".pytest_cache",
-        ".ruff_cache",
-        "site-packages",
-        "venv",
-    })
-    "Common directories to exclude from analysis across all scripts."
-    PYTHON_DISCOVERY_SKIP_DIRS: ClassVar[frozenset[str]] = COMMON_EXCLUDED_DIRS
-    "Non-productive roots excluded while discovering Python analyzer surfaces."
-    DOC_EXCLUDED_DIRS: ClassVar[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
-        "crg-reports",
-        "incoming",
-        "legado",
-        "site",
-    }
-    "Live docs exclude generated sites and immutable or historical evidence roots."
-    PYPROJECT_SKIP_DIRS: ClassVar[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
-        ".claude.disabled",
-        "context_test",
-        "rope_ws",
-        "tmp_flow_test",
-        "tests",
-        "examples",
-        "legado",
-    }
-    "Directories to skip when scanning pyproject.toml files."
-    CHECK_EXCLUDED_DIRS: ClassVar[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
-        ".archive",
-        ".claude",
-        ".codex",
-        ".cursor",
-        ".gemini",
-        ".opencode",
-        ".beads",
-        "reports",
-        ".agents",
-        # Runtime tool state (Serena memories, Kilo plans): regenerated caches,
-        # never governed source — excluded from every quality-check surface.
-        ".serena",
-        ".kilo",
-        ".omo",
-        ".tmp",
-        ".snapshots",
-        ".benchmarks",
-        ".hypothesis",
-        ".vscode",
-        ".mypy_cache",
-        ".pytest_cache",
-        ".ruff_cache",
-        ".pyrefly_cache",
-        "htmlcov",
-        "legado",
-        "site",
-        "target",
-    }
-    "Directories to exclude during quality checks."
+    # NOTE: the directory-exclusion vocabulary is DERIVED from the declared
+    # exclusion registry (config/codegen.yaml exclusions -> CodegenConfigSpec
+    # computed projections) composed with the artifact analysis_exclude flags
+    # and the VCS-derived names; the former COMMON_EXCLUDED_DIRS family and
+    # its parallel copies were removed with that registry.
     GITHUB_AGENT_PROJECTION_DIRS: ClassVar[frozenset[str]] = frozenset({
         "agents",
         "hooks",
@@ -125,27 +61,11 @@ class FlextInfraConstantsSourceCode:
         "skills",
     })
     "GitHub provider directories owned by the agentsctl projection."
-    ITERATION_EXCLUDED_PARTS: ClassVar[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
-        "dist-packages",
-        "site-packages",
-        "venv",
-    }
-    "Path parts to skip during file iteration (superset of COMMON_EXCLUDED_DIRS)."
     TRANSIENT_PYTEST_SCRATCH_PART: ClassVar[t.RegexPattern] = re.compile(
         r"^\.flext-.+\.pytest-scratch\.",
     )
     "Transient per-run pytest basetemp directories the runners create inside"
     " the repository; analyzers must never descend into them."
-    VALIDATION_CLONE_EXCLUDES: ClassVar[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
-        ".archive",
-        ".ropeproject",
-        "htmlcov",
-    }
-    "Directories excluded when cloning a project tree for post-apply validation."
-    WORKTREE_TRANSACTION_EXCLUDED_DIRS: ClassVar[frozenset[str]] = (
-        COMMON_EXCLUDED_DIRS | {".pyrefly_cache", ".cache"}
-    )
-    "Cache directories excluded from isolated worktree transaction deltas."
 
     # --- Encoding (was: class Encoding) ---
     ENCODING_DEFAULT: ClassVar[str] = "utf-8"

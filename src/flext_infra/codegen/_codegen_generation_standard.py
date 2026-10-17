@@ -275,6 +275,15 @@ class FlextInfraCodegenGenerationStandardMixin(
         runtime_import_lines = cls._runtime_import_lines(plan, type_checking_root_names)
         return m.Infra.LazyInitRootRender(
             autogen_header=c.Infra.AUTOGEN_HEADER,
+            owner_class=(
+                u.Infra.project_prefix(
+                    plan.context.init_path,
+                    source_project=source_project,
+                )
+                + "Package"
+                if plan.context.surface == c.Infra.DIR_TESTS
+                else ""
+            ),
             docstring=cls._format_root_package_docstring(
                 current_pkg,
                 u.Infra.copyright_notice(

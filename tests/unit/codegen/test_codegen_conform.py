@@ -99,6 +99,29 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConform):
                 file for file in selected if file.path.name == c.Infra.GITIGNORE
             )
             independent = tuple(file for file in selected if file is not rejected)
+            if scenario.endswith("source-race"):
+                bridge, original = next(
+                    (file, file.before)
+                    for file in planned.value.files
+                    if file not in selected
+                    and file.dependency_group is None
+                    and isinstance(file.before, m.Cli.AtomicFileState)
+                    and not u.Infra.codegen_file_requires_effect(file)
+                )
+                rejected = rejected.model_copy(
+                    update={"source_states": (*rejected.source_states, original)},
+                )
+                independent = (
+                    *(
+                        file.model_copy(
+                            update={"source_states": (*file.source_states, original)},
+                        )
+                        if file.path.name == c.Infra.MAKEFILE_FILENAME
+                        else file
+                        for file in independent
+                    ),
+                    bridge,
+                )
             expected = next(
                 file
                 for file in independent

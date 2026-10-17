@@ -41,6 +41,9 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         *,
         inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
         runtime_root: Path | None = None,
+        workspaces: t.VariadicTuple[Path] = (),
+        runtime_check: bool = True,
+        modes: t.MappingKV[Path, int] | None = None,
     ) -> p.Result[T]:
         """Validate a journal-owned source view without publishing live files.
 
@@ -50,6 +53,9 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             validator: A callable that validates the source view.
             inputs: Original caller source states required to remain unchanged.
             runtime_root: Declared physical runtime for pre-check candidate imports.
+            workspaces: Explicit composition scopes sharing the candidate view.
+            runtime_check: Consume runtime after semantic composition, not during syntax planning.
+            modes: Native file-effect modes for newly staged module resources.
 
         Returns:
             A result wrapping the validation outcome or the first failure encountered.
@@ -64,6 +70,8 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             workspace,
             updates,
             inputs=inputs,
+            workspaces=workspaces,
+            modes=modes,
         )
         if planned.failure:
             return r[T].from_failure(planned)
@@ -85,7 +93,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
                 participant = next(
                     item
                     for item in prepared.plan.layout.file_participants
-                    if item.root == plan.workspace
+                    if item.root == (plan.workspaces or (plan.workspace,))[0]
                 )
                 view_root = participant.transaction_root / "source-view"
                 candidates = {
@@ -100,9 +108,11 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
                 if materialized.failure:
                     return r[T].from_failure(materialized)
                 current_session, manifest = materialized.value
-                consumed = self.consume_source_runtime(plan, view_root, runtime_root)
-                if consumed.failure:
-                    return r[T].from_failure(consumed)
+                if runtime_check:
+                    for runtime in plan.workspaces or (runtime_root,):
+                        consumed = self.consume_source_runtime(plan, view_root, runtime)
+                        if consumed.failure:
+                            return r[T].from_failure(consumed)
                 value = validator(view_root, candidates)
                 barrier = self._source_preview_current(
                     plan,
@@ -174,6 +184,8 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         plan: m.Infra.StageSourcePlan,
         view_root: Path,
         runtime_root: Path | None,
+        *,
+        project_root: Path | None = None,
     ) -> p.Result[bool]:
         """Import sealed runtime modules before any candidate check callback.
 
@@ -183,6 +195,12 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         """
         if runtime_root is None:
             return r[bool].ok(value=True)
+        layouts = plan.layouts
+        if project_root is not None:
+            selected = FlextInfraStagedPackage.project_layouts(plan, project_root)
+            if selected.failure:
+                return r[bool].from_failure(selected)
+            layouts = selected.value
         environment = u.Infra.runtime_environment_dir(
             plan.workspace, runtime_root=runtime_root
         )
@@ -198,7 +216,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
                 layout.package_name,
                 str(view_root / layout.src_dir.relative_to(plan.workspace)),
             )
-            for layout in plan.layouts
+            for layout in layouts
         )
         modules = tuple(
             sorted({
@@ -207,7 +225,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
                     if path.stem == "__init__"
                     else path.relative_to(layout.src_dir).with_suffix("").parts
                 )
-                for layout in plan.layouts
+                for layout in layouts
                 for path in (state.path for state in plan.inputs)
                 if path.suffix == c.Infra.EXT_PYTHON
                 and path.is_relative_to(layout.package_dir)

@@ -423,7 +423,13 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             FlextInfraProtocolsRopeRuntime.RopeSourceConsumption
         ]: ...
 
-        def source_consumer(self) -> AbstractContextManager[Self]: ...
+        def source_selection(self) -> AbstractContextManager[None]: ...
+
+        def source_consumer(
+            self,
+            *,
+            consumer_root: Path | None = None,
+        ) -> AbstractContextManager[Self]: ...
 
         @property
         def authenticated_sources(self) -> bool: ...
@@ -434,6 +440,16 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def replay_source_consumption(
             self, receipt: m.Infra.CodegenPhaseAnalysis
         ) -> None: ...
+
+        def consumed_source_states(self) -> t.VariadicTuple[m.Cli.AtomicFileState]: ...
+
+        def consumed_source_directories(
+            self,
+        ) -> t.VariadicTuple[m.Cli.AtomicDirectoryInventory]: ...
+
+        def consumed_source_topology(
+            self,
+        ) -> t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan]: ...
 
         def source_state(
             self, path: Path, *, required: bool = True
@@ -534,6 +550,13 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         resource: FlextInfraProtocolsRopeRuntime.RopeResource
         new_contents: str
+
+    @runtime_checkable
+    class RopeMoveResource(Protocol):
+        """Native observational relocation; publication remains infra-owned."""
+
+        resource: FlextInfraProtocolsRopeRuntime.RopeResource
+        new_resource: FlextInfraProtocolsRopeRuntime.RopeResource
 
     @runtime_checkable
     class RopeContractMatch(Protocol):

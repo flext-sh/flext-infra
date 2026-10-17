@@ -264,7 +264,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         return tuple(
             env_dir
             for env_dir in env_dirs
-            if env_dir not in c.Infra.PYTHON_DISCOVERY_SKIP_DIRS
+            if env_dir not in config.Infra.codegen.analysis_excluded_dirs
         )
 
     @staticmethod

@@ -1,4 +1,4 @@
-"""Project-owned Ruff exemptions load through the managed-artifact document.
+"""Project-local managed artifacts cannot reintroduce Ruff exemptions.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,53 +6,30 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+import pytest
 
 from tests import tm, u
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 
 class TestsFlextInfraProjectRuffArtifacts:
-    """A project declares Ruff exemptions without a second config document."""
+    """The real project configuration loader rejects retired Ruff catalogs."""
 
     @staticmethod
-    def test_declared_per_file_ignores_reach_the_resolution(
-        tmp_path: Path,
-    ) -> None:
-        """ManagedArtifacts.Ruff validates and stays on the composed resolution."""
+    @pytest.mark.parametrize(
+        "pattern", ["src/**", "tests/**", "scripts/**", "examples/**"]
+    )
+    def test_project_ruff_exemptions_are_rejected(tmp_path: Path, pattern: str) -> None:
+        """Every first-party surface retains the same native rule policy."""
         root = tmp_path / "project"
         (root / "config").mkdir(parents=True)
         (root / "config" / "tooling.yaml").write_text(
-            "ManagedArtifacts:\n"
-            "  Ruff:\n"
-            "    per_file_ignores:\n"
-            "      src/pkg/module.py: [invalid-function-name]\n",
+            "ManagedArtifacts:\n  Ruff:\n    per_file_ignores:\n"
+            f"      {pattern}: [ALL]\n",
             encoding="utf-8",
         )
-
-        resolution = tm.ok(u.Infra.load_project_managed_artifacts(root))
-
-        tm.that(
-            resolution.artifacts.Ruff.per_file_ignores
-            == {
-                "src/pkg/module.py": ("invalid-function-name",),
-            },
-            truth=True,
-        )
-
-    @staticmethod
-    def test_pattern_declared_by_two_sources_fails(tmp_path: Path) -> None:
-        """One path glob has exactly one owning source."""
-        root = tmp_path / "project"
-        (root / "config").mkdir(parents=True)
-        declaration = (
-            "ManagedArtifacts:\n"
-            "  Ruff:\n"
-            "    per_file_ignores:\n"
-            "      src/pkg/module.py: [invalid-function-name]\n"
-        )
-        for name in ("one.yaml", "two.yaml"):
-            (root / "config" / name).write_text(declaration, encoding="utf-8")
-
-        error = tm.fail(u.Infra.load_project_managed_artifacts(root))
-
-        tm.that("duplicate project Ruff per-file ignore" in error, truth=True)
+        tm.fail(u.Infra.load_project_managed_artifacts(root), has="Ruff")

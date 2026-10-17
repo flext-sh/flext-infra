@@ -106,6 +106,8 @@ class FlextInfraWorkspaceChecker(
         self,
         params: m.Infra.RunCommand,
         source_plan: m.Infra.StageSourcePlan,
+        *,
+        project_root: Path,
     ) -> p.Result[bool]:
         """Check a sealed candidate using its original physical runtime owner.
 
@@ -133,8 +135,29 @@ class FlextInfraWorkspaceChecker(
         current = FlextInfraStagedPackage.source_inputs_current(source_plan)
         if current.failure:
             return r[bool].from_failure(current)
-        runtime_root = u.Infra.runtime_environment_dir(source_plan.workspace).parent
-        return self._execute_payload(params, runtime_root=runtime_root)
+        if project_root not in {layout.project_root for layout in source_plan.layouts}:
+            return r[bool].fail(
+                "candidate checker project has no original source authority"
+            )
+        environment = u.Infra.runtime_environment_dir(project_root)
+        if environment.is_symlink() or not environment.is_dir():
+            return r[bool].fail(f"candidate runtime must be physical: {environment}")
+        identity = u.Cli.atomic_plan_directory_chain(environment)
+        if identity.failure:
+            return r[bool].from_failure(identity)
+        checked = self._execute_payload(params, runtime_root=environment.parent)
+        if checked.failure:
+            return r[bool].from_failure(checked)
+        observed = u.Cli.atomic_plan_directory_chain(environment)
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        if environment.is_symlink() or observed.value != identity.value:
+            return r[bool].fail(
+                "candidate physical runtime identity changed during check"
+            )
+        return FlextInfraStagedPackage.source_inputs_current(source_plan).map(
+            lambda _: checked.value
+        )
 
     def _execute_payload(
         self,
@@ -175,7 +198,11 @@ class FlextInfraWorkspaceChecker(
             pyright_args=tuple(self.parse_tool_args(params.pyright_args)),
             selected_files=selected_files,
             runtime_dependency_collector=FlextInfraRuntimeDependencyCollector(
-                python=Path(sys.executable),
+                python=(
+                    Path(sys.executable)
+                    if runtime_root is None
+                    else u.Infra.runtime_python(runtime_root)
+                ),
                 development_only=(),
             ),
         )

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from importlib.util import resolve_name
 from pathlib import Path
 from types import MappingProxyType
@@ -37,6 +38,68 @@ def _assert_side_effect_free_lazy_bootstrap(plan: m.Infra.LazyInitPlan) -> None:
 
 class TestsFlextInfraCodegenGeneration:
     """Validate observable generated Python artifacts without legacy internals."""
+
+    @staticmethod
+    def test_class_owned_test_root_installs_lazy_exports(tmp_path: Path) -> None:
+        """The public renderer emits a real lazy class-body initializer."""
+        repository, _ = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-rendered",
+            package_name="flext_rendered",
+        )
+        testing = repository / c.Infra.DIR_TESTS
+        testing.mkdir()
+        testing.joinpath("constants.py").write_text(
+            "class TestsFlextRenderedConstants:\n"
+            "    __all__ = ('TestsFlextRenderedConstants', 'c')\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        plan = m.Infra.LazyInitPlan(
+            context=m.Infra.LazyInitPackageContext(
+                pkg_dir=testing,
+                init_path=testing / c.Infra.INIT_PY,
+                current_pkg=c.Infra.DIR_TESTS,
+                surface=c.Infra.DIR_TESTS,
+                importable=True,
+            ),
+            action=c.Infra.LazyInitAction.WRITE,
+            exports=("TestsFlextRenderedConstants", "c"),
+            lazy_map=dict.fromkeys(
+                ("TestsFlextRenderedConstants", "c"),
+                ("tests.constants", "TestsFlextRenderedConstants"),
+            ),
+            eager_dunders={},
+            inline_constants={},
+        )
+        source = FlextInfraCodegenGeneration.render_init(plan)
+        module = ast.parse(source)
+        tm.that(
+            [node.name for node in module.body if isinstance(node, ast.ClassDef)],
+            eq=["TestsFlextRenderedPackage"],
+        )
+        tm.that(
+            all(
+                isinstance(node, (ast.Import, ast.ImportFrom, ast.ClassDef, ast.If))
+                for node in module.body
+            ),
+            eq=True,
+        )
+        testing.joinpath(c.Infra.INIT_PY).write_text(
+            source, encoding=c.DEFAULT_ENCODING
+        )
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                "import sys\nimport tests as package\n"
+                "print('tests.constants' not in sys.modules)\n"
+                "from tests.constants import TestsFlextRenderedConstants\n"
+                "print(package.c is TestsFlextRenderedConstants)\n"
+                "print(package.__all__ == package.TestsFlextRenderedPackage.__all__)\n",
+                python_paths=(str(repository),),
+                cwd=repository,
+            ),
+            eq=["True", "True", "True"],
+        )
+        tm.that(FlextInfraCodegenGeneration.render_init(plan), eq=source)
 
     @staticmethod
     def _owner_sections(

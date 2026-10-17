@@ -691,5 +691,52 @@ class FlextInfraUtilitiesPyproject:
             item.path.as_posix() for item in declared.value if item.managed is not False
         )
 
+    @staticmethod
+    @cache
+    def workspace_member_layer_names(
+        project_root: Path,
+    ) -> t.Pair[frozenset[str], frozenset[str]]:
+        """Derive declared domain/platform member name sets from the topology.
+
+        The containing workspace root resolves first (the superproject when
+        this checkout is a member, the checkout itself otherwise), so a
+        member project classifies through the same declared per-member
+        ``flext-layer`` attributes the workspace composes. A standalone
+        repository (no ``.gitmodules``) declares no members and both sets
+        stay empty — the same topology contract the modernizer applies to
+        internal dependency names. Unknown layer declarations fail closed at
+        the declaration parser.
+
+        Returns:
+            The resulting ``(domain_names, platform_names)`` pair.
+
+        Raises:
+            ValueError: If the topology root or the declarations are invalid.
+
+        """
+        topology = FlextInfraUtilitiesGit.git_repository_root(
+            m.Infra.GitRepoRequest(repo_root=project_root),
+        )
+        if topology.failure:
+            msg = topology.error or f"invalid repository topology: {project_root}"
+            raise ValueError(msg)
+        declared = FlextInfraUtilitiesGit.git_submodule_declarations(
+            topology.value.repository_root,
+        )
+        if declared.failure:
+            msg = (
+                declared.error
+                or f"invalid workspace topology: {topology.value.repository_root}"
+            )
+            raise ValueError(msg)
+        domain: set[str] = set()
+        platform: set[str] = set()
+        for item in declared.value:
+            if item.layer == c.Infra.MemberArchitectureLayer.DOMAIN:
+                domain.add(item.path.name)
+            elif item.layer == c.Infra.MemberArchitectureLayer.PLATFORM:
+                platform.add(item.path.name)
+        return (frozenset(domain), frozenset(platform))
+
 
 __all__: list[str] = ["FlextInfraUtilitiesPyproject"]

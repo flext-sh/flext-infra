@@ -140,12 +140,23 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
                     )
                     return result.fail(str(error), exception=error)
                 managed = normalized == "true"
+            raw_layer = values.get(c.Infra.GITMODULE_LAYER_KEY)
+            layer: c.Infra.MemberArchitectureLayer | None = None
+            if raw_layer is not None:
+                try:
+                    layer = c.Infra.MemberArchitectureLayer(str(raw_layer))
+                except ValueError:
+                    return result.fail(
+                        f"invalid Git submodule layer declaration in {section}: "
+                        f"{raw_layer!r}",
+                    )
             declarations.append(
                 m.Infra.GitSubmoduleDeclaration(
                     path=relative,
                     url=values.get(c.Infra.GITMODULE_URL_KEY, ""),
                     branch=values.get(c.Infra.GITMODULE_BRANCH_KEY, ""),
                     managed=managed,
+                    layer=layer,
                 ),
             )
         return result.ok(tuple(declarations))
@@ -205,7 +216,7 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
     @staticmethod
     def _gitmodules_config(
         repository_root: Path,
-        arguments: t.StrTuple,
+        arguments: t.StrSequence,
         *,
         source_project: p.Infra.RopeProject | None = None,
     ) -> str:
@@ -216,12 +227,9 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
                 str(repository_root / c.Infra.GITMODULES),
                 *arguments,
             )
-        state = source_project.source_state(repository_root / c.Infra.GITMODULES)
-        if state.content is None:
-            msg = "Git submodule manifest has no authenticated original bytes"
-            raise ValueError(msg)
+        content = source_project.source_text(repository_root / c.Infra.GITMODULES)
         with TemporaryFile() as source:
-            source.write(state.content)
+            source.write(content.encode(c.DEFAULT_ENCODING))
             source.seek(0)
             return Git(repository_root).config(
                 "--file", "-", *arguments, istream=source

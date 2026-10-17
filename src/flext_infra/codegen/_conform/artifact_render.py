@@ -67,24 +67,20 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 source_project=source_project,
             )
         )
-        rebinds = u.Infra.facade_rebind_modules(root, sources)
         first_party = tuple(
             FlextInfraToolTablesPhase.first_party_namespaces(
                 path=root,
                 planned_sources=tuple(sources),
             ),
         )
-        if (
-            rebinds == tuple(tooling.mypy_facade_rebind_modules)
-            and first_party == tuple(tooling.first_party)
-            and runtime_bases == tuple(tooling.ruff_runtime_evaluated_base_classes)
+        if first_party == tuple(tooling.first_party) and runtime_bases == tuple(
+            tooling.ruff_runtime_evaluated_base_classes
         ):
             return render_inputs
         return render_inputs.model_copy(
             update={
                 "tooling_runtime": tooling.model_copy(
                     update={
-                        "mypy_facade_rebind_modules": rebinds,
                         "ruff_runtime_evaluated_base_classes": runtime_bases,
                         "first_party": first_party,
                     },

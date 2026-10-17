@@ -341,23 +341,6 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
         "qlty ruleId suffix -> flext-core enforcement tag "
         "(texts SSOT: core ENFORCEMENT_RULES_TEXT)."
     )
-    # Operator ruling 2026-10-05 (SSOT informative-rules law): the complexity
-    # families report in every log, summary, and SARIF but never fail a run —
-    # their census is re-measured as the fleet converges. The duplication
-    # families ride the same non-blocking set for a different reason: the
-    # blocking duplication gate is their single enforcement owner, and a
-    # second blocking route for the same census is a duplicate route.
-    SMELLS_NON_BLOCKING_FAMILIES: ClassVar[frozenset[str]] = frozenset((
-        "boolean-logic",
-        "file-complexity",
-        "function-complexity",
-        "function-parameters",
-        "identical-code",
-        "nested-control-flow",
-        "return-statements",
-        "similar-code",
-    ))
-
     # --- jscpd duplication gate SSOT (flext-infra owns the
     # jscpd plugin behind one centralized `make check` verb; its config is
     # rendered from this typed SSOT at scan time, never a hand-maintained file).
@@ -393,36 +376,12 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
         MappingProxyType({"django": ("j2",)})
     )
     "Parse Jinja projections in place; never duplicate templates into a scan tree."
-    JSCPD_IGNORE_PATTERNS: ClassVar[t.StrSequence] = (
-        "**/__snapshots__/**",
-        "**/__init__.py",
-        "**/api_cases/**",
-        "**/_cases/**",
-        "**/rules/ast-grep/tests/**",
-        "**/rules/ast-grep/rules/**",
-        "**/_cov.py",
-        "**/_parts/**",
-        "**/package-lock.json",
-    )
-    "Generated Python surfaces and structured test-case parameterization files "
-    "excluded semantically; Git owns artifact visibility. ast-grep rule "
-    "fixtures mirror their rule pattern/fix text by design (the fix output IS "
-    "the next stage's valid input), so jscpd would always report the fixture "
-    "pair; the corpus is validated by `ast-grep test`, never by clone count. "
-    "The rules corpus joins it under the same authority: ast-grep's "
-    "declarative format mandates one document per rule id with the shared "
-    "files/ignores/constraints blocks repeated, per-verb and per-position "
-    "rule twins whose bodies differ only in offsets (transforms cannot branch "
-    "or capitalize inside replace templates), and no data sharing across "
-    "documents or files — the twin shape is the format, not authored "
-    "duplication; the corpus is likewise validated by `ast-grep test` "
-    "(operator per-change authorization under the 2026-09-24 suppression "
-    "ruling, granted 2026-10-13 after a deep engine review). "
-    "package-lock.json is npm's emission, not authored code: sibling packages "
-    "of one tool family share resolved dependency lines by construction, so "
-    "their overlap is a data coincidence the resolver owns, never a clone to "
-    "refactor (operator per-change authorization under the 2026-09-24 "
-    "suppression ruling, granted 2026-10-13)."
+    # NOTE: JSCPD_IGNORE_PATTERNS was removed: the duplication gate derives
+    # its ignore list from the declared sgconfig fixture topology, the
+    # generated-surface and snapshot declarations, the artifact
+    # resolver_owned emission type, and the declared exclusion registry
+    # (parameterized case fixtures, part containers, helper modules).
+    # No hand-maintained pattern list remains.
 
     # --- Extended duplication gate (R2 consumer+family scope) ---
     JSCPD_CONSUMER_FAMILY_SCOPE: ClassVar[bool] = True

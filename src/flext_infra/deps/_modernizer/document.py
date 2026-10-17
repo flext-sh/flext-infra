@@ -177,8 +177,6 @@ class FlextInfraPyprojectModernizerDocument:
         table_key: str,
     ) -> None:
         """Reorder a table child or every table in an array child."""
-        if table_key == "per-file-ignores":
-            return
         table = u.Cli.toml_table_child(container, table_key)
         if table is not None:
             cls._reorder_table(table)
@@ -373,7 +371,6 @@ class FlextInfraPyprojectModernizerDocument:
             ),
             *FlextInfraEnsureRuffConfigPhase(
                 tooling,
-                managed_artifacts.artifacts.Ruff,
             ).apply_payload(
                 payload,
                 path=path,
