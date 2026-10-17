@@ -38,6 +38,19 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     """Directory name for flext-infra config files relative to the package root."""
     CODEGEN_LOCAL_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.local.yaml"
     """Local operator override file name, excluded from the tracked baseline."""
+    CODEGEN_PARTIAL_PLAN_SURFACES: ClassVar[
+        frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
+    ] = frozenset((
+        FlextInfraConfigVocabulary.CodegenConformSurface.MAKEFILE,
+        FlextInfraConfigVocabulary.CodegenConformSurface.DOCS_CONFIG,
+        FlextInfraConfigVocabulary.CodegenConformSurface.ENVRC,
+        FlextInfraConfigVocabulary.CodegenConformSurface.PYPROJECT,
+        FlextInfraConfigVocabulary.CodegenConformSurface.MISE_CONFIG,
+        FlextInfraConfigVocabulary.CodegenConformSurface.RUNTIME_BINDINGS,
+        FlextInfraConfigVocabulary.CodegenConformSurface.WORKFLOWS,
+    ))
+    """Surfaces a partial apply plan may publish; every other non-ALL surface is
+    prohibited outside the complete managed run."""
 
     # These enums define the
     # one public conform contract shared by new and existing repositories. The
