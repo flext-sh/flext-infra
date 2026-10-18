@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import sys
 from functools import partial
+from json import dumps
 from importlib.machinery import (
     ExtensionFileLoader,
     ModuleSpec,
@@ -1760,7 +1761,10 @@ class FlextInfraCodegenPreconditions:
             .toml_read_json(lock_path)
             .flat_map(
                 lambda payload: r[m.Infra.LockedEnvironment].create_from_callable(
-                    partial(m.Infra.LockedEnvironment.model_validate, payload)
+                    partial(
+                        m.Infra.LockedEnvironment.model_validate_json,
+                        dumps(payload),
+                    )
                 )
             )
             .flat_map(
