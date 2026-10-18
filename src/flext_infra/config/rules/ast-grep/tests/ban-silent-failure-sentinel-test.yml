@@ -45,7 +45,7 @@ valid:
     def run_guard(validation_result: p.Result[bool]) -> p.Result[bool]:
         if validation_result.failure:
             return False
-        return r[bool].ok(True)
+        return r[bool].ok(value=True)=True)
   - |
     def run(res):
         if res.failure:

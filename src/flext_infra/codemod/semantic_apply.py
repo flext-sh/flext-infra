@@ -1663,7 +1663,7 @@ class FlextInfraCodemodSemanticApply:
 
         """
         if not updated:
-            return r[bool].ok(False)
+            return r[bool].ok(value=False)
         retirement = any(source is None for source in updated.values())
         if retirement and source_analysis is None:
             return r[bool].fail(
