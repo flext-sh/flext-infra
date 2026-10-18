@@ -100,16 +100,32 @@ class TestsFlextInfraGateAcceptance:
         verdict: bool,
     ) -> None:
         """The facade model validates and implements the structural boundary."""
+        location = m.Infra.SarifLocation.model_validate({
+            "physicalLocation": {
+                "artifactLocation": {"uri": "selected.py"},
+                "region": {"startLine": 1, "endLine": 2},
+            },
+        })
+        issue = m.Infra.Issue(
+            file=location.uri,
+            line=1,
+            column=0,
+            code="B101",
+            message="assert used",
+            locations=(location,),
+            related_locations=(location,),
+        )
+        diagnostic: p.Infra.Issue = issue
         params = m.Infra.GateExecutionParams(
             project_dir=tmp_path,
             verdict=verdict,
             outcome=c.Infra.ToolOutcome.FINDINGS,
-            issues=(),
+            issues=(diagnostic,),
             raw_output="native diagnostic\n",
             started=1.0,
         )
         restored = m.Infra.GateExecutionParams.model_validate_json(
-            params.model_dump_json(),
+            params.model_dump_json(round_trip=True),
         )
         boundary: p.Infra.GateExecutionParams = restored
         tm.that(restored.model_dump(), eq=params.model_dump())
@@ -119,6 +135,41 @@ class TestsFlextInfraGateAcceptance:
         tm.that(boundary.project_dir, eq=tmp_path)
         tm.that(boundary.started, eq=params.started)
         tm.that(tuple(boundary.issues), eq=params.issues)
+        tm.that(params.issues[0] is issue, eq=True)
+        tm.that(issue.locations[0] is location, eq=True)
+        tm.that(boundary.issues[0].locations[0].end_line, eq=location.end_line)
+        tm.that(
+            boundary.issues[0].related_locations[0].model_dump(mode="json"),
+            eq=location.model_dump(mode="json"),
+        )
+        execution = m.Infra.GateExecution(
+            result=m.Infra.GateResult(
+                project=tmp_path.name,
+                gate=c.Infra.SECURITY,
+                passed=verdict,
+            ),
+            issues=params.issues,
+            outcome=params.outcome,
+        )
+        tm.that(execution.issues[0] is issue, eq=True)
+        restored_execution = m.Infra.GateExecution.model_validate_json(
+            execution.model_dump_json(exclude_computed_fields=True),
+        )
+        tm.that(
+            restored_execution.issues[0].model_dump(mode="json"),
+            eq=issue.model_dump(mode="json"),
+        )
+        for mode in ("validation", "serialization"):
+            schema = m.Infra.GateExecution.model_json_schema(mode=mode)
+            issue_schema = m.Infra.Issue.model_json_schema(mode=mode)
+            tm.that(
+                schema["$defs"][m.Infra.Issue.__name__]["properties"],
+                eq=issue_schema["properties"],
+            )
+        payload = execution.model_dump(mode="json", exclude_computed_fields=True)
+        payload["issues"] = [{**issue.model_dump(mode="json"), "line": "invalid"}]
+        with pytest.raises(m.ValidationError, match="line"):
+            m.Infra.GateExecution.model_validate_json(tm.ok(u.Cli.json_dumps(payload)))
 
     @staticmethod
     def test_execution_params_rejects_invalid_native_outcome(tmp_path: Path) -> None:
