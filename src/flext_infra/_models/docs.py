@@ -14,10 +14,11 @@ from flext_cli import m
 from flext_infra import c, t
 from flext_infra._models import (
     FlextInfraModelsBase,
+    FlextInfraModelsBase,
     FlextInfraModelsDocsCollection,
     FlextInfraModelsDocsGeneration,
 )
-from flext_infra._models._config.base import FlextInfraConfigModels
+from flext_infra._models._config import FlextInfraConfigModels
 
 
 # Docs transport

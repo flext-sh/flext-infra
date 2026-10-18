@@ -20,20 +20,20 @@ from flext_infra._models import (
     FlextInfraModelsLayout,
     FlextInfraModelsMiseToolchain,
 )
-from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
-from flext_infra._models._config.make import FlextInfraConfigModelsMake
-from flext_infra._models._config.provider import FlextInfraConfigModelsProvider
-from flext_infra._models._config.refactor_campaigns import (
+from flext_infra._models._config import (
+    FlextInfraConfigModelsContexts,
+    FlextInfraConfigModelsContract,
+    FlextInfraConfigModelsMake,
+    FlextInfraConfigModelsProvider,
     FlextInfraConfigModelsRefactorCampaigns,
+    FlextInfraConfigModelsRelease,
+    FlextInfraConfigModelsRender,
+    FlextInfraConfigModelsScaffold,
+    FlextInfraConfigModelsTemplates,
+    FlextInfraConfigModelsWorkspace,
+    FlextInfraConfigVocabulary,
 )
-from flext_infra._models._config.release import FlextInfraConfigModelsRelease
-from flext_infra._models._config.render import FlextInfraConfigModelsRender
-from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
-from flext_infra._models._config.templates import FlextInfraConfigModelsTemplates
-from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
-from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
-from flext_infra._models._git.worktree_state import FlextInfraModelsGitWorktreeState
+from flext_infra._models._git import FlextInfraModelsGitWorktreeState
 
 
 class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):

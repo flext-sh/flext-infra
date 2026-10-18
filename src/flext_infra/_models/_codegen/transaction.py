@@ -16,14 +16,16 @@ from flext_cli import m
 from flext_infra import c, p, t
 from flext_infra._models import (
     FlextInfraModelsBase,
+    FlextInfraModelsCheck,
     FlextInfraModelsCodegenToolchain,
     FlextInfraModelsRope,
+    FlextInfraModelsWorkspace,
 )
-from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
-from flext_infra._models._codegen.pipeline import FlextInfraModelsCodegenPipelineModels
-from flext_infra._models._config.base import FlextInfraConfigModels
-from flext_infra._models.check import FlextInfraModelsCheck
-from flext_infra._models.workspace import FlextInfraModelsWorkspace
+from flext_infra._models._codegen import (
+    FlextInfraModelsCodegenJournalModels,
+    FlextInfraModelsCodegenPipelineModels,
+)
+from flext_infra._models._config import FlextInfraConfigModels
 
 
 class FlextInfraModelsCodegenTransactionModels:

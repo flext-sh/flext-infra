@@ -13,9 +13,12 @@ from typing import Annotated, ClassVar
 from flext_core import m
 
 from flext_infra import c, t
-from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsMixins
-from flext_infra._models.rope import FlextInfraModelsRope
-from flext_infra._models.transformers import FlextInfraModelsTransformers
+from flext_infra._models import (
+    FlextInfraModelsBase,
+    FlextInfraModelsMixins,
+    FlextInfraModelsRope,
+    FlextInfraModelsTransformers,
+)
 
 
 class FlextInfraModelsCensus:

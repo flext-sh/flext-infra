@@ -16,11 +16,13 @@ from packaging.utils import canonicalize_name
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsDepsToolConfig
-from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
-from flext_infra._models._config.make import FlextInfraConfigModelsMake
-from flext_infra._models._config.repository import FlextInfraConfigModelsRepository
-from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
+from flext_infra._models._config import (
+    FlextInfraConfigModelsBeads,
+    FlextInfraConfigModelsContract,
+    FlextInfraConfigModelsMake,
+    FlextInfraConfigModelsRepository,
+    FlextInfraConfigModelsScaffold,
+)
 
 
 class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
