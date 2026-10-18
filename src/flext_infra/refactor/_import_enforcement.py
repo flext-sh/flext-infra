@@ -105,7 +105,7 @@ class FlextInfraImportNormalization(
                 exception=planned.exception,
             )
         if not planned.files:
-            return r[bool].ok(False)
+            return r[bool].ok(value=False)
         prepared = u.Infra.normalize_sources(
             project_root,
             {

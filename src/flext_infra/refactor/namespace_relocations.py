@@ -175,7 +175,7 @@ class FlextInfraNamespaceRelocationCascade:
                 exception=analysis.exception,
             )
         if not analysis.files:
-            return r[bool].ok(False)
+            return r[bool].ok(value=False)
         prepared = u.Infra.normalize_sources(
             project_root,
             {
