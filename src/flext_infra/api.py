@@ -20,9 +20,11 @@ from flext_infra.codegen import (
     FlextInfraCodegenTransaction,
 )
 from flext_infra.codemod import FlextInfraApplyRenames, FlextInfraModTextGateEngine
-from flext_infra.services import FlextInfraCandidateBootstrapService
-from flext_infra.services.codegen import FlextInfraCodegenHandlers
-from flext_infra.services.mod import FlextInfraModHandlers
+from flext_infra.services import (
+    FlextInfraCandidateBootstrapService,
+    FlextInfraCodegenHandlers,
+    FlextInfraModHandlers,
+)
 from flext_infra.validate import FlextInfraNamespaceValidator
 from flext_infra.workspace import (
     FlextInfraRopeWorkspace,
@@ -78,7 +80,7 @@ class FlextInfra(
         return FlextInfraCandidateBootstrapService(
             planner=FlextInfraCodegenConform(
                 repository_root=source_root,
-                ports=None,
+                state=m.Infra.CodegenConformState(repository_root=source_root),
             ),
             transaction=FlextInfraCodegenTransaction(
                 FlextInfraCodegenMiseArtifacts(repository_root=source_root),

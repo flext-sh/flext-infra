@@ -78,7 +78,7 @@ class FlextInfraConformWiring:
         footprint = authorized.value
         planned = FlextInfraCodegenConform(
             repository_root=request.root,
-            ports=None,
+            state=m.Infra.CodegenConformState(repository_root=request.root),
         ).plan(request)
         if planned.failure:
             return r[str].from_failure(planned)

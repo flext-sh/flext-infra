@@ -8,13 +8,13 @@ from __future__ import annotations
 
 from typing import Self, override
 
-from flext_core import FlextService
+from flext_core import s
 
 from flext_infra import FlextInfraCommandPayloadMixin, c, m, p, r, settings, t, u
 
 
 class FlextInfraServiceBase[TDomainResult](
-    FlextService[TDomainResult],
+    s[TDomainResult],
     m.Infra.CommandContext,
     FlextInfraCommandPayloadMixin,
 ):

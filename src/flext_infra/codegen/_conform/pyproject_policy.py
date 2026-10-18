@@ -230,7 +230,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         return u.Infra.format_toml_source(
             u.Cli.toml_dumps(rendered.value),
             path=directory / c.PYPROJECT_FILENAME,
-            toolchain_root=self.repository_root,
+            toolchain_root=self.state.repository_root,
             taplo_version=inputs.spec.toolchain.tool_versions["taplo"],
         )
 

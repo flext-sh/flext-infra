@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from flext_infra._typings.base import CliResultValue, FlextInfraTypesBase
     from flext_infra._typings.collections import FlextInfraTypesCollections
     from flext_infra._typings.rope import FlextInfraTypesRope
+    from flext_infra._typings.rope_native import FlextInfraTypesRopeNative
 
 
 __all__: tuple[str, ...] = (
@@ -25,6 +26,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraTypesBase",
     "FlextInfraTypesCollections",
     "FlextInfraTypesRope",
+    "FlextInfraTypesRopeNative",
 )
 
 install_lazy_exports(
@@ -36,6 +38,7 @@ install_lazy_exports(
         "FlextInfraTypesBase": ".base",
         "FlextInfraTypesCollections": ".collections",
         "FlextInfraTypesRope": ".rope",
+        "FlextInfraTypesRopeNative": ".rope_native",
     }),
     public_exports=__all__,
 )

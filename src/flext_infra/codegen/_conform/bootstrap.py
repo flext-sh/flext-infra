@@ -8,21 +8,25 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import assert_never
+from typing import Annotated, assert_never
 
 from flext_infra import c, m, p, s, t, u
 
 
-class FlextInfraCodegenConformBootstrap(
-    m.Infra.CodegenConformState,
-    s[p.Infra.CodegenResult],
-):
+class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
     """Root of the conform chain: request state and toolchain policy projections.
 
     This is the only orchestrator for Make/toolchain/source conformance.
     Rendering stays in flext-cli; Git-source TOML policy and attached detection
     are composed from their separately owned u.Infra/workspace services.
     """
+
+    state: Annotated[
+        m.Infra.CodegenConformState,
+        m.Field(
+            description="Mutable request-local data owned by one conform invocation.",
+        ),
+    ] = m.Field(m.Infra.CodegenConformState(), validate_default=True)
 
     def _record_file_failure(
         self,
@@ -32,9 +36,9 @@ class FlextInfraCodegenConformBootstrap(
         exception: BaseException | None = None,
     ) -> None:
         """Retain an actual target failure through the shared diagnostic model."""
-        if self.planning_exception is None:
-            self.planning_exception = exception
-        self.planning_issues.append(
+        if self.state.planning_exception is None:
+            self.state.planning_exception = exception
+        self.state.planning_issues.append(
             m.Infra.Issue(
                 file=str(path),
                 line=0,
@@ -107,8 +111,9 @@ class FlextInfraCodegenConformBootstrap(
         if target.repository.package:
             if (
                 target.project is None
-                and self.initial_workspace is not None
-                and target.repository.name == self.initial_workspace.repository.name
+                and self.state.initial_workspace is not None
+                and target.repository.name
+                == self.state.initial_workspace.repository.name
                 and not (target.root / c.PYPROJECT_FILENAME).exists()
             ):
                 msg = f"scaffold environment has no project metadata: {target.root}"

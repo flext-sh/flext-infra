@@ -112,8 +112,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if validated_request.what is c.Infra.CodegenConformSurface.DEPENDENCIES:
             return cls(
                 repository_root=validated_request.root,
-                ports=ports,
-                generation_only=generation_only,
+                state=m.Infra.CodegenConformState(
+                    repository_root=validated_request.root,
+                    ports=ports,
+                    generation_only=generation_only,
+                ),
                 runtime_settings=runtime_settings,
                 initial_context=initial_context,
             ).execute_plan(validated_request)
@@ -134,16 +137,18 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             initialized = cls._initialize_request_git(root, validated_workspace)
             if initialized.failure:
                 return r[p.Infra.CodegenResult].from_failure(initialized)
+        generation_root = (
+            root if repository_root is None else repository_root.expanduser().resolve()
+        )
         service = cls(
-            repository_root=(
-                root
-                if repository_root is None
-                else repository_root.expanduser().resolve()
+            repository_root=generation_root,
+            state=m.Infra.CodegenConformState(
+                repository_root=generation_root,
+                request=validated_request,
+                initial_workspace=validated_workspace,
+                ports=ports,
+                generation_only=generation_only,
             ),
-            request=validated_request,
-            initial_workspace=validated_workspace,
-            ports=ports,
-            generation_only=generation_only,
             runtime_settings=runtime_settings,
             initial_context=initial_context,
         )
@@ -317,15 +322,15 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             The resulting generation or observation outcome.
 
         """
-        request = self.request or m.Infra.CodegenConformRequest(
-            root=self.repository_root,
+        request = self.state.request or m.Infra.CodegenConformRequest(
+            root=self.state.repository_root,
         )
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
         inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
         if inputs.failure:
             return r[p.Infra.CodegenResult].from_failure(inputs)
-        if not self.generation_only:
+        if not self.state.generation_only:
             blocked = self._migrate_declarations_for_apply(request, inputs.value.spec)
             if blocked is not None:
                 return blocked
@@ -359,7 +364,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         migrated = self._migrate_repository_declarations(request)
         if migrated.failure and (
             migrated.error_code != c.Infra.ToolOutcome.ERROR.value
-            or not self.planning_issues
+            or not self.state.planning_issues
         ):
             return r[p.Infra.CodegenResult].from_failure(migrated)
         return None
@@ -571,9 +576,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 "completed migration failure has no residual issue",
                 exception=published.exception,
             )
-        self.planning_issues.extend(parsed.value)
-        if self.planning_exception is None:
-            self.planning_exception = published.exception
+        self.state.planning_issues.extend(parsed.value)
+        if self.state.planning_exception is None:
+            self.state.planning_exception = published.exception
         return r[bool].ok(value=True)
 
     def execute_plan(
@@ -593,7 +598,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 "partial codegen apply is prohibited; use the complete all surface",
             )
         u.Cli.header(
-            "Code generation" if self.generation_only else "Project conformance"
+            "Code generation" if self.state.generation_only else "Project conformance"
         )
         u.Cli.info(
             f"stage=plan mode={request.mode} scope={request.scope} "
@@ -946,7 +951,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             The resulting ``p.Result[bool]``.
 
         """
-        workspace = self.initial_workspace
+        workspace = self.state.initial_workspace
         if workspace is None or workspace.beads is None:
             return r[bool].ok(value=True)
         beads = workspace.beads
@@ -1039,7 +1044,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         written = tuple(path for batch in batches for path in batch.written_files)
         repaired = (
             r[bool].ok(value=True)
-            if self.generation_only
+            if self.state.generation_only
             else self._settle_generation_stage(
                 lambda: self.conform_workspace_beads_routes(request).flat_map(
                     lambda _: self._allow_direnv_after_apply(request, written)
@@ -1175,20 +1180,20 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         result = r[p.Infra.CodegenParticipantPolicy]
-        ports = self.ports
+        ports = self.state.ports
         if ports is None:
             return result.fail(
                 "complete generation requires the facade-wired docs and "
                 "participant policy; "
                 "run it through FlextInfra.codegen_conform",
             )
-        if not self.generation_only:
+        if not self.state.generation_only:
             seeded = self._seed_declared_beads_identity(request.root)
             if seeded.failure:
                 return result.from_failure(seeded)
         policy = ports.participant_policy(
             request.root,
-            initial_workspace=self.initial_workspace,
+            initial_workspace=self.state.initial_workspace,
         )
         if policy.failure:
             return result.from_failure(policy)
@@ -1309,7 +1314,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         u.Cli.header(
-            "Code generation" if self.generation_only else "Project conformance"
+            "Code generation" if self.state.generation_only else "Project conformance"
         )
         u.Cli.info(
             f"stage=plan mode={request.mode} scope={request.scope} "
@@ -1333,9 +1338,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             for repository in plan.repositories
             if repository.path == Path()
         )
-        self.docs_planner = None
+        self.state.docs_planner = None
         if owned:
-            ports = self.ports
+            ports = self.state.ports
             if ports is None:
                 return r[m.Infra.CodegenPlan].fail(
                     "docs planning requires the facade-wired planner before effects"
@@ -1345,7 +1350,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 projects=owned,
                 include_root=True,
             )
-            self.docs_planner = planner
+            self.state.docs_planner = planner
         return planned
 
     @classmethod
@@ -1757,7 +1762,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         """
         if not any(repository.path == Path() for repository in plan.repositories):
             return r[bool].ok(value=True)
-        docs_generator = self.docs_planner
+        docs_generator = self.state.docs_planner
         if docs_generator is None:
             return r[bool].fail("docs publication lacks its original planner")
         failures: list[p.FailureLike] = []

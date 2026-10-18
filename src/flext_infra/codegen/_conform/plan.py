@@ -129,7 +129,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 uv_environments=tuple(environments),
                 files=tuple(files),
                 issues=tuple(issues),
-                exception=self.planning_exception,
+                exception=self.state.planning_exception,
             ),
         )
 
@@ -280,8 +280,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             update={
                 "files": self._bind_codegen_sources(analyzed.value.files, inputs),
                 "inputs": (*analyzed.value.inputs, *inputs.sources),
-                "issues": (*analyzed.value.issues, *self.planning_issues),
-                "exception": analyzed.value.exception or self.planning_exception,
+                "issues": (*analyzed.value.issues, *self.state.planning_issues),
+                "exception": analyzed.value.exception or self.state.planning_exception,
             },
         )
         plan = m.Infra.CodegenPlan(
@@ -569,8 +569,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     inputs,
                 ),
                 "inputs": (*planned.value.inputs, *inputs.sources),
-                "issues": (*planned.value.issues, *self.planning_issues),
-                "exception": planned.value.exception or self.planning_exception,
+                "issues": (*planned.value.issues, *self.state.planning_issues),
+                "exception": planned.value.exception or self.state.planning_exception,
             },
         )
         plan = m.Infra.CodegenPlan(
@@ -612,7 +612,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 m.Infra.RepositoryRef,
             ]
         ]
-        workspace = self.initial_workspace
+        workspace = self.state.initial_workspace
         if workspace is None:
             workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
                 root,
@@ -626,7 +626,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             workspace = workspace_result.value
         current_repository = workspace.repository
         if (
-            self.initial_workspace is None
+            self.state.initial_workspace is None
             and request.what not in c.Infra.DECLARED_TARGET_SURFACES
         ):
             current_target_result = FlextInfraWorkspaceDetector.conform_target(
@@ -642,7 +642,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             current_target = m.Infra.RepositoryConformTarget(
                 repository=current_repository,
                 root=root,
-                toolchain_root=self.repository_root,
+                toolchain_root=self.state.repository_root,
                 make_profile=current_repository.role,
                 beads=workspace.beads,
                 project=workspace.project,
@@ -778,8 +778,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             )
         else:
             outcomes = tuple(type(self).plan_repository_task(task) for task in tasks)
-        if self.planning_exception is None:
-            self.planning_exception = next(
+        if self.state.planning_exception is None:
+            self.state.planning_exception = next(
                 (item.exception for item in outcomes if item.exception is not None),
                 None,
             )
@@ -899,11 +899,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 m.Infra.CodegenRepositoryPlanTask(
                     root=root,
                     workspace=workspace,
-                    initial_workspace=self.initial_workspace,
+                    initial_workspace=self.state.initial_workspace,
                     current_target=current_target,
                     repository=repository,
                     surface=surface,
-                    generation_only=self.generation_only,
+                    generation_only=self.state.generation_only,
                     selected_inputs=(
                         inputs
                         if repository.name == current_target.repository.name
@@ -930,12 +930,12 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return result_type.from_failure(published)
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
-        issues: list[m.Infra.Issue] = list(self.planning_issues)
+        issues: list[m.Infra.Issue] = list(self.state.planning_issues)
         for index, outcome in enumerate(outcomes, start=1):
             issues.extend(outcome.issues)
             files.extend(outcome.files)
-            if self.planning_exception is None:
-                self.planning_exception = outcome.exception
+            if self.state.planning_exception is None:
+                self.state.planning_exception = outcome.exception
             u.Cli.progress(index, len(outcomes), outcome.repository, "conform")
             if (
                 outcome.error
@@ -1026,9 +1026,12 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         )
         planner = cls(
             repository_root=task.current_target.toolchain_root,
-            initial_workspace=task.initial_workspace,
-            generation_only=task.generation_only,
-            provider_plans=task.provider_plans,
+            state=m.Infra.CodegenConformState(
+                repository_root=task.current_target.toolchain_root,
+                initial_workspace=task.initial_workspace,
+                generation_only=task.generation_only,
+                provider_plans=task.provider_plans,
+            ),
         )
         resolved = planner._resolved_repository_root(
             task.root,
@@ -1222,7 +1225,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return result_type.fail(
                 f"declared repository path is not a directory: {repository_root}",
             )
-        if not repository_root.is_dir() and self.initial_workspace is None:
+        if not repository_root.is_dir() and self.state.initial_workspace is None:
             return result_type.fail(
                 f"declared repository checkout is missing: {repository_root}",
             )
