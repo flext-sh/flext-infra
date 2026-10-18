@@ -9,10 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_cli import s as cli_service_base
+from flext_cli import s
 
-from flext_infra import FlextInfraServiceBase, c, m, t, u as infra_u
-from tests import tm, u
+from flext_infra import FlextInfraServiceBase
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraServiceBaseAlias:
@@ -22,7 +22,7 @@ class TestsFlextInfraServiceBaseAlias:
     def test_service_base_generic_alias_flext_is_permitted() -> None:
         """Generic service-root bases must not trigger facade FLEXT enforcement."""
         infra_report = u.check(FlextInfraServiceBase)
-        cli_report = u.check(cli_service_base)
+        cli_report = u.check(s)
 
         tm.that(not infra_report.violations, eq=True)
         tm.that(not cli_report.violations, eq=True)
@@ -50,12 +50,12 @@ class TestsFlextInfraServiceBaseAlias:
         )
         tm.that(service.project_filter, eq=expected)
         values = (value,) if isinstance(value, str) else value or ()
-        normalized = infra_u.Infra.normalize_cli_values(*values)
+        normalized = u.Infra.normalize_cli_values(*values)
         tm.that(
             normalized,
             eq=tuple(expected.split(",")) if expected is not None else (),
         )
-        tm.that(infra_u.Infra.normalize_cli_values(None, *values, None), eq=normalized)
+        tm.that(u.Infra.normalize_cli_values(None, *values, None), eq=normalized)
 
     @staticmethod
     def test_command_root_normalizes_files_and_new_paths(
@@ -73,10 +73,10 @@ class TestsFlextInfraServiceBaseAlias:
                 {"repository_root": str(supplied)},
             )
             tm.that(service.root, eq=expected)
-            tm.that(infra_u.Infra.resolve_repository_root_or_cwd(supplied), eq=expected)
+            tm.that(u.Infra.resolve_repository_root_or_cwd(supplied), eq=expected)
         service = FlextInfraServiceBase[t.JsonPayload]()
         tm.that(service.root, eq=Path.cwd().resolve())
-        tm.that(infra_u.Infra.resolve_repository_root_or_cwd(), eq=service.root)
+        tm.that(u.Infra.resolve_repository_root_or_cwd(), eq=service.root)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -94,7 +94,7 @@ class TestsFlextInfraServiceBaseAlias:
             expected_output = value if isinstance(value, Path) else Path(value.strip())
         tm.that(service.report_path, eq=expected_report)
         tm.that(service.output_dir, eq=expected_output)
-        tm.that(infra_u.Infra.normalize_optional_path(value), eq=expected_report)
+        tm.that(u.Infra.normalize_optional_path(value), eq=expected_report)
 
     @staticmethod
     def test_command_absolute_output_directory(tmp_path: t.Infra.Path) -> None:

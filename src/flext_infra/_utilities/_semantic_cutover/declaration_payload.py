@@ -526,7 +526,8 @@ class FlextInfraUtilitiesDeclarationPayload:
 
     @classmethod
     def _payload_method(
-        cls: p.Infra.RopeProject,
+        cls,
+        project: p.Infra.RopeProject,
         finder: p.Infra.RopeSimilarFinder,
         method: p.Infra.RopePyObject,
         statements: t.SequenceOf[m.Infra.LogicalStatement],
@@ -538,9 +539,12 @@ class FlextInfraUtilitiesDeclarationPayload:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        module_scope = method.get_module().get_scope()
+        owning_module = method.get_module()
+        if owning_module is None:
+            return False
+        module_scope = owning_module.get_scope()
         known_targets = {
-            identity: cls.identity_name(cls, identity).get_object()
+            identity: cls.identity_name(project, identity).get_object()
             for identity in (
                 *c.Infra.PYDANTIC_PAYLOAD_DECORATORS,
                 *c.Infra.PAYLOAD_DESCRIPTOR_DECORATORS,

@@ -24,9 +24,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m
+from flext_infra import config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import tm
+from tests import c, m, tm
 
 if TYPE_CHECKING:
     from tests import t

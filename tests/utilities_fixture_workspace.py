@@ -13,10 +13,10 @@ import shutil
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import config, infra, p, u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra import config, infra, u
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_infra.worktree import FlextInfraWorktreeService
-from tests import c, m, t, tm
+from tests import c, m, p, t, tm
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin

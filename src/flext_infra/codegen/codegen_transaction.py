@@ -78,55 +78,102 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             return r[T].from_failure(planned)
         plan = planned.value
         roots = self.capability_roots("stage-inputs", sorted(plan.roots))
+        runtime: t.Pair[Path | None, bool] = (runtime_root, runtime_check)
+        return self.run_files_locked(
+            roots,
+            lambda scope_root: self._locked_source_preview(
+                scope_root,
+                plan,
+                roots,
+                validator,
+                runtime,
+            ),
+        )
 
-        def validate_locked(scope_root: Path) -> p.Result[T]:
-            source_barrier = FlextInfraStagedPackage.source_inputs_current(plan)
-            if source_barrier.failure:
-                return r[T].from_failure(source_barrier)
-            started = self.begin_files_locked(scope_root, roots, plan.inputs)
-            if started.failure:
-                return r[T].from_failure(started)
-            session = started.value
+    def _locked_source_preview[T](
+        self,
+        scope_root: Path,
+        plan: m.Infra.StageSourcePlan,
+        roots: t.MappingKV[str, Path],
+        validator: Callable[[Path, t.MappingKV[Path, Path]], T],
+        runtime: t.Pair[Path | None, bool],
+    ) -> p.Result[T]:
+        """Validate the locked source view through its prepared session.
 
-            def validate_prepared(
-                prepared: m.Infra.CodegenTransactionSession,
-            ) -> p.Result[T]:
-                participant = next(
-                    item
-                    for item in prepared.plan.layout.file_participants
-                    if item.root == (plan.workspaces or (plan.workspace,))[0]
-                )
-                view_root = participant.transaction_root / "source-view"
-                candidates = {
-                    path: view_root / path.relative_to(plan.workspace)
-                    for path in plan.updates
-                }
-                materialized = self._materialize_source_preview(
-                    prepared,
-                    plan,
-                    view_root,
-                )
-                if materialized.failure:
-                    return r[T].from_failure(materialized)
-                current_session, manifest = materialized.value
-                if runtime_check:
-                    for runtime in plan.workspaces or (runtime_root,):
-                        consumed = self.consume_source_runtime(plan, view_root, runtime)
-                        if consumed.failure:
-                            return r[T].from_failure(consumed)
-                value = validator(view_root, candidates)
-                barrier = self._source_preview_current(
-                    plan,
-                    manifest,
-                    current_session,
-                )
-                if barrier.failure:
-                    return r[T].from_failure(barrier)
-                return self._cleaned_source_preview_value(prepared, value)
+        Args:
+            scope_root: The locked repository scope of the preview.
+            plan: The planned candidate sources pinned to original states.
+            roots: Capability roots leased for the staged inputs.
+            validator: A callable that validates the source view.
+            runtime: The fallback runtime root and its consumption flag.
 
-            return self.publish_prepared_locked(session, validate_prepared)
+        Returns:
+            A result wrapping the validation outcome or the first failure.
 
-        return self.run_files_locked(roots, validate_locked)
+        """
+        source_barrier = FlextInfraStagedPackage.source_inputs_current(plan)
+        if source_barrier.failure:
+            return r[T].from_failure(source_barrier)
+        started = self.begin_files_locked(scope_root, roots, plan.inputs)
+        if started.failure:
+            return r[T].from_failure(started)
+        session = started.value
+
+        def operation(prepared: m.Infra.CodegenTransactionSession) -> p.Result[T]:
+            return self._prepared_source_preview(prepared, plan, validator, runtime)
+
+        return self.publish_prepared_locked(session, operation)
+
+    def _prepared_source_preview[T](
+        self,
+        prepared: m.Infra.CodegenTransactionSession,
+        plan: m.Infra.StageSourcePlan,
+        validator: Callable[[Path, t.MappingKV[Path, Path]], T],
+        runtime: t.Pair[Path | None, bool],
+    ) -> p.Result[T]:
+        """Validate one prepared session's materialized candidate view.
+
+        Args:
+            prepared: The prepared session owning the staging layout.
+            plan: The planned candidate sources pinned to original states.
+            validator: A callable that validates the source view.
+            runtime: The fallback runtime root and its consumption flag.
+
+        Returns:
+            A result wrapping the validation outcome or the first failure.
+
+        """
+        participant = next(
+            item
+            for item in prepared.plan.layout.file_participants
+            if item.root == (plan.workspaces or (plan.workspace,))[0]
+        )
+        view_root = participant.transaction_root / "source-view"
+        candidates = {
+            path: view_root / path.relative_to(plan.workspace) for path in plan.updates
+        }
+        materialized = self._materialize_source_preview(
+            prepared,
+            plan,
+            view_root,
+        )
+        if materialized.failure:
+            return r[T].from_failure(materialized)
+        current_session, manifest = materialized.value
+        if runtime[1]:
+            for runtime_root in plan.workspaces or (runtime[0],):
+                consumed = self.consume_source_runtime(plan, view_root, runtime_root)
+                if consumed.failure:
+                    return r[T].from_failure(consumed)
+        value = validator(view_root, candidates)
+        barrier = self._source_preview_current(
+            plan,
+            manifest,
+            current_session,
+        )
+        if barrier.failure:
+            return r[T].from_failure(barrier)
+        return self._cleaned_source_preview_value(prepared, value)
 
     def _cleaned_source_preview_value[T](
         self,
@@ -180,6 +227,60 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             )
         )
 
+    @classmethod
+    def _sealed_runtime_layouts(
+        cls,
+        plan: m.Infra.StageSourcePlan,
+        project_root: Path | None,
+    ) -> p.Result[t.VariadicTuple[m.Infra.RopeProjectLayout]]:
+        """Elect the original layouts a sealed runtime consumer imports.
+
+        Args:
+            plan: The planned candidate sources pinned to original states.
+            project_root: Optional one consumer whose closure is selected.
+
+        Returns:
+            The elected native layouts, or the original selection failure.
+
+        """
+        layouts = plan.layouts
+        if project_root is not None:
+            selected = FlextInfraStagedPackage.project_layouts(plan, project_root)
+            if selected.failure:
+                return r[t.VariadicTuple[m.Infra.RopeProjectLayout]].from_failure(
+                    selected,
+                )
+            layouts = selected.value
+        return r[t.VariadicTuple[m.Infra.RopeProjectLayout]].ok(layouts)
+
+    @staticmethod
+    def _sealed_runtime_environment(
+        plan: m.Infra.StageSourcePlan,
+        runtime_root: Path,
+    ) -> p.Result[t.Pair[Path, m.Cli.AtomicDirectoryChainPlan]]:
+        """Bind the declared physical runtime and its observed chain identity.
+
+        Args:
+            plan: The planned candidate sources pinned to original states.
+            runtime_root: Declared physical runtime of the consumer.
+
+        Returns:
+            The physical runtime directory with its observed identity.
+
+        """
+        result_type = r[t.Pair[Path, m.Cli.AtomicDirectoryChainPlan]]
+        environment = u.Infra.runtime_environment_dir(
+            plan.workspace, runtime_root=runtime_root
+        )
+        if environment.is_symlink() or not environment.is_dir():
+            return result_type.fail(
+                f"candidate runtime must be physical: {environment}",
+            )
+        observed = u.Cli.atomic_plan_directory_chain(environment)
+        if observed.failure:
+            return result_type.from_failure(observed)
+        return result_type.ok((environment, observed.value))
+
     @staticmethod
     def consume_source_runtime(
         plan: m.Infra.StageSourcePlan,
@@ -196,22 +297,20 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         """
         if runtime_root is None:
             return r[bool].ok(value=True)
-        layouts = plan.layouts
-        if project_root is not None:
-            selected = FlextInfraStagedPackage.project_layouts(plan, project_root)
-            if selected.failure:
-                return r[bool].from_failure(selected)
-            layouts = selected.value
-        environment = u.Infra.runtime_environment_dir(
-            plan.workspace, runtime_root=runtime_root
+        elected = FlextInfraCodegenTransaction._sealed_runtime_layouts(
+            plan, project_root
         )
+        if elected.failure:
+            return r[bool].from_failure(elected)
+        layouts = elected.value
+        sealed = FlextInfraCodegenTransaction._sealed_runtime_environment(
+            plan,
+            runtime_root,
+        )
+        if sealed.failure:
+            return r[bool].from_failure(sealed)
+        environment, identity = sealed.value
         interpreter = u.Infra.runtime_python(plan.workspace, runtime_root=runtime_root)
-        if environment.is_symlink() or not environment.is_dir():
-            return r[bool].fail(f"candidate runtime must be physical: {environment}")
-        observed = u.Cli.atomic_plan_directory_chain(environment)
-        if observed.failure:
-            return r[bool].from_failure(observed)
-        identity = observed.value
         bindings = tuple(
             (
                 layout.package_name,

@@ -13,6 +13,7 @@ from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -249,12 +250,12 @@ class FlextInfraUtilitiesSemanticModelAliases:
         edits = [m.Infra.SourceRewrite(start=begin, end=end, text="")]
         for item in tree.body:
             if isinstance(item, ast.Assign | ast.AnnAssign):
-                targets = (
+                assign_targets = (
                     item.targets if isinstance(item, ast.Assign) else [item.target]
                 )
                 if any(
                     isinstance(target, ast.Name) and target.id == "__all__"
-                    for target in targets
+                    for target in assign_targets
                 ):
                     if not isinstance(item.value, ast.List | ast.Tuple) or any(
                         not isinstance(element, ast.Constant) or element.value != name
@@ -332,7 +333,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
                     imported.name == name for imported in item.names
                 ):
                     continue
-                provider = (
+                provider = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
                     project.get_relative_module(
                         item.module or "", resource.parent, item.level
                     )

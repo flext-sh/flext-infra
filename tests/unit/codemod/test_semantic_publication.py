@@ -1256,7 +1256,7 @@ class TestsFlextInfraSemanticPublication:
                 ),
             )
             tm.that(u.Cli.process_succeeded(fresh.outcome), eq=True)
-            return r[bool].ok(value=True)=True)
+            return r[bool].ok(value=True)
 
         tm.ok(
             FlextInfraSemanticPublication.publish_semantic_file_plans(
@@ -1324,7 +1324,11 @@ class TestsFlextInfraSemanticPublication:
             )
             tm.ok(consumer)
             tm.that(u.Cli.process_succeeded(consumer.value.outcome), eq=True)
-            return r[bool].ok(value=True)=True) if accepted else r[bool].fail("consumer rejected")
+            return (
+                r[bool].ok(value=True)
+                if accepted
+                else r[bool].fail("consumer rejected")
+            )
 
         published = FlextInfraSemanticPublication.publish_semantic_file_plans(
             (),

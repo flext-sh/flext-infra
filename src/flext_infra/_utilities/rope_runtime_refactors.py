@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import cast
 
 from flext_cli import u
@@ -411,13 +411,23 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         if not callable(multiproject):
             msg = "Rope multiproject factory is not callable"
             raise TypeError(msg)
-        refactoring = multiproject(projects[0], resource, offset)
+        # The native proxy and its collector stay behind typed callable views
+        # so the untyped fork members never leak past this boundary.
+        refactoring = cast("Callable[..., p.AttributeProbe]", multiproject)(
+            projects[0],
+            resource,
+            offset,
+        )
         get_all_changes = getattr(refactoring, "get_all_changes", None)
         if not callable(get_all_changes):
             msg = "Rope multiproject does not expose get_all_changes"
             raise TypeError(msg)
-        result = get_all_changes(new_name, in_hierarchy=True)
-        if not isinstance(result, list) or len(result) != len(projects):
+        collect = cast(
+            "Callable[..., list[tuple[p.AttributeProbe, p.AttributeProbe]]]",
+            get_all_changes,
+        )
+        result = collect(new_name, in_hierarchy=True)
+        if len(result) != len(projects):
             msg = "Rope multiproject returned invalid project changes"
             raise TypeError(msg)
         changes: list[t.Pair[p.Infra.RopeProject, p.Infra.RopeChangeSet]] = []

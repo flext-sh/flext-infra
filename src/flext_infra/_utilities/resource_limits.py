@@ -6,9 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import hashlib
 import platform
 import shutil
 import sys
+from importlib import metadata
 from pathlib import Path
 from typing import ClassVar
 
@@ -196,9 +198,6 @@ class FlextInfraUtilitiesResourceLimits:
             The resulting ``str`` digest component.
 
         """
-        import hashlib
-        from importlib import metadata
-
         core_version = metadata.version("flext-core")
         return hashlib.sha256(
             f"{sys.executable}\0{core_version}".encode(),

@@ -1,0 +1,21 @@
+# Ban deep module imports in tests — tests must use package-root imports only.
+id: ban-test-deep-module-import
+language: python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  pattern: from $PKG.$MODULE import $$$IMPORTS
+  all:
+    - pattern: $PKG
+      regex: "^flext_"
+fix: ""
+message: |
+  Tests must use package-root imports only (e.g., `from flext_ldif import ldif`).
+  Deep imports like `from flext_ldif.services import ...` are forbidden.
+  Allowed: package-root facade (`<alias>`, `settings`, `config`, `c,t,p,m,u`),
+  `from tests import ...`, `from flext_tests import ...`.
+  Permanent carve-outs: container tests, flext_tests bootstrap/fixtures.
+  Transient ignores tracked in beads, removed slice-by-slice.
+  See: flext.canonical_type_ownership, flext.test_import_law

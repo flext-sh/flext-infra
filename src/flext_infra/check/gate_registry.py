@@ -131,15 +131,15 @@ class FlextInfraGateRegistry:
         """
         for rule, owner in owners.items():
             gate = self.get(owner)
-            if (
-                owner == c.Infra.LINT
-                or owner not in c.Infra.ALLOWED_GATES
-                or owner not in c.Infra.CANONICAL_FILE_GATE_IDS
-                or gate is None
-                or not gate.can_fix
-                or owner not in check_gates
-                or owner not in repair_gates
-            ):
+            native_owner = (
+                owner != c.Infra.LINT
+                and owner in c.Infra.ALLOWED_GATES
+                and owner in c.Infra.CANONICAL_FILE_GATE_IDS
+                and gate is not None
+                and gate.can_fix
+            )
+            elected = owner in check_gates and owner in repair_gates
+            if not (native_owner and elected):
                 msg = (
                     f"Ruff rule {rule} requires an elected native check/repair "
                     f"owner: {owner}"

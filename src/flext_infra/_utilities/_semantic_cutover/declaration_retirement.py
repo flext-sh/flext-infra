@@ -436,8 +436,12 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 text="",
             )
         ]
+        resource = module.get_resource()
+        if resource is None:
+            msg = f"retiring declaration has no native resource: {path}"
+            raise ValueError(msg)
         source = refactors.content_change(
-            resource=module.get_resource(), source=source, edits=edits
+            resource=resource, source=source, rewrites=edits
         ).new_contents
         if (
             container is not None
@@ -637,7 +641,9 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 exported = module.get_attributes().get(name)
                 if path != owner_path and (
                     runtime.same_name(binding, exported)
-                    or runtime.same_name(container, exported)
+                    or (
+                        container is not None and runtime.same_name(container, exported)
+                    )
                 ):
                     msg = f"ownership transfer has an exported old alias: {path}:{name}"
                     raise ValueError(msg)
@@ -653,12 +659,15 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                     ancestor = parents.get(id(parent))
                     module_base = (
                         isinstance(parent, ast.Attribute)
+                        and container is not None
                         and runtime.same_name(container, resolves(parent))
                         and isinstance(ancestor, ast.ClassDef)
                         and parent in ancestor.bases
                     )
                     if runtime.same_name(binding, actual) or (
-                        runtime.same_name(container, actual) and not base
+                        container is not None
+                        and runtime.same_name(container, actual)
+                        and not base
                     ):
                         msg = f"ownership transfer has surviving native usage: {path}:{node.lineno}"
                         raise ValueError(msg)
@@ -714,7 +723,8 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                     ):
                         continue
                     if not any(
-                        runtime.same_name(container, resolves(base))
+                        container is not None
+                        and runtime.same_name(container, resolves(base))
                         and any(
                             isinstance(part, ast.Name) and part.id == name
                             for part in ast.walk(base)
@@ -729,8 +739,8 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             def quoted(scope: p.Infra.RopeScope, expression: str) -> str | None:
                 if not covers(scope.get_start()):
                     actual = runtime.expression_name(scope, expression)
-                    if runtime.same_name(binding, actual) or runtime.same_name(
-                        container, actual
+                    if runtime.same_name(binding, actual) or (
+                        container is not None and runtime.same_name(container, actual)
                     ):
                         msg = f"ownership transfer has a surviving annotation: {path}:{expression}"
                         raise ValueError(msg)

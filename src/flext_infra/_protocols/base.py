@@ -6,13 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator, Mapping
+from pathlib import Path
 from types import FunctionType
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator, Mapping
-    from pathlib import Path
-
     from flext_infra import c, m, p, t
 
 
@@ -25,7 +24,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Normalized command values consumed by the shared payload builder."""
 
         @property
-        def repository_root(self) -> t.Infra.Path: ...
+        def repository_root(self) -> Path: ...
 
         @property
         def apply_changes(self) -> bool: ...
@@ -43,10 +42,10 @@ class FlextInfraProtocolsBase(Protocol):
         def project_filter(self) -> str | None: ...
 
         @property
-        def report_path(self) -> t.Infra.Path | None: ...
+        def report_path(self) -> Path | None: ...
 
         @property
-        def output_dir(self) -> t.Infra.Path | None: ...
+        def output_dir(self) -> Path | None: ...
 
     @runtime_checkable
     class ValidationReportOutcome(Protocol):
@@ -77,7 +76,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Read-only selectors consumed by the projection execution boundary."""
 
         @property
-        def root(self) -> t.Infra.Path: ...
+        def root(self) -> Path: ...
 
         @property
         def what(self) -> c.Infra.CodegenConformSurface: ...
@@ -103,7 +102,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Planned destination and bytes exposed to public generation consumers."""
 
         @property
-        def path(self) -> t.Infra.Path: ...
+        def path(self) -> Path: ...
 
         @property
         def desired_content(self) -> bytes | None: ...
@@ -125,7 +124,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Physical scopes covered by an actual generation publication receipt."""
 
         @property
-        def scope_roots(self) -> t.VariadicTuple[t.Infra.Path]: ...
+        def scope_roots(self) -> t.VariadicTuple[Path]: ...
 
         @property
         def completed(self) -> bool: ...
@@ -154,7 +153,7 @@ class FlextInfraProtocolsBase(Protocol):
         ) -> FlextInfraProtocolsBase.CodegenPublicationOutcome | None: ...
 
         @property
-        def written_files(self) -> t.VariadicTuple[t.Infra.Path]: ...
+        def written_files(self) -> t.VariadicTuple[Path]: ...
 
         @property
         def errors(self) -> t.VariadicTuple[str]: ...

@@ -12,7 +12,9 @@ import pytest
 
 from flext_infra import FlextInfraConfig, c, config, infra, t
 from flext_infra.codegen import FlextInfraCodegenConform
-from flext_infra.services.codegen import FlextInfraCodegen
+from flext_infra.services._codegen import (
+    FlextInfraCodegenVscodeMixin as FlextInfraCodegen,
+)
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import m, tm, u
 
@@ -380,9 +382,9 @@ class TestsFlextInfraVscodeOwnerMerge:
         )
         tm.fail(rejected)
         tm.that(rejected.exception, is_=ValueError, msg=rejected.error)
-        with pytest.raises(RuntimeError) as raised:
+        with pytest.raises(ValueError) as raised:
             rejected.unwrap()
-        tm.that(raised.value.__cause__, eq=rejected.exception)
+        tm.that(raised.value is rejected.exception, eq=True)
         settings_path = root / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
         settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             tm.ok(

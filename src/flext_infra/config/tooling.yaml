@@ -181,6 +181,22 @@ Infra:
           # check/repair contract. Projection verifies that owner's election.
           rule-owners:
             missing-trailing-comma: format
+          # Operator law (2026-10-05 flext-p7bxt, reiterated 2026-10-18):
+          # TC001-TC004 break Pydantic model resolution — the lazy facade
+          # architecture requires the runtime imports these rules would move
+          # into TYPE_CHECKING blocks. Always disabled here at the SSOT and
+          # projected into lint ignore; manual per-file noqa hints are
+          # forbidden everywhere, including per-project overrides.
+          ruling-disabled-rules:
+          - runtime-import-in-type-checking-block
+          - typing-only-first-party-import
+          - typing-only-standard-library-import
+          - typing-only-third-party-import
+          # RUF067 flags the generated family __init__ files that carry the
+          # install_lazy_exports call: that PEP 562 lazy facade IS the
+          # canonical projection shape, so the rule is structurally
+          # incompatible with the architecture.
+          - non-empty-init-module
           # make fix never deletes information. The lint
           # repair applies safe fixes only (make.ruff.lint_fix rejects
           # --unsafe-fixes), and these rules are never auto-fixed at all,
@@ -325,6 +341,11 @@ Infra:
           warn_unused_ignores: true
         string-settings:
           follow_imports: normal
+        # Operator ruling 2026-10-05 (mypy-pydantic law): call-arg and
+        # prop-decorator stay suspended until the fleet facade-alias family
+        # is cured; pydantic.mypy remains mandatory. Mutating these codes is
+        # a regression to revert.
+        ruling-disable-error-codes: [ call-arg, prop-decorator ]
         overrides:
         - modules: [ rope.* ]
           follow-untyped-imports: true

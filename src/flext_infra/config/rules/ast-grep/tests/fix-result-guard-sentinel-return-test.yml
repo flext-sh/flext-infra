@@ -27,7 +27,7 @@ invalid:
     def run_guard(validation_result: p.Result[bool]) -> p.Result[bool]:
         if validation_result.failure:
             return False
-        return r[bool].ok(value=True)=True)
+        return r[bool].ok(value=True)
   - |
     def run(res) -> r[str]:
         if not res.success:

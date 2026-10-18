@@ -92,7 +92,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
 
     def _execute_dry_run(
         self,
-        rules: t.StrSequence,
+        rules: t.SequenceOf[Path],
     ) -> p.Result[t.Cli.ResultValue]:
         """Report every pending finding without applying any phase.
 
@@ -406,7 +406,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         phase_states = [fingerprint(root, current)]
         driver = None
         if self.rename_plan is not None:
-            loaded = FlextInfraCodemodSemanticApply._load_rename_artifact(
+            loaded = FlextInfraCodemodSemanticApply.load_rename_artifact(
                 root,
                 m.Infra.ModCommand(repository_root=root, rename_plan=self.rename_plan),
             )
@@ -414,7 +414,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 return outcome.from_failure(loaded)
             seed, driver = loaded.value
             authenticated = (
-                FlextInfraCodemodSemanticApply._authenticate_rename_candidate(
+                FlextInfraCodemodSemanticApply.authenticate_rename_candidate(
                     root, seed, driver
                 )
             )
@@ -495,14 +495,14 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 )
                 if constants.failure:
                     return outcome.from_failure(constants)
-                FlextInfraCodemodSemanticApply._apply_plan(
+                FlextInfraCodemodSemanticApply.apply_plan(
                     working, constants.value, changed
                 )
                 transaction_paths = u.Infra.plan_transaction_path_cutover(
                     rope_workspace=graph,
                     sources=working,
                 )
-                FlextInfraCodemodSemanticApply._apply_plan(
+                FlextInfraCodemodSemanticApply.apply_plan(
                     working, transaction_paths, changed
                 )
                 semantic = FlextInfraCodemodSemanticApply.plan(
@@ -513,7 +513,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 )
                 if semantic.failure:
                     return outcome.from_failure(semantic)
-                FlextInfraCodemodSemanticApply._apply_plan(
+                FlextInfraCodemodSemanticApply.apply_plan(
                     working, semantic.value, changed
                 )
             source_states = m.Infra.CodemodBindingSnapshot(

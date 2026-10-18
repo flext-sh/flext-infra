@@ -14,7 +14,7 @@ from pathlib import Path
 from textwrap import indent
 
 from flext_infra import config, u
-from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
+from flext_infra.validate import FlextInfraPytestRunner
 from tests import c, m, p, r, t, tm
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
 

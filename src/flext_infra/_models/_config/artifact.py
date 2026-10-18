@@ -878,9 +878,15 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 for item in self.managed_files
                 if item.path == Path(c.PYPROJECT_FILENAME)
             )
-            if len(roots) != 1:
+            if len(roots) > 1:
                 msg = "managed files require exactly one root pyproject owner"
                 raise ValueError(msg)
+            if not roots:
+                # A projected slice (e.g. a single owner's artifacts planned by
+                # the runtime) carries no resolver projection of its own; the
+                # exactly-one-root-owner rule is a full-declaration authoring
+                # guard, enforced at config load, never on derived slices.
+                return self.managed_files
             owner = roots[0]
             projected = tuple(
                 FlextInfraConfigModelsTemplates.ManagedFileSpec(
