@@ -1112,6 +1112,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         Returns:
             The original result or a failure retaining the native exception.
+
         """
         try:
             return operation()

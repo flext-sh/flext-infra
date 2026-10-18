@@ -238,6 +238,7 @@ class FlextInfraCodegenProjectNew(
 
         Returns:
             The exact supplied ports, including explicit absence.
+
         """
         return self.conform_collaborators
 

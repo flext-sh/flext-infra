@@ -563,9 +563,7 @@ class FlextInfraStagedPackage:
             if owner.is_success:
                 owners.add(owner.value.project_root)
         for layout in plan.layouts:
-            paths = cls._source_paths(
-                layout, governed=layout.project_root in owners
-            )
+            paths = cls._source_paths(layout, governed=layout.project_root in owners)
             if paths.failure:
                 return r[bool].from_failure(paths)
             actual.update(path for path in paths.value if path.is_file())

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import sys
 from functools import partial
-from json import dumps
 from importlib.machinery import (
     ExtensionFileLoader,
     ModuleSpec,
@@ -16,6 +15,7 @@ from importlib.machinery import (
     SourceFileLoader,
 )
 from importlib.metadata import packages_distributions
+from json import dumps
 from operator import itemgetter
 from pathlib import Path
 from types import ModuleType
