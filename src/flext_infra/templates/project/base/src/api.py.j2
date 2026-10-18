@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_core import FlextContainer
 from {{ package_name }}.services.ping import {{ class_stem }}Ping
 
 
@@ -20,6 +19,4 @@ class {{ class_stem }}({{ class_stem }}Ping):
 
 {{ alias }} = {{ class_stem }}.fetch_global()
 
-container: FlextContainer = FlextContainer.shared()
-
-__all__: list[str] = ["{{ class_stem }}", "{{ alias }}", "container"]
+__all__: list[str] = ["{{ class_stem }}", "{{ alias }}"]

@@ -81,7 +81,7 @@ class FlextInfraModelsBase:
 
         @m.field_validator("repository_root", mode="before")
         @classmethod
-        def _normalize_repository_root(cls, value: t.Cli.TextPath) -> t.Infra.Path:
+        def _normalize_repository_root(cls, value: t.Cli.TextPath) -> Path:
             """Resolve the invocation root without escalating to a workspace.
 
             Native filesystem inspection and resolution errors propagate unchanged.
@@ -122,7 +122,7 @@ class FlextInfraModelsBase:
         def _normalize_report_path(
             cls,
             value: t.Cli.TextPath | None,
-        ) -> t.Infra.Path | None:
+        ) -> Path | None:
             """Resolve a supplied report path, including an explicitly blank path.
 
             Native path resolution errors propagate unchanged.
@@ -138,7 +138,7 @@ class FlextInfraModelsBase:
         def _normalize_output_dir(
             cls,
             value: t.Cli.TextPath | None,
-        ) -> t.Infra.Path | None:
+        ) -> Path | None:
             """Strip text paths while preserving relative output directories.
 
             Native absolute-path resolution errors propagate unchanged.
@@ -155,7 +155,7 @@ class FlextInfraModelsBase:
 
         @m.computed_field
         @property
-        def root(self) -> t.Infra.Path:
+        def root(self) -> Path:
             """Canonical normalized repository root."""
             return self.repository_root
 

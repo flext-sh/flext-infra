@@ -11,7 +11,9 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, m, t
-from flext_infra.services.codegen import FlextInfraCodegen
+from flext_infra.services._codegen import (
+    FlextInfraCodegenVscodeMixin as FlextInfraCodegen,
+)
 from tests import c, tm, u
 
 

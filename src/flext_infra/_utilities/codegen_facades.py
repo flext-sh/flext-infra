@@ -29,7 +29,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
-from flext_infra._utilities._rope.project import FlextInfraRopeProject
+from flext_infra._utilities._rope.project import FlextInfraRopeProject, require_value
 from flext_infra._utilities._rope_analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
@@ -260,13 +260,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 continue
             original = originals.get(path)
             if original is None:
-                original = FlextInfraRopeProject.AtomicReadFiles.require_value(
-                    u.Cli.atomic_read_binary_file_state(path)
-                )
+                original = require_value(u.Cli.atomic_read_binary_file_state(path))
                 originals[path] = original
-            chain = FlextInfraRopeProject.AtomicReadFiles.require_value(
-                u.Cli.atomic_plan_directory_chain(path.parent)
-            )
+            chain = require_value(u.Cli.atomic_plan_directory_chain(path.parent))
             declarations[path] = m.Infra.CodegenFilePlan(
                 project=root,
                 path=path,

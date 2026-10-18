@@ -13,6 +13,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from flext_cli import FlextCliTypes
 
 from flext_infra._typings import (
@@ -32,6 +34,7 @@ class FlextInfraTypes(FlextCliTypes):
     transparently from ``FlextTypes`` via FLEXT.
     """
 
+    Path = Path
     Container = FlextInfraTypesCollections.Container
 
     class Infra(FlextInfraTypesAdapters, FlextInfraTypesRope, FlextInfraTypesBase):
@@ -40,6 +43,8 @@ class FlextInfraTypes(FlextCliTypes):
         These aliases compose CLI JSON contracts and infrastructure-specific
         collection generics for common tooling payloads.
         """
+
+        Path = Path
 
 
 t = FlextInfraTypes

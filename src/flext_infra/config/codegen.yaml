@@ -1084,6 +1084,7 @@ Infra:
       - python.analysis.typeCheckingMode
       - python.analysis.diagnosticSeverityOverrides
       # The current Ruff extension always uses its native server.
+      - ruff.nativeServer
 
       # Declarative project-layout SSOT consumed by
       # the layout engine (codegen/layout.py) and the layout quality gate. Every

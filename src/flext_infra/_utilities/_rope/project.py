@@ -36,6 +36,24 @@ from flext_infra._utilities.rope_runtime_module_queries import (
 )
 
 
+def require_value[ValueT](result: p.Result[ValueT]) -> ValueT:
+    """Preserve the original native cause at this read-only IO boundary.
+
+    Returns:
+        The successful native result value.
+
+    Raises:
+        ValueError: A failed result has no original exception.
+
+    """
+    if result.failure:
+        cause = result.exception
+        if cause is not None:
+            raise cause
+        raise ValueError(result.error)
+    return result.value
+
+
 class _RopeProjectSourceAccessMixin:
     """Authenticated source access surface shared by the native project.
 
@@ -87,9 +105,6 @@ class _RopeProjectSourceAccessMixin:
         Returns:
             The native consumption scope context manager.
 
-        Raises:
-            TypeError: The project does not own authenticated live reads.
-
         """
         return self._authenticated_reads.consumption()
 
@@ -98,9 +113,6 @@ class _RopeProjectSourceAccessMixin:
 
         Returns:
             The native structural election scope context manager.
-
-        Raises:
-            TypeError: The project does not own authenticated live reads.
 
         """
         return self._authenticated_reads.selection()
@@ -111,19 +123,11 @@ class _RopeProjectSourceAccessMixin:
         Returns:
             The native capture scope context manager.
 
-        Raises:
-            TypeError: The project does not own authenticated live reads.
-
         """
         return self._authenticated_reads.capture()
 
     def replay_source_consumption(self, receipt: m.Infra.CodegenPhaseAnalysis) -> None:
-        """Attribute an authentic cached result's original dependencies.
-
-        Raises:
-            TypeError: The project does not own authenticated live reads.
-
-        """
+        """Attribute an authentic cached result's original dependencies."""
         self._authenticated_reads.replay(receipt)
 
     def source_state(
@@ -133,9 +137,6 @@ class _RopeProjectSourceAccessMixin:
 
         Returns:
             The original physical state for the source.
-
-        Raises:
-            TypeError: The project does not own authenticated live reads.
 
         """
         return self._authenticated_reads.source_state(path, required=required)
@@ -148,9 +149,6 @@ class _RopeProjectSourceAccessMixin:
         Returns:
             Whether the original native query holds for the path.
 
-        Raises:
-            TypeError: The project does not own authenticated live reads.
-
         """
         return self._authenticated_reads.query(str(path), predicate)
 
@@ -161,9 +159,6 @@ class _RopeProjectSourceAccessMixin:
 
         Returns:
             The original direct child paths.
-
-        Raises:
-            TypeError: The project does not own authenticated live reads.
 
         """
         return self._authenticated_reads.children(
@@ -185,9 +180,6 @@ class _RopeProjectSourceAccessMixin:
 
         Returns:
             The selected payload bytes.
-
-        Raises:
-            TypeError: The project does not own authenticated live reads.
 
         """
         return self._authenticated_reads.read(str(path))
@@ -218,9 +210,6 @@ class _RopeProjectSourceAccessMixin:
         Returns:
             Original physical states consumed by the native graph.
 
-        Raises:
-            TypeError: The project does not own authenticated live reads.
-
         """
         return self._authenticated_reads.states()
 
@@ -229,9 +218,6 @@ class _RopeProjectSourceAccessMixin:
 
         Returns:
             Original directory inventories consumed by native queries.
-
-        Raises:
-            TypeError: The project does not own authenticated live reads.
 
         """
         return self._authenticated_reads.receipt_directories()
@@ -242,9 +228,6 @@ class _RopeProjectSourceAccessMixin:
         Returns:
             Original physical ancestry witnesses for queried parents.
 
-        Raises:
-            TypeError: The project does not own authenticated live reads.
-
         """
         return self._authenticated_reads.receipt_topology()
 
@@ -252,7 +235,6 @@ class _RopeProjectSourceAccessMixin:
         """Verify the original input epoch after semantic planning.
 
         Raises:
-            TypeError: The project does not own authenticated live reads.
             OSError: When the original input epoch fails verification.
 
         """
@@ -364,9 +346,6 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
 
         Returns:
             The original native builtin, package, or source module.
-
-        Raises:
-            TypeError: The folder violates the native SDK boundary.
 
         """
         native = cast("p.Infra.RopeProject", super())
@@ -783,6 +762,12 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             self._adopt_declared_effects(declared_files)
             self._reconcile_proposed_sources(sources, declared_files)
             self._overlay = FlextInfraRopeProject.SnapshotFiles(self._sources, ())
+            # Original-epoch membership facts are pinned at construction, so
+            # each (path, predicate) observation is stable for this owner's
+            # lifetime. Rope re-queries the same selectors dozens of times per
+            # module while indexing; without this memo the parent-chain walk
+            # and its pydantic re-records turn the scan quadratic.
+            self._query_observations: dict[tuple[Path, str], bool] = {}
 
         def _register_original_states(
             self,
@@ -1100,24 +1085,6 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                 name for name in set(names) if directory / name not in self._retired
             )
 
-        @staticmethod
-        def require_value[ValueT](result: p.Result[ValueT]) -> ValueT:
-            """Preserve the original native cause at this read-only IO boundary.
-
-            Returns:
-                The successful native result value.
-
-            Raises:
-                ValueError: A failed result has no original exception.
-
-            """
-            if result.failure:
-                cause = result.exception
-                if cause is not None:
-                    raise cause
-                raise ValueError(result.error)
-            return result.value
-
         def _directory_chain(self, directory: Path) -> m.Cli.AtomicDirectoryChainPlan:
             """Pin one declared directory's own physical ancestry and presence.
 
@@ -1126,7 +1093,7 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
 
             """
             if directory not in self._topology:
-                self._topology[directory] = self.require_value(
+                self._topology[directory] = require_value(
                     u.Cli.atomic_plan_directory_chain(directory)
                 )
             witness = self._topology[directory]
@@ -1149,7 +1116,7 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             if self._directory_chain(directory).directories:
                 return None
             if directory not in self._inventories:
-                self._inventories[directory] = self.require_value(
+                self._inventories[directory] = require_value(
                     u.Cli.atomic_inventory_physical_directory(directory)
                 )
             return self._inventories[directory]
@@ -1164,21 +1131,27 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
 
             """
             candidate = Path(path)
-            if candidate in {self._root, candidate.parent}:
-                observed = (
-                    not self._directory_chain(candidate).directories
-                    and predicate != "isfile"
-                )
-            elif not candidate.is_relative_to(self._root):
-                # Ambient interpreter trees and foreign ancestry end the
-                # repository's authenticated scope: their membership is a
-                # plain native fact, never an atomic inventory input, so the
-                # election walk can ascend past mount boundaries without
-                # inventorying hosts' ancestor directories.
-                observed = self._ambient_query(candidate, predicate)
-            else:
-                observed = self._repository_query(candidate, predicate)
-            return self._resolve_query_result(candidate, path, predicate, observed)
+            memo_key = (candidate, predicate)
+            observed = self._query_observations.get(memo_key)
+            if observed is None:
+                if candidate in {self._root, candidate.parent}:
+                    observed = (
+                        not self._directory_chain(candidate).directories
+                        and predicate != "isfile"
+                    )
+                elif not candidate.is_relative_to(self._root):
+                    # Ambient interpreter trees and foreign ancestry end the
+                    # repository's authenticated scope: their membership is a
+                    # plain native fact, never an atomic inventory input, so the
+                    # election walk can ascend past mount boundaries without
+                    # inventorying hosts' ancestor directories.
+                    observed = self._ambient_query(candidate, predicate)
+                else:
+                    observed = self._repository_query(candidate, predicate)
+                self._query_observations[memo_key] = observed
+            return self._resolve_query_result(
+                candidate, path, predicate, observed=observed
+            )
 
         @staticmethod
         def _ambient_query(
@@ -1227,16 +1200,10 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
         ) -> None:
             """Pin the queried selector on the parent's absence witness."""
             witness = self._topology[candidate.parent]
-            if not self._capturing:
+            selector = (candidate.name, predicate)
+            if not self._capturing and selector not in witness.queries:
                 self._topology[candidate.parent] = witness.model_copy(
-                    update={
-                        "queries": tuple(
-                            sorted({
-                                *witness.queries,
-                                (candidate.name, predicate),
-                            })
-                        ),
-                    }
+                    update={"queries": tuple(sorted({*witness.queries, selector}))}
                 )
             self._record(
                 topology=(
@@ -1264,16 +1231,11 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             observed = u.Cli.atomic_directory_query_value(
                 inventory, candidate.name, predicate
             )
-            inventory = inventory.model_copy(
-                update={
-                    "queries": tuple(
-                        sorted({
-                            *inventory.queries,
-                            (candidate.name, predicate),
-                        })
-                    ),
-                }
-            )
+            selector = (candidate.name, predicate)
+            if selector not in inventory.queries:
+                inventory = inventory.model_copy(
+                    update={"queries": tuple(sorted({*inventory.queries, selector}))}
+                )
             if not self._capturing:
                 self._inventories[candidate.parent] = inventory
             self._record(
@@ -1293,6 +1255,7 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             candidate: Path,
             path: str,
             predicate: Literal["exists", "isfile", "isdir"],
+            *,
             observed: bool,
         ) -> bool:
             """Reconcile the native observation with planned and original state.
@@ -1424,7 +1387,7 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                         # The original absent parent proves this file absent too.
                         state = m.Cli.AtomicFileState(path=source)
                     else:
-                        state = self.require_value(
+                        state = require_value(
                             u.Cli.atomic_read_binary_file_state(
                                 source, required=required
                             ),
@@ -1463,8 +1426,8 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
 
         def verify(self) -> None:
             """Reprove original inputs and absence witnesses without replacing them."""
-            self.require_value(u.Cli.atomic_verify_binary_file_states(self.states()))
-            self.require_value(
+            require_value(u.Cli.atomic_verify_binary_file_states(self.states()))
+            require_value(
                 u.Cli.atomic_verify_directory_queries(
                     self.directories(), self.topology()
                 )

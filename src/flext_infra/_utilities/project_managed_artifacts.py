@@ -15,6 +15,7 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_core.config_sources import FlextStrictYamlConfigSource
+from pydantic import ValidationError
 
 from flext_infra import c, m, p, r, t
 from flext_infra._config import FlextInfraConfig
@@ -344,7 +345,12 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         """
         codegen = u.Cli.json_walk_path(document, ("Infra", "codegen"))
-        return m.Infra.CodegenConfigSpec.model_validate(codegen)
+        try:
+            return m.Infra.CodegenConfigSpec.model_validate(codegen)
+        except ValidationError as error:
+            # Config-authoring failures surface as the service contract's own
+            # error type, never as a raw third-party validation exception.
+            raise ValueError(str(error)) from error
 
     @classmethod
     def _repository_config_document(
