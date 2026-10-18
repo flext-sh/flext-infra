@@ -166,17 +166,20 @@ class FlextInfra(
             check_only=request.check_only,
             dry_run=request.dry_run,
             output_format=request.output_format,
-            conform_collaborators=self.codegen_conform_collaborators(),
+            conform_collaborators=m.Infra.CodegenConformPorts.model_validate(
+                self.codegen_conform_collaborators(),
+                from_attributes=True,
+            ),
         ).execute()
 
     def codegen_new(
         self,
         command: FlextInfraCodegenProjectNew,
-    ) -> p.Result[m.Infra.CodegenResult]:
+    ) -> p.Result[p.Infra.CodegenResult]:
         """Scaffold one project through conform with the facade-wired ports.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
+            The resulting ``p.Result[p.Infra.CodegenResult]``.
 
         """
         return command.model_copy(

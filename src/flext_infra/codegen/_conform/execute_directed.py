@@ -69,7 +69,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         operation = transaction.publish_operation_receipt(
             request,
             (),
-            scope_roots=scope_roots,
+            publication=m.Infra.CodegenPhaseOutcome(scope_roots=scope_roots),
         )
         if operation.failure:
             return r[p.Infra.CodegenResult].from_failure(operation)
@@ -93,9 +93,11 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         completed = transaction.publish_operation_receipt(
             request,
             (batch,),
-            scope_roots=scope_roots,
+            publication=m.Infra.CodegenPhaseOutcome(
+                scope_roots=scope_roots,
+                completed=True,
+            ),
             operation=operation.value,
-            completed=True,
         )
         if completed.failure:
             return r[p.Infra.CodegenResult].from_failure(completed)

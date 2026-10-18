@@ -39,9 +39,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         cls: type[Self],
         request: p.Infra.CodegenGenerateRequest,
         *,
-        ports: p.Infra.CodegenConformPorts,
-        runtime_settings: p.Settings | None = None,
-        initial_context: p.Context | None = None,
+        execution_context: p.Infra.CodegenExecutionContext,
     ) -> p.Result[p.Infra.CodegenResult]:
         """Publish declared projections through the shared planner and publisher.
 
@@ -57,10 +55,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 module=request.module,
                 mode=c.Infra.CodegenConformMode.APPLY,
             ),
-            ports=ports,
+            execution_context=execution_context,
             generation_only=True,
-            runtime_settings=runtime_settings,
-            initial_context=initial_context,
         )
 
     @classmethod
@@ -69,16 +65,15 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         request: p.Infra.CodegenConformRequest,
         initial_workspace: p.Infra.WorkspaceSpec | None = None,
         *,
-        ports: p.Infra.CodegenConformPorts | None,
+        execution_context: p.Infra.CodegenExecutionContext | None,
         generation_only: bool = False,
         repository_root: t.Infra.Path | None = None,
-        runtime_settings: p.Settings | None = None,
-        initial_context: p.Context | None = None,
     ) -> p.Result[p.Infra.CodegenResult]:
         """Validate structural inputs once and execute with the facade-wired ports.
 
-        ``ports`` is required at every call: the complete surface consumes it,
-        and a single-file surface declares its absence explicitly with ``None``.
+        ``execution_context`` is required at every call: the complete surface
+        consumes its bound ports, while a direct single-file invocation declares
+        the absence of caller runtime seeds and ports explicitly with ``None``.
         An explicit ``repository_root`` owns generation tools while
         ``request.root`` remains the destination of every planned effect.
         The caller's actual settings and context are constructor seeds, not a
@@ -103,6 +98,17 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if validated_request.mode is c.Infra.CodegenConformMode.CHECK:
             with FlextInfraWorkspaceNativeReference.compilation_scope():
                 return cls._observe_publication(validated_request)
+        ports = (
+            None
+            if execution_context is None
+            else execution_context.codegen_conform_collaborators()
+        )
+        runtime_settings = (
+            None if execution_context is None else execution_context.settings
+        )
+        initial_context = (
+            None if execution_context is None else execution_context.context
+        )
         if validated_request.what is c.Infra.CodegenConformSurface.DEPENDENCIES:
             return cls(
                 repository_root=validated_request.root,
@@ -639,8 +645,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             receipt = transaction.publish_operation_receipt(
                 request,
                 tuple(receipts),
-                scope_roots=tuple(roots.values()),
-                completed=True,
+                publication=m.Infra.CodegenPhaseOutcome(
+                    scope_roots=tuple(roots.values()),
+                    completed=True,
+                ),
             )
             if receipt.failure:
                 return r[p.Infra.CodegenResult].from_failure(receipt)
@@ -998,9 +1006,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         operation = transaction.publish_operation_receipt(
             request,
             (),
-            scope_roots=tuple(
-                (request.root / repository.path).resolve()
-                for repository in planned.value.repositories
+            publication=m.Infra.CodegenPhaseOutcome(
+                scope_roots=tuple(
+                    (request.root / repository.path).resolve()
+                    for repository in planned.value.repositories
+                ),
             ),
         )
         if operation.failure:
@@ -1067,11 +1077,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             lambda: FlextInfraCodegenTransaction.publish_operation_receipt(
                 request,
                 tuple(batches),
-                scope_roots=operation.value.scope_roots,
+                publication=m.Infra.CodegenPhaseOutcome(
+                    scope_roots=operation.value.scope_roots,
+                    completed=not failures,
+                    issues=tuple(self._generation_issues),
+                    exception=first_exception,
+                ),
                 operation=operation.value,
-                completed=not failures,
-                issues=tuple(self._generation_issues),
-                exception=first_exception,
             ),
         )
         if completed.failure:
@@ -1572,10 +1584,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 FlextInfraCodegenTransaction.publish_operation_receipt,
                 request,
                 tuple(receipts),
-                scope_roots=operation.scope_roots,
+                publication=m.Infra.CodegenPhaseOutcome(
+                    scope_roots=operation.scope_roots,
+                    issues=tuple(self._generation_issues),
+                    exception=first_exception,
+                ),
                 operation=operation,
-                issues=tuple(self._generation_issues),
-                exception=first_exception,
             ),
         )
         if recorded.failure:

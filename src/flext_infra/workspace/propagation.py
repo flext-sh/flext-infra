@@ -35,6 +35,14 @@ class FlextInfraWorkspacePropagation(s[bool]):
         ),
     ] = None
 
+    def codegen_conform_collaborators(self) -> p.Infra.CodegenConformPorts | None:
+        """Return the capabilities already bound to this propagation invocation.
+
+        Returns:
+            The exact supplied ports, including explicit absence.
+        """
+        return self.conform_collaborators
+
     @override
     def execute(self) -> p.Result[bool]:
         """Propagate to every generated member in declared order.
@@ -243,7 +251,7 @@ class FlextInfraWorkspacePropagation(s[bool]):
                     scope=c.Infra.CodegenConformScope.ALL,
                     mode=c.Infra.CodegenConformMode.APPLY,
                 ),
-                ports=self.conform_collaborators,
+                execution_context=self,
             ).map(lambda _conformed: True),
         )
         if published.failure:

@@ -366,6 +366,7 @@ class FlextInfraStagedPackage:
         verified = cls._verified_input_originals(states, inputs, normalized)
         if verified.failure:
             return result_type.from_failure(verified)
+        states.update((state.path, state) for state in inputs)
         declared = {plan.path: plan for plan in declared_files}
         effects: list[m.Infra.CodegenFilePlan] = []
         for path, source in normalized.items():
@@ -555,8 +556,16 @@ class FlextInfraStagedPackage:
         if current.failure:
             return current
         actual: set[Path] = set()
+        layouts = {layout.package_name: layout for layout in plan.layouts}
+        owners: set[Path] = set()
+        for path in plan.updates:
+            owner = cls._source_layout(path, layouts)
+            if owner.is_success:
+                owners.add(owner.value.project_root)
         for layout in plan.layouts:
-            paths = cls._source_paths(layout, governed=True)
+            paths = cls._source_paths(
+                layout, governed=layout.project_root in owners
+            )
             if paths.failure:
                 return r[bool].from_failure(paths)
             actual.update(path for path in paths.value if path.is_file())
@@ -574,7 +583,9 @@ class FlextInfraStagedPackage:
             ):
                 return r[bool].fail(f"virtual source ancestry changed: {effect.path}")
         expected = {item.path for item in plan.inputs if item.content is not None}
-        if actual != expected:
+        # Every original (including explicitly consulted external inputs) was
+        # verified above; inventory additionally rejects newly appearing members.
+        if not actual.issubset(expected):
             return r[bool].fail("candidate original source inventory changed")
         return r[bool].ok(value=True)
 
@@ -767,7 +778,7 @@ class FlextInfraStagedPackage:
         updates: t.MappingKV[Path, str | None] | None = None,
         originals: t.MappingKV[Path, m.Cli.AtomicFileState] | None = None,
     ) -> p.Result[tuple[str, ...]]:
-        paths = cls._source_paths(layout, governed=updates is not None)
+        paths = cls._source_paths(layout, governed=bool(updates))
         if paths.failure:
             return r[tuple[str, ...]].from_failure(paths)
         modules: list[str] = []
@@ -805,7 +816,7 @@ class FlextInfraStagedPackage:
                     cls._runtime_imports(
                         path,
                         content,
-                        runtime_only=updates is None,
+                        runtime_only=not updates,
                     )
                 )
         return r[tuple[str, ...]].ok(tuple(modules))

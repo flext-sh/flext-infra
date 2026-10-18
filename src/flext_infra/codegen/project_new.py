@@ -229,9 +229,17 @@ class FlextInfraCodegenProjectNew(
         return FlextInfraCodegenConform.execute_request(
             request,
             initial_workspace=workspace,
-            ports=self.conform_collaborators,
+            execution_context=self,
             repository_root=self.root,
         )
+
+    def codegen_conform_collaborators(self) -> p.Infra.CodegenConformPorts | None:
+        """Return this scaffold invocation's already-bound conform capabilities.
+
+        Returns:
+            The exact supplied ports, including explicit absence.
+        """
+        return self.conform_collaborators
 
     def _validated_remote_declarations(
         self,

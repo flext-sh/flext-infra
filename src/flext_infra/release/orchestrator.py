@@ -44,6 +44,14 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin):
         ),
     ] = None
 
+    def codegen_conform_collaborators(self) -> p.Infra.CodegenConformPorts | None:
+        """Return the capabilities already bound to this release invocation.
+
+        Returns:
+            The exact supplied ports, including explicit absence.
+        """
+        return self.conform_collaborators
+
     @override
     def execute(self) -> p.Result[bool]:
         """Resolve the declared version once and dispatch the selected phase.
@@ -148,7 +156,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin):
                 scope=c.Infra.CodegenConformScope.ALL,
                 mode=c.Infra.CodegenConformMode.APPLY,
             ),
-            ports=self.conform_collaborators,
+            execution_context=self,
         )
         if settled.failure:
             return r[bool].from_failure(settled)

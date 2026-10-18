@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, p
+from flext_infra import p
 from flext_infra.codegen import FlextInfraCodegenConform
 
 
@@ -27,9 +27,7 @@ class FlextInfraCodegenHandlers:
         """
         return FlextInfraCodegenConform.generate_request(
             request,
-            ports=self.codegen_conform_collaborators(),
-            runtime_settings=self.settings,
-            initial_context=self.context,
+            execution_context=self,
         )
 
     def codegen_conform(
@@ -48,13 +46,7 @@ class FlextInfraCodegenHandlers:
         return FlextInfraCodegenConform.execute_request(
             request,
             initial_workspace,
-            ports=(
-                None
-                if request.mode is c.Infra.CodegenConformMode.CHECK
-                else self.codegen_conform_collaborators()
-            ),
-            runtime_settings=self.settings,
-            initial_context=self.context,
+            execution_context=self,
         )
 
 

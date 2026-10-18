@@ -227,23 +227,6 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
             implementation_owners: t.MutableMappingKV[
                 t.Pair[str, str], t.Infra.RopeImplementationPaths
             ] = {}
-            for primitive_identity in dict.fromkeys(
-                rule.implementation_owner
-                for rule in rules
-                if rule.implementation_owner is not None
-            ):
-                implementation_owners[primitive_identity] = (
-                    FlextInfraUtilitiesCodemodProject._implementation_owner_modules(
-                        project,
-                        m.Infra.CodemodContextCondition(
-                            variable="OWNER",
-                            predicate=c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER,
-                            holds=False,
-                            arg=primitive_identity,
-                        ),
-                        {**epoch.sources, **working},
-                    )
-                )
             for rule in rules:
                 if project is None:
                     project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
@@ -254,11 +237,6 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                         path.relative_to(Path(project.root.real_path)).as_posix()
                     )
                     for path in working
-                )
-                implementation_paths = (
-                    frozenset()
-                    if rule.implementation_owner is None
-                    else implementation_owners[rule.implementation_owner]
                 )
                 changes = FlextInfraUtilitiesRopeRuntimeRefactors.restructure_changes(
                     project,
@@ -272,7 +250,8 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                             cls._admit_contract_match,
                             project,
                             rule,
-                            implementation_paths=implementation_paths,
+                            implementation_owners=implementation_owners,
+                            sources={**epoch.sources, **working},
                             owned_modules=owned_modules,
                         ),
                     ),
@@ -376,7 +355,10 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         module: p.Infra.RopePyModule,
         match: p.Infra.RopeContractMatch,
         *,
-        implementation_paths: t.Infra.RopeImplementationPaths = frozenset(),
+        implementation_owners: t.MutableMappingKV[
+            t.Pair[str, str], t.Infra.RopeImplementationPaths
+        ],
+        sources: t.MappingKV[t.Infra.RopeSourcePath, str],
         owned_modules: t.MappingKV[str, t.Infra.RopeSourcePath] | None = None,
     ) -> bool:
         """Prove native receivers, evaluation safety and destination bindings.
@@ -392,8 +374,27 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         resource = module.get_resource()
-        if resource is not None and Path(resource.real_path) in implementation_paths:
-            return False
+        if rule.implementation_owner is not None:
+            identity = rule.implementation_owner
+            # Native matching elects the analysis; unrelated rules need no graph walk.
+            if identity not in implementation_owners:
+                implementation_owners[identity] = (
+                    FlextInfraUtilitiesCodemodProject._implementation_owner_modules(
+                        project,
+                        m.Infra.CodemodContextCondition(
+                            variable="OWNER",
+                            predicate=c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER,
+                            holds=False,
+                            arg=identity,
+                        ),
+                        sources,
+                    )
+                )
+            if (
+                resource is not None
+                and Path(resource.real_path) in implementation_owners[identity]
+            ):
+                return False
         if rule.call_target is not None:
             captured = match.get_ast(rule.call_target)
             tree = module.get_ast()

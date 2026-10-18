@@ -127,6 +127,15 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def scope_roots(self) -> t.VariadicTuple[t.Infra.Path]: ...
 
+        @property
+        def completed(self) -> bool: ...
+
+        @property
+        def issues(self) -> t.VariadicTuple[p.Infra.Issue]: ...
+
+        @property
+        def exception(self) -> BaseException | None: ...
+
     @runtime_checkable
     class CodegenResult(Protocol):
         """Generation or observation facts consumed by public callers."""
@@ -152,7 +161,7 @@ class FlextInfraProtocolsBase(Protocol):
 
     @runtime_checkable
     class CodegenExecutionContext(Protocol):
-        """Actual runtime and bound capabilities supplied by the API service MRO."""
+        """Actual caller runtime and its explicitly bound conform capabilities."""
 
         @property
         def settings(self) -> p.Settings: ...
@@ -162,7 +171,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def codegen_conform_collaborators(
             self,
-        ) -> FlextInfraProtocolsBase.CodegenConformPorts: ...
+        ) -> FlextInfraProtocolsBase.CodegenConformPorts | None: ...
 
     @runtime_checkable
     class FunctionDescriptor(Protocol):
