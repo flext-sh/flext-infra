@@ -68,13 +68,12 @@ class FlextInfraCodemodSemanticApply:
                 else stack.enter_context(FlextInfraRopeWorkspace.open_workspace(scope))
             )
             return cls._build_native_rename_plan(
-                root, producer_workspace, selections, scopes, consumers
+                producer_workspace, selections, scopes, consumers
             )
 
     @classmethod
     def _build_native_rename_plan(
         cls,
-        root: Path,
         workspace: p.Infra.RopeWorkspaceDsl,
         selections: m.Infra.SemanticRenameSelections,
         scopes: t.VariadicTuple[Path],
@@ -685,38 +684,6 @@ class FlextInfraCodemodSemanticApply:
                 for name in artifact_fields
                 if current_fields[name] != artifact_fields[name]
             ]
-            current_candidate = rebuilt.value.candidate.model_dump(mode="python")
-            artifact_candidate = artifact.candidate.model_dump(mode="python")
-            differences.extend(
-                f"candidate.{name}"
-                for name in artifact_candidate
-                if current_candidate[name] != artifact_candidate[name]
-            )
-            # Report schema fields only, never captured source bytes or path values.
-            for index, (current_directory, original_directory) in enumerate(
-                zip(
-                    rebuilt.value.source_directories,
-                    artifact.source_directories,
-                    strict=False,
-                )
-            ):
-                if current_directory == original_directory:
-                    continue
-                current_receipt = current_directory.model_dump(mode="python")
-                original_receipt = original_directory.model_dump(mode="python")
-                differences.extend(
-                    f"source_directories[{index}].{name}"
-                    for name in original_receipt
-                    if current_receipt[name] != original_receipt[name]
-                )
-                current_root = current_directory.root.model_dump(mode="python")
-                original_root = original_directory.root.model_dump(mode="python")
-                differences.extend(
-                    f"source_directories[{index}].root.{name}"
-                    for name in original_root
-                    if current_root[name] != original_root[name]
-                )
-                break
             return r[bool].fail(
                 "semantic rename artifact differs from current native plan; fields="
                 + ", ".join(differences)
@@ -730,6 +697,7 @@ class FlextInfraCodemodSemanticApply:
         if authenticated.failure:
             return r[bool].from_failure(authenticated)
         return cls._publish_authenticated_rename(
+            root,
             artifact,
             driver,
             publish=request.apply and not request.check and not request.dry_run_mode,
@@ -770,6 +738,7 @@ class FlextInfraCodemodSemanticApply:
 
     @staticmethod
     def _publish_authenticated_rename(
+        root: Path,
         artifact: m.Infra.SemanticRenamePlan,
         driver: m.Cli.AtomicFileState | None,
         *,

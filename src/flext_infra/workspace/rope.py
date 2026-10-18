@@ -466,20 +466,6 @@ class FlextInfraRopeWorkspace(
         return convention
 
     @override
-    def semantic(self, file_path: Path) -> m.Infra.ModuleSemanticState:
-        """Return one cached semantic snapshot for a module path.
-
-        Returns:
-            One cached semantic snapshot for a module path.
-
-        """
-        state: m.Infra.ModuleSemanticState = u.Infra.resolve_module_semantic_state(
-            self.rope_project,
-            self._resource_for(file_path),
-        )
-        return state
-
-    @override
     def exports(
         self,
         file_path: Path,

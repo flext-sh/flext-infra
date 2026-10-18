@@ -65,9 +65,11 @@ class TestsFlextInfraRopeContracts:
     def test_workspace_loads_only_declared_member_overlays(tmp_path: Path) -> None:
         """One workspace catalogue discovers member policy without directory sweeps."""
         packaged = tuple(rule.id for rule in u.Infra.declared_contract_rules(tmp_path))
-        member = tmp_path / "governed"
-        member.mkdir()
-        u.Tests.create_lazy_init_workspace(member)
+        member, _ = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="governed",
+            package_name="governed",
+        )
         (tmp_path / ".gitmodules").write_text(
             '[submodule "governed"]\n\tpath = governed\n\turl = https://example.invalid/governed.git\n',
             encoding=c.DEFAULT_ENCODING,
@@ -89,6 +91,89 @@ class TestsFlextInfraRopeContracts:
             tuple(rule.id for rule in rules), eq=(*packaged, "governed-member-contract")
         )
         tm.that(rules[-1].source_states[0].path, eq=overlay)
+
+    @staticmethod
+    def test_constructor_target_preserves_arguments_and_noncall_references(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+    ) -> None:
+        """Native callee replacement needs no signature catalogue or argument rewrite."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "events = []\n"
+            "class Service:\n"
+            "    def __init__(self, value, *, label, registry=None):\n"
+            "        self.value, self.label = value, label\n"
+            "class Api(Service):\n"
+            "    pass\n"
+            "class Child(Service):\n"
+            "    pass\n"
+            "selected: type[Service] = Service\n"
+            "def load():\n"
+            "    events.append('positional')\n"
+            "    return 3\n"
+            "def tag():\n"
+            "    events.append('keyword')\n"
+            "    return 'label'\n"
+            "result = Service(load(), label=tag())\n"
+            "explicit = Service(load(), label=tag(), registry=object())\n"
+            "evidence = (result.value, result.label, tuple(events))\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        module = f"{path.parent.name}.{path.stem}"
+        rule = m.Infra.RopeContractRule(
+            id="service-constructor-composition",
+            pattern="${service}",
+            goal="Api",
+            arguments={"service": f"name={module}.Service"},
+            bindings={"Api": f"{module}.Api"},
+            call_target="service",
+            missing_keywords=("registry",),
+        )
+        edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, (rule,)))
+        tm.that(len(edits), eq=1)
+        updated = edits[0].updated_source
+        tm.that(updated, contains="result = Api(load(), label=tag())")
+        tm.that(updated, contains="class Child(Service):")
+        tm.that(updated, contains="selected: type[Service] = Service")
+        tm.that(
+            updated,
+            contains="explicit = Service(load(), label=tag(), registry=object())",
+        )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        path.write_text(updated, encoding=c.DEFAULT_ENCODING)
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+        tm.that(
+            tm.ok(u.Infra.plan_contract_rules(workspace, {path: updated}, (rule,))),
+            empty=True,
+        )
+
+    @staticmethod
+    def test_constructor_missing_port_proof_rejects_expanded_keywords(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+    ) -> None:
+        """Unproven expanded keywords never authorize a second composition graph."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "class Service:\n    pass\n"
+            "class Api(Service):\n    pass\n"
+            "kwargs = {}\nresult = Service(**kwargs)\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        module = f"{path.parent.name}.{path.stem}"
+        rule = m.Infra.RopeContractRule(
+            id="service-constructor-injected-port",
+            pattern="${service}",
+            goal="Api",
+            arguments={"service": f"name={module}.Service"},
+            bindings={"Api": f"{module}.Api"},
+            call_target="service",
+            missing_keywords=("registry",),
+        )
+        outcome = u.Infra.plan_contract_rules(workspace, {path: source}, (rule,))
+        tm.that(outcome.failure, eq=True)
+        tm.that(tm.not_none(outcome.error), contains="expanded keywords")
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
     def test_repository_overlay_cannot_redeclare_a_packaged_rule(

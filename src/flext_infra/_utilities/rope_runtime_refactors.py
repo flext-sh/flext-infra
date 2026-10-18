@@ -417,6 +417,41 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         return finder
 
     @classmethod
+    def semantic_capture(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        captured: p.AttributeProbe | None,
+        constraints: str | t.StrSequence,
+        *,
+        name: str,
+    ) -> bool:
+        """Delegate capture constraints and alternatives to Rope's native matcher.
+
+        Returns:
+            Whether any declared alternative admits the original captured node.
+
+        Raises:
+            ValueError: The declared capture is absent from the original match.
+            TypeError: Rope does not expose its default wildcard contract.
+
+        """
+        if captured is None:
+            message = f"Rope match has no captured variable: {name}"
+            raise ValueError(message)
+        wildcard = cls.runtime_callable("rope.refactor.wildcards", "DefaultWildcard")(
+            project
+        )
+        if not isinstance(wildcard, p.Infra.RopeDefaultWildcard):
+            message = "Rope DefaultWildcard does not satisfy its native contract"
+            raise TypeError(message)
+        suspect = cls.runtime_callable("rope.refactor.wildcards", "Suspect")(
+            module, captured, name
+        )
+        choices = (constraints,) if isinstance(constraints, str) else constraints
+        return any(wildcard.matches(suspect, choice) for choice in choices)
+
+    @classmethod
     def semantic_capture_region(
         cls,
         match: p.Infra.RopeContractMatch,

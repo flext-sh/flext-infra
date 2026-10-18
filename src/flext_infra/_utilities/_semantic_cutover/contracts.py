@@ -18,21 +18,19 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodemodProject,
     FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
-from flext_infra._utilities._rope_analysis.exports import (
-    FlextInfraUtilitiesRopeAnalysisExports,
-)
-from flext_infra._utilities._semantic_cutover.declaration_payload import (
+from flext_infra._utilities._rope_analysis import FlextInfraUtilitiesRopeAnalysisExports
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
-)
-from flext_infra._utilities._semantic_cutover.declaration_relocation import (
+    FlextInfraUtilitiesSemanticCutoverEdits,
     FlextInfraUtilitiesSemanticDeclarationRelocation,
 )
-from flext_infra._utilities._semantic_cutover.edits import (
-    FlextInfraUtilitiesSemanticCutoverEdits,
+from flext_infra._utilities._semantic_cutover.declaration_retirement import (
+    FlextInfraUtilitiesSemanticDeclarationRetirement,
 )
 
 
@@ -128,7 +126,15 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
     def _contract_arguments(
         rule: p.Infra.RopeContractRule,
     ) -> t.MappingKV[str, str | t.StrSequence]:
-        """An ownership transfer proves the selected member, not a receiver spelling."""
+        """Prove the selected member for an ownership-transfer rule.
+
+        Returns:
+            The native receiver constraints the rule must satisfy.
+
+        Raises:
+            ValueError: The transfer rule lacks its single receiver constraint.
+
+        """
         if rule.ownership_transfer is None:
             return rule.arguments
         if len(rule.arguments) != 1 or not all(
@@ -150,8 +156,16 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
     ) -> p.Result[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
         """Reuse the native contract loop for an already validated rule domain.
 
+        Args:
+            workspace: Authenticated Rope workspace owning every source.
+            sources: Current source text captured per absolute path.
+            rules: Validated contract rules admitted for this domain.
+
         Returns:
             Content plans consumed by the existing semantic publication owner.
+
+        Raises:
+            ValueError: A rule names an undeclared Rope contract family.
 
         """
         items = cls._editable_sources(sources)
@@ -199,7 +213,10 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
             )
             owned_modules = {
                 FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                    project, cls._resource(project, path)
+                    project,
+                    FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                        project, path
+                    ),
                 ).get_name(): path
                 for path, _source in items
                 if transfers and path.is_relative_to(workspace.repository_root)
@@ -264,7 +281,10 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 for change in members:
                     path = Path(change.resource.real_path).resolve()
                     proposed = FlextInfraUtilitiesSemanticDeclarationRelocation._remove_orphaned_imports(
-                        project, change.resource, working[path], change.new_contents
+                        project,
+                        change.resource,
+                        working[path],
+                        change.new_contents,
                     )
                     if proposed == working[path]:
                         continue
@@ -281,7 +301,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
             if project is not None:
                 project.close()
         retired, providers = (
-            FlextInfraUtilitiesSemanticDeclarationRelocation.retire_contract_owners(
+            FlextInfraUtilitiesSemanticDeclarationRetirement.retire_contract_owners(
                 workspace, dict(items), working, rules, epoch, owned_modules
             )
         )
@@ -371,6 +391,37 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         resource = module.get_resource()
         if resource is not None and Path(resource.real_path) in implementation_paths:
             return False
+        if rule.call_target is not None:
+            captured = match.get_ast(rule.call_target)
+            tree = module.get_ast()
+            if captured is None or not isinstance(tree, ast.AST):
+                msg = f"{rule.id}: call target requires an original native AST capture"
+                raise ValueError(msg)
+            invocation = next(
+                (
+                    node
+                    for node in ast.walk(tree)
+                    if isinstance(node, ast.Call) and node.func is captured
+                ),
+                None,
+            )
+            if invocation is None:
+                return False
+            if rule.missing_keywords:
+                if any(
+                    keyword.arg in rule.missing_keywords
+                    for keyword in invocation.keywords
+                ):
+                    return False
+                if any(keyword.arg is None for keyword in invocation.keywords):
+                    msg_0 = (
+                        f"{rule.id}: expanded keywords cannot prove missing "
+                        "injected ports"
+                    )
+                    raise ValueError(msg_0)
+        elif rule.missing_keywords:
+            msg_0 = f"{rule.id}: missing-keyword proof requires a call target"
+            raise ValueError(msg_0)
         if rule.receiver_methods and not cls._admitted_factory_receiver(
             project, module, match, rule.receiver_methods
         ):
@@ -382,7 +433,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                     f"{rule.id}: ownership transfer has no original project inventory"
                 )
                 raise ValueError(message)
-            relocation = FlextInfraUtilitiesSemanticDeclarationRelocation
+            relocation = FlextInfraUtilitiesSemanticDeclarationRetirement
             original = relocation.contract_transfer_binding(
                 project, rule.ownership_transfer, owned_modules
             )
@@ -398,7 +449,11 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 # successful retirement receipt.
                 if any(
                     FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture(
-                        project, module, match.get_ast(capture), constraints
+                        project,
+                        module,
+                        match.get_ast(capture),
+                        constraints,
+                        name=capture,
                     )
                     for capture, constraints in rule.arguments.items()
                 ):
@@ -554,7 +609,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 raise TypeError(message)
             if any(
                 refactors.semantic_capture(
-                    project, module, argument, f"type=builtins.{native}"
+                    project, module, argument, f"type=builtins.{native}", name=""
                 )
                 for native in ("str", "bool", "int", "float")
             ):
@@ -606,7 +661,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 raise ValueError(message)
             for argument in invocation.args:
                 if not refactors.semantic_capture(
-                    project, module, argument, "type=builtins.str"
+                    project, module, argument, "type=builtins.str", name=""
                 ):
                     message = f"unproven native bound key: {module.get_name()}:{invocation.lineno}"
                     raise ValueError(message)
@@ -665,7 +720,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 message = f"unproven native logging emission contract: {module.get_name()}:{invocation.lineno}"
                 raise ValueError(message)
             if not refactors.semantic_capture(
-                project, module, invocation.args[0], "type=builtins.str"
+                project, module, invocation.args[0], "type=builtins.str", name=""
             ):
                 message = f"logging migration requires a proven string message: {module.get_name()}:{invocation.lineno}"
                 raise ValueError(message)

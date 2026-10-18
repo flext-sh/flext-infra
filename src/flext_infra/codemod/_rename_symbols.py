@@ -934,7 +934,7 @@ class FlextInfraRenameSymbols:
                 project,
                 u.Infra.require_file_resource(candidate, candidate.path),
             )
-            changed = FlextInfraUtilitiesSemanticNestingTypes._rewrite_quoted_types(
+            changed = FlextInfraUtilitiesSemanticNestingTypes.rewrite_quoted_types(
                 project,
                 candidate,
                 source,

@@ -479,7 +479,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
                     return ".".join((qualified, *parts[count + 1 :]))
                 return None
 
-            rewritten = FlextInfraUtilitiesSemanticNestingTypes._rewrite_quoted_types(
+            rewritten = FlextInfraUtilitiesSemanticNestingTypes.rewrite_quoted_types(
                 project,
                 resource,
                 source,

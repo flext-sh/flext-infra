@@ -17,7 +17,14 @@ class FlextInfraCodegenHandlers:
         self: p.Infra.CodegenExecutionContext,
         request: p.Infra.CodegenGenerateRequest,
     ) -> p.Result[p.Infra.CodegenResult]:
-        """Generate projections using the caller-bound ports and runtime seeds."""
+        """Generate projections using the caller-bound ports and runtime seeds.
+
+        Exceptions from collaborator binding or generation propagate unchanged.
+
+        Returns:
+            The delegated generation Result, including any reported failure.
+
+        """
         return FlextInfraCodegenConform.generate_request(
             request,
             ports=self.codegen_conform_collaborators(),
@@ -30,7 +37,14 @@ class FlextInfraCodegenHandlers:
         request: p.Infra.CodegenConformRequest,
         initial_workspace: p.Infra.WorkspaceSpec | None = None,
     ) -> p.Result[p.Infra.CodegenResult]:
-        """Observe or repair projections without retaining request state on the API."""
+        """Observe or repair projections without retaining request state on the API.
+
+        Exceptions from collaborator binding or conformance propagate unchanged.
+
+        Returns:
+            The delegated observation or repair Result, including reported failures.
+
+        """
         return FlextInfraCodegenConform.execute_request(
             request,
             initial_workspace,

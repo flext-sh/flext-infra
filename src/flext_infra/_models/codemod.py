@@ -294,10 +294,31 @@ class FlextInfraModelsCodemod:
             default=(),
             description="Proven discarded-call interface required of a factory product",
         )
+        call_target: t.NonEmptyStr | None = m.Field(
+            default=None,
+            description="Capture admitted only as the original callee, preserving every argument",
+        )
+        missing_keywords: t.StrSequence = m.Field(
+            default=(),
+            description="Required injected keywords whose explicit presence preserves an existing composition",
+        )
         ownership_transfer: t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None = m.Field(
             default=None,
             description="Project-owned native module/member retired after complete receiver transfer",
         )
+
+        @m.model_validator(mode="after")
+        def _validate_call_target(self) -> Self:
+            if self.missing_keywords and self.call_target is None:
+                msg = "missing-keyword proof requires a call target"
+                raise ValueError(msg)
+            if (
+                self.call_target is not None
+                and f"${{{self.call_target}}}" not in self.pattern
+            ):
+                msg = "call target must name a capture in the native pattern"
+                raise ValueError(msg)
+            return self
 
     class RopeContractRules(m.ContractModel):
         """The packaged semantic contract policy, validated once on input."""

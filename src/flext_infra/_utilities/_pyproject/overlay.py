@@ -24,7 +24,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
 
     @staticmethod
     def _validated_requirement_lists(
-        project: t.MutableJsonMapping,
+        project: t.JsonMapping,
         live_project: t.JsonMapping,
         key: str,
     ) -> p.Result[t.Pair[t.StrSequence, t.StrSequence]]:

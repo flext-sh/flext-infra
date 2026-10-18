@@ -71,7 +71,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     file_path=path,
                     original_source=source,
                     updated_source=working[path],
-                    changes=changes[path],
+                    changes=tuple(changes[path]),
                 )
                 for path, source in sources.items()
                 if source != working[path]

@@ -82,7 +82,15 @@ class FlextInfraModelsBase:
         @m.field_validator("repository_root", mode="before")
         @classmethod
         def _normalize_repository_root(cls, value: t.Cli.TextPath) -> t.Infra.Path:
-            """Resolve the invocation root without escalating to a workspace."""
+            """Resolve the invocation root without escalating to a workspace.
+
+            Native filesystem inspection and resolution errors propagate unchanged.
+
+            Returns:
+                The resolved parent if the input is a file, or the resolved input
+                path otherwise.
+
+            """
             path = Path(value)
             return (path.parent if path.is_file() else path).resolve()
 
@@ -92,7 +100,12 @@ class FlextInfraModelsBase:
             cls,
             value: str | t.StrSequence | None,
         ) -> str | None:
-            """Normalize comma-separated and repeated whitespace selectors."""
+            """Normalize comma-separated and repeated whitespace selectors.
+
+            Returns:
+                Nonempty selectors joined by commas, or None if none remain.
+
+            """
             values = (value,) if isinstance(value, str) else value or ()
             return (
                 ",".join(
@@ -110,7 +123,14 @@ class FlextInfraModelsBase:
             cls,
             value: t.Cli.TextPath | None,
         ) -> t.Infra.Path | None:
-            """Resolve a supplied report path, including an explicitly blank path."""
+            """Resolve a supplied report path, including an explicitly blank path.
+
+            Native path resolution errors propagate unchanged.
+
+            Returns:
+                None for absent input; otherwise the resolved supplied path.
+
+            """
             return None if value is None else Path(value).resolve()
 
         @m.field_validator("output_dir", mode="before")
@@ -119,7 +139,15 @@ class FlextInfraModelsBase:
             cls,
             value: t.Cli.TextPath | None,
         ) -> t.Infra.Path | None:
-            """Strip text paths while preserving relative output directories."""
+            """Strip text paths while preserving relative output directories.
+
+            Native absolute-path resolution errors propagate unchanged.
+
+            Returns:
+                None for absent input, the resolved path for absolute input,
+                or a relative path with surrounding text whitespace removed.
+
+            """
             if value is None:
                 return None
             path = value if isinstance(value, Path) else Path(value.strip())

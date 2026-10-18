@@ -28,7 +28,18 @@ class TestsFlextInfraSemanticPhaseContract:
     @staticmethod
     @pytest.mark.parametrize(
         "case",
-        ["complete", "marker", "dynamic", "member-alias", "signature", "external"],
+        [
+            "complete",
+            "marker",
+            "dynamic",
+            "member-alias",
+            "signature",
+            "external",
+            "unused-import",
+            "module-marker",
+            "opaque",
+            "source-drift",
+        ],
     )
     def test_logging_ownership_transfer_uses_the_real_mod_publication_group(
         tmp_path: t.Infra.RopeSourcePath, case: str
@@ -92,6 +103,10 @@ class TestsFlextInfraSemanticPhaseContract:
             "member-alias": "marker = API.ContextStage\n",
             "signature": "",
             "external": "",
+            "unused-import": f"from {namespace}.services.logging_integration import {legacy_name} as Spare\n",
+            "module-marker": f"import {namespace}.services.logging_integration as legacy_module\nmarker = legacy_module.__name__\n",
+            "opaque": "def unknown_owner(candidate):\n    return candidate.ContextStage()\n",
+            "source-drift": "",
         }[case]
         consumer.write_text(
             "from __future__ import annotations\n"
@@ -177,6 +192,31 @@ class TestsFlextInfraSemanticPhaseContract:
             for path in (legacy, provider, api, consumer, recipe)
         }
         report = m.Infra.ModOccurrenceReport(files=frozenset({consumer}), entries=())
+        if case == "source-drift":
+            with pytest.raises(ValueError, match="source|directory|identity"):
+                with u.Infra.facade_source_project(root) as (
+                    project,
+                    _consumed,
+                    _sources,
+                ):
+                    with infra.rope_workspace(
+                        root, source_project=project
+                    ) as workspace:
+                        inventory = FlextInfraCodemodSemanticApply.source_inventory(
+                            root, report, source_project=project
+                        )
+                        tm.ok(
+                            FlextInfraCodemodSemanticApply.plan(
+                                root, report, workspace, inventory
+                            )
+                        )
+                        replacement = legacy.with_suffix(".replacement")
+                        replacement.write_bytes(original[legacy])
+                        replacement.replace(legacy)
+            # Same bytes but a different inode cannot become a fresh baseline.
+            for path, contents in original.items():
+                tm.that(path.read_bytes(), eq=contents)
+            return
         if case != "complete":
             messages = {
                 "marker": "marker/dynamic",
@@ -184,6 +224,9 @@ class TestsFlextInfraSemanticPhaseContract:
                 "member-alias": "surviving native usage",
                 "signature": "callable signature",
                 "external": "outside its project|external library",
+                "unused-import": "surviving imported alias",
+                "module-marker": "surviving module usage",
+                "opaque": "unproven transferred receiver",
             }
             with (
                 infra.rope_workspace(root) as workspace,
@@ -225,6 +268,17 @@ class TestsFlextInfraSemanticPhaseContract:
             consumer.read_text(encoding=c.DEFAULT_ENCODING),
             has="compose_logging and ContextStage are documentation",
         )
+        with infra.rope_workspace(root) as workspace:
+            changed_again = tm.ok(
+                FlextInfraCodemodSemanticApply.apply(
+                    root,
+                    report,
+                    workspace,
+                    source_preview=infra.source_preview(root),
+                    workspace_factory=infra.rope_workspace,
+                )
+            )
+        tm.that(changed_again, eq=False)
         probe = root / "verify_logging_cutover.py"
         probe.write_text(
             f"from {namespace}.api import {owner} as API\n"
@@ -241,16 +295,6 @@ class TestsFlextInfraSemanticPhaseContract:
             u.Cli.run_raw((str(u.Infra.runtime_python(root)), str(probe)), cwd=root)
         )
         tm.that(outcome.outcome.raw_return_code, eq=0, msg=outcome.stderr)
-        with infra.rope_workspace(root) as workspace:
-            tm.ok(
-                FlextInfraCodemodSemanticApply.apply(
-                    root,
-                    report,
-                    workspace,
-                    source_preview=infra.source_preview(root),
-                    workspace_factory=infra.rope_workspace,
-                )
-            )
         tm.that(legacy.exists(), eq=False)
 
     @staticmethod

@@ -20,17 +20,13 @@ from libcst import (
     Module,
 )
 from libcst.metadata import MetadataWrapper
-from rope.base.builtins import BuiltinModule
-from rope.base.pycore import PyCore
-from rope.base.pyobjectsdef import PyModule, PyPackage
-from rope.base.resources import Resource
 from rope.refactor.restructure import ChangeComputer
-from rope.refactor.similarfinder import ExpressionMatch, StatementMatch
 
 from flext_infra._protocols import FlextInfraProtocolsRopeRuntime
+from flext_infra._typings.rope_native import FlextInfraTypesRopeNative
 
 
-class FlextInfraTypesRope:
+class FlextInfraTypesRope(FlextInfraTypesRopeNative):
     """Rope type aliases — accessed via t.Infra.*."""
 
     type PythonImportNode = Import | ImportFrom
@@ -57,12 +53,6 @@ class FlextInfraTypesRope:
     type CstMetadata = MetadataWrapper
 
     type RopeProject = FlextInfraProtocolsRopeRuntime.RopeProject
-    type RopeNativeCore = PyCore
-    type RopeNativeSourceModule = PyModule
-    type RopeNativeParsedModule = PyModule | PyPackage
-    type RopeNativeSemanticModule = BuiltinModule | RopeNativeParsedModule
-    type RopeNativeResource = Resource
-    type RopeNativeMatch = ExpressionMatch | StatementMatch
     type RopeResource = FlextInfraProtocolsRopeRuntime.RopeResource
     type RopeImportLookup = t.MutableMappingKV[
         t.Triple[str, str, int], RopeResource | None

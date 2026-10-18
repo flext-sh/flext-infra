@@ -110,12 +110,15 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
         for section, values in sections.value.items():
             raw_path = values.get(c.Infra.GITMODULE_PATH_KEY, "")
             relative = Path(raw_path)
-            if relative.is_absolute() or not relative.parts or ".." in relative.parts:
+            invalid_path = (
+                relative.is_absolute() or not relative.parts or ".." in relative.parts
+            )
+            if invalid_path or any(item.path == relative for item in declarations):
                 return result.fail(
-                    f"invalid Git submodule path in {section}: {raw_path!r}",
+                    f"invalid Git submodule path in {section}: {raw_path!r}"
+                    if invalid_path
+                    else f"duplicate Git submodule path: {raw_path}",
                 )
-            if any(item.path == relative for item in declarations):
-                return result.fail(f"duplicate Git submodule path: {raw_path}")
             flag = values.get(c.Infra.GITMODULE_MANAGED_KEY)
             managed: bool | None = None
             if flag is not None:
@@ -144,7 +147,7 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
             layer: c.Infra.MemberArchitectureLayer | None = None
             if raw_layer is not None:
                 try:
-                    layer = c.Infra.MemberArchitectureLayer(str(raw_layer))
+                    layer = c.Infra.MemberArchitectureLayer(raw_layer)
                 except ValueError:
                     return result.fail(
                         f"invalid Git submodule layer declaration in {section}: "

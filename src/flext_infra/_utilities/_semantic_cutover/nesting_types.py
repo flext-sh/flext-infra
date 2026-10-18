@@ -119,7 +119,7 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         return tuple(edits)
 
     @classmethod
-    def _rewrite_quoted_types(
+    def rewrite_quoted_types(
         cls,
         project: p.Infra.RopeProject,
         resource: p.Infra.RopeResource,

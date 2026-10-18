@@ -63,10 +63,14 @@ class FlextInfraProtocolsBase(Protocol):
         """Caller-bound cross-family capabilities consumed by conform."""
 
         @property
-        def docs_planner(self) -> p.Infra.DocsArtifactPlannerFactory: ...
+        def docs_planner(
+            self,
+        ) -> FlextInfraProtocolsBase.DocsArtifactPlannerFactory: ...
 
         @property
-        def participant_policy(self) -> p.Infra.CodegenParticipantPolicyFactory: ...
+        def participant_policy(
+            self,
+        ) -> FlextInfraProtocolsBase.CodegenParticipantPolicyFactory: ...
 
     @runtime_checkable
     class CodegenGenerateRequest(Protocol):
@@ -109,10 +113,12 @@ class FlextInfraProtocolsBase(Protocol):
         """Public plan membership, separate from the internal publication schema."""
 
         @property
-        def files(self) -> t.SequenceOf[p.Infra.CodegenFileOutcome]: ...
+        def files(self) -> t.SequenceOf[FlextInfraProtocolsBase.CodegenFileOutcome]: ...
 
         @property
-        def repositories(self) -> t.SequenceOf[p.Infra.RepositoryRef]: ...
+        def repositories(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]: ...
 
     @runtime_checkable
     class CodegenPublicationOutcome(Protocol):
@@ -126,13 +132,17 @@ class FlextInfraProtocolsBase(Protocol):
         """Generation or observation facts consumed by public callers."""
 
         @property
-        def plan(self) -> p.Infra.CodegenPlanOutcome | None: ...
+        def plan(self) -> FlextInfraProtocolsBase.CodegenPlanOutcome | None: ...
 
         @property
-        def verified_publication(self) -> p.Infra.CodegenPublicationOutcome | None: ...
+        def verified_publication(
+            self,
+        ) -> FlextInfraProtocolsBase.CodegenPublicationOutcome | None: ...
 
         @property
-        def publication_receipt(self) -> p.Infra.CodegenPublicationOutcome | None: ...
+        def publication_receipt(
+            self,
+        ) -> FlextInfraProtocolsBase.CodegenPublicationOutcome | None: ...
 
         @property
         def written_files(self) -> t.VariadicTuple[t.Infra.Path]: ...
@@ -150,7 +160,9 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def context(self) -> p.Context: ...
 
-        def codegen_conform_collaborators(self) -> p.Infra.CodegenConformPorts: ...
+        def codegen_conform_collaborators(
+            self,
+        ) -> FlextInfraProtocolsBase.CodegenConformPorts: ...
 
     @runtime_checkable
     class FunctionDescriptor(Protocol):
@@ -189,7 +201,6 @@ class FlextInfraProtocolsBase(Protocol):
             workspaces: t.VariadicTuple[Path] = (),
             runtime_check: bool = True,
             modes: t.MappingKV[Path, int] | None = None,
-            declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
         ) -> p.Result[T]:
             """Validate staged updates and retirements while preserving live sources."""
             ...
