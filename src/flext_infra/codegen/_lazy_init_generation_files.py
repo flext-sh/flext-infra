@@ -212,6 +212,46 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             return r[bool].fail(str(exc), exception=exc)
 
     @classmethod
+    def _original_plans_covered(
+        cls,
+        originals: tuple[
+            m.Cli.AtomicDirectoryInventory | m.Cli.AtomicDirectoryChainPlan, ...
+        ],
+        candidates: tuple[
+            m.Cli.AtomicDirectoryInventory | m.Cli.AtomicDirectoryChainPlan, ...
+        ],
+    ) -> bool:
+        """Prove every failing original is represented by a genuine candidate.
+
+        Membership-stripped forms are constant across every original query, so
+        each plan is copied once instead of once per pairwise comparison.
+
+        Returns:
+            Whether all originals are covered by an authenticated candidate.
+
+        """
+        stripped_candidates = tuple(
+            covered.model_copy(update={"queries": (), "membership_queried": False})
+            for covered in candidates
+        )
+        return all(
+            any(
+                stripped_original == stripped_covered
+                and set(original.queries).issubset(covered.queries)
+                and (not original.membership_queried or covered.membership_queried)
+                for covered, stripped_covered in zip(
+                    candidates, stripped_candidates, strict=True
+                )
+            )
+            for original in originals
+            for stripped_original in (
+                original.model_copy(
+                    update={"queries": (), "membership_queried": False}
+                ),
+            )
+        )
+
+    @classmethod
     def classify_source_conflict(
         cls,
         analysis: m.Infra.CodegenPhaseAnalysis,
@@ -254,21 +294,9 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             for original in project.consumed_source_topology()
             if cls._verify_original_sources((), (), (original,)).failure
         )
-        if not all(
-            any(
-                original_query.model_copy(
-                    update={"queries": (), "membership_queried": False}
-                )
-                == covered.model_copy(
-                    update={"queries": (), "membership_queried": False}
-                )
-                and set(original_query.queries).issubset(covered.queries)
-                and (
-                    not original_query.membership_queried or covered.membership_queried
-                )
-                for covered in (*directories, *topology)
-            )
-            for original_query in (*failed_directories, *failed_topology)
+        candidates = (*directories, *topology)
+        if not cls._original_plans_covered(
+            (*failed_directories, *failed_topology), candidates
         ):
             raise cause
         if not (failed_states or failed_directories or failed_topology):
