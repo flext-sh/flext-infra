@@ -25,8 +25,8 @@ from flext_infra._models import (
     FlextInfraModelsScan,
     FlextInfraModelsTransformers,
 )
-from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
-from flext_infra._models._codegen.transaction import (
+from flext_infra._models._codegen import (
+    FlextInfraModelsCodegenJournalModels,
     FlextInfraModelsCodegenTransactionModels,
 )
 

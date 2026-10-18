@@ -17,11 +17,11 @@ from flext_cli import m, p
 
 from flext_infra import c, t
 from flext_infra._models import (
+    FlextInfraModelsBase,
     FlextInfraModelsCodemod,
     FlextInfraModelsMixins,
     FlextInfraModelsRefactorGrep,
 )
-from flext_infra._models.base import FlextInfraModelsBase
 
 
 class FlextInfraModelsScan:

@@ -14,7 +14,7 @@ from typing import Annotated, ClassVar
 from flext_cli import m
 
 from flext_infra import p, t
-from flext_infra._models.base import FlextInfraModelsBase
+from flext_infra._models import FlextInfraModelsBase
 
 
 class FlextInfraModelsTransformers:
