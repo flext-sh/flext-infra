@@ -311,6 +311,24 @@ class FlextInfraModelsCheck:
             validate_default=True,
         )
 
+        @m.field_validator(
+            "locations",
+            "related_locations",
+            mode="before",
+        )
+        @classmethod
+        def _coerce_declared_sequences(cls, value: object) -> object:
+            """Coerce scanner JSON arrays into the strict tuple form.
+
+            Args:
+                value: The raw declared value.
+
+            Returns:
+                The coerced tuple.
+
+            """
+            return tuple(value) if isinstance(value, list) else value
+
         @m.computed_field
         @property
         def formatted(self) -> str:
