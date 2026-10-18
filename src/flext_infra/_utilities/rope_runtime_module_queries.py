@@ -263,7 +263,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         project: p.Infra.RopeProject,
         sources: t.MappingKV[Path, str],
         *,
-        captured: m.Infra.CodemodSourceEpoch | None = None,
+        captured: p.Infra.CodemodSourceEpoch | None = None,
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> p.Infra.RopeProject:
         """Capture a complete identity graph with proposed sources authoritative.

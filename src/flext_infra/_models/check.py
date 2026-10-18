@@ -14,6 +14,7 @@ from flext_cli import m, u
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
+from flext_infra._protocols.check import FlextInfraProtocolsCheck
 
 
 class FlextInfraModelsCheck:
@@ -260,6 +261,12 @@ class FlextInfraModelsCheck:
                 },
             }
 
+    _sarif_location_schema = m.GetPydanticSchema(
+        lambda _source, handler, location_model=SarifLocation: handler.generate_schema(
+            location_model,
+        ),
+    )
+
     class LineWrapLiteral(m.ContractModel):
         """One single-line string literal the line-length repair may split."""
 
@@ -283,17 +290,19 @@ class FlextInfraModelsCheck:
         severity: Annotated[str, m.Field(description="Issue severity level")] = (
             c.Infra.ERROR
         )
-        locations: t.VariadicTuple[FlextInfraModelsCheck.SarifLocation] = m.Field(
+        locations: t.VariadicTuple[
+            Annotated[FlextInfraProtocolsCheck.SarifLocation, _sarif_location_schema]
+        ] = m.Field(
             (),
             description="Native primary source spans when supplied by the scanner",
             validate_default=True,
         )
-        related_locations: t.VariadicTuple[FlextInfraModelsCheck.SarifLocation] = (
-            m.Field(
-                (),
-                description="All native comparison locations, including other projects",
-                validate_default=True,
-            )
+        related_locations: t.VariadicTuple[
+            Annotated[FlextInfraProtocolsCheck.SarifLocation, _sarif_location_schema]
+        ] = m.Field(
+            (),
+            description="All native comparison locations, including other projects",
+            validate_default=True,
         )
 
         @m.computed_field
@@ -309,6 +318,12 @@ class FlextInfraModelsCheck:
             return (
                 f"{self.file}:{self.line}:{self.column} {code_part}{self.message}"
             ).strip()
+
+    _issue_schema = m.GetPydanticSchema(
+        lambda _source, handler, issue_model=Issue: handler.generate_schema(
+            issue_model
+        ),
+    )
 
     class GateResult(FlextInfraModelsMixins.ProjectNameMixin, m.ArbitraryTypesModel):
         """Result summary for a single quality gate execution."""
@@ -331,7 +346,9 @@ class FlextInfraModelsCheck:
         project_dir: Path = m.Field(description="Project whose gate was executed")
         verdict: bool = m.Field(description="Acceptance decided by the caller")
         outcome: c.Infra.ToolOutcome = m.Field(description="Native tool outcome")
-        issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
+        issues: t.VariadicTuple[
+            Annotated[FlextInfraProtocolsCheck.Issue, _issue_schema]
+        ] = m.Field(
             description="Complete native diagnostics",
         )
         raw_output: str = m.Field(description="Unmodified native output")
@@ -343,7 +360,9 @@ class FlextInfraModelsCheck:
         result: FlextInfraModelsCheck.GateResult = m.Field(
             description="Gate result model",
         )
-        issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
+        issues: t.VariadicTuple[
+            Annotated[FlextInfraProtocolsCheck.Issue, _issue_schema]
+        ] = m.Field(
             default_factory=tuple,
             description=(
                 "Complete native gate diagnostics, including informative findings"

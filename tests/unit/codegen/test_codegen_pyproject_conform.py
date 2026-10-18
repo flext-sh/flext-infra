@@ -275,6 +275,65 @@ class TestsFlextInfraCodegenPyprojectConform:
             eq="sample.plugin:main",
         )
 
+    @pytest.mark.parametrize("live_readme", [None, "docs/consumer.md"])
+    def test_custom_metadata_preserves_authored_absence(
+        self,
+        live_readme: t.StrippedStr | None,
+    ) -> None:
+        """A scaffold default cannot introduce an authored resource requirement."""
+        scaffold_readme = config.Infra.codegen.scaffold.project.readme
+        rendered = (
+            '[project]\nname = "sample"\n'
+            f"readme = {tm.ok(u.Cli.json_dumps(scaffold_readme))}\n"
+        )
+        live = '[project]\nname = "sample"\n'
+        if live_readme is not None:
+            live += f"readme = {tm.ok(u.Cli.json_dumps(live_readme))}\n"
+
+        first = tm.ok(
+            u.Infra.overlay_preserved(rendered, live, preserve_project_keys=("readme",)),
+        )
+        project = u.Tests.toml_table_at(first, "project")
+        tm.that("readme" in project, eq=live_readme is not None)
+        tm.that(project.get("readme"), eq=live_readme)
+        second = tm.ok(
+            u.Infra.overlay_preserved(rendered, first, preserve_project_keys=("readme",)),
+        )
+        tm.that(second, eq=first)
+
+    @staticmethod
+    def test_new_project_keeps_scaffold_defaults_at_a_fixed_point() -> None:
+        """Initial creation retains defaults without changing the next projection."""
+        readme = config.Infra.codegen.scaffold.project.readme
+        rendered = (
+            '[project]\nname = "sample"\n'
+            f"readme = {tm.ok(u.Cli.json_dumps(readme))}\n"
+        )
+        first = tm.ok(
+            u.Infra.overlay_preserved(rendered, None, preserve_project_keys=("readme",)),
+        )
+        tm.that(u.Tests.toml_table_at(first, "project")["readme"], eq=readme)
+        second = tm.ok(
+            u.Infra.overlay_preserved(rendered, first, preserve_project_keys=("readme",)),
+        )
+        tm.that(second, eq=first)
+
+    @staticmethod
+    def test_custom_metadata_outside_the_render_is_not_removed() -> None:
+        """An authored dynamic version is not replaced by a static scaffold value."""
+        rendered = '[project]\nname = "sample"\nversion = "1.2.3"\n'
+        live = '[project]\nname = "sample"\ndynamic = ["version"]\n'
+        first = tm.ok(
+            u.Infra.overlay_preserved(rendered, live, preserve_project_keys=("version",)),
+        )
+        project = u.Tests.toml_table_at(first, "project")
+        tm.that("version" in project, eq=False)
+        tm.that(project["dynamic"], eq=["version"])
+        second = tm.ok(
+            u.Infra.overlay_preserved(rendered, first, preserve_project_keys=("version",)),
+        )
+        tm.that(second, eq=first)
+
     @pytest.mark.parametrize("invalid_surface", ["rendered", "live"])
     def test_overlay_retains_native_toml_failure_context(
         self,

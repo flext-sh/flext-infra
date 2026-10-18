@@ -8,86 +8,21 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import Annotated, assert_never
-
-from typing_extensions import TypeForm
+from typing import assert_never
 
 from flext_infra import c, m, p, s, t, u
 
 
-class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
+class FlextInfraCodegenConformBootstrap(
+    m.Infra.CodegenConformState,
+    s[m.Infra.CodegenResult],
+):
     """Root of the conform chain: request state and toolchain policy projections.
 
     This is the only orchestrator for Make/toolchain/source conformance.
     Rendering stays in flext-cli; Git-source TOML policy and attached detection
     are composed from their separately owned u.Infra/workspace services.
     """
-
-    request: Annotated[
-        m.Infra.CodegenConformRequest | None,
-        m.Field(default=None, exclude=True, description="Validated conform request"),
-    ] = None
-    generation_only: Annotated[
-        bool,
-        m.Field(
-            default=False,
-            exclude=True,
-            description="Project declared outputs without repairing authored inputs",
-        ),
-    ] = False
-    provider_plans: Annotated[
-        t.VariadicTuple[m.Infra.CodegenFilePlan] | None,
-        m.Field(
-            default=None,
-            exclude=True,
-            description="Original cohort lazy plans available to native source reads",
-        ),
-    ] = None
-    repository_root: Annotated[
-        Path,
-        m.Field(
-            default=Path(),
-            exclude=True,
-            description="Repository selected by the generation execution boundary",
-        ),
-    ] = Path()
-    initial_workspace: Annotated[
-        m.Infra.WorkspaceSpec | None,
-        m.Field(
-            default=None,
-            exclude=True,
-            description="Validated scaffold specification included in the atomic plan",
-        ),
-    ] = None
-    ports: Annotated[
-        m.Infra.CodegenConformPorts | None,
-        m.Field(
-            default=None,
-            exclude=True,
-            description=(
-                "Docs planner and participant policy wired by the facade; the "
-                "complete surface fails before any effect without them"
-            ),
-        ),
-    ] = None
-    planning_issues: Annotated[
-        t.MutableSequenceOf[m.Infra.Issue],
-        m.Field(
-            exclude=True,
-            description="Native file planning failures retained by this invocation",
-        ),
-    ] = m.Field(default_factory=u.empty(TypeForm(t.MutableSequenceOf[m.Infra.Issue])))
-
-    planning_exception: BaseException | None = m.Field(
-        default=None,
-        exclude=True,
-        description="First native file planning cause",
-    )
-    docs_planner: p.Infra.DocsArtifactPlanner | None = m.Field(
-        default=None,
-        exclude=True,
-        description="Actual docs planner retained before effects",
-    )
 
     def _record_file_failure(
         self,

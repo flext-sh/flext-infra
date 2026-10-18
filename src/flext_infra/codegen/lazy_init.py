@@ -54,7 +54,15 @@ class FlextInfraCodegenLazyInit(
 
     @property
     def source_project(self) -> p.Infra.RopeProject:
-        """Require the sole original source authority during generation."""
+        """Require the sole original source authority during generation.
+
+        Returns:
+            The original source project authority.
+
+        Raises:
+            ValueError: When no original source authority was captured.
+
+        """
         if self._source_project is None:
             msg = "lazy-init generation has no original source authority"
             raise ValueError(msg)
@@ -260,7 +268,16 @@ class FlextInfraCodegenLazyInit(
         source_project: p.Infra.RopeProject | None,
         project_roots: t.VariadicTuple[Path],
     ) -> Generator[p.Infra.RopeProject]:
-        """Bind consumers before indexing without replacing an injected epoch."""
+        """Bind consumers before indexing without replacing an injected epoch.
+
+        Yields:
+            The bound source consumer.
+
+        Raises:
+            ValueError: When the injected authority does not cover the
+                consumer root.
+
+        """
         if source_project is None:
             root = Path(
                 commonpath((str(root), *(str(project) for project in project_roots)))
@@ -300,6 +317,11 @@ class FlextInfraCodegenLazyInit(
             The resulting ``p.Result[t.Triple[list[m.Infra.CodegenPhaseAnalysis],
                 t.MappingKV[Path, m.Cli.AtomicFileState], int]]``.
 
+        Raises:
+            OSError: When the underlying source state verification fails
+                outside a source-epoch conflict.
+            ValueError: When planning produces no authenticated analysis.
+
         """
         result_type = r[
             t.Triple[
@@ -337,7 +359,8 @@ class FlextInfraCodegenLazyInit(
                         target_roots += 1
                         if target_roots > 1:
                             return result_type.fail(
-                                f"lazy-init target module is ambiguous: {self.target_module}",
+                                f"lazy-init target module is ambiguous: "
+                                f"{self.target_module}",
                             )
                     planned = self._plan_open_workspace(rope)
                     if planned.failure:

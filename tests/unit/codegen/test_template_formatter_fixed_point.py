@@ -6,7 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
+
+import pytest
 
 from tests import c, m, t, tm, u
 
@@ -131,3 +134,24 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
             rendered,
             has="    MappingProxyType({}),\n    public_exports=__all__,\n)",
         )
+
+    @pytest.mark.parametrize("owner_class", ["", "TestsPackageBindings"])
+    def test_lazy_root_preserves_module_documentation_with_an_owner(
+        self,
+        owner_class: str,
+    ) -> None:
+        """Both package shapes retain documentation at their declaring scope."""
+        context = m.Infra.LazyInitRootRender.model_validate(
+            self._empty_root_render().model_dump() | {"owner_class": owner_class}
+        )
+        rendered = tm.ok(u.Cli.template_render(self._ROOT_TEMPLATE, context))
+        module = ast.parse(rendered)
+
+        tm.that(ast.get_docstring(module), eq=ast.literal_eval(context.docstring))
+        owners = tuple(node for node in module.body if isinstance(node, ast.ClassDef))
+        tm.that(
+            tuple(node.name for node in owners),
+            eq=(owner_class,) if owner_class else (),
+        )
+        for owner in owners:
+            tm.that(ast.get_docstring(owner), empty=False)

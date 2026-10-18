@@ -38,7 +38,12 @@ class FlextInfraImportNormalizationPhase:
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Plan target imports with all selected roots available for reads."""
+        """Plan target imports with all selected roots available for reads.
+
+        Returns:
+            The planned phase analysis, or the first planning failure.
+
+        """
         del preflight
         captured = FlextInfraCodegenPreconditions.unique_states((
             *source_states,

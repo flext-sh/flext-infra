@@ -201,6 +201,9 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             The resulting ``t.Pair[str, t.LazyAliasMap] | None`` where None
             marks a child that does not merge.
 
+        Raises:
+            ValueError: If the child decision lacks its original provenance.
+
         """
         # Do not merge retired root registries into the
         # inline map that replaces them.

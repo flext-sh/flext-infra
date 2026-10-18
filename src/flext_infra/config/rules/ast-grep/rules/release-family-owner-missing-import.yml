@@ -2,8 +2,8 @@
 #
 # That rule rewires a consumer from the artifact copy of the release family to
 # its elected owner, but ast-grep cannot conditionally insert the import the
-# new name needs — the same constraint that keeps
-# rewire-logging-get-logger-missing-u-import detection-only. Declarations
+# new name needs. Native Rope contract rewrites own import completion; this
+# syntactic rule cannot provide that proof. Declarations
 # resolve strictly in this project (model_rebuild is prohibited), so an
 # unbound namespace name is not a lint warning: the Pydantic model is never
 # fully defined and the whole package stops importing.

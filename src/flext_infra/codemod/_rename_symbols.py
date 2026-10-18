@@ -66,7 +66,10 @@ class FlextInfraRenameSymbols:
             path = Path(module_resource.real_path).resolve()
             indexed = workspace.module(path)
             if indexed is None or module_resource.is_folder():
-                msg = f"semantic rename requires an inventoried module file: {qualified_name}"
+                msg = (
+                    f"semantic rename requires an inventoried "
+                    f"module file: {qualified_name}"
+                )
                 raise ValueError(msg)
             return m.Infra.Object(
                 project=(u.Infra.project_root(path) or workspace.repository_root).name,
@@ -203,7 +206,10 @@ class FlextInfraRenameSymbols:
                             origin = Path(change.resource.real_path).resolve()
                             target = Path(change.new_resource.real_path).resolve()
                             if origin not in sources or change.resource.is_folder():
-                                msg = f"native module move escapes authenticated file inventory: {origin}"
+                                msg = (
+                                    f"native module move escapes "
+                                    f"authenticated file inventory: {origin}"
+                                )
                                 raise ValueError(msg)
                             if origin in moves and moves[origin] == target:
                                 continue
@@ -211,7 +217,10 @@ class FlextInfraRenameSymbols:
                                 msg = f"native module moves conflict: {origin}"
                                 raise ValueError(msg)
                             if not target.is_relative_to(root) or target.exists():
-                                msg = f"native module destination is occupied or foreign: {target}"
+                                msg = (
+                                    f"native module destination "
+                                    f"is occupied or foreign: {target}"
+                                )
                                 raise ValueError(msg)
                             moves[origin] = target
                         else:
@@ -886,7 +895,12 @@ class FlextInfraRenameSymbols:
         identity: t.Triple[str, str, str],
         planned: t.MutableMappingKV[Path, t.MutableSequenceOf[m.Infra.SourceRewrite]],
     ) -> None:
-        """Reuse the existing binding-qualified quoted-type contract for native plans."""
+        """Reuse the existing binding-qualified quoted-type contract for plans.
+
+        Raises:
+            ValueError: If the rename lost its introducing binding.
+
+        """
         owner, old_suffix, new_suffix = identity
         expected = cls.resolve_member(project, owner, old_suffix) if owner else None
         module_object = (

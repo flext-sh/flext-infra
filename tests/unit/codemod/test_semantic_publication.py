@@ -185,6 +185,7 @@ class TestsFlextInfraSemanticPublication:
     def test_mod_composes_native_cross_root_effects_and_is_idempotent(
         tmp_path: Path,
         kind: str,
+        mod_progress: p.Infra.ModProgress,
     ) -> None:
         """The normal public mod action consumes one coordinated native candidate."""
         artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(
@@ -206,7 +207,8 @@ class TestsFlextInfraSemanticPublication:
                     apply=True,
                     rename_plan=driver.path,
                     consumer_roots=artifact.consumer_roots,
-                )
+                ),
+                mod_progress,
             )
         )
         if kind == "module":
@@ -240,7 +242,8 @@ class TestsFlextInfraSemanticPublication:
                     repository_root=root,
                     apply=True,
                     consumer_roots=artifact.consumer_roots,
-                )
+                ),
+                mod_progress,
             )
         )
         tm.ok(u.Cli.atomic_verify_binary_file_states(published))
@@ -249,6 +252,7 @@ class TestsFlextInfraSemanticPublication:
     @staticmethod
     def test_automatic_nesting_rewrites_declared_consumers_without_syntax_fanout(
         tmp_path: Path,
+        mod_progress: p.Infra.ModProgress,
     ) -> None:
         """Rule authority selects the owner while external read scope stays bounded."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -294,7 +298,8 @@ class TestsFlextInfraSemanticPublication:
                     repository_root=root,
                     consumer_roots=(receiver,),
                     apply=True,
-                )
+                ),
+                mod_progress,
             )
         )
         tm.ok(u.Cli.atomic_verify_binary_file_states((original,)))
@@ -312,6 +317,7 @@ class TestsFlextInfraSemanticPublication:
     def test_mod_refuses_invalid_cross_root_campaign_before_source_publication(
         tmp_path: Path,
         failure: str,
+        mod_progress: p.Infra.ModProgress,
     ) -> None:
         """Missing scope, occupied native name and stale epochs stay unpublished."""
         artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(
@@ -356,7 +362,8 @@ class TestsFlextInfraSemanticPublication:
                     consumer_roots=roots,
                     rename_plan=driver.path,
                     apply=True,
-                )
+                ),
+                mod_progress,
             )
         )
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
@@ -516,7 +523,10 @@ class TestsFlextInfraSemanticPublication:
                                 replacement_name="Renamed"
                                 if kind == "class"
                                 else "renamed",
-                                reason="Coordinated native producer and consumer identity cut",
+                                reason=(
+                                    "Coordinated native producer and consumer "
+                                    "identity cut"
+                                ),
                             ),
                         ),
                         consumer_roots=(consumer_root,),

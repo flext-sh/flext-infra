@@ -37,7 +37,12 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         )
 
     def _selected_content(self, path: Path) -> bytes | None:
-        """Keep selected ownership decisions distinct from original before images."""
+        """Keep selected ownership decisions distinct from original before images.
+
+        Returns:
+            The selected file content, or ``None`` when the path is not a file.
+
+        """
         if not self.source_project.source_query(path, "isfile"):
             return None
         return self.source_project.source_bytes(path)
@@ -72,6 +77,9 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
 
         Returns:
             Deterministic glob results with their causal I/O failure.
+
+        Raises:
+            ValueError: If the cleanup pattern escapes its source directory.
 
         """
         try:

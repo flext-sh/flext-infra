@@ -22,6 +22,35 @@ class TestsFlextInfraInfraRopeService:
     """Validate the public Rope workspace DSL through public methods only."""
 
     @staticmethod
+    @pytest.mark.parametrize("same_root", [False, True])
+    def test_sibling_scopes_keep_their_root_and_independent_lifetime(
+        rope_sibling_scopes: t.Pair[t.Pair[Path, Path], t.Pair[Path, Path]],
+        *,
+        same_root: bool,
+    ) -> None:
+        """Closing one consumer never changes another consumer's logical scope."""
+        (producer_root, producer), (consumer_root, consumer) = rope_sibling_scopes
+        if same_root:
+            consumer_root, consumer = producer_root, producer
+        source = producer / "owned.py"
+        source.write_text("class Owner:\n    pass\n", encoding=c.DEFAULT_ENCODING)
+        with flext_infra.infra.rope_workspace(
+            producer_root, producer_root.parent
+        ) as outer:
+            before = tuple(item.name for item in outer.objects(source))
+            tm.that(before, has="Owner")
+            with flext_infra.infra.rope_workspace(
+                consumer_root, producer_root.parent
+            ) as inner:
+                tm.that(inner.repository_root, eq=consumer_root)
+                tm.that(outer.repository_root, eq=producer_root)
+                tm.not_none(inner.resource(consumer / "__init__.py"))
+            tm.that(
+                tuple(item.name for item in outer.objects(source)),
+                eq=before,
+            )
+
+    @staticmethod
     @pytest.mark.parametrize("include_local_scopes", [False, True])
     def test_workspace_dsl_keeps_nested_declarations_without_function_locals(
         tmp_path: Path,

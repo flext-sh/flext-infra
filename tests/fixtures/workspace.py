@@ -16,6 +16,30 @@ from tests import c, t, tm, u
 
 
 @pytest.fixture
+def rope_sibling_scopes(
+    tmp_path: Path,
+) -> t.Pair[t.Pair[Path, Path], t.Pair[Path, Path]]:
+    """Declare sibling consumers sharing one structural Rope root.
+
+    Returns:
+        The governed root and source package for each independent consumer.
+
+    """
+    return (
+        u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="rope-producer",
+            package_name="rope_producer",
+        ),
+        u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="rope-consumer",
+            package_name="rope_consumer",
+        ),
+    )
+
+
+@pytest.fixture
 def rope_contract_consumer(
     tmp_path: Path,
 ) -> Iterator[t.Pair[p.Infra.RopeWorkspaceDsl, Path]]:

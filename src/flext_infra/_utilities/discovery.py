@@ -49,20 +49,20 @@ class FlextInfraUtilitiesDiscovery(
         """
         resolved = Path(file_path).resolve()
         candidate = (
-            resolved.parent if resolved.suffix == c.Infra.EXT_PYTHON else resolved
+            resolved.parent
+            if resolved.suffix == c.Infra.EXT_PYTHON
+            # A project manifest belongs to the root it declares, never to a
+            # parent discovered by walking above it.
+            or resolved.name == c.PYPROJECT_FILENAME
+            else resolved
         )
         wrapper_root: Path | None = None
         for current in (candidate, *candidate.parents):
             if current.name == c.Infra.DEFAULT_SRC_DIR:
                 wrapper_root = current.parent
                 continue
-            if current.name in c.Infra.ROOT_WRAPPER_SEGMENTS and (
-                current in {candidate.parent, candidate}
-            ):
-                # VCS-metadata parents (.github, .gitlab, ...) are never a
-                # project boundary: a helper nested there does not wrap one.
-                if not current.parent.name.startswith("."):
-                    wrapper_root = current.parent
+            if current.name in c.Infra.ROOT_WRAPPER_SEGMENTS:
+                wrapper_root = current.parent
                 continue
             if (
                 (current / c.Infra.DEFAULT_SRC_DIR).is_dir()

@@ -41,7 +41,16 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
         *,
         consumer: str,
     ) -> t.Pair[str, str]:
-        """Elect an existing public exposure, with native owner/MRO proof."""
+        """Elect an existing public exposure, with native owner/MRO proof.
+
+        Returns:
+            The elected ``(module, owner)`` import route.
+
+        Raises:
+            ValueError: If the native public owner package has no source or is
+                ambiguous.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         module = provider.get_name()
         private = FlextInfraUtilitiesPrivateImportFacades.private_owner(module)

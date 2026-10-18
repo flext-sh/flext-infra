@@ -226,7 +226,10 @@ class FlextInfraUtilitiesSemanticModelAliases:
                 ).unwrap():
                     changed = Path(change.resource.real_path).resolve()
                     if changed not in working:
-                        msg = f"model alias consumer is outside captured inventory: {changed}"
+                        msg = (
+                            "model alias consumer is outside captured "
+                            f"inventory: {changed}"
+                        )
                         raise ValueError(msg)
                     working[changed] = change.new_contents
             finally:
@@ -257,7 +260,10 @@ class FlextInfraUtilitiesSemanticModelAliases:
                         not isinstance(element, ast.Constant) or element.value != name
                         for element in item.value.elts
                     ):
-                        msg = f"model alias namespace has nonexclusive exports: {path}:{name}"
+                        msg = (
+                            "model alias namespace has nonexclusive "
+                            f"exports: {path}:{name}"
+                        )
                         raise ValueError(msg)
                     edits.append(
                         m.Infra.SourceRewrite(
@@ -304,7 +310,10 @@ class FlextInfraUtilitiesSemanticModelAliases:
             if path not in observed:
                 source = resource.read()
                 if not source.startswith(c.Infra.AUTOGEN_HEADERS):
-                    msg = f"model alias proof requires complete workspace source inventory: {path}"
+                    msg = (
+                        "model alias proof requires complete workspace "
+                        f"source inventory: {path}"
+                    )
                     raise ValueError(msg)
                 observed[path] = source
         consumers: set[Path] = set()
@@ -343,7 +352,10 @@ class FlextInfraUtilitiesSemanticModelAliases:
                     if not runtime.same_name(
                         wrapper, runtime.expression_name(scope, local)
                     ):
-                        msg = f"model alias namespace import is rebound or ambiguous: {path}:{local}"
+                        msg = (
+                            "model alias namespace import is rebound "
+                            f"or ambiguous: {path}:{local}"
+                        )
                         raise ValueError(msg)
             occurrences = (
                 occurrence
@@ -365,14 +377,20 @@ class FlextInfraUtilitiesSemanticModelAliases:
                 ):
                     continue
                 if source.startswith(c.Infra.AUTOGEN_HEADERS):
-                    msg = f"model alias has generated behavior, not just exports: {path}:{occurrence.lineno}"
+                    msg = (
+                        "model alias has generated behavior, "
+                        f"not just exports: {path}:{occurrence.lineno}"
+                    )
                     raise ValueError(msg)
                 _start, end = occurrence.get_word_range()
                 suffix = source[end:].lstrip()
                 # Worder owns the full primary; don't infer attribute identity
                 # from its spelling or accept the wrapper as a first-class value.
                 if not suffix.startswith("."):
-                    msg = f"model alias namespace escapes as a class value: {path}:{occurrence.lineno}"
+                    msg = (
+                        "model alias namespace escapes as a class "
+                        f"value: {path}:{occurrence.lineno}"
+                    )
                     raise ValueError(msg)
                 # The next member token is obtained from Rope's native lexer.
                 words = FlextInfraUtilitiesRopeRuntimeRefactors.runtime_callable(
@@ -389,14 +407,20 @@ class FlextInfraUtilitiesSemanticModelAliases:
                 first, last = words.get_word_range(member_start)
                 member = source[first:last]
                 if member not in aliases or occurrence.is_written():
-                    msg = f"unknown or mutated model alias namespace member: {path}:{occurrence.lineno}:{member}"
+                    msg = (
+                        "unknown or mutated model alias namespace "
+                        f"member: {path}:{occurrence.lineno}:{member}"
+                    )
                     raise ValueError(msg)
                 module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
                 scope = runtime.scope_at(module, occurrence.offset)
                 primary, _finish = occurrence.get_primary_range()
                 selected = runtime.expression_name(scope, source[primary:last])
                 if not runtime.same_name(aliases[member], selected):
-                    msg = f"unproven model alias occurrence: {path}:{occurrence.lineno}:{member}"
+                    msg = (
+                        "unproven model alias occurrence: "
+                        f"{path}:{occurrence.lineno}:{member}"
+                    )
                     raise ValueError(msg)
                 members = (
                     FlextInfraUtilitiesRopeRuntimeRefactors.create_occurrence_finder(
@@ -415,14 +439,23 @@ class FlextInfraUtilitiesSemanticModelAliases:
                     raise ValueError(msg)
             required: set[tuple[str, str]] = set()
 
-            def quoted(scope: p.Infra.RopeScope, expression: str) -> str | None:
+            def quoted(
+                scope: p.Infra.RopeScope,
+                expression: str,
+                path: Path = path,
+                required: set[tuple[str, str]] = required,
+            ) -> str | None:
                 parts = expression.split(".")
                 for count in range(1, len(parts) + 1):
                     binding = runtime.expression_name(scope, ".".join(parts[:count]))
                     if not runtime.same_name(wrapper, binding):
                         continue
                     if count == len(parts) or parts[count] not in aliases:
-                        msg = f"quoted model alias namespace escapes or selects an unknown member: {path}:{expression}"
+                        msg = (
+                            "quoted model alias namespace escapes or "
+                            "selects an unknown member: "
+                            f"{path}:{expression}"
+                        )
                         raise ValueError(msg)
                     alias = parts[count]
                     selected = runtime.expression_name(
@@ -454,7 +487,10 @@ class FlextInfraUtilitiesSemanticModelAliases:
             )
             if rewritten != source:
                 if path not in sources or source.startswith(c.Infra.AUTOGEN_HEADERS):
-                    msg = f"model alias annotation is outside editable source inventory: {path}"
+                    msg = (
+                        "model alias annotation is outside editable "
+                        f"source inventory: {path}"
+                    )
                     raise ValueError(msg)
                 module = runtime.build_string_module(
                     project, rewritten, resource=resource

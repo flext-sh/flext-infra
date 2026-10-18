@@ -43,6 +43,9 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         Returns:
             The resulting ``p.Result[MutableMapping[Path, m.Cli.AtomicFileState]]``.
 
+        Raises:
+            FileNotFoundError: When a required source path is absent.
+
         """
         snapshots: MutableMapping[Path, m.Cli.AtomicFileState] = {}
         paths = sorted(required_paths | optional_paths)
@@ -192,7 +195,12 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         directories: tuple[m.Cli.AtomicDirectoryInventory, ...],
         topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...],
     ) -> p.Result[bool]:
-        """Reverify original evidence through the native verifier, never recapture it."""
+        """Reverify original evidence via the native verifier, never recapture.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
         try:
             verified = u.Cli.atomic_verify_binary_file_states(states)
             if verified.failure:
@@ -212,6 +220,10 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
 
         Every failing global constraint must be represented by scoped evidence.
         Unknown failures escape unchanged; classification never blesses a new epoch.
+
+        Returns:
+            The conflict-partitioned analysis receipt.
+
         """
         if project.source_epoch_failure is not cause:
             raise cause
@@ -359,6 +371,9 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         Returns:
             The resulting ``m.Infra.CodegenFilePlan``.
 
+        Raises:
+            ValueError: When the target has no original parent absence witness.
+
         """
         original: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan = before
         if before.parent_inode is None:
@@ -371,7 +386,10 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 None,
             )
             if parent is None:
-                msg = f"lazy-init target has no original parent absence witness: {before.path}"
+                msg = (
+                    f"lazy-init target has no original parent "
+                    f"absence witness: {before.path}"
+                )
                 raise ValueError(msg)
             original = parent.model_copy(
                 update={"queries": (), "membership_queried": False}
@@ -676,6 +694,10 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
 
         Returns:
             The planned files with their shared source states bound.
+
+        Raises:
+            ValueError: When the receipt carries no original source
+                consumption evidence.
 
         """
         if not (

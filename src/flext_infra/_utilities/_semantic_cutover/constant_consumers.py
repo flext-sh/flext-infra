@@ -41,7 +41,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+    ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
         """Compose constant declaration repairs with their consumer cutover.
 
         Returns:
@@ -83,7 +83,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+    ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
         """Delegate constants declaration policy to the shared native contract loop.
 
         Returns:

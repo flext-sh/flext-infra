@@ -351,6 +351,65 @@ class FlextInfraModelsCodegenPipelineModels:
             description="Authorizes physical generation participants before recovery",
         )
 
+    class CodegenConformState(m.ArbitraryTypesModel):
+        """Mutable request-local data owned by one conform invocation."""
+
+        request: FlextInfraConfigModels.CodegenConformRequest | None = m.Field(
+            default=None,
+            exclude=True,
+            description="Validated conform request",
+        )
+        generation_only: bool = m.Field(
+            default=False,
+            exclude=True,
+            description="Project outputs without repairing authored inputs",
+        )
+        provider_plans: (
+            t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan] | None
+        ) = m.Field(
+            default=None,
+            exclude=True,
+            description="Original cohort plans available to native source reads",
+        )
+        repository_root: Path = m.Field(
+            default=Path(),
+            exclude=True,
+            description="Generation tool repository",
+        )
+        initial_workspace: FlextInfraConfigModels.WorkspaceSpec | None = m.Field(
+            default=None,
+            exclude=True,
+            description="Declared scaffold specification",
+        )
+        ports: p.Infra.CodegenConformPorts | None = m.Field(
+            default=None,
+            exclude=True,
+            description="Facade-bound docs planning and participant authorization",
+        )
+        planning_issues: t.MutableSequenceOf[FlextInfraModelsCheck.Issue] = m.Field(
+            default_factory=list,
+            exclude=True,
+            description="Native file planning failures retained by this invocation",
+        )
+        planning_exception: BaseException | None = m.Field(
+            default=None,
+            exclude=True,
+            description="First native file planning cause",
+        )
+        docs_planner: p.Infra.DocsArtifactPlanner | None = m.Field(
+            default=None,
+            exclude=True,
+            description="Actual planner before effects",
+        )
+        scaffolded_repository: bool = m.Field(
+            default=False,
+            exclude=True,
+            description="Whether this invocation initialized an unpublished Git root",
+        )
+        _generation_issues: t.MutableSequenceOf[FlextInfraModelsCheck.Issue] = (
+            m.PrivateAttr(default_factory=list)
+        )
+
     class CodegenPipelineState(m.ArbitraryTypesModel):
         """Typed inter-stage state for the codegen pipeline — Pydantic v2 model."""
 

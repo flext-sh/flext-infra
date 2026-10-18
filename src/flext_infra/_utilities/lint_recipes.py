@@ -43,12 +43,12 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
 
     @staticmethod
     def blocking_gate_findings(
-        issues: t.SequenceOf[m.Infra.Issue],
-    ) -> tuple[m.Infra.Issue, ...]:
+        issues: t.SequenceOf[p.Infra.Issue],
+    ) -> t.VariadicTuple[p.Infra.Issue]:
         """Retain every finding as blocking under the approved quality baseline.
 
         Returns:
-            The resulting ``tuple[m.Infra.Issue, ...]``.
+            The same diagnostic instances, without filtering or reconstruction.
 
         """
         return tuple(issues)
@@ -200,7 +200,8 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
                     ),
                 )
             else:
-                declaration = FlextInfraUtilitiesProjectManagedArtifacts.load_repository_declaration_inputs(
+                artifacts = FlextInfraUtilitiesProjectManagedArtifacts
+                declaration = artifacts.load_repository_declaration_inputs(
                     root,
                     source_project=source_project,
                 ).unwrap()

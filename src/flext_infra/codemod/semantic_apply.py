@@ -166,6 +166,11 @@ class FlextInfraCodemodSemanticApply:
                     for folder in project.get_source_folders()
                 )
             )
+            path_folders = tuple(
+                folder.real_path
+                for folder in project.get_python_path_folders()
+                if folder.is_folder()
+            )
             snapshots = tuple(
                 stack.enter_context(
                     closing(
@@ -194,11 +199,7 @@ class FlextInfraCodemodSemanticApply:
                                 python_path_folders=tuple(
                                     dict.fromkeys((
                                         *import_folders,
-                                        *(
-                                            folder.real_path
-                                            for folder in project.get_python_path_folders()
-                                            if folder.is_folder()
-                                        ),
+                                        *path_folders,
                                     ))
                                 ),
                             ),
@@ -537,9 +538,7 @@ class FlextInfraCodemodSemanticApply:
 
         Returns:
             The updated staged view with the union of original source witnesses.
-
-        Raises:
-            BaseException: The first original planning exception, unchanged.
+            The first original planning exception escapes unchanged.
 
         """
         result_type = r[m.Infra.SemanticRenamePlan]
@@ -901,7 +900,7 @@ class FlextInfraCodemodSemanticApply:
                 sources=working,
             )
             if planned.failure:
-                return planned
+                return result_type.from_failure(planned)
             cls._apply_plan(working, planned.value, changed)
         if changed:
             verified = cls._verify_census_phases(working, rope_workspace, phases)
@@ -1018,7 +1017,7 @@ class FlextInfraCodemodSemanticApply:
     def publish_planned_edits(
         cls,
         root: Path,
-        edits: t.SequenceOf[m.Infra.SemanticMigrationEdit],
+        edits: t.SequenceOf[p.Infra.SemanticMigrationEdit],
         *,
         source_preview: p.Infra.SourcePreview,
         validator: Callable[[Path], p.Result[bool]] | None = None,
@@ -1369,7 +1368,7 @@ class FlextInfraCodemodSemanticApply:
     @staticmethod
     def _check_residue(
         phase: str,
-        planned: p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]],
+        planned: p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]],
     ) -> p.Result[bool]:
         """Reject a replan failure or edits replanned by a completed phase.
 
@@ -1522,7 +1521,7 @@ class FlextInfraCodemodSemanticApply:
     @staticmethod
     def _apply_plan(
         sources: MutableMapping[Path, str],
-        edits: t.SequenceOf[m.Infra.SemanticMigrationEdit],
+        edits: t.SequenceOf[p.Infra.SemanticMigrationEdit],
         changed: set[Path],
     ) -> None:
         """Compose validated edit plans in memory without partial effects.

@@ -92,7 +92,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         *,
         exported: bool,
     ) -> None:
-        """Keep the original error red while an independently proved initializer lands."""
+        """Keep the original error red while an independently proved init lands."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         (package / "service.py").write_text(
             "class Published: pass\n__all__ = ['Published']\n",
@@ -202,7 +202,8 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         )
         source = package / "service.py"
         source.write_text(
-            f"from {provider_package.name}.provider import Published\n__all__ = ['Published']\n"
+            f"from {provider_package.name}.provider import Published\n"
+            "__all__ = ['Published']\n"
             if change == "transitive"
             else "class Published: pass\n__all__ = ['Published']\n",
             encoding=c.DEFAULT_ENCODING,

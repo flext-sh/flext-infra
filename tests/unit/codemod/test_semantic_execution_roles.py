@@ -10,10 +10,10 @@ import json
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, m, t, u
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
+from flext_infra.codemod import FlextInfraModGateEngine
+from tests import tm
 
 
 class TestsSemanticExecutionRoles:
@@ -36,7 +36,9 @@ class TestsSemanticExecutionRoles:
         (package / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
         contents = {
             "application.py": "import os as env\nvalue = env.getenv('ROLE_PROBE')\n",
-            "hook_client.py": "from os import getenv as read\nvalue = read('ROLE_PROBE')\n",
+            "hook_client.py": (
+                "from os import getenv as read\nvalue = read('ROLE_PROBE')\n"
+            ),
             "bootstrap.py": "import os\nvalue = os.environ['ROLE_PROBE']\n",
             "processes.py": "import subprocess\n",
             "primitive_shadow.py": (

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from ast import ClassDef, Import, ImportFrom
 from collections.abc import Callable
+from pathlib import Path
 
 from flext_core import t
 from libcst import (
@@ -33,6 +34,8 @@ class FlextInfraTypesRope:
     """Rope type aliases — accessed via t.Infra.*."""
 
     type PythonImportNode = Import | ImportFrom
+    type RopeSourcePath = Path
+    type RopeImplementationPaths = frozenset[RopeSourcePath]
     type PythonClassNode = ClassDef
     type CstArgument = Arg
     type CstStatement = BaseStatement

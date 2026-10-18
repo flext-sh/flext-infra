@@ -330,7 +330,8 @@ class FlextInfraUtilitiesRopeAnalysisExports:
             if FlextInfraUtilitiesRopeAnalysisExports._source_binding_inventory(body)[
                 2
             ]:
-                return FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings_source(
+                scan = FlextInfraUtilitiesRopeAnalysisSourceScan
+                return scan.module_assignment_strings_source(
                     pymodule.source_code, c.Infra.DUNDER_ALL
                 )
         if (

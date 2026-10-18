@@ -107,7 +107,12 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
     ) -> p.Result[
         t.Pair[m.Infra.DuplicateCureOutcome, t.VariadicTuple[m.Infra.DuplicateDeletion]]
     ]:
-        """Retain every native cure effect and manual diagnostic without publishing."""
+        """Retain every native cure effect and manual diagnostic without publishing.
+
+        Returns:
+            The retained cure outcome with its deletions, or the first failure.
+
+        """
         captured = FlextInfraCodegenPreconditions.unique_states((
             *source_states,
             *(state for plan in declared_files for state in plan.source_states),
@@ -172,7 +177,12 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
     ) -> p.Result[
         t.Pair[m.Infra.DuplicateCureOutcome, t.VariadicTuple[m.Infra.DuplicateDeletion]]
     ]:
-        """Elect cures and every residual diagnostic on one frozen native workspace."""
+        """Elect cures and every residual diagnostic on one frozen native workspace.
+
+        Returns:
+            The elected cure outcome with its deletions, or the first failure.
+
+        """
         for path, source in sources.items():
             if rope_workspace.source(path) != source:
                 return r[
@@ -181,7 +191,8 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                         t.VariadicTuple[m.Infra.DuplicateDeletion],
                     ]
                 ].fail(
-                    f"duplicate planning workspace differs from its working view: {path}"
+                    f"duplicate planning workspace differs from its "
+                    f"working view: {path}"
                 )
         layers = cls._project_layers(root)
         working: MutableMapping[Path, str] = {}
@@ -200,7 +211,8 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                         t.VariadicTuple[m.Infra.DuplicateDeletion],
                     ]
                 ].fail(
-                    f"duplicate declaration is outside its selected target: {group.name}"
+                    f"duplicate declaration is outside its selected "
+                    f"target: {group.name}"
                 )
             planned = cls._plan_group(
                 rope_workspace,
@@ -219,7 +231,8 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                             t.VariadicTuple[m.Infra.DuplicateDeletion],
                         ]
                     ].fail(
-                        f"duplicate effect is outside its immutable working view: {edit.file_path}"
+                        f"duplicate effect is outside its immutable "
+                        f"working view: {edit.file_path}"
                     )
             edits.extend(planned.edits)
             cls._collect_working(working, planned.edits)

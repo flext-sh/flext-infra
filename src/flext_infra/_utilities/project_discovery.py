@@ -88,6 +88,13 @@ class FlextInfraUtilitiesProjectDiscovery(
             return result_type.fail(
                 f"required operation root is missing: {target.root}",
             )
+        if not (target.root / c.PYPROJECT_FILENAME).is_file():
+            return result_type.ok(
+                m.Infra.WorkspaceOperationApplicability(
+                    applicable=False,
+                    reason="Repository declares no pyproject manifest",
+                ),
+            )
         loaded = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
             target.root,
         )
@@ -148,6 +155,7 @@ class FlextInfraUtilitiesProjectDiscovery(
             repository_root: Root directory to start search from.
             scan_dirs: Directory names indicating a project (e.g., "src", "tests").
                 Must be a frozenset constant. Defaults to standard project dirs.
+            source_project: Optional Rope project used to read ``.gitmodules``
 
         Returns:
             Project roots sorted by their ``.gitmodules`` declaration order.

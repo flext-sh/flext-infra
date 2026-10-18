@@ -13,6 +13,7 @@ from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenFileLeases,
     FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenStaging,
     FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsVerification,
     FlextInfraStagedPackage,
@@ -204,6 +205,14 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         if planned.failure:
             return r[m.Infra.CodegenResult].from_failure(planned)
         plan, analysis = planned.value
+        prepared = FlextInfraCodegenStaging.prepare_python_plans(
+            request.root,
+            analysis.files,
+        )
+        if prepared.failure:
+            return r[m.Infra.CodegenResult].from_failure(prepared)
+        analysis = analysis.model_copy(update={"files": prepared.value})
+        plan = plan.model_copy(update={"files": prepared.value})
         if request.what == c.Infra.CodegenConformSurface.FACADES:
             u.Cli.info(f"stage=facades-plan files={len(plan.files)} environments=0")
             for file in plan.files:
@@ -236,17 +245,17 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         """Authenticate staged inputs and publish the selected phase under its lease.
 
         Returns:
-            The original plan and published paths, or the first phase failure.
+            The prepared plan and published paths, or the first phase failure.
 
         """
         roots, scope_root = scope
         plan, analysis, changed = candidate
-        inputs = FlextInfraCodegenPreconditions.unique_states(
-            tuple(source for file in analysis.files for source in file.source_states),
-        )
+        inputs = FlextInfraCodegenPreconditions.unique_states((
+            *analysis.inputs,
+            *(source for file in analysis.files for source in file.source_states),
+        ))
         if inputs.failure:
             return r[m.Infra.CodegenResult].from_failure(inputs)
-        # Destination snapshots are authenticated as outputs, not source inputs.
         analysis = analysis.model_copy(update={"inputs": inputs.value})
         staged = self._directed_stage_inputs(request, analysis)
         if staged.failure:
@@ -257,11 +266,19 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
             session: m.Infra.CodegenTransactionSession,
             publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
         ) -> p.Result[m.Infra.CodegenTransactionSession]:
+            checked = FlextInfraCodegenStaging.validate_python_plans(
+                session,
+                publications,
+                plans=analysis.files,
+                workspace=request.root,
+            )
+            if checked.failure or stage_plan is None:
+                return checked
             return self._validate_directed_stage(
                 request.root,
                 transaction,
                 stage_plan,
-                session,
+                checked.value,
                 publications,
             )
 
@@ -277,7 +294,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
                         if not file.path.parent.is_dir()
                     }),
                 ),
-                staged_validator=validate_stage if stage_plan is not None else None,
+                staged_validator=validate_stage,
             ),
             publication_receipts=receipts,
         )

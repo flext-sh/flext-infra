@@ -220,7 +220,12 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
         *,
         source_project: p.Infra.RopeProject | None = None,
     ) -> str:
-        """Keep Git's parser while feeding the authenticated original descriptor."""
+        """Keep Git's parser while feeding the authenticated original descriptor.
+
+        Returns:
+            Git's parsed output for the requested ``.gitmodules`` arguments.
+
+        """
         if source_project is None:
             return Git(repository_root).config(
                 "--file",

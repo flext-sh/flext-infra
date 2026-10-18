@@ -99,7 +99,9 @@ class FlextInfraModelsTransformers:
 
         # Why: source bytes must survive validation byte-exact;
         # the strict base strips whitespace, which corrupts CAS comparisons.
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(str_strip_whitespace=False)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            str_strip_whitespace=False, arbitrary_types_allowed=True
+        )
 
         file_path: Annotated[Path, m.Field(description="Source file to rewrite")]
         original_source: Annotated[
@@ -110,6 +112,14 @@ class FlextInfraModelsTransformers:
             str,
             m.Field(description="Prospective source bytes after migration"),
         ]
+        retire_file: bool = m.Field(
+            default=False,
+            description="Explicit source retirement, not empty-file output",
+        )
+        source_states: t.VariadicTuple[t.Port[p.Infra.SemanticSourceState]] = m.Field(
+            default=(),
+            description="Original native inputs consumed by this source plan",
+        )
         changes: Annotated[
             t.VariadicTuple[str],
             m.Field(description="Recorded migration operations"),

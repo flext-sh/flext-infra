@@ -61,7 +61,12 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConform):
         cls,
         task: m.Infra.CodegenRepositoryPlanTask,
     ) -> m.Infra.CodegenRepositoryPlanOutcome:
-        """Exercise a native cause with no preconstructed diagnostic fields."""
+        """Exercise a native cause with no preconstructed diagnostic fields.
+
+        Returns:
+            The resulting ``m.Infra.CodegenRepositoryPlanOutcome``.
+
+        """
         if task.root.name == "exception-only-outcome":
             return m.Infra.CodegenRepositoryPlanOutcome(
                 repository=task.repository.name,

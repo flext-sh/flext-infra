@@ -193,7 +193,8 @@ class FlextInfraStagedPackage:
             inputs: Original caller snapshots, never replaced by a fresh observation.
             workspaces: Explicit non-overlapping composition roots for a joint view.
             modes: Desired file-effect modes derived from captured module move sources.
-            declared_files: Original native file/absence witnesses for current virtual effects.
+            declared_files: Original native file/absence witnesses for
+            current virtual effects.
 
         Returns:
             A result wrapping the planned stage source or the first failure encountered.
@@ -270,7 +271,8 @@ class FlextInfraStagedPackage:
                         != layout.project_root
                     ):
                         return result_type.fail(
-                            f"ambiguous elected candidate package: {layout.package_name}"
+                            f"ambiguous elected candidate package: "
+                            f"{layout.package_name}"
                         )
             return result_type.ok(
                 m.Infra.StageSourcePlan(
@@ -332,18 +334,23 @@ class FlextInfraStagedPackage:
             ),
         ))
         for path in source_paths:
-            root = u.Infra.project_root(path)
-            if any(item.project_root == root for item in selected):
-                continue
             resolved = cls._source_layout(path, layouts)
             if resolved.failure:
-                if path in normalized:
-                    return result_type.from_failure(resolved)
-                # Evidence-only inputs (an installed family package inside a
-                # standalone consumer's venv, the rule-fixture scratch) are
-                # read outside any rope layout; only rewrite targets need one.
+                if path not in normalized:
+                    # Evidence-only inputs (an installed family package inside a
+                    # standalone consumer's venv, the rule-fixture scratch) are
+                    # read outside any rope layout; only rewrite targets need one.
+                    continue
+                # A common Python source needs the native gates, not a rope
+                # closure: repair groups it by the workspace cwd, so only its
+                # own original bytes are pinned here.
+                unowned = cls._pin_unowned_source(path, states)
+                if unowned.failure:
+                    return result_type.from_failure(unowned)
                 continue
             local = resolved.value
+            if any(item.project_root == local.project_root for item in selected):
+                continue
             pinned = cls._pin_closure(
                 local,
                 layouts,
@@ -485,16 +492,17 @@ class FlextInfraStagedPackage:
 
         """
         result_type = r[m.Infra.RopeProjectLayout]
-        root = u.Infra.project_root(path)
-        local = u.Infra.layout(root) if root is not None else None
+        local = max(
+            (
+                layout
+                for layout in layouts.values()
+                if path.is_relative_to(layout.project_root)
+            ),
+            key=lambda layout: len(layout.project_root.parts),
+            default=None,
+        )
         if local is None:
             return result_type.fail(f"preview source has no project layout: {path}")
-        existing = layouts.get(local.package_name)
-        if existing is not None and existing.project_root != local.project_root:
-            return result_type.fail(
-                f"ambiguous candidate package: {local.package_name}"
-            )
-        layouts[local.package_name] = local
         return result_type.ok(local)
 
     @classmethod
@@ -640,22 +648,12 @@ class FlextInfraStagedPackage:
         layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout] = {}
         for target in targets.value:
             repository = target.root
-            manifest = repository / c.PYPROJECT_FILENAME
-            if not manifest.is_file():
-                applicability = u.Infra.repository_operation_applicability(
-                    target,
-                    mutating=False,
-                )
-                if applicability.failure:
-                    return result_type.from_failure(applicability)
-                if not applicability.value.applicable:
-                    continue
-                required = u.Cli.atomic_read_binary_file_state(
-                    manifest,
-                    required=True,
-                )
-                if required.failure:
-                    return result_type.from_failure(required)
+            applicability = u.Infra.repository_operation_applicability(
+                target,
+                mutating=False,
+            )
+            if applicability.failure:
+                return result_type.from_failure(applicability)
             layout = u.Infra.layout(repository)
             if layout is not None:
                 if layout.package_name in layouts:
@@ -775,11 +773,7 @@ class FlextInfraStagedPackage:
         modules: list[str] = []
         source_paths = set(paths.value)
         if updates is not None:
-            source_paths.update(
-                path
-                for path in updates
-                if u.Infra.project_root(path) == layout.project_root
-            )
+            source_paths.update(updates)
         for path in sorted(source_paths):
             if path.is_symlink():
                 return r[tuple[str, ...]].fail(f"candidate source is a symlink: {path}")
@@ -816,6 +810,25 @@ class FlextInfraStagedPackage:
                 )
         return r[tuple[str, ...]].ok(tuple(modules))
 
+    @staticmethod
+    def _pin_unowned_source(
+        path: Path,
+        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+    ) -> p.Result[bool]:
+        """Pin one common source outside any package closure by its own receipt.
+
+        Returns:
+            Acceptance once the source's own original state is pinned.
+
+        """
+        if path.is_symlink():
+            return r[bool].fail(f"candidate source is a symlink: {path}")
+        observed = u.Cli.atomic_read_binary_file_state(path, required=False)
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        states[path] = observed.value
+        return r[bool].ok(value=True)
+
     @classmethod
     def _pin_closure(
         cls,
@@ -832,9 +845,16 @@ class FlextInfraStagedPackage:
             name = queue.pop(0)
             layout = layouts[name]
             selected.append(layout)
-            pinned = cls._pin_layout(
-                layout, states, updates=updates, originals=originals
-            )
+            owned: dict[Path, str | None] | None = None
+            if updates is not None:
+                owned = {}
+                for path, content in updates.items():
+                    owner = cls._source_layout(path, layouts)
+                    if owner.failure:
+                        return r[bool].from_failure(owner)
+                    if owner.value.project_root == layout.project_root:
+                        owned[path] = content
+            pinned = cls._pin_layout(layout, states, updates=owned, originals=originals)
             if pinned.failure:
                 return r[bool].from_failure(pinned)
             for module in pinned.value:
@@ -853,11 +873,22 @@ class FlextInfraStagedPackage:
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Name the source and selected resolver metadata from physical ownership.
 
+        Workspace metadata exists only inside a Git work tree: the resolver,
+        manifest and lock are git-workspace publication preconditions, and a
+        plain directory declares none of them.
+
         Returns:
             The deduplicated resolver, manifest, lock and codegen source
             paths, or the first resolution failure.
 
         """
+        inside = u.Infra.git_is_inside_work_tree(
+            m.Infra.GitRepoRequest(repo_root=workspace),
+        )
+        if inside.failure:
+            return r[t.VariadicTuple[Path]].from_failure(inside)
+        if not inside.value.value:
+            return r[t.VariadicTuple[Path]].ok(())
         context = FlextInfraWorkspaceDetector.resolution_context(workspace)
         if context.failure:
             return r[t.VariadicTuple[Path]].from_failure(context)

@@ -262,6 +262,10 @@ class FlextInfraModelsCodemod:
                 "no authored call"
             ),
         )
+        drops: t.StrSequence = m.Field(
+            default=(),
+            description="Discarded captures that must be inert native constants",
+        )
         reorders_annotation: bool = m.Field(
             default=False,
             description="Whether the replacement changes annotation evaluation order",
@@ -275,6 +279,18 @@ class FlextInfraModelsCodemod:
         ] = m.Field(
             default=(),
             description="Native Rope lexical scopes admitting a match",
+        )
+        implementation_owner: t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None = m.Field(
+            default=None,
+            description="Native module and public primitive whose backend remains native",
+        )
+        receiver_methods: t.StrSequence = m.Field(
+            default=(),
+            description="Proven discarded-call interface required of a factory product",
+        )
+        ownership_transfer: t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None = m.Field(
+            default=None,
+            description="Project-owned native module/member retired after complete receiver transfer",
         )
 
     class RopeContractRules(m.ContractModel):

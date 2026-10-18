@@ -341,7 +341,8 @@ class FlextInfraSemanticPublication:
             previous = combined.get(item.path)
             if previous is not None and previous.before != item.before:
                 return r[m.Infra.CodegenPhaseAnalysis].fail(
-                    f"semantic projection changed its original destination: {item.path}",
+                    f"semantic projection changed "
+                    f"its original destination: {item.path}",
                 )
             combined[item.path] = item.model_copy(
                 update={"dependency_group": dependency_group},
@@ -608,6 +609,8 @@ class FlextInfraSemanticPublication:
             repository_root: Governed workspace root of the publication.
             options: Caller-controlled gates and scope roots.
             published_files: Original caller-owned sink receiving committed effects.
+            publish: Whether the staged plan is committed through the locked
+                transaction journal.
 
         Returns:
             Published paths after phase receipts and consumer acceptance.

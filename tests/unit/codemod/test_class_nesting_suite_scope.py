@@ -24,7 +24,12 @@ class TestsFlextInfraClassNestingSuiteScope:
 
     @staticmethod
     def _test_workspace(tmp_path: Path, source: str) -> tuple[Path, Path]:
-        """Declare one natively collected test module with governed patterns."""
+        """Declare one natively collected test module with governed patterns.
+
+        Returns:
+            The workspace root and the declared test module path.
+
+        """
         root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
         policy = config.Infra.tooling.tools.pytest
         project = root / c.PYPROJECT_FILENAME
@@ -34,7 +39,8 @@ class TestsFlextInfraClassNestingSuiteScope:
             + f"python_files = {list(policy.python_files)!r}\n"
             + f"python_classes = {list(policy.python_classes)!r}\n"
             + "python_functions = ['test_*', 'check_*']\n"
-            + f"asyncio_default_fixture_loop_scope = {policy.asyncio_default_fixture_loop_scope!r}\n",
+            + "asyncio_default_fixture_loop_scope = "
+            + f"{policy.asyncio_default_fixture_loop_scope!r}\n",
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         directory = root / c.Infra.DIR_TESTS
@@ -45,7 +51,12 @@ class TestsFlextInfraClassNestingSuiteScope:
 
     @staticmethod
     def _plan_test(root: Path, path: Path, source: str) -> str:
-        """Publish the public planner's proposed bytes and prove its fixed point."""
+        """Publish the public planner's proposed bytes and prove its fixed point.
+
+        Returns:
+            The published module source.
+
+        """
         with flext_infra.infra.rope_workspace(root) as rope:
             edits = tm.ok(
                 u.Infra.plan_semantic_cutover(
@@ -72,7 +83,12 @@ class TestsFlextInfraClassNestingSuiteScope:
 
     @staticmethod
     def _cold_pytest(root: Path, path: Path, *arguments: str) -> str:
-        """Exercise real native collection/execution in a fresh interpreter."""
+        """Exercise real native collection/execution in a fresh interpreter.
+
+        Returns:
+            The cold pytest run's standard output.
+
+        """
         cache = config.Infra.codegen.make.testmon_cache
         result = tm.ok(
             u.Cli.run(
@@ -119,7 +135,10 @@ class TestsFlextInfraClassNestingSuiteScope:
         *,
         existing: bool,
     ) -> None:
-        """Decorators, async tests, injection, metadata and helpers survive cold pytest."""
+        """Decorators, async tests, injection, metadata and helpers survive.
+
+        Cold pytest session behavior is asserted.
+        """
         source = (
             "import pytest\n\n"
             "pytestmark = pytest.mark.usefixtures('session_probe')\n\n"
@@ -284,7 +303,11 @@ class TestsFlextInfraClassNestingSuiteScope:
         [
             "    def setup_method(self):\n        pass\n",
             "    pytestmark = pytest.mark.usefixtures('injected')\n",
-            "    @pytest.fixture(scope='class')\n    def injected(self):\n        return 1\n",
+            (
+                "    @pytest.fixture(scope='class')\n"
+                "    def injected(self):\n"
+                "        return 1\n"
+            ),
             "    __test__ = False\n",
         ],
     )
@@ -292,7 +315,10 @@ class TestsFlextInfraClassNestingSuiteScope:
         tmp_path: Path,
         member: str,
     ) -> None:
-        """Changed fixture, xunit or mark inheritance fails instead of silently applying."""
+        """Changed fixture, xunit or mark inheritance fails instead of applying.
+
+        Silent inheritance changes are rejected.
+        """
         source = (
             "import pytest\n\nclass TestsExisting:\n"
             + member

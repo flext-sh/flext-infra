@@ -167,13 +167,12 @@ class FlextInfraUtilitiesRopeCore(
             roots[0],
             inputs,
         ).unwrap()
+        discovery = FlextInfraUtilitiesProjectDiscovery
         return tuple(
             dict.fromkeys(
                 project
                 for root in (*roots, *(consumer.root for consumer in consumers))
-                for project in FlextInfraUtilitiesProjectDiscovery.discover_rope_project_roots(
-                    root
-                )
+                for project in discovery.discover_rope_project_roots(root)
             )
         )
 

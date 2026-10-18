@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import operator
-import os
 from collections.abc import Callable, Iterator
 
 from flext_infra import c, m, p, t
@@ -356,11 +355,6 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             if row.category
             in {c.Infra.StatementCategory.IMPORT, c.Infra.StatementCategory.FROM_IMPORT}
         )
-
-        if os.environ.get("FLEXT_DEBUG_NESTING"):
-            print(
-                f"DBGREFS rows={[(r.category, r.text[:30]) for r in FlextInfraUtilitiesRopeStructure.logical_statements(source)]}"
-            )
         regions: set[t.Pair[int, int]] = set()
         cursor = 0
         while cursor < len(source):
@@ -385,6 +379,19 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
                 msg = "native reference region did not advance"
                 raise ValueError(msg)
             begin, end = refactors.word_primary_range(source, last - 1)
+            # The native primary of a head word excludes its own ``.member``
+            # chain; extend it forward so every emitted region is maximal and
+            # no wrapper-alias prefix is ever split mid-path.
+            while source[end : end + 1] == ".":
+                following = end + 1
+                while following < len(source) and source[following].isspace():
+                    following += 1
+                if following >= len(source) or not (source[following].isidentifier()):
+                    break
+                _member_first, member_last = words.get_word_range(following)
+                if member_last <= following:
+                    break
+                end = member_last
             if all(part.isidentifier() for part in source[begin:end].split(".")):
                 regions.add((begin, end))
             cursor = last
@@ -471,15 +478,14 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
 
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
-        finder = cls._require_worder(
-            source,
-            "type references require native Rope word regions",
-        )
+        cls._require_worder(source, "type references require native Rope word regions")
         opaque = {
             start: stop for start, stop, _metadata in refactors.ignored_regions(source)
         }
-        closings = {"(": ")", "[": "]", "{": "}"}
+        pairs = {"(": ")", "[": "]", "{": "}"}
+        closers = {closing: opening for opening, closing in pairs.items()}
         regions: list[t.Pair[int, int]] = []
+        opens: list[int] = []
         cursor = part = begin
         while cursor < end:
             ignored_end = opaque.get(cursor)
@@ -487,21 +493,20 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
                 cursor = ignored_end
                 continue
             character = source[cursor]
-            if character in closings:
-                opening, closing = finder.code_finder.get_word_parens_range(
-                    (cursor - 1 if cursor else cursor),
-                    character,
-                    closings[character],
-                )
-                if opening != cursor or closing <= cursor or closing > end:
+            if character in pairs:
+                opens.append(cursor)
+            elif character in closers:
+                if not opens or source[opens[-1]] != closers[character]:
                     msg = "type reference delimiter differs from native region"
                     raise ValueError(msg)
-                cursor = closing
-                continue
-            if character in separators:
+                opens.pop()
+            elif character in separators and not opens:
                 regions.append((part, cursor))
                 part = cursor + 1
             cursor += 1
+        if opens:
+            msg = "type reference delimiter differs from native region"
+            raise ValueError(msg)
         regions.append((part, end))
         return tuple(
             (

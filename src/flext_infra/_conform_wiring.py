@@ -136,11 +136,11 @@ class FlextInfraConformWiring:
         """
         return FlextInfraMarkdownFormatGate(repository_root)
 
-    def codegen_conform_collaborators(self) -> m.Infra.CodegenConformPorts:
+    def codegen_conform_collaborators(self) -> p.Infra.CodegenConformPorts:
         """Bind the docs family complete conform crosses into.
 
         Returns:
-            The resulting ``m.Infra.CodegenConformPorts``.
+            The caller-bound docs planner and participant policy capabilities.
 
         """
         return m.Infra.CodegenConformPorts(

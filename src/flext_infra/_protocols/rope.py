@@ -22,6 +22,123 @@ if TYPE_CHECKING:
 class FlextInfraProtocolsRope(Protocol):
     """Application contracts layered around the concrete Rope boundary."""
 
+    @runtime_checkable
+    class RopeContractRule(Protocol):
+        """Read-only policy consumed by the native contract planner."""
+
+        @property
+        def id(self) -> str: ...
+
+        @property
+        def phase(self) -> str: ...
+
+        @property
+        def pattern(self) -> str: ...
+
+        @property
+        def goal(self) -> str: ...
+
+        @property
+        def arguments(self) -> t.MappingKV[str, str | t.StrSequence]: ...
+
+        @property
+        def imports(self) -> t.MappingKV[str, str]: ...
+
+        @property
+        def bindings(self) -> t.MappingKV[str, str]: ...
+
+        @property
+        def model_bases(self) -> t.StrSequence: ...
+
+        @property
+        def unshadowed_builtins(self) -> t.StrSequence: ...
+
+        @property
+        def repeats(self) -> str | None: ...
+
+        @property
+        def drops(self) -> t.StrSequence: ...
+
+        @property
+        def reorders_annotation(self) -> bool: ...
+
+        @property
+        def families(self) -> t.StrSequence: ...
+
+        @property
+        def scope_kinds(self) -> t.StrSequence: ...
+
+        @property
+        def implementation_owner(self) -> t.Pair[str, str] | None: ...
+
+        @property
+        def receiver_methods(self) -> t.StrSequence: ...
+
+        @property
+        def ownership_transfer(self) -> t.Pair[str, str] | None: ...
+
+    @runtime_checkable
+    class CodemodSourceEpoch(Protocol):
+        """Original source bytes used by native semantic snapshot construction."""
+
+        @property
+        def sources(self) -> t.MappingKV[t.Infra.RopeSourcePath, str]: ...
+
+        @property
+        def contents(self) -> t.MappingKV[t.Infra.RopeSourcePath, bytes]: ...
+
+        @property
+        def snapshot(self) -> p.Infra.SemanticSourceWitness: ...
+
+    @runtime_checkable
+    class SemanticSourceState(Protocol):
+        """Read-only original native file receipt carried to publication."""
+
+        @property
+        def path(self) -> t.Infra.RopeSourcePath: ...
+
+        @property
+        def content(self) -> bytes | None: ...
+
+        @property
+        def mode(self) -> int | None: ...
+
+    @runtime_checkable
+    class SemanticSourceWitness(Protocol):
+        """Original closure from the existing native source epoch."""
+
+        @property
+        def states(self) -> t.SequenceOf[p.Infra.SemanticSourceState]: ...
+
+    @runtime_checkable
+    class PrimitiveOwnerCondition(Protocol):
+        """The qualified primitive operands used by native owner discovery."""
+
+        @property
+        def arg(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class SemanticMigrationEdit(Protocol):
+        """Immutable proposed source bytes passed between semantic phases."""
+
+        @property
+        def file_path(self) -> t.Infra.RopeSourcePath: ...
+
+        @property
+        def original_source(self) -> str: ...
+
+        @property
+        def updated_source(self) -> str: ...
+
+        @property
+        def changes(self) -> t.StrSequence: ...
+
+        @property
+        def retire_file(self) -> bool: ...
+
+        @property
+        def source_states(self) -> t.SequenceOf[p.Infra.SemanticSourceState]: ...
+
     # NOTE (multi-agent, flext-wkii.17.24 / agent: codex): source discovery is a
     # Rope boundary and consumes the exact field-only runtime request model.
     @runtime_checkable

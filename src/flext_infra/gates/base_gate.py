@@ -199,7 +199,7 @@ class FlextInfraGate:
         """
         return shutil.which(cls.scanner_binary)
 
-    def _native_error_issue(self, _project_dir: Path, stderr: str) -> m.Infra.Issue:
+    def _native_error_issue(self, _project_dir: Path, stderr: str) -> p.Infra.Issue:
         """Report native checker stderr as one gate execution error.
 
         Returns:
@@ -215,7 +215,7 @@ class FlextInfraGate:
             severity=c.Infra.ERROR,
         )
 
-    def _tool_failure_issue(self, scan: p.Cli.CommandOutput) -> m.Infra.Issue:
+    def _tool_failure_issue(self, scan: p.Cli.CommandOutput) -> p.Infra.Issue:
         """Scanner absence/crash must never read as a clean pass.
 
         Returns:
@@ -239,7 +239,7 @@ class FlextInfraGate:
         file: str,
         line: int,
         column: int,
-    ) -> m.Infra.Issue:
+    ) -> p.Infra.Issue:
         """Report an unsuccessful command that supplied no structured issues.
 
         Returns:
@@ -269,9 +269,9 @@ class FlextInfraGate:
         self,
         result: p.Cli.CommandOutput,
         project_dir: Path,
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         tool: str,
-    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[p.Infra.Issue]]:
         """Surface a failed tool run that parsed no issues.
 
         If the tool exited unsuccessfully and no issues were parsed, add one
@@ -279,7 +279,7 @@ class FlextInfraGate:
         than silently passing.
 
         Returns:
-            The resulting ``t.Pair[bool, t.SequenceOf[m.Infra.Issue]]``.
+            The native verdict and the same structural diagnostic instances.
 
         """
         if not u.Cli.process_succeeded(result.outcome) and not issues:
@@ -296,7 +296,7 @@ class FlextInfraGate:
         return u.Cli.process_succeeded(result.outcome), issues
 
     @staticmethod
-    def _malformed_report_issue(detail: str, *, tool: str, file: str) -> m.Infra.Issue:
+    def _malformed_report_issue(detail: str, *, tool: str, file: str) -> p.Infra.Issue:
         """Report a checker whose structured report failed typed validation.
 
         Returns:
@@ -316,8 +316,8 @@ class FlextInfraGate:
         self,
         result: p.Cli.CommandOutput,
         project_dir: Path,
-        diagnostics: t.SequenceOf[m.Infra.Issue],
-    ) -> t.SequenceOf[m.Infra.Issue]:
+        diagnostics: t.SequenceOf[p.Infra.Issue],
+    ) -> t.SequenceOf[p.Infra.Issue]:
         """Join a type checker's report with its stderr and an unexplained exit.
 
         Stderr lines outside the checker's informational prefixes are failures;
@@ -404,7 +404,7 @@ class FlextInfraGate:
         self,
         project_dir: Path,
         *,
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         started: float,
     ) -> m.Infra.GateExecution:
         """Assemble one gate execution from detector-produced issues.
@@ -473,7 +473,7 @@ class FlextInfraGate:
         project_dir: Path,
         *,
         passed: bool,
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         raw_output: str,
         started: float,
     ) -> m.Infra.GateExecution:
@@ -646,7 +646,7 @@ class FlextInfraGate:
         result: p.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[p.Infra.Issue]]:
         """Parse tool output into (passed, issues).
 
         Concrete gates that run the template check implement this method.

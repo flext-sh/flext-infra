@@ -80,6 +80,19 @@ integration tip of every repository involved.
 
 ## Canonical architecture checkpoints
 
+The public `mod` handler is inherited by the API from
+`services/mod.py`; `FlextInfraCodemodBatchApply` remains its sole execution
+engine. The CLI validates the request with `m.Infra.ModCommand`, while consumers
+use `p.Infra.ModRequest` and supply an explicit `p.Infra.ModProgress` port. The
+API's existing preview and workspace capabilities provide the dependencies by
+MRO; there is no second loop in the handler.
+
+Rope workspace sessions are owned by their invocation. Independent opens keep
+their logical roots and teardown isolated, even when they read one structural
+workspace. Borrowed projects remain owned by their caller. Content snapshots
+and their authenticated indexes retain their source epoch; a process-global
+registry is not a substitute for the existing invocation-scoped DI.
+
 For every bounded engine, generation or namespace repair, compose
 [root AGENTS.md](../../../AGENTS.md), the
 [FLEXT session router](../../../.agents/commands/flext-law.md), and the exact
@@ -149,6 +162,13 @@ without functional reduction. Global make-check/verification-loop own runtime,
 native gates and receipt requirements. A successful publication is not proof of
 lint/type/test success or idempotence: run the applicable gates and repeated
 gen/fix/fmt on the unchanged candidate, and report failed or unexecuted scopes.
+
+Security gates reuse the gate-base source discovery (`source_scan.roots`) and
+native runner. Explicit file targets and generated Python remain auditable;
+owner authorization does not grant a Bandit exemption. Gate diagnostics cross
+parser and aggregation boundaries through `p.Infra.Issue`; their JSON and SARIF
+schemas remain owned by the canonical Pydantic models. Schema metadata delegates
+to those models rather than duplicating them or reconstructing validated issues.
 
 Configuration vocabulary belongs to the bootstrap-safe `_constants/config.py`
 owner, exposed through `c.Infra`; schema modules validate that vocabulary rather

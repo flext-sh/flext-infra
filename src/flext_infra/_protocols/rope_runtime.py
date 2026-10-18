@@ -179,10 +179,17 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> Iterator[tuple[int, int]]: ...
 
     @runtime_checkable
+    class RopeCachedLogicalLineFinder(Protocol):
+        """Native cached lookup of the logical statement containing a line."""
+
+        def logical_line_in(self, line_number: int) -> t.Pair[int, int]: ...
+
+    @runtime_checkable
     class RopeAssignment(Protocol):
         """Rope assignment shape."""
 
-        ast_node: FlextInfraProtocolsRopeRuntime.RopeAstNode
+        ast_node: t.Infra.RopeAstNode | None
+        type_hint: t.Infra.RopeAstNode | None
 
         def get_lineno(self) -> int | None: ...
 
@@ -316,6 +323,11 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         @property
         def lines(self) -> FlextInfraProtocolsRopeRuntime.RopeSourceLines: ...
+
+        @property
+        def logical_lines(
+            self,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeCachedLogicalLineFinder: ...
 
         def get_module(self) -> FlextInfraProtocolsRopeRuntime.RopePyModule: ...
 

@@ -75,7 +75,12 @@ class FlextInfraAccessorRenamePhase(
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        """Plan origin-owned accessors on a separate immutable working view."""
+        """Plan origin-owned accessors on a separate immutable working view.
+
+        Returns:
+            The planned migration edits, or the first planning failure.
+
+        """
         del preflight
         snapshot = u.Infra.snapshot_project(
             rope_workspace.rope_project,
@@ -145,7 +150,12 @@ class FlextInfraAccessorRenamePhase(
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Bind accessor effects to the original physical publication receipts."""
+        """Bind accessor effects to the original physical publication receipts.
+
+        Returns:
+            The bound phase analysis, or the first planning failure.
+
+        """
         captured = FlextInfraCodegenPreconditions.unique_states((
             *source_states,
             *(state for plan in declared_files for state in plan.source_states),
@@ -182,7 +192,8 @@ class FlextInfraAccessorRenamePhase(
                 continue
             if edit.file_path not in originals:
                 return r[m.Infra.CodegenPhaseAnalysis].fail(
-                    f"accessor planning source lacks its original receipt: {edit.file_path}"
+                    f"accessor planning source lacks its original "
+                    f"receipt: {edit.file_path}"
                 )
             before = originals[edit.file_path]
             files.append(

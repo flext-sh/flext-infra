@@ -184,6 +184,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             The complete all-root candidate with target-only syntax effects.
 
         Raises:
+            ValueError: If a syntax input changed after global capture.
             RuntimeError: If the syntax cascade repeats a source state.
 
         """

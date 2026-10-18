@@ -24,6 +24,36 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 ):
     """Resolve lexical identities and construct Rope module/import objects."""
 
+    @staticmethod
+    def definition_location(
+        binding: t.Infra.RopePyName,
+    ) -> t.Pair[t.Infra.RopeParsedModule | None, int | None]:
+        """Read native definition metadata, including annotation-only bindings.
+
+        Returns:
+            The original supplier and first assignment's logical declaration line.
+
+        Raises:
+            TypeError: The native annotation is not an expression node.
+
+        """
+        module, line = binding.get_definition_location()
+        if (
+            line is not None
+            or not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module)
+            or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
+            or not binding.assignments
+        ):
+            return module, line
+        assignment = binding.assignments[0]
+        annotation = assignment.type_hint
+        if assignment.ast_node is not None or annotation is None:
+            return module, line
+        if not isinstance(annotation, ast.expr):
+            message = "native Rope assignment annotation is not an expression"
+            raise TypeError(message)
+        return module, module.logical_lines.logical_line_in(annotation.lineno)[0]
+
     @classmethod
     def expression_name(
         cls, scope: p.Infra.RopeScope, expression: str
@@ -315,6 +345,8 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             raise TypeError(message)
         source = holder.source_code
         rhs = binding.assignments[0].ast_node
+        if rhs is None:
+            return None
         rhs_offset = cls.source_offset(source, rhs)
         scope = cls.scope_at(holder, rhs_offset)
         if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:

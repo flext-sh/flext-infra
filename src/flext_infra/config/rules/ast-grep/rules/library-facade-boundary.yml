@@ -33,17 +33,18 @@ severity: error
 files:
   - "**/*.py"
 metadata:
-  owner: flext-core
   context:
     MODULE:
-      not: layer-zero-file
+      not: implementation-owner
+      arg: flext_core u.fetch_logger
 rule:
   all:
     - pattern: $MODULE
     - matches: library-import-name
     - regex: "^(?:structlog)(?:\\.|$)"
 message: >-
-  structlog is owned by flext-core: obtain loggers through u.fetch_logger(__name__).
+  Only the native implementation of the public logging primitive imports
+  structlog; consumers use the canonical utilities logging contract.
 ---
 id: ban-flext-core-library-import
 language: python
