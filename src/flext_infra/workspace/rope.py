@@ -81,6 +81,7 @@ class FlextInfraRopeWorkspace(
         )
 
     @classmethod
+    @override
     def open_workspace(
         cls,
         repository_root: Path,
@@ -188,6 +189,7 @@ class FlextInfraRopeWorkspace(
         return workspace_index
 
     @property
+    @override
     def source_index_receipt(self) -> m.Infra.CodegenPhaseAnalysis:
         """Require the original authenticated structural-selection receipt.
 

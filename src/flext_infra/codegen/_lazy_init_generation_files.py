@@ -24,7 +24,9 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
     """Convert resolved lazy-init decisions into immutable publication plans."""
 
     if TYPE_CHECKING:
-        source_project: p.Infra.RopeProject
+
+        @property
+        def source_project(self) -> p.Infra.RopeProject: ...
 
         def _cleanup_generated_support_file_states(
             self,

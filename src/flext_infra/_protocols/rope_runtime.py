@@ -295,6 +295,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_name(self) -> str: ...
 
+        def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
+
         def get_doc(self) -> str | None: ...
 
         def get_attributes(
@@ -451,6 +453,11 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self,
             resource_name: str,
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource: ...
+
+        def get_file(
+            self,
+            path: str,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeFile: ...
 
         def get_folder(
             self,

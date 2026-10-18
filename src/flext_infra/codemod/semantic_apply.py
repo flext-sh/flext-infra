@@ -392,7 +392,8 @@ class FlextInfraCodemodSemanticApply:
     @classmethod
     @contextmanager
     def planning_workspace(
-        cls: Path,
+        cls,
+        root: Path,
         seed: m.Infra.SemanticRenamePlan,
         sources: t.MappingKV[Path, str],
     ) -> Generator[p.Infra.RopeWorkspaceDsl]:
@@ -427,7 +428,7 @@ class FlextInfraCodemodSemanticApply:
                         consumer_root=owner,
                     )
                 )
-                for owner in dict.fromkeys((cls, *projects))
+                for owner in dict.fromkeys((root, *projects))
             )
             source_folders = tuple(
                 dict.fromkeys(
@@ -460,15 +461,15 @@ class FlextInfraCodemodSemanticApply:
                         (source_folders, python_folders),
                         (originals.states, epoch.sources, sources),
                         seed,
-                        cls,
+                        root,
                     )
                 )
             )
             with project.source_consumption() as selected:
-                index = u.Infra.index_rope_workspace(project, cls)
+                index = u.Infra.index_rope_workspace(project, root)
             yield stack.enter_context(
                 FlextInfraRopeWorkspace.open_workspace(
-                    cls,
+                    root,
                     rope_repository_root=candidate.workspace,
                     source_project=project,
                     workspace_index=index,
@@ -1946,7 +1947,8 @@ class FlextInfraCodemodSemanticApply:
         cls,
         updated: t.MappingKV[Path, str | None],
         normalized: t.Pair[
-            t.MappingKV[Path, str], t.MappingKV[Path, m.Cli.AtomicFileState]
+            t.MappingKV[Path, str | None],
+            t.MappingKV[Path, m.Cli.AtomicFileState],
         ],
         receipts: t.Triple[
             t.VariadicTuple[m.Cli.AtomicFileState],

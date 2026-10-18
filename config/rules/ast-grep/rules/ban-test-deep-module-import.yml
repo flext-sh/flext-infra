@@ -1,0 +1,92 @@
+# Ban deep module imports in tests — tests must use package-root imports only.
+# Allowed: from flext_<pkg> import <alias>, container, settings, config, c, t, p, m, u
+# Allowed: from tests import ..., from flext_tests import ...
+# Forbidden: from flext_<pkg>.<submodule> import ...
+# Carve-outs (permanent):
+#   - container*/test_container*/registration* (distinct container tests)
+#   - flext_tests.pytest_bootstrap, fixture modules (bootstrap)
+# Transient ignores per member: tracked in beads, removed slice-by-slice until zero.
+id: ban-test-deep-module-import
+language: python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: from flext_$PACKAGE.$MODULE import $IMPORT
+    - any:
+        # Allow package-root imports (single segment after package)
+        - not:
+            has:
+              pattern: $MODULE
+              inside:
+                kind: dotted_name
+                stopBy: end
+        # Allow tests imports
+        - not:
+            pattern: from tests import $IMPORT
+        - not:
+            pattern: from flext_tests import $IMPORT
+        # Allow flext_core facade imports (c, t, p, m, u, r, e, x, h, d, s)
+        - not:
+            all:
+              - pattern: from flext_core import $IMPORT
+              - any:
+                  - pattern: $IMPORT
+                    inside:
+                      kind: dotted_name
+                      stopBy: end
+        # Allow config/settings imports
+        - not:
+            all:
+              - pattern: from flext_core import $IMPORT
+              - any:
+                  - pattern: config
+                  - pattern: settings
+        - not:
+            all:
+              - pattern: from flext_$PACKAGE import $IMPORT
+              - any:
+                  - pattern: config
+                  - pattern: settings
+        # Carve-out: container tests
+        - not:
+            all:
+              - pattern: from flext_$PACKAGE.$MODULE import $IMPORT
+              - any:
+                  - pattern: container
+                    inside:
+                      kind: identifier
+                  - pattern: test_container
+                    inside:
+                      kind: identifier
+                  - pattern: registration
+                    inside:
+                      kind: identifier
+        # Carve-out: flext_tests bootstrap/fixtures
+        - not:
+            all:
+              - pattern: from flext_tests.$MODULE import $IMPORT
+              - any:
+                  - pattern: pytest_bootstrap
+                    inside:
+                      kind: identifier
+                  - pattern: _fixtures
+                    inside:
+                      kind: identifier
+                  - pattern: _domains_parts
+                    inside:
+                      kind: identifier
+                  - pattern: _docker_parts
+                    inside:
+                      kind: identifier
+fix: ""
+message: |
+  Tests must use package-root imports only (e.g., `from flext_ldif import ldif`).
+  Deep imports like `from flext_ldif.services import ...` are forbidden.
+  Allowed: package-root facade (`<alias>`, `container`, `settings`, `config`, `c,t,p,m,u`),
+  `from tests import ...`, `from flext_tests import ...`.
+  Permanent carve-outs: container tests, flext_tests bootstrap/fixtures.
+  Transient ignores tracked in beads, removed slice-by-slice.
+  See: flext.canonical_type_ownership, flext.test_import_law

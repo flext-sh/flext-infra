@@ -111,7 +111,7 @@ class FlextInfraUtilitiesProjectDiscovery(
 
     @staticmethod
     def _declared_applicability(
-        repository: m.Infra.RepositoryRef,
+        repository: m.Infra.RepositoryDeltaSpec,
         *,
         mutating: bool,
     ) -> m.Infra.WorkspaceOperationApplicability | None:

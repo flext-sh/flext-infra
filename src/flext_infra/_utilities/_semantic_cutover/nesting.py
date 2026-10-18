@@ -289,10 +289,12 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         ):
             return True
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        resource = project.get_resource(
-            file_path.relative_to(Path(project.root.real_path)).as_posix(),
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project,
+            project.get_file(
+                file_path.relative_to(Path(project.root.real_path)).as_posix(),
+            ),
         )
-        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
         for node in ast.walk(tree):
             if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                 continue
@@ -424,8 +426,8 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             target = module.get_attribute(name).get_object()
             ancestry = payloads.class_ancestry(target)
             if any(
-                base.get_module() is not None
-                and base.get_module().get_name().partition(".")[0] == "pydantic"
+                (base_module := base.get_module()) is not None
+                and base_module.get_name().partition(".")[0] == "pydantic"
                 for base in ancestry
             ):
                 model = payloads.identity_name(project, c.Infra.PYDANTIC_MODEL_IDENTITY)
@@ -1766,7 +1768,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     source,
                     native=(
                         project,
-                        project.get_resource(
+                        project.get_file(
                             path.relative_to(Path(project.root.real_path)).as_posix(),
                         ),
                     ),

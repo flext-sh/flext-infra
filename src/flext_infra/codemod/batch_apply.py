@@ -92,7 +92,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
 
     def _execute_dry_run(
         self,
-        rules: t.StrSequence,
+        rules: t.SequenceOf[Path],
     ) -> p.Result[t.Cli.ResultValue]:
         """Report every pending finding without applying any phase.
 

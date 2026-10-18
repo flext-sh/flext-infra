@@ -725,7 +725,7 @@ class FlextInfraStagedPackage:
         owners: set[Path] = set()
         for path in plan.updates:
             owner = cls._source_layout(path, layouts)
-            if owner.is_success:
+            if not owner.failure:
                 owners.add(owner.value.project_root)
         actual = cls._actual_source_inventory(plan, owners)
         if actual.failure:

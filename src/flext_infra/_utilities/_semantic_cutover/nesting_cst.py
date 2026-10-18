@@ -18,6 +18,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticCutoverNestingOwner,
     FlextInfraUtilitiesSemanticCutoverNestingReferences,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
@@ -33,7 +34,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         cls,
         source: str,
         *,
-        native: t.Pair[p.Infra.RopeProject, p.Infra.RopeResource],
+        native: t.Pair[p.Infra.RopeProject, p.Infra.RopeFile],
         scope: t.Pair[str, bool],
         bindings_by_module: t.MappingKV[str, t.StrMapping],
         providers_by_module: t.MappingKV[str, p.Infra.RopeResource],
@@ -509,14 +510,18 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         bindings: dict[str, str] = {}
         metadata: list[str] = []
         registrations = False
-        patterns = cls._pytest_collection_patterns(Path(project.root.real_path))
+        patterns = (
+            FlextInfraUtilitiesSemanticCutoverNestingOwner._pytest_collection_patterns(
+                Path(project.root.real_path)
+            )
+        )
         original = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
         for node in owner.body:
             if isinstance(node, ast.ClassDef):
                 if (
                     composition
                     and (original_bindings is None or node.name in original_bindings)
-                    and cls._pytest_class_binding(
+                    and FlextInfraUtilitiesSemanticCutoverNestingOwner._pytest_class_binding(
                         node.name, original.get_attribute(node.name), patterns[1]
                     )
                 ):
@@ -547,7 +552,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
                     }
                     or tails & fixtures
                     or (
-                        composition and cls._pytest_name_matches(node.name, patterns[2])
+                        composition
+                        and FlextInfraUtilitiesSemanticCutoverNestingOwner._pytest_name_matches(
+                            node.name, patterns[2]
+                        )
                     )
                 ):
                     if "staticmethod" not in tails:

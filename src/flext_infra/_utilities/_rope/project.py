@@ -17,6 +17,7 @@ from collections.abc import Generator, Mapping
 from contextlib import AbstractContextManager, closing, contextmanager, nullcontext
 from errno import ENOENT
 from itertools import chain
+from os import PathLike
 from os.path import normpath, realpath
 from pathlib import Path
 from types import MappingProxyType
@@ -47,38 +48,6 @@ class _RopeProjectSourceAccessMixin:
         | FlextInfraRopeProject.SnapshotFiles
         | FlextInfraRopeProject.AtomicReadFiles
     )
-
-    def __init__(
-        self,
-        projectroot: str,
-        fscommands: (
-            FileSystemCommands
-            | FlextInfraRopeProject.SnapshotFiles
-            | FlextInfraRopeProject.AtomicReadFiles
-            | None
-        ) = None,
-        ropefolder: str | None = ".ropeproject",
-        external_project: NoProject | None = None,
-        **prefs: bool | t.StrSequence,
-    ) -> None:
-        """Forward construction to the native project initializer.
-
-        Args:
-            projectroot: The address of the root folder of the project.
-            fscommands: The file system operations used by the project.
-            ropefolder: The rope configuration folder name, or ``None`` to
-                disable persistent rope state entirely.
-            external_project: Resource owner for Python-path modules.
-            prefs: Project preferences overriding config file preferences.
-
-        """
-        super().__init__(
-            projectroot,
-            fscommands=fscommands,
-            ropefolder=ropefolder,
-            external_project=external_project,
-            **prefs,
-        )
 
     @property
     def _authenticated_reads(self) -> FlextInfraRopeProject.AtomicReadFiles:
@@ -311,10 +280,9 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
     _source_election: p.Infra.RopeProjectElection | None = None
     _custom_source_folders: list[File | Folder]
 
-    @override
     def __init__(
         self,
-        projectroot: str,
+        projectroot: str | PathLike[str],
         fscommands: (
             FileSystemCommands
             | FlextInfraRopeProject.SnapshotFiles
@@ -696,11 +664,9 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
         """Accumulate original receipts for one native consumer, not a set delta."""
 
         def __init__(self) -> None:
-            self._states: tuple[tuple[m.Cli.AtomicFileState, ...], ...] = ()
-            self._directories: tuple[
-                tuple[m.Cli.AtomicDirectoryInventory, ...], ...
-            ] = ()
-            self._topology: tuple[tuple[m.Cli.AtomicDirectoryChainPlan, ...], ...] = ()
+            self._states: list[tuple[m.Cli.AtomicFileState, ...]] = []
+            self._directories: list[tuple[m.Cli.AtomicDirectoryInventory, ...]] = []
+            self._topology: list[tuple[m.Cli.AtomicDirectoryChainPlan, ...]] = []
             self._receipt: m.Infra.CodegenPhaseAnalysis | None = None
 
         def record(
@@ -713,6 +679,8 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
 
             Each event appends its observations; the cross-event union merges
             once at seal so one consumer's cost stays linear in its events.
+            Appends are amortized O(1): a consumer issues tens of thousands of
+            events, and rebuilding a tuple per event copies its whole prefix.
 
             Raises:
                 ValueError: If the receipt is already sealed.
@@ -721,9 +689,9 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             if self._receipt is not None:
                 msg = "Rope source consumption is already sealed"
                 raise ValueError(msg)
-            self._states = (*self._states, states)
-            self._directories = (*self._directories, directories)
-            self._topology = (*self._topology, topology)
+            self._states.append(states)
+            self._directories.append(directories)
+            self._topology.append(topology)
 
         def seal(self) -> m.Infra.CodegenPhaseAnalysis:
             """Freeze the receipt only after the consumer has left its scope.

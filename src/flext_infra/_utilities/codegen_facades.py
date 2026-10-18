@@ -61,7 +61,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     tuple[m.Cli.AtomicDirectoryChainPlan, ...],
                 ],
             ],
-            t.MappingKV[Path, str],
+            dict[Path, str],
         ]
     ]:
         """Share one authenticated native source graph across a planning pass.

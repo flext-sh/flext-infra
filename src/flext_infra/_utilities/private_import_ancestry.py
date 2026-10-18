@@ -120,35 +120,27 @@ class FlextInfraUtilitiesPrivateImportAncestry:
                         else f"{scope}.{target.id}"
                     )
 
-    class FlextInfraUtilitiesPrivateImportAncestry:
-        """Resolve bases using bindings present when each class is declared."""
+    @staticmethod
+    def class_bases(
+        sources: t.MappingKV[str, t.Pair[str, bool]],
+    ) -> t.MappingKV[str, t.VariadicTuple[str]]:
+        """Index static class ancestry, including private intermediate owners.
 
-        @staticmethod
-        def class_bases(
-            sources: t.MappingKV[str, t.Pair[str, bool]],
-        ) -> t.MappingKV[str, t.VariadicTuple[str]]:
-            """Index static class ancestry, including private intermediate owners.
+        Returns:
+            The resulting ``t.MappingKV[str, t.VariadicTuple[str]]``.
 
-            Returns:
-                The resulting ``t.MappingKV[str, t.VariadicTuple[str]]``.
-
-            """
-            bases: t.MutableMappingKV[str, t.VariadicTuple[str]] = {}
-            for module, (source, is_package) in sources.items():
-                tree = ast.parse(source, filename=module)
-                package = module if is_package else module.rpartition(".")[0]
-                collector = (
-                    FlextInfraUtilitiesPrivateImportAncestry._ClassBaseCollector(
-                        module=module,
-                        package=package,
-                    )
-                )
-                collector.collect_root(tree.body)
-                bases.update(collector.bases)
-            return bases
+        """
+        bases: t.MutableMappingKV[str, t.VariadicTuple[str]] = {}
+        for module, (source, is_package) in sources.items():
+            tree = ast.parse(source, filename=module)
+            package = module if is_package else module.rpartition(".")[0]
+            collector = FlextInfraUtilitiesPrivateImportAncestry._ClassBaseCollector(
+                module=module,
+                package=package,
+            )
+            collector.collect_root(tree.body)
+            bases.update(collector.bases)
+        return bases
 
 
-# The flat module-level re-export: the package lazy map and the internal
-# from-import contract resolve this name at module scope (the S6 nesting
-# moved the class inside the family facade).
 __all__: list[str] = ["FlextInfraUtilitiesPrivateImportAncestry"]

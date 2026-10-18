@@ -28,10 +28,7 @@ if TYPE_CHECKING:
         FlextInfraValidationCommandRoutes,
     )
     from flext_infra.services.cli_routes_workspace import FlextInfraWorkspaceRoutes
-    from flext_infra.services.codegen import (
-        FlextInfraCodegen,
-        FlextInfraCodegenHandlers,
-    )
+    from flext_infra.services.codegen import FlextInfraCodegenHandlers
     from flext_infra.services.mod import FlextInfraModHandlers
 
 
@@ -40,7 +37,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCliDispatchService",
     "FlextInfraCliModProgress",
     "FlextInfraCliRouteService",
-    "FlextInfraCodegen",
     "FlextInfraCodegenHandlers",
     "FlextInfraCodegenRoutes",
     "FlextInfraCodegenVscodeMixin",
@@ -60,7 +56,6 @@ install_lazy_exports(
         "FlextInfraCliDispatchService": ".cli_dispatch",
         "FlextInfraCliModProgress": ".cli_mod_progress",
         "FlextInfraCliRouteService": ".cli_routes",
-        "FlextInfraCodegen": ".codegen",
         "FlextInfraCodegenHandlers": ".codegen",
         "FlextInfraCodegenRoutes": ".cli_routes_codegen",
         "FlextInfraCodegenVscodeMixin": "._codegen.vscode",
