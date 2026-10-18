@@ -14,6 +14,7 @@ from typing_extensions import TypeForm
 
 from flext_infra import c, p, t
 from flext_infra._models import (
+    FlextInfraModelsBase,
     FlextInfraModelsCheck,
     FlextInfraModelsMixins,
     FlextInfraModelsRope,
@@ -21,7 +22,6 @@ from flext_infra._models import (
 from flext_infra._models._config import FlextInfraConfigModels
 from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
 from flext_infra._models._git import FlextInfraModelsGitIdentity
-from flext_infra._models.base import FlextInfraModelsBase
 
 
 class FlextInfraModelsWorkspace:

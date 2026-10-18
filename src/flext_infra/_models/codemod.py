@@ -14,7 +14,7 @@ from flext_cli import m, u
 from typing_extensions import TypeForm
 
 from flext_infra import c, p, t
-from flext_infra._models.base import FlextInfraModelsBase
+from flext_infra._models import FlextInfraModelsBase
 
 
 class FlextInfraModelsCodemod:

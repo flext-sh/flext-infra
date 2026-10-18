@@ -34,9 +34,9 @@ snapshots:
       start: 5
       end: 38
   ? |
-    from flext_infra._models.base import FlextInfraModelsBase
+    from flext_infra._models import FlextInfraModelsBase
   : labels:
-    - source: from flext_infra._models.base import FlextInfraModelsBase
+    - source: from flext_infra._models import FlextInfraModelsBase
       style: primary
       start: 0
       end: 57
@@ -69,9 +69,9 @@ snapshots:
   ? |
     from typing import TYPE_CHECKING
     if TYPE_CHECKING:
-        from flext_infra._models.base import FlextInfraModelsBase
+        from flext_infra._models import FlextInfraModelsBase
   : labels:
-    - source: from flext_infra._models.base import FlextInfraModelsBase
+    - source: from flext_infra._models import FlextInfraModelsBase
       style: primary
       start: 55
       end: 112
