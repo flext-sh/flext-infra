@@ -769,6 +769,7 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             # module while indexing; without this memo the parent-chain walk
             # and its pydantic re-records turn the scan quadratic.
             self._query_observations: dict[tuple[Path, str], bool] = {}
+            self._observed_overlays: set[str] = set()
             # Original-epoch directory membership, one scandir per directory:
             # (file names, directory names). Construction time is the epoch,
             # so this snapshot is the authoritative native membership.
@@ -961,6 +962,11 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                 return
             plan = self._effects.get(path)
             if plan is None:
+                return
+            if path in self._consumed_effects:
+                # The effect's original proof was already attributed; repeating
+                # the verification and receipt merge per re-read turned every
+                # re-query of a virtual resource into a full receipt rebuild.
                 return
             self._consumed_effects.add(path)
             states = (
@@ -1367,9 +1373,13 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
 
         def _observe_overlay(self, path: str) -> None:
             """Bind the exact planned sources contributing a virtual resource."""
+            if path in self._observed_overlays:
+                return
             if self._overlay.isfile(path):
+                self._observed_overlays.add(path)
                 self.read(path)
                 return
+            self._observed_overlays.add(path)
             for child in self._overlay.children(path):
                 self._observe_overlay(str(child))
 
