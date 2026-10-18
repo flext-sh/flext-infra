@@ -7,9 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableMapping
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
-from flext_infra import c, infra, m, r
+from flext_infra import c, infra, m, p, r, t
 from flext_infra.codegen import (
     FlextInfraCodegenConsolidator,
     FlextInfraCodegenLayout,
@@ -30,9 +30,6 @@ from flext_infra.deps import (
     FlextInfraPyprojectModernizer,
     FlextInfraRuntimeDevDependencyDetector,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import p, t
 
 
 def execute_codegen_generate(

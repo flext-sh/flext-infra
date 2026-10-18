@@ -585,6 +585,29 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             self.state.planning_exception = published.exception
         return r[bool].ok(value=True)
 
+    def _plan_or_report(
+        self,
+        request: m.Infra.CodegenConformRequest,
+    ) -> p.Result[m.Infra.CodegenPlan]:
+        """Plan the surface, reporting an empty plan with planning failures.
+
+        Returns:
+            The resulting plan, or a failure carrying any planning issues and
+            the original planning exception by identity.
+
+        """
+        planned = self.plan(request)
+        if planned.failure:
+            return r[m.Infra.CodegenPlan].from_failure(planned)
+        plan = planned.value
+        if not plan.files and (plan.issues or plan.exception is not None):
+            return r[m.Infra.CodegenPlan].fail(
+                "\n".join(issue.formatted for issue in plan.issues)
+                or "generation planning failed",
+                exception=plan.exception,
+            )
+        return planned
+
     def execute_plan(
         self,
         request: m.Infra.CodegenConformRequest,
@@ -608,16 +631,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             f"stage=plan mode={request.mode} scope={request.scope} "
             f"what={request.what} root={request.root}",
         )
-        planned = self.plan(request)
+        planned = self._plan_or_report(request)
         if planned.failure:
             return r[p.Infra.CodegenResult].from_failure(planned)
         plan = planned.value
-        if not plan.files and (plan.issues or plan.exception is not None):
-            return r[p.Infra.CodegenResult].fail(
-                "\n".join(issue.formatted for issue in plan.issues)
-                or "generation planning failed",
-                exception=plan.exception,
-            )
         surface = c.Infra.CodegenConformSurface(request.what)
         if surface not in c.Infra.PARTIAL_PLAN_SURFACES:
             return r[p.Infra.CodegenResult].fail(
@@ -661,15 +678,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             )
             if receipt.failure:
                 return r[p.Infra.CodegenResult].from_failure(receipt)
-            if plan.exception is not None:
-                # Published valid siblings keep their effects, and the
-                # aggregate still fails carrying the first member's original
-                # planning exception by identity, never a re-wrapped cause.
-                return r[p.Infra.CodegenResult].fail(
-                    "\n".join(issue.formatted for issue in plan.issues)
-                    or "generation planning failed",
-                    exception=plan.exception,
-                )
+            aggregate_failure = self._aggregate_planning_failure(plan)
+            if aggregate_failure is not None:
+                return aggregate_failure
             payload: p.Infra.CodegenResult = m.Infra.CodegenResult.model_validate(
                 result,
                 from_attributes=True,
@@ -677,6 +688,29 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return r[p.Infra.CodegenResult].ok(payload)
 
         return transaction.run_files_locked(roots, publish).flat_map(complete)
+
+    @staticmethod
+    def _aggregate_planning_failure(
+        plan: m.Infra.CodegenPlan,
+    ) -> p.Result[p.Infra.CodegenResult] | None:
+        """Fail the aggregate carrying the first member's original exception.
+
+        Published valid siblings keep their effects; the aggregate still
+        fails carrying the original planning exception by identity, never a
+        re-wrapped cause.
+
+        Returns:
+            The aggregate failure result, or ``None`` when every member
+            conformed.
+
+        """
+        if plan.exception is None:
+            return None
+        return r[p.Infra.CodegenResult].fail(
+            "\n".join(issue.formatted for issue in plan.issues)
+            or "generation planning failed",
+            exception=plan.exception,
+        )
 
     def _publish_bootstrap_phase(
         self,

@@ -343,6 +343,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         Returns:
             The validated full repository codegen policy.
 
+        Raises:
+            ValueError: If the composed declaration violates the codegen
+                configuration schema; third-party validation detail travels
+                as the cause.
+
         """
         codegen = u.Cli.json_walk_path(document, ("Infra", "codegen"))
         try:

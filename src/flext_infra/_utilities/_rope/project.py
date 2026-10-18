@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 from collections.abc import Generator, Mapping
 from contextlib import AbstractContextManager, closing, contextmanager, nullcontext
 from errno import ENOENT
@@ -768,6 +769,15 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             # module while indexing; without this memo the parent-chain walk
             # and its pydantic re-records turn the scan quadratic.
             self._query_observations: dict[tuple[Path, str], bool] = {}
+            # Original-epoch directory membership, one scandir per directory:
+            # (file names, directory names). Construction time is the epoch,
+            # so this snapshot is the authoritative native membership.
+            self._epoch_member_index: dict[
+                Path,
+                tuple[frozenset[str], frozenset[str]],
+            ] = {}
+            self._epoch_directories: set[Path] = set()
+            self._epoch_nondirectories: set[Path] = set()
 
         def _register_original_states(
             self,
@@ -1121,6 +1131,24 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                 )
             return self._inventories[directory]
 
+        _GENERATED_ARTIFACT_PARTS = frozenset({
+            "__pycache__",
+            ".pytest_cache",
+            ".mypy_cache",
+            ".pyrefly_cache",
+            ".ruff_cache",
+        })
+
+        @classmethod
+        def _is_generated_artifact(cls, candidate: Path) -> bool:
+            """Recognize runtime byproduct paths outside the source epoch.
+
+            Returns:
+                Whether any path part names a generated cache artifact.
+
+            """
+            return bool(cls._GENERATED_ARTIFACT_PARTS.intersection(candidate.parts))
+
         def query(
             self, path: str, predicate: Literal["exists", "isfile", "isdir"]
         ) -> bool:
@@ -1131,6 +1159,12 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
 
             """
             candidate = Path(path)
+            if self._is_generated_artifact(candidate):
+                # Bytecode and tool caches are runtime byproducts, never
+                # original sources: they answer from the plain filesystem and
+                # stay outside the epoch inventory, so their appearance or
+                # disappearance mid-run can never invalidate an epoch.
+                return self._ambient_query(candidate, predicate)
             memo_key = (candidate, predicate)
             observed = self._query_observations.get(memo_key)
             if observed is None:
@@ -1170,6 +1204,52 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                 "isdir": candidate.is_dir,
             }[predicate]()
 
+        def _is_epoch_directory(self, directory: Path) -> bool:
+            """Whether the path was a directory at construction time.
+
+            Returns:
+                The cached epoch nature of the path.
+
+            """
+            if directory in self._epoch_directories:
+                return True
+            if directory in self._epoch_nondirectories:
+                return False
+            is_dir = directory.is_dir()
+            (self._epoch_directories if is_dir else self._epoch_nondirectories).add(
+                directory,
+            )
+            return is_dir
+
+        def _epoch_members(
+            self,
+            directory: Path,
+        ) -> tuple[frozenset[str], frozenset[str]]:
+            """Return the directory's original-epoch ``(file, dir)`` names.
+
+            One scandir per directory for this owner's lifetime; the
+            construction-time filesystem is the authenticated epoch.
+
+            Returns:
+                The ``(file names, directory names)`` membership pair, empty
+                when the path is absent or not a directory.
+
+            """
+            members = self._epoch_member_index.get(directory)
+            if members is None:
+                files: set[str] = set()
+                dirs: set[str] = set()
+                try:
+                    with os.scandir(directory) as entries:
+                        for entry in entries:
+                            target = dirs if entry.is_dir() else files
+                            target.add(entry.name)
+                except OSError:
+                    files, dirs = frozenset(), frozenset()
+                members = (frozenset(files), frozenset(dirs))
+                self._epoch_member_index[directory] = members
+            return members
+
         def _repository_query(
             self,
             candidate: Path,
@@ -1182,12 +1262,13 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                 absence witness.
 
             """
-            if self.query(str(candidate.parent), "exists") and not self.query(
-                str(candidate.parent),
-                "isdir",
-            ):
+            parent = candidate.parent
+            if not self._is_epoch_directory(parent):
                 return False
-            inventory = self._inventory(candidate.parent)
+            parent_files, parent_dirs = self._epoch_members(parent)
+            if candidate.name not in parent_files and candidate.name not in parent_dirs:
+                return False
+            inventory = self._inventory(parent)
             if inventory is None:
                 self._record_parent_witness(candidate, predicate)
                 return False
