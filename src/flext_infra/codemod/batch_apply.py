@@ -87,45 +87,57 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             return r[t.Cli.ResultValue].from_failure(planned)
         rules = tuple(dict.fromkeys(rule.resource for rule in planned.value.rules))
         if self.effective_dry_run:
-            self.progress.emit(f"mod: scan {len(rules)} discovered rule file(s)")
-            pending = FlextInfraModGateEngine.scan(
-                self.repository_root,
-                fix=False,
-            ).unwrap()
-            if self.rename_plan is not None:
-                preview = self._advance_phases(
-                    self.repository_root,
-                    self.rope,
-                    pending,
-                    text_precondition_pending=True,
-                    publish=False,
-                )
-                if preview.failure:
-                    return r[t.Cli.ResultValue].from_failure(preview)
-            pending_count = pending.findings
-            text_pending = FlextInfraModTextGateEngine.scan(
-                self.repository_root,
-                fix=False,
-                validate_receipts=True,
-            ).unwrap()
-            pending_count += text_pending.findings
-            renames_pending = self._pending_renames()
-            if renames_pending.failure:
-                return r[t.Cli.ResultValue].from_failure(renames_pending)
-            if pending_count or renames_pending.value:
-                return r[t.Cli.ResultValue].fail(
-                    f"{pending.findings} pending ast-grep finding(s), "
-                    f"{pending.actionable} actionable and "
-                    f"{pending.detection_only} detection-only and "
-                    f"{pending.non_actionable_with_fix} non-actionable with fix, plus "
-                    f"{text_pending.findings} pending sed-by-list finding(s) "
-                    f"({text_pending.actionable} actionable) and "
-                    f"{renames_pending.value} pending CSV-rename occurrence(s), "
-                    f"across {len(rules)} rule file(s)",
-                )
-            self.progress.emit("mod: no pending ast-grep or sed-by-list fixes")
-            return r[t.Cli.ResultValue].ok(value=True)
+            return self._execute_dry_run(rules)
         return self._execute_apply(rules)
+
+    def _execute_dry_run(
+        self,
+        rules: t.SequenceOf[Path],
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Report every pending finding without applying any phase.
+
+        Returns:
+            The inspection verdict over the discovered rule cascade.
+
+        """
+        self.progress.emit(f"mod: scan {len(rules)} discovered rule file(s)")
+        pending = FlextInfraModGateEngine.scan(
+            self.repository_root,
+            fix=False,
+        ).unwrap()
+        if self.rename_plan is not None:
+            preview = self._advance_phases(
+                self.repository_root,
+                self.rope,
+                pending,
+                text_precondition_pending=True,
+                publish=False,
+            )
+            if preview.failure:
+                return r[t.Cli.ResultValue].from_failure(preview)
+        pending_count = pending.findings
+        text_pending = FlextInfraModTextGateEngine.scan(
+            self.repository_root,
+            fix=False,
+            validate_receipts=True,
+        ).unwrap()
+        pending_count += text_pending.findings
+        renames_pending = self._pending_renames()
+        if renames_pending.failure:
+            return r[t.Cli.ResultValue].from_failure(renames_pending)
+        if pending_count or renames_pending.value:
+            return r[t.Cli.ResultValue].fail(
+                f"{pending.findings} pending ast-grep finding(s), "
+                f"{pending.actionable} actionable and "
+                f"{pending.detection_only} detection-only and "
+                f"{pending.non_actionable_with_fix} non-actionable with fix, plus "
+                f"{text_pending.findings} pending sed-by-list finding(s) "
+                f"({text_pending.actionable} actionable) and "
+                f"{renames_pending.value} pending CSV-rename occurrence(s), "
+                f"across {len(rules)} rule file(s)",
+            )
+        self.progress.emit("mod: no pending ast-grep or sed-by-list fixes")
+        return r[t.Cli.ResultValue].ok(value=True)
 
     def _execute_apply(self, rules: t.SequenceOf[Path]) -> p.Result[t.Cli.ResultValue]:
         """Converge AST, semantic, and text phases over the same source state.
@@ -184,6 +196,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             The complete all-root candidate with target-only syntax effects.
 
         Raises:
+            ValueError: If a syntax input changed after global capture.
             RuntimeError: If the syntax cascade repeats a source state.
 
         """
@@ -393,7 +406,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         phase_states = [fingerprint(root, current)]
         driver = None
         if self.rename_plan is not None:
-            loaded = FlextInfraCodemodSemanticApply._load_rename_artifact(
+            loaded = FlextInfraCodemodSemanticApply.load_rename_artifact(
                 root,
                 m.Infra.ModCommand(repository_root=root, rename_plan=self.rename_plan),
             )
@@ -401,7 +414,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 return outcome.from_failure(loaded)
             seed, driver = loaded.value
             authenticated = (
-                FlextInfraCodemodSemanticApply._authenticate_rename_candidate(
+                FlextInfraCodemodSemanticApply.authenticate_rename_candidate(
                     root, seed, driver
                 )
             )
@@ -482,14 +495,14 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 )
                 if constants.failure:
                     return outcome.from_failure(constants)
-                FlextInfraCodemodSemanticApply._apply_plan(
+                FlextInfraCodemodSemanticApply.apply_plan(
                     working, constants.value, changed
                 )
                 transaction_paths = u.Infra.plan_transaction_path_cutover(
                     rope_workspace=graph,
                     sources=working,
                 )
-                FlextInfraCodemodSemanticApply._apply_plan(
+                FlextInfraCodemodSemanticApply.apply_plan(
                     working, transaction_paths, changed
                 )
                 semantic = FlextInfraCodemodSemanticApply.plan(
@@ -500,7 +513,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 )
                 if semantic.failure:
                     return outcome.from_failure(semantic)
-                FlextInfraCodemodSemanticApply._apply_plan(
+                FlextInfraCodemodSemanticApply.apply_plan(
                     working, semantic.value, changed
                 )
             source_states = m.Infra.CodemodBindingSnapshot(

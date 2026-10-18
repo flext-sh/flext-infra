@@ -24,7 +24,9 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
     """Convert resolved lazy-init decisions into immutable publication plans."""
 
     if TYPE_CHECKING:
-        source_project: p.Infra.RopeProject
+
+        @property
+        def source_project(self) -> p.Infra.RopeProject: ...
 
         def _cleanup_generated_support_file_states(
             self,
@@ -42,6 +44,9 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
 
         Returns:
             The resulting ``p.Result[MutableMapping[Path, m.Cli.AtomicFileState]]``.
+
+        Raises:
+            FileNotFoundError: When a required source path is absent.
 
         """
         snapshots: MutableMapping[Path, m.Cli.AtomicFileState] = {}
@@ -192,7 +197,12 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         directories: tuple[m.Cli.AtomicDirectoryInventory, ...],
         topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...],
     ) -> p.Result[bool]:
-        """Reverify original evidence through the native verifier, never recapture it."""
+        """Reverify original evidence via the native verifier, never recapture.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
         try:
             verified = u.Cli.atomic_verify_binary_file_states(states)
             if verified.failure:
@@ -200,6 +210,46 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             return u.Cli.atomic_verify_directory_queries(directories, topology)
         except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
             return r[bool].fail(str(exc), exception=exc)
+
+    @classmethod
+    def _original_plans_covered(
+        cls,
+        originals: tuple[
+            m.Cli.AtomicDirectoryInventory | m.Cli.AtomicDirectoryChainPlan, ...
+        ],
+        candidates: tuple[
+            m.Cli.AtomicDirectoryInventory | m.Cli.AtomicDirectoryChainPlan, ...
+        ],
+    ) -> bool:
+        """Prove every failing original is represented by a genuine candidate.
+
+        Membership-stripped forms are constant across every original query, so
+        each plan is copied once instead of once per pairwise comparison.
+
+        Returns:
+            Whether all originals are covered by an authenticated candidate.
+
+        """
+        stripped_candidates = tuple(
+            covered.model_copy(update={"queries": (), "membership_queried": False})
+            for covered in candidates
+        )
+        return all(
+            any(
+                stripped_original == stripped_covered
+                and set(original.queries).issubset(covered.queries)
+                and (not original.membership_queried or covered.membership_queried)
+                for covered, stripped_covered in zip(
+                    candidates, stripped_candidates, strict=True
+                )
+            )
+            for original in originals
+            for stripped_original in (
+                original.model_copy(
+                    update={"queries": (), "membership_queried": False}
+                ),
+            )
+        )
 
     @classmethod
     def classify_source_conflict(
@@ -212,6 +262,10 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
 
         Every failing global constraint must be represented by scoped evidence.
         Unknown failures escape unchanged; classification never blesses a new epoch.
+
+        Returns:
+            The conflict-partitioned analysis receipt.
+
         """
         if project.source_epoch_failure is not cause:
             raise cause
@@ -223,67 +277,29 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             tuple(item for scope in scopes for item in scope.source_directories),
             tuple(item for scope in scopes for item in scope.source_query_topology),
         )
-        conflicts = 0
-        for original in project.consumed_source_states():
-            if cls._verify_original_sources((original,), (), ()).failure:
-                conflicts += 1
-                if original not in states:
-                    raise cause
-        for original_directory in project.consumed_source_directories():
-            if cls._verify_original_sources((), (original_directory,), ()).failure:
-                conflicts += 1
-                covered = next(
-                    (
-                        item
-                        for item in directories
-                        if item.root.path == original_directory.root.path
-                    ),
-                    None,
-                )
-                if (
-                    covered is None
-                    or covered.model_copy(
-                        update={"queries": (), "membership_queried": False}
-                    )
-                    != original_directory.model_copy(
-                        update={"queries": (), "membership_queried": False}
-                    )
-                    or not set(original_directory.queries).issubset(covered.queries)
-                    or (
-                        original_directory.membership_queried
-                        and not covered.membership_queried
-                    )
-                ):
-                    raise cause
-        for original_topology in project.consumed_source_topology():
-            if cls._verify_original_sources((), (), (original_topology,)).failure:
-                conflicts += 1
-                covered_chain = next(
-                    (
-                        item
-                        for item in topology
-                        if item.target == original_topology.target
-                    ),
-                    None,
-                )
-                if (
-                    covered_chain is None
-                    or covered_chain.model_copy(
-                        update={"queries": (), "membership_queried": False}
-                    )
-                    != original_topology.model_copy(
-                        update={"queries": (), "membership_queried": False}
-                    )
-                    or not set(original_topology.queries).issubset(
-                        covered_chain.queries
-                    )
-                    or (
-                        original_topology.membership_queried
-                        and not covered_chain.membership_queried
-                    )
-                ):
-                    raise cause
-        if not conflicts:
+        failed_states = tuple(
+            original
+            for original in project.consumed_source_states()
+            if cls._verify_original_sources((original,), (), ()).failure
+        )
+        if any(original not in states for original in failed_states):
+            raise cause
+        failed_directories = tuple(
+            original
+            for original in project.consumed_source_directories()
+            if cls._verify_original_sources((), (original,), ()).failure
+        )
+        failed_topology = tuple(
+            original
+            for original in project.consumed_source_topology()
+            if cls._verify_original_sources((), (), (original,)).failure
+        )
+        candidates = (*directories, *topology)
+        if not cls._original_plans_covered(
+            (*failed_directories, *failed_topology), candidates
+        ):
+            raise cause
+        if not (failed_states or failed_directories or failed_topology):
             raise cause
         accepted: list[m.Infra.CodegenFilePlan] = []
         affected: set[Path] = set()
@@ -359,6 +375,9 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         Returns:
             The resulting ``m.Infra.CodegenFilePlan``.
 
+        Raises:
+            ValueError: When the target has no original parent absence witness.
+
         """
         original: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan = before
         if before.parent_inode is None:
@@ -371,7 +390,10 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 None,
             )
             if parent is None:
-                msg = f"lazy-init target has no original parent absence witness: {before.path}"
+                msg = (
+                    f"lazy-init target has no original parent "
+                    f"absence witness: {before.path}"
+                )
                 raise ValueError(msg)
             original = parent.model_copy(
                 update={"queries": (), "membership_queried": False}
@@ -676,6 +698,10 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
 
         Returns:
             The planned files with their shared source states bound.
+
+        Raises:
+            ValueError: When the receipt carries no original source
+                consumption evidence.
 
         """
         if not (

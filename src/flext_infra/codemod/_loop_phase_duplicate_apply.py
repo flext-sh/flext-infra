@@ -72,7 +72,12 @@ class FlextInfraDuplicateApplyPhase:
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Preserve native duplicate effects and unresolved diagnostic plans."""
+        """Preserve native duplicate effects and unresolved diagnostic plans.
+
+        Returns:
+            The preserved phase analysis, or the first planning failure.
+
+        """
         del preflight
         captured = FlextInfraCodegenPreconditions.unique_states((
             *source_states,
@@ -111,7 +116,8 @@ class FlextInfraDuplicateApplyPhase:
                 continue
             if edit.file_path not in originals:
                 return r[m.Infra.CodegenPhaseAnalysis].fail(
-                    f"duplicate planning source lacks its original receipt: {edit.file_path}"
+                    f"duplicate planning source lacks its original "
+                    f"receipt: {edit.file_path}"
                 )
             before = originals[edit.file_path]
             files.append(

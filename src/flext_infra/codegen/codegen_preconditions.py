@@ -15,6 +15,7 @@ from importlib.machinery import (
     SourceFileLoader,
 )
 from importlib.metadata import packages_distributions
+from json import dumps
 from operator import itemgetter
 from pathlib import Path
 from types import ModuleType
@@ -1760,7 +1761,10 @@ class FlextInfraCodegenPreconditions:
             .toml_read_json(lock_path)
             .flat_map(
                 lambda payload: r[m.Infra.LockedEnvironment].create_from_callable(
-                    partial(m.Infra.LockedEnvironment.model_validate, payload)
+                    partial(
+                        m.Infra.LockedEnvironment.model_validate_json,
+                        dumps(payload),
+                    )
                 )
             )
             .flat_map(

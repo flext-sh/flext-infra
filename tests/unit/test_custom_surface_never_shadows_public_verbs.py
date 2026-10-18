@@ -20,8 +20,8 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config
-from tests import tm
+from flext_infra import config
+from tests import c, tm
 
 if TYPE_CHECKING:
     from tests import t

@@ -93,14 +93,19 @@ class FlextInfraImportNormalization(
         project_root: Path,
         planned: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[bool]:
-        """Prepare the owner-filename candidate and publish the planned batch once."""
+        """Prepare the owner-filename candidate and publish the planned batch once.
+
+        Returns:
+            Whether any batch was published, or the first publication failure.
+
+        """
         if planned.issues:
             return r[bool].fail(
                 "\n".join(issue.formatted for issue in planned.issues),
                 exception=planned.exception,
             )
         if not planned.files:
-            return r[bool].ok(False)
+            return r[bool].ok(value=False)
         prepared = u.Infra.normalize_sources(
             project_root,
             {
@@ -146,7 +151,12 @@ class FlextInfraImportNormalization(
         rope_project: p.Infra.RopeProject,
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Plan imports against immutable working sources and original receipts."""
+        """Plan imports against immutable working sources and original receipts.
+
+        Returns:
+            The planned phase analysis, or the first planning failure.
+
+        """
         captured = FlextInfraCodegenPreconditions.unique_states((
             *source_states,
             *(state for plan in declared_files for state in plan.source_states),

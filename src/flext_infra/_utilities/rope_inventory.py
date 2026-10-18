@@ -644,13 +644,13 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySitesMixi
         pyname: t.Infra.RopePyName,
         resource: t.Infra.RopeResource,
     ) -> int | None:
-        """Definition line.
+        """Locate declarations through their native binding and source snapshot.
 
         Returns:
             The resulting ``int | None``.
 
         """
-        location = pyname.get_definition_location()
+        location = FlextInfraUtilitiesRopeRuntimeModules.definition_location(pyname)
         module, line = location
         origin = module.get_resource() if module is not None else None
         if line is None or origin is None or origin.path != resource.path:

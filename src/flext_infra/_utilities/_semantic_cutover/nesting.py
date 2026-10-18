@@ -184,7 +184,15 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         tree: ast.Module,
         policy: m.Infra.NamespaceModulePolicy,
     ) -> frozenset[str]:
-        """Preserve policy-owned native aliases and Python's export protocol."""
+        """Preserve policy-owned native aliases and Python's export protocol.
+
+        Returns:
+            The canonical module binding names to keep at module level.
+
+        Raises:
+            ValueError: When a native alias lacks captured source evidence.
+
+        """
         resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
             project.get_resource(
                 file_path.relative_to(Path(project.root.real_path)).as_posix(),
@@ -214,7 +222,10 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     or item.value not in attributes
                     for item in value.elts
                 ):
-                    msg = f"unresolved native module export declaration: {module.get_name()}"
+                    msg = (
+                        "unresolved native module export "
+                        f"declaration: {module.get_name()}"
+                    )
                     raise ValueError(msg)
                 aliases.add(target.id)
                 continue
@@ -267,16 +278,23 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         tree: ast.Module,
         patterns: t.Triple[t.StrTuple, t.StrTuple, t.StrTuple],
     ) -> bool:
-        """Use native collection configuration or real pytest decorator identity."""
+        """Use native collection configuration or real pytest decorator identity.
+
+        Returns:
+            Whether the module is a natively collected pytest module.
+
+        """
         if file_path.name == "conftest.py" or any(
             fnmatch(file_path.name, pattern) for pattern in patterns[0]
         ):
             return True
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        resource = project.get_resource(
-            file_path.relative_to(Path(project.root.real_path)).as_posix(),
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project,
+            project.get_file(
+                file_path.relative_to(Path(project.root.real_path)).as_posix(),
+            ),
         )
-        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
         for node in ast.walk(tree):
             if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                 continue
@@ -314,7 +332,12 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         tree: ast.Module,
         statement: ast.stmt,
     ) -> bool:
-        """Keep the standard executable guard, never conditional declarations."""
+        """Keep the standard executable guard, never conditional declarations.
+
+        Returns:
+            Whether the statement is a canonical ``__main__`` guard.
+
+        """
         if not isinstance(statement, ast.If) or statement.orelse:
             return False
         test = statement.test
@@ -385,7 +408,12 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         file_path: Path,
         classes: t.MappingKV[str, ast.ClassDef],
     ) -> frozenset[str]:
-        """Use declaration-relocation's native payload/protocol role identities."""
+        """Use declaration-relocation's native payload/protocol role identities.
+
+        Returns:
+            The module's declared payload and protocol entity names.
+
+        """
         payloads = FlextInfraUtilitiesDeclarationPayload
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
@@ -398,8 +426,8 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             target = module.get_attribute(name).get_object()
             ancestry = payloads.class_ancestry(target)
             if any(
-                base.get_module() is not None
-                and base.get_module().get_name().partition(".")[0] == "pydantic"
+                (base_module := base.get_module()) is not None
+                and base_module.get_name().partition(".")[0] == "pydantic"
                 for base in ancestry
             ):
                 model = payloads.identity_name(project, c.Infra.PYDANTIC_MODEL_IDENTITY)
@@ -424,7 +452,12 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         tree: ast.Module,
         node: ast.stmt,
     ) -> bool:
-        """Admit Python class provenance metadata only on its native local owner."""
+        """Admit Python class provenance metadata only on its native local owner.
+
+        Returns:
+            Whether the statement is a canonical provenance rebind.
+
+        """
         target, value = FlextInfraUtilitiesPrivateImportFacades._assigned_target_value(
             node
         )
@@ -546,9 +579,10 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         entities = cls._module_declaration_entities(project, file_path, classes)
         if entities:
             return planned.fail(
-                f"class-nesting requires canonical declaration relocation before "
-                f"electing a namespace in {convention.module_name}: "
-                f"{', '.join(sorted(entities))}; data/protocol entities cannot own utility behavior",
+                "class-nesting requires canonical declaration relocation "
+                f"before electing a namespace in {convention.module_name}: "
+                f"{', '.join(sorted(entities))}; data/protocol entities "
+                "cannot own utility behavior",
             )
         family = FlextInfraUtilitiesCodegenNamespace.facade_family_of_file(
             file_path.name,
@@ -638,8 +672,9 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             )
         ):
             return planned.fail(
-                f"class-nesting cannot add free tests to {convention.module_name}.{owner}: "
-                "existing suite registration or lifecycle would change",
+                f"class-nesting cannot add free tests to "
+                f"{convention.module_name}.{owner}: existing suite "
+                "registration or lifecycle would change",
             )
         if owner not in classes and any(
             owner in cls._scope_bindings(node) for node in tree.body
@@ -699,7 +734,12 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
 
     @classmethod
     def _type_checking_import_block(cls, node: ast.stmt, tree: ast.Module) -> bool:
-        """Admit only an imported typing.TYPE_CHECKING guard containing imports."""
+        """Admit only an imported typing.TYPE_CHECKING guard containing imports.
+
+        Returns:
+            Whether the statement is a canonical TYPE_CHECKING import block.
+
+        """
         if not isinstance(node, ast.If) or node.orelse or not node.body:
             return False
         if not all(isinstance(item, ast.Import | ast.ImportFrom) for item in node.body):
@@ -720,14 +760,17 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         ):
             return False
         for statement in tree.body:
-            if isinstance(statement, ast.ImportFrom) and statement.module == "typing":
-                if any(
+            if (
+                isinstance(statement, ast.ImportFrom)
+                and statement.module == "typing"
+                and any(
                     alias.name == "TYPE_CHECKING"
                     and isinstance(node.test, ast.Name)
                     and node.test.id == (alias.asname or alias.name)
                     for alias in statement.names
-                ):
-                    return True
+                )
+            ):
+                return True
             if isinstance(statement, ast.Import) and any(
                 alias.name == "typing"
                 and isinstance(node.test, ast.Attribute)
@@ -745,7 +788,16 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
     ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
-        """Rename every local test class through native Rope, including local scopes."""
+        """Rename every local test class through native Rope, including local scopes.
+
+        Returns:
+            The native rename edits for every local test class.
+
+        Raises:
+            TypeError: When a rename plan carries an unsupported shape.
+            ValueError: When a rename cannot be proven natively.
+
+        """
         working = dict(sources)
         patterns = cls._pytest_collection_patterns(
             Path(workspace.rope_project.root.real_path)
@@ -785,8 +837,10 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     and cls._new_suite_collection_risk(tree, declaration, patterns[2])
                 ):
                     msg = (
-                        f"test class prefix rename would newly collect helper {path}:{declaration.name}; "
-                        "an explicit class-owned non-suite lifecycle contract is required"
+                        f"test class prefix rename would newly collect "
+                        f"helper {path}:{declaration.name}; an explicit "
+                        "class-owned non-suite lifecycle contract is "
+                        "required"
                     )
                     raise ValueError(msg)
                 project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
@@ -812,7 +866,10 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                             break
                         pending.extend(scope.get_scopes())
                     if defining is None:
-                        msg = f"test class has no unique native defining scope: {path}:{declaration.name}"
+                        msg = (
+                            "test class has no unique native defining "
+                            f"scope: {path}:{declaration.name}"
+                        )
                         raise ValueError(msg)
                     # Rope's scope ``__getitem__`` raises for absent names; the
                     # native defined-name contract decides presence first.
@@ -821,7 +878,10 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     defined = defining.get_names()
                     expected = defined.get(declaration.name)
                     if expected is None:
-                        msg = f"test class has no native defining binding: {path}:{declaration.name}"
+                        msg = (
+                            "test class has no native defining "
+                            f"binding: {path}:{declaration.name}"
+                        )
                         raise ValueError(msg)
                     if replacement in defined:
                         msg = f"test class prefix rename collides: {path}:{replacement}"
@@ -835,7 +895,10 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                         )
                     )
                     if offset is None:
-                        msg = f"test class has no native identifier: {path}:{declaration.name}"
+                        msg = (
+                            "test class has no native identifier: "
+                            f"{path}:{declaration.name}"
+                        )
                         raise ValueError(msg)
                     changes = FlextInfraUtilitiesRopeRuntimeRefactors.rename_changes(
                         project,
@@ -857,7 +920,10 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                             raise TypeError(msg)
                         consumer = Path(change.resource.real_path).resolve()
                         if consumer not in working:
-                            msg = f"test class rename escaped source inventory: {consumer}"
+                            msg = (
+                                "test class rename escaped source "
+                                f"inventory: {consumer}"
+                            )
                             raise ValueError(msg)
                         rewrites[consumer] = [
                             m.Infra.SourceRewrite(
@@ -874,7 +940,11 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                         ]
 
                     def quoted_replacement(
-                        current: p.Infra.RopeScope, expression: str
+                        current: p.Infra.RopeScope,
+                        expression: str,
+                        declaration: ast.ClassDef = declaration,
+                        expected: p.Infra.RopePyName = expected,
+                        replacement: str = replacement,
                     ) -> str | None:
                         parts = expression.split(".")
                         for count in range(1, len(parts) + 1):
@@ -949,7 +1019,12 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         declaration: ast.ClassDef,
         function_patterns: t.StrSequence,
     ) -> bool:
-        """Do not turn helper constructors, protocols or inherited tests into suites."""
+        """Do not turn helper constructors, protocols or inherited tests into suites.
+
+        Returns:
+            Whether nesting the declaration risks a false collected suite.
+
+        """
         if any(
             isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda)
             and declaration in ast.walk(node)
@@ -989,7 +1064,16 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         replacement: str,
         sources: t.MappingKV[Path, str],
     ) -> t.MappingKV[Path, t.VariadicTuple[m.Infra.SourceRewrite]]:
-        """Retain native string renames only inside declared export literals."""
+        """Retain native string renames only inside declared export literals.
+
+        Returns:
+            Source rewrites keyed by path for the declared export literals.
+
+        Raises:
+            TypeError: When a declared export literal has an unsupported shape.
+            ValueError: When a rename cannot be proven natively.
+
+        """
         root = Path(project.root.real_path)
         changes = FlextInfraUtilitiesRopeRuntimeRefactors.rename_changes(
             project,
@@ -1005,7 +1089,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 docs=True,
             ),
         )
-        planned: dict[Path, t.VariadicTuple[m.Infra.SourceRewrite]] = {}
+        planned: t.MutableMappingKV[Path, t.VariadicTuple[m.Infra.SourceRewrite]] = {}
         for change in changes.changes:
             if not isinstance(change, p.Infra.RopeChangeContents):
                 msg = "native export rename produced a non-content effect"
@@ -1022,8 +1106,8 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             )
             regions = tuple(
                 (begin, end)
-                for begin, end, _kind in FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(
-                    source
+                for begin, end, _kind in (
+                    FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(source)
                 )
                 if FlextInfraUtilitiesRopeRuntimeRefactors.literal_string(
                     source[begin:end]
@@ -1136,7 +1220,15 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
     ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
-        """Publish already class-owned plugins as well as newly nested declarations."""
+        """Publish already class-owned plugins as well as newly nested declarations.
+
+        Returns:
+            The registration edits for collected declarations.
+
+        Raises:
+            ValueError: When a registration cannot be proven natively.
+
+        """
         edits: list[m.Infra.SemanticMigrationEdit] = []
         project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
             workspace.rope_project, sources
@@ -1200,7 +1292,10 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     )
                 )
                 if outside:
-                    msg = f"pytest module retains unowned declarations: {path}: {', '.join(outside)}"
+                    msg = (
+                        "pytest module retains unowned declarations: "
+                        f"{path}: {', '.join(outside)}"
+                    )
                     raise ValueError(msg)
                 prefix = workspace.convention(path).module_policy.project_prefix
                 if not prefix.startswith("Tests"):
@@ -1212,7 +1307,10 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     isinstance(node, ast.ClassDef) and not node.name.startswith(prefix)
                     for node in ast.walk(final_tree)
                 ):
-                    msg = f"strict test module retains a local class without prefix {prefix}: {path}"
+                    msg = (
+                        "strict test module retains a local class "
+                        f"without prefix {prefix}: {path}"
+                    )
                     raise ValueError(msg)
                 if updated != source:
                     edits.append(
@@ -1670,7 +1768,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     source,
                     native=(
                         project,
-                        project.get_resource(
+                        project.get_file(
                             path.relative_to(Path(project.root.real_path)).as_posix(),
                         ),
                     ),

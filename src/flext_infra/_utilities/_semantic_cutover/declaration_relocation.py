@@ -15,6 +15,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodemodProject,
     FlextInfraUtilitiesImportLaw,
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeRuntimeModules,
@@ -37,6 +38,29 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
     """Relocate payloads and bind config imports to existing permitted owners."""
 
     _COMPOSED_REFERENCE_SEGMENTS = 2
+
+    @staticmethod
+    def contract_rule_root(
+        repository_root: t.Infra.RopeSourcePath,
+        rule: p.Infra.RopeContractRule,
+    ) -> t.Infra.RopeSourcePath:
+        """Bind retirement to the project owning its authenticated catalogue."""
+        owners = {
+            FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+                repository_root, state.path
+            )
+            for state in rule.source_states
+        }
+        if not owners:
+            return repository_root
+        if len(owners) != 1 or None in owners:
+            msg = f"{rule.id}: contract catalogue has no unique project owner"
+            raise ValueError(msg)
+        owner = owners.pop()
+        if owner is None or not owner.is_relative_to(repository_root):
+            msg = f"{rule.id}: contract owner is outside its workspace"
+            raise ValueError(msg)
+        return owner
 
     @classmethod
     def _plan_declaration_relocation(

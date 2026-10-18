@@ -1,7 +1,5 @@
 {{ autogen_header }}
-{%- if not owner_class %}
 {{ docstring }}
-{%- endif %}
 
 from __future__ import annotations
 
@@ -17,7 +15,7 @@ from typing import TYPE_CHECKING
 {% endif %}
 {% if owner_class -%}
 class {{ owner_class }}:
-{{ docstring | indent(4, true) }}
+    """Own the package's lazy export bindings."""
 
     __all__: tuple[str, ...] = {{ exports_tuple | indent(4) }}
 

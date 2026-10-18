@@ -164,6 +164,9 @@ class FlextInfraConstantsRefactor:
         OWN_PACKAGE_IMPORT = "own-package-import"
         FACADE_CLASS = "facade-class"
 
+    PAIRED_CONTEXT_PREDICATE_ARG_COUNT: ClassVar[int] = 2
+    "Exact argument count a module/producer pair context predicate requires."
+
     @unique
     class CodemodContextPredicate(StrEnum):
         """Project-context predicate a rule applies to one captured metavariable.

@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import override
+from typing import Protocol, cast, override
 
 from rope.base.project import Project
 from rope.refactor.restructure import Restructure
@@ -19,6 +19,8 @@ from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
 
 class FlextInfraRopeRestructure(Restructure):
     """Keep native matching and writing while admitting each occurrence."""
+
+    project: p.Infra.RopeProject
 
     class _IdentityChoices:
         """Delegate every alternative to Rope's exact native identity matcher."""
@@ -48,7 +50,23 @@ class FlextInfraRopeRestructure(Restructure):
             message = "Rope restructuring requires a native project"
             raise TypeError(message)
         default: p.Infra.RopeWildcard[str] = DefaultWildcard(project)
-        super().__init__(
+
+        class _NativeRestructureInit(Protocol):
+            """Typed initializer view over the fork's untyped constructor."""
+
+            def __init__(
+                self,
+                project: Project,
+                pattern: str,
+                goal: str,
+                args: (
+                    t.MappingKV[str, str | t.Pair[str, t.VariadicTuple[str]]] | None
+                ) = None,
+                imports: t.StrSequence | None = None,
+                wildcards: (t.MappingKV[str, p.Infra.RopeWildcard[str]] | None) = None,
+            ) -> None: ...
+
+        cast("_NativeRestructureInit", super()).__init__(
             project,
             request.pattern,
             request.goal,
@@ -101,10 +119,19 @@ class FlextInfraRopeRestructure(Restructure):
         ]
         self.matched_count += len(matches)
         self.admitted_count += len(selected)
-        computer: t.Infra.RopeChangeComputer = super()._compute_changes(
+
+        class _NativeChangeComputation(Protocol):
+            """Typed view of the fork's native change computation."""
+
+            def _compute_changes(
+                self,
+                matches: t.SequenceOf[t.Infra.RopeNativeMatch],
+                pymodule: t.Infra.RopeNativeSourceModule,
+            ) -> t.Infra.RopeChangeComputer: ...
+
+        return cast("_NativeChangeComputation", super())._compute_changes(
             selected, pymodule
         )
-        return computer
 
     @override
     def _add_imports(
@@ -123,7 +150,9 @@ class FlextInfraRopeRestructure(Restructure):
         if isinstance(self.import_policy, Mapping):
             names = (
                 FlextInfraUtilitiesRopeRuntime
-                .require_parsed_module(self.project.get_pymodule(resource))
+                .require_parsed_module(
+                    self.project.get_pymodule(cast("p.Infra.RopeResource", resource))
+                )
                 .get_scope()
                 .get_defined_names()
             )
@@ -132,7 +161,20 @@ class FlextInfraRopeRestructure(Restructure):
                 for binding, declaration in self.import_policy.items()
                 if binding not in names
             )
-        return super()._add_imports(resource, source, selected)
+
+        class _NativeImportWriter(Protocol):
+            """Typed view of the fork's native import writer."""
+
+            def _add_imports(
+                self,
+                resource: t.Infra.RopeNativeResource,
+                source: str,
+                imports: t.StrSequence,
+            ) -> str: ...
+
+        return cast("_NativeImportWriter", super())._add_imports(
+            resource, source, selected
+        )
 
 
 __all__: list[str] = ["FlextInfraRopeRestructure"]

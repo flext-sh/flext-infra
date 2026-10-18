@@ -129,7 +129,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 uv_environments=tuple(environments),
                 files=tuple(files),
                 issues=tuple(issues),
-                exception=self.planning_exception,
+                exception=self.state.planning_exception,
             ),
         )
 
@@ -280,8 +280,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             update={
                 "files": self._bind_codegen_sources(analyzed.value.files, inputs),
                 "inputs": (*analyzed.value.inputs, *inputs.sources),
-                "issues": (*analyzed.value.issues, *self.planning_issues),
-                "exception": analyzed.value.exception or self.planning_exception,
+                "issues": (*analyzed.value.issues, *self.state.planning_issues),
+                "exception": analyzed.value.exception or self.state.planning_exception,
             },
         )
         plan = m.Infra.CodegenPlan(
@@ -569,8 +569,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     inputs,
                 ),
                 "inputs": (*planned.value.inputs, *inputs.sources),
-                "issues": (*planned.value.issues, *self.planning_issues),
-                "exception": planned.value.exception or self.planning_exception,
+                "issues": (*planned.value.issues, *self.state.planning_issues),
+                "exception": planned.value.exception or self.state.planning_exception,
             },
         )
         plan = m.Infra.CodegenPlan(
@@ -612,7 +612,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 m.Infra.RepositoryRef,
             ]
         ]
-        workspace = self.initial_workspace
+        workspace = self.state.initial_workspace
         if workspace is None:
             workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
                 root,
@@ -626,7 +626,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             workspace = workspace_result.value
         current_repository = workspace.repository
         if (
-            self.initial_workspace is None
+            self.state.initial_workspace is None
             and request.what not in c.Infra.DECLARED_TARGET_SURFACES
         ):
             current_target_result = FlextInfraWorkspaceDetector.conform_target(
@@ -642,7 +642,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             current_target = m.Infra.RepositoryConformTarget(
                 repository=current_repository,
                 root=root,
-                toolchain_root=self.repository_root,
+                toolchain_root=self.state.repository_root,
                 make_profile=current_repository.role,
                 beads=workspace.beads,
                 project=workspace.project,
@@ -744,14 +744,18 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         contract = self.surface_contract(surface, codegen=inputs.spec)
         providers: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
         if contract.complete_governed:
-            lazy_outcomes = u.Infra.fleet_map(
-                type(self).plan_repository_task,
-                tuple(
+            # Rope-bound planning runs one global in-process loop over every
+            # repository so the shared workspace Rope session (and its one
+            # structural index) serves the whole cohort. The forkserver fleet
+            # pool cannot inherit the unpicklable Rope project: fanning out
+            # here reindexes the same workspace tree once per worker.
+            lazy_outcomes = tuple(
+                type(self).plan_repository_task(
                     task.model_copy(
                         update={"surface": c.Infra.CodegenConformSurface.LAZY_INIT}
-                    )
-                    for task in tasks
-                ),
+                    ),
+                )
+                for task in tasks
             )
             providers = tuple(
                 file
@@ -766,16 +770,16 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             )
             planned = {
                 outcome.repository: outcome
-                for outcome in u.Infra.fleet_map(type(self).plan_repository_task, ready)
+                for outcome in (type(self).plan_repository_task(task) for task in ready)
             }
             outcomes = tuple(
                 outcome if outcome.failed else planned[outcome.repository]
                 for outcome in lazy_outcomes
             )
         else:
-            outcomes = u.Infra.fleet_map(type(self).plan_repository_task, tasks)
-        if self.planning_exception is None:
-            self.planning_exception = next(
+            outcomes = tuple(type(self).plan_repository_task(task) for task in tasks)
+        if self.state.planning_exception is None:
+            self.state.planning_exception = next(
                 (item.exception for item in outcomes if item.exception is not None),
                 None,
             )
@@ -895,11 +899,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 m.Infra.CodegenRepositoryPlanTask(
                     root=root,
                     workspace=workspace,
-                    initial_workspace=self.initial_workspace,
+                    initial_workspace=self.state.initial_workspace,
                     current_target=current_target,
                     repository=repository,
                     surface=surface,
-                    generation_only=self.generation_only,
+                    generation_only=self.state.generation_only,
                     selected_inputs=(
                         inputs
                         if repository.name == current_target.repository.name
@@ -926,12 +930,12 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return result_type.from_failure(published)
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
-        issues: list[m.Infra.Issue] = list(self.planning_issues)
+        issues: list[m.Infra.Issue] = list(self.state.planning_issues)
         for index, outcome in enumerate(outcomes, start=1):
             issues.extend(outcome.issues)
             files.extend(outcome.files)
-            if self.planning_exception is None:
-                self.planning_exception = outcome.exception
+            if self.state.planning_exception is None:
+                self.state.planning_exception = outcome.exception
             u.Cli.progress(index, len(outcomes), outcome.repository, "conform")
             if (
                 outcome.error
@@ -978,10 +982,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         cls,
         task: m.Infra.CodegenRepositoryPlanTask,
     ) -> m.Infra.CodegenRepositoryPlanOutcome:
-        """Preserve a worker's failure as data without retry or publication.
-
-        Args:
-            task: The repository planning task to be executed.
+        """Preserve a planning failure as data without retry or publication.
 
         Returns:
             The outcome of the repository planning task, including any failure
@@ -1006,11 +1007,12 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         cls,
         task: m.Infra.CodegenRepositoryPlanTask,
     ) -> m.Infra.CodegenRepositoryPlanOutcome:
-        """Plan one repository from a self-contained, picklable task.
+        """Plan one repository from a self-contained task.
 
-        A fleet worker runs this in its own process: it rebuilds the planner
-        from the task, so no parent state, lease, or collaborator crosses the
-        boundary, and returns a failure as data instead of a live result.
+        The planner rebuilds from the task: no parent planner state crosses
+        the boundary, the Rope workspace session is shared per resolved root
+        through the process-global registry, and failures return as data
+        instead of live results.
 
         Returns:
             The repository's file and environment plans, or its failure.
@@ -1024,9 +1026,12 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         )
         planner = cls(
             repository_root=task.current_target.toolchain_root,
-            initial_workspace=task.initial_workspace,
-            generation_only=task.generation_only,
-            provider_plans=task.provider_plans,
+            state=m.Infra.CodegenConformState(
+                repository_root=task.current_target.toolchain_root,
+                initial_workspace=task.initial_workspace,
+                generation_only=task.generation_only,
+                provider_plans=task.provider_plans,
+            ),
         )
         resolved = planner._resolved_repository_root(
             task.root,
@@ -1089,9 +1094,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     (planned.error or "lazy planning failed") if planned.failure else ""
                 ),
                 exception=(
-                    planned.exception if planned.failure else planner.planning_exception
+                    planned.exception
+                    if planned.failure
+                    else planner.state.planning_exception
                 ),
-                issues=tuple(planner.planning_issues),
+                issues=tuple(planner.state.planning_issues),
                 elapsed=time.monotonic() - started,
             )
         planned = planner._governed_repository_plans(
@@ -1125,8 +1132,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 config=inputs.spec,
             ),
             elapsed=time.monotonic() - started,
-            issues=tuple(planner.planning_issues),
-            exception=planner.planning_exception,
+            issues=tuple(planner.state.planning_issues),
+            exception=planner.state.planning_exception,
         )
 
     def _repository_planning_inputs(
@@ -1220,7 +1227,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return result_type.fail(
                 f"declared repository path is not a directory: {repository_root}",
             )
-        if not repository_root.is_dir() and self.initial_workspace is None:
+        if not repository_root.is_dir() and self.state.initial_workspace is None:
             return result_type.fail(
                 f"declared repository checkout is missing: {repository_root}",
             )

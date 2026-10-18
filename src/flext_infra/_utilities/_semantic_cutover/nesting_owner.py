@@ -38,7 +38,13 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     def _pytest_collection_patterns(
         root: Path,
     ) -> t.Triple[t.StrTuple, t.StrTuple, t.StrTuple]:
-        """Read native configuration and defaults without running consumer plugins."""
+        """Read native configuration and defaults without running consumer plugins.
+
+        Returns:
+            A triple of ``(python_files, python_classes, python_functions)``
+            collection pattern tuples.
+
+        """
         _root, _path, configured, _ignored = determine_setup(
             inifile=None,
             override_ini=[],
@@ -76,7 +82,12 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
 
     @staticmethod
     def _pytest_name_matches(name: str, patterns: t.StrSequence) -> bool:
-        """Match pytest's native prefix-or-glob class/function selectors."""
+        """Match pytest's native prefix-or-glob class/function selectors.
+
+        Returns:
+            Whether ``name`` matches any prefix or glob pattern.
+
+        """
         return any(
             name.startswith(pattern) or fnmatch(name, pattern) for pattern in patterns
         )
@@ -92,6 +103,16 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
 
         The suite need not define test methods itself: native pytest also visits
         inherited tests and custom method collectors on the original class object.
+
+        Returns:
+            Whether the binding is a natively collected test class.
+
+        Raises:
+            TypeError: When the ``__test__`` flag's definition location is not
+                a captured source module.
+            ValueError: When the ``__test__`` flag lacks native collection
+                evidence.
+
         """
         if not cls._pytest_name_matches(name, patterns):
             return False
@@ -105,35 +126,44 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         provider, line = flag.get_definition_location()
         if not isinstance(provider, p.Infra.RopePyModule):
             msg = f"pytest class flag has no captured source: {name}"
-            raise ValueError(msg)
+            raise TypeError(msg)
         for node in ast.walk(ast.parse(provider.source_code)):
-            if isinstance(node, ast.Assign | ast.AnnAssign) and node.lineno == line:
-                if isinstance(node.value, ast.Constant) and isinstance(
-                    node.value.value, bool
-                ):
-                    return node.value.value
-        msg = f"pytest class flag requires native collection evidence: {provider.get_name()}.{name}"
+            if (
+                isinstance(node, ast.Assign | ast.AnnAssign)
+                and node.lineno == line
+                and isinstance(node.value, ast.Constant)
+                and isinstance(node.value.value, bool)
+            ):
+                return node.value.value
+        msg = (
+            "pytest class flag requires native collection "
+            f"evidence: {provider.get_name()}.{name}"
+        )
         raise ValueError(msg)
 
     @staticmethod
     def _pytest_mark_decorator(decorator: ast.expr, tree: ast.Module) -> bool:
-        """Prove a decorator comes from pytest.mark, including imported spellings."""
+        """Prove a decorator comes from pytest.mark, including imported spellings.
+
+        Returns:
+            Whether the decorator resolves to ``pytest.mark``.
+
+        """
         expression = decorator.func if isinstance(decorator, ast.Call) else decorator
         if not isinstance(expression, ast.Attribute):
             return False
         mark = expression.value
         for statement in tree.body:
-            if isinstance(statement, ast.Import):
-                for alias in statement.names:
-                    if (
-                        alias.name == "pytest"
-                        and isinstance(mark, ast.Attribute)
-                        and mark.attr == "mark"
-                        and isinstance(mark.value, ast.Name)
-                        and mark.value.id == (alias.asname or alias.name)
-                    ):
-                        return True
-            elif isinstance(statement, ast.ImportFrom) and statement.module == "pytest":
+            if isinstance(statement, ast.Import) and any(
+                alias.name == "pytest"
+                and isinstance(mark, ast.Attribute)
+                and mark.attr == "mark"
+                and isinstance(mark.value, ast.Name)
+                and mark.value.id == (alias.asname or alias.name)
+                for alias in statement.names
+            ):
+                return True
+            if isinstance(statement, ast.ImportFrom) and statement.module == "pytest":
                 if any(
                     alias.name == "mark"
                     and isinstance(mark, ast.Name)
@@ -155,7 +185,13 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         require_collection: bool,
         composition: bool = False,
     ) -> p.Result[str]:
-        """Elect an existing collected suite, otherwise derive Tests<Unit>."""
+        """Elect an existing collected suite, otherwise derive Tests<Unit>.
+
+        Returns:
+            The elected or derived suite class name, or a failure when
+            collection is ambiguous or the derived suite is not collected.
+
+        """
         elected = r[str]
         prefix = convention.module_policy.project_prefix
         prefix = prefix if prefix.startswith("Tests") else f"Tests{prefix}"
@@ -556,7 +592,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
                 )
             if not owner.isidentifier():
                 return derived.fail(
-                    f"class-nesting cannot derive a valid owner for {convention.module_name}",
+                    "class-nesting cannot derive a valid owner for "
+                    f"{convention.module_name}",
                 )
             return derived.ok(owner)
         if directory_family is not None:

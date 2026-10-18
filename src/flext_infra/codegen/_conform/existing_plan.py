@@ -199,8 +199,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             return result_type.from_failure(lazy_result)
         cohort = (
             tuple(lazy_result.value[0])
-            if self.provider_plans is None
-            else self.provider_plans
+            if self.state.provider_plans is None
+            else self.state.provider_plans
         )
         with u.Infra.facade_source_project(
             root, source_states=lazy_result.value[1], declared_files=cohort
@@ -282,9 +282,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         ]
         planned = (
             self._planned_lazy_init_files(root)
-            if self.provider_plans is None
+            if self.state.provider_plans is None
             else r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(
-                tuple(plan for plan in self.provider_plans if plan.project == root)
+                tuple(
+                    plan for plan in self.state.provider_plans if plan.project == root
+                )
             )
         )
         if planned.failure:
@@ -466,9 +468,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         ).plan_files()
         if planned.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
-        self.planning_issues.extend(planned.value.issues)
-        if self.planning_exception is None:
-            self.planning_exception = planned.value.exception
+        self.state.planning_issues.extend(planned.value.issues)
+        if self.state.planning_exception is None:
+            self.state.planning_exception = planned.value.exception
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(planned.value.files)
 
     @staticmethod
@@ -1340,7 +1342,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 if item.runtime_binding
             },
             codegen_inputs=codegen_inputs,
-            migrate_tracking=not self.generation_only,
+            migrate_tracking=not self.state.generation_only,
         )
         if planned.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
@@ -1377,8 +1379,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         vscode_spec = target.vscode_spec
         runtime_root = (
             root
-            if self.initial_workspace is not None
-            and target.repository.name == self.initial_workspace.repository.name
+            if self.state.initial_workspace is not None
+            and target.repository.name == self.state.initial_workspace.repository.name
             else None
         )
         for relative, governed in governed_by_path.items():

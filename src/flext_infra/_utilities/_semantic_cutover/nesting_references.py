@@ -13,6 +13,8 @@ from typing import override
 import libcst as cst
 from libcst.metadata import (
     Assignment,
+    CodePosition,
+    CodeRange,
     ImportAssignment,
     MetadataWrapper,
     ParentNodeProvider,
@@ -55,7 +57,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             bindings_by_module: t.MappingKV[str, t.StrMapping],
             providers_by_module: t.MappingKV[str, p.Infra.RopeResource],
             definitions: t.StrMapping,
-            native: t.Pair[p.Infra.RopeProject, p.Infra.RopeResource],
+            native: t.Pair[p.Infra.RopeProject, p.Infra.RopeFile],
             source: str,
             sources: t.MappingKV[Path, str],
             resolvers: t.Triple[
@@ -87,7 +89,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             ] = {}
             self.elected_source = source
             self.identities: list[
-                t.Triple[p.Infra.RopePyName, p.Infra.RopePyModule, str]
+                t.Triple[p.Infra.RopePyName, p.Infra.RopeSemanticModule, str]
             ] = []
             for module, bindings in bindings_by_module.items():
                 provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
@@ -164,7 +166,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             root_binding = runtime.expression_name(scope, root)
             if not matches and not isinstance(root_binding, p.Infra.RopeAssignedName):
                 return None
-            proof = FlextInfraUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain
+            chain = FlextInfraUtilitiesCodemodBindingChain
+            proof = chain.FlextInfraUtilitiesCodemodBindingChain
             declarations = proof._single_reaching_declarations(
                 self.original,
                 scope,
@@ -189,7 +192,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                         runtime.same_name(identity, candidate)
                         for identity, _origin, _bound in self.identities
                     ):
-                        msg = f"ambiguous or reassigned native nesting alias: {expression}"
+                        msg = (
+                            "ambiguous or reassigned native "
+                            f"nesting alias: {expression}"
+                        )
                         raise ValueError(msg)
             if not matches:
                 return None
@@ -237,7 +243,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 )
                 replacements.add(f"{destination}.{member}")
             if len(replacements) != 1:
-                msg = f"ambiguous native nesting destinations: {expression}: {sorted(replacements)}"
+                msg = (
+                    "ambiguous native nesting destinations: "
+                    f"{expression}: {sorted(replacements)}"
+                )
                 raise ValueError(msg)
             return replacements.pop()
 
@@ -248,12 +257,34 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         ) -> str | None:
             return self._replacement(scope, expression, len(self.original.source_code))
 
+        def _span(self, node: cst.CSTNode) -> CodeRange:
+            """Read the total position metadata through an explicit default.
+
+            The sentinel default in libcst's ``get_metadata`` binds the return
+            to the sentinel class for solvers that ignore the provider's
+            element type; the explicit default restores the typed range and
+            the guard keeps a missing resolution loud instead of silent.
+
+            Raises:
+                ValueError: The declared position dependency did not resolve.
+
+            """
+            span = self.get_metadata(
+                PositionProvider,
+                node,
+                CodeRange(CodePosition(-1, -1), CodePosition(-1, -1)),
+            )
+            if span.start.line < 1 or span.end.line < 1:
+                msg = "position metadata is declared and must resolve"
+                raise ValueError(msg)
+            return span
+
         def _quoted_literal(
             self,
             original_node: cst.BaseExpression,
             updated_node: cst.BaseExpression,
         ) -> cst.BaseExpression:
-            position = self.get_metadata(PositionProvider, original_node)
+            position = self._span(original_node)
             start = self.line_offsets[position.start.line - 1] + position.start.column
             end = self.line_offsets[position.end.line - 1] + position.end.column
             edit = self.quoted.pop((start, end), None)
@@ -304,7 +335,17 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             )
 
         def _import_owner(self, node: cst.ImportFrom, name: str) -> str | None:
-            """Admit an import only through its original native declaration."""
+            """Admit an import only through its original native declaration.
+
+            Returns:
+                The original owner name, or ``None`` when the import has no
+                provenance match.
+
+            Raises:
+                ValueError: When the import is a star import, has no
+                    imported-name provenance, or is ambiguous.
+
+            """
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             imported = runtime.build_string_module(
                 self.project,
@@ -440,7 +481,18 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             self,
             original_node: cst.CSTNode,
         ) -> str | None:
-            """Authorize one reference in the immutable original native scope."""
+            """Authorize one reference in the immutable original native scope.
+
+            Returns:
+                The binding root identifier, or ``None`` when the reference
+                resolves to a type parameter or a non-binding shape.
+
+            Raises:
+                ValueError: When the reference has no binding provenance.
+
+            """
+            if not isinstance(original_node, cst.BaseExpression):
+                return None
             root = original_node
             while isinstance(root, cst.Attribute):
                 root = root.value
@@ -465,7 +517,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             expression = FlextInfraUtilitiesQualifiedNames.dotted_name(original_node)
             if expression is None:
                 return None
-            position = self.get_metadata(PositionProvider, original_node).start
+            position = self._span(original_node).start
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             offset = self.line_offsets[position.line - 1] + position.column
             scope = runtime.scope_at(
@@ -647,7 +699,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         cls,
         source: str,
         *,
-        native: t.Pair[p.Infra.RopeProject, p.Infra.RopeResource],
+        native: t.Pair[p.Infra.RopeProject, p.Infra.RopeFile],
         module_name: str,
         is_package_init: bool,
         bindings_by_module: t.MappingKV[str, t.StrMapping],
@@ -659,6 +711,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
 
         Returns:
             Binding-proven import and usage rewrites without effects.
+
+        Raises:
+            ValueError: When a native nesting quote range is left unmatched.
 
         """
         transformer = cls._NestingTransformer(

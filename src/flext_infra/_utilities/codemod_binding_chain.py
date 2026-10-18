@@ -557,13 +557,15 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
         @staticmethod
         def _chain_module_text(
-            module: p.Infra.RopePyModule,
+            module: p.Infra.RopeParsedModule,
             sources: t.MappingKV[Path, str],
         ) -> t.Pair[Path, str] | None:
             """Locate the module source text inside the authenticated closure.
 
             Untouched consumers resolve through the project's authenticated
-            snapshot instead of the planned working map.
+            snapshot instead of the planned working map. A folder resource
+            without its initializer text in the closure is unavailable, never
+            read directly.
 
             Returns:
                 The module path and snapshot text, or ``None`` when unavailable.
@@ -576,9 +578,11 @@ class FlextInfraUtilitiesCodemodBindingChain:
             if path.is_dir():
                 path /= c.Infra.INIT_PY
             text = sources.get(path)
-            if text is None:
-                return path, resource.read()
-            return path, text
+            if text is not None:
+                return path, text
+            if not FlextInfraUtilitiesRopeRuntimeTypes.file_resource(resource):
+                return None
+            return path, resource.read()
 
         @staticmethod
         def _chain_alias_and_assignment_proven(

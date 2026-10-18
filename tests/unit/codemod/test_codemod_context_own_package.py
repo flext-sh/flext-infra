@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, m
+from flext_infra import config
 from flext_infra.codemod import FlextInfraModGateEngine
-from tests import t, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraCodemodContextOwnPackage:
@@ -322,7 +322,10 @@ class TestsFlextInfraCodemodContextOwnPackage:
     def test_library_boundary_scans_owned_code_without_filename_waivers(
         mod_workspace: Path, surface: str
     ) -> None:
-        """Layer-zero imports are valid; family homonyms and consumers remain visible."""
+        """Layer-zero imports are valid; homonyms and consumers remain visible.
+
+        Visibility is asserted across the library boundary scan.
+        """
         namespace = u.Infra.project_package_name(mod_workspace)
         package = (
             mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace
@@ -439,7 +442,9 @@ class TestsFlextInfraCodemodContextOwnPackage:
                 "    @staticmethod\n    def start(command):\n"
                 "        return subprocess.Popen(command, env=environment())\n"
             ),
-            "process_api.py": f"from .{implementation} import NativeProcess as Process\n",
+            "process_api.py": (
+                f"from .{implementation} import NativeProcess as Process\n"
+            ),
             "processes.py": "import subprocess\nclass NativeProcess:\n    pass\n",
             "runtime.py": "from .process_api import Process\nimport subprocess\n",
             "shadow.py": (
@@ -514,6 +519,105 @@ class TestsFlextInfraCodemodContextOwnPackage:
                 )
 
     @staticmethod
+    @pytest.mark.parametrize("implementation", ["_native_logger", "relocated_logger"])
+    def test_logging_native_owner_follows_constructor_helpers_not_consumers(
+        mod_workspace: t.Infra.RopeSourcePath, implementation: str
+    ) -> None:
+        """A native backend moves with its primitive, not its facade consumers."""
+        namespace = u.Infra.project_package_name(mod_workspace)
+        package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace
+        contents = {
+            "_logging_base.py": "class LoggingBase:\n    pass\n",
+            "_logging_sink.py": (
+                "import structlog\n"
+                "class NativeSink:\n"
+                "    def create(self, name):\n"
+                "        return structlog.get_logger(name)\n"
+            ),
+            f"{implementation}.py": (
+                "from ._logging_base import LoggingBase\n"
+                "from ._logging_sink import NativeSink\n"
+                "class NativeLogging(LoggingBase):\n"
+                "    @staticmethod\n"
+                "    def fetch(name):\n"
+                "        return NativeSink().create(name)\n"
+            ),
+            "logging_api.py": (
+                f"from .{implementation} import NativeLogging as Utilities\n"
+            ),
+            "loggings.py": "import structlog\nclass NativeLogging:\n    pass\n",
+            "consumer.py": "from .logging_api import Utilities\nimport structlog\n",
+            "shadow.py": (
+                "from .logging_api import Utilities\nUtilities = None\nimport structlog\n"
+            ),
+        }
+        for relative, text in contents.items():
+            (package / relative).write_text(text, encoding=c.DEFAULT_ENCODING)
+        rule = (
+            tm
+            .ok(
+                u.Infra.codemod_rule_plan(
+                    mod_workspace, rule_ids=("ban-direct-structlog-import",)
+                )
+            )
+            .rules[0]
+            .model_copy(
+                update={
+                    "context": (
+                        m.Infra.CodemodContextCondition(
+                            variable="MODULE",
+                            predicate=c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER,
+                            arg=(f"{namespace}.logging_api", "Utilities.fetch"),
+                            holds=False,
+                        ),
+                    ),
+                }
+            )
+        )
+        _, modules = u.Infra.codemod_binding_requirements((rule,))
+        snapshot = u.Infra.codemod_binding_snapshot(
+            mod_workspace,
+            tuple(
+                tm.ok(
+                    u.Cli.atomic_read_binary_file_state(package / name, required=True)
+                )
+                for name in contents
+            ),
+            modules,
+        )
+        facts = u.Infra.codemod_project_facts(mod_workspace, (rule,))
+        with u.Infra.codemod_binding_project(
+            mod_workspace, u.Infra.codemod_source_epoch(snapshot)
+        ) as (project, sources):
+            (package / f"{implementation}.py").write_text(
+                "class NativeLogging:\n    pass\n", encoding=c.DEFAULT_ENCODING
+            )
+            for relative, admitted in (
+                (f"{implementation}.py", False),
+                ("_logging_base.py", False),
+                ("_logging_sink.py", False),
+                ("loggings.py", True),
+                ("consumer.py", True),
+                ("shadow.py", True),
+            ):
+                tm.that(
+                    u.Infra.codemod_context_admits(
+                        m.Infra.CodemodAdmission(
+                            root=mod_workspace,
+                            rule=rule,
+                            file_path=package / relative,
+                            captures={"MODULE": {"text": "structlog"}},
+                            facts=facts,
+                            snapshot=snapshot,
+                        ),
+                        project=project,
+                        sources=sources,
+                    ),
+                    eq=admitted,
+                    msg=relative,
+                )
+
+    @staticmethod
     @pytest.mark.parametrize("implementation", ["_native_hook", "moved_entrypoint"])
     @pytest.mark.parametrize("framework_import", [False, True])
     def test_isolated_execution_role_uses_original_producer_and_entrypoint(
@@ -524,7 +628,9 @@ class TestsFlextInfraCodemodContextOwnPackage:
         package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace
         hook = "import os\nclass Hook:\n    pass\nvalue = os.getenv('ROLE_PROBE')\n"
         contents = {
-            "execution.py": "from flext_cli import m\nE = m.Cli.PythonScriptExecution\n",
+            "execution.py": (
+                "from flext_cli import m\nE = m.Cli.PythonScriptExecution\n"
+            ),
             f"{implementation}.py": hook
             + ("from flext_cli import u\n" if framework_import else ""),
             "public_hook.py": f"from .{implementation} import Hook\n",

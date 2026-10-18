@@ -166,8 +166,10 @@ published = tm.ok(
     FlextInfraCodegenTransaction.publish_operation_receipt(
         request,
         tuple(receipts),
-        scope_roots=(member,),
-        completed=True,
+        publication=m.Infra.CodegenPhaseOutcome(
+            scope_roots=(member,),
+            completed=True,
+        ),
     )
 )
 if mutation == "input-only":
@@ -285,8 +287,10 @@ request = u.Tests.conform_request(
 composed = owner.publish_operation_receipt(
     request,
     tuple(receipts),
-    scope_roots=(root,),
-    completed=True,
+    publication=m.Infra.CodegenPhaseOutcome(
+        scope_roots=(root,),
+        completed=True,
+    ),
 )
 if external_drift:
     tm.that(composed.failure, eq=True)

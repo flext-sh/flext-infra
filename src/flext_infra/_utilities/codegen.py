@@ -31,7 +31,11 @@ class FlextInfraUtilitiesCodegen(
     if TYPE_CHECKING:
 
         @staticmethod
-        def project_root(file_path: Path) -> Path | None: ...
+        def project_root(
+            file_path: Path,
+            *,
+            source_project: p.Infra.RopeProject | None = None,
+        ) -> Path | None: ...
 
     @staticmethod
     def envrc_render_spec() -> m.Infra.EnvrcRenderSpec:

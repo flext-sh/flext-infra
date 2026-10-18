@@ -263,7 +263,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         project: p.Infra.RopeProject,
         sources: t.MappingKV[Path, str],
         *,
-        captured: m.Infra.CodemodSourceEpoch | None = None,
+        captured: p.Infra.CodemodSourceEpoch | None = None,
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> p.Infra.RopeProject:
         """Capture a complete identity graph with proposed sources authoritative.
@@ -332,6 +332,9 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         if not callable(factory):
             msg = "Rope project owner does not expose snapshot construction"
             raise TypeError(msg)
+        # The native core is probed by attribute so its untyped preference
+        # members enter only through the validated adapter below.
+        pycore: p.AttributeProbe = project.get_pycore()
         snapshot = factory(
             project.root.real_path,
             contents,
@@ -345,7 +348,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
                 extension_modules=tuple(
                     sorted(
                         u.type_adapter(set[str]).validate_python(
-                            project.get_pycore().extension_modules, strict=True
+                            pycore.extension_modules, strict=True
                         )
                     )
                 ),

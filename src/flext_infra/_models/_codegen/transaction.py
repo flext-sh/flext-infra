@@ -14,13 +14,18 @@ from typing import Annotated, Literal, Self
 from flext_cli import m
 
 from flext_infra import c, p, t
-from flext_infra._models import FlextInfraModelsCodegenToolchain, FlextInfraModelsRope
-from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
-from flext_infra._models._codegen.pipeline import FlextInfraModelsCodegenPipelineModels
-from flext_infra._models._config.base import FlextInfraConfigModels
-from flext_infra._models.base import FlextInfraModelsBase
-from flext_infra._models.check import FlextInfraModelsCheck
-from flext_infra._models.workspace import FlextInfraModelsWorkspace
+from flext_infra._models import (
+    FlextInfraModelsBase,
+    FlextInfraModelsCheck,
+    FlextInfraModelsCodegenToolchain,
+    FlextInfraModelsRope,
+    FlextInfraModelsWorkspace,
+)
+from flext_infra._models._codegen import (
+    FlextInfraModelsCodegenJournalModels,
+    FlextInfraModelsCodegenPipelineModels,
+)
+from flext_infra._models._config import FlextInfraConfigModels
 
 
 class FlextInfraModelsCodegenTransactionModels:
@@ -64,7 +69,9 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Exact source and configuration observations"
         )
         updates: t.MappingKV[Path, str | None] = m.Field(
-            description="Desired sources keyed by live destination; None retires an artifact"
+            description=(
+                "Desired sources keyed by live destination; None retires an artifact"
+            ),
         )
         modes: t.MappingKV[Path, int] = m.Field(
             default_factory=lambda: MappingProxyType[Path, int]({}),
@@ -73,7 +80,9 @@ class FlextInfraModelsCodegenTransactionModels:
         declared_files: t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan] = (
             m.Field(
                 default=(),
-                description="Original file/absence witnesses with the current desired effects",
+                description=(
+                    "Original file/absence witnesses with the current desired effects"
+                ),
             )
         )
         layouts: t.VariadicTuple[FlextInfraModelsRope.RopeProjectLayout] = m.Field(

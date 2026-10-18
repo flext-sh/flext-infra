@@ -13,9 +13,10 @@ from typing import TYPE_CHECKING, ClassVar, Literal, Protocol, Self, runtime_che
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_core import p
+    from flext_core import p, t
 
-    from flext_infra import m, t
+    from flext_infra import m
+    from flext_infra._typings.rope_native import FlextInfraTypesRopeNative
 
 
 @runtime_checkable
@@ -113,6 +114,12 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def get_type(self) -> FlextInfraProtocolsRopeRuntime.RopePyObject: ...
 
     @runtime_checkable
+    class RopeSourceDefinition(Protocol):
+        """Cached AST capability of native source-defined classes and functions."""
+
+        def get_ast(self) -> FlextInfraProtocolsRopeRuntime.RopeAstNode: ...
+
+    @runtime_checkable
     class NativeClassMetadata(Protocol):
         """CPython class metadata published by Rope's builtin class object."""
 
@@ -179,10 +186,17 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> Iterator[tuple[int, int]]: ...
 
     @runtime_checkable
+    class RopeCachedLogicalLineFinder(Protocol):
+        """Native cached lookup of the logical statement containing a line."""
+
+        def logical_line_in(self, line_number: int) -> t.Pair[int, int]: ...
+
+    @runtime_checkable
     class RopeAssignment(Protocol):
         """Rope assignment shape."""
 
-        ast_node: FlextInfraProtocolsRopeRuntime.RopeAstNode
+        ast_node: FlextInfraProtocolsRopeRuntime.RopeAstNode | None
+        type_hint: FlextInfraProtocolsRopeRuntime.RopeAstNode | None
 
         def get_lineno(self) -> int | None: ...
 
@@ -281,6 +295,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_name(self) -> str: ...
 
+        def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
+
         def get_doc(self) -> str | None: ...
 
         def get_attributes(
@@ -317,6 +333,11 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         @property
         def lines(self) -> FlextInfraProtocolsRopeRuntime.RopeSourceLines: ...
 
+        @property
+        def logical_lines(
+            self,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeCachedLogicalLineFinder: ...
+
         def get_module(self) -> FlextInfraProtocolsRopeRuntime.RopePyModule: ...
 
         def get_resource(
@@ -350,72 +371,14 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def receipt(self) -> m.Infra.CodegenPhaseAnalysis: ...
 
     @runtime_checkable
-    class RopeProject(RopeModuleFinder, Protocol):
-        """Rope project shape used by flext-infra."""
+    class RopePreferences(Protocol):
+        """Native preference updates required by project source election."""
 
-        @property
-        def root(self) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
+        def add(self, key: str, value: str) -> None: ...
 
-        def get_resource(
-            self,
-            resource_name: str,
-        ) -> FlextInfraProtocolsRopeRuntime.RopeResource: ...
-
-        def get_folder(
-            self,
-            path: str,
-        ) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
-
-        def get_pymodule(
-            self,
-            resource: FlextInfraProtocolsRopeRuntime.RopeResource,
-            *,
-            force_errors: bool = False,
-        ) -> t.Infra.RopeNativeParsedModule: ...
-
-        def get_pycore(self) -> t.Infra.RopeNativeCore: ...
-
-        def get_source_folders(
-            self,
-        ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeResource]: ...
-
-        def get_python_path_folders(
-            self,
-        ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeResource]: ...
-
-        def find_module(
-            self,
-            modname: str,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
-        ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
-
-        def get_module(
-            self,
-            name: str,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
-        ) -> t.Infra.RopeNativeSemanticModule: ...
-
-        def get_relative_module(
-            self,
-            name: str,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None,
-            level: int,
-        ) -> t.Infra.RopeNativeParsedModule: ...
-
-        def get_python_files(
-            self,
-        ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeFile]: ...
-
-        def do(self, changes: FlextInfraProtocolsRopeRuntime.RopeChangeSet) -> None: ...
-
-        def validate(
-            self,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
-        ) -> None: ...
-
-        def close(self) -> None: ...
-
-        def frozen_layout(self) -> AbstractContextManager[Self]: ...
+    @runtime_checkable
+    class RopeSourceAccess(Protocol):
+        """Authenticated source observations and per-consumer receipt scopes."""
 
         def source_consumption(
             self,
@@ -426,6 +389,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def source_selection(self) -> AbstractContextManager[None]: ...
 
         def source_capture(self) -> AbstractContextManager[None]: ...
+
+        def verify_source_states(self) -> None: ...
 
         def source_consumer(
             self,
@@ -476,6 +441,81 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self,
             path: Path,
         ) -> Iterator[tuple[Path, list[str], list[str]]]: ...
+
+    @runtime_checkable
+    class RopeProject(RopeModuleFinder, RopeSourceAccess, Protocol):
+        """Compose native project lifecycle with authenticated source access."""
+
+        @property
+        def root(self) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
+
+        def get_resource(
+            self,
+            resource_name: str,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeResource: ...
+
+        def get_file(
+            self,
+            path: str,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeFile: ...
+
+        def get_folder(
+            self,
+            path: str,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
+
+        def get_pymodule(
+            self,
+            resource: FlextInfraProtocolsRopeRuntime.RopeResource,
+            *,
+            force_errors: bool = False,
+        ) -> FlextInfraTypesRopeNative.RopeNativeParsedModule: ...
+
+        def get_pycore(self) -> FlextInfraTypesRopeNative.RopeNativeCore: ...
+
+        def get_source_folders(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeResource]: ...
+
+        def get_python_path_folders(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeResource]: ...
+
+        def find_module(
+            self,
+            modname: str,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
+
+        def get_module(
+            self,
+            name: str,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
+        ) -> FlextInfraTypesRopeNative.RopeNativeSemanticModule: ...
+
+        def get_relative_module(
+            self,
+            name: str,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None,
+            level: int,
+        ) -> FlextInfraTypesRopeNative.RopeNativeParsedModule: ...
+
+        def get_python_files(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeFile]: ...
+
+        def do(self, changes: FlextInfraProtocolsRopeRuntime.RopeChangeSet) -> None: ...
+
+        def validate(
+            self,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
+        ) -> None: ...
+
+        def close(self) -> None: ...
+
+        def get_prefs(self) -> FlextInfraProtocolsRopeRuntime.RopePreferences: ...
+
+        def frozen_layout(self) -> AbstractContextManager[Self]: ...
 
     @runtime_checkable
     class RopeLocation(Protocol):
@@ -616,6 +656,10 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def get_name(self) -> str: ...
 
         def matches(self, suspect: p.AttributeProbe, arg: Argument) -> bool: ...
+
+    @runtime_checkable
+    class RopeDefaultWildcard(RopeWildcard[str], Protocol):
+        """Native default wildcard consuming Rope's string constraint grammar."""
 
     @runtime_checkable
     class RopeRestructure(Protocol):

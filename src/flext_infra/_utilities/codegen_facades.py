@@ -29,7 +29,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
-from flext_infra._utilities._rope.project import FlextInfraRopeProject
+from flext_infra._utilities._rope.project import FlextInfraRopeProject, require_value
 from flext_infra._utilities._rope_analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
@@ -61,13 +61,17 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     tuple[m.Cli.AtomicDirectoryChainPlan, ...],
                 ],
             ],
-            t.MappingKV[Path, str],
+            dict[Path, str],
         ]
     ]:
         """Share one authenticated native source graph across a planning pass.
 
         Yields:
             The native Rope project, original-state reader and planned sources.
+
+        Raises:
+            ValueError: If a declared project root lies outside the original
+                authority.
 
         """
         root = root.resolve()
@@ -80,13 +84,12 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             *(plan.path for plan in declared_files),
             *(state.path for plan in declared_files for state in plan.source_states),
         }
+        iteration = FlextInfraUtilitiesIterationDirectory
         paths = {
             path
             for project in project_roots or (root,)
             if project.is_dir()
-            for path in FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(
-                project
-            )
+            for path in iteration.iter_directory_python_files(project)
         }
         source_states = (
             *source_states,
@@ -257,13 +260,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 continue
             original = originals.get(path)
             if original is None:
-                original = FlextInfraRopeProject.AtomicReadFiles.require_value(
-                    u.Cli.atomic_read_binary_file_state(path)
-                )
+                original = require_value(u.Cli.atomic_read_binary_file_state(path))
                 originals[path] = original
-            chain = FlextInfraRopeProject.AtomicReadFiles.require_value(
-                u.Cli.atomic_plan_directory_chain(path.parent)
-            )
+            chain = require_value(u.Cli.atomic_plan_directory_chain(path.parent))
             declarations[path] = m.Infra.CodegenFilePlan(
                 project=root,
                 path=path,
@@ -1016,11 +1015,16 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         if not candidates:
             return frozenset()
         contents = dict(sources.values())
-        resource = project.get_resource(
-            facade_path.relative_to(Path(project.root.real_path)).as_posix(),
+        projection_is_autogen = contents[facade_path].startswith(
+            c.Infra.AUTOGEN_HEADERS
         )
+        barrel = contents.get(roots[1] / c.Infra.INIT_PY)
         scope = FlextInfraUtilitiesRopeRuntime.build_string_module(
-            project, contents[facade_path], resource=resource
+            project,
+            contents[facade_path],
+            resource=project.get_resource(
+                facade_path.relative_to(Path(project.root.real_path)).as_posix(),
+            ),
         ).get_scope()
         retired: set[str] = set()
         for base in candidates:
@@ -1043,21 +1047,29 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             if binding is None:
                 message = f"Unresolved facade base: {facade_path}:{ast.unparse(base)}"
                 raise ValueError(message)
-            value = binding.get_object()
-            if FlextInfraUtilitiesRopeRuntime.semantic_module(value):
+            if FlextInfraUtilitiesRopeRuntime.semantic_module(binding.get_object()):
                 message = f"Module used as a class base: {ast.unparse(base)}"
                 raise ValueError(message)
             holder = binding.get_definition_location()[0]
             provider = holder.get_resource() if holder is not None else None
             if provider is None:
-                if FlextInfraUtilitiesCodegenFacades._departed_projected_binding(
-                    project,
-                    binding,
-                    roots[1],
-                    (facade_path, ast.unparse(base)),
-                    contents,
+                if projection_is_autogen and (
+                    FlextInfraUtilitiesCodegenFacades._departed_projected_binding(
+                        project,
+                        binding,
+                        roots[1],
+                        barrel,
+                        declared_names=declared_names,
+                    )
                 ):
                     retired.add(ast.unparse(base))
+                else:
+                    FlextInfraUtilitiesCodegenFacades._require_facade_base_owner(
+                        project,
+                        binding,
+                        facade_path,
+                        ast.unparse(base),
+                    )
                 continue
             path = Path(provider.real_path).resolve()
             if path.is_relative_to(roots[0].resolve()) and not path.is_relative_to(
@@ -1071,47 +1083,52 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         project: p.Infra.RopeProject,
         binding: p.Infra.RopePyName,
         owners_dir: Path,
-        facade: t.Pair[Path, str],
-        contents: t.MappingKV[Path, str],
+        barrel: str | None,
+        *,
+        declared_names: set[str],
     ) -> bool:
         """Retire undefined generated imports from the elected family boundary.
 
-        Authored facades and unresolved or external module providers stay errors.
-        Rope resolves the exact family resource; spelling grants no ownership.
+        The caller proves the facade projection is generated; ``barrel`` is
+        the family barrel text of ``owners_dir``. Authored facades and
+        unresolved or external module providers stay errors. Rope resolves the
+        exact family resource; spelling grants no ownership.
 
         Returns:
-            Whether the generated base lost its own family's exported binding.
+            Whether the generated base lost its own family's declared owner.
 
-        Raises:
-            ValueError: If a source-free binding has no native owner.
+        A ``ValueError`` propagates from ``imported_module_path`` when a
+        source-free binding has no native owner.
 
         """
-        facade_path, expression = facade
-        if (
-            contents[facade_path].startswith(c.Infra.AUTOGEN_HEADERS)
-            and isinstance(binding, p.Infra.RopeImportedName)
+        if not (
+            isinstance(binding, p.Infra.RopeImportedName)
             and binding.get_definition_location()[0] is None
         ):
-            provider = FlextInfraUtilitiesRopeRuntime.imported_module_path(
-                project, binding
-            )
-            barrel = contents.get(owners_dir / c.Infra.INIT_PY)
-            if (
-                provider
-                in {
-                    owners_dir.resolve(),
-                    (owners_dir / c.Infra.INIT_PY).resolve(),
-                }
-                and barrel is not None
-                and barrel.startswith(c.Infra.AUTOGEN_HEADERS)
-            ):
-                exported = (
-                    FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                        barrel
-                    )
-                )
-                if binding.imported_name not in exported:
-                    return True
+            return False
+        provider = FlextInfraUtilitiesRopeRuntime.imported_module_path(project, binding)
+        # The marker proves projection ownership, not export membership.
+        # Only the current leaf declarations decide whether an owner left.
+        return (
+            provider in {owners_dir.resolve(), (owners_dir / c.Infra.INIT_PY).resolve()}
+            and barrel is not None
+            and barrel.startswith(c.Infra.AUTOGEN_HEADERS)
+            and binding.imported_name not in declared_names
+        )
+
+    @staticmethod
+    def _require_facade_base_owner(
+        project: p.Infra.RopeProject,
+        binding: p.Infra.RopePyName,
+        facade_path: Path,
+        expression: str,
+    ) -> None:
+        """Keep a source-free facade base only when it is abstract or upstream.
+
+        Raises:
+            ValueError: If the binding has no resolved source owner.
+
+        """
         value = binding.get_object()
         if (
             FlextInfraUtilitiesRopeRuntime.abstract_class(value)
@@ -1119,7 +1136,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         ) or FlextInfraUtilitiesCodegenFacades._upstream_binding(
             project, project, binding
         ):
-            return False
+            return
         message = f"Facade base has no source owner: {facade_path}:{expression}"
         raise ValueError(message)
 

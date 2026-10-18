@@ -106,7 +106,13 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
         return frozenset(u.Infra.public_export_names_source(source))
 
     def _provider_package_dir(self, package_name: str) -> Path | None:
-        """Use the native authenticated election for external package providers."""
+        """Use the native authenticated election for external package providers.
+
+        Returns:
+            The provider package directory, or ``None`` when the name does not
+            resolve to a package.
+
+        """
         resource = self.rope_workspace.rope_project.find_module(package_name)
         if resource is None or not resource.is_folder():
             return None

@@ -11,8 +11,8 @@ import inspect
 import sys
 from pathlib import Path
 
-from flext_infra import c, config, m
-from tests import tm, u
+from flext_infra import config
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraInfraConstantsExtra:

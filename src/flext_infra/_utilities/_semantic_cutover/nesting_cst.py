@@ -18,6 +18,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticCutoverNestingOwner,
     FlextInfraUtilitiesSemanticCutoverNestingReferences,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
@@ -33,7 +34,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         cls,
         source: str,
         *,
-        native: t.Pair[p.Infra.RopeProject, p.Infra.RopeResource],
+        native: t.Pair[p.Infra.RopeProject, p.Infra.RopeFile],
         scope: t.Pair[str, bool],
         bindings_by_module: t.MappingKV[str, t.StrMapping],
         providers_by_module: t.MappingKV[str, p.Infra.RopeResource],
@@ -467,7 +468,23 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         original_bindings: frozenset[str] | None = None,
         composition: bool = False,
     ) -> str:
-        """Keep pytest's original module registration while owning every declaration."""
+        """Keep pytest's original module registration owning every declaration.
+
+        Args:
+            source: Authored module text holding the owning class.
+            owner_name: Class whose declarations this publication owns.
+            publisher: Dotted publish callable injected into the module.
+            original_bindings: Names that must survive publication unchanged.
+            composition: Whether the plain composition root is hidden.
+
+        Returns:
+            The published module text with the owned bootstrap appended.
+
+        Raises:
+            ValueError: A required staticmethod is missing from allowed tails,
+                or a class-owned binding shadows the publication bootstrap.
+
+        """
         tree = ast.parse(source)
         owner = next(
             node
@@ -493,14 +510,18 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         bindings: dict[str, str] = {}
         metadata: list[str] = []
         registrations = False
-        patterns = cls._pytest_collection_patterns(Path(project.root.real_path))
+        patterns = (
+            FlextInfraUtilitiesSemanticCutoverNestingOwner._pytest_collection_patterns(
+                Path(project.root.real_path)
+            )
+        )
         original = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
         for node in owner.body:
             if isinstance(node, ast.ClassDef):
                 if (
                     composition
                     and (original_bindings is None or node.name in original_bindings)
-                    and cls._pytest_class_binding(
+                    and FlextInfraUtilitiesSemanticCutoverNestingOwner._pytest_class_binding(
                         node.name, original.get_attribute(node.name), patterns[1]
                     )
                 ):
@@ -531,11 +552,17 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
                     }
                     or tails & fixtures
                     or (
-                        composition and cls._pytest_name_matches(node.name, patterns[2])
+                        composition
+                        and FlextInfraUtilitiesSemanticCutoverNestingOwner._pytest_name_matches(
+                            node.name, patterns[2]
+                        )
                     )
                 ):
                     if "staticmethod" not in tails:
-                        msg = f"pytest publication requires staticmethod outside fixture/hook decorators: {resource.path}:{node.name}"
+                        msg = (
+                            "pytest publication requires staticmethod outside "
+                            f"fixture/hook decorators: {resource.path}:{node.name}"
+                        )
                         raise ValueError(msg)
                     bindings[node.name] = f"{node.name}.__func__"
                     registrations = True
@@ -612,7 +639,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         )
         occupied = scope.get_defined_names()
         if "globals" in occupied or publisher.partition(".")[0] in occupied:
-            msg = f"pytest publication bootstrap is shadowed by a class-owned binding: {resource.path}:{owner_name}"
+            msg = (
+                "pytest publication bootstrap is shadowed by a class-owned "
+                f"binding: {resource.path}:{owner_name}"
+            )
             raise ValueError(msg)
         insertion = min(module.lines.get_line_end(scope.get_end()) + 1, len(source))
         rendered = ", ".join(f"{name!r}: {value}" for name, value in bindings.items())

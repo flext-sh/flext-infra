@@ -155,7 +155,12 @@ class FlextInfraUtilitiesRopeSource:
         source: str,
         statement_lines: t.SequenceOf[t.IntPair],
     ) -> str:
-        """Plan the same statement hoist without changing its physical source."""
+        """Plan the same statement hoist without changing its physical source.
+
+        Returns:
+            The source with the selected statements hoisted to the import block.
+
+        """
         if not statement_lines:
             return source
         lines = source.splitlines(keepends=True)

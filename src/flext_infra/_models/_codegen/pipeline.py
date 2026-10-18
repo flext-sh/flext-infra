@@ -13,15 +13,19 @@ from typing import Annotated, Self
 from flext_cli import m
 
 from flext_infra import c, p, t
-from flext_infra._models import FlextInfraModelsMixins
-from flext_infra._models._codegen.fix import FlextInfraModelsCodegenFixModels
-from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
-from flext_infra._models._codegen.lazy_init import FlextInfraModelsCodegenLazyInitModels
-from flext_infra._models._codegen.scaffold import FlextInfraModelsCodegenScaffoldModels
-from flext_infra._models._config.base import FlextInfraConfigModels
-from flext_infra._models.base import FlextInfraModelsBase
-from flext_infra._models.check import FlextInfraModelsCheck
-from flext_infra._models.workspace import FlextInfraModelsWorkspace
+from flext_infra._models import (
+    FlextInfraModelsBase,
+    FlextInfraModelsCheck,
+    FlextInfraModelsMixins,
+    FlextInfraModelsWorkspace,
+)
+from flext_infra._models._codegen import (
+    FlextInfraModelsCodegenFixModels,
+    FlextInfraModelsCodegenJournalModels,
+    FlextInfraModelsCodegenLazyInitModels,
+    FlextInfraModelsCodegenScaffoldModels,
+)
+from flext_infra._models._config import FlextInfraConfigModels
 
 
 class FlextInfraModelsCodegenPipelineModels:
@@ -349,6 +353,65 @@ class FlextInfraModelsCodegenPipelineModels:
         ]
         participant_policy: p.Infra.CodegenParticipantPolicyFactory = m.Field(
             description="Authorizes physical generation participants before recovery",
+        )
+
+    class CodegenConformState(m.ArbitraryTypesModel):
+        """Mutable request-local data owned by one conform invocation."""
+
+        request: FlextInfraConfigModels.CodegenConformRequest | None = m.Field(
+            default=None,
+            exclude=True,
+            description="Validated conform request",
+        )
+        generation_only: bool = m.Field(
+            default=False,
+            exclude=True,
+            description="Project outputs without repairing authored inputs",
+        )
+        provider_plans: (
+            t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan] | None
+        ) = m.Field(
+            default=None,
+            exclude=True,
+            description="Original cohort plans available to native source reads",
+        )
+        repository_root: Path = m.Field(
+            default=Path(),
+            exclude=True,
+            description="Generation tool repository",
+        )
+        initial_workspace: FlextInfraConfigModels.WorkspaceSpec | None = m.Field(
+            default=None,
+            exclude=True,
+            description="Declared scaffold specification",
+        )
+        ports: t.Port[p.Infra.CodegenConformPorts | None] = m.Field(
+            default=None,
+            exclude=True,
+            description="Facade-bound docs planning and participant authorization",
+        )
+        planning_issues: t.MutableSequenceOf[FlextInfraModelsCheck.Issue] = m.Field(
+            default_factory=list,
+            exclude=True,
+            description="Native file planning failures retained by this invocation",
+        )
+        planning_exception: BaseException | None = m.Field(
+            default=None,
+            exclude=True,
+            description="First native file planning cause",
+        )
+        docs_planner: t.Port[p.Infra.DocsArtifactPlanner | None] = m.Field(
+            default=None,
+            exclude=True,
+            description="Actual planner before effects",
+        )
+        scaffolded_repository: bool = m.Field(
+            default=False,
+            exclude=True,
+            description="Whether this invocation initialized an unpublished Git root",
+        )
+        _generation_issues: t.MutableSequenceOf[FlextInfraModelsCheck.Issue] = (
+            m.PrivateAttr(default_factory=list)
         )
 
     class CodegenPipelineState(m.ArbitraryTypesModel):

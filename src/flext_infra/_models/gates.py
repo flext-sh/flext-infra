@@ -14,9 +14,12 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models import FlextInfraModelsCheck, FlextInfraModelsDuplication
-from flext_infra._models.deps import FlextInfraModelsDeps
-from flext_infra._protocols.deps import FlextInfraProtocolsDeps
+from flext_infra._models import (
+    FlextInfraModelsCheck,
+    FlextInfraModelsDeps,
+    FlextInfraModelsDuplication,
+)
+from flext_infra._protocols import FlextInfraProtocolsDeps
 
 
 class FlextInfraModelsGates(FlextInfraModelsDuplication):

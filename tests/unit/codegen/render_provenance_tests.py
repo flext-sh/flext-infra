@@ -425,7 +425,7 @@ print('physical-provider-proof=' + mutation)
                     what=c.Infra.CodegenConformSurface.MAKEFILE,
                     mode=c.Infra.CodegenConformMode.APPLY,
                 ),
-                ports=None,
+                execution_context=None,
             )
         )
         tm.that(

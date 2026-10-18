@@ -311,6 +311,37 @@ class FlextInfraSemanticPublication:
             return r[m.Infra.CodegenPhaseAnalysis].ok(
                 analysis.model_copy(update={"files": tuple(combined.values())}),
             )
+        return cls._combined_projection_analysis(
+            analysis,
+            repository_root,
+            options,
+            dependency_group,
+            combined,
+        )
+
+    @classmethod
+    def _combined_projection_analysis(
+        cls,
+        analysis: m.Infra.CodegenPhaseAnalysis,
+        repository_root: Path,
+        options: m.Infra.SemanticPublicationOptions,
+        dependency_group: str,
+        combined: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan],
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Join generated projection files into one dependency-group analysis.
+
+        Args:
+            analysis: Semantic phase analysis planned for publication.
+            repository_root: Governed workspace root of the publication.
+            options: Caller-controlled gates and scope roots.
+            dependency_group: Elected group of every joined effect.
+            combined: Group-labeled plans keyed by destination path.
+
+        Returns:
+            The dependency-group-planned analysis, or the first planning
+            failure.
+
+        """
         # Resolve the proposed graph with the original native read authority.
         # A physical runtime can only consume the fully composed candidate below.
         with u.Infra.facade_source_project(
@@ -341,7 +372,8 @@ class FlextInfraSemanticPublication:
             previous = combined.get(item.path)
             if previous is not None and previous.before != item.before:
                 return r[m.Infra.CodegenPhaseAnalysis].fail(
-                    f"semantic projection changed its original destination: {item.path}",
+                    f"semantic projection changed "
+                    f"its original destination: {item.path}",
                 )
             combined[item.path] = item.model_copy(
                 update={"dependency_group": dependency_group},
@@ -608,6 +640,8 @@ class FlextInfraSemanticPublication:
             repository_root: Governed workspace root of the publication.
             options: Caller-controlled gates and scope roots.
             published_files: Original caller-owned sink receiving committed effects.
+            publish: Whether the staged plan is committed through the locked
+                transaction journal.
 
         Returns:
             Published paths after phase receipts and consumer acceptance.
@@ -616,9 +650,60 @@ class FlextInfraSemanticPublication:
         guarded = cls._guard_source_inputs(options.source_guard)
         if guarded.failure:
             return r[tuple[Path, ...]].from_failure(guarded)
-        prepared = cls._prepared_transaction(analysis, repository_root, options)
+        prepared = cls._prepared_publication(analysis, repository_root, options)
         if prepared.failure:
             return r[tuple[Path, ...]].from_failure(prepared)
+        (transaction, roots), analysis = prepared.value
+        accepted = cls._accepted_candidate(
+            transaction,
+            repository_root,
+            analysis,
+            options,
+        )
+        if accepted.failure:
+            return r[tuple[Path, ...]].from_failure(accepted)
+        if not publish:
+            return r[tuple[Path, ...]].ok(())
+        return cls._published_paths(
+            transaction,
+            roots,
+            analysis,
+            (repository_root, options),
+            published_files,
+        )
+
+    @classmethod
+    def _prepared_publication(
+        cls,
+        analysis: m.Infra.CodegenPhaseAnalysis,
+        repository_root: Path,
+        options: m.Infra.SemanticPublicationOptions,
+    ) -> p.Result[
+        t.Pair[
+            t.Pair[FlextInfraCodegenTransaction, t.MappingKV[str, Path]],
+            m.Infra.CodegenPhaseAnalysis,
+        ]
+    ]:
+        """Open the transaction and prepare the complete publication context.
+
+        Args:
+            analysis: Semantic phase analysis planned for publication.
+            repository_root: Governed workspace root of the publication.
+            options: Caller-controlled gates and scope roots.
+
+        Returns:
+            The open transaction with its roots and the prepared analysis.
+
+        """
+        result_type = r[
+            t.Pair[
+                t.Pair[FlextInfraCodegenTransaction, t.MappingKV[str, Path]],
+                m.Infra.CodegenPhaseAnalysis,
+            ]
+        ]
+        prepared = cls._prepared_transaction(analysis, repository_root, options)
+        if prepared.failure:
+            return result_type.from_failure(prepared)
         transaction, roots = prepared.value
         planned = cls._group_planned_analysis(
             analysis,
@@ -626,20 +711,44 @@ class FlextInfraSemanticPublication:
             options,
         )
         if planned.failure:
-            return r[tuple[Path, ...]].from_failure(planned)
-        analysis = planned.value
+            return result_type.from_failure(planned)
+        prepared_analysis = cls._python_prepared_analysis(
+            planned.value,
+            repository_root,
+        )
+        if prepared_analysis.failure:
+            return result_type.from_failure(prepared_analysis)
+        return result_type.ok(((transaction, roots), prepared_analysis.value))
+
+    @classmethod
+    def _python_prepared_analysis(
+        cls,
+        analysis: m.Infra.CodegenPhaseAnalysis,
+        repository_root: Path,
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Prepare the analysis's Python plans and merge their receipts.
+
+        Args:
+            analysis: Dependency-group-planned analysis of the publication.
+            repository_root: Governed workspace root of the publication.
+
+        Returns:
+            The analysis bound to its prepared Python plans.
+
+        """
+        result_type = r[m.Infra.CodegenPhaseAnalysis]
         prepared_files = FlextInfraCodegenStaging.prepare_python_plans(
             repository_root,
             analysis.files,
         )
         if prepared_files.failure:
-            return r[tuple[Path, ...]].from_failure(prepared_files)
+            return result_type.from_failure(prepared_files)
         inputs = FlextInfraCodegenPreconditions.unique_states((
             *analysis.inputs,
             *(state for plan in prepared_files.value for state in plan.source_states),
         ))
         if inputs.failure:
-            return r[tuple[Path, ...]].from_failure(inputs)
+            return result_type.from_failure(inputs)
         directories, topology = u.Cli.atomic_merge_directory_query_receipts(
             (
                 *analysis.source_directories,
@@ -658,30 +767,15 @@ class FlextInfraSemanticPublication:
                 ),
             ),
         )
-        analysis = analysis.model_copy(
-            update={
-                "files": prepared_files.value,
-                "inputs": inputs.value,
-                "source_directories": directories,
-                "source_query_topology": topology,
-            }
-        )
-        accepted = cls._accepted_candidate(
-            transaction,
-            repository_root,
-            analysis,
-            options,
-        )
-        if accepted.failure:
-            return r[tuple[Path, ...]].from_failure(accepted)
-        if not publish:
-            return r[tuple[Path, ...]].ok(())
-        return cls._published_paths(
-            transaction,
-            roots,
-            analysis,
-            (repository_root, options),
-            published_files,
+        return result_type.ok(
+            analysis.model_copy(
+                update={
+                    "files": prepared_files.value,
+                    "inputs": inputs.value,
+                    "source_directories": directories,
+                    "source_query_topology": topology,
+                }
+            )
         )
 
     @staticmethod

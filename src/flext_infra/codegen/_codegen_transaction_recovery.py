@@ -9,9 +9,8 @@ from __future__ import annotations
 import secrets
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenFileLeases,
     FlextInfraMiseArtifactsFiles,
@@ -23,9 +22,6 @@ from flext_infra.codegen import (
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 
-if TYPE_CHECKING:
-    from flext_infra import p
-
 
 class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
     """Persist owned journal receipts and recover exactly what they authorize."""
@@ -34,7 +30,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         self,
         owner: p.Infra.MiseArtifactsOwner,
         *,
-        participant_policy: m.Infra.CodegenParticipantPolicy | None = None,
+        participant_policy: p.Infra.CodegenParticipantPolicy | None = None,
         producer: m.Infra.CodegenPhaseAnalysis | None = None,
         source_authority: m.Infra.CodegenSourceAuthority | None = None,
         prior_publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome] = (),
@@ -372,11 +368,14 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                     "batch output is outside the operation participants: "
                     + ", ".join(map(str, outside)),
                 )
-        if candidate.completed and (
+        incomplete = (
             candidate.error
             or candidate.issues
             or candidate.exception is not None
             or not candidate.batches
+        )
+        if candidate.completed and (
+            incomplete
             or any(
                 not item.completed
                 or item.error
@@ -396,21 +395,25 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
     @classmethod
     def publish_operation_receipt(
         cls,
-        request: m.Infra.CodegenConformRequest,
+        request: p.Infra.CodegenConformRequest,
         batches: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
         *,
-        scope_roots: t.VariadicTuple[Path],
+        publication: p.Infra.CodegenPublicationOutcome,
         operation: m.Infra.CodegenPhaseOutcome | None = None,
-        completed: bool = False,
-        issues: t.VariadicTuple[m.Infra.Issue] = (),
-        exception: BaseException | None = None,
     ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
         """Compose actual native batches without reopening their settled journals.
+
+        Publication supplies accounting state, not authenticated provenance. The
+        original operation remains the identity-bearing admission receipt.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenPhaseOutcome]``.
 
         """
+        state = m.Infra.CodegenPhaseOutcome.model_validate(
+            publication,
+            from_attributes=True,
+        )
         root = request.root.expanduser().resolve()
         outcome = m.Infra.CodegenPhaseOutcome(
             root=root,
@@ -423,21 +426,24 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             surface=request.what,
             scope=request.scope,
             module=request.module,
-            scope_roots=scope_roots,
-            completed=completed,
+            scope_roots=state.scope_roots,
+            completed=state.completed,
             batches=batches,
             written_files=tuple(
                 path for item in batches for path in item.written_files
             ),
-            issues=(*issues, *(issue for item in batches for issue in item.issues)),
-            exception=exception,
-            error=str(exception) if exception is not None else "",
+            issues=(
+                *state.issues,
+                *(issue for item in batches for issue in item.issues),
+            ),
+            exception=state.exception,
+            error=str(state.exception) if state.exception is not None else "",
         )
         admitted = cls._admitted_operation_receipt(outcome, operation)
         if admitted.failure:
             return r[m.Infra.CodegenPhaseOutcome].from_failure(admitted)
         with cls.mutation_lease(root):
-            if completed:
+            if state.completed:
                 current = (
                     FlextInfraMiseArtifactsVerification.publication_outputs_current(
                         batches,
@@ -623,15 +629,15 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
     def participant_policy(
         self,
         *,
-        initial_workspace: m.Infra.WorkspaceSpec | None = None,
-    ) -> p.Result[m.Infra.CodegenParticipantPolicy]:
+        initial_workspace: p.Infra.WorkspaceSpec | None = None,
+    ) -> p.Result[p.Infra.CodegenParticipantPolicy]:
         """Snapshot the canonical physical topology without creating state.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenParticipantPolicy]``.
+            The resulting ``p.Result[p.Infra.CodegenParticipantPolicy]``.
 
         """
-        result_type = r[m.Infra.CodegenParticipantPolicy]
+        result_type = r[p.Infra.CodegenParticipantPolicy]
         layout = self._planner.layout(initial_workspace=initial_workspace)
         if layout.failure:
             return result_type.from_failure(layout)

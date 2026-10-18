@@ -81,10 +81,13 @@ class TestsFlextInfraBanditAndMarkdownGates:
         tm.that({issue.code for issue in result.issues}, eq={"B101"})
 
     @staticmethod
-    @pytest.mark.parametrize("surface", config.Infra.tooling.tools.ruff.src)
+    @pytest.mark.parametrize("surface", config.Infra.source_scan.roots)
+    @pytest.mark.parametrize("files_only", [False, True])
     def test_bandit_findings_remain_blocking_on_every_code_surface(
         tmp_path: Path,
         surface: str,
+        *,
+        files_only: bool,
     ) -> None:
         """All native tests remain enabled without owner-specific invocations."""
         project_dir = u.Tests.mk_project(tmp_path, "bandit-project-surface")
@@ -96,7 +99,14 @@ class TestsFlextInfraBanditAndMarkdownGates:
             encoding="utf-8",
         )
 
-        result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
+        gate = FlextInfraBanditGate(tmp_path)
+        tm.that(gate.selected_for(project_dir), eq=True)
+        context = u.Tests.create_gate_context(tmp_path)
+        result = (
+            gate.check_files((module,), project_dir, context)
+            if files_only
+            else gate.check(project_dir, context)
+        )
 
         tm.that(result.result.passed, eq=False)
         tm.that({issue.code for issue in result.issues}, eq={"B101", "B404", "B603"})
@@ -169,7 +179,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
     def test_bandit_without_source_tree_has_no_audit_surface(
         tmp_path: Path,
     ) -> None:
-        """A project without ``src`` does not select bandit at all.
+        """A project without Python input does not select bandit at all.
 
         Premise (#1223 content selection): an unselected gate never runs and
         never passes; a direct check without inputs establishes no acceptance.

@@ -49,7 +49,7 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConform):
     """Inject one public planning outcome after the real transaction begins."""
 
     __test__ = False
-    _SCENARIOS: ClassVar[t.VariadicTuple[str]] = (
+    SCENARIOS: ClassVar[t.VariadicTuple[str]] = (
         "planning-exception",
         "publication-source-race",
         "planning-issue-source-race",
@@ -61,7 +61,12 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConform):
         cls,
         task: m.Infra.CodegenRepositoryPlanTask,
     ) -> m.Infra.CodegenRepositoryPlanOutcome:
-        """Exercise a native cause with no preconstructed diagnostic fields."""
+        """Exercise a native cause with no preconstructed diagnostic fields.
+
+        Returns:
+            The resulting ``m.Infra.CodegenRepositoryPlanOutcome``.
+
+        """
         if task.root.name == "exception-only-outcome":
             return m.Infra.CodegenRepositoryPlanOutcome(
                 repository=task.repository.name,
@@ -84,7 +89,7 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConform):
         if planned.failure:
             return planned
         scenario = request.root.name
-        if scenario in self._SCENARIOS:
+        if scenario in self.SCENARIOS:
             selected = tuple(
                 file
                 for file in planned.value.files
@@ -167,17 +172,28 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConform):
                     },
                 ),
             )
-        identity = tm.ok(
-            u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=request.root)),
+        return planned
+
+    @staticmethod
+    def fail_publication(session: p.Model) -> p.Result[p.Infra.CodegenResult]:
+        """Perturb a prepared native transaction inside its publication callback.
+
+        Exception scenarios re-raise the original native exception object.
+
+        Returns:
+            The original filesystem failure or the declared publication failure.
+
+        """
+        state = m.Infra.CodegenTransactionSession.model_validate(
+            session,
+            from_attributes=True,
         )
-        journal_path = FlextInfraMiseWorkspacePlanner.journal_path(identity)
-        if not journal_path.is_file():
-            return planned
+        root = state.plan.layout.scope_root
+        scenario = root.name
         if scenario in {"cas", "source-race"}:
-            marker = request.root / ".lifecycle-cas"
-            if marker.read_bytes() != b"before\n":
-                return planned
+            marker = root / ".lifecycle-cas"
             before = tm.ok(u.Cli.atomic_read_binary_file_state(marker, required=True))
+            tm.that(before.content, eq=b"before\n")
             marker.write_bytes(b"foreign\n")
             failed = (
                 u.Cli.atomic_verify_binary_file_states((before,))
@@ -189,27 +205,28 @@ class TestsFlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConform):
                 )
             )
             tm.fail(failed)
-            return r[m.Infra.CodegenPlan].from_failure(failed)
-        journal_bytes = journal_path.read_bytes()
-        journal = m.Infra.CodegenTransactionJournal.model_validate_json(journal_bytes)
+            return r[p.Infra.CodegenResult].from_failure(failed)
+        journal = state.plan.layout.journal_path
+        journal_bytes = journal.read_bytes()
+        recorded = m.Infra.CodegenTransactionJournal.model_validate_json(journal_bytes)
         if scenario.endswith("-mixed"):
             staging = next(
                 tm.not_none(directory.created).path
-                for directory in journal.directories
+                for directory in recorded.directories
                 if directory.disposition == "temporary"
                 and directory.created is not None
             )
             (staging / "foreign.bin").write_bytes(b"foreign staging\n")
         if scenario.endswith("-changed"):
-            journal_path.write_bytes(journal_bytes + b"\n")
+            journal.write_bytes(journal_bytes + b"\n")
         elif scenario.endswith("-replaced"):
-            preserved = journal_path.with_suffix(".preserved")
-            journal_path.rename(preserved)
-            journal_path.write_bytes(preserved.read_bytes())
-            journal_path.chmod(preserved.stat().st_mode)
+            preserved = journal.with_suffix(".preserved")
+            journal.rename(preserved)
+            journal.write_bytes(preserved.read_bytes())
+            journal.chmod(preserved.stat().st_mode)
         if scenario.startswith("exception-"):
             raise _LIFECYCLE_EXCEPTION
-        return r[m.Infra.CodegenPlan].fail("conform operation failed after begin")
+        return r[p.Infra.CodegenResult].fail("conform operation failed after begin")
 
 
 class TestsFlextInfraCodegenConform:
@@ -273,7 +290,7 @@ class TestsFlextInfraCodegenConform:
             docs_config.write_text("{invalid", encoding="utf-8")
         if scenario in {"cas", "source-race"}:
             (root / ".lifecycle-cas").write_bytes(b"before\n")
-        if scenario in TestsFlextInfraCodegenConformLifecycleProbe._SCENARIOS:
+        if scenario in TestsFlextInfraCodegenConformLifecycleProbe.SCENARIOS:
             ignored = root / c.Infra.GITIGNORE
             ignored.write_bytes(ignored.read_bytes() + b"\n# rejected drift\n")
             (root / ".lifecycle-source").write_bytes(b"before\n")
@@ -288,7 +305,7 @@ class TestsFlextInfraCodegenConform:
 
     @pytest.mark.parametrize(
         "scenario",
-        TestsFlextInfraCodegenConformLifecycleProbe._SCENARIOS,
+        TestsFlextInfraCodegenConformLifecycleProbe.SCENARIOS,
     )
     def test_public_generation_preserves_independent_gains_after_failure(
         self,
@@ -304,20 +321,19 @@ class TestsFlextInfraCodegenConform:
         )
         rejected = root / c.Infra.GITIGNORE
         rejected_before = rejected.read_bytes()
-        ports = infra.codegen_conform_collaborators()
         if scenario == "planning-exception":
             with pytest.raises(OSError, match="raised after begin") as raised:
                 TestsFlextInfraCodegenConformLifecycleProbe.execute_request(
                     request,
-                    ports=ports,
+                    execution_context=infra,
                     generation_only=True,
                 )
             tm.that(raised.value is _LIFECYCLE_EXCEPTION, eq=True)
         else:
-            with pytest.raises(ValueError) as changed:
+            with pytest.raises(ValueError, match="atomic source changed") as changed:
                 TestsFlextInfraCodegenConformLifecycleProbe.execute_request(
                     request,
-                    ports=ports,
+                    execution_context=infra,
                     generation_only=True,
                 )
             tm.that(str(changed.value), has=str(root / ".lifecycle-source"))
@@ -402,11 +418,13 @@ class TestsFlextInfraCodegenConform:
             conformed_template,
         )
         _ = capsys.readouterr()
-        ports = infra.codegen_conform_collaborators()
 
-        def execute() -> p.Result[m.Infra.CodegenResult]:
+        def execute() -> p.Result[p.Infra.CodegenResult]:
             if scenario.endswith("-failure"):
-                return FlextInfraCodegenConform.execute_request(request, ports=ports)
+                return FlextInfraCodegenConform.execute_request(
+                    request,
+                    execution_context=infra,
+                )
             owner = FlextInfraCodegenTransaction(
                 FlextInfraCodegenMiseArtifacts(repository_root=root),
             )
@@ -416,22 +434,17 @@ class TestsFlextInfraCodegenConform:
             )
             target = next(file for file in planned.files if file.path == published)
 
-            def fail_prepared(scope: Path) -> p.Result[m.Infra.CodegenResult]:
+            def fail_prepared(scope: Path) -> p.Result[p.Infra.CodegenResult]:
                 initial = tm.ok(
                     owner.begin_files_locked(scope, roots, target.source_states)
                 )
                 tm.ok(
                     owner.append_phase_locked(initial, "conform-bootstrap", (target,))
                 )
+
                 return owner.publish_prepared_locked(
                     initial,
-                    lambda _session: (
-                        TestsFlextInfraCodegenConformLifecycleProbe(
-                            repository_root=root,
-                        )
-                        .plan(request)
-                        .map(lambda plan: m.Infra.CodegenResult(plan=plan))
-                    ),
+                    TestsFlextInfraCodegenConformLifecycleProbe.fail_publication,
                 )
 
             return owner.run_files_locked(roots, fail_prepared)
@@ -500,7 +513,7 @@ class TestsFlextInfraCodegenConform:
             TestsFlextInfraCodegenConformLifecycleProbe.execute_request(
                 request,
                 workspace,
-                ports=infra.codegen_conform_collaborators(),
+                execution_context=infra,
             )
 
         tm.that(raised.value is _LIFECYCLE_EXCEPTION, eq=True)
@@ -540,7 +553,7 @@ class TestsFlextInfraCodegenConform:
         help_text: str,
         *,
         verb: str = "probe",
-    ) -> p.Result[m.Infra.CodegenResult]:
+    ) -> p.Result[p.Infra.CodegenResult]:
         """Apply conform after declaring ``verb`` with ``help_text``.
 
         The managed Makefile renders ``verb.description`` for every declared
@@ -549,7 +562,7 @@ class TestsFlextInfraCodegenConform:
         artifact through the production renderer -- no substitution of it.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
+            The resulting ``p.Result[p.Infra.CodegenResult]``.
 
         """
         distribution = u.Tests.repository_ref(config.Infra.name).distribution
@@ -722,6 +735,10 @@ class TestsFlextInfraCodegenConform:
         first = infra.codegen_new(service)
         first_result = tm.ok(first)
         tm.that(first_result.plan is not None, eq=True)
+        first_result = m.Infra.CodegenResult.model_validate(
+            first_result,
+            from_attributes=True,
+        )
         if first_result.plan is None:
             pytest.fail("generation did not return its actual plan")
         editor_settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(

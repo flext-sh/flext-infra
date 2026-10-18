@@ -92,6 +92,7 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
         scope: m.Infra.DocScope,
         *,
         historical_evidence_files: t.VariadicTuple[Path],
+        container_home_identities: t.StrSequence,
     ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Collect per-user absolute paths frozen into markdown outside the root.
 
@@ -110,11 +111,7 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
 
         """
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
-        container_identities = frozenset(
-            FlextInfraUtilitiesDocsAuditDetectorsMixin._docs_container_identities(
-                scope,
-            )
-        )
+        container_identities = frozenset(container_home_identities)
         evidence = set(historical_evidence_files)
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
@@ -144,22 +141,6 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
                         ),
                     )
         return issues
-
-    @staticmethod
-    def _docs_container_identities(scope: m.Infra.DocScope) -> t.StrSequence:
-        """Read the declared container home identities from the audit policy.
-
-        Returns:
-            The resulting ``t.StrSequence``.
-
-        """
-        # The composing facade owns the policy read; the detectors module is
-        # its mixin, so the owner resolves lazily at call time (one import
-        # graph, no cycle at load time).
-        from flext_infra._utilities import FlextInfraUtilitiesDocsAudit
-
-        policy = FlextInfraUtilitiesDocsAudit.docs_audit_policy(scope)
-        return policy.container_home_identities
 
     @staticmethod
     def _path_inside_root(line: str, start: int, root: Path) -> bool:

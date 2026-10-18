@@ -20,20 +20,20 @@ from flext_infra._models import (
     FlextInfraModelsLayout,
     FlextInfraModelsMiseToolchain,
 )
-from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
-from flext_infra._models._config.make import FlextInfraConfigModelsMake
-from flext_infra._models._config.provider import FlextInfraConfigModelsProvider
-from flext_infra._models._config.refactor_campaigns import (
+from flext_infra._models._config import (
+    FlextInfraConfigModelsContexts,
+    FlextInfraConfigModelsContract,
+    FlextInfraConfigModelsMake,
+    FlextInfraConfigModelsProvider,
     FlextInfraConfigModelsRefactorCampaigns,
+    FlextInfraConfigModelsRelease,
+    FlextInfraConfigModelsRender,
+    FlextInfraConfigModelsScaffold,
+    FlextInfraConfigModelsTemplates,
+    FlextInfraConfigModelsWorkspace,
+    FlextInfraConfigVocabulary,
 )
-from flext_infra._models._config.release import FlextInfraConfigModelsRelease
-from flext_infra._models._config.render import FlextInfraConfigModelsRender
-from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
-from flext_infra._models._config.templates import FlextInfraConfigModelsTemplates
-from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
-from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
-from flext_infra._models._git.worktree_state import FlextInfraModelsGitWorktreeState
+from flext_infra._models._git import FlextInfraModelsGitWorktreeState
 
 
 class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
@@ -878,9 +878,15 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 for item in self.managed_files
                 if item.path == Path(c.PYPROJECT_FILENAME)
             )
-            if len(roots) != 1:
+            if len(roots) > 1:
                 msg = "managed files require exactly one root pyproject owner"
                 raise ValueError(msg)
+            if not roots:
+                # A projected slice (e.g. a single owner's artifacts planned by
+                # the runtime) carries no resolver projection of its own; the
+                # exactly-one-root-owner rule is a full-declaration authoring
+                # guard, enforced at config load, never on derived slices.
+                return self.managed_files
             owner = roots[0]
             projected = tuple(
                 FlextInfraConfigModelsTemplates.ManagedFileSpec(

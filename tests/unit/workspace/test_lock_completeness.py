@@ -235,3 +235,41 @@ class TestsFlextInfraWorkspaceLockCompleteness:
 
         tm.that(lock.read_bytes(), eq=before)
         tm.that(legacy.read_text(encoding="utf-8"), eq="package = []\n")
+
+    def test_toml_array_transport_validates_through_the_json_boundary(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Committed TOML arrays stay lists until the JSON boundary coerces them."""
+        lock = tmp_path / c.Infra.UV_LOCK_FILENAME
+        lock.write_text(
+            "[manifest]\n"
+            'members = ["flext-infra"]\n'
+            "[[package]]\n"
+            'name = "audit-leaf"\n'
+            'version = "1.0"\n'
+            'source = {registry = "https://example.com/simple"}\n'
+            'dependencies = [{name = "flext-core", extra = ["full"]}]\n'
+            'resolution-markers = ["py3-none-any"]\n'
+            "[package.dev-dependencies]\n"
+            'codegen = [{name = "flext-cli"}]\n',
+            encoding="utf-8",
+        )
+        payload = tm.ok(u.Cli.toml_read_json(lock))
+        tm.that(isinstance(payload["package"], list), eq=True)
+
+        locked = m.Infra.LockedEnvironment.model_validate_json(dumps(payload))
+
+        tm.that(locked.members, eq=("flext-infra",))
+        tm.that(len(locked.package), eq=1)
+        leaf = locked.package[0]
+        tm.that(
+            leaf.dependencies,
+            eq=(m.Infra.LockedDependency(name="flext-core", extra=("full",)),),
+        )
+        tm.that(leaf.resolution_markers, eq=("py3-none-any",))
+        tm.that(len(leaf.dev_dependencies), eq=1)
+        tm.that(
+            next(iter(leaf.dev_dependencies.values())),
+            eq=(m.Infra.LockedDependency(name="flext-cli"),),
+        )

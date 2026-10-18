@@ -12,10 +12,10 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, m
+from flext_infra import config
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from flext_infra.validate import FlextInfraNamespaceValidator
-from tests import tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraCodemodImportCycleSourceScan:
@@ -319,7 +319,8 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         try:
             if os.access(blocked, os.R_OK | os.X_OK):
                 pytest.skip(
-                    "NOT EXECUTED: current identity can traverse chmod-inaccessible trees"
+                    "NOT EXECUTED: current identity can traverse "
+                    "chmod-inaccessible trees"
                 )
             with pytest.raises(PermissionError) as discovery_error:
                 u.Infra.discover_python_files(
@@ -345,7 +346,10 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
     def test_namespace_declarations_do_not_suppress_active_source_findings(
         tmp_path: Path,
     ) -> None:
-        """Namespace validation reports arbitrary and root modules despite src-only config."""
+        """Namespace validation reports arbitrary and root modules.
+
+        Reported despite src-only config.
+        """
         project = u.Tests.mk_project(
             tmp_path,
             "namespace-inventory",

@@ -23,7 +23,7 @@ from flext_cli import u
 from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import RemoveImportsVisitor
 
-from flext_infra import c, config, m, r, t
+from flext_infra import c, codegen, config, gates, m, r, t
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.process import FlextInfraUtilitiesProcess
 from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
@@ -75,14 +75,12 @@ class FlextInfraUtilitiesProtectedEditLinting:
             Prepared updates retaining the exact original context they consumed.
 
         """
-        from flext_infra.codegen.staged_package import FlextInfraStagedPackage
-
-        planned = FlextInfraStagedPackage.plan_sources(
+        planned = codegen.FlextInfraStagedPackage.plan_sources(
             repository_root, updates, inputs=inputs, workspaces=workspaces
         )
         if planned.failure:
             return r[m.Infra.StageSourcePlan].from_failure(planned)
-        return FlextInfraStagedPackage.prepare_sources(
+        return codegen.FlextInfraStagedPackage.prepare_sources(
             planned.value, cls._repair_staged_sources
         ).map(lambda prepared: planned.value.model_copy(update={"updates": prepared}))
 
@@ -98,8 +96,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
             Acceptance only when lint and format both confirm the prepared bytes.
 
         """
-        from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate
-
         grouped: MutableMapping[Path, list[Path]] = {}
         for path in candidates.values():
             project = cls._command_cwd(path, root)
@@ -111,15 +107,17 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 apply_fixes=True,
                 selected_files=tuple(paths),
             )
-            lint = FlextInfraRuffLintGate(root).fix(project, context)
+            lint = gates.FlextInfraRuffLintGate(root).fix(project, context)
             if lint.outcome is c.Infra.ToolOutcome.ERROR:
                 return r[bool].fail(lint.raw_output or "configured lint repair failed")
-            formatted = FlextInfraRuffFormatGate(root).fix(project, context)
+            formatted = gates.FlextInfraRuffFormatGate(root).fix(project, context)
             if not formatted.result.passed:
                 return r[bool].fail(
                     formatted.raw_output or "configured format repair failed"
                 )
-            checked = FlextInfraRuffLintGate(root).check_files(paths, project, context)
+            checked = gates.FlextInfraRuffLintGate(root).check_files(
+                paths, project, context
+            )
             if not checked.result.passed:
                 return r[bool].fail(
                     checked.raw_output or "prepared source is not lint clean"

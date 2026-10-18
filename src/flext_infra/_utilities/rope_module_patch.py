@@ -160,7 +160,7 @@ class FlextInfraUtilitiesRopeModulePatch:
         declarations = [
             node
             for node in ast.parse(source).body
-            if isinstance(node, ast.Assign | ast.AnnAssign)
+            if isinstance(node, ast.Assign | ast.AnnAssign | ast.AugAssign)
             and any(
                 isinstance(target, ast.Name) and target.id == "__all__"
                 for target in (
@@ -175,8 +175,14 @@ class FlextInfraUtilitiesRopeModulePatch:
         if not declarations:
             return source.rstrip() + "\n\n" + rendered
         declaration = declarations[0]
-        if not isinstance(declaration.value, ast.List | ast.Tuple) or (
-            isinstance(declaration, ast.Assign) and len(declaration.targets) != 1
+        if (
+            isinstance(declaration, ast.AugAssign)
+            or not isinstance(declaration.value, ast.List | ast.Tuple)
+            or not all(
+                isinstance(item, ast.Constant) and isinstance(item.value, str)
+                for item in declaration.value.elts
+            )
+            or (isinstance(declaration, ast.Assign) and len(declaration.targets) != 1)
         ):
             message = "facade repair requires an explicit literal __all__ declaration"
             raise ValueError(message)

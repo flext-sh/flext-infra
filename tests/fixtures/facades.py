@@ -14,7 +14,19 @@ from pathlib import Path
 import pytest
 
 from flext_infra import p
+from flext_infra.services.cli_mod_progress import FlextInfraCliModProgress
 from tests import tm, u
+
+
+@pytest.fixture
+def mod_progress() -> p.Infra.ModProgress:
+    """Provide the real CLI progress adapter to public mod consumers.
+
+    Returns:
+        The progress port used by the normal CLI route.
+
+    """
+    return FlextInfraCliModProgress()
 
 
 @pytest.fixture

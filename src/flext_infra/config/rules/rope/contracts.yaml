@@ -3,6 +3,67 @@
 # (config/rules/rope/contracts.yaml under its root), never here: a packaged
 # rule naming a project identity fails every consumer that cannot import it.
 rules:
+  # Factory migration retains named/bound logger receivers. Direct u.* collapse
+  # needs separate runtime equivalence proof and is deliberately not elected.
+  - id: stdlib-module-logger-factory
+    phase: contract-normalization
+    pattern: '${factory}(${name})'
+    goal: 'u.fetch_logger(${name})'
+    arguments:
+      factory: name=logging.getLogger
+      name: type=builtins.str
+    imports: &logging_imports
+      u: from flext_core import u
+    bindings: &logging_bindings
+      u.fetch_logger: flext_core.u.fetch_logger
+    implementation_owner: &logging_implementation [flext_core, u.fetch_logger]
+    # Numeric stdlib log(), handler management, exported and escaping logger
+    # interfaces have no proven factory translation. Keep those native.
+    receiver_methods: &logging_emissions [debug, info, warning, error, critical]
+  - id: stdlib-keyword-logger-factory
+    phase: contract-normalization
+    pattern: '${factory}(name=${name})'
+    goal: 'u.fetch_logger(${name})'
+    arguments:
+      factory: name=logging.getLogger
+      name: type=builtins.str
+    imports: *logging_imports
+    bindings: *logging_bindings
+    implementation_owner: *logging_implementation
+    receiver_methods: *logging_emissions
+  - id: structlog-named-logger-factory
+    phase: contract-normalization
+    pattern: '${factory}(${name})'
+    goal: 'u.fetch_logger(${name})'
+    arguments:
+      factory: name=structlog.get_logger
+      name: type=builtins.str
+    imports: *logging_imports
+    bindings: *logging_bindings
+    implementation_owner: *logging_implementation
+    receiver_methods: *logging_emissions
+  - id: structlog-module-logger-factory
+    phase: contract-normalization
+    pattern: '${factory}()'
+    goal: 'u.fetch_logger(__name__)'
+    arguments:
+      factory: name=structlog.get_logger
+    imports: *logging_imports
+    bindings: *logging_bindings
+    implementation_owner: *logging_implementation
+    receiver_methods: *logging_emissions
+    # A function/class-local __name__ is not a proven caller module name.
+    unshadowed_builtins: [__name__]
+  # Only literal obsolete flags can disappear without changing evaluation.
+  # Attribute access, names and calls may have effects or raise; reject the
+  # candidate before publication rather than silently discard their evaluation.
+  - id: cli-result-error-without-verbose
+    phase: contract-normalization
+    pattern: '${emit}(${result}, verbose=${verbose})'
+    goal: '${emit}(${result})'
+    arguments:
+      emit: name=flext_cli.u.Cli.commands_emit_result_error
+    drops: [verbose]
   - id: namespace-final-constant
     phase: constant-consumers
     families: [c]

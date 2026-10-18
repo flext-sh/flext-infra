@@ -10,10 +10,10 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, main
+from flext_infra import config, main
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.services.cli_routes import FlextInfraCliRouteService
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraCliRepositoryRootContract:

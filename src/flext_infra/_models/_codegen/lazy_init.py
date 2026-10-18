@@ -92,7 +92,9 @@ class FlextInfraModelsCodegenLazyInitModels:
         source_states: tuple[m.Cli.AtomicFileState, ...] = m.Field(
             default=(),
             strict=True,
-            description="Original native source reads consumed by this package decision",
+            description=(
+                "Original native source reads consumed by this package decision"
+            ),
         )
         source_directories: tuple[m.Cli.AtomicDirectoryInventory, ...] = m.Field(
             default=(),

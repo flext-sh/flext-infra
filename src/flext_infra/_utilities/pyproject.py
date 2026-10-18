@@ -613,17 +613,20 @@ class FlextInfraUtilitiesPyproject:
         )
         if source_package is not None:
             return source_package
-        project_name = FlextInfraUtilitiesPyproject.project_name_from_payload(
-            project_root,
-            payload,
-        )
-        if project_name.startswith(c.Infra.PKG_PREFIX_HYPHEN):
-            msg = (
-                f"{project_root}: cannot resolve package name — "
-                "no [tool.flext.docs].package_name, no hatch wheel packages, "
-                "and no src/<pkg>/__init__.py present"
+        # A manifest without a [project] table declares no package at all:
+        # it configures tools only and owns no importable provider.
+        if isinstance(payload.get("project"), dict):
+            project_name = FlextInfraUtilitiesPyproject.project_name_from_payload(
+                project_root,
+                payload,
             )
-            raise ValueError(msg)
+            if project_name.startswith(c.Infra.PKG_PREFIX_HYPHEN):
+                msg = (
+                    f"{project_root}: cannot resolve package name — "
+                    "no [tool.flext.docs].package_name, no hatch wheel packages, "
+                    "and no src/<pkg>/__init__.py present"
+                )
+                raise ValueError(msg)
         return ""
 
     @staticmethod

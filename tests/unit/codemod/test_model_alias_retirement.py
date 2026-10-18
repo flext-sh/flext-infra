@@ -121,9 +121,13 @@ class TestsFlextInfraModelAliasRetirement:
                     f"from {package.name} import consumer; "
                     f"from {package.name}._models.payload import CanonicalPayloads; "
                     "from typing import get_type_hints; "
-                    "assert consumer.first.__annotations__['value'] is CanonicalPayloads.First; "
-                    "assert get_type_hints(consumer.forward)['return'] is CanonicalPayloads.Second; "
-                    "assert type(consumer.first(CanonicalPayloads.First(value=1))) is CanonicalPayloads.Second"
+                    "assert consumer.first.__annotations__['value'] "
+                    "is CanonicalPayloads.First; "
+                    "assert get_type_hints(consumer.forward)['return'] "
+                    "is CanonicalPayloads.Second; "
+                    "assert type(consumer.first("
+                    "CanonicalPayloads.First(value=1))) "
+                    "is CanonicalPayloads.Second"
                 ),
             ))
         )

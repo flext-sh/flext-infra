@@ -195,8 +195,10 @@ class TestsFlextInfraLazyInitRuntime:
                     else "expected = TestsFlextOwnedTestsConstants\n"
                 )
                 + "print(generated.c is expected)\n"
-                "print(generated.TestsFlextOwnedTestsConstants is TestsFlextOwnedTestsConstants)\n"
-                "print(generated.__all__ == generated.TestsFlextOwnedTestsPackage.__all__)\n"
+                "print(generated.TestsFlextOwnedTestsConstants "
+                "is TestsFlextOwnedTestsConstants)\n"
+                "print(generated.__all__ "
+                "== generated.TestsFlextOwnedTestsPackage.__all__)\n"
                 "print('flext_owned_tests.api' not in sys.modules)\n",
                 python_paths=(
                     str(repository),
@@ -214,7 +216,7 @@ class TestsFlextInfraLazyInitRuntime:
         *,
         exports: bool,
     ) -> None:
-        """Cold artifact graphs retain negative modules without cross-surface leakage."""
+        """Cold artifact graphs retain negative modules with no cross-surface leak."""
         repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
         source = package / "service.py"
         tm.ok(

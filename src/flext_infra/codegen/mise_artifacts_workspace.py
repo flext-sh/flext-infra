@@ -92,7 +92,7 @@ class FlextInfraMiseWorkspacePlanner:
         scope_root: Path | None = None,
         *,
         transaction_id: str | None = None,
-        initial_workspace: m.Infra.WorkspaceSpec | None = None,
+        initial_workspace: p.Infra.WorkspaceSpec | None = None,
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
         """Resolve governed topology after the stable workspace lock is held.
 
@@ -112,23 +112,22 @@ class FlextInfraMiseWorkspacePlanner:
         if resolved_scope.failure:
             return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(resolved_scope)
         scope_root = resolved_scope.value
-        workspace = (
-            FlextInfraWorkspaceDetector.load_workspace_spec(scope_root)
-            if initial_workspace is None
-            else r[m.Infra.WorkspaceSpec].ok(initial_workspace)
-        )
-        if workspace.failure:
-            return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(workspace)
+        workspace = initial_workspace
+        if workspace is None:
+            observed = FlextInfraWorkspaceDetector.load_workspace_spec(scope_root)
+            if observed.failure:
+                return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(observed)
+            workspace = observed.value
         if requested != scope_root and not any(
             (scope_root / project.path).absolute() == requested
-            for project in workspace.value.subprojects
+            for project in workspace.subprojects
         ):
             return r[m.Infra.MiseToolchainWorkspaceLayout].fail(
                 f"Git submodule is absent from governed workspace: {requested}",
             )
         selectors = (
             ".",
-            *(project.path.as_posix() for project in workspace.value.subprojects),
+            *(project.path.as_posix() for project in workspace.subprojects),
         )
         return self.layout_from_selectors(
             scope_root,

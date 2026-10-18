@@ -385,9 +385,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         Returns:
             The resulting ``t.StrSequence``.
 
-        Raises:
-            ValueError: If the declared sgconfig topology cannot resolve.
-
         """
         fixtures = FlextInfraCodemodSnapshotReconciler.fixture_directories(config_root)
         return tuple(

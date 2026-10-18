@@ -11,6 +11,7 @@ from pathlib import Path
 from flext_core import FlextRuntime
 
 from flext_infra import c, config, m, t, u
+from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.deps import FlextInfraExtraPathsManager
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
 from flext_infra.workspace import FlextInfraWorkspaceDetector
@@ -89,8 +90,6 @@ class FlextInfraEnsureRuffConfigPhase:
             The resulting ``m.Infra.DepsToml.PhaseConfig``.
 
         """
-        from flext_infra.check.gate_registry import FlextInfraGateRegistry
-
         ruff_cfg = self._tool_config.tools.ruff
         delegated_rules = FlextInfraGateRegistry.default().delegated_lint_rules(
             ruff_cfg.lint.rule_owners,
@@ -220,7 +219,10 @@ class FlextInfraEnsureRuffConfigPhase:
                         toml.SetOp(
                             key="ignore",
                             value=FlextRuntime.normalize_to_json_value(
-                                list(delegated_rules),
+                                sorted({
+                                    *delegated_rules,
+                                    *ruff_cfg.lint.ruling_disabled_rules,
+                                }),
                             ),
                         ),
                         toml.RemoveOp(key="extend-ignore"),

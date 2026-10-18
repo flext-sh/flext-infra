@@ -105,10 +105,6 @@ class FlextInfraUtilitiesSemanticNestingTypes(
                 expression: str,
                 shadowed: frozenset[str] = parameters,
             ) -> str | None:
-                import os as _os
-
-                if _os.environ.get("FLEXT_DEBUG_NESTING"):
-                    print(f"DBGEXPR expression={expression!r}")
                 if expression.partition(".")[0] in shadowed:
                     return None
                 return replacement(current, expression)
@@ -123,7 +119,7 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         return tuple(edits)
 
     @classmethod
-    def _rewrite_quoted_types(
+    def rewrite_quoted_types(
         cls,
         project: p.Infra.RopeProject,
         resource: p.Infra.RopeResource,
@@ -154,9 +150,15 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         offset: int,
         sources: t.MappingKV[Path, str],
     ) -> None:
-        """Reuse native reaching-definition proof, including star provenance."""
+        """Reuse native reaching-definition proof, including star provenance.
+
+        Raises:
+            ValueError: If the nesting binding is ambiguous or dynamic.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        proof = FlextInfraUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain
+        chain = FlextInfraUtilitiesCodemodBindingChain
+        proof = chain.FlextInfraUtilitiesCodemodBindingChain
         actual = runtime.expression_name(scope, expression)
         if isinstance(actual, p.Infra.RopeImportedName) and not (
             proof._single_reaching_declarations(module, scope, expression)
@@ -184,7 +186,10 @@ class FlextInfraUtilitiesSemanticNestingTypes(
             offset,
             sources,
         ):
-            msg = f"ambiguous or dynamic native nesting binding: {module.get_name()}.{expression}"
+            msg = (
+                "ambiguous or dynamic native nesting binding: "
+                f"{module.get_name()}.{expression}"
+            )
             raise ValueError(msg)
 
     @staticmethod

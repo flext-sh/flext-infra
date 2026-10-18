@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 from flext_infra import c, m, p, t
@@ -97,37 +98,6 @@ class FlextInfraUtilitiesDeclarationPayload:
         if not header.text[end:].lstrip().startswith("("):
             return None
         first, last = words.get_word_parens_range(end - 1)
-        # Shed redundant wrapper parentheses around the whole base list so a
-        # parenthesized declaration like ``Payload((Base[int]))`` exposes its
-        # real argument region to the splitter. Literal regions never count.
-        text = header.text
-        literals = dict(
-            (start, stop)
-            for start, stop, _metadata in FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(
-                text,
-            )
-        )
-        while text[first] == "(" and text[last - 1] == ")":
-            depth = 0
-            closes_outer = False
-            cursor = first
-            while cursor < last:
-                if (skip := literals.get(cursor)) is not None:
-                    cursor = skip
-                    continue
-                character = text[cursor]
-                if character in "([{":
-                    depth += 1
-                elif character in ")]}":
-                    depth -= 1
-                    if depth == 0:
-                        closes_outer = cursor == last - 1
-                        break
-                cursor += 1
-            if not closes_outer:
-                break
-            first += 1
-            last -= 1
         return header, (words, first, last)
 
     @classmethod
@@ -370,7 +340,12 @@ class FlextInfraUtilitiesDeclarationPayload:
         for member_scope in scope.get_scopes():
             if (
                 member_scope.get_kind() == c.Infra.RopeScopeKind.FUNCTION
-                and not cls._payload_method(finder, member_scope.pyobject, statements)
+                and not cls._payload_method(
+                    project,
+                    finder,
+                    member_scope.pyobject,
+                    statements,
+                )
             ):
                 return None
         return binding
@@ -549,8 +524,10 @@ class FlextInfraUtilitiesDeclarationPayload:
             )
         )
 
-    @staticmethod
+    @classmethod
     def _payload_method(
+        cls,
+        project: p.Infra.RopeProject,
         finder: p.Infra.RopeSimilarFinder,
         method: p.Infra.RopePyObject,
         statements: t.SequenceOf[m.Infra.LogicalStatement],
@@ -561,6 +538,18 @@ class FlextInfraUtilitiesDeclarationPayload:
             Whether every decorator is allowed and one belongs to Pydantic.
 
         """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        owning_module = method.get_module()
+        if owning_module is None:
+            return False
+        module_scope = owning_module.get_scope()
+        known_targets = {
+            identity: cls.identity_name(project, identity).get_object()
+            for identity in (
+                *c.Infra.PYDANTIC_PAYLOAD_DECORATORS,
+                *c.Infra.PAYLOAD_DESCRIPTOR_DECORATORS,
+            )
+        }
         scope = method.get_scope()
         if scope is None:
             return False
@@ -574,37 +563,23 @@ class FlextInfraUtilitiesDeclarationPayload:
             decorator = statement.text.lstrip()
             if not decorator.startswith("@"):
                 return False
-            expression = decorator[1:]
-            callee_start = (
-                statement.start_offset
-                + len(statement.text)
-                - len(decorator)
-                + 1
-                + len(expression)
-                - len(expression.lstrip())
-            )
-            identities = tuple(
-                identity
-                for identity in (
-                    *c.Infra.PYDANTIC_PAYLOAD_DECORATORS,
-                    *c.Infra.PAYLOAD_DESCRIPTOR_DECORATORS,
-                )
-                if any(
-                    start == callee_start
-                    for start, _end in finder.get_match_regions(
-                        f"${{{identity.rsplit('.', 1)[-1]}}}",
-                        {identity.rsplit(".", 1)[-1]: f"object={identity}"},
-                        start=statement.start_offset,
-                        end=statement.end_offset,
-                    )
-                )
-            )
-            if not identities:
+            callee = decorator[1:].strip()
+            expression = ast.parse(callee, mode="eval").body
+            callee_name = getattr(expression, "func", expression)
+            resolved = runtime.resolve_symbol(module_scope, callee_name)
+            if resolved is None:
                 return False
-            known |= any(
-                identity in c.Infra.PYDANTIC_PAYLOAD_DECORATORS
-                for identity in identities
+            identity = next(
+                (
+                    candidate
+                    for candidate, target in known_targets.items()
+                    if target is resolved
+                ),
+                None,
             )
+            if identity is None:
+                return False
+            known |= identity in c.Infra.PYDANTIC_PAYLOAD_DECORATORS
         return known
 
 

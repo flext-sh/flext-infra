@@ -172,19 +172,21 @@ class TestsFlextInfraSemanticPublication:
         tm.that(consumer in artifact.candidate.updates, eq=True)
         tm.ok(u.Cli.atomic_write_text_file(driver, artifact.model_dump_json()))
         captured = tm.ok(u.Cli.atomic_read_binary_file_state(driver, required=True))
-        tm.that(
-            m.Infra.SemanticRenamePlan.model_validate_json(
-                tm.not_none(captured.content)
-            ),
-            eq=artifact,
+        hydrated = m.Infra.SemanticRenamePlan.model_validate_json(
+            tm.not_none(captured.content)
         )
-        return artifact, captured
+        tm.that(
+            hydrated.model_dump(mode="python"),
+            eq=artifact.model_dump(mode="python"),
+        )
+        return hydrated, captured
 
     @staticmethod
     @pytest.mark.parametrize("kind", ["class", "module"])
     def test_mod_composes_native_cross_root_effects_and_is_idempotent(
         tmp_path: Path,
         kind: str,
+        mod_progress: p.Infra.ModProgress,
     ) -> None:
         """The normal public mod action consumes one coordinated native candidate."""
         artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(
@@ -206,7 +208,8 @@ class TestsFlextInfraSemanticPublication:
                     apply=True,
                     rename_plan=driver.path,
                     consumer_roots=artifact.consumer_roots,
-                )
+                ),
+                mod_progress,
             )
         )
         if kind == "module":
@@ -232,7 +235,9 @@ class TestsFlextInfraSemanticPublication:
         published = tuple(
             tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
             for scope in (root, *artifact.consumer_roots)
-            for path in u.Infra.discover_python_files(scope)
+            for path in u.Infra.discover_python_files(
+                scope, workspace_excluded_top_dirs=frozenset()
+            )
         )
         tm.ok(
             infra.mod(
@@ -240,7 +245,8 @@ class TestsFlextInfraSemanticPublication:
                     repository_root=root,
                     apply=True,
                     consumer_roots=artifact.consumer_roots,
-                )
+                ),
+                mod_progress,
             )
         )
         tm.ok(u.Cli.atomic_verify_binary_file_states(published))
@@ -249,6 +255,7 @@ class TestsFlextInfraSemanticPublication:
     @staticmethod
     def test_automatic_nesting_rewrites_declared_consumers_without_syntax_fanout(
         tmp_path: Path,
+        mod_progress: p.Infra.ModProgress,
     ) -> None:
         """Rule authority selects the owner while external read scope stays bounded."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -294,7 +301,8 @@ class TestsFlextInfraSemanticPublication:
                     repository_root=root,
                     consumer_roots=(receiver,),
                     apply=True,
-                )
+                ),
+                mod_progress,
             )
         )
         tm.ok(u.Cli.atomic_verify_binary_file_states((original,)))
@@ -312,6 +320,7 @@ class TestsFlextInfraSemanticPublication:
     def test_mod_refuses_invalid_cross_root_campaign_before_source_publication(
         tmp_path: Path,
         failure: str,
+        mod_progress: p.Infra.ModProgress,
     ) -> None:
         """Missing scope, occupied native name and stale epochs stay unpublished."""
         artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(
@@ -347,7 +356,9 @@ class TestsFlextInfraSemanticPublication:
         originals = tuple(
             tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
             for scope in (root, *artifact.consumer_roots)
-            for path in u.Infra.discover_python_files(scope)
+            for path in u.Infra.discover_python_files(
+                scope, workspace_excluded_top_dirs=frozenset()
+            )
         )
         tm.fail(
             infra.mod(
@@ -356,7 +367,8 @@ class TestsFlextInfraSemanticPublication:
                     consumer_roots=roots,
                     rename_plan=driver.path,
                     apply=True,
-                )
+                ),
+                mod_progress,
             )
         )
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
@@ -516,7 +528,10 @@ class TestsFlextInfraSemanticPublication:
                                 replacement_name="Renamed"
                                 if kind == "class"
                                 else "renamed",
-                                reason="Coordinated native producer and consumer identity cut",
+                                reason=(
+                                    "Coordinated native producer and consumer "
+                                    "identity cut"
+                                ),
                             ),
                         ),
                         consumer_roots=(consumer_root,),
@@ -1241,7 +1256,7 @@ class TestsFlextInfraSemanticPublication:
                 ),
             )
             tm.that(u.Cli.process_succeeded(fresh.outcome), eq=True)
-            return r[bool].ok(True)
+            return r[bool].ok(value=True)
 
         tm.ok(
             FlextInfraSemanticPublication.publish_semantic_file_plans(
@@ -1309,7 +1324,11 @@ class TestsFlextInfraSemanticPublication:
             )
             tm.ok(consumer)
             tm.that(u.Cli.process_succeeded(consumer.value.outcome), eq=True)
-            return r[bool].ok(True) if accepted else r[bool].fail("consumer rejected")
+            return (
+                r[bool].ok(value=True)
+                if accepted
+                else r[bool].fail("consumer rejected")
+            )
 
         published = FlextInfraSemanticPublication.publish_semantic_file_plans(
             (),

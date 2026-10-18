@@ -8,9 +8,8 @@ Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-from __future__ import annotations{# NOTE:the facade composes services, never base behavior. #}
+from __future__ import annotations
 
-from {{ package_name }} import config, settings
 from {{ package_name }}.services.ping import {{ class_stem }}Ping
 
 
@@ -18,11 +17,6 @@ class {{ class_stem }}({{ class_stem }}Ping):
     """Public {{ class_stem }} facade composed through cooperative FLEXT."""
 
 
-{{ alias }} = {{ class_stem }}(
-    configuration=config,
-    runtime_options=settings,
-    runtime_settings=settings,
-)
-
+{{ alias }} = {{ class_stem }}.fetch_global()
 
 __all__: list[str] = ["{{ class_stem }}", "{{ alias }}"]

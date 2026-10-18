@@ -31,7 +31,12 @@ class FlextInfraNamespaceRelocationPhase:
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Plan selected declarations while retaining the full reference readscope."""
+        """Plan selected declarations while retaining the full reference readscope.
+
+        Returns:
+            The planned phase analysis, or the first planning failure.
+
+        """
         cascade = FlextInfraNamespaceRelocationCascade()
         working = dict(sources)
         originals = {state.path: state for state in source_states}
@@ -75,7 +80,8 @@ class FlextInfraNamespaceRelocationPhase:
                 declarations[plan.path] = plan
                 if plan.desired_content is None:
                     return r[m.Infra.CodegenPhaseAnalysis].fail(
-                        f"declaration relocation unexpectedly retired a module: {plan.path}"
+                        f"declaration relocation unexpectedly retired "
+                        f"a module: {plan.path}"
                     )
                 working[plan.path] = plan.desired_content.decode(c.DEFAULT_ENCODING)
         return r[m.Infra.CodegenPhaseAnalysis].ok(

@@ -208,6 +208,18 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 ),
             ),
         ]
+        ruling_disabled_rules: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                alias="ruling-disabled-rules",
+                description=(
+                    "Operator-ruled rules disabled at the SSOT because the "
+                    "lazy facade architecture requires what they forbid; "
+                    "projected into lint ignore, never silenced by manual "
+                    "hints."
+                ),
+            ),
+        ] = ()
         extend_safe_fixes: Annotated[
             t.StrSequence,
             m.Field(
@@ -423,6 +435,17 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 ),
             ),
         ]
+        ruling_disable_error_codes: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                alias="ruling-disable-error-codes",
+                description=(
+                    "Operator-ruled mypy error codes suspended fleet-wide "
+                    "until the facade-alias family is cured; the tool-tables "
+                    "phase renders them as disable_error_code."
+                ),
+            ),
+        ] = ()
         overrides: Annotated[
             t.VariadicTuple[FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig],
             m.Field(

@@ -37,7 +37,12 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         )
 
     def _selected_content(self, path: Path) -> bytes | None:
-        """Keep selected ownership decisions distinct from original before images."""
+        """Keep selected ownership decisions distinct from original before images.
+
+        Returns:
+            The selected file content, or ``None`` when the path is not a file.
+
+        """
         if not self.source_project.source_query(path, "isfile"):
             return None
         return self.source_project.source_bytes(path)
@@ -73,6 +78,9 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         Returns:
             Deterministic glob results with their causal I/O failure.
 
+        Raises:
+            ValueError: If the cleanup pattern escapes its source directory.
+
         """
         try:
             parts = Path(pattern).parts
@@ -81,21 +89,41 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
                     f"lazy-init cleanup pattern escapes its source directory: {pattern}"
                 )
                 raise ValueError(msg)
-            paths: list[Path] = []
-            pending = [directory]
-            with self.source_project.source_selection():
-                while pending:
-                    parent = pending.pop()
-                    for child in self.source_project.source_children(parent):
-                        if child.relative_to(directory).full_match(pattern):
-                            paths.append(child)
-                        if len(parts) > 1 and self.source_project.source_query(
-                            child, "isdir"
-                        ):
-                            pending.append(child)
+            paths = self._collect_glob_matches(directory, pattern, parts)
         except OSError as exc:
             return r[t.VariadicTuple[Path]].fail_op(operation, exc)
         return r[t.VariadicTuple[Path]].ok(tuple(sorted(paths)))
+
+    def _collect_glob_matches(
+        self,
+        directory: Path,
+        pattern: str,
+        parts: tuple[str, ...],
+    ) -> list[Path]:
+        """Walk the source tree collecting every path matching the pattern.
+
+        Args:
+            directory: Root source directory of the bounded traversal.
+            pattern: Glob pattern every collected path must match.
+            parts: Pre-validated parts of the pattern guiding traversal depth.
+
+        Returns:
+            The matched paths in traversal order.
+
+        """
+        paths: list[Path] = []
+        pending = [directory]
+        with self.source_project.source_selection():
+            while pending:
+                parent = pending.pop()
+                for child in self.source_project.source_children(parent):
+                    if child.relative_to(directory).full_match(pattern):
+                        paths.append(child)
+                    if len(parts) > 1 and self.source_project.source_query(
+                        child, "isdir"
+                    ):
+                        pending.append(child)
+        return paths
 
     def _cleanup_generated_support_file_states(
         self,

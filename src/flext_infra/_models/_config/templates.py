@@ -40,6 +40,36 @@ class FlextInfraConfigModelsTemplates:
             t.JsonMapping,
             m.Field(description="Portable project-owned extension declarations"),
         ] = m.Field(default_factory=m.empty(TypeForm(t.JsonMapping)))
+
+        @m.field_validator("additional_settings")
+        @classmethod
+        def _dedupe_additional_settings_lists(
+            cls,
+            value: t.JsonMapping,
+        ) -> t.JsonMapping:
+            """Deduplicate list values in order-declared extension settings.
+
+            Library defaults, runtime projections, and local overlays can
+            declare the same portable list key; layer composition concatenates
+            those declarations, so identical entries collapse here and a local
+            redeclaration of a default stays idempotent.
+
+            Returns:
+                The normalized additional settings mapping.
+
+            """
+            normalized: dict = {}
+            for key, entry in value.items():
+                if isinstance(entry, list):
+                    seen: list = []
+                    for item in entry:
+                        if item not in seen:
+                            seen.append(item)
+                    normalized[key] = seen
+                else:
+                    normalized[key] = entry
+            return normalized
+
         stripped_keys: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
