@@ -20,10 +20,10 @@ from libcst import (
     Module,
 )
 from libcst.metadata import MetadataWrapper
-from rope.refactor.restructure import ChangeComputer
+from rope.refactor.restructure import _ChangeComputer
 
 from flext_infra._protocols import FlextInfraProtocolsRopeRuntime
-from flext_infra._typings.rope_native import FlextInfraTypesRopeNative
+from flext_infra._typings import FlextInfraTypesRopeNative
 
 
 class FlextInfraTypesRope(FlextInfraTypesRopeNative):
@@ -74,7 +74,7 @@ class FlextInfraTypesRope(FlextInfraTypesRopeNative):
     type RopeImportStatement = FlextInfraProtocolsRopeRuntime.RopeImportStatement
     type RopeModuleImports = FlextInfraProtocolsRopeRuntime.RopeModuleImports
     type RopeChangeSet = FlextInfraProtocolsRopeRuntime.RopeChangeSet
-    type RopeChangeComputer = ChangeComputer
+    type RopeChangeComputer = _ChangeComputer
     type RopeMoveGlobal = FlextInfraProtocolsRopeRuntime.RopeMoveGlobal
     type RopeOccurrence = FlextInfraProtocolsRopeRuntime.RopeOccurrence
     type RopeOccurrenceFinder = FlextInfraProtocolsRopeRuntime.RopeOccurrenceFinder

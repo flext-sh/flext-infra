@@ -16,10 +16,12 @@ from flext_infra._models import (
     FlextInfraModelsDepsToml,
     FlextInfraModelsDepsToolConfig,
     FlextInfraModelsMixins,
+    FlextInfraModelsWorkspace,
 )
-from flext_infra._models._config.repository import FlextInfraConfigModelsRepository
-from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
-from flext_infra._models.workspace import FlextInfraModelsWorkspace
+from flext_infra._models._config import (
+    FlextInfraConfigModelsRepository,
+    FlextInfraConfigModelsScaffold,
+)
 
 GitSourceUrlPrefixField = Annotated[
     t.NonEmptyStr | None,

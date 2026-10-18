@@ -17,7 +17,7 @@ from flext_infra._models import (
     FlextInfraModelsDocsCollection,
     FlextInfraModelsDocsGeneration,
 )
-from flext_infra._models._config.base import FlextInfraConfigModels
+from flext_infra._models._config import FlextInfraConfigModels
 
 
 # Docs transport
