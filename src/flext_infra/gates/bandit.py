@@ -10,7 +10,6 @@ from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, t, u
-from flext_infra import c, m, t, u
 from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
@@ -35,9 +34,6 @@ class FlextInfraBanditGate(FlextInfraGate):
     def _parse_check_output(
         self,
         result: p.Cli.CommandOutput,
-        project_dir: t.DirectoryPath,
-        ctx: p.Model,
-    ) -> t.Pair[bool, t.SequenceOf[p.Infra.Issue]]:
         project_dir: t.DirectoryPath,
         ctx: p.Model,
     ) -> t.Pair[bool, t.SequenceOf[p.Infra.Issue]]:
