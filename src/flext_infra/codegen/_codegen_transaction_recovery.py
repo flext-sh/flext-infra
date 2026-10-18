@@ -11,7 +11,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenFileLeases,
     FlextInfraMiseArtifactsFiles,
@@ -34,7 +34,7 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         self,
         owner: p.Infra.MiseArtifactsOwner,
         *,
-        participant_policy: m.Infra.CodegenParticipantPolicy | None = None,
+        participant_policy: p.Infra.CodegenParticipantPolicy | None = None,
         producer: m.Infra.CodegenPhaseAnalysis | None = None,
         source_authority: m.Infra.CodegenSourceAuthority | None = None,
         prior_publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome] = (),
@@ -623,15 +623,15 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
     def participant_policy(
         self,
         *,
-        initial_workspace: m.Infra.WorkspaceSpec | None = None,
-    ) -> p.Result[m.Infra.CodegenParticipantPolicy]:
+        initial_workspace: p.Infra.WorkspaceSpec | None = None,
+    ) -> p.Result[p.Infra.CodegenParticipantPolicy]:
         """Snapshot the canonical physical topology without creating state.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenParticipantPolicy]``.
+            The resulting ``p.Result[p.Infra.CodegenParticipantPolicy]``.
 
         """
-        result_type = r[m.Infra.CodegenParticipantPolicy]
+        result_type = r[p.Infra.CodegenParticipantPolicy]
         layout = self._planner.layout(initial_workspace=initial_workspace)
         if layout.failure:
             return result_type.from_failure(layout)
