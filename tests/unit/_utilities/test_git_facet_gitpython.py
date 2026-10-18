@@ -468,7 +468,11 @@ class TestsFlextInfraGitFacet:
 
         paths = tm.not_none(u.Infra.git_tracked_scope_paths(scope))
 
-        tm.that(set(paths), eq={tracked, raw_name, removed, destination, untracked})
+        # Tracked authority: index plus dirty tracked paths only. The staged
+        # deletion stays (rm --cached), the ignored file stays (force-indexed),
+        # and the untracked file never enters the inventory.
+        tm.that(set(paths), eq={tracked, raw_name, removed, destination})
+        tm.that(untracked in paths, eq=False)
 
     @staticmethod
     def test_tracked_scope_propagates_corrupt_index_failure(

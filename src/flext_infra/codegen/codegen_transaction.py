@@ -54,7 +54,8 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             inputs: Original caller source states required to remain unchanged.
             runtime_root: Declared physical runtime for pre-check candidate imports.
             workspaces: Explicit composition scopes sharing the candidate view.
-            runtime_check: Consume runtime after semantic composition, not during syntax planning.
+            runtime_check: Consume runtime after semantic composition, not
+            during syntax planning.
             modes: Native file-effect modes for newly staged module resources.
 
         Returns:

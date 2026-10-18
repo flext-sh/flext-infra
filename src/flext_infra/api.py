@@ -9,16 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import (
-    FlextInfraConformWiring,
-    FlextInfraPreviewWiring,
-    c,
-    m,
-    r,
-    s,
-    t,
-    u,
-)
+from flext_infra import FlextInfraConformWiring, FlextInfraPreviewWiring, m, r, s, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import (
     FlextInfraCodegenCensus,
@@ -28,16 +19,10 @@ from flext_infra.codegen import (
     FlextInfraCodegenPipeline,
     FlextInfraCodegenTransaction,
 )
-from flext_infra.codemod import (
-    FlextInfraAccessorRenamePhase,
-    FlextInfraApplyRenames,
-    FlextInfraCodemodBatchApply,
-    FlextInfraDuplicateApplyPhase,
-    FlextInfraImportNormalizationPhase,
-    FlextInfraModTextGateEngine,
-    FlextInfraNamespaceRelocationPhase,
-)
+from flext_infra.codemod import FlextInfraApplyRenames, FlextInfraModTextGateEngine
 from flext_infra.services import FlextInfraCandidateBootstrapService
+from flext_infra.services.codegen import FlextInfraCodegenHandlers
+from flext_infra.services.mod import FlextInfraModHandlers
 from flext_infra.validate import FlextInfraNamespaceValidator
 from flext_infra.workspace import (
     FlextInfraRopeWorkspace,
@@ -57,6 +42,8 @@ class FlextInfra(
     FlextInfraWorkspaceEnvironmentMixin,
     FlextInfraConformWiring,
     FlextInfraPreviewWiring,
+    FlextInfraCodegenHandlers,
+    FlextInfraModHandlers,
     s[t.JsonDict],
 ):
     """Thin public FLEXT facade over infra services."""
@@ -179,54 +166,20 @@ class FlextInfra(
             check_only=request.check_only,
             dry_run=request.dry_run,
             output_format=request.output_format,
-            conform_collaborators=self.codegen_conform_collaborators(),
-        ).execute()
-
-    def codegen_generate(
-        self,
-        request: m.Infra.CodegenGenerateRequest,
-    ) -> p.Result[m.Infra.CodegenResult]:
-        """Generate managed projections through the shared transactional owner.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
-
-        """
-        return FlextInfraCodegenConform.generate_request(
-            request,
-            ports=self.codegen_conform_collaborators(),
-        )
-
-    def codegen_conform(
-        self,
-        request: m.Infra.CodegenConformRequest,
-        initial_workspace: m.Infra.WorkspaceSpec | None = None,
-    ) -> p.Result[m.Infra.CodegenResult]:
-        """Conform generated files with the facade-wired cross-family ports.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
-
-        """
-        return FlextInfraCodegenConform.execute_request(
-            request,
-            initial_workspace,
-            ports=(
-                None
-                if c.Infra.CodegenConformMode(request.mode)
-                is c.Infra.CodegenConformMode.CHECK
-                else self.codegen_conform_collaborators()
+            conform_collaborators=m.Infra.CodegenConformPorts.model_validate(
+                self.codegen_conform_collaborators(),
+                from_attributes=True,
             ),
-        )
+        ).execute()
 
     def codegen_new(
         self,
         command: FlextInfraCodegenProjectNew,
-    ) -> p.Result[m.Infra.CodegenResult]:
+    ) -> p.Result[p.Infra.CodegenResult]:
         """Scaffold one project through conform with the facade-wired ports.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
+            The resulting ``p.Result[p.Infra.CodegenResult]``.
 
         """
         return command.model_copy(
@@ -280,79 +233,6 @@ class FlextInfra(
 
         """
         return FlextInfraApplyRenames().run(request)
-
-    def mod(
-        self,
-        request: m.Infra.ModCommand,
-        progress: p.Infra.ModProgress,
-    ) -> p.Result[t.Cli.ResultValue]:
-        """Compose the codemod use case from typed config and real adapters.
-
-        Returns:
-            The resulting ``p.Result[t.Cli.ResultValue]``.
-
-        """
-        root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
-        selected = u.Infra.load_refactor_csv_campaigns(root)
-        if selected.failure:
-            return r[t.Cli.ResultValue].from_failure(selected)
-        config = selected.value
-        config_dir = root / c.CONFIG_DIR_NAME
-        config_root = config_dir.resolve()
-        repository_root = root.resolve()
-        campaigns: list[m.Infra.ApplyRenamesInput] = []
-        for declared in config.campaigns:
-            csv = config_dir / declared.csv
-            if not csv.resolve().is_relative_to(config_root):
-                return r[t.Cli.ResultValue].fail(
-                    f"CSV campaign driver escapes config directory: {csv}",
-                )
-            campaign_roots = tuple(
-                (root / value).resolve() for value in declared.roots
-            ) or (root,)
-            for path in campaign_roots:
-                if not path.resolve().is_relative_to(repository_root):
-                    return r[t.Cli.ResultValue].fail(
-                        f"CSV campaign scan root escapes repository: {path}",
-                    )
-            campaigns.append(
-                m.Infra.ApplyRenamesInput(
-                    repository_root=root,
-                    csv=str(csv),
-                    roots=tuple(str(path) for path in campaign_roots),
-                    apply=request.apply
-                    and not request.check
-                    and not request.dry_run_mode,
-                    bindings=declared.bindings,
-                    text_globs=declared.text_globs,
-                    python_documentation=declared.python_documentation,
-                    exclude_globs=declared.exclude_globs,
-                ),
-            )
-        structural_root = u.Infra.import_project_roots(root)[0].resolve()
-        source_preview = self.source_preview(structural_root)
-        with self.rope_workspace(root, structural_root) as rope:
-            rename_plan = request.rename_plan or config.semantic_plan
-            return FlextInfraCodemodBatchApply(
-                workspace_factory=self.rope_workspace,
-                source_preview=source_preview,
-                repository_root=root,
-                consumer_roots=request.consumer_roots,
-                rename_plan=rename_plan,
-                apply_changes=request.apply,
-                check_only=request.check,
-                dry_run=request.dry_run_mode,
-                rename_runner=FlextInfraApplyRenames(),
-                progress=progress,
-                rope=rope,
-                rename_inputs=tuple(campaigns),
-                phase_callbacks=(
-                    FlextInfraImportNormalizationPhase(),
-                    FlextInfraNamespaceRelocationPhase(),
-                    FlextInfraDuplicateApplyPhase(),
-                    FlextInfraAccessorRenamePhase(source_preview=source_preview),
-                ),
-            ).execute()
 
     @staticmethod
     def validate_namespace(

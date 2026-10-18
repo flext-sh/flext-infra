@@ -36,11 +36,11 @@ def _conform(
     root: Path,
     workspace: m.Infra.WorkspaceSpec,
     mode: c.Infra.CodegenConformMode,
-) -> p.Result[m.Infra.CodegenResult]:
+) -> p.Result[p.Infra.CodegenResult]:
     """Run one conform operation through its public owner.
 
     Returns:
-        The resulting ``p.Result[m.Infra.CodegenResult]``.
+        The resulting ``p.Result[p.Infra.CodegenResult]``.
 
     """
     return infra.codegen_conform(
@@ -91,7 +91,7 @@ class TestsFlextInfraCodegenHookConformance:
     def _check(
         root: Path,
         workspace: m.Infra.WorkspaceSpec,
-    ) -> p.Result[m.Infra.CodegenResult]:
+    ) -> p.Result[p.Infra.CodegenResult]:
         return _conform(root, workspace, c.Infra.CodegenConformMode.CHECK)
 
     def test_check_never_requires_runtime_hook_installation(

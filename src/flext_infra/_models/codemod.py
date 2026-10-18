@@ -10,11 +10,10 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import m
-from flext_core import u
+from flext_cli import m, u
 from typing_extensions import TypeForm
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models.base import FlextInfraModelsBase
 
 
@@ -225,6 +224,13 @@ class FlextInfraModelsCodemod:
     class RopeContractRule(m.ContractModel):
         """Identity-constrained native Rope restructuring of a Python contract."""
 
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            arbitrary_types_allowed=True
+        )
+        source_states: t.VariadicTuple[t.Port[p.Infra.SemanticSourceState]] = m.Field(
+            default=(), exclude=True, description="Original recipe input receipts"
+        )
+
         id: Annotated[t.NonEmptyStr, m.Field(description="Stable rule identity")]
         phase: c.Infra.SemanticCutoverPhase = m.Field(
             default=c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
@@ -247,11 +253,11 @@ class FlextInfraModelsCodemod:
             default_factory=u.empty(TypeForm(t.MappingKV[str, str])),
             description="Destination expressions and their required Rope identities",
         )
-        model_bases: t.StrSequence = m.Field(
+        model_bases: t.VariadicTuple[str] = m.Field(
             default=(),
             description="Required model ancestry for every matched declaration",
         )
-        unshadowed_builtins: t.StrSequence = m.Field(
+        unshadowed_builtins: t.VariadicTuple[str] = m.Field(
             default=(),
             description="Native lexical names required to be interpreter builtins",
         )
@@ -262,20 +268,57 @@ class FlextInfraModelsCodemod:
                 "no authored call"
             ),
         )
+        drops: t.VariadicTuple[str] = m.Field(
+            default=(),
+            description="Discarded captures that must be inert native constants",
+        )
         reorders_annotation: bool = m.Field(
             default=False,
             description="Whether the replacement changes annotation evaluation order",
         )
-        families: t.StrSequence = m.Field(
+        families: t.VariadicTuple[str] = m.Field(
             default=(),
             description="Declared facade families admitting the source module",
         )
-        scope_kinds: t.SequenceOf[
+        scope_kinds: t.VariadicTuple[
             Annotated[c.Infra.RopeScopeKind, m.Field(strict=False)]
         ] = m.Field(
             default=(),
             description="Native Rope lexical scopes admitting a match",
         )
+        implementation_owner: t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None = m.Field(
+            default=None,
+            description="Native module and public primitive whose backend remains native",
+        )
+        receiver_methods: t.VariadicTuple[str] = m.Field(
+            default=(),
+            description="Proven discarded-call interface required of a factory product",
+        )
+        call_target: t.NonEmptyStr | None = m.Field(
+            default=None,
+            description="Capture admitted only as the original callee, preserving every argument",
+        )
+        missing_keywords: t.VariadicTuple[str] = m.Field(
+            default=(),
+            description="Required injected keywords whose explicit presence preserves an existing composition",
+        )
+        ownership_transfer: t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None = m.Field(
+            default=None,
+            description="Project-owned native module/member retired after complete receiver transfer",
+        )
+
+        @m.model_validator(mode="after")
+        def _validate_call_target(self) -> Self:
+            if self.missing_keywords and self.call_target is None:
+                msg = "missing-keyword proof requires a call target"
+                raise ValueError(msg)
+            if (
+                self.call_target is not None
+                and f"${{{self.call_target}}}" not in self.pattern
+            ):
+                msg = "call target must name a capture in the native pattern"
+                raise ValueError(msg)
+            return self
 
     class RopeContractRules(m.ContractModel):
         """The packaged semantic contract policy, validated once on input."""

@@ -541,9 +541,7 @@ class FlextInfraModTextGateEngine:
                             path
                             for path in sources or ()
                             if path.is_relative_to(root)
-                            and fnmatch.fnmatch(
-                                path.relative_to(root).as_posix(), pattern
-                            )
+                            and fnmatch(path.relative_to(root).as_posix(), pattern)
                         }
                     )
                 )
@@ -715,6 +713,9 @@ class FlextInfraModTextGateEngine:
         Returns:
             Reported matches and the canonical phase analysis with its first cause.
 
+        Raises:
+            ValueError: If a planning source lacks its original receipt.
+
         """
         entries: list[m.Infra.ModTextFinding] = []
         files: set[Path] = set()
@@ -760,7 +761,10 @@ class FlextInfraModTextGateEngine:
                 if declaration is not None:
                     for state in declaration.source_states:
                         if consumed.setdefault(state.path, state) != state:
-                            msg = f"text declaration original receipts disagree: {state.path}"
+                            msg = (
+                                f"text declaration original "
+                                f"receipts disagree: {state.path}"
+                            )
                             raise ValueError(msg)
             except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
                 first_exception = first_exception or exc
@@ -948,7 +952,12 @@ class FlextInfraModTextGateEngine:
         fix: bool,
         validate_receipts: bool = False,
     ) -> p.Result[m.Infra.ModTextReport]:
-        """Observe or publish the same complete, authenticated text plan."""
+        """Observe or publish the same complete, authenticated text plan.
+
+        Returns:
+            The observed or published report, or the first phase failure.
+
+        """
         planned = cls.plan(root, validate_receipts=validate_receipts)
         if planned.failure:
             return r[m.Infra.ModTextReport].from_failure(planned)

@@ -7,10 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast as _ast
+import pathlib
 from collections.abc import Callable, MutableMapping, MutableSet
 from datetime import date, datetime
 from dis import Instruction
-from pathlib import Path
 from types import (
     BuiltinFunctionType,
     ClassMethodDescriptorType,
@@ -40,6 +40,9 @@ type CliResultValue = t.Cli.ResultValue
 
 class FlextInfraTypesBase(FlextInfraTypesCollections):
     """Base typings for flext-infra project."""
+
+    type Path = pathlib.Path
+    "Unconstrained native filesystem path, independent of existence and kind."
 
     type MutableSetOf[ItemT] = MutableSet[ItemT]
     "An explicitly mutable set contract for operation-owned native state."

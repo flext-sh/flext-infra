@@ -92,8 +92,15 @@ class FlextInfraRopeWorkspace(
     ) -> Self:
         """Create one ready-to-use Rope workspace session.
 
+        The caller owns this session's lifetime. Explicitly supplied projects
+        and indexes are borrowed; independent invocations never share state.
+
         Returns:
             The resulting ``Self``.
+
+        Raises:
+            ValueError: If an explicit source project does not match the
+                declared workspace root.
 
         """
         # Scan policy is owned only by the
@@ -182,7 +189,12 @@ class FlextInfraRopeWorkspace(
 
     @property
     def source_index_receipt(self) -> m.Infra.CodegenPhaseAnalysis:
-        """Require the original authenticated structural-selection receipt."""
+        """Require the original authenticated structural-selection receipt.
+
+        Raises:
+            ValueError: If the structural index has no original source evidence.
+
+        """
         if self._index_receipt is None:
             msg = "Rope structural index has no original source evidence"
             raise ValueError(msg)
@@ -335,7 +347,13 @@ class FlextInfraRopeWorkspace(
 
     @override
     def resource(self, file_path: Path) -> t.Infra.RopeFile | None:
-        """Resolve bound planning resources without a live Path existence test."""
+        """Resolve bound planning resources without a live Path existence test.
+
+        Returns:
+            The bound Rope resource, or ``None`` when the path is outside the
+            Rope root or absent from the workspace.
+
+        """
         if self._owns_rope_project:
             return super().resource(file_path)
         path = file_path.absolute()
@@ -446,20 +464,6 @@ class FlextInfraRopeWorkspace(
         )
         self._module_convention_cache[cache_key] = convention
         return convention
-
-    @override
-    def semantic(self, file_path: Path) -> m.Infra.ModuleSemanticState:
-        """Return one cached semantic snapshot for a module path.
-
-        Returns:
-            One cached semantic snapshot for a module path.
-
-        """
-        state: m.Infra.ModuleSemanticState = u.Infra.resolve_module_semantic_state(
-            self.rope_project,
-            self._resource_for(file_path),
-        )
-        return state
 
     @override
     def exports(

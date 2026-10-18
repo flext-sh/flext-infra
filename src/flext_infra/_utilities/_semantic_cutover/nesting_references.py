@@ -164,7 +164,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             root_binding = runtime.expression_name(scope, root)
             if not matches and not isinstance(root_binding, p.Infra.RopeAssignedName):
                 return None
-            proof = FlextInfraUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain
+            chain = FlextInfraUtilitiesCodemodBindingChain
+            proof = chain.FlextInfraUtilitiesCodemodBindingChain
             declarations = proof._single_reaching_declarations(
                 self.original,
                 scope,
@@ -189,7 +190,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                         runtime.same_name(identity, candidate)
                         for identity, _origin, _bound in self.identities
                     ):
-                        msg = f"ambiguous or reassigned native nesting alias: {expression}"
+                        msg = (
+                            "ambiguous or reassigned native "
+                            f"nesting alias: {expression}"
+                        )
                         raise ValueError(msg)
             if not matches:
                 return None
@@ -237,7 +241,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 )
                 replacements.add(f"{destination}.{member}")
             if len(replacements) != 1:
-                msg = f"ambiguous native nesting destinations: {expression}: {sorted(replacements)}"
+                msg = (
+                    "ambiguous native nesting destinations: "
+                    f"{expression}: {sorted(replacements)}"
+                )
                 raise ValueError(msg)
             return replacements.pop()
 
@@ -304,7 +311,17 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             )
 
         def _import_owner(self, node: cst.ImportFrom, name: str) -> str | None:
-            """Admit an import only through its original native declaration."""
+            """Admit an import only through its original native declaration.
+
+            Returns:
+                The original owner name, or ``None`` when the import has no
+                provenance match.
+
+            Raises:
+                ValueError: When the import is a star import, has no
+                    imported-name provenance, or is ambiguous.
+
+            """
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             imported = runtime.build_string_module(
                 self.project,
@@ -440,7 +457,16 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             self,
             original_node: cst.CSTNode,
         ) -> str | None:
-            """Authorize one reference in the immutable original native scope."""
+            """Authorize one reference in the immutable original native scope.
+
+            Returns:
+                The binding root identifier, or ``None`` when the reference
+                resolves to a type parameter or a non-binding shape.
+
+            Raises:
+                ValueError: When the reference has no binding provenance.
+
+            """
             root = original_node
             while isinstance(root, cst.Attribute):
                 root = root.value
@@ -659,6 +685,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
 
         Returns:
             Binding-proven import and usage rewrites without effects.
+
+        Raises:
+            ValueError: When a native nesting quote range is left unmatched.
 
         """
         transformer = cls._NestingTransformer(

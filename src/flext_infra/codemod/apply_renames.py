@@ -70,7 +70,9 @@ class FlextInfraApplyRenames:
         root = Path(commonpath(roots))
         plans: t.MutableSequenceOf[m.Infra.SemanticFilePlan] = []
         occurrences = 0
-        symbols: t.MutableMappingKV[Path, list[m.Infra.SourceRewrite]] = {}
+        symbols: t.MutableMappingKV[
+            Path, t.MutableSequenceOf[p.Infra.SourceRewrite]
+        ] = {}
         guards: list[Callable[[], None]] = []
         dependencies = list(inventory.values())
         for consumer in roots if params.bindings else ():

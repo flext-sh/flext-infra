@@ -112,7 +112,9 @@ class FlextInfraModelsRefactor(
         docs: Annotated[
             bool,
             m.Field(
-                description="Include native identity-visible string and comment occurrences"
+                description=(
+                    "Include native identity-visible string and comment occurrences"
+                ),
             ),
         ] = False
 

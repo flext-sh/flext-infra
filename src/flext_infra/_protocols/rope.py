@@ -15,15 +15,231 @@ if TYPE_CHECKING:
     from pathlib import Path
     from types import TracebackType
 
-    from flext_infra import m, p, t
+    from flext_core import t
+
+    from flext_infra import m, p
+    from flext_infra._protocols.rope_runtime import FlextInfraProtocolsRopeRuntime
 
 
 @runtime_checkable
 class FlextInfraProtocolsRope(Protocol):
     """Application contracts layered around the concrete Rope boundary."""
 
+    @runtime_checkable
+    class SourceRewrite(Protocol):
+        """Read-only source span and replacement consumed by native refactoring."""
+
+        @property
+        def start(self) -> int: ...
+
+        @property
+        def end(self) -> int: ...
+
+        @property
+        def text(self) -> str: ...
+
+    @runtime_checkable
+    class RopeContractRule(Protocol):
+        """Read-only policy consumed by the native contract planner."""
+
+        @property
+        def id(self) -> str: ...
+
+        @property
+        def phase(self) -> str: ...
+
+        @property
+        def pattern(self) -> str: ...
+
+        @property
+        def goal(self) -> str: ...
+
+        @property
+        def arguments(self) -> t.MappingKV[str, str | t.StrSequence]: ...
+
+        @property
+        def imports(self) -> t.MappingKV[str, str]: ...
+
+        @property
+        def bindings(self) -> t.MappingKV[str, str]: ...
+
+        @property
+        def model_bases(self) -> t.StrSequence: ...
+
+        @property
+        def unshadowed_builtins(self) -> t.StrSequence: ...
+
+        @property
+        def repeats(self) -> str | None: ...
+
+        @property
+        def drops(self) -> t.StrSequence: ...
+
+        @property
+        def call_target(self) -> str | None: ...
+
+        @property
+        def missing_keywords(self) -> t.StrSequence: ...
+
+        @property
+        def reorders_annotation(self) -> bool: ...
+
+        @property
+        def families(self) -> t.StrSequence: ...
+
+        @property
+        def scope_kinds(self) -> t.StrSequence: ...
+
+        @property
+        def implementation_owner(self) -> t.Pair[str, str] | None: ...
+
+        @property
+        def receiver_methods(self) -> t.StrSequence: ...
+
+        @property
+        def ownership_transfer(self) -> t.Pair[str, str] | None: ...
+
+        @property
+        def source_states(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsRope.SemanticSourceState]: ...
+
+    @runtime_checkable
+    class CodemodSourceEpoch(Protocol):
+        """Original source bytes used by native semantic snapshot construction."""
+
+        @property
+        def sources(self) -> t.MappingKV[Path, str]: ...
+
+        @property
+        def contents(self) -> t.MappingKV[Path, bytes]: ...
+
+        @property
+        def snapshot(self) -> FlextInfraProtocolsRope.SemanticSourceWitness: ...
+
+    @runtime_checkable
+    class SemanticSourceState(Protocol):
+        """Read-only original native file receipt carried to publication."""
+
+        @property
+        def path(self) -> Path: ...
+
+        @property
+        def content(self) -> bytes | None: ...
+
+        @property
+        def mode(self) -> int | None: ...
+
+    @runtime_checkable
+    class SemanticSourceWitness(Protocol):
+        """Original closure from the existing native source epoch."""
+
+        @property
+        def states(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsRope.SemanticSourceState]: ...
+
+    @runtime_checkable
+    class SemanticDirectoryRoot(Protocol):
+        """Native physical directory anchor."""
+
+        @property
+        def path(self) -> Path: ...
+
+    @runtime_checkable
+    class SemanticDirectoryState(Protocol):
+        """Original native membership receipt."""
+
+        @property
+        def root(self) -> FlextInfraProtocolsRope.SemanticDirectoryRoot: ...
+
+    @runtime_checkable
+    class SemanticTopologyState(Protocol):
+        """Original native absent-candidate receipt."""
+
+        @property
+        def target(self) -> Path: ...
+
+    @runtime_checkable
+    class SemanticSourceAnalysis(Protocol):
+        """Read port of the existing CodegenPhaseAnalysis provenance DTO."""
+
+        @property
+        def inputs(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsRope.SemanticSourceState]: ...
+
+        @property
+        def source_directories(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsRope.SemanticDirectoryState]: ...
+
+        @property
+        def source_query_topology(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsRope.SemanticTopologyState]: ...
+
+    @runtime_checkable
+    class PrimitiveOwnerCondition(Protocol):
+        """The qualified primitive operands used by native owner discovery."""
+
+        @property
+        def arg(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class SemanticMigrationEdit(Protocol):
+        """Immutable proposed source bytes passed between semantic phases."""
+
+        @property
+        def file_path(self) -> Path: ...
+
+        @property
+        def original_source(self) -> str: ...
+
+        @property
+        def updated_source(self) -> str: ...
+
+        @property
+        def changes(self) -> t.StrSequence: ...
+
+        @property
+        def retire_file(self) -> bool: ...
+
+        @property
+        def source_states(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsRope.SemanticSourceState]: ...
+
     # NOTE (multi-agent, flext-wkii.17.24 / agent: codex): source discovery is a
     # Rope boundary and consumes the exact field-only runtime request model.
+    @runtime_checkable
+    class ClassInfo(Protocol):
+        """Class declaration facts consumed by semantic queries."""
+
+        @property
+        def name(self) -> str: ...
+
+        @property
+        def line(self) -> int: ...
+
+        @property
+        def bases(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class ModuleSemanticState(Protocol):
+        """Read-only semantic facts produced by the canonical module analyzer."""
+
+        @property
+        def class_infos(
+            self,
+        ) -> t.VariadicTuple[FlextInfraProtocolsRope.ClassInfo]: ...
+
+        @property
+        def declared_imports(self) -> t.StrMapping: ...
+
+        @property
+        def semantic_imports(self) -> t.StrMapping: ...
+
     @runtime_checkable
     class SourceScanRequest(Protocol):
         """Fields required by production-source discovery."""
@@ -39,7 +255,7 @@ class FlextInfraProtocolsRope(Protocol):
 
         changes: t.MutableSequenceOf[str]
 
-        def apply_to_source(self, source: str) -> t.Infra.TransformResult: ...
+        def apply_to_source(self, source: str) -> t.StrSequencePair: ...
 
     @runtime_checkable
     class RopeScopeDsl(Protocol):
@@ -47,9 +263,13 @@ class FlextInfraProtocolsRope(Protocol):
 
         def get_scopes(self) -> t.SequenceOf[FlextInfraProtocolsRope.RopeScopeDsl]: ...
 
-        def get_names(self) -> t.MappingKV[str, t.Infra.RopePyName]: ...
+        def get_names(
+            self,
+        ) -> t.MappingKV[str, FlextInfraProtocolsRopeRuntime.RopePyName]: ...
 
-        def get_defined_names(self) -> t.MappingKV[str, t.Infra.RopePyName]: ...
+        def get_defined_names(
+            self,
+        ) -> t.MappingKV[str, FlextInfraProtocolsRopeRuntime.RopePyName]: ...
 
         def get_kind(self) -> str | None: ...
 
@@ -58,9 +278,8 @@ class FlextInfraProtocolsRope(Protocol):
         def get_end(self) -> int: ...
 
         @property
-        def pyobject(self) -> t.Infra.RopePyObject: ...
+        def pyobject(self) -> FlextInfraProtocolsRopeRuntime.RopePyObject: ...
 
-    @runtime_checkable
     @runtime_checkable
     class RopeSessionLifecycleDsl(Protocol):
         """Lifecycle contract of one shared Rope workspace session."""
@@ -71,7 +290,7 @@ class FlextInfraProtocolsRope(Protocol):
         def rope_repository_root(self) -> Path: ...
 
         @property
-        def rope_project(self) -> t.Infra.RopeProject: ...
+        def rope_project(self) -> FlextInfraProtocolsRopeRuntime.RopeProject: ...
 
         @property
         def workspace_index(self) -> m.Infra.RopeWorkspaceIndex: ...
@@ -109,12 +328,15 @@ class FlextInfraProtocolsRope(Protocol):
             repository_root: Path,
             *,
             rope_repository_root: Path | None = None,
-            source_project: p.Infra.RopeProject | None = None,
+            source_project: FlextInfraProtocolsRopeRuntime.RopeProject | None = None,
             workspace_index: m.Infra.RopeWorkspaceIndex | None = None,
             index_receipt: m.Infra.CodegenPhaseAnalysis | None = None,
         ) -> Self: ...
 
-        def resource(self, file_path: Path) -> t.Infra.RopeFile | None: ...
+        def resource(
+            self,
+            file_path: Path,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeFile | None: ...
 
         def module(self, file_path: Path) -> m.Infra.RopeModuleIndexEntry | None: ...
 
@@ -169,7 +391,9 @@ class FlextInfraProtocolsRope(Protocol):
             rel_path: Path | None = None,
         ) -> m.Infra.RopeModuleConvention: ...
 
-        def semantic(self, file_path: Path) -> m.Infra.ModuleSemanticState: ...
+        def semantic(
+            self, file_path: Path
+        ) -> FlextInfraProtocolsRope.ModuleSemanticState: ...
 
         def exports(
             self,
@@ -184,14 +408,14 @@ class FlextInfraProtocolsRope(Protocol):
 
         @staticmethod
         def resolve_module_classes(
-            rope_project: t.Infra.RopeProject,
-            resource: t.Infra.RopeResource,
+            rope_project: FlextInfraProtocolsRopeRuntime.RopeProject,
+            resource: FlextInfraProtocolsRopeRuntime.RopeResource,
         ) -> t.StrSequence: ...
 
         @staticmethod
         def resolve_class_methods(
-            rope_project: t.Infra.RopeProject,
-            resource: t.Infra.RopeResource,
+            rope_project: FlextInfraProtocolsRopeRuntime.RopeProject,
+            resource: FlextInfraProtocolsRopeRuntime.RopeResource,
             class_name: str,
             *,
             include_private: bool = False,
@@ -201,16 +425,20 @@ class FlextInfraProtocolsRope(Protocol):
         def project_root(file_path: Path) -> Path | None: ...
 
         @staticmethod
-        def init_rope_project(repository_root: Path) -> t.Infra.RopeProject: ...
+        def init_rope_project(
+            repository_root: Path,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeProject: ...
 
         @staticmethod
-        def init_rope_workspace(repository_root: Path) -> t.Infra.RopeProject: ...
+        def init_rope_workspace(
+            repository_root: Path,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeProject: ...
 
         @staticmethod
         def resolve_resource_from_path(
-            rope_project: t.Infra.RopeProject,
+            rope_project: FlextInfraProtocolsRopeRuntime.RopeProject,
             file_path: Path,
-        ) -> t.Infra.RopeResource | None: ...
+        ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
 
 
 __all__: list[str] = ["FlextInfraProtocolsRope"]

@@ -255,7 +255,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         result: p.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[p.Infra.Issue]]:
         """Validate Mypy's one-JSON-object-per-line report into findings.
 
         Returns:
@@ -263,7 +263,7 @@ class FlextInfraMypyGate(FlextInfraGate):
 
         """
         _ = ctx
-        diagnostics: t.MutableSequenceOf[m.Infra.Issue] = []
+        diagnostics: t.MutableSequenceOf[p.Infra.Issue] = []
         if resource_diagnostic := u.Infra.mypy_failure_diagnostic(result):
             return (
                 False,

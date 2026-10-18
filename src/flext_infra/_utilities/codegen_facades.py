@@ -69,6 +69,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         Yields:
             The native Rope project, original-state reader and planned sources.
 
+        Raises:
+            ValueError: If a declared project root lies outside the original
+                authority.
+
         """
         root = root.resolve()
         project_roots = tuple(sorted({project.resolve() for project in project_roots}))
@@ -80,13 +84,12 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             *(plan.path for plan in declared_files),
             *(state.path for plan in declared_files for state in plan.source_states),
         }
+        iteration = FlextInfraUtilitiesIterationDirectory
         paths = {
             path
             for project in project_roots or (root,)
             if project.is_dir()
-            for path in FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(
-                project
-            )
+            for path in iteration.iter_directory_python_files(project)
         }
         source_states = (
             *source_states,
@@ -1056,6 +1059,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     roots[1],
                     (facade_path, ast.unparse(base)),
                     contents,
+                    declared_names=declared_names,
                 ):
                     retired.add(ast.unparse(base))
                 continue
@@ -1073,6 +1077,8 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         owners_dir: Path,
         facade: t.Pair[Path, str],
         contents: t.MappingKV[Path, str],
+        *,
+        declared_names: set[str],
     ) -> bool:
         """Retire undefined generated imports from the elected family boundary.
 
@@ -1080,7 +1086,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         Rope resolves the exact family resource; spelling grants no ownership.
 
         Returns:
-            Whether the generated base lost its own family's exported binding.
+            Whether the generated base lost its own family's declared owner.
 
         Raises:
             ValueError: If a source-free binding has no native owner.
@@ -1104,14 +1110,11 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 }
                 and barrel is not None
                 and barrel.startswith(c.Infra.AUTOGEN_HEADERS)
+                and binding.imported_name not in declared_names
             ):
-                exported = (
-                    FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                        barrel
-                    )
-                )
-                if binding.imported_name not in exported:
-                    return True
+                # The marker proves projection ownership, not export membership.
+                # Only the current leaf declarations decide whether an owner left.
+                return True
         value = binding.get_object()
         if (
             FlextInfraUtilitiesRopeRuntime.abstract_class(value)

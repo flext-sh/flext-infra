@@ -64,7 +64,9 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Exact source and configuration observations"
         )
         updates: t.MappingKV[Path, str | None] = m.Field(
-            description="Desired sources keyed by live destination; None retires an artifact"
+            description=(
+                "Desired sources keyed by live destination; None retires an artifact"
+            ),
         )
         modes: t.MappingKV[Path, int] = m.Field(
             default_factory=lambda: MappingProxyType[Path, int]({}),
@@ -73,7 +75,9 @@ class FlextInfraModelsCodegenTransactionModels:
         declared_files: t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan] = (
             m.Field(
                 default=(),
-                description="Original file/absence witnesses with the current desired effects",
+                description=(
+                    "Original file/absence witnesses with the current desired effects"
+                ),
             )
         )
         layouts: t.VariadicTuple[FlextInfraModelsRope.RopeProjectLayout] = m.Field(

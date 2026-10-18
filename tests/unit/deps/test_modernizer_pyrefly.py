@@ -10,13 +10,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config
+from flext_infra import config
 from flext_infra.deps import (
     FlextInfraEnsurePyreflyConfigPhase,
     FlextInfraExtraPathsManager,
     FlextInfraPyprojectModernizer,
 )
-from tests import m, t, tm, u
+from tests import c, m, t, tm, u
 from tests.unit.deps.extra_paths_support import TestsFlextInfraExtraPathsSupport
 
 if TYPE_CHECKING:
@@ -188,7 +188,10 @@ class TestsFlextInfraModernizerPyrefly:
         self,
         tmp_path: Path,
     ) -> None:
-        """Project context keeps the source root first, then included roots, then root."""
+        """Project context keeps the source root first, then included roots.
+
+        The root path is ordered last.
+        """
         rules = config.Infra.tooling.tools.pyrefly.path_rules
         project_dir = tmp_path / "flext-core"
         for directory in rules.env_dirs:

@@ -163,7 +163,12 @@ class FlextInfraNamespaceRelocationCascade:
         *,
         gates: t.StrSequence | None = None,
     ) -> p.Result[bool]:
-        """Normalize exact owner-context sources and publish the complete plan once."""
+        """Normalize exact owner-context sources and publish the complete plan once.
+
+        Returns:
+            Whether any plan was published, or the first publication failure.
+
+        """
         if analysis.issues:
             return r[bool].fail(
                 "\n".join(issue.formatted for issue in analysis.issues),
@@ -229,7 +234,12 @@ class FlextInfraNamespaceRelocationCascade:
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Compose native relocation effects without performing any Rope changes."""
+        """Compose native relocation effects without performing any Rope changes.
+
+        Returns:
+            The composed phase analysis, or the first planning failure.
+
+        """
         selected = frozenset(py_files)
         working = dict(sources)
         originals = {state.path: state for state in source_states}
@@ -258,7 +268,8 @@ class FlextInfraNamespaceRelocationCascade:
                 )
             if path not in working or path not in befores:
                 return r[m.Infra.CodegenPhaseAnalysis].fail(
-                    f"relocation source lacks its working view or original receipt: {path}"
+                    f"relocation source lacks its working view "
+                    f"or original receipt: {path}"
                 )
         names, spans, imports, classes = self._grouped_targets(
             project_root,
@@ -380,7 +391,8 @@ class FlextInfraNamespaceRelocationCascade:
                     ).unwrap()
                     if state.content is not None:
                         return r[m.Infra.CodegenPhaseAnalysis].fail(
-                            f"relocation destination is outside its working view: {target}"
+                            f"relocation destination is outside "
+                            f"its working view: {target}"
                         )
                     originals[target] = state
                     befores[target] = state

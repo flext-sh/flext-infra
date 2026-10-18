@@ -64,12 +64,20 @@ class FlextInfraModelsRefactorGrep:
 
         @m.model_validator(mode="after")
         def _validate_native_owner_reference(self) -> Self:
-            """Require one qualified primitive, never a module waiver table."""
+            """Require one qualified primitive, never a module waiver table.
+
+            Returns:
+                The validated model instance.
+
+            Raises:
+                ValueError: If the native predicate lacks its module/producer pair.
+
+            """
             if self.predicate in {
                 c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER,
                 c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION,
             } and (
-                len(self.arg) != 2
+                len(self.arg) != c.Infra.PAIRED_CONTEXT_PREDICATE_ARG_COUNT
                 or any(
                     not all(part.isidentifier() for part in value.split("."))
                     for value in self.arg

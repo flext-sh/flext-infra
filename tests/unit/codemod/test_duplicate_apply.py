@@ -367,7 +367,9 @@ class TestsFlextInfraCodemodDuplicateApply:
         "source",
         [
             pytest.param(
-                "def str(value):\n    return value + 'custom'\n\nLIMIT = str('value')\n",
+                "def str(value):\n"
+                "    return value + 'custom'\n\n"
+                "LIMIT = str('value')\n",
                 id="shadowed-constructor",
             ),
             pytest.param(

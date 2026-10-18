@@ -199,7 +199,7 @@ class FlextInfraGate:
         """
         return shutil.which(cls.scanner_binary)
 
-    def _native_error_issue(self, _project_dir: Path, stderr: str) -> m.Infra.Issue:
+    def _native_error_issue(self, _project_dir: Path, stderr: str) -> p.Infra.Issue:
         """Report native checker stderr as one gate execution error.
 
         Returns:
@@ -215,7 +215,7 @@ class FlextInfraGate:
             severity=c.Infra.ERROR,
         )
 
-    def _tool_failure_issue(self, scan: p.Cli.CommandOutput) -> m.Infra.Issue:
+    def _tool_failure_issue(self, scan: p.Cli.CommandOutput) -> p.Infra.Issue:
         """Scanner absence/crash must never read as a clean pass.
 
         Returns:
@@ -239,7 +239,7 @@ class FlextInfraGate:
         file: str,
         line: int,
         column: int,
-    ) -> m.Infra.Issue:
+    ) -> p.Infra.Issue:
         """Report an unsuccessful command that supplied no structured issues.
 
         Returns:
@@ -269,9 +269,9 @@ class FlextInfraGate:
         self,
         result: p.Cli.CommandOutput,
         project_dir: Path,
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         tool: str,
-    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[p.Infra.Issue]]:
         """Surface a failed tool run that parsed no issues.
 
         If the tool exited unsuccessfully and no issues were parsed, add one
@@ -279,7 +279,7 @@ class FlextInfraGate:
         than silently passing.
 
         Returns:
-            The resulting ``t.Pair[bool, t.SequenceOf[m.Infra.Issue]]``.
+            The native verdict and the same structural diagnostic instances.
 
         """
         if not u.Cli.process_succeeded(result.outcome) and not issues:
@@ -296,7 +296,7 @@ class FlextInfraGate:
         return u.Cli.process_succeeded(result.outcome), issues
 
     @staticmethod
-    def _malformed_report_issue(detail: str, *, tool: str, file: str) -> m.Infra.Issue:
+    def _malformed_report_issue(detail: str, *, tool: str, file: str) -> p.Infra.Issue:
         """Report a checker whose structured report failed typed validation.
 
         Returns:
@@ -316,8 +316,8 @@ class FlextInfraGate:
         self,
         result: p.Cli.CommandOutput,
         project_dir: Path,
-        diagnostics: t.SequenceOf[m.Infra.Issue],
-    ) -> t.SequenceOf[m.Infra.Issue]:
+        diagnostics: t.SequenceOf[p.Infra.Issue],
+    ) -> t.SequenceOf[p.Infra.Issue]:
         """Join a type checker's report with its stderr and an unexplained exit.
 
         Stderr lines outside the checker's informational prefixes are failures;
@@ -328,7 +328,7 @@ class FlextInfraGate:
             The report diagnostics, stderr failures and the bare-exit issue.
 
         """
-        issues = (
+        issues: t.SequenceOf[p.Infra.Issue] = (
             *diagnostics,
             *(
                 m.Infra.Issue(
@@ -404,7 +404,7 @@ class FlextInfraGate:
         self,
         project_dir: Path,
         *,
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         started: float,
     ) -> m.Infra.GateExecution:
         """Assemble one gate execution from detector-produced issues.
@@ -463,7 +463,10 @@ class FlextInfraGate:
                 errors=[issue.formatted for issue in params.issues],
                 started=params.started,
             ),
-            issues=tuple(params.issues),
+            issues=tuple(
+                m.Infra.Issue.model_validate(issue, from_attributes=True)
+                for issue in params.issues
+            ),
             raw_output=params.raw_output,
             outcome=params.outcome,
         )
@@ -473,7 +476,7 @@ class FlextInfraGate:
         project_dir: Path,
         *,
         passed: bool,
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         raw_output: str,
         started: float,
     ) -> m.Infra.GateExecution:
@@ -495,7 +498,10 @@ class FlextInfraGate:
                 errors=[issue.formatted for issue in issues],
                 started=started,
             ),
-            issues=tuple(issues),
+            issues=tuple(
+                m.Infra.Issue.model_validate(issue, from_attributes=True)
+                for issue in issues
+            ),
             raw_output=raw_output,
             outcome=(
                 c.Infra.ToolOutcome.FINDINGS
@@ -520,7 +526,7 @@ class FlextInfraGate:
             The resulting ``m.Infra.GateExecution``.
 
         """
-        issues = [
+        issues: t.SequenceOf[p.Infra.Issue] = [
             m.Infra.Issue(
                 file=str(project_dir),
                 line=1,
@@ -583,7 +589,7 @@ class FlextInfraGate:
             The resulting ``m.Infra.GateExecution``.
 
         """
-        issue = m.Infra.Issue(
+        issue: p.Infra.Issue = m.Infra.Issue(
             file=str(file_path),
             line=1,
             column=1,
@@ -646,7 +652,7 @@ class FlextInfraGate:
         result: p.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[p.Infra.Issue]]:
         """Parse tool output into (passed, issues).
 
         Concrete gates that run the template check implement this method.
@@ -794,7 +800,7 @@ class FlextInfraGate:
                 )
             )
             if native_error:
-                issues = execution.issues
+                issues: t.SequenceOf[p.Infra.Issue] = execution.issues
                 if not any(issue.code == c.Infra.ToolOutcome.ERROR for issue in issues):
                     issues = (
                         *issues,
@@ -811,7 +817,10 @@ class FlextInfraGate:
                         project_dir=project_dir,
                         verdict=False,
                         outcome=c.Infra.ToolOutcome.ERROR,
-                        issues=issues,
+                        issues=tuple(
+                            m.Infra.Issue.model_validate(issue, from_attributes=True)
+                            for issue in issues
+                        ),
                         raw_output=execution.raw_output,
                         started=started,
                     ),

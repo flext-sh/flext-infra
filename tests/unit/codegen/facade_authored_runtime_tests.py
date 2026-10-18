@@ -13,9 +13,9 @@ from typing import Literal
 
 import pytest
 
-from flext_infra import c, config, m
+from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenGeneration
-from tests import p, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraFacadeAuthoredRuntime:
@@ -177,34 +177,32 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 len(warmed.get_attribute("Consumer").get_object().get_superclasses()),
                 eq=1,
             )
-            with project.source_consumption() as first:
-                with project.source_consumer() as consumer:
-                    module = u.Infra.require_semantic_module(
-                        consumer.get_module(f"{package.name}.first"),
-                    )
-                    tm.that(
-                        len(
-                            module
-                            .get_attribute("Consumer")
-                            .get_object()
-                            .get_superclasses()
-                        ),
-                        eq=1,
-                    )
-            with project.source_consumption() as second:
-                with project.source_consumer() as consumer:
-                    module = u.Infra.require_semantic_module(
-                        consumer.get_module(f"{package.name}.second"),
-                    )
-                    tm.that(
-                        len(
-                            module
-                            .get_attribute("Consumer")
-                            .get_object()
-                            .get_superclasses()
-                        ),
-                        eq=1,
-                    )
+            with (
+                project.source_consumption() as first,
+                project.source_consumer() as consumer,
+            ):
+                module = u.Infra.require_semantic_module(
+                    consumer.get_module(f"{package.name}.first"),
+                )
+                tm.that(
+                    len(
+                        module.get_attribute("Consumer").get_object().get_superclasses()
+                    ),
+                    eq=1,
+                )
+            with (
+                project.source_consumption() as second,
+                project.source_consumer() as consumer,
+            ):
+                module = u.Infra.require_semantic_module(
+                    consumer.get_module(f"{package.name}.second"),
+                )
+                tm.that(
+                    len(
+                        module.get_attribute("Consumer").get_object().get_superclasses()
+                    ),
+                    eq=1,
+                )
             first_provider = tuple(
                 state for state in first.receipt().inputs if state.path == provider
             )
@@ -213,9 +211,11 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             )
             tm.that(len(first_provider), eq=1)
             tm.that(second_provider, eq=first_provider)
-            with project.source_consumption() as replayed:
-                with project.source_consumer() as consumer:
-                    consumer.replay_source_consumption(first.receipt())
+            with (
+                project.source_consumption() as replayed,
+                project.source_consumer() as consumer,
+            ):
+                consumer.replay_source_consumption(first.receipt())
             tm.that(replayed.receipt().inputs, eq=first.receipt().inputs)
 
     @staticmethod
@@ -284,11 +284,15 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 project.replay_source_consumption(scope.receipt())
             failure = RuntimeError("consumer failed")
             scopes: list[p.Infra.RopeSourceConsumption] = []
-            with pytest.raises(RuntimeError, match="consumer failed") as caught:
+
+            def fail_consumer() -> None:
                 with project.source_consumption() as failed:
                     scopes.append(failed)
                     project.source_state(package / "absent.py", required=False)
                     raise failure
+
+            with pytest.raises(RuntimeError, match="consumer failed") as caught:
+                fail_consumer()
             tm.that(caught.value is failure, eq=True)
             with pytest.raises(ValueError, match="no completed receipt"):
                 scopes[0].receipt()
@@ -300,10 +304,12 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         source = package / "provider.py"
         tm.ok(u.Cli.atomic_write_text_file(source, "__all__ = []\n"))
         with u.Infra.facade_source_project(root) as (project, _, _):
-            with project.source_consumption() as outer:
-                with project.source_consumption() as inner:
-                    project.source_state(source)
-                    tm.that(project.root.has_child("missing.py"), eq=False)
+            with (
+                project.source_consumption() as outer,
+                project.source_consumption() as inner,
+            ):
+                project.source_state(source)
+                tm.that(project.root.has_child("missing.py"), eq=False)
             tm.that(outer.receipt().inputs, eq=inner.receipt().inputs)
             tm.that(
                 outer.receipt().source_directories,
@@ -322,15 +328,17 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         source = package / "provider.py"
         tm.ok(u.Cli.atomic_write_text_file(source, "__all__ = []\n"))
-        with pytest.raises(ValueError, match="atomic source changed"):
-            with u.Infra.facade_source_project(root) as (project, _, _):
-                with project.source_consumption() as provider:
-                    original = project.source_state(source)
-                tm.ok(u.Cli.atomic_write_text_file(source, "# Changed epoch\n"))
-                with project.source_consumption() as consumer:
-                    project.replay_source_consumption(provider.receipt())
-                    tm.that(project.source_state(source), eq=original)
-                tm.that(consumer.receipt().inputs, eq=(original,))
+        with ExitStack() as contexts:
+            project, _, _ = contexts.enter_context(u.Infra.facade_source_project(root))
+            with project.source_consumption() as provider:
+                original = project.source_state(source)
+            tm.ok(u.Cli.atomic_write_text_file(source, "# Changed epoch\n"))
+            with project.source_consumption() as consumer:
+                project.replay_source_consumption(provider.receipt())
+                tm.that(project.source_state(source), eq=original)
+            tm.that(consumer.receipt().inputs, eq=(original,))
+            with pytest.raises(ValueError, match="atomic source changed"):
+                contexts.close()
 
     @staticmethod
     def test_identical_in_place_rewrite_keeps_source_epoch_valid(
@@ -383,27 +391,29 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         """An absent candidate under an absent parent is guarded after replay."""
         root, _ = u.Tests.create_lazy_init_workspace(tmp_path)
         missing = root / "absent"
-        with pytest.raises(ValueError, match="source directory"):
-            with u.Infra.facade_source_project(root) as (project, _, _):
-                folder = project.get_folder(missing.relative_to(root).as_posix())
-                with project.source_consumption() as provider:
-                    tm.that(folder.has_child("provider.py"), eq=False)
-                with project.source_consumption() as consumer:
-                    project.replay_source_consumption(provider.receipt())
-                witnesses = tuple(
-                    witness
-                    for witness in consumer.receipt().source_query_topology
-                    if witness.target == missing
-                )
-                tm.that(len(witnesses), eq=1)
-                tm.that(witnesses[0].queries, eq=(("provider.py", "exists"),))
-                missing.mkdir()
-                tm.ok(
-                    u.Cli.atomic_write_text_file(
-                        missing / "provider.py",
-                        "__all__ = []\n",
-                    ),
-                )
+        with ExitStack() as contexts:
+            project, _, _ = contexts.enter_context(u.Infra.facade_source_project(root))
+            folder = project.get_folder(missing.relative_to(root).as_posix())
+            with project.source_consumption() as provider:
+                tm.that(folder.has_child("provider.py"), eq=False)
+            with project.source_consumption() as consumer:
+                project.replay_source_consumption(provider.receipt())
+            witnesses = tuple(
+                witness
+                for witness in consumer.receipt().source_query_topology
+                if witness.target == missing
+            )
+            tm.that(len(witnesses), eq=1)
+            tm.that(witnesses[0].queries, eq=(("provider.py", "exists"),))
+            missing.mkdir()
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    missing / "provider.py",
+                    "__all__ = []\n",
+                ),
+            )
+            with pytest.raises(ValueError, match="source directory"):
+                contexts.close()
 
     @staticmethod
     @pytest.mark.parametrize("depth", [1, 2])

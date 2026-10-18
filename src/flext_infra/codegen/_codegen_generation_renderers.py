@@ -60,6 +60,7 @@ class FlextInfraCodegenGenerationRenderersMixin(
             The resulting ``Path``.
 
         Raises:
+            FileNotFoundError: If the declared template root is not a directory.
             ValueError: If lazy-init template escapes its source root.
 
         """

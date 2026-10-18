@@ -57,7 +57,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
         findings: t.SequenceOf[m.Infra.ModOccurrence] = (),
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+    ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
         """Plan one phase without effects; the first exception escapes unchanged.
 
         ``rope_workspace`` supplies the repository root that reported findings
@@ -65,7 +65,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         Finding-driven phases select their own rule findings from ``findings``.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
+            The immutable result view of the selected phase's source edits.
 
         Raises:
             ValueError: If the phase is unsupported.
@@ -152,7 +152,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
         selected: t.SequenceOf[m.Infra.ModOccurrence],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+    ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
         root = rope_workspace.repository_root
         dispatch = {
             c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION: lambda: (
@@ -193,7 +193,12 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         sources: t.MappingKV[Path, str],
         selected: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        """Compose model-alias retirement with existing API-alias policy."""
+        """Compose model-alias retirement with existing API-alias policy.
+
+        Returns:
+            The composed migration edits, or the first planning failure.
+
+        """
         aliases = FlextInfraUtilitiesSemanticModelAliases.plan_model_aliases(
             workspace, sources
         )

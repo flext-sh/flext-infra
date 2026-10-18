@@ -111,7 +111,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         result: p.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[p.Infra.Issue]]:
         """Read Pyrefly's freshly written JSON report file into findings.
 
         Returns:

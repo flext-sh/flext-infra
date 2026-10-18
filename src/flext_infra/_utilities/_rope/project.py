@@ -16,6 +16,7 @@ from __future__ import annotations
 from collections.abc import Generator, Mapping
 from contextlib import AbstractContextManager, closing, contextmanager, nullcontext
 from errno import ENOENT
+from itertools import chain
 from os.path import normpath, realpath
 from pathlib import Path
 from types import MappingProxyType
@@ -336,6 +337,10 @@ class FlextInfraRopeProject(Project):
             Returns:
                 A tuple of direct child paths captured in the snapshot.
 
+            Raises:
+                FileNotFoundError: If the path is neither captured nor
+                  ambient interpreter state.
+
             """
             source = Path(self.realpath(path))
             if source in self._children:
@@ -353,9 +358,11 @@ class FlextInfraRopeProject(Project):
         """Accumulate original receipts for one native consumer, not a set delta."""
 
         def __init__(self) -> None:
-            self._states: tuple[m.Cli.AtomicFileState, ...] = ()
-            self._directories: tuple[m.Cli.AtomicDirectoryInventory, ...] = ()
-            self._topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = ()
+            self._states: tuple[tuple[m.Cli.AtomicFileState, ...], ...] = ()
+            self._directories: tuple[
+                tuple[m.Cli.AtomicDirectoryInventory, ...], ...
+            ] = ()
+            self._topology: tuple[tuple[m.Cli.AtomicDirectoryChainPlan, ...], ...] = ()
             self._receipt: m.Infra.CodegenPhaseAnalysis | None = None
 
         def record(
@@ -364,33 +371,54 @@ class FlextInfraRopeProject(Project):
             directories: tuple[m.Cli.AtomicDirectoryInventory, ...] = (),
             topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = (),
         ) -> None:
-            """Merge exact observations while retaining their original identities."""
+            """Merge exact observations while retaining their original identities.
+
+            Each event appends its observations; the cross-event union merges
+            once at seal so one consumer's cost stays linear in its events.
+
+            Raises:
+                ValueError: If the receipt is already sealed.
+
+            """
             if self._receipt is not None:
                 msg = "Rope source consumption is already sealed"
                 raise ValueError(msg)
-            self._states = m.Infra.CodemodBindingSnapshot(
-                states=(*self._states, *states),
-            ).states
-            self._directories, self._topology = (
-                u.Cli.atomic_merge_directory_query_receipts(
-                    (*self._directories, *directories),
-                    (*self._topology, *topology),
-                )
-            )
+            self._states = (*self._states, states)
+            self._directories = (*self._directories, directories)
+            self._topology = (*self._topology, topology)
 
         def seal(self) -> m.Infra.CodegenPhaseAnalysis:
-            """Freeze the receipt only after the consumer has left its scope."""
+            """Freeze the receipt only after the consumer has left its scope.
+
+            Returns:
+                The sealed original consumption receipt.
+
+            """
+            directories, topology = u.Cli.atomic_merge_directory_query_receipts(
+                tuple(chain.from_iterable(self._directories)),
+                tuple(chain.from_iterable(self._topology)),
+            )
             self._receipt = m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
                 files=(),
-                inputs=self._states,
-                source_directories=self._directories,
-                source_query_topology=self._topology,
+                inputs=m.Infra.CodemodBindingSnapshot(
+                    states=tuple(chain.from_iterable(self._states)),
+                ).states,
+                source_directories=directories,
+                source_query_topology=topology,
             )
             return self._receipt
 
         def receipt(self) -> m.Infra.CodegenPhaseAnalysis:
-            """Require a complete receipt; an active or failed scope is not evidence."""
+            """Require a complete receipt; an active or failed scope is not evidence.
+
+            Returns:
+                The sealed original consumption receipt.
+
+            Raises:
+                ValueError: If the receipt has not been sealed yet.
+
+            """
             if self._receipt is None:
                 msg = "Rope source consumption has no completed receipt"
                 raise ValueError(msg)
@@ -463,7 +491,10 @@ class FlextInfraRopeProject(Project):
                         not plan.before.directories
                         or plan.before.target != plan.path.parent
                     ):
-                        msg = f"Rope effect lacks its original destination absence witness: {plan.path}"
+                        msg = (
+                            "Rope effect lacks its original destination "
+                            f"absence witness: {plan.path}"
+                        )
                         raise ValueError(msg)
                     _, chains = u.Cli.atomic_merge_directory_query_receipts(
                         (),
@@ -486,7 +517,10 @@ class FlextInfraRopeProject(Project):
                 if plan.desired_content is not None:
                     supplied = proposed.get(plan.path)
                     if supplied is not None and supplied != plan.desired_content:
-                        msg = f"Rope proposed source disagrees with its declared effect: {plan.path}"
+                        msg = (
+                            "Rope proposed source disagrees with its "
+                            f"declared effect: {plan.path}"
+                        )
                         raise ValueError(msg)
                     proposed[plan.path] = plan.desired_content
             self._sources = MappingProxyType(proposed)
@@ -522,7 +556,12 @@ class FlextInfraRopeProject(Project):
 
         @contextmanager
         def consumption(self) -> Generator[p.Infra.RopeSourceConsumption]:
-            """Record every read/query, including repeats and nested consumers."""
+            """Record every read/query, including repeats and nested consumers.
+
+            Yields:
+                The consumption scope accumulating original receipts.
+
+            """
             scope = FlextInfraRopeProject.SourceConsumption()
             self._scopes.append(scope)
             try:
@@ -532,7 +571,13 @@ class FlextInfraRopeProject(Project):
                 self._scopes.remove(scope)
 
         def replay(self, receipt: m.Infra.CodegenPhaseAnalysis) -> None:
-            """Replay only evidence minted by this authenticated original epoch."""
+            """Replay only evidence minted by this authenticated original epoch.
+
+            Raises:
+                ValueError: If the receipt belongs to another original epoch
+                  or no consumer scope is active.
+
+            """
             if not any(issued is receipt for issued in self._receipts):
                 msg = "Rope source receipt does not belong to this original epoch"
                 raise ValueError(msg)
@@ -558,7 +603,13 @@ class FlextInfraRopeProject(Project):
                 scope.record(states, directories, topology)
 
         def _consume_effect(self, path: Path) -> None:
-            """Attribute a declared overlay effect's original proof to its consumer."""
+            """Attribute a declared overlay effect's original proof to its consumer.
+
+            Raises:
+                ValueError: If a declared overlay effect lacks its original
+                  input receipt.
+
+            """
             if self._capturing:
                 return
             plan = self._effects.get(path)
@@ -575,7 +626,10 @@ class FlextInfraRopeProject(Project):
             )
             for original in states:
                 if self.source_state(original.path, required=False) != original:
-                    msg = f"Rope overlay effect has conflicting original input: {original.path}"
+                    msg = (
+                        "Rope overlay effect has conflicting "
+                        f"original input: {original.path}"
+                    )
                     raise ValueError(msg)
             chains = (
                 *plan.source_query_topology,
@@ -931,7 +985,18 @@ class FlextInfraRopeProject(Project):
         def source_state(
             self, source: Path, *, required: bool = True
         ) -> m.Cli.AtomicFileState:
-            """Read or replay the original state, including an explicit absence."""
+            """Read or replay the original state, including an explicit absence.
+
+            Returns:
+                The original physical state for the source.
+
+            Raises:
+                FileNotFoundError: If a required source is absent or
+                  explicitly retired.
+                ValueError: If the source lacks its original parent absence
+                  witness.
+
+            """
             state = self._consumed.get(source)
             if state is None:
                 state = self._originals.get(source)
@@ -998,6 +1063,8 @@ class FlextInfraRopeProject(Project):
 
             Args:
                 path: The path to the consumed virtual birth witness to verify.
+                check_current: Whether the current source must still match
+                  its declaration.
 
             Raises:
                 ValueError: If the proposed source disagrees with its declaration.
@@ -1172,6 +1239,8 @@ class FlextInfraRopeProject(Project):
 
         Raises:
             TypeError: The project has no authenticated original read authority.
+            ValueError: The consumer root covers no originally elected
+                source folder.
 
         """
         if (
@@ -1189,7 +1258,10 @@ class FlextInfraRopeProject(Project):
                 if (root / folder).is_relative_to(consumer_root)
             )
             if not preferred:
-                msg = f"Rope consumer has no originally elected source folder: {consumer_root}"
+                msg = (
+                    "Rope consumer has no originally elected "
+                    f"source folder: {consumer_root}"
+                )
                 raise ValueError(msg)
             election = m.Infra.RopeProjectElection(
                 source_folders=(
@@ -1230,28 +1302,57 @@ class FlextInfraRopeProject(Project):
     def source_consumption(
         self,
     ) -> AbstractContextManager[p.Infra.RopeSourceConsumption]:
-        """Open an exact native consumption scope, rejecting unbound projects."""
+        """Open an exact native consumption scope, rejecting unbound projects.
+
+        Returns:
+            The native consumption scope context manager.
+
+        Raises:
+            TypeError: The project does not own authenticated live reads.
+
+        """
         if not isinstance(self.fscommands, self.AtomicReadFiles):
             msg = "Rope project does not own authenticated live reads"
             raise TypeError(msg)
         return self.fscommands.consumption()
 
     def source_selection(self) -> AbstractContextManager[None]:
-        """Scope native structural election; actual reads still record full proofs."""
+        """Scope native structural election; actual reads still record full proofs.
+
+        Returns:
+            The native structural election scope context manager.
+
+        Raises:
+            TypeError: The project does not own authenticated live reads.
+
+        """
         if not isinstance(self.fscommands, self.AtomicReadFiles):
             msg = "Rope project does not own authenticated live reads"
             raise TypeError(msg)
         return self.fscommands.selection()
 
     def source_capture(self) -> AbstractContextManager[None]:
-        """Pin potential originals once without claiming prefetch was consumption."""
+        """Pin potential originals once without claiming prefetch was consumption.
+
+        Returns:
+            The native capture scope context manager.
+
+        Raises:
+            TypeError: The project does not own authenticated live reads.
+
+        """
         if not isinstance(self.fscommands, self.AtomicReadFiles):
             msg = "Rope project does not own authenticated live reads"
             raise TypeError(msg)
         return self.fscommands.capture()
 
     def replay_source_consumption(self, receipt: m.Infra.CodegenPhaseAnalysis) -> None:
-        """Attribute an authentic cached result's original dependencies."""
+        """Attribute an authentic cached result's original dependencies.
+
+        Raises:
+            TypeError: The project does not own authenticated live reads.
+
+        """
         if not isinstance(self.fscommands, self.AtomicReadFiles):
             msg = "Rope project does not own authenticated live reads"
             raise TypeError(msg)
@@ -1260,7 +1361,15 @@ class FlextInfraRopeProject(Project):
     def source_state(
         self, path: Path, *, required: bool = True
     ) -> m.Cli.AtomicFileState:
-        """Use the authenticated resource owner for direct source decisions."""
+        """Use the authenticated resource owner for direct source decisions.
+
+        Returns:
+            The original physical state for the source.
+
+        Raises:
+            TypeError: The project does not own authenticated live reads.
+
+        """
         if not isinstance(self.fscommands, self.AtomicReadFiles):
             msg = "Rope project does not own authenticated live reads"
             raise TypeError(msg)
@@ -1269,7 +1378,15 @@ class FlextInfraRopeProject(Project):
     def source_query(
         self, path: Path, predicate: Literal["exists", "isfile", "isdir"]
     ) -> bool:
-        """Elect a direct path through the original native query owner."""
+        """Elect a direct path through the original native query owner.
+
+        Returns:
+            Whether the original native query holds for the path.
+
+        Raises:
+            TypeError: The project does not own authenticated live reads.
+
+        """
         if not isinstance(self.fscommands, self.AtomicReadFiles):
             msg = "Rope project does not own authenticated live reads"
             raise TypeError(msg)
@@ -1278,25 +1395,51 @@ class FlextInfraRopeProject(Project):
     def source_children(
         self, path: Path, *, follow_aliases: bool = True
     ) -> tuple[Path, ...]:
-        """Enumerate original native membership with its exact query receipt."""
+        """Enumerate original native membership with its exact query receipt.
+
+        Returns:
+            The original direct child paths.
+
+        Raises:
+            TypeError: The project does not own authenticated live reads.
+
+        """
         if not isinstance(self.fscommands, self.AtomicReadFiles):
             msg = "Rope project does not own authenticated live reads"
             raise TypeError(msg)
         return self.fscommands.children(str(path), follow_aliases=follow_aliases)
 
     def source_text(self, path: Path) -> str:
-        """Read local or external planning text through the same original authority."""
+        """Read local or external planning text through the same original authority.
+
+        Returns:
+            The decoded planning text for the source.
+
+        """
         return self.source_bytes(path).decode(c.DEFAULT_ENCODING)
 
     def source_bytes(self, path: Path) -> bytes:
-        """Read selected payload bytes without changing their original receipts."""
+        """Read selected payload bytes without changing their original receipts.
+
+        Returns:
+            The selected payload bytes.
+
+        Raises:
+            TypeError: The project does not own authenticated live reads.
+
+        """
         if not isinstance(self.fscommands, self.AtomicReadFiles):
             msg = "Rope project does not own authenticated live reads"
             raise TypeError(msg)
         return self.fscommands.read(str(path))
 
     def source_walk(self, path: Path) -> Generator[tuple[Path, list[str], list[str]]]:
-        """Provide prunable physical source traversal without following aliases."""
+        """Provide prunable physical source traversal without following aliases.
+
+        Yields:
+            ``(directory, directories, files)`` tuples in traversal order.
+
+        """
         pending = [path]
         while pending:
             directory = pending.pop()
@@ -1360,6 +1503,7 @@ class FlextInfraRopeProject(Project):
 
         Raises:
             TypeError: The project does not own authenticated live reads.
+            OSError: When the original input epoch fails verification.
 
         """
         if not isinstance(self.fscommands, self.AtomicReadFiles):

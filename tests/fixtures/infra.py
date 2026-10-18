@@ -315,25 +315,39 @@ def _provision_consumer_template(
     workspace = u.Tests.workspace_spec(
         repository,
         project=u.Tests.project_spec(root.name),
+        subprojects=tuple(
+            u.Tests.repository_ref(name, path=Path(name))
+            for name in (() if member_dependencies is None else member_dependencies)
+        ),
     )
     conform_request = u.Tests.conform_request(
         root,
         what=c.Infra.CodegenConformSurface.MAKEFILE,
     )
-    plan = tm.ok(
-        FlextInfraCodegenConform(
-            repository_root=root,
-            initial_workspace=workspace,
-            request=conform_request,
-        ).plan(conform_request),
+    conform = FlextInfraCodegenConform(
+        repository_root=root,
+        initial_workspace=workspace,
+        request=conform_request,
     )
-    makefile = next(
-        item for item in plan.files if item.path.name == c.Infra.MAKEFILE_FILENAME
-    )
+    planned = conform.plan(conform_request)
+    plan = tm.ok(planned)
+    if plan.exception is not None:
+        raise plan.exception
+    tm.that(plan.issues, empty=True, msg=str(plan.issues))
     tm.ok(
-        u.Cli.atomic_write_text_file(
-            root / c.Infra.MAKEFILE_FILENAME,
-            u.Tests.codegen_file_text(makefile),
+        u.Tests.materialize_codegen_plans(planned.map(lambda result: result.files)),
+    )
+    # Use the PYPROJECT planner's native view producer without replacing the
+    # consumer's authored metadata with an unrelated full-package scaffold.
+    tm.ok(
+        u.Tests.materialize_codegen_plans(
+            conform.native_resolution_plans(
+                root,
+                workspace,
+                tm.ok(u.Infra.load_codegen_inputs(root)),
+                plan.files,
+                rendered_by=conform.rendered_by_stamp(),
+            ).map(tuple),
         ),
     )
     tm.ok(

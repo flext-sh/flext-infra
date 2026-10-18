@@ -144,7 +144,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     def _project_overrides(
         self,
         project_dir: Path,
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
     ) -> frozenset[t.Pair[str, str]]:
         """Index the methods on an override chain of this project.
@@ -181,18 +181,18 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
     @staticmethod
     def _phase_findings(
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
         phase: frozenset[c.Infra.LintFixRecipe],
         hooks: t.StrSequence,
-    ) -> t.MappingKV[Path, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.MappingKV[Path, t.SequenceOf[p.Infra.Issue]]:
         """Group by file the findings one recipe phase repairs.
 
         Returns:
             The phase's findings per module, overridden hooks excluded.
 
         """
-        by_file: MutableMapping[Path, list[m.Infra.Issue]] = {}
+        by_file: MutableMapping[Path, list[p.Infra.Issue]] = {}
         for issue in issues:
             if (
                 recipes.get(issue.code) in phase
@@ -204,7 +204,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     def _apply_phase(
         self,
         project_dir: Path,
-        by_file: t.MappingKV[Path, t.SequenceOf[m.Infra.Issue]],
+        by_file: t.MappingKV[Path, t.SequenceOf[p.Infra.Issue]],
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
     ) -> None:
         """Repair every module of one phase, computing all before any write."""
@@ -240,9 +240,9 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
     @staticmethod
     def _static_hook_keys(
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
-        resolver: Callable[..., t.VariadicTuple[m.Infra.Issue]],
+        resolver: Callable[..., t.VariadicTuple[p.Infra.Issue]],
         **extras: frozenset[t.Pair[str, str]],
     ) -> t.StrSequence:
         """Render the static-method findings one resolver leaves to their owner.
@@ -251,7 +251,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             ``file:line:code`` of each kept finding.
 
         """
-        by_file: MutableMapping[Path, list[m.Infra.Issue]] = {}
+        by_file: MutableMapping[Path, list[p.Infra.Issue]] = {}
         for issue in issues:
             if recipes.get(issue.code) is c.Infra.LintFixRecipe.STATIC_METHOD:
                 by_file.setdefault(Path(issue.file), []).append(issue)
@@ -271,7 +271,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     def _repaired_source(
         project_dir: Path,
         before: m.Cli.AtomicFileState,
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
         *,
         import_graph: t.MappingKV[str, frozenset[str]],
@@ -315,7 +315,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                 wrapped,
                 limit=config.Infra.tooling.tools.ruff.line_length,
             )
-        planned = [
+        planned: t.SequenceOf[p.Infra.Issue] = [
             issue
             for issue in issues
             if owned[issue.code]
@@ -330,7 +330,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
     @staticmethod
     def _overridden_hooks(
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
         overridden: frozenset[t.Pair[str, str]],
     ) -> t.StrSequence:
@@ -376,7 +376,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         result: p.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[p.Infra.Issue]]:
         """Parse Ruff's JSON report into findings named by their Ruff rule.
 
         Ruff names every finding by rule name (a syntax error included, as
@@ -395,7 +395,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         if not isinstance(report, list):
             msg = f"Ruff JSON report is not a list: {type(report).__name__}"
             raise TypeError(msg)
-        issues: t.MutableSequenceOf[m.Infra.Issue] = []
+        issues: t.MutableSequenceOf[p.Infra.Issue] = []
         for entry in report:
             if not isinstance(entry, Mapping):
                 msg = f"Ruff JSON finding is not an object: {type(entry).__name__}"

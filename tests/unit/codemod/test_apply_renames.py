@@ -13,13 +13,13 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, infra, m
+from flext_infra import infra
 from flext_infra.codemod import (
     FlextInfraApplyRenames,
     FlextInfraCodemodSemanticApply,
     FlextInfraRenameSymbols,
 )
-from tests import tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraApplyRenames:
@@ -203,7 +203,9 @@ class TestsFlextInfraApplyRenames:
             '    """Inherit the aliased provider."""\n'
             "class GenericConsumer[Element](list[FlextProvider]):\n"
             '    """Keep the native generic base bound to the provider."""\n'
-            'def by_module(value: "owner.FlextProvider") -> "ProviderModule.FlextProvider":\n'
+            'def by_module(value: "owner.FlextProvider") -> (\n'
+            '    "ProviderModule.FlextProvider"\n'
+            "):\n"
             '    """Preserve module-qualified provider identity.\n\n'
             '    Returns:\n        The supplied provider.\n    """\n'
             "    return value\n"
@@ -271,7 +273,10 @@ class TestsFlextInfraApplyRenames:
                                 m.Infra.SemanticRenameSelection(
                                     qualified_name="provider_pkg.owner",
                                     replacement_name="meaningful",
-                                    reason="Move the authenticated provider and all native receivers together",
+                                    reason=(
+                                        "Move the authenticated provider and all"
+                                        " native receivers together"
+                                    ),
                                 ),
                             )
                         ),
@@ -301,13 +306,23 @@ class TestsFlextInfraApplyRenames:
         code = (
             "from typing import get_args, get_type_hints\n"
             f"from provider_pkg import {exported_name} as CanonicalProvider\n"
-            f"from {first.name}.receiver import build, by_module, GenericConsumer, Imported, Payload, Tagged, PROSE\n"
+            f"from {first.name}.receiver import (\n"
+            f"    build,\n    by_module,\n    GenericConsumer,\n"
+            f"    Imported,\n    Payload,\n    Tagged,\n    PROSE,\n)\n"
             f"from {second.name}.transitive import Transitive\n"
             f"from {second.name}.unrelated import FlextProvider\n"
-            "assert get_type_hints(build) == {'value': CanonicalProvider, 'return': Imported}\n"
-            "assert get_type_hints(by_module) == {'value': CanonicalProvider, 'return': CanonicalProvider}\n"
+            "assert get_type_hints(build) == {\n"
+            "    'value': CanonicalProvider,\n"
+            "    'return': Imported,\n"
+            "}\n"
+            "assert get_type_hints(by_module) == {\n"
+            "    'value': CanonicalProvider,\n"
+            "    'return': CanonicalProvider,\n"
+            "}\n"
             "assert Imported is CanonicalProvider\n"
-            "assert get_args(GenericConsumer.__orig_bases__[0]) == (CanonicalProvider,)\n"
+            "assert get_args(\n"
+            "    GenericConsumer.__orig_bases__[0]\n"
+            ") == (CanonicalProvider,)\n"
             "assert issubclass(Transitive, CanonicalProvider)\n"
             "assert Transitive.value() == 17 and FlextProvider.value() == 23\n"
             "assert get_args(Payload) == ('FlextProvider',)\n"
@@ -321,9 +336,11 @@ class TestsFlextInfraApplyRenames:
                 options=m.Cli.ProcessOptions(
                     env=u.Cli.process_env(
                         overrides={
-                            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR.join(
-                                str(project / c.Infra.DEFAULT_SRC_DIR)
-                                for project in projects
+                            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: (
+                                c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR.join(
+                                    str(project / c.Infra.DEFAULT_SRC_DIR)
+                                    for project in projects
+                                )
                             ),
                         }
                     )

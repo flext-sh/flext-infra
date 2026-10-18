@@ -4,8 +4,8 @@
 # binds the utilities facade `u` (the shared u-imported-from-flext util).
 # Modules without the binding are flagged by the detection-only companion
 # rewire-transformer-header-private-call-missing-u-import — a blind textual fix
-# would emit an undefined name (Ruff F821), exactly the constraint documented
-# by the rewire-logging-get-logger rule family.
+# would emit an undefined name (Ruff F821). Native Rope contract rewrites,
+# unlike this syntactic rule, complete imports with lexical identity proof.
 id: rewire-transformer-header-private-call
 language: Python
 severity: error

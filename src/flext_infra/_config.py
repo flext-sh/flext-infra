@@ -53,10 +53,8 @@ class FlextInfraConfig(FlextCliConfig):
             The resulting ``list[Path]``.
 
         """
-        cli_package = files(FlextCliConfig.__module__.partition(".")[0])
-        cli_dir = cli_package / c.Infra.CODEGEN_CONFIG_DIR
         own = cls._yaml_files_in(cls.ssot_config_dir())
-        return [path for path in cls._yaml_files_in(cli_dir) if path not in own] + own
+        return [path for path in FlextCliConfig.config_files() if path not in own] + own
 
     @classmethod
     def config_sources_for_repository(

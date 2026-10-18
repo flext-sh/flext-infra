@@ -12,9 +12,9 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, infra, m, r
+from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import t, tm, u
+from tests import c, m, r, t, tm, u
 
 
 class TestsFlextInfraUtilityFacadeProjection:
@@ -397,6 +397,141 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
         tm.that(result.stdout.strip(), eq="service-value")
+
+    @pytest.mark.parametrize("departure", ["absent", "moved"])
+    def test_departed_generated_owner_ignores_barrel_export_freshness(
+        self,
+        tmp_path: Path,
+        departure: str,
+    ) -> None:
+        """Current leaf owners determine the first plan without publishing inputs."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        owners = package / family.directory
+        barrel = owners / c.Infra.INIT_PY
+        facade = package / c.Infra.UTILITIES_PY
+        marker = c.Infra.AUTOGEN_HEADER + "\n"
+        original = (
+            marker + f"from {package.name}.{family.directory} import "
+            "ClientOwner, DepartedOwner\n"
+            "class Utilities:\n"
+            "    class Domain(ClientOwner, DepartedOwner):\n        pass\n"
+            "u = Utilities\n__all__ = ['Utilities', 'u']\n"
+        )
+        stale = marker + "__all__ = ['ClientOwner', 'DepartedOwner']\n"
+        refreshed = marker + "__all__ = ['ClientOwner']\n"
+        sources = {
+            package / c.Infra.INIT_PY: "",
+            owners / "client.py": (
+                "class ClientOwner:\n    marker = 'current'\n"
+                "__all__ = ['ClientOwner']\n"
+            ),
+            barrel: stale,
+            facade: original,
+        }
+        if departure == "moved":
+            sources[package / "services" / "runtime.py"] = (
+                "class DepartedOwner:\n    marker = 'moved'\n"
+                "__all__ = ['DepartedOwner']\n"
+            )
+        for path, source in sources.items():
+            self._write(path, source)
+        originals = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for path in sources
+        )
+        projections: list[str] = []
+        for candidate in (stale, refreshed):
+            with u.Infra.facade_source_project(
+                root,
+                source_states=originals,
+                planned_sources={barrel: candidate},
+            ) as (project, _, contents):
+                rendered = tm.not_none(
+                    u.Infra.render_utility_facade(
+                        package, project=project, sources=contents
+                    )
+                )
+                projections.append(rendered)
+            tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
+            with u.Infra.facade_source_project(
+                root,
+                source_states=originals,
+                planned_sources={barrel: candidate, facade: rendered},
+            ) as (project, _, contents):
+                tm.that(
+                    u.Infra.render_utility_facade(
+                        package, project=project, sources=contents
+                    ),
+                    eq=rendered,
+                )
+            tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
+        tm.that(projections[0], eq=projections[1])
+        tm.that(projections[0], has="class Domain(ClientOwner):")
+        tm.that("DepartedOwner" in projections[0], eq=False)
+
+    @pytest.mark.parametrize(
+        "ownership",
+        [
+            "authored-facade",
+            "authored-barrel",
+            "unrelated-module",
+            "declared-alias",
+            "unresolved-external",
+        ],
+    )
+    def test_unresolved_base_requires_generated_family_provenance(
+        self,
+        tmp_path: Path,
+        ownership: str,
+    ) -> None:
+        """Only generated family provenance authorizes retiring a missing base."""
+        _, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        owners = package / family.directory
+        marker = c.Infra.AUTOGEN_HEADER + "\n"
+        provider = (
+            f"{package.name}.unrelated"
+            if ownership == "unrelated-module"
+            else f"{package.name}.{family.directory}"
+        )
+        if ownership == "unresolved-external":
+            provider = f"{package.name}_absent"
+        imported = (
+            "ClientOwner as MissingOwner"
+            if ownership == "declared-alias"
+            else "MissingOwner"
+        )
+        sources = {
+            package / c.Infra.INIT_PY: "",
+            owners / c.Infra.INIT_PY: (
+                ("" if ownership == "authored-barrel" else marker) + "__all__ = []\n"
+            ),
+            owners / "client.py": (
+                "class ClientOwner:\n    pass\n__all__ = ['ClientOwner']\n"
+            ),
+            package / "unrelated.py": "__all__ = []\n",
+            package / c.Infra.UTILITIES_PY: (
+                ("" if ownership == "authored-facade" else marker)
+                + f"from {provider} import {imported}\n"
+                "class Utilities:\n    class Domain(MissingOwner):\n        pass\n"
+                "u = Utilities\n__all__ = ['Utilities', 'u']\n"
+            ),
+        }
+        for path, source in sources.items():
+            self._write(path, source)
+        originals = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for path in sources
+        )
+        cause = (
+            "unresolved imported module:"
+            if ownership == "unresolved-external"
+            else "Facade base has no source owner:.*MissingOwner"
+        )
+        with pytest.raises(ValueError, match=cause):
+            u.Infra.render_utility_facade(package)
+        tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
 
     def test_owner_inheriting_a_sourceless_stdlib_module_orders_natively(
         self,
@@ -895,7 +1030,8 @@ class TestsFlextInfraUtilityFacadeProjection:
                 (
                     "from {package}.{directory}.adapter import AdapterOwner\n"
                     "class Runtime:\n    @staticmethod\n    def parse(value):\n"
-                    "        return AdapterOwner.value_adapter().validate_python(value)\n"
+                    "        return AdapterOwner.value_adapter()"
+                    ".validate_python(value)\n"
                     "__all__ = ['Runtime']\n"
                 ),
                 (

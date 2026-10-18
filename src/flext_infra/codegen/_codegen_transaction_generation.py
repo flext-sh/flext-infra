@@ -24,7 +24,7 @@ class FlextInfraCodegenTransactionGeneration(FlextInfraCodegenTransactionPhases)
         self,
         owner: p.Infra.MiseArtifactsOwner,
         *,
-        participant_policy: m.Infra.CodegenParticipantPolicy | None = None,
+        participant_policy: p.Infra.CodegenParticipantPolicy | None = None,
         producer: m.Infra.CodegenPhaseAnalysis | None = None,
         source_authority: m.Infra.CodegenSourceAuthority | None = None,
         prior_publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome] = (),

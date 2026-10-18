@@ -160,6 +160,10 @@ class FlextInfraCodegenLazyInitPlanner(
 
         Structural indexes are rebuilt until their live selection owner can supply
         an authenticated, content-free reusable inventory. No semantic cache is copied.
+
+        Returns:
+            The isolated plan bound to its original consumption receipt.
+
         """
         project = self.rope_workspace.rope_project
         with (
@@ -188,7 +192,12 @@ class FlextInfraCodegenLazyInitPlanner(
         ), receipt
 
     def source_receipt(self, package_dir: Path) -> m.Infra.CodegenPhaseAnalysis:
-        """Return only the sealed receipt minted for an actual package decision."""
+        """Return only the sealed receipt minted for an actual package decision.
+
+        Raises:
+            ValueError: If the package lacks its original provenance.
+
+        """
         receipt = self._plan_receipts.get(str(package_dir.resolve()))
         if receipt is None:
             msg = f"lazy-init package lacks original provenance: {package_dir}"

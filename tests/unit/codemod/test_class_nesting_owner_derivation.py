@@ -323,7 +323,8 @@ __all__: list[str] = ["LIMIT", "write"]
             "import pytest\n"
             f"EVENTS = Path({str(events)!r})\n"
             "def record(value: str) -> None:\n"
-            "    with EVENTS.open('a') as stream:\n        stream.write(value + '\\n')\n"
+            "    with EVENTS.open('a') as stream:\n"
+            "        stream.write(value + '\\n')\n"
             "@pytest.fixture(scope='module')\n"
             "def scoped_resource() -> Iterator[int]:\n"
             "    record('setup')\n    yield 7\n    record('teardown')\n"
@@ -353,9 +354,12 @@ __all__: list[str] = ["LIMIT", "write"]
             "os.environ['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'\n"
             "import pytest\n"
             "with contextlib.redirect_stdout(io.StringIO()):\n"
-            "    result = pytest.main(['tests', '--tb=short', '-p', 'no:cacheprovider'])\n"
+            "    result = pytest.main(\n"
+            "        ['tests', '--tb=short', '-p', 'no:cacheprovider'],\n"
+            "    )\n"
             "assert result == 0, result\n"
-            f"from pathlib import Path\nprint(Path({str(events)!r}).read_text().strip())\n"
+            f"from pathlib import Path\n"
+            f"print(Path({str(events)!r}).read_text().strip())\n"
         )
         before = u.Tests.run_lazy_init_probe(probe, python_paths=(), cwd=root)
         tm.ok(u.Cli.atomic_write_text_file(events, ""))
@@ -399,7 +403,9 @@ __all__: list[str] = ["LIMIT", "write"]
             "_EVENTS: list[str] = []\n"
             "@pytest.fixture(scope='module')\n"
             "def token() -> Iterator[str]:\n"
-            "    _EVENTS.append('setup')\n    yield 'ready'\n    _EVENTS.append('stop')\n"
+            "    _EVENTS.append('setup')\n"
+            "    yield 'ready'\n"
+            "    _EVENTS.append('stop')\n"
             "def teardown_module() -> None:\n"
             "    assert _EVENTS == ['setup', 'one', 'two', 'stop']\n"
             "def test_one(token: str) -> None:\n"
@@ -414,7 +420,9 @@ __all__: list[str] = ["LIMIT", "write"]
             "import pytest\n"
             "stream = io.StringIO()\n"
             "with contextlib.redirect_stdout(stream):\n"
-            "    result = pytest.main(['tests', '--tb=short', '-p', 'no:cacheprovider'])\n"
+            "    result = pytest.main(\n"
+            "        ['tests', '--tb=short', '-p', 'no:cacheprovider'],\n"
+            "    )\n"
             "assert result == 0, stream.getvalue()\n"
             "print('2 passed' in stream.getvalue())\n"
         )
@@ -455,7 +463,8 @@ __all__: list[str] = ["LIMIT", "write"]
             "class TestExisting:\n"
             "    @pytest.fixture\n"
             "    def local(self) -> str:\n        return LABEL\n"
-            "    def test_one(self, local: str) -> None:\n        assert local == 'ready'\n"
+            "    def test_one(self, local: str) -> None:\n"
+            "        assert local == 'ready'\n"
         )
         tm.ok(u.Cli.atomic_write_text_file(module, source))
         probe = (
@@ -464,7 +473,9 @@ __all__: list[str] = ["LIMIT", "write"]
             "import pytest\n"
             "stream = io.StringIO()\n"
             "with contextlib.redirect_stdout(stream):\n"
-            "    result = pytest.main(['tests', '--tb=short', '-p', 'no:cacheprovider'])\n"
+            "    result = pytest.main(\n"
+            "        ['tests', '--tb=short', '-p', 'no:cacheprovider'],\n"
+            "    )\n"
             "assert result == 0, stream.getvalue()\n"
             "print('1 passed' in stream.getvalue())\n"
         )
@@ -519,7 +530,16 @@ __all__: list[str] = ["LIMIT", "write"]
             "import pytest\n"
             "stream = io.StringIO()\n"
             "with contextlib.redirect_stdout(stream):\n"
-            "    result = pytest.main(['tests', '--tb=short', '-p', 'no:cacheprovider', '-W', 'error'])\n"
+            "    result = pytest.main(\n"
+            "        [\n"
+            "            'tests',\n"
+            "            '--tb=short',\n"
+            "            '-p',\n"
+            "            'no:cacheprovider',\n"
+            "            '-W',\n"
+            "            'error',\n"
+            "        ],\n"
+            "    )\n"
             "assert result == 0, stream.getvalue()\n"
             "print('1 passed' in stream.getvalue())\n"
         )
@@ -753,8 +773,13 @@ __all__: list[str] = ["LIMIT", "write"]
             "from reader import Consumer\n"
             "from typing import get_args, get_type_hints\n"
             "assert Consumer.parameter(Consumer.Local) == Consumer.local() == 7\n"
-            "assert Consumer.left_scoped() + Consumer.right_scoped() == Consumer.run()\n"
-            "assert get_args(get_type_hints(Consumer.run, include_extras=True)['return'])"
+            "assert (\n"
+            "    Consumer.left_scoped()\n"
+            "    + Consumer.right_scoped()\n"
+            ") == Consumer.run()\n"
+            "assert get_args(\n"
+            "    get_type_hints(Consumer.run, include_extras=True)['return']\n"
+            ")"
             " == (int, 'thing.compute')\n"
             "assert get_args(get_type_hints(Consumer.literal)['return'])"
             " == ('thing.compute',)\n"
@@ -762,7 +787,9 @@ __all__: list[str] = ["LIMIT", "write"]
             "hints = get_type_hints(Consumer.echo)\n"
             "assert hints['value'] is hints['return']\n"
             "assert Consumer.echo(1) == 1\n"
-            "assert get_type_hints(Consumer.public_echo)['value'] == list[hints['value']]\n"
+            "assert get_type_hints(\n"
+            "    Consumer.public_echo\n"
+            ")['value'] == list[hints['value']]\n"
             "assert Consumer.public_run() == Consumer.left_scoped()\n"
             "print(Consumer.run())\n"
         )
@@ -826,7 +853,9 @@ __all__: list[str] = ["LIMIT", "write"]
         namespace = package.name
         sources = {
             provider: "class Owner:\n    pass\n\ndef compute():\n    return 1\n",
-            public: f"from {namespace}._behavior import compute\n__all__ = ['compute']\n",
+            public: (
+                f"from {namespace}._behavior import compute\n__all__ = ['compute']\n"
+            ),
             consumer: consumer_source
             .replace("from behavior", f"from {namespace}._behavior")
             .replace("import behavior as", f"import {namespace}._behavior as")
@@ -932,8 +961,10 @@ __all__: list[str] = ["LIMIT", "write"]
             "            Item.__value__ is int,\n"
             "            get_args(Box.__value__)[0] is Box.__type_params__[0],\n"
             "            get_args(Box.__value__)[1] is Data,\n"
-            "            get_args(get_args(Items.__value__)[0])[0] is Items.__type_params__[0],\n"
-            "            get_args(Callback.__value__)[0] is Callback.__type_params__[0],\n"
+            "            get_args(get_args(Items.__value__)[0])[0]\n"
+            "            is Items.__type_params__[0],\n"
+            "            get_args(Callback.__value__)[0]\n"
+            "            is Callback.__type_params__[0],\n"
             '            get_args(Quoted.__value__)[0] == "Item",\n'
             "            Defaults.__type_params__[0].__bound__ is Leaf,\n"
             "            Defaults.__type_params__[0].__default__ is str,\n"
@@ -1114,7 +1145,9 @@ __all__: list[str] = ["LIMIT", "write"]
         paths = (str(root / c.Infra.DEFAULT_SRC_DIR),)
         before = u.Tests.run_lazy_init_probe(
             f"import {imported} as atomic_thing\n"
-            f"from {imported.rpartition('.')[0]}.marker_client import {consumer_owner}\n"
+            f"from {imported.rpartition('.')[0]}.marker_client import (\n"
+            f"    {consumer_owner}\n"
+            f")\n"
             f"print({consumer_owner}.marked(atomic_thing._Marker()))\n",
             python_paths=paths,
             cwd=root,
@@ -1132,7 +1165,9 @@ __all__: list[str] = ["LIMIT", "write"]
             tm.ok(u.Cli.atomic_write_text_file(path, source))
         after = u.Tests.run_lazy_init_probe(
             f"import {imported} as atomic_thing\n"
-            f"from {imported.rpartition('.')[0]}.marker_client import {consumer_owner}\n"
+            f"from {imported.rpartition('.')[0]}.marker_client import (\n"
+            f"    {consumer_owner}\n"
+            f")\n"
             f"print({consumer_owner}.marked(atomic_thing.{owner}._Marker()))\n",
             python_paths=paths,
             cwd=root,

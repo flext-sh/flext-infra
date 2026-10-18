@@ -521,7 +521,10 @@ class FlextInfraUtilitiesCodemodProject(
                     or sources is None
                     or source not in sources
                 ):
-                    msg = f"{rule.id}: execution context requires its original native epoch"
+                    msg = (
+                        f"{rule.id}: execution context requires its "
+                        "original native epoch"
+                    )
                     raise ValueError(msg)
                 if (
                     cls._isolated_execution_holds(project, condition, source, sources)
@@ -625,8 +628,18 @@ class FlextInfraUtilitiesCodemodProject(
         The entrypoint is a native class's declaring module, not a filename
         exemption. Only that exact captured resource can carry the role; its
         original imports must satisfy the declared no-site, stdlib-only contract.
+
+        Returns:
+            Whether the isolated-execution condition holds.
+
+        Raises:
+            TypeError: When the producer module has no supported Python AST.
+            ValueError: When the condition argument shape is wrong, the
+                producer is not a native source callable, lies outside the
+                captured epoch, or declares an invalid entrypoint identity.
+
         """
-        if len(condition.arg) != 2:
+        if len(condition.arg) != c.Infra.PAIRED_CONTEXT_PREDICATE_ARG_COUNT:
             msg = "isolated-execution requires a module and native invocation producer"
             raise ValueError(msg)
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -734,16 +747,25 @@ class FlextInfraUtilitiesCodemodProject(
     @staticmethod
     def _implementation_owner_modules(
         project: p.Infra.RopeProject,
-        condition: m.Infra.CodemodContextCondition,
-        sources: t.MappingKV[Path, str],
-    ) -> frozenset[Path]:
+        condition: p.Infra.PrimitiveOwnerCondition,
+        sources: t.MappingKV[t.Infra.RopeSourcePath, str],
+    ) -> t.Infra.RopeImplementationPaths:
         """Derive a primitive's implementation from native definitions and MRO.
 
         Imported consumers do not enter this closure. Source-defined helper
         calls in the primitive's own namespace and actual declaring-class bases
         do; a same-spelled local symbol cannot substitute for a native owner.
+
+        Returns:
+            The declaring module paths of the implementation owner closure.
+
+        Raises:
+            TypeError: When the primitive is not a source callable or has no
+                native declaring module.
+            ValueError: When the condition argument shape is wrong.
+
         """
-        if len(condition.arg) != 2:
+        if len(condition.arg) != c.Infra.PAIRED_CONTEXT_PREDICATE_ARG_COUNT:
             msg = "implementation-owner requires a module and public primitive"
             raise ValueError(msg)
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -781,7 +803,10 @@ class FlextInfraUtilitiesCodemodProject(
                 raise ValueError(msg)
             path = Path(resource.real_path)
             if path not in sources:
-                msg = f"native implementation source is outside the captured epoch: {path}"
+                msg = (
+                    f"native implementation source is outside the "
+                    f"captured epoch: {path}"
+                )
                 raise ValueError(msg)
             owners.add(path)
             if types.py_class(target):
@@ -820,7 +845,7 @@ class FlextInfraUtilitiesCodemodProject(
                 helper = binding.get_object()
                 provider = helper.get_module()
                 if (
-                    types.py_function(helper)
+                    (types.py_function(helper) or types.py_class(helper))
                     and provider is not None
                     and provider.get_name().partition(".")[0] == namespace
                 ):
@@ -1223,7 +1248,7 @@ class FlextInfraUtilitiesCodemodProject(
         """
         key = (
             name,
-            resource.parent.real_path if level else project.root.real_path,
+            resource.parent.real_path if level else project.address,
             level,
         )
         if key not in lookup:

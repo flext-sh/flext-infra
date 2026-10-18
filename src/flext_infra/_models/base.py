@@ -10,11 +10,160 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
-from flext_cli import c, m, t
+from flext_cli import m
+
+from flext_infra import c, t
 
 
 class FlextInfraModelsBase:
     """Base models for flext-infra project."""
+
+    class CommandContext(m.ArbitraryTypesModel):
+        """Mutable command data shared by infra services and CLI schemas."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            validate_by_name=True,
+            validate_by_alias=True,
+        )
+
+        repository_root: Path = m.Field(
+            default_factory=Path.cwd,
+            validate_default=True,
+            description="Repository root",
+        )
+        apply_changes: bool = m.Field(
+            default=False,
+            alias="apply",
+            description="Apply changes",
+            json_schema_extra={
+                "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS)
+            },
+        )
+        check_only: bool = m.Field(
+            default=False,
+            alias="check",
+            description="Check mode",
+        )
+        dry_run: Annotated[bool, m.Field(description="Dry-run mode")] = False
+        output_format: Annotated[
+            str,
+            m.Field(description="Output format (json|text)"),
+            m.BeforeValidator(lambda value: value.strip().lower()),
+        ] = "text"
+        project_filter: Annotated[
+            str | None,
+            m.Field(description="Project filter (comma-separated)", exclude=True),
+        ] = None
+        target_module: str | None = m.Field(
+            default=None,
+            alias="module",
+            description=(
+                "Dotted module path to scope the verb to a single module "
+                "(e.g. flext_core.result). Composes with --repository-root/--projects."
+            ),
+        )
+        target_namespace: str | None = m.Field(
+            default=None,
+            alias="namespace",
+            description=(
+                "Alias namespace (c|m|p|t|u|r|e|h|s|x[.<Domain>]) to scope the "
+                "verb to a single facade slot."
+            ),
+        )
+        report_path: Annotated[
+            Path | None,
+            m.Field(description="Report output path", exclude=True),
+        ] = None
+        output_dir: Annotated[
+            Path | None,
+            m.Field(description="Output directory", exclude=True),
+        ] = None
+
+        @m.field_validator("repository_root", mode="before")
+        @classmethod
+        def _normalize_repository_root(cls, value: t.Cli.TextPath) -> t.Infra.Path:
+            """Resolve the invocation root without escalating to a workspace.
+
+            Native filesystem inspection and resolution errors propagate unchanged.
+
+            Returns:
+                The resolved parent if the input is a file, or the resolved input
+                path otherwise.
+
+            """
+            path = Path(value)
+            return (path.parent if path.is_file() else path).resolve()
+
+        @m.field_validator("project_filter", mode="before")
+        @classmethod
+        def _normalize_project_filter(
+            cls,
+            value: str | t.StrSequence | None,
+        ) -> str | None:
+            """Normalize comma-separated and repeated whitespace selectors.
+
+            Returns:
+                Nonempty selectors joined by commas, or None if none remain.
+
+            """
+            values = (value,) if isinstance(value, str) else value or ()
+            return (
+                ",".join(
+                    item
+                    for entry in values
+                    for group in entry.split(",")
+                    for item in group.split()
+                )
+                or None
+            )
+
+        @m.field_validator("report_path", mode="before")
+        @classmethod
+        def _normalize_report_path(
+            cls,
+            value: t.Cli.TextPath | None,
+        ) -> t.Infra.Path | None:
+            """Resolve a supplied report path, including an explicitly blank path.
+
+            Native path resolution errors propagate unchanged.
+
+            Returns:
+                None for absent input; otherwise the resolved supplied path.
+
+            """
+            return None if value is None else Path(value).resolve()
+
+        @m.field_validator("output_dir", mode="before")
+        @classmethod
+        def _normalize_output_dir(
+            cls,
+            value: t.Cli.TextPath | None,
+        ) -> t.Infra.Path | None:
+            """Strip text paths while preserving relative output directories.
+
+            Native absolute-path resolution errors propagate unchanged.
+
+            Returns:
+                None for absent input, the resolved path for absolute input,
+                or a relative path with surrounding text whitespace removed.
+
+            """
+            if value is None:
+                return None
+            path = value if isinstance(value, Path) else Path(value.strip())
+            return path.resolve() if path.is_absolute() else path
+
+        @m.computed_field
+        @property
+        def root(self) -> t.Infra.Path:
+            """Canonical normalized repository root."""
+            return self.repository_root
+
+        @m.computed_field
+        @property
+        def effective_dry_run(self) -> bool:
+            """Derive the write-mode decision from this request's flags."""
+            return self.dry_run or self.check_only or not self.apply_changes
 
     class FrozenArbitrary(m.ContractModel):
         """Strict immutable payloads preserving exact text and enum identities."""

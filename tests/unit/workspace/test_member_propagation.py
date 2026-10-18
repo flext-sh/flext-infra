@@ -100,7 +100,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
                                 scope=c.Infra.CodegenConformScope.ALL,
                                 mode=c.Infra.CodegenConformMode.APPLY,
                             ),
-                            ports=infra.codegen_conform_collaborators(),
+                            execution_context=infra,
                         ),
                     )
                     u.Tests.commit_git_changes(root / name, "settle projections")
