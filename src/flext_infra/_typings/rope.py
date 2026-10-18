@@ -36,6 +36,17 @@ class FlextInfraTypesRope:
     type PythonImportNode = Import | ImportFrom
     type RopeSourcePath = Path
     type RopeImplementationPaths = frozenset[RopeSourcePath]
+    type RopeMutablePaths = set[RopeSourcePath]
+    type RopeCallableSignature = tuple[
+        t.StrSequence,
+        t.StrSequence,
+        str | None,
+        t.StrSequence,
+        str | None,
+        t.StrSequence,
+        t.SequenceOf[str | None],
+        bool,
+    ]
     type PythonClassNode = ClassDef
     type CstArgument = Arg
     type CstStatement = BaseStatement

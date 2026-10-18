@@ -167,9 +167,12 @@ class FlextInfraCodemodSemanticApply:
                 )
             )
             path_folders = tuple(
-                folder.real_path
-                for folder in project.get_python_path_folders()
-                if folder.is_folder()
+                dict.fromkeys(
+                    folder.real_path
+                    for project in live
+                    for folder in project.get_python_path_folders()
+                    if folder.is_folder()
+                )
             )
             snapshots = tuple(
                 stack.enter_context(
@@ -674,9 +677,49 @@ class FlextInfraCodemodSemanticApply:
         )
         if rebuilt.failure:
             return r[bool].from_failure(rebuilt)
-        if rebuilt.value != artifact:
+        current_fields = rebuilt.value.model_dump(mode="python")
+        artifact_fields = artifact.model_dump(mode="python")
+        if current_fields != artifact_fields:
+            differences = [
+                name
+                for name in artifact_fields
+                if current_fields[name] != artifact_fields[name]
+            ]
+            current_candidate = rebuilt.value.candidate.model_dump(mode="python")
+            artifact_candidate = artifact.candidate.model_dump(mode="python")
+            differences.extend(
+                f"candidate.{name}"
+                for name in artifact_candidate
+                if current_candidate[name] != artifact_candidate[name]
+            )
+            # Report schema fields only, never captured source bytes or path values.
+            for index, (current_directory, original_directory) in enumerate(
+                zip(
+                    rebuilt.value.source_directories,
+                    artifact.source_directories,
+                    strict=False,
+                )
+            ):
+                if current_directory == original_directory:
+                    continue
+                current_receipt = current_directory.model_dump(mode="python")
+                original_receipt = original_directory.model_dump(mode="python")
+                differences.extend(
+                    f"source_directories[{index}].{name}"
+                    for name in original_receipt
+                    if current_receipt[name] != original_receipt[name]
+                )
+                current_root = current_directory.root.model_dump(mode="python")
+                original_root = original_directory.root.model_dump(mode="python")
+                differences.extend(
+                    f"source_directories[{index}].root.{name}"
+                    for name in original_root
+                    if current_root[name] != original_root[name]
+                )
+                break
             return r[bool].fail(
-                "semantic rename artifact differs from current native plan"
+                "semantic rename artifact differs from current native plan; fields="
+                + ", ".join(differences)
             )
         # The publication owner consumes the complete semantic/projection group.
         del source_preview
@@ -1034,13 +1077,16 @@ class FlextInfraCodemodSemanticApply:
                 original[edit.file_path] = edit.original_source
         working = dict(original)
         changed: set[Path] = set()
-        cls._apply_plan(working, edits, changed)
+        retired: t.Infra.RopeMutablePaths = set()
+        inputs: t.MutableMappingKV[Path, p.Infra.SemanticSourceState] = {}
+        cls._apply_plan(working, edits, changed, retirements=retired, inputs=inputs)
         return cls._publish(
             root,
             original,
-            {path: working[path] for path in changed},
+            {path: None if path in retired else working[path] for path in changed},
             source_preview=source_preview,
             validator=validator,
+            source_states=tuple(inputs.values()),
         ).map(lambda accepted: bool(changed) and accepted)
 
     @classmethod
@@ -1062,20 +1108,43 @@ class FlextInfraCodemodSemanticApply:
             The resulting ``p.Result[bool]``.
 
         """
-        original = cls.source_inventory(root, preflight)
-        planned = cls.plan(root, preflight, rope_workspace, original)
-        if planned.failure:
-            return r[bool].from_failure(planned)
+        authority = Path(rope_workspace.rope_project.root.real_path)
+        with u.Infra.facade_source_project(
+            authority, project_roots=u.Infra.import_project_roots(root)
+        ) as (source_project, consumed, _sources):
+            with FlextInfraRopeWorkspace.open_workspace(
+                root, rope_repository_root=authority, source_project=source_project
+            ) as captured:
+                original = cls.source_inventory(
+                    root, preflight, source_project=source_project
+                )
+                planned = cls.plan(root, preflight, captured, original)
+                if planned.failure:
+                    return r[bool].from_failure(planned)
+                states, directories, topology = consumed()
+        # Exit the original capture before effects; publication keeps the same
+        # receipts and rejects any drift between this verification and mutation.
         return cls._publish(
             root,
             original,
-            {edit.file_path: edit.updated_source for edit in planned.value},
+            {
+                edit.file_path: None if edit.retire_file else edit.updated_source
+                for edit in planned.value
+            },
             source_preview=source_preview,
             validator=partial(
                 cls._validate_candidate,
                 preflight=preflight,
                 workspace_factory=workspace_factory,
                 reports_root=root,
+            ),
+            source_states=tuple(
+                state for edit in planned.value for state in edit.source_states
+            ),
+            source_analysis=m.Infra.CodegenPhaseAnalysis(
+                inputs=states,
+                source_directories=directories,
+                source_query_topology=topology,
             ),
         )
 
@@ -1098,6 +1167,13 @@ class FlextInfraCodemodSemanticApply:
             return result_type.fail("semantic cutover has no source inventory")
         working = dict(original)
         changed: set[Path] = set()
+        retired: t.Infra.RopeMutablePaths = set()
+        inputs: t.MutableMappingKV[Path, p.Infra.SemanticSourceState] = {}
+        if rope_workspace.rope_project.authenticated_sources:
+            inputs.update({
+                path: rope_workspace.rope_project.source_state(path, required=True)
+                for path in original
+            })
 
         # Phase 0: Import alignment (rope-native; toggle in tooling.yaml).
         # The original authority remains physical; every phase sees the latest
@@ -1156,7 +1232,9 @@ class FlextInfraCodemodSemanticApply:
             )
             if planned.failure:
                 return result_type.from_failure(planned)
-            cls._apply_plan(working, planned.value, changed)
+            cls._apply_plan(
+                working, planned.value, changed, retirements=retired, inputs=inputs
+            )
             counts[phase] = len(planned.value)
             if planned.value:
                 residue = cls._check_residue(
@@ -1200,6 +1278,8 @@ class FlextInfraCodemodSemanticApply:
                     file_path=path,
                     original_source=original[path],
                     updated_source=working[path],
+                    retire_file=path in retired,
+                    source_states=tuple(inputs.values()),
                     changes=("composed semantic cutover",),
                 )
                 for path in sorted(changed)
@@ -1459,6 +1539,8 @@ class FlextInfraCodemodSemanticApply:
     def source_inventory[FindingT: m.Infra.ModOccurrence](
         root: Path,
         _preflight: m.Infra.ModOccurrenceReport[FindingT],
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> t.MappingKV[Path, str]:
         """Read the canonical governed Python inventory used by native scanning.
 
@@ -1474,11 +1556,17 @@ class FlextInfraCodemodSemanticApply:
         paths = {
             member / target
             for member in u.Infra.import_project_roots(root)
-            for target in u.Infra.ast_grep_scan_targets(member)
+            for target in u.Infra.ast_grep_scan_targets(
+                member, source_project=source_project
+            )
         }
         sources: MutableMapping[Path, str] = {}
         for path in sorted(paths):
-            state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+            state = (
+                source_project.source_state(path, required=True)
+                if source_project is not None
+                else u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+            )
             content = state.content
             if content is None:
                 msg = f"authenticated source disappeared during mod preflight: {path}"
@@ -1523,6 +1611,9 @@ class FlextInfraCodemodSemanticApply:
         sources: MutableMapping[Path, str],
         edits: t.SequenceOf[p.Infra.SemanticMigrationEdit],
         changed: set[Path],
+        *,
+        retirements: t.Infra.RopeMutablePaths | None = None,
+        inputs: t.MutableMappingKV[Path, p.Infra.SemanticSourceState] | None = None,
     ) -> None:
         """Compose validated edit plans in memory without partial effects.
 
@@ -1531,6 +1622,18 @@ class FlextInfraCodemodSemanticApply:
 
         """
         for edit in edits:
+            if edit.retire_file:
+                if retirements is None or edit.updated_source:
+                    msg = f"semantic retirement has no effect carrier: {edit.file_path}"
+                    raise ValueError(msg)
+                retirements.add(edit.file_path)
+            if inputs is not None:
+                for state in edit.source_states:
+                    previous = inputs.get(state.path)
+                    if previous is not None and previous != state:
+                        msg = f"semantic plan changed its original source receipt: {state.path}"
+                        raise ValueError(msg)
+                    inputs[state.path] = state
             current = sources.get(edit.file_path)
             if current != edit.original_source:
                 msg = f"semantic plans disagree for {edit.file_path}"
@@ -1543,10 +1646,12 @@ class FlextInfraCodemodSemanticApply:
         cls,
         root: Path,
         original: t.MappingKV[Path, str],
-        updated: t.MappingKV[Path, str],
+        updated: t.MappingKV[Path, str | None],
         *,
         source_preview: p.Infra.SourcePreview,
         validator: Callable[[Path], p.Result[bool]] | None = None,
+        source_states: t.SequenceOf[p.Infra.SemanticSourceState] = (),
+        source_analysis: p.Infra.SemanticSourceAnalysis | None = None,
     ) -> p.Result[bool]:
         """Normalize and preflight every source before journaled publication.
 
@@ -1554,53 +1659,88 @@ class FlextInfraCodemodSemanticApply:
             The resulting ``p.Result[bool]``.
 
         """
-        semantic_plans: list[m.Infra.SemanticFilePlan] = []
-        inputs = tuple(
-            u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
-            for path in original
+        if not updated:
+            return r[bool].ok(False)
+        retirement = any(source is None for source in updated.values())
+        if retirement and source_analysis is None:
+            return r[bool].fail(
+                "semantic retirement requires its original native topology"
+            )
+        analysis = (
+            m.Infra.CodegenPhaseAnalysis.model_validate(
+                source_analysis, from_attributes=True
+            )
+            if source_analysis is not None
+            else m.Infra.CodegenPhaseAnalysis()
         )
+        supplied = (*source_states, *analysis.inputs)
+        if supplied:
+            inputs = m.Infra.CodemodBindingSnapshot(
+                states=tuple(
+                    m.Cli.AtomicFileState.model_validate(state, from_attributes=True)
+                    for state in supplied
+                )
+            ).states
+        else:
+            # Existing non-transfer callers have no retirement capability.
+            inputs = tuple(
+                u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+                for path in original
+            )
+        states = {state.path: state for state in inputs}
         if any(
-            state.content != original[state.path].encode(c.DEFAULT_ENCODING)
-            for state in inputs
+            path not in states
+            or states[path].content != source.encode(c.DEFAULT_ENCODING)
+            for path, source in original.items()
         ):
             return r[bool].fail("source changed after semantic preflight")
-        states = {state.path: state for state in inputs}
-        consumer_first = sorted(updated, key=cls._path_key)
-        for path in consumer_first:
+        if retirement and not analysis.source_directories:
+            return r[bool].fail("semantic retirement has no original inventory witness")
+        prepared = u.Infra.normalize_sources(
+            root,
+            {path: source for path, source in updated.items() if source is not None},
+            inputs=inputs,
+        )
+        if prepared.failure:
+            return r[bool].from_failure(prepared)
+        plans = []
+        for path in sorted(updated, key=cls._path_key):
             state = states[path]
-            content = state.content
             project_root = u.Infra.project_root(path)
             if project_root is None:
-                project_root = root
-            normalized = u.Infra.normalize_source(
-                root,
-                path,
-                updated[path],
+                return r[bool].fail(f"semantic target has no governed project: {path}")
+            proposed = (
+                prepared.value.updates[path] if updated[path] is not None else None
             )
-            if normalized.failure:
-                return r[bool].from_failure(normalized)
-            new_content = normalized.value.encode(c.DEFAULT_ENCODING)
-            if content == new_content:
-                continue
-            semantic_plans.append(
-                m.Infra.SemanticFilePlan(
+            if updated[path] is not None and proposed is None:
+                return r[bool].fail(
+                    f"normalizer cannot invent a semantic retirement: {path}"
+                )
+            plans.append(
+                m.Infra.CodegenFilePlan(
                     project=project_root.resolve(),
                     path=path.resolve(),
                     before=state,
-                    desired_content=new_content,
-                    desired_mode=state.mode,
-                    changes=("semantic migration",),
-                    source_states=inputs,
+                    desired_content=proposed.encode(c.DEFAULT_ENCODING)
+                    if proposed is not None
+                    else None,
+                    desired_mode=state.mode if proposed is not None else None,
+                    source_states=prepared.value.inputs,
+                    source_directories=analysis.source_directories,
+                    source_query_topology=analysis.source_query_topology,
                 ),
             )
-        return FlextInfraSemanticPublication.publish_semantic_file_plans(
-            semantic_plans,
+        return FlextInfraSemanticPublication.publish_semantic_artifact_plans(
+            plans,
             repository_root=root,
-            options=m.Infra.SemanticPublicationOptions(
-                projection_roots=tuple(sorted(u.Infra.governed_project_roots(root))),
-                dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-                validator=validator,
+            projection_roots=tuple(
+                sorted({
+                    *u.Infra.governed_project_roots(root),
+                    *(plan.project for plan in plans),
+                })
             ),
+            dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+            validator=validator,
         ).map(lambda _: True)
 
     @staticmethod

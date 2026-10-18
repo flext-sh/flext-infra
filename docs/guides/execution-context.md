@@ -93,6 +93,12 @@ workspace. Borrowed projects remain owned by their caller. Content snapshots
 and their authenticated indexes retain their source epoch; a process-global
 registry is not a substitute for the existing invocation-scoped DI.
 
+Persisted semantic plans use the Core contract preset's matching byte encoder
+and decoder. Re-derivation compares every persisted field, including exact
+payload bytes, rather than comparing excluded per-effect runtime dependencies.
+Those dependencies are reconstructed from the authenticated aggregate inputs
+before publication; they are not duplicated into the serialized artifact.
+
 For every bounded engine, generation or namespace repair, compose
 [root AGENTS.md](../../../AGENTS.md), the
 [FLEXT session router](../../../.agents/commands/flext-law.md), and the exact

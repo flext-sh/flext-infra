@@ -318,7 +318,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             return self._observe_publication(request)
         inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
         if inputs.failure:
-            return r[m.Infra.CodegenResult].from_failure(inputs)
+            return r[p.Infra.CodegenResult].from_failure(inputs)
         if not self.generation_only:
             blocked = self._migrate_declarations_for_apply(request, inputs.value.spec)
             if blocked is not None:
@@ -1757,7 +1757,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 )
                 if published.failure:
                     failures.append(published)
-        except self._GENERATION_EXCEPTIONS as exc:
+        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
             failures.append(r[bool].fail(str(exc), exception=exc))
         self._generation_issues.extend(
             m.Infra.Issue(

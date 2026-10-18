@@ -291,14 +291,20 @@ class FlextInfraModelsCheck:
             c.Infra.ERROR
         )
         locations: t.VariadicTuple[
-            Annotated[FlextInfraProtocolsCheck.SarifLocation, _sarif_location_schema]
+            Annotated[
+                FlextInfraProtocolsCheck.SarifLocation,
+                FlextInfraModelsCheck._sarif_location_schema,
+            ]
         ] = m.Field(
             (),
             description="Native primary source spans when supplied by the scanner",
             validate_default=True,
         )
         related_locations: t.VariadicTuple[
-            Annotated[FlextInfraProtocolsCheck.SarifLocation, _sarif_location_schema]
+            Annotated[
+                FlextInfraProtocolsCheck.SarifLocation,
+                FlextInfraModelsCheck._sarif_location_schema,
+            ]
         ] = m.Field(
             (),
             description="All native comparison locations, including other projects",
@@ -347,7 +353,9 @@ class FlextInfraModelsCheck:
         verdict: bool = m.Field(description="Acceptance decided by the caller")
         outcome: c.Infra.ToolOutcome = m.Field(description="Native tool outcome")
         issues: t.VariadicTuple[
-            Annotated[FlextInfraProtocolsCheck.Issue, _issue_schema]
+            Annotated[
+                FlextInfraProtocolsCheck.Issue, FlextInfraModelsCheck._issue_schema
+            ]
         ] = m.Field(
             description="Complete native diagnostics",
         )
@@ -361,7 +369,9 @@ class FlextInfraModelsCheck:
             description="Gate result model",
         )
         issues: t.VariadicTuple[
-            Annotated[FlextInfraProtocolsCheck.Issue, _issue_schema]
+            Annotated[
+                FlextInfraProtocolsCheck.Issue, FlextInfraModelsCheck._issue_schema
+            ]
         ] = m.Field(
             default_factory=tuple,
             description=(

@@ -338,15 +338,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         ]
         | None
     ):
-        if not binding.assignments:
+        if not binding.assignments or (rhs := binding.assignments[0].ast_node) is None:
             return None
         if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(holder):
             message = "native class assignment has no source module"
             raise TypeError(message)
         source = holder.source_code
-        rhs = binding.assignments[0].ast_node
-        if rhs is None:
-            return None
         rhs_offset = cls.source_offset(source, rhs)
         scope = cls.scope_at(holder, rhs_offset)
         if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:

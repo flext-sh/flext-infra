@@ -9,8 +9,6 @@ from __future__ import annotations
 from types import FunctionType
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
-# Declaration-only protocol types stay
-# behind one guard so structural contracts add no reverse runtime dependency.
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping
     from pathlib import Path

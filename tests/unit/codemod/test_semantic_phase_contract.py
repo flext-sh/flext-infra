@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from flext_cli import u as cli_u
-from flext_core import u as core_u
+from flext_core import r, u as core_u
 
 from flext_infra import infra
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
@@ -24,6 +24,234 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraSemanticPhaseContract:
     """Require planned and published sources to reach the same fixed point."""
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "case",
+        ["complete", "marker", "dynamic", "member-alias", "signature", "external"],
+    )
+    def test_logging_ownership_transfer_uses_the_real_mod_publication_group(
+        tmp_path: t.Infra.RopeSourcePath, case: str
+    ) -> None:
+        """Native receivers, old owners and generated exports cut over together."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        layout = u.Infra.layout(root)
+        if layout is None:
+            pytest.fail("logging fixture must have a declared package layout")
+        namespace, owner = layout.package_name, layout.class_stem
+        domain = u.derive_class_stem(u.Infra.package_alias(package_name=namespace))
+        legacy_name, utility_name = f"{owner}Logging", f"{owner}UtilitiesDomains"
+        legacy = package / "services" / "logging_integration.py"
+        provider = package / "_utilities" / "domains.py"
+        api = package / c.Infra.API_PY
+        consumer = package / "logging_consumer.py"
+        for directory in (legacy.parent, provider.parent):
+            directory.mkdir(parents=True, exist_ok=True)
+        legacy.write_text(
+            "from __future__ import annotations\n"
+            f"class {legacy_name}:\n"
+            "    class ContextStage:\n"
+            "        def __call__(self, event: str) -> str:\n"
+            "            return event\n"
+            f"__all__ = [{legacy_name!r}]\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        api.write_text(
+            "from __future__ import annotations\n"
+            "from flext_core import t\n"
+            f"from {namespace}.services.logging_integration import {legacy_name}\n"
+            f"class {owner}({legacy_name}):\n"
+            "    @staticmethod\n"
+            "    def compose_logging(value: str, *, enabled: bool = True) -> t.Pair[str, bool]:\n"
+            "        return value, enabled\n"
+            "    def unrelated(self) -> str:\n"
+            "        return 'other-domain'\n"
+            f"__all__ = [{owner!r}]\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        default = "False" if case == "signature" else "True"
+        provider.write_text(
+            "from __future__ import annotations\n"
+            "from flext_core import p, t\n"
+            f"class {utility_name}:\n"
+            "    class ContextStage:\n"
+            "        def __init__(self, *, context: p.AttributeProbe) -> None:\n"
+            "            self._context = context\n"
+            "        def __call__(self, event: str) -> str:\n"
+            "            return event\n"
+            "    @staticmethod\n"
+            f"    def compose_logging(value: str, *, enabled: bool = {default}) -> t.Pair[str, bool]:\n"
+            "        return value, enabled\n"
+            f"__all__ = [{utility_name!r}]\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        suffix = {
+            "complete": "",
+            "marker": "marker = hasattr(API, 'compose_logging')\n",
+            "dynamic": "selected = 'ContextStage'\nmarker = getattr(API, selected)\n",
+            "member-alias": "marker = API.ContextStage\n",
+            "signature": "",
+            "external": "",
+        }[case]
+        consumer.write_text(
+            "from __future__ import annotations\n"
+            f"from {namespace}.api import {owner} as API\n"
+            "from flext_core import t\n"
+            "class Unrelated:\n"
+            "    @staticmethod\n"
+            "    def compose_logging(value: str) -> str:\n"
+            "        return value\n"
+            "instance = API()\n"
+            "configure = API.compose_logging\n"
+            "evidence: t.Pair[str, t.Pair[str, bool]] = (\n"
+            "    instance.ContextStage()('event'), configure('configured')\n"
+            ")\n"
+            "shadow = Unrelated.compose_logging('unrelated')\n"
+            "HELP = 'compose_logging and ContextStage are documentation'\n" + suffix,
+            encoding=c.DEFAULT_ENCODING,
+        )
+        recipe = root / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
+        recipe.parent.mkdir(parents=True, exist_ok=True)
+        context_owner = (
+            ("logging", "getLogger")
+            if case == "external"
+            else (
+                f"{namespace}.services.logging_integration",
+                f"{legacy_name}.ContextStage",
+            )
+        )
+        rules = m.Infra.RopeContractRules(
+            rules=(
+                m.Infra.RopeContractRule(
+                    id="logging-context-owner",
+                    pattern=f"${owner}.ContextStage()",
+                    goal=f"u.{domain}.ContextStage(context=${{owner}})",
+                    arguments={"owner": f"name={namespace}.api.{owner}"},
+                    imports={"u": f"from {namespace} import u"},
+                    bindings={
+                        f"u.{domain}.ContextStage": f"{namespace}._utilities.domains.{utility_name}.ContextStage"
+                    },
+                    ownership_transfer=context_owner,
+                ),
+                m.Infra.RopeContractRule(
+                    id="logging-compose-owner",
+                    pattern=f"${owner}.compose_logging",
+                    goal=f"u.{domain}.compose_logging",
+                    arguments={"owner": f"name={namespace}.api.{owner}"},
+                    imports={"u": f"from {namespace} import u"},
+                    bindings={
+                        f"u.{domain}.compose_logging": f"{namespace}._utilities.domains.{utility_name}.compose_logging"
+                    },
+                    ownership_transfer=(f"{namespace}.api", f"{owner}.compose_logging"),
+                ),
+            )
+        )
+        tm.ok(u.Cli.yaml_dump(recipe, rules.model_dump(mode="json")))
+        # Produce the same SOURCE-PREP baseline as an adapter worker. Neither
+        # the legacy declaration nor any receiver is deleted by fixture setup.
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        rendered = u.Infra.render_utility_facade(package)
+        if rendered is None:
+            pytest.fail(
+                "the logging utility owner must have a native facade projection"
+            )
+        facade = package / c.Infra.UTILITIES_PY
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True))
+        tm.ok(
+            u.Tests.materialize_codegen_plans(
+                r.ok((
+                    m.Infra.CodegenFilePlan(
+                        project=root,
+                        path=facade,
+                        before=before,
+                        desired_content=rendered.encode(c.DEFAULT_ENCODING),
+                        desired_mode=before.mode,
+                    ),
+                ))
+            )
+        )
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        service_init = legacy.parent / c.Infra.INIT_PY
+        original = {
+            path: path.read_bytes()
+            for path in (legacy, provider, api, consumer, recipe)
+        }
+        report = m.Infra.ModOccurrenceReport(files=frozenset({consumer}), entries=())
+        if case != "complete":
+            messages = {
+                "marker": "marker/dynamic",
+                "dynamic": "marker/dynamic",
+                "member-alias": "surviving native usage",
+                "signature": "callable signature",
+                "external": "outside its project|external library",
+            }
+            with (
+                infra.rope_workspace(root) as workspace,
+                pytest.raises(ValueError, match=messages[case]),
+            ):
+                FlextInfraCodemodSemanticApply.apply(
+                    root,
+                    report,
+                    workspace,
+                    source_preview=infra.source_preview(root),
+                    workspace_factory=infra.rope_workspace,
+                )
+            for path, contents in original.items():
+                tm.that(path.read_bytes(), eq=contents)
+            return
+        tm.ok(u.Tests.provision_python_project_environment(root))
+        with infra.rope_workspace(root) as workspace:
+            tm.ok(
+                FlextInfraCodemodSemanticApply.apply(
+                    root,
+                    report,
+                    workspace,
+                    source_preview=infra.source_preview(root),
+                    workspace_factory=infra.rope_workspace,
+                )
+            )
+        tm.that(legacy.exists(), eq=False)
+        tm.that(
+            "def compose_logging" in api.read_text(encoding=c.DEFAULT_ENCODING),
+            eq=False,
+        )
+        tm.that(legacy_name in api.read_text(encoding=c.DEFAULT_ENCODING), eq=False)
+        if service_init.exists():
+            tm.that(
+                legacy_name in service_init.read_text(encoding=c.DEFAULT_ENCODING),
+                eq=False,
+            )
+        tm.that(
+            consumer.read_text(encoding=c.DEFAULT_ENCODING),
+            has="compose_logging and ContextStage are documentation",
+        )
+        probe = root / "verify_logging_cutover.py"
+        probe.write_text(
+            f"from {namespace}.api import {owner} as API\n"
+            f"from {namespace}.logging_consumer import evidence, shadow\n"
+            "if evidence != ('event', ('configured', True)) or shadow != 'unrelated':\n"
+            "    raise RuntimeError('logging consumer changed behavior')\n"
+            "if API().unrelated() != 'other-domain':\n"
+            "    raise RuntimeError('an unrelated domain changed')\n"
+            "if hasattr(API, 'ContextStage') or hasattr(API, 'compose_logging'):\n"
+            "    raise RuntimeError('old logging owners remain as compatibility stubs')\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        outcome = tm.ok(
+            u.Cli.run_raw((str(u.Infra.runtime_python(root)), str(probe)), cwd=root)
+        )
+        tm.that(outcome.outcome.raw_return_code, eq=0, msg=outcome.stderr)
+        with infra.rope_workspace(root) as workspace:
+            tm.ok(
+                FlextInfraCodemodSemanticApply.apply(
+                    root,
+                    report,
+                    workspace,
+                    source_preview=infra.source_preview(root),
+                    workspace_factory=infra.rope_workspace,
+                )
+            )
+        tm.that(legacy.exists(), eq=False)
 
     @staticmethod
     def test_declaring_model_factory_preserves_public_empty_roundtrips(

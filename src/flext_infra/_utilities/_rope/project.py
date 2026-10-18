@@ -16,6 +16,7 @@ from __future__ import annotations
 from collections.abc import Generator, Mapping
 from contextlib import AbstractContextManager, closing, contextmanager, nullcontext
 from errno import ENOENT
+from itertools import chain
 from os.path import normpath, realpath
 from pathlib import Path
 from types import MappingProxyType
@@ -394,14 +395,14 @@ class FlextInfraRopeProject(Project):
 
             """
             directories, topology = u.Cli.atomic_merge_directory_query_receipts(
-                tuple(inventory for batch in self._directories for inventory in batch),
-                tuple(plan for batch in self._topology for plan in batch),
+                tuple(chain.from_iterable(self._directories)),
+                tuple(chain.from_iterable(self._topology)),
             )
             self._receipt = m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
                 files=(),
                 inputs=m.Infra.CodemodBindingSnapshot(
-                    states=tuple(state for batch in self._states for state in batch),
+                    states=tuple(chain.from_iterable(self._states)),
                 ).states,
                 source_directories=directories,
                 source_query_topology=topology,

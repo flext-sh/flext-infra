@@ -118,6 +118,7 @@ class FlextInfraModelsTransformers:
         )
         source_states: t.VariadicTuple[t.Port[p.Infra.SemanticSourceState]] = m.Field(
             default=(),
+            exclude=True,
             description="Original native inputs consumed by this source plan",
         )
         changes: Annotated[

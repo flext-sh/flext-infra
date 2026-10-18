@@ -15,7 +15,7 @@ from flext_infra import c, m, p, s, t, u
 
 class FlextInfraCodegenConformBootstrap(
     m.Infra.CodegenConformState,
-    s[m.Infra.CodegenResult],
+    s[p.Infra.CodegenResult],
 ):
     """Root of the conform chain: request state and toolchain policy projections.
 

@@ -19,7 +19,7 @@ rules:
     implementation_owner: &logging_implementation [flext_core, u.fetch_logger]
     # Numeric stdlib log(), handler management, exported and escaping logger
     # interfaces have no proven factory translation. Keep those native.
-    receiver_methods: &logging_emissions [debug, info, warning, error, critical, exception]
+    receiver_methods: &logging_emissions [debug, info, warning, error, critical]
   - id: stdlib-keyword-logger-factory
     phase: contract-normalization
     pattern: '${factory}(name=${name})'
@@ -41,6 +41,7 @@ rules:
     imports: *logging_imports
     bindings: *logging_bindings
     implementation_owner: *logging_implementation
+    receiver_methods: *logging_emissions
   - id: structlog-module-logger-factory
     phase: contract-normalization
     pattern: '${factory}()'
@@ -50,6 +51,7 @@ rules:
     imports: *logging_imports
     bindings: *logging_bindings
     implementation_owner: *logging_implementation
+    receiver_methods: *logging_emissions
     # A function/class-local __name__ is not a proven caller module name.
     unshadowed_builtins: [__name__]
   # Only literal obsolete flags can disappear without changing evaluation.

@@ -13,15 +13,19 @@ from typing import Annotated, Self
 from flext_cli import m
 
 from flext_infra import c, p, t
-from flext_infra._models import FlextInfraModelsMixins
-from flext_infra._models._codegen.fix import FlextInfraModelsCodegenFixModels
-from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
-from flext_infra._models._codegen.lazy_init import FlextInfraModelsCodegenLazyInitModels
-from flext_infra._models._codegen.scaffold import FlextInfraModelsCodegenScaffoldModels
-from flext_infra._models._config.base import FlextInfraConfigModels
-from flext_infra._models.base import FlextInfraModelsBase
-from flext_infra._models.check import FlextInfraModelsCheck
-from flext_infra._models.workspace import FlextInfraModelsWorkspace
+from flext_infra._models import (
+    FlextInfraModelsBase,
+    FlextInfraModelsCheck,
+    FlextInfraModelsMixins,
+    FlextInfraModelsWorkspace,
+)
+from flext_infra._models._codegen import (
+    FlextInfraModelsCodegenFixModels,
+    FlextInfraModelsCodegenJournalModels,
+    FlextInfraModelsCodegenLazyInitModels,
+    FlextInfraModelsCodegenScaffoldModels,
+)
+from flext_infra._models._config import FlextInfraConfigModels
 
 
 class FlextInfraModelsCodegenPipelineModels:
@@ -381,7 +385,7 @@ class FlextInfraModelsCodegenPipelineModels:
             exclude=True,
             description="Declared scaffold specification",
         )
-        ports: p.Infra.CodegenConformPorts | None = m.Field(
+        ports: t.Port[p.Infra.CodegenConformPorts | None] = m.Field(
             default=None,
             exclude=True,
             description="Facade-bound docs planning and participant authorization",
@@ -396,7 +400,7 @@ class FlextInfraModelsCodegenPipelineModels:
             exclude=True,
             description="First native file planning cause",
         )
-        docs_planner: p.Infra.DocsArtifactPlanner | None = m.Field(
+        docs_planner: t.Port[p.Infra.DocsArtifactPlanner | None] = m.Field(
             default=None,
             exclude=True,
             description="Actual planner before effects",

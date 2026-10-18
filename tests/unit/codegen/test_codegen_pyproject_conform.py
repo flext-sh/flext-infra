@@ -281,6 +281,7 @@ class TestsFlextInfraCodegenPyprojectConform:
         live_readme: t.StrippedStr | None,
     ) -> None:
         """A scaffold default cannot introduce an authored resource requirement."""
+        preserved = ("readme",)
         scaffold_readme = config.Infra.codegen.scaffold.project.readme
         rendered = (
             '[project]\nname = "sample"\n'
@@ -291,46 +292,47 @@ class TestsFlextInfraCodegenPyprojectConform:
             live += f"readme = {tm.ok(u.Cli.json_dumps(live_readme))}\n"
 
         first = tm.ok(
-            u.Infra.overlay_preserved(rendered, live, preserve_project_keys=("readme",)),
+            u.Infra.overlay_preserved(rendered, live, preserve_project_keys=preserved),
         )
         project = u.Tests.toml_table_at(first, "project")
         tm.that("readme" in project, eq=live_readme is not None)
         tm.that(project.get("readme"), eq=live_readme)
         second = tm.ok(
-            u.Infra.overlay_preserved(rendered, first, preserve_project_keys=("readme",)),
+            u.Infra.overlay_preserved(rendered, first, preserve_project_keys=preserved),
         )
         tm.that(second, eq=first)
 
     @staticmethod
     def test_new_project_keeps_scaffold_defaults_at_a_fixed_point() -> None:
         """Initial creation retains defaults without changing the next projection."""
+        preserved = ("readme",)
         readme = config.Infra.codegen.scaffold.project.readme
         rendered = (
-            '[project]\nname = "sample"\n'
-            f"readme = {tm.ok(u.Cli.json_dumps(readme))}\n"
+            f'[project]\nname = "sample"\nreadme = {tm.ok(u.Cli.json_dumps(readme))}\n'
         )
         first = tm.ok(
-            u.Infra.overlay_preserved(rendered, None, preserve_project_keys=("readme",)),
+            u.Infra.overlay_preserved(rendered, None, preserve_project_keys=preserved),
         )
         tm.that(u.Tests.toml_table_at(first, "project")["readme"], eq=readme)
         second = tm.ok(
-            u.Infra.overlay_preserved(rendered, first, preserve_project_keys=("readme",)),
+            u.Infra.overlay_preserved(rendered, first, preserve_project_keys=preserved),
         )
         tm.that(second, eq=first)
 
     @staticmethod
     def test_custom_metadata_outside_the_render_is_not_removed() -> None:
         """An authored dynamic version is not replaced by a static scaffold value."""
+        preserved = ("version",)
         rendered = '[project]\nname = "sample"\nversion = "1.2.3"\n'
         live = '[project]\nname = "sample"\ndynamic = ["version"]\n'
         first = tm.ok(
-            u.Infra.overlay_preserved(rendered, live, preserve_project_keys=("version",)),
+            u.Infra.overlay_preserved(rendered, live, preserve_project_keys=preserved),
         )
         project = u.Tests.toml_table_at(first, "project")
         tm.that("version" in project, eq=False)
         tm.that(project["dynamic"], eq=["version"])
         second = tm.ok(
-            u.Infra.overlay_preserved(rendered, first, preserve_project_keys=("version",)),
+            u.Infra.overlay_preserved(rendered, first, preserve_project_keys=preserved),
         )
         tm.that(second, eq=first)
 

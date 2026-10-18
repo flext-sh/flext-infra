@@ -62,6 +62,35 @@ class TestsFlextInfraRopeContracts:
         tm.that(composed, eq=(*packaged, "consumer-own-helper"))
 
     @staticmethod
+    def test_workspace_loads_only_declared_member_overlays(tmp_path: Path) -> None:
+        """One workspace catalogue discovers member policy without directory sweeps."""
+        packaged = tuple(rule.id for rule in u.Infra.declared_contract_rules(tmp_path))
+        member = tmp_path / "governed"
+        member.mkdir()
+        u.Tests.create_lazy_init_workspace(member)
+        (tmp_path / ".gitmodules").write_text(
+            '[submodule "governed"]\n\tpath = governed\n\turl = https://example.invalid/governed.git\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        overlay = member / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
+        overlay.parent.mkdir(parents=True, exist_ok=True)
+        overlay.write_text(
+            "rules:\n  - id: governed-member-contract\n"
+            "    pattern: '${helper}(${value})'\n"
+            "    goal: 'str(${value})'\n"
+            "    arguments:\n      helper: name=consumer.helpers.Helpers.render\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        outsider = tmp_path / "not-declared" / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
+        outsider.parent.mkdir(parents=True)
+        outsider.write_text("not valid policy", encoding=c.DEFAULT_ENCODING)
+        rules = u.Infra.declared_contract_rules(tmp_path)
+        tm.that(
+            tuple(rule.id for rule in rules), eq=(*packaged, "governed-member-contract")
+        )
+        tm.that(rules[-1].source_states[0].path, eq=overlay)
+
+    @staticmethod
     def test_repository_overlay_cannot_redeclare_a_packaged_rule(
         tmp_path: Path,
     ) -> None:
@@ -539,11 +568,6 @@ class TestsFlextInfraRopeContracts:
             ),
             (
                 "import logging\n"
-                "logger = logging.getLogger(__name__)\n"
-                "logger.log(logging.WARNING, 'numeric stdlib contract')\n"
-            ),
-            (
-                "import logging\n"
                 "class Service:\n"
                 "    logger = logging.getLogger(__name__)\n"
                 "    def run(self):\n"
@@ -574,7 +598,6 @@ class TestsFlextInfraRopeContracts:
             "assigned-alias",
             "root-logger",
             "none-root-logger",
-            "numeric-level",
             "service-interface",
             "stdlib-shadow",
             "structlog-shadow-and-prose",
@@ -598,6 +621,44 @@ class TestsFlextInfraRopeContracts:
             )
         )
         tm.that(edits, empty=True)
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "emission",
+        [
+            "logger.log(logging.WARNING, 'numeric contract')",
+            "logger.warn('deprecated native alias')",
+            "logger.exception('implicit exception state is not proven')",
+            "logger.info('event', extra={'native': 'context'})",
+            "logger.info('event', stack_info=True)",
+            "logger.info('event', stacklevel=2)",
+            "logger.info(msg='keyword native message')",
+            "logger.info(42)",
+        ],
+    )
+    def test_logging_factory_blocks_unproven_emission_signatures_before_effects(
+        rope_contract_consumer: t.Pair[
+            p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath
+        ],
+        emission: str,
+    ) -> None:
+        """A method name alone never proves printf, context or level equivalence."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "import logging\n"
+            "logger = logging.getLogger('contract.arguments')\n"
+            f"{emission}\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with pytest.raises(
+            ValueError, match="unproven native logging|proven string message"
+        ):
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=workspace,
+                sources={path: source},
+            )
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod

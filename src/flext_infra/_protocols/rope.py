@@ -77,6 +77,9 @@ class FlextInfraProtocolsRope(Protocol):
         @property
         def ownership_transfer(self) -> t.Pair[str, str] | None: ...
 
+        @property
+        def source_states(self) -> t.SequenceOf[p.Infra.SemanticSourceState]: ...
+
     @runtime_checkable
     class CodemodSourceEpoch(Protocol):
         """Original source bytes used by native semantic snapshot construction."""
@@ -109,6 +112,44 @@ class FlextInfraProtocolsRope(Protocol):
 
         @property
         def states(self) -> t.SequenceOf[p.Infra.SemanticSourceState]: ...
+
+    @runtime_checkable
+    class SemanticDirectoryRoot(Protocol):
+        """Native physical directory anchor."""
+
+        @property
+        def path(self) -> t.Infra.RopeSourcePath: ...
+
+    @runtime_checkable
+    class SemanticDirectoryState(Protocol):
+        """Original native membership receipt."""
+
+        @property
+        def root(self) -> p.Infra.SemanticDirectoryRoot: ...
+
+    @runtime_checkable
+    class SemanticTopologyState(Protocol):
+        """Original native absent-candidate receipt."""
+
+        @property
+        def target(self) -> t.Infra.RopeSourcePath: ...
+
+    @runtime_checkable
+    class SemanticSourceAnalysis(Protocol):
+        """Read port of the existing CodegenPhaseAnalysis provenance DTO."""
+
+        @property
+        def inputs(self) -> t.SequenceOf[p.Infra.SemanticSourceState]: ...
+
+        @property
+        def source_directories(
+            self,
+        ) -> t.SequenceOf[p.Infra.SemanticDirectoryState]: ...
+
+        @property
+        def source_query_topology(
+            self,
+        ) -> t.SequenceOf[p.Infra.SemanticTopologyState]: ...
 
     @runtime_checkable
     class PrimitiveOwnerCondition(Protocol):

@@ -8,12 +8,12 @@ from __future__ import annotations
 
 from typing import Self, override
 
-from flext_core import s, t
+from flext_core import s
 
-from flext_infra import FlextInfraCommandPayloadMixin, c, m, p, r, settings, u
+from flext_infra import FlextInfraCommandPayloadMixin, c, m, p, r, settings, t, u
 
 
-class FlextInfraServiceBase[TDomainResult: t.JsonPayload](
+class FlextInfraServiceBase[TDomainResult](
     s[TDomainResult],
     m.Infra.CommandContext,
     FlextInfraCommandPayloadMixin,

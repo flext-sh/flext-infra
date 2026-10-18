@@ -172,13 +172,14 @@ class TestsFlextInfraSemanticPublication:
         tm.that(consumer in artifact.candidate.updates, eq=True)
         tm.ok(u.Cli.atomic_write_text_file(driver, artifact.model_dump_json()))
         captured = tm.ok(u.Cli.atomic_read_binary_file_state(driver, required=True))
-        tm.that(
-            m.Infra.SemanticRenamePlan.model_validate_json(
-                tm.not_none(captured.content)
-            ),
-            eq=artifact,
+        hydrated = m.Infra.SemanticRenamePlan.model_validate_json(
+            tm.not_none(captured.content)
         )
-        return artifact, captured
+        tm.that(
+            hydrated.model_dump(mode="python"),
+            eq=artifact.model_dump(mode="python"),
+        )
+        return hydrated, captured
 
     @staticmethod
     @pytest.mark.parametrize("kind", ["class", "module"])
@@ -234,7 +235,9 @@ class TestsFlextInfraSemanticPublication:
         published = tuple(
             tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
             for scope in (root, *artifact.consumer_roots)
-            for path in u.Infra.discover_python_files(scope)
+            for path in u.Infra.discover_python_files(
+                scope, workspace_excluded_top_dirs=frozenset()
+            )
         )
         tm.ok(
             infra.mod(
@@ -353,7 +356,9 @@ class TestsFlextInfraSemanticPublication:
         originals = tuple(
             tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
             for scope in (root, *artifact.consumer_roots)
-            for path in u.Infra.discover_python_files(scope)
+            for path in u.Infra.discover_python_files(
+                scope, workspace_excluded_top_dirs=frozenset()
+            )
         )
         tm.fail(
             infra.mod(

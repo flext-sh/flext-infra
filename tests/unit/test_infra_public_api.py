@@ -137,11 +137,13 @@ class TestsFlextInfraPublicApi:
         api = flext_infra.FlextInfra()
         generated = flext_infra.m.Cli.ResultCommandRoute(
             name="generate",
+            help_text="Generate managed projections",
             model_cls=flext_infra.m.Infra.CodegenGenerateRequest,
             handler=api.codegen_generate,
         )
         conformed = flext_infra.m.Cli.ResultCommandRoute(
             name="conform",
+            help_text="Conform managed projections",
             model_cls=flext_infra.m.Infra.CodegenConformRequest,
             handler=api.codegen_conform,
         )
