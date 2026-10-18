@@ -661,6 +661,15 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             )
             if receipt.failure:
                 return r[p.Infra.CodegenResult].from_failure(receipt)
+            if plan.exception is not None:
+                # Published valid siblings keep their effects, and the
+                # aggregate still fails carrying the first member's original
+                # planning exception by identity, never a re-wrapped cause.
+                return r[p.Infra.CodegenResult].fail(
+                    "\n".join(issue.formatted for issue in plan.issues)
+                    or "generation planning failed",
+                    exception=plan.exception,
+                )
             payload: p.Infra.CodegenResult = m.Infra.CodegenResult.model_validate(
                 result,
                 from_attributes=True,
@@ -765,12 +774,19 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
     ) -> p.Result[t.Pair[set[Path], t.MutableMappingKV[Path, Path]]]:
         """Resolve the bootstrap surface's expected paths and their owning roots.
 
+        A repository whose codegen inputs were already rejected during
+        planning owns no expected destinations: its failure is recorded in
+        the plan's issues, and aborting here would discard the valid
+        siblings' publication instead of letting the aggregate carry the
+        original cause.
+
         Returns:
             The expected destination paths paired with each path's owning
             repository root.
 
         """
         result_type = r[t.Pair[set[Path], t.MutableMappingKV[Path, Path]]]
+        rejected_roots = {Path(issue.file).resolve() for issue in plan.issues}
         expected_owners: t.MutableMappingKV[Path, Path] = {}
         for repository in plan.repositories:
             repository_root = (
@@ -778,7 +794,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             ).resolve()
             inputs = u.Infra.load_codegen_inputs(repository_root)
             if inputs.failure:
-                return result_type.from_failure(inputs)
+                if repository_root not in rejected_roots:
+                    return result_type.from_failure(inputs)
+                continue
             destinations = self.surface_contract(
                 surface,
                 codegen=inputs.value.spec,
