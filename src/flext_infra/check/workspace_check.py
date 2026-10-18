@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraServiceBase, c, config, m, p, r, t, u
+from flext_infra import FlextInfraServiceBase, c, codegen, config, m, p, r, t, u
 from flext_infra.check import (
     FlextInfraGateRegistry,
     FlextInfraWorkspaceCheckGatesMixin,
@@ -118,46 +118,111 @@ class FlextInfraWorkspaceChecker(
             Full native admission, or the original authority/check failure.
 
         """
-        from flext_infra.codegen.staged_package import FlextInfraStagedPackage
-
-        if (
-            params.apply
-            or not params.check_only
-            or params.gates
-            or params.projects
-            or params.file is not None
-            or params.ruff_args is not None
-            or params.pyright_args is not None
-        ):
+        if not self._candidate_keeps_default_gates(params):
             return r[bool].fail(
                 "candidate admission requires all default read-only gates"
             )
-        current = FlextInfraStagedPackage.source_inputs_current(source_plan)
+        environment = self._candidate_runtime_environment(source_plan, project_root)
+        if environment.failure:
+            return r[bool].from_failure(environment)
+        runtime_directory, identity = environment.value
+        checked = self._execute_payload(
+            params,
+            runtime_root=runtime_directory.parent,
+        )
+        if checked.failure:
+            return r[bool].from_failure(checked)
+        verified = self._candidate_runtime_current(
+            source_plan,
+            runtime_directory,
+            identity,
+        )
+        if verified.failure:
+            return r[bool].from_failure(verified)
+        return verified.map(lambda _: checked.value)
+
+    @staticmethod
+    def _candidate_keeps_default_gates(params: m.Infra.RunCommand) -> bool:
+        """Report whether a candidate keeps every default read-only selection.
+
+        Args:
+            params: The canonical check command payload of the candidate.
+
+        Returns:
+            Whether no apply, project, file, or tool-override selection exists.
+
+        """
+        inherited_defaults = (
+            not params.apply
+            and params.check_only
+            and not params.gates
+            and not params.projects
+        )
+        explicit_selection = (
+            params.file is None
+            and params.ruff_args is None
+            and params.pyright_args is None
+        )
+        return inherited_defaults and explicit_selection
+
+    @staticmethod
+    def _candidate_runtime_environment(
+        source_plan: m.Infra.StageSourcePlan,
+        project_root: Path,
+    ) -> p.Result[t.Pair[Path, m.Cli.AtomicDirectoryChainPlan]]:
+        """Resolve the physical candidate runtime and its pre-check identity.
+
+        Args:
+            source_plan: The sealed candidate plan owning runtime derivation.
+            project_root: The original project root requesting the check.
+
+        Returns:
+            The physical runtime directory with its observed chain identity.
+
+        """
+        result_type = r[t.Pair[Path, m.Cli.AtomicDirectoryChainPlan]]
+        current = codegen.FlextInfraStagedPackage.source_inputs_current(source_plan)
         if current.failure:
-            return r[bool].from_failure(current)
+            return result_type.from_failure(current)
         if project_root not in {layout.project_root for layout in source_plan.layouts}:
-            return r[bool].fail(
+            return result_type.fail(
                 "candidate checker project has no original source authority"
             )
         environment = u.Infra.runtime_environment_dir(project_root)
         if environment.is_symlink() or not environment.is_dir():
-            return r[bool].fail(f"candidate runtime must be physical: {environment}")
+            return result_type.fail(
+                f"candidate runtime must be physical: {environment}",
+            )
         identity = u.Cli.atomic_plan_directory_chain(environment)
         if identity.failure:
-            return r[bool].from_failure(identity)
-        checked = self._execute_payload(params, runtime_root=environment.parent)
-        if checked.failure:
-            return r[bool].from_failure(checked)
+            return result_type.from_failure(identity)
+        return result_type.ok((environment, identity.value))
+
+    @staticmethod
+    def _candidate_runtime_current(
+        source_plan: m.Infra.StageSourcePlan,
+        environment: Path,
+        identity: m.Cli.AtomicDirectoryChainPlan,
+    ) -> p.Result[bool]:
+        """Reprove the runtime identity and source currency after the check.
+
+        Args:
+            source_plan: The sealed candidate plan owning runtime derivation.
+            environment: The physical runtime directory consumed by the check.
+            identity: The pre-check observed chain identity of the runtime.
+
+        Returns:
+            Whether the runtime and sources stayed current, or the failure.
+
+        """
         observed = u.Cli.atomic_plan_directory_chain(environment)
         if observed.failure:
             return r[bool].from_failure(observed)
-        if environment.is_symlink() or observed.value != identity.value:
+        if environment.is_symlink() or observed.value != identity:
             return r[bool].fail(
                 "candidate physical runtime identity changed during check"
             )
-        return FlextInfraStagedPackage.source_inputs_current(source_plan).map(
-            lambda _: checked.value
-        )
+        return codegen.FlextInfraStagedPackage.source_inputs_current(source_plan)
 
     def _execute_payload(
         self,

@@ -11,9 +11,12 @@ import sys
 from pathlib import Path
 
 from flext_infra import config, r, u
-from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra.check import FlextInfraGateRegistry
+from flext_infra.codegen import (
+    FlextInfraCodegenConform,
+    FlextInfraCodegenConsolidator,
+    FlextInfraCodegenLazyInit,
+)
 from tests import c, m, p, t, tm
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
@@ -46,8 +49,6 @@ class TestsFlextInfraUtilitiesCodegenMixin:
             The resulting ``str``.
 
         """
-        from flext_infra.check.gate_registry import FlextInfraGateRegistry
-
         ruff_cfg = config.Infra.tooling.tools.ruff
         select = ", ".join(f'"{rule}"' for rule in sorted(ruff_cfg.lint.select))
         delegated = FlextInfraGateRegistry.default().delegated_lint_rules(

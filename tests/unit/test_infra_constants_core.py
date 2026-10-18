@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_infra import config
-from flext_infra.check.gate_registry import FlextInfraGateRegistry
+from flext_infra.check import FlextInfraGateRegistry
 from tests import c, tm
 
 

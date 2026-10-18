@@ -34,6 +34,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
     <- execute scaffold <- directed file publication <- execute.
     """
 
+    _generation_issues: t.MutableSequenceOf[m.Infra.Issue] = m.PrivateAttr(
+        default_factory=list,
+    )
+
     @classmethod
     def generate_request(
         cls: type[Self],

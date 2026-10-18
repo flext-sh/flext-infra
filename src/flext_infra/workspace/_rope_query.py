@@ -58,6 +58,20 @@ class FlextInfraRopeQueryMixin:
         def close(self) -> None: ...
 
         @property
+        def source_index_receipt(self) -> m.Infra.CodegenPhaseAnalysis: ...
+
+        @classmethod
+        def open_workspace(
+            cls,
+            repository_root: Path,
+            *,
+            rope_repository_root: Path | None = None,
+            source_project: t.Infra.RopeProject | None = None,
+            workspace_index: m.Infra.RopeWorkspaceIndex | None = None,
+            index_receipt: m.Infra.CodegenPhaseAnalysis | None = None,
+        ) -> Self: ...
+
+        @property
         def project_roots(self) -> t.VariadicTuple[Path]: ...
 
         @property

@@ -28,6 +28,7 @@ class FlextInfraProjectClassifierFamilyMixin:
     _CLASS_DEF_RE: t.RegexPattern = c.Infra.CLASS_WITH_BASES_RE
 
     if TYPE_CHECKING:
+        _project_root: Path
         _src_path: Path
 
         @staticmethod

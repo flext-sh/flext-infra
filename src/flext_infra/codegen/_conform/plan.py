@@ -1094,9 +1094,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     (planned.error or "lazy planning failed") if planned.failure else ""
                 ),
                 exception=(
-                    planned.exception if planned.failure else planner.planning_exception
+                    planned.exception
+                    if planned.failure
+                    else planner.state.planning_exception
                 ),
-                issues=tuple(planner.planning_issues),
+                issues=tuple(planner.state.planning_issues),
                 elapsed=time.monotonic() - started,
             )
         planned = planner._governed_repository_plans(
@@ -1130,8 +1132,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 config=inputs.spec,
             ),
             elapsed=time.monotonic() - started,
-            issues=tuple(planner.planning_issues),
-            exception=planner.planning_exception,
+            issues=tuple(planner.state.planning_issues),
+            exception=planner.state.planning_exception,
         )
 
     def _repository_planning_inputs(

@@ -288,23 +288,23 @@ class FlextInfraModelsCodemod:
         )
         implementation_owner: t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None = m.Field(
             default=None,
-            description="Native module and public primitive whose backend remains native",
+            description="Native module and primitive whose backend stays native",
         )
         receiver_methods: t.VariadicTuple[str] = m.Field(
             default=(),
-            description="Proven discarded-call interface required of a factory product",
+            description="Discarded-call interface required of a factory product",
         )
         call_target: t.NonEmptyStr | None = m.Field(
             default=None,
-            description="Capture admitted only as the original callee, preserving every argument",
+            description="Capture admitted only as the callee, preserving arguments",
         )
         missing_keywords: t.VariadicTuple[str] = m.Field(
             default=(),
-            description="Required injected keywords whose explicit presence preserves an existing composition",
+            description="Injected keywords whose presence preserves a composition",
         )
         ownership_transfer: t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None = m.Field(
             default=None,
-            description="Project-owned native module/member retired after complete receiver transfer",
+            description="Native module/member retired after receiver transfer",
         )
 
         @m.model_validator(mode="after")

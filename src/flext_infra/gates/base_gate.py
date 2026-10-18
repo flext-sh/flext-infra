@@ -199,7 +199,7 @@ class FlextInfraGate:
         """
         return shutil.which(cls.scanner_binary)
 
-    def _native_error_issue(self, _project_dir: Path, stderr: str) -> p.Infra.Issue:
+    def _native_error_issue(self, _project_dir: Path, stderr: str) -> m.Infra.Issue:
         """Report native checker stderr as one gate execution error.
 
         Returns:
@@ -215,7 +215,7 @@ class FlextInfraGate:
             severity=c.Infra.ERROR,
         )
 
-    def _tool_failure_issue(self, scan: p.Cli.CommandOutput) -> p.Infra.Issue:
+    def _tool_failure_issue(self, scan: p.Cli.CommandOutput) -> m.Infra.Issue:
         """Scanner absence/crash must never read as a clean pass.
 
         Returns:
@@ -239,7 +239,7 @@ class FlextInfraGate:
         file: str,
         line: int,
         column: int,
-    ) -> p.Infra.Issue:
+    ) -> m.Infra.Issue:
         """Report an unsuccessful command that supplied no structured issues.
 
         Returns:
@@ -269,9 +269,9 @@ class FlextInfraGate:
         self,
         result: p.Cli.CommandOutput,
         project_dir: Path,
-        issues: t.SequenceOf[p.Infra.Issue],
+        issues: t.SequenceOf[m.Infra.Issue],
         tool: str,
-    ) -> t.Pair[bool, t.SequenceOf[p.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
         """Surface a failed tool run that parsed no issues.
 
         If the tool exited unsuccessfully and no issues were parsed, add one

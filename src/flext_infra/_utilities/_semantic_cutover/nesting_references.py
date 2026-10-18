@@ -55,7 +55,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             bindings_by_module: t.MappingKV[str, t.StrMapping],
             providers_by_module: t.MappingKV[str, p.Infra.RopeResource],
             definitions: t.StrMapping,
-            native: t.Pair[p.Infra.RopeProject, p.Infra.RopeResource],
+            native: t.Pair[p.Infra.RopeProject, p.Infra.RopeFile],
             source: str,
             sources: t.MappingKV[Path, str],
             resolvers: t.Triple[

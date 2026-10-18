@@ -20,7 +20,12 @@ from libcst import (
     Module,
 )
 from libcst.metadata import MetadataWrapper
-from rope.refactor.restructure import _ChangeComputer
+
+# The fleet alias must mirror the fork's exact native change-computer class
+# (rope 1.15.0+dc.1 publishes it only under its private spelling), so the
+# import cannot be renamed or routed through a public name; the typed alias
+# below keeps every consumer on the real installed identity.
+from rope.refactor.restructure import _ChangeComputer  # pyright: ignore[reportPrivateUsage]
 
 from flext_infra._protocols import FlextInfraProtocolsRopeRuntime
 from flext_infra._typings import FlextInfraTypesRopeNative

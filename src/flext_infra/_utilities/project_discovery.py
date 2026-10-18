@@ -101,21 +101,41 @@ class FlextInfraUtilitiesProjectDiscovery(
         if loaded.failure:
             return result_type.from_failure(loaded)
         repository = loaded.value.spec.repository
+        declared = FlextInfraUtilitiesProjectDiscovery._declared_applicability(
+            repository,
+            mutating=mutating,
+        )
+        if declared is not None:
+            return result_type.ok(declared)
+        return result_type.ok(m.Infra.WorkspaceOperationApplicability(applicable=True))
+
+    @staticmethod
+    def _declared_applicability(
+        repository: m.Infra.RepositoryRef,
+        *,
+        mutating: bool,
+    ) -> m.Infra.WorkspaceOperationApplicability | None:
+        """Read the repository's own declaration for an inapplicable target.
+
+        Args:
+            repository: The loaded repository declaration of the target.
+            mutating: Whether the requested operation mutates sources.
+
+        Returns:
+            The declared inapplicability, or None when the target applies.
+
+        """
         if repository.codegen == c.Infra.CodegenKind.NONE:
-            return result_type.ok(
-                m.Infra.WorkspaceOperationApplicability(
-                    applicable=False,
-                    reason="Repository declaration disables code generation",
-                ),
+            return m.Infra.WorkspaceOperationApplicability(
+                applicable=False,
+                reason="Repository declaration disables code generation",
             )
         if mutating and repository.read_only:
-            return result_type.ok(
-                m.Infra.WorkspaceOperationApplicability(
-                    applicable=False,
-                    reason="Repository declaration is read-only",
-                ),
+            return m.Infra.WorkspaceOperationApplicability(
+                applicable=False,
+                reason="Repository declaration is read-only",
             )
-        return result_type.ok(m.Infra.WorkspaceOperationApplicability(applicable=True))
+        return None
 
     @classmethod
     def load_refactor_config(cls, repository_root: Path) -> m.Infra.RefactorConfigSpec:

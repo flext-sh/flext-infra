@@ -11,7 +11,7 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING, override
 
-from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
+from flext_infra.maintenance import FlextInfraPythonVersionEnforcer
 from tests import tm, u
 
 if TYPE_CHECKING:

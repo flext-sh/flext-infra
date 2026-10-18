@@ -9,8 +9,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
+from flext_infra.deps import FlextInfraExtraPathsManager
+from flext_infra.deps.phases import FlextInfraToolTablesPhase
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -233,9 +233,17 @@ class FlextInfraPyprojectModernizerTooling:
                     or declared_roots
                 ),
                 "pyright_settings": [
-                    {"name": key, "value": value}
-                    for key, value in sorted(tools.pyright.items())
-                    if key not in scalar_keys
+                    # The workspace environment is a generated invariant: every
+                    # projected project owns a physical checkout-local ``.venv``
+                    # (D-VENV), and Pyright must resolve imports through it
+                    # without an invocation-side override.
+                    {"name": "venv", "value": ".venv"},
+                    {"name": "venvPath", "value": "."},
+                    *(
+                        {"name": key, "value": value}
+                        for key, value in sorted(tools.pyright.items())
+                        if key not in scalar_keys
+                    ),
                 ],
                 "pyright_execution_environments": environments.value,
                 "ruff_src": tools.ruff_src,
