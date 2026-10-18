@@ -97,37 +97,6 @@ class FlextInfraUtilitiesDeclarationPayload:
         if not header.text[end:].lstrip().startswith("("):
             return None
         first, last = words.get_word_parens_range(end - 1)
-        # Shed redundant wrapper parentheses around the whole base list so a
-        # parenthesized declaration like ``Payload((Base[int]))`` exposes its
-        # real argument region to the splitter. Literal regions never count.
-        text = header.text
-        literals = dict(
-            (start, stop)
-            for start, stop, _metadata in FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(
-                text,
-            )
-        )
-        while text[first] == "(" and text[last - 1] == ")":
-            depth = 0
-            closes_outer = False
-            cursor = first
-            while cursor < last:
-                if (skip := literals.get(cursor)) is not None:
-                    cursor = skip
-                    continue
-                character = text[cursor]
-                if character in "([{":
-                    depth += 1
-                elif character in ")]}":
-                    depth -= 1
-                    if depth == 0:
-                        closes_outer = cursor == last - 1
-                        break
-                cursor += 1
-            if not closes_outer:
-                break
-            first += 1
-            last -= 1
         return header, (words, first, last)
 
     @classmethod
