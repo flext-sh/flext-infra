@@ -541,9 +541,7 @@ class FlextInfraModTextGateEngine:
                             path
                             for path in sources or ()
                             if path.is_relative_to(root)
-                            and fnmatch.fnmatch(
-                                path.relative_to(root).as_posix(), pattern
-                            )
+                            and fnmatch(path.relative_to(root).as_posix(), pattern)
                         }
                     )
                 )

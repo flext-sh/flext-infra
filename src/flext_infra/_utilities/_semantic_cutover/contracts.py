@@ -215,7 +215,10 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 FlextInfraUtilitiesRopeCore.resolve_pymodule(
                     project,
                     FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
-                        project, path
+                        project.get_resource(
+                            path.relative_to(Path(project.root.real_path)).as_posix()
+                        ),
+                        path,
                     ),
                 ).get_name(): path
                 for path, _source in items
@@ -302,7 +305,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 project.close()
         retired, providers = (
             FlextInfraUtilitiesSemanticDeclarationRetirement.retire_contract_owners(
-                workspace, dict(items), working, rules, epoch, owned_modules
+                workspace, working, rules, epoch, owned_modules
             )
         )
         for path, original in items:

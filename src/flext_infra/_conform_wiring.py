@@ -29,12 +29,12 @@ class FlextInfraConformWiring:
     def generation_participant_policy(
         root: Path,
         *,
-        initial_workspace: m.Infra.WorkspaceSpec | None,
-    ) -> p.Result[m.Infra.CodegenParticipantPolicy]:
+        initial_workspace: p.Infra.WorkspaceSpec | None,
+    ) -> p.Result[p.Infra.CodegenParticipantPolicy]:
         """Authorize the actual physical coordination root and declared members.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenParticipantPolicy]``.
+            The resulting ``p.Result[p.Infra.CodegenParticipantPolicy]``.
 
         """
         return FlextInfraCodegenTransaction(

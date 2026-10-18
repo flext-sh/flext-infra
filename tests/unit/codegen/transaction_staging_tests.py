@@ -13,22 +13,43 @@ from threading import Event
 
 import pytest
 
-from flext_infra import c, e, m, p, r
 from flext_infra.codegen import (
+    FlextInfraCodegenMiseArtifacts,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsProcess,
+    FlextInfraMiseWorkspacePlanner,
+    FlextInfraStagedPackage,
     codegen_transaction as transaction,
 )
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
-from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
-from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 from flext_infra.transformers import FlextInfraSemanticPublication
 from flext_infra.validate import FlextInfraValidateFreshImport
-from tests import t, tm, u
+from tests import c, e, m, p, r, t, tm, u
 
 
 class TestsFlextInfraTransactionStaging:
     """Exercise durable staging authority before publishing live destinations."""
+
+    @staticmethod
+    def test_participant_policy_view_retains_native_root_authority(
+        tmp_path: Path,
+    ) -> None:
+        """The typed policy boundary retains the original physical proof object."""
+        native = tm.ok(u.Cli.atomic_plan_directory_chain(tmp_path))
+        policy: p.Infra.CodegenParticipantPolicy = m.Infra.CodegenParticipantPolicy(
+            scope_root=native.target,
+            roots=(native,),
+        )
+        result: p.Result[p.Infra.CodegenParticipantPolicy] = r[
+            p.Infra.CodegenParticipantPolicy
+        ].ok(policy)
+
+        tm.that(isinstance(result.value, p.Infra.CodegenParticipantPolicy), eq=True)
+        tm.that(
+            isinstance(result.value.roots[0], p.Infra.CodegenParticipantRoot),
+            eq=True,
+        )
+        tm.that(result.value.scope_root, eq=native.target)
+        tm.that(result.value.roots[0] is native, eq=True)
 
     @staticmethod
     def test_capability_roots_bind_through_the_file_participant_contract(

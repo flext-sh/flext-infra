@@ -1248,7 +1248,7 @@ class FlextInfraUtilitiesCodemodProject(
         """
         key = (
             name,
-            resource.parent.real_path if level else project.root.real_path,
+            resource.parent.real_path if level else project.address,
             level,
         )
         if key not in lookup:

@@ -328,7 +328,7 @@ class FlextInfraGate:
             The report diagnostics, stderr failures and the bare-exit issue.
 
         """
-        issues = (
+        issues: t.SequenceOf[p.Infra.Issue] = (
             *diagnostics,
             *(
                 m.Infra.Issue(
@@ -463,7 +463,10 @@ class FlextInfraGate:
                 errors=[issue.formatted for issue in params.issues],
                 started=params.started,
             ),
-            issues=tuple(params.issues),
+            issues=tuple(
+                m.Infra.Issue.model_validate(issue, from_attributes=True)
+                for issue in params.issues
+            ),
             raw_output=params.raw_output,
             outcome=params.outcome,
         )
@@ -495,7 +498,10 @@ class FlextInfraGate:
                 errors=[issue.formatted for issue in issues],
                 started=started,
             ),
-            issues=tuple(issues),
+            issues=tuple(
+                m.Infra.Issue.model_validate(issue, from_attributes=True)
+                for issue in issues
+            ),
             raw_output=raw_output,
             outcome=(
                 c.Infra.ToolOutcome.FINDINGS
@@ -520,7 +526,7 @@ class FlextInfraGate:
             The resulting ``m.Infra.GateExecution``.
 
         """
-        issues = [
+        issues: t.SequenceOf[p.Infra.Issue] = [
             m.Infra.Issue(
                 file=str(project_dir),
                 line=1,
@@ -583,7 +589,7 @@ class FlextInfraGate:
             The resulting ``m.Infra.GateExecution``.
 
         """
-        issue = m.Infra.Issue(
+        issue: p.Infra.Issue = m.Infra.Issue(
             file=str(file_path),
             line=1,
             column=1,
@@ -794,7 +800,7 @@ class FlextInfraGate:
                 )
             )
             if native_error:
-                issues = execution.issues
+                issues: t.SequenceOf[p.Infra.Issue] = execution.issues
                 if not any(issue.code == c.Infra.ToolOutcome.ERROR for issue in issues):
                     issues = (
                         *issues,
@@ -811,7 +817,10 @@ class FlextInfraGate:
                         project_dir=project_dir,
                         verdict=False,
                         outcome=c.Infra.ToolOutcome.ERROR,
-                        issues=issues,
+                        issues=tuple(
+                            m.Infra.Issue.model_validate(issue, from_attributes=True)
+                            for issue in issues
+                        ),
                         raw_output=execution.raw_output,
                         started=started,
                     ),

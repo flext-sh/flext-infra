@@ -15,15 +15,28 @@ if TYPE_CHECKING:
     from pathlib import Path
     from types import TracebackType
 
-    from flext_core import m, p
+    from flext_core import t
 
-    from flext_infra import t
+    from flext_infra import m, p
     from flext_infra._protocols.rope_runtime import FlextInfraProtocolsRopeRuntime
 
 
 @runtime_checkable
 class FlextInfraProtocolsRope(Protocol):
     """Application contracts layered around the concrete Rope boundary."""
+
+    @runtime_checkable
+    class SourceRewrite(Protocol):
+        """Read-only source span and replacement consumed by native refactoring."""
+
+        @property
+        def start(self) -> int: ...
+
+        @property
+        def end(self) -> int: ...
+
+        @property
+        def text(self) -> str: ...
 
     @runtime_checkable
     class RopeContractRule(Protocol):

@@ -503,6 +503,25 @@ class FlextInfraProtocolsBase(Protocol):
         def batch_admission(self) -> m.Infra.CodegenPhaseOutcome | None: ...
 
     @runtime_checkable
+    class CodegenParticipantRoot(Protocol):
+        """Physical root selector retaining the producer's native proof value."""
+
+        @property
+        def target(self) -> Path: ...
+
+    @runtime_checkable
+    class CodegenParticipantPolicy(Protocol):
+        """Read-only physical authority consumed by generation transactions."""
+
+        @property
+        def scope_root(self) -> Path: ...
+
+        @property
+        def roots(
+            self,
+        ) -> t.VariadicTuple[FlextInfraProtocolsBase.CodegenParticipantRoot]: ...
+
+    @runtime_checkable
     class CodegenParticipantPolicyFactory(Protocol):
         """Composition-root authorization for one generation request."""
 
@@ -510,8 +529,8 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             root: Path,
             *,
-            initial_workspace: m.Infra.WorkspaceSpec | None,
-        ) -> p.Result[m.Infra.CodegenParticipantPolicy]:
+            initial_workspace: FlextInfraProtocolsBase.WorkspaceSpec | None,
+        ) -> p.Result[FlextInfraProtocolsBase.CodegenParticipantPolicy]:
             """Read the request's physical topology without acquiring a lease.
 
             ``initial_workspace`` is the declared topology of a scaffold whose

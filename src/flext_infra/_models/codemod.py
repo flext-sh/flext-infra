@@ -253,11 +253,11 @@ class FlextInfraModelsCodemod:
             default_factory=u.empty(TypeForm(t.MappingKV[str, str])),
             description="Destination expressions and their required Rope identities",
         )
-        model_bases: t.StrSequence = m.Field(
+        model_bases: t.VariadicTuple[str] = m.Field(
             default=(),
             description="Required model ancestry for every matched declaration",
         )
-        unshadowed_builtins: t.StrSequence = m.Field(
+        unshadowed_builtins: t.VariadicTuple[str] = m.Field(
             default=(),
             description="Native lexical names required to be interpreter builtins",
         )
@@ -268,7 +268,7 @@ class FlextInfraModelsCodemod:
                 "no authored call"
             ),
         )
-        drops: t.StrSequence = m.Field(
+        drops: t.VariadicTuple[str] = m.Field(
             default=(),
             description="Discarded captures that must be inert native constants",
         )
@@ -276,11 +276,11 @@ class FlextInfraModelsCodemod:
             default=False,
             description="Whether the replacement changes annotation evaluation order",
         )
-        families: t.StrSequence = m.Field(
+        families: t.VariadicTuple[str] = m.Field(
             default=(),
             description="Declared facade families admitting the source module",
         )
-        scope_kinds: t.SequenceOf[
+        scope_kinds: t.VariadicTuple[
             Annotated[c.Infra.RopeScopeKind, m.Field(strict=False)]
         ] = m.Field(
             default=(),
@@ -290,7 +290,7 @@ class FlextInfraModelsCodemod:
             default=None,
             description="Native module and public primitive whose backend remains native",
         )
-        receiver_methods: t.StrSequence = m.Field(
+        receiver_methods: t.VariadicTuple[str] = m.Field(
             default=(),
             description="Proven discarded-call interface required of a factory product",
         )
@@ -298,7 +298,7 @@ class FlextInfraModelsCodemod:
             default=None,
             description="Capture admitted only as the original callee, preserving every argument",
         )
-        missing_keywords: t.StrSequence = m.Field(
+        missing_keywords: t.VariadicTuple[str] = m.Field(
             default=(),
             description="Required injected keywords whose explicit presence preserves an existing composition",
         )

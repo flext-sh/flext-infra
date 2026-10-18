@@ -235,67 +235,41 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             tuple(item for scope in scopes for item in scope.source_directories),
             tuple(item for scope in scopes for item in scope.source_query_topology),
         )
-        conflicts = 0
-        for original in project.consumed_source_states():
-            if cls._verify_original_sources((original,), (), ()).failure:
-                conflicts += 1
-                if original not in states:
-                    raise cause
-        for original_directory in project.consumed_source_directories():
-            if cls._verify_original_sources((), (original_directory,), ()).failure:
-                conflicts += 1
-                covered = next(
-                    (
-                        item
-                        for item in directories
-                        if item.root.path == original_directory.root.path
-                    ),
-                    None,
+        failed_states = tuple(
+            original
+            for original in project.consumed_source_states()
+            if cls._verify_original_sources((original,), (), ()).failure
+        )
+        if any(original not in states for original in failed_states):
+            raise cause
+        failed_directories = tuple(
+            original
+            for original in project.consumed_source_directories()
+            if cls._verify_original_sources((), (original,), ()).failure
+        )
+        failed_topology = tuple(
+            original
+            for original in project.consumed_source_topology()
+            if cls._verify_original_sources((), (), (original,)).failure
+        )
+        if not all(
+            any(
+                original_query.model_copy(
+                    update={"queries": (), "membership_queried": False}
                 )
-                if (
-                    covered is None
-                    or covered.model_copy(
-                        update={"queries": (), "membership_queried": False}
-                    )
-                    != original_directory.model_copy(
-                        update={"queries": (), "membership_queried": False}
-                    )
-                    or not set(original_directory.queries).issubset(covered.queries)
-                    or (
-                        original_directory.membership_queried
-                        and not covered.membership_queried
-                    )
-                ):
-                    raise cause
-        for original_topology in project.consumed_source_topology():
-            if cls._verify_original_sources((), (), (original_topology,)).failure:
-                conflicts += 1
-                covered_chain = next(
-                    (
-                        item
-                        for item in topology
-                        if item.target == original_topology.target
-                    ),
-                    None,
+                == covered.model_copy(
+                    update={"queries": (), "membership_queried": False}
                 )
-                if (
-                    covered_chain is None
-                    or covered_chain.model_copy(
-                        update={"queries": (), "membership_queried": False}
-                    )
-                    != original_topology.model_copy(
-                        update={"queries": (), "membership_queried": False}
-                    )
-                    or not set(original_topology.queries).issubset(
-                        covered_chain.queries
-                    )
-                    or (
-                        original_topology.membership_queried
-                        and not covered_chain.membership_queried
-                    )
-                ):
-                    raise cause
-        if not conflicts:
+                and set(original_query.queries).issubset(covered.queries)
+                and (
+                    not original_query.membership_queried or covered.membership_queried
+                )
+                for covered in (*directories, *topology)
+            )
+            for original_query in (*failed_directories, *failed_topology)
+        ):
+            raise cause
+        if not (failed_states or failed_directories or failed_topology):
             raise cause
         accepted: list[m.Infra.CodegenFilePlan] = []
         affected: set[Path] = set()

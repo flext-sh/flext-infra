@@ -119,7 +119,9 @@ class FlextInfraRenameSymbols:
             TypeError: If Rope emits an unsupported native effect.
 
         """
-        rewrites: dict[Path, list[m.Infra.SourceRewrite]] = {}
+        rewrites: t.MutableMappingKV[
+            Path, t.MutableSequenceOf[p.Infra.SourceRewrite]
+        ] = {}
         moves: dict[Path, Path] = {}
         selected: set[t.Pair[Path, str]] = set()
         for decision in decisions:
@@ -158,9 +160,9 @@ class FlextInfraRenameSymbols:
                     raise ValueError(msg)
                 root = Path(producer.root.real_path)
                 resource = producer.get_resource(path.relative_to(root).as_posix())
+                owner, _, name = item.scope_path.rpartition(".")
                 offset = None
                 if item.kind != "module":
-                    owner, _, name = item.scope_path.rpartition(".")
                     binding = cls.resolve_member(
                         producer, f"{item.module_name}.{owner}".rstrip("."), name
                     )
@@ -345,7 +347,7 @@ class FlextInfraRenameSymbols:
 
         """
         planned: t.MutableMappingKV[
-            Path, t.MutableSequenceOf[m.Infra.SourceRewrite]
+            Path, t.MutableSequenceOf[p.Infra.SourceRewrite]
         ] = {}
         selected: set[t.Pair[str, str]] = set()
         for declaration in declarations:
@@ -509,7 +511,7 @@ class FlextInfraRenameSymbols:
         change: p.Infra.RopeChangeContents,
         source: str,
         symbols: t.Triple[str, str, str],
-        rewrites: t.SequenceOf[m.Infra.SourceRewrite],
+        rewrites: t.SequenceOf[p.Infra.SourceRewrite],
     ) -> t.VariadicTuple[t.Triple[int, int, bool]]:
         """Retain effective-member identity after Rope's receiver/MRO match.
 
@@ -591,7 +593,7 @@ class FlextInfraRenameSymbols:
         source: str,
         node: ast.AST,
         receiver: ast.AST,
-        rewrites: t.SequenceOf[m.Infra.SourceRewrite],
+        rewrites: t.SequenceOf[p.Infra.SourceRewrite],
     ) -> t.Triple[int, str, str] | None:
         """Return one rewritten expression's authenticated source span.
 
@@ -655,11 +657,11 @@ class FlextInfraRenameSymbols:
         *,
         rename_definitions: bool = False,
         resource_paths: t.SequenceOf[Path] | None = None,
-    ) -> t.MappingKV[Path, t.VariadicTuple[m.Infra.SourceRewrite]]:
+    ) -> t.MappingKV[Path, t.VariadicTuple[p.Infra.SourceRewrite]]:
         """Merge non-overlapping Rope previews against one immutable snapshot.
 
         Returns:
-            The resulting ``t.MappingKV[Path, t.VariadicTuple[m.Infra.SourceRewrite]]``.
+            The resulting ``t.MappingKV[Path, t.VariadicTuple[p.Infra.SourceRewrite]]``.
 
         Raises:
             ValueError: If Rope input changed after authentication; or if CSV
@@ -679,7 +681,7 @@ class FlextInfraRenameSymbols:
             ordered_paths = tuple(sorted(resources))
         planned: t.MutableMappingKV[
             Path,
-            t.MutableSequenceOf[m.Infra.SourceRewrite],
+            t.MutableSequenceOf[p.Infra.SourceRewrite],
         ] = {}
         for old, new in pairs:
             accepted = cls._plan_pair(
@@ -734,7 +736,7 @@ class FlextInfraRenameSymbols:
         ],
         inventory: t.Pair[t.SequenceOf[Path], t.MappingKV[Path, t.Infra.RopeResource]],
         plan: t.Triple[
-            t.MutableMappingKV[Path, t.MutableSequenceOf[m.Infra.SourceRewrite]],
+            t.MutableMappingKV[Path, t.MutableSequenceOf[p.Infra.SourceRewrite]],
             bool,
             bool,
         ],
@@ -817,7 +819,7 @@ class FlextInfraRenameSymbols:
             t.MappingKV[Path, str],
             t.MappingKV[Path, t.Infra.RopeResource],
         ],
-        planned: t.MutableMappingKV[Path, t.MutableSequenceOf[m.Infra.SourceRewrite]],
+        planned: t.MutableMappingKV[Path, t.MutableSequenceOf[p.Infra.SourceRewrite]],
         *,
         complete_inventory: bool = True,
     ) -> bool:
@@ -893,7 +895,7 @@ class FlextInfraRenameSymbols:
         sources: t.MappingKV[Path, str],
         resources: t.MappingKV[Path, t.Infra.RopeResource],
         identity: t.Triple[str, str, str],
-        planned: t.MutableMappingKV[Path, t.MutableSequenceOf[m.Infra.SourceRewrite]],
+        planned: t.MutableMappingKV[Path, t.MutableSequenceOf[p.Infra.SourceRewrite]],
     ) -> None:
         """Reuse the existing binding-qualified quoted-type contract for plans.
 
@@ -975,7 +977,7 @@ class FlextInfraRenameSymbols:
         *,
         context: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
         identity: t.StrSequence,
-        planned: t.MutableMappingKV[Path, t.MutableSequenceOf[m.Infra.SourceRewrite]],
+        planned: t.MutableMappingKV[Path, t.MutableSequenceOf[p.Infra.SourceRewrite]],
         rename_definitions: bool = False,
     ) -> None:
         """Validate and record one Rope content change from a CSV campaign.

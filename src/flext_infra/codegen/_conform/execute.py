@@ -329,7 +329,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         self,
         request: m.Infra.CodegenConformRequest,
         spec: m.Infra.CodegenConfigSpec,
-    ) -> p.Result[m.Infra.CodegenResult] | None:
+    ) -> p.Result[p.Infra.CodegenResult] | None:
         """Migrate repository declarations on governed apply surfaces.
 
         Returns:
@@ -355,17 +355,17 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             migrated.error_code != c.Infra.ToolOutcome.ERROR.value
             or not self.planning_issues
         ):
-            return r[m.Infra.CodegenResult].from_failure(migrated)
+            return r[p.Infra.CodegenResult].from_failure(migrated)
         return None
 
     def _dispatch_conform_surface(
         self,
         request: m.Infra.CodegenConformRequest,
-    ) -> p.Result[m.Infra.CodegenResult]:
+    ) -> p.Result[p.Infra.CodegenResult]:
         """Dispatch the request's conform surface to its owning executor.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
+            The resulting ``p.Result[p.Infra.CodegenResult]``.
 
         """
         surface = c.Infra.CodegenConformSurface(request.what)
@@ -573,17 +573,17 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
     def execute_plan(
         self,
         request: m.Infra.CodegenConformRequest,
-    ) -> p.Result[m.Infra.CodegenResult]:
+    ) -> p.Result[p.Infra.CodegenResult]:
         """Execute a non-toolchain conform surface without widening its scope.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
+            The resulting ``p.Result[p.Infra.CodegenResult]``.
 
         """
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
         if request.what is c.Infra.CodegenConformSurface.DEPENDENCIES:
-            return r[m.Infra.CodegenResult].fail(
+            return r[p.Infra.CodegenResult].fail(
                 "partial codegen apply is prohibited; use the complete all surface",
             )
         u.Cli.header(
@@ -595,17 +595,17 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         )
         planned = self.plan(request)
         if planned.failure:
-            return r[m.Infra.CodegenResult].from_failure(planned)
+            return r[p.Infra.CodegenResult].from_failure(planned)
         plan = planned.value
         if not plan.files and (plan.issues or plan.exception is not None):
-            return r[m.Infra.CodegenResult].fail(
+            return r[p.Infra.CodegenResult].fail(
                 "\n".join(issue.formatted for issue in plan.issues)
                 or "generation planning failed",
                 exception=plan.exception,
             )
         surface = c.Infra.CodegenConformSurface(request.what)
         if surface not in c.Infra.PARTIAL_PLAN_SURFACES:
-            return r[m.Infra.CodegenResult].fail(
+            return r[p.Infra.CodegenResult].fail(
                 "partial codegen apply is prohibited; use the complete all surface",
             )
         mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
@@ -619,7 +619,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         )
         receipts: list[m.Infra.CodegenPhaseOutcome] = []
 
-        def publish(scope_root: Path) -> p.Result[m.Infra.CodegenResult]:
+        def publish(scope_root: Path) -> p.Result[p.Infra.CodegenResult]:
             written = self._publish_bootstrap_phase(
                 request,
                 plan,
@@ -628,23 +628,29 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 publication_receipts=receipts,
             )
             if written.failure:
-                return r[m.Infra.CodegenResult].from_failure(written)
-            return r[m.Infra.CodegenResult].ok(
-                m.Infra.CodegenResult(plan=plan, written_files=written.value),
+                return r[p.Infra.CodegenResult].from_failure(written)
+            payload: p.Infra.CodegenResult = m.Infra.CodegenResult(
+                plan=plan,
+                written_files=written.value,
             )
+            return r[p.Infra.CodegenResult].ok(payload)
 
-        return transaction.run_files_locked(roots, publish).flat_map(
-            lambda result: transaction.publish_operation_receipt(
+        def complete(result: p.Infra.CodegenResult) -> p.Result[p.Infra.CodegenResult]:
+            receipt = transaction.publish_operation_receipt(
                 request,
                 tuple(receipts),
                 scope_roots=tuple(roots.values()),
                 completed=True,
-            ).map(
-                lambda receipt: result.model_copy(
-                    update={"publication_receipt": receipt},
-                ),
-            ),
-        )
+            )
+            if receipt.failure:
+                return r[p.Infra.CodegenResult].from_failure(receipt)
+            payload: p.Infra.CodegenResult = m.Infra.CodegenResult.model_validate(
+                result,
+                from_attributes=True,
+            ).model_copy(update={"publication_receipt": receipt.value})
+            return r[p.Infra.CodegenResult].ok(payload)
+
+        return transaction.run_files_locked(roots, publish).flat_map(complete)
 
     def _publish_bootstrap_phase(
         self,
@@ -961,22 +967,21 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
     def _execute_managed(
         self,
         request: m.Infra.CodegenConformRequest,
-    ) -> p.Result[m.Infra.CodegenResult]:
+    ) -> p.Result[p.Infra.CodegenResult]:
         """Plan outside the lease and publish through locked generation phases.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
+            The resulting ``p.Result[p.Infra.CodegenResult]``.
 
         """
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return self._observe_publication(request)
         configured = self._managed_policy(request)
         if configured.failure:
-            return r[m.Infra.CodegenResult].from_failure(configured)
-        policy = configured.value
+            return r[p.Infra.CodegenResult].from_failure(configured)
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=request.root),
-            participant_policy=policy,
+            participant_policy=configured.value,
         )
         planned = transaction.run_locked(
             prepare=True,
@@ -989,7 +994,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if cause is not None:
             raise cause
         if planned.failure:
-            return r[m.Infra.CodegenResult].from_failure(planned)
+            return r[p.Infra.CodegenResult].from_failure(planned)
         operation = transaction.publish_operation_receipt(
             request,
             (),
@@ -999,14 +1004,14 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             ),
         )
         if operation.failure:
-            return r[m.Infra.CodegenResult].from_failure(operation)
+            return r[p.Infra.CodegenResult].from_failure(operation)
         batches: list[m.Infra.CodegenPhaseOutcome] = []
         self._generation_issues = list(planned.value.issues)
         published = self._settle_generation_stage(
             lambda: self._publish_generation_batches(
                 request,
                 self._managed_bootstrap_analysis(planned.value),
-                policy,
+                configured.value,
                 batches,
                 operation.value,
             ),
@@ -1016,7 +1021,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         lazy = self._settle_generation_stage(
             lambda: self._publish_lazy_batch(
                 planned.value,
-                policy,
+                configured.value,
                 batches,
                 operation.value,
             ),
@@ -1077,16 +1082,15 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if first_exception is not None:
             raise first_exception
         if failures:
-            return r[m.Infra.CodegenResult].from_failure(failures[0])
-        return r[m.Infra.CodegenResult].ok(
-            m.Infra.CodegenResult(
-                plan=planned.value,
-                written_files=tuple(
-                    path for batch in batches for path in batch.written_files
-                ),
-                publication_receipt=completed.value,
+            return r[p.Infra.CodegenResult].from_failure(failures[0])
+        payload: p.Infra.CodegenResult = m.Infra.CodegenResult(
+            plan=planned.value,
+            written_files=tuple(
+                path for batch in batches for path in batch.written_files
             ),
+            publication_receipt=completed.value,
         )
+        return r[p.Infra.CodegenResult].ok(payload)
 
     @staticmethod
     def _settle_generation_stage[T](
@@ -1105,7 +1109,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
     def _publish_lazy_batch(
         self,
         plan: m.Infra.CodegenPlan,
-        policy: m.Infra.CodegenParticipantPolicy,
+        policy: p.Infra.CodegenParticipantPolicy,
         batches: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
         operation: m.Infra.CodegenPhaseOutcome,
     ) -> p.Result[t.VariadicTuple[Path]]:
@@ -1150,14 +1154,14 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
     def _managed_policy(
         self,
         request: m.Infra.CodegenConformRequest,
-    ) -> p.Result[m.Infra.CodegenParticipantPolicy]:
+    ) -> p.Result[p.Infra.CodegenParticipantPolicy]:
         """Authorize the declared physical generation participants.
 
         Returns:
             The policy, or its first prerequisite failure.
 
         """
-        result = r[m.Infra.CodegenParticipantPolicy]
+        result = r[p.Infra.CodegenParticipantPolicy]
         ports = self.ports
         if ports is None:
             return result.fail(
@@ -1506,7 +1510,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         self,
         request: m.Infra.CodegenConformRequest,
         analysis: m.Infra.CodegenPhaseAnalysis,
-        policy: m.Infra.CodegenParticipantPolicy,
+        policy: p.Infra.CodegenParticipantPolicy,
         receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
         operation: m.Infra.CodegenPhaseOutcome,
     ) -> p.Result[t.VariadicTuple[Path]]:
@@ -1596,7 +1600,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         self,
         request: m.Infra.CodegenConformRequest,
         analysis: m.Infra.CodegenPhaseAnalysis,
-        policy: m.Infra.CodegenParticipantPolicy,
+        policy: p.Infra.CodegenParticipantPolicy,
         receipts: t.MutableSequenceOf[m.Infra.CodegenPhaseOutcome],
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Use the shared journal publisher for one exact dependent component.

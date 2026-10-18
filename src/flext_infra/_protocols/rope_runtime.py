@@ -114,6 +114,12 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def get_type(self) -> FlextInfraProtocolsRopeRuntime.RopePyObject: ...
 
     @runtime_checkable
+    class RopeSourceDefinition(Protocol):
+        """Cached AST capability of native source-defined classes and functions."""
+
+        def get_ast(self) -> FlextInfraProtocolsRopeRuntime.RopeAstNode: ...
+
+    @runtime_checkable
     class NativeClassMetadata(Protocol):
         """CPython class metadata published by Rope's builtin class object."""
 
@@ -363,6 +369,12 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def receipt(self) -> m.Infra.CodegenPhaseAnalysis: ...
 
     @runtime_checkable
+    class RopePreferences(Protocol):
+        """Native preference updates required by project source election."""
+
+        def add(self, key: str, value: str) -> None: ...
+
+    @runtime_checkable
     class RopeSourceAccess(Protocol):
         """Authenticated source observations and per-consumer receipt scopes."""
 
@@ -375,6 +387,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def source_selection(self) -> AbstractContextManager[None]: ...
 
         def source_capture(self) -> AbstractContextManager[None]: ...
+
+        def verify_source_states(self) -> None: ...
 
         def source_consumer(
             self,
@@ -491,6 +505,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> None: ...
 
         def close(self) -> None: ...
+
+        def get_prefs(self) -> FlextInfraProtocolsRopeRuntime.RopePreferences: ...
 
         def frozen_layout(self) -> AbstractContextManager[Self]: ...
 

@@ -7,21 +7,18 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, override
+from typing import Annotated, override
 
-from flext_infra import c, m, r, u
+from flext_infra import c, m, p, r, u
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenExecutionBase
 
 # New file per operator live
 # order (ULW). ctx via u.derive_class_stem (no parallel detection, ADR-005 §9);
 # accessor typing/config+settings symmetry fixed in templates in the same lane.
 
-if TYPE_CHECKING:
-    from flext_infra import p
-
 
 class FlextInfraCodegenProjectNew(
-    FlextInfraCodegenExecutionBase[m.Infra.CodegenResult],
+    FlextInfraCodegenExecutionBase[p.Infra.CodegenResult],
 ):
     """Scaffold one new repository of a declared governance kind."""
 
@@ -136,21 +133,21 @@ class FlextInfraCodegenProjectNew(
     ] = None
 
     @override
-    def execute(self) -> p.Result[m.Infra.CodegenResult]:
+    def execute(self) -> p.Result[p.Infra.CodegenResult]:
         """Build one typed manifest and delegate all output to conform.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenResult]``.
+            The resulting ``p.Result[p.Infra.CodegenResult]``.
 
         """
         if self.effective_dry_run:
-            return r[m.Infra.CodegenResult].fail("codegen new requires apply mode")
+            return r[p.Infra.CodegenResult].fail("codegen new requires apply mode")
         # Every identity fact is an explicit caller declaration: for a
         # repository that does not exist yet there is nothing to detect and no
         # catalog to consult.
         declared = self._validated_remote_declarations()
         if declared.failure:
-            return r[m.Infra.CodegenResult].from_failure(declared)
+            return r[p.Infra.CodegenResult].from_failure(declared)
         repository_url, repository_branch, origin_url, flext_url, flext_ref = (
             declared.value
         )

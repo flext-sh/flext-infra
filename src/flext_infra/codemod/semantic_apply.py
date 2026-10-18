@@ -509,7 +509,7 @@ class FlextInfraCodemodSemanticApply:
         candidate: m.Infra.SemanticRenamePlan,
         *,
         publish: bool = True,
-        source_analysis: m.Infra.CodegenPhaseAnalysis | None = None,
+        source_analysis: p.Infra.SemanticSourceAnalysis | None = None,
     ) -> p.Result[bool]:
         """Publish one rule-composed native candidate under its original source epoch.
 
@@ -743,7 +743,7 @@ class FlextInfraCodemodSemanticApply:
         driver: m.Cli.AtomicFileState | None,
         *,
         publish: bool,
-        source_analysis: m.Infra.CodegenPhaseAnalysis | None = None,
+        source_analysis: p.Infra.SemanticSourceAnalysis | None = None,
     ) -> p.Result[bool]:
         """Publish the authenticated candidate through the guarded transaction.
 
@@ -759,8 +759,46 @@ class FlextInfraCodemodSemanticApply:
                 *artifact.candidate.inputs,
                 *artifact.source_states,
                 *((driver,) if driver is not None else ()),
+                *(
+                    tuple(
+                        m.Cli.AtomicFileState.model_validate(
+                            state, from_attributes=True
+                        )
+                        for state in source_analysis.inputs
+                    )
+                    if source_analysis is not None
+                    else ()
+                ),
             )
         ).states
+        directories, topology = u.Cli.atomic_merge_directory_query_receipts(
+            (
+                *artifact.source_directories,
+                *(
+                    tuple(
+                        m.Cli.AtomicDirectoryInventory.model_validate(
+                            receipt, from_attributes=True
+                        )
+                        for receipt in source_analysis.source_directories
+                    )
+                    if source_analysis is not None
+                    else ()
+                ),
+            ),
+            (
+                *artifact.source_query_topology,
+                *(
+                    tuple(
+                        m.Cli.AtomicDirectoryChainPlan.model_validate(
+                            receipt, from_attributes=True
+                        )
+                        for receipt in source_analysis.source_query_topology
+                    )
+                    if source_analysis is not None
+                    else ()
+                ),
+            ),
+        )
         plans = tuple(
             m.Infra.CodegenFilePlan(
                 project=max(
@@ -782,16 +820,14 @@ class FlextInfraCodemodSemanticApply:
                     else originals[moved_from.get(path, path)].mode
                 ),
                 source_states=dependencies,
-                source_directories=artifact.source_directories,
-                source_query_topology=artifact.source_query_topology,
+                source_directories=directories,
+                source_query_topology=topology,
                 dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
             )
             for path, source in updates.items()
         )
         return FlextInfraSemanticPublication.publish_semantic_artifact_plans(
             plans,
-            inputs=dependencies,
-            source_analysis=source_analysis,
             repository_root=u.Infra.import_project_roots(root)[0].resolve(),
             projection_roots=tuple(
                 sorted({
@@ -876,7 +912,6 @@ class FlextInfraCodemodSemanticApply:
             root,
             original,
             {path: working[path] for path in changed},
-            source_preview=source_preview,
             validator=verify,
         ).map(lambda _: planned.value)
 
@@ -1053,7 +1088,6 @@ class FlextInfraCodemodSemanticApply:
             root,
             original,
             {path: None if path in retired else working[path] for path in changed},
-            source_preview=source_preview,
             validator=validator,
             source_states=tuple(inputs.values()),
         ).map(lambda accepted: bool(changed) and accepted)
@@ -1093,6 +1127,7 @@ class FlextInfraCodemodSemanticApply:
                 states, directories, topology = consumed()
         # Exit the original capture before effects; publication keeps the same
         # receipts and rejects any drift between this verification and mutation.
+        # These are observations only; normalized file plans are assembled below.
         return cls._publish(
             root,
             original,
@@ -1100,7 +1135,6 @@ class FlextInfraCodemodSemanticApply:
                 edit.file_path: None if edit.retire_file else edit.updated_source
                 for edit in planned.value
             },
-            source_preview=source_preview,
             validator=partial(
                 cls._validate_candidate,
                 preflight=preflight,
@@ -1111,6 +1145,8 @@ class FlextInfraCodemodSemanticApply:
                 state for edit in planned.value for state in edit.source_states
             ),
             source_analysis=m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                files=(),
                 inputs=states,
                 source_directories=directories,
                 source_query_topology=topology,
@@ -1252,7 +1288,6 @@ class FlextInfraCodemodSemanticApply:
                     changes=("composed semantic cutover",),
                 )
                 for path in sorted(changed)
-                if working[path] != original[path]
             )
         )
 
@@ -1617,7 +1652,6 @@ class FlextInfraCodemodSemanticApply:
         original: t.MappingKV[Path, str],
         updated: t.MappingKV[Path, str | None],
         *,
-        source_preview: p.Infra.SourcePreview,
         validator: Callable[[Path], p.Result[bool]] | None = None,
         source_states: t.SequenceOf[p.Infra.SemanticSourceState] = (),
         source_analysis: p.Infra.SemanticSourceAnalysis | None = None,
@@ -1635,27 +1669,16 @@ class FlextInfraCodemodSemanticApply:
             return r[bool].fail(
                 "semantic retirement requires its original native topology"
             )
-        analysis = (
-            m.Infra.CodegenPhaseAnalysis.model_validate(
-                source_analysis, from_attributes=True
-            )
-            if source_analysis is not None
-            else m.Infra.CodegenPhaseAnalysis()
+        supplied = (
+            *source_states,
+            *(source_analysis.inputs if source_analysis is not None else ()),
         )
-        supplied = (*source_states, *analysis.inputs)
-        if supplied:
-            inputs = m.Infra.CodemodBindingSnapshot(
-                states=tuple(
-                    m.Cli.AtomicFileState.model_validate(state, from_attributes=True)
-                    for state in supplied
-                )
-            ).states
-        else:
-            # Existing non-transfer callers have no retirement capability.
-            inputs = tuple(
-                u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
-                for path in original
+        inputs = m.Infra.CodemodBindingSnapshot(
+            states=tuple(
+                m.Cli.AtomicFileState.model_validate(state, from_attributes=True)
+                for state in supplied
             )
+        ).states
         states = {state.path: state for state in inputs}
         if any(
             path not in states
@@ -1663,7 +1686,9 @@ class FlextInfraCodemodSemanticApply:
             for path, source in original.items()
         ):
             return r[bool].fail("source changed after semantic preflight")
-        if retirement and not analysis.source_directories:
+        if retirement and (
+            source_analysis is None or not source_analysis.source_directories
+        ):
             return r[bool].fail("semantic retirement has no original inventory witness")
         prepared = u.Infra.normalize_sources(
             root,
@@ -1672,6 +1697,25 @@ class FlextInfraCodemodSemanticApply:
         )
         if prepared.failure:
             return r[bool].from_failure(prepared)
+        dependencies = m.Infra.CodemodBindingSnapshot(
+            states=(*inputs, *prepared.value.inputs)
+        ).states
+        directories = tuple(
+            m.Cli.AtomicDirectoryInventory.model_validate(receipt, from_attributes=True)
+            for receipt in (
+                source_analysis.source_directories
+                if source_analysis is not None
+                else ()
+            )
+        )
+        topology = tuple(
+            m.Cli.AtomicDirectoryChainPlan.model_validate(receipt, from_attributes=True)
+            for receipt in (
+                source_analysis.source_query_topology
+                if source_analysis is not None
+                else ()
+            )
+        )
         plans = []
         for path in sorted(updated, key=cls._path_key):
             state = states[path]
@@ -1694,9 +1738,9 @@ class FlextInfraCodemodSemanticApply:
                     if proposed is not None
                     else None,
                     desired_mode=state.mode if proposed is not None else None,
-                    source_states=prepared.value.inputs,
-                    source_directories=analysis.source_directories,
-                    source_query_topology=analysis.source_query_topology,
+                    source_states=dependencies,
+                    source_directories=directories,
+                    source_query_topology=topology,
                 ),
             )
         return FlextInfraSemanticPublication.publish_semantic_artifact_plans(

@@ -9,7 +9,6 @@ from __future__ import annotations
 import secrets
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
@@ -22,9 +21,6 @@ from flext_infra.codegen import (
     FlextInfraMiseWorkspacePlanner,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
@@ -372,11 +368,14 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
                     "batch output is outside the operation participants: "
                     + ", ".join(map(str, outside)),
                 )
-        if candidate.completed and (
+        incomplete = (
             candidate.error
             or candidate.issues
             or candidate.exception is not None
             or not candidate.batches
+        )
+        if candidate.completed and (
+            incomplete
             or any(
                 not item.completed
                 or item.error

@@ -240,7 +240,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
     def apply_lint_recipes(
         cls,
         source: str,
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         *,
         path: Path,
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
@@ -284,7 +284,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
     def _collected_sections(
         cls,
         tree: ast.Module,
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         path: Path,
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
     ) -> t.Triple[
@@ -483,7 +483,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
         cls,
         source: str,
         tree: ast.Module,
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         path: Path,
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
     ) -> t.VariadicTuple[t.Triple[int, int, str]]:
@@ -507,7 +507,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
 
     @staticmethod
     def _recipe_for(
-        issue: m.Infra.Issue,
+        issue: p.Infra.Issue,
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
         path: Path,
     ) -> c.Infra.LintFixRecipe:
@@ -579,12 +579,12 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
     def overridden_findings(
         cls,
         source: str,
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         *,
         path: Path,
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
         overridden: frozenset[t.Pair[str, str]],
-    ) -> t.VariadicTuple[m.Infra.Issue]:
+    ) -> t.VariadicTuple[p.Infra.Issue]:
         """Return the static-method findings the recipe must not convert.
 
         A method on an override chain, or one whose body reads its receiver,
@@ -609,12 +609,12 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
     def _static_method_candidates(
         cls,
         source: str,
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         *,
         path: Path,
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
     ) -> t.VariadicTuple[
-        t.Triple[m.Infra.Issue, ast.ClassDef, ast.FunctionDef | ast.AsyncFunctionDef]
+        t.Triple[p.Infra.Issue, ast.ClassDef, ast.FunctionDef | ast.AsyncFunctionDef]
     ]:
         """Pair each static-method finding with its owner and method.
 
@@ -653,11 +653,11 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
     def service_operation_findings(
         cls,
         source: str,
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         *,
         path: Path,
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
-    ) -> t.VariadicTuple[m.Infra.Issue]:
+    ) -> t.VariadicTuple[p.Infra.Issue]:
         """Return the static-method findings on methods of a service subclass.
 
         A service operation must stay a plain public instance function
@@ -699,7 +699,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
     @staticmethod
     def _receiver_method_at(
         tree: ast.Module,
-        issue: m.Infra.Issue,
+        issue: p.Infra.Issue,
         path: Path,
     ) -> t.Pair[ast.ClassDef, ast.FunctionDef | ast.AsyncFunctionDef]:
         """Return the class method Ruff reports as never reading its receiver.
@@ -911,7 +911,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
     def _raises_entry(
         cls,
         function: ast.FunctionDef | ast.AsyncFunctionDef,
-        issue: m.Infra.Issue,
+        issue: p.Infra.Issue,
         path: Path,
     ) -> str:
         """Name the raised exception and the conditions that raise it.

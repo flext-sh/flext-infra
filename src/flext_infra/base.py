@@ -56,8 +56,8 @@ class FlextInfraServiceBase[TDomainResult](
         return [project for project in projects if project.name in selected]
 
     @staticmethod
-    def _report_execution(
-        report_result: p.Result[p.Infra.ValidationReportOutcome],
+    def _report_execution[ReportT: p.Infra.ValidationReportOutcome](
+        report_result: p.Result[ReportT],
     ) -> p.Result[bool]:
         """Map one validation report onto the boolean outcome a validator returns.
 

@@ -11,12 +11,10 @@ import sys
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_cli import u as cli_u
-from flext_core import r, u as core_u
 
 from flext_infra import infra
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
-from tests import c, m, t, tm, u
+from tests import c, m, r, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -39,6 +37,11 @@ class TestsFlextInfraSemanticPhaseContract:
             "module-marker",
             "opaque",
             "source-drift",
+            "call-carrier",
+            "subscript-carrier",
+            "shared-export-line",
+            "chained-exports",
+            "mixed-exports",
         ],
     )
     def test_logging_ownership_transfer_uses_the_real_mod_publication_group(
@@ -69,7 +72,7 @@ class TestsFlextInfraSemanticPhaseContract:
         )
         api.write_text(
             "from __future__ import annotations\n"
-            "from flext_core import t\n"
+            f"from {namespace} import t\n"
             f"from {namespace}.services.logging_integration import {legacy_name}\n"
             f"class {owner}({legacy_name}):\n"
             "    @staticmethod\n"
@@ -83,7 +86,7 @@ class TestsFlextInfraSemanticPhaseContract:
         default = "False" if case == "signature" else "True"
         provider.write_text(
             "from __future__ import annotations\n"
-            "from flext_core import p, t\n"
+            f"from {namespace} import p, t\n"
             f"class {utility_name}:\n"
             "    class ContextStage:\n"
             "        def __init__(self, *, context: p.AttributeProbe) -> None:\n"
@@ -107,16 +110,22 @@ class TestsFlextInfraSemanticPhaseContract:
             "module-marker": f"import {namespace}.services.logging_integration as legacy_module\nmarker = legacy_module.__name__\n",
             "opaque": "def unknown_owner(candidate):\n    return candidate.ContextStage()\n",
             "source-drift": "",
+            "call-carrier": "marker = getattr(API(), 'ContextStage')\n",
+            "subscript-carrier": "marker = getattr((API,)[0], 'compose_logging')\n",
+            "shared-export-line": "",
+            "chained-exports": "",
+            "mixed-exports": "",
         }[case]
         consumer.write_text(
             "from __future__ import annotations\n"
             f"from {namespace}.api import {owner} as API\n"
-            "from flext_core import t\n"
+            f"from {namespace} import t, u\n"
             "class Unrelated:\n"
             "    @staticmethod\n"
             "    def compose_logging(value: str) -> str:\n"
             "        return value\n"
             "instance = API()\n"
+            f"direct = u.{domain}.ContextStage(context=API())\n"
             "configure = API.compose_logging\n"
             "evidence: t.Pair[str, t.Pair[str, bool]] = (\n"
             "    instance.ContextStage()('event'), configure('configured')\n"
@@ -139,9 +148,9 @@ class TestsFlextInfraSemanticPhaseContract:
             rules=(
                 m.Infra.RopeContractRule(
                     id="logging-context-owner",
-                    pattern=f"${owner}.ContextStage()",
-                    goal=f"u.{domain}.ContextStage(context=${{owner}})",
-                    arguments={"owner": f"name={namespace}.api.{owner}"},
+                    pattern="${receiver}.ContextStage()",
+                    goal=f"u.{domain}.ContextStage(context=${{receiver}})",
+                    arguments={"receiver": f"name={namespace}.api.{owner}"},
                     imports={"u": f"from {namespace} import u"},
                     bindings={
                         f"u.{domain}.ContextStage": f"{namespace}._utilities.domains.{utility_name}.ContextStage"
@@ -150,9 +159,9 @@ class TestsFlextInfraSemanticPhaseContract:
                 ),
                 m.Infra.RopeContractRule(
                     id="logging-compose-owner",
-                    pattern=f"${owner}.compose_logging",
+                    pattern="${receiver}.compose_logging",
                     goal=f"u.{domain}.compose_logging",
-                    arguments={"owner": f"name={namespace}.api.{owner}"},
+                    arguments={"receiver": f"name={namespace}.api.{owner}"},
                     imports={"u": f"from {namespace} import u"},
                     bindings={
                         f"u.{domain}.compose_logging": f"{namespace}._utilities.domains.{utility_name}.compose_logging"
@@ -187,6 +196,23 @@ class TestsFlextInfraSemanticPhaseContract:
         )
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         service_init = legacy.parent / c.Infra.INIT_PY
+        if case in {"shared-export-line", "chained-exports", "mixed-exports"}:
+            original_exports = f"__all__ = [{legacy_name!r}]\n"
+            unsafe_exports = (
+                f"__all__ = [{legacy_name!r}]; side_effect()\n"
+                if case == "shared-export-line"
+                else (
+                    f"PUBLIC = __all__ = [{legacy_name!r}]\n"
+                    if case == "chained-exports"
+                    else f"__all__ = [{legacy_name!r}, side_effect()]\n"
+                )
+            )
+            legacy.write_text(
+                legacy.read_text(encoding=c.DEFAULT_ENCODING).replace(
+                    original_exports, unsafe_exports
+                ),
+                encoding=c.DEFAULT_ENCODING,
+            )
         original = {
             path: path.read_bytes()
             for path in (legacy, provider, api, consumer, recipe)
@@ -227,6 +253,11 @@ class TestsFlextInfraSemanticPhaseContract:
                 "unused-import": "surviving imported alias",
                 "module-marker": "surviving module usage",
                 "opaque": "unproven transferred receiver",
+                "call-carrier": "marker/dynamic",
+                "subscript-carrier": "marker/dynamic",
+                "shared-export-line": "shares a source line",
+                "chained-exports": "literal __all__",
+                "mixed-exports": "literal __all__|dynamic exports",
             }
             with (
                 infra.rope_workspace(root) as workspace,
@@ -244,6 +275,24 @@ class TestsFlextInfraSemanticPhaseContract:
             return
         tm.ok(u.Tests.provision_python_project_environment(root))
         with infra.rope_workspace(root) as workspace:
+            inventory = FlextInfraCodemodSemanticApply.source_inventory(root, report)
+            transferred = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                    rope_workspace=workspace,
+                    sources=inventory,
+                )
+            )
+            carrier = next(edit for edit in transferred if edit.file_path == provider)
+            tm.that(carrier.original_source, eq=carrier.updated_source)
+            composed = tm.ok(
+                FlextInfraCodemodSemanticApply.plan(root, report, workspace, inventory)
+            )
+            tm.that(provider in {edit.file_path for edit in composed}, eq=True)
+            tm.that(
+                api in {edit.file_path for edit in composed if edit.retire_file},
+                eq=False,
+            )
             tm.ok(
                 FlextInfraCodemodSemanticApply.apply(
                     root,
@@ -411,8 +460,8 @@ class TestsFlextInfraSemanticPhaseContract:
     @staticmethod
     def test_local_utility_binding_preserves_global_cli_runtime(tmp_path: Path) -> None:
         """Reusing a sufficient local core import must not replace global CLI u."""
-        tm.that(tm.ok(cli_u.Cli.env_read("FIELD", {"FIELD": "value"})), eq="value")
-        tm.that(hasattr(core_u, "Cli"), eq=False)
+        tm.that(tm.ok(u.Cli.env_read("FIELD", {"FIELD": "value"})), eq="value")
+        tm.that(hasattr(u, "Cli"), eq=False)
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         path = package / "consumer.py"
         unaffected = (
@@ -473,8 +522,8 @@ class TestsFlextInfraSemanticPhaseContract:
                 't = FlextReviewedTypes\n__all__ = ["FlextReviewedTypes", "t"]\n'
             ),
             private / "base.py": (
-                "from flext_core import u as core_u\n"
-                "class FlextReviewedBase(core_u):\n"
+                "from flext_core import u as u\n"
+                "class FlextReviewedBase(u):\n"
                 "    @classmethod\n"
                 "    def scalar_mapping_adapter(cls):\n"
                 "        return cls.type_adapter(str)\n"

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from contextlib import ExitStack
 from pathlib import Path
 from re import escape
 
@@ -16,9 +17,9 @@ from flext_infra import config, infra
 from flext_infra.codegen import (
     FlextInfraCodegenConform,
     FlextInfraCodegenLazyInit,
+    FlextInfraCodegenMiseArtifacts,
     codegen_transaction as transaction,
 )
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, tm, u
 
@@ -116,24 +117,26 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
 
         def publish(scope_root: Path) -> p.Result[tuple[Path, ...]]:
             service = u.Tests.create_lazy_init_service(root)
-            with pytest.raises(ValueError, match=escape(str(conftest))) as caught:
-                with u.Infra.facade_source_project(
-                    root, project_roots=(root,)
-                ) as binding:
-                    analysis = tm.ok(service.plan_files(source_project=binding[0]))
-                    original = next(
-                        file
-                        for file in analysis.files
-                        if file.path == package / c.Infra.INIT_PY
-                    )
-                    tm.that(
-                        conftest in {state.path for state in original.source_states},
-                        eq=False,
-                    )
-                    conftest.write_text(
-                        source + "# Concurrent source edit\n",
-                        encoding=c.DEFAULT_ENCODING,
-                    )
+            with ExitStack() as contexts:
+                binding = contexts.enter_context(
+                    u.Infra.facade_source_project(root, project_roots=(root,)),
+                )
+                analysis = tm.ok(service.plan_files(source_project=binding[0]))
+                original = next(
+                    file
+                    for file in analysis.files
+                    if file.path == package / c.Infra.INIT_PY
+                )
+                tm.that(
+                    conftest in {state.path for state in original.source_states},
+                    eq=False,
+                )
+                conftest.write_text(
+                    source + "# Concurrent source edit\n",
+                    encoding=c.DEFAULT_ENCODING,
+                )
+                with pytest.raises(ValueError, match=escape(str(conftest))) as caught:
+                    contexts.close()
             classified = service.classify_source_conflict(
                 analysis, binding[0], caught.value
             )

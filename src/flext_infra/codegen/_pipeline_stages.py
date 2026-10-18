@@ -89,7 +89,7 @@ class FlextInfraCodegenPipelineStagesMixin:
 
         """
 
-        def _action() -> p.Result[m.Infra.CodegenResult]:
+        def _action() -> p.Result[p.Infra.CodegenResult]:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             return FlextInfraCodegenConform.execute_request(
                 m.Infra.CodegenConformRequest(
@@ -105,7 +105,7 @@ class FlextInfraCodegenPipelineStagesMixin:
                 ports=self.conform_collaborators,
             )
 
-        def _emit(result: m.Infra.CodegenResult) -> t.JsonMapping:
+        def _emit(result: p.Infra.CodegenResult) -> t.JsonMapping:
             plan = result.plan
             if plan is not None:
                 count = len(plan.repositories)

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import runpy
 from contextlib import redirect_stderr
 from io import StringIO
@@ -22,6 +23,34 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraRopeContracts:
     """Prove runtime values, failure contracts and the shared fixed point."""
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "source",
+        [
+            "__all__ = ['u']; side_effect()\n",
+            "side_effect(); __all__ = ['u']\n",
+            "PUBLIC = __all__ = ['u']\n",
+            "__all__ = ['u']\n__all__ += ['kept']\n",
+        ],
+    )
+    def test_export_retirement_refuses_shared_lines_and_chained_targets(
+        source: str,
+    ) -> None:
+        """The owned writer cannot discard effects or another public binding."""
+        with pytest.raises(ValueError):
+            u.Infra.remove_runtime_alias_export(source, alias="u")
+
+    @staticmethod
+    def test_export_retirement_keeps_an_explicit_empty_literal() -> None:
+        """Empty literal exports stay explicit, so unrelated statements stay intact."""
+        updated = u.Infra.remove_runtime_alias_export("__all__ = ['u']\n", alias="u")
+        declarations = u.Infra.runtime_alias_bindings(updated, alias="__all__")
+        tm.that(len(declarations), eq=1)
+        value = declarations[0].value
+        if not isinstance(value, ast.List):
+            pytest.fail("export retirement must emit a literal list")
+        tm.that(value.elts, empty=True)
 
     @staticmethod
     def test_catalog_phases_roundtrip_and_reject_unknown_values(
@@ -170,9 +199,8 @@ class TestsFlextInfraRopeContracts:
             call_target="service",
             missing_keywords=("registry",),
         )
-        outcome = u.Infra.plan_contract_rules(workspace, {path: source}, (rule,))
-        tm.that(outcome.failure, eq=True)
-        tm.that(tm.not_none(outcome.error), contains="expanded keywords")
+        with pytest.raises(ValueError, match="expanded keywords"):
+            u.Infra.plan_contract_rules(workspace, {path: source}, (rule,))
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
