@@ -53,7 +53,7 @@ class FlextInfraConstantsCodegenLazy:
         "build_lazy_import_map",
         "install_lazy_exports",
     )
-    "Lazy helpers every initializer imports; the bootstrap root publishes them."
+    "Existing SDK helpers eagerly bound and published by the bootstrap root."
     TEST_ONLY_SOURCE_MODULE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^(?:_?test(?:_[A-Za-z0-9_]+)?|[A-Za-z0-9_]+_tests?)\.py$",
     )
@@ -86,7 +86,7 @@ class FlextInfraConstantsCodegenLazy:
     "Dotted depth of a namespace package under a governed wrapper surface."
     LAZY_BOOTSTRAP_ROOT_PACKAGE: ClassVar[str] = "flext_core"
     LAZY_BOOTSTRAP_MODULE: ClassVar[str] = "flext_core.lazy"
-    "Defining module imported directly by every generated lazy initializer."
+    "Defining module imported directly only by the bootstrap root initializer."
 
     BARE_IMPORT_FROM_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^from\s+import\s",

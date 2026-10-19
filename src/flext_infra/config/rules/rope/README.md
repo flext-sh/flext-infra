@@ -64,8 +64,17 @@ enum declarations.
 
 Pydantic field rewrites require ancestry established from the native Rope
 object graph. Same-spelled factories and declarations outside those model
-scopes retain their behavior. Empty factories migrate only when the declared
-concrete collection and the existing factory share their native identity.
+scopes retain their behavior. The six builtin empty-factory rules require a
+read-only collection origin from the configured `readonly_origins`. Rope follows
+PEP 695 aliases at their declaring scope; a name's spelling never determines
+mutability. Mutable contracts retain native factories, including their identity.
+Typed constructors and authored callbacks are not builtin empty factories.
+The native replacement captures the proven builtin once in a defaulted callback
+parameter. Pydantic invokes it without validated field data and applies the
+original complete field schema with its unchanged `validate_default` policy.
+This preserves fresh values, constraints, validators, and field error locations.
+No standalone adapter, utility import, or repeated annotation is introduced, so
+deferred outer-owner annotations stay owned by the model's native schema.
 Destination imports use Rope's import manager and reject competing lexical
 bindings before publication. Configured defaults and factories remain policy
 data; projects do not carry copied detectors or symbol mapping tables.
@@ -87,7 +96,12 @@ When a replacement repeats or reorders annotation evaluation, the rule declares 
 effect. The existing Rope word finder supplies call coordinates for the matched
 region; authored calls prevent automatic duplication or reordering of their effects.
 This proof is separate from collection mutability and destination import
-availability.
+availability. An enclosing class still under construction prevents automatic
+runtime reuse. The empty-factory rules avoid that operation altogether; an
+unproven collection origin is not applicable to automatic normalization. No
+namespace recovery is attempted. A source repair must preserve the native
+field's full schema and `validate_default` semantics; an origin-only adapter is
+not an equivalent field validator.
 
 Moving a sole `Field` metadata item out of `Annotated` retains the callable,
 field position and arguments. A factory that receives previously validated field

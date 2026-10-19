@@ -220,7 +220,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     }
                     if actual != expected:
                         message = (
-                            f"native lazy alias membership differs: {alias_path.parent}"
+                            f"native lazy alias membership differs: {alias_path.parent}; "
+                            f"project={root}; alias={alias_module}; "
+                            f"expected={tuple(sorted(path.name for path in expected))}; "
+                            f"observed={tuple(sorted(path.name for path in actual))}"
                         )
                         raise ValueError(message)
                 relative = alias_path.relative_to(root).as_posix()

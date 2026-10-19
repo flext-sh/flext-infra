@@ -68,7 +68,7 @@ class FlextInfraCliDispatchService(FlextInfraCliRouteService, FlextCli):
             The resulting ``list[str]``.
 
         """
-        normalized = t.Cli.STR_SEQUENCE_ADAPTER.validate_python(
+        normalized = u.str_sequence_adapter().validate_python(
             u.Cli.reorder_prefixed_options(
                 args,
                 bool_options=tuple(self.shared_bool_flags),

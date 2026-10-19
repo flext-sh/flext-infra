@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import os
+import sys
 from collections.abc import Generator, Mapping
 from contextlib import AbstractContextManager, closing, contextmanager, nullcontext
 from errno import ENOENT
@@ -32,9 +32,7 @@ from rope.base.resourceobserver import ChangeIndicator
 from rope.base.resources import File, Folder, Resource
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities.rope_runtime_module_queries import (
-    FlextInfraUtilitiesRopeRuntimeModuleQueries,
-)
+from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeModuleQueries
 
 
 def require_value[ValueT](result: p.Result[ValueT]) -> ValueT:
@@ -145,12 +143,18 @@ class _RopeProjectSourceAccessMixin:
     def source_query(
         self, path: Path, predicate: Literal["exists", "isfile", "isdir"]
     ) -> bool:
-        """Elect a direct path through the original native query owner.
+        """Query the declared snapshot or the authenticated physical read owner.
 
         Returns:
-            Whether the original native query holds for the path.
+            Whether the owning source inventory's predicate holds for the path.
 
         """
+        if isinstance(self.fscommands, FlextInfraRopeProject.SnapshotFiles):
+            return {
+                "exists": self.fscommands.exists,
+                "isfile": self.fscommands.isfile,
+                "isdir": self.fscommands.isdir,
+            }[predicate](str(path))
         return self._authenticated_reads.query(str(path), predicate)
 
     def source_children(
@@ -287,6 +291,17 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             prefs: Project preferences overriding config file preferences.
 
         """
+        if "extension_modules" not in prefs:
+            prefs["extension_modules"] = tuple(
+                sorted(
+                    name
+                    for name, module in tuple(sys.modules.items())
+                    if module is not None
+                    and name.partition(".")[0] in sys.stdlib_module_names
+                    and module.__spec__ is not None
+                    and module.__spec__.origin in {"built-in", "frozen"}
+                )
+            )
         super().__init__(
             projectroot,
             fscommands=fscommands,
@@ -765,19 +780,15 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             self._overlay = FlextInfraRopeProject.SnapshotFiles(self._sources, ())
             # Original-epoch membership facts are pinned at construction, so
             # each (path, predicate) observation is stable for this owner's
-            # lifetime. Rope re-queries the same selectors dozens of times per
-            # module while indexing; without this memo the parent-chain walk
-            # and its pydantic re-records turn the scan quadratic.
+            # lifetime. Every access still attributes its original witnesses
+            # to the current native consumption scopes, including cache hits.
             self._query_observations: dict[tuple[Path, str], bool] = {}
-            # Original-epoch directory membership, one scandir per directory:
-            # (file names, directory names). Construction time is the epoch,
-            # so this snapshot is the authoritative native membership.
-            self._epoch_member_index: dict[
-                Path,
-                tuple[frozenset[str], frozenset[str]],
+            self._query_witnesses: dict[
+                tuple[Path, str],
+                m.Cli.AtomicDirectoryInventory | m.Cli.AtomicDirectoryChainPlan,
             ] = {}
-            self._epoch_directories: set[Path] = set()
-            self._epoch_nondirectories: set[Path] = set()
+            self._consumed_queries: set[tuple[Path, str]] = set()
+            self._observed_overlays: set[str] = set()
 
         def _register_original_states(
             self,
@@ -961,6 +972,11 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                 return
             plan = self._effects.get(path)
             if plan is None:
+                return
+            if path in self._consumed_effects:
+                # The effect's original proof was already attributed; repeating
+                # the verification and receipt merge per re-read turned every
+                # re-query of a virtual resource into a full receipt rebuild.
                 return
             self._consumed_effects.add(path)
             states = (
@@ -1183,6 +1199,16 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                 else:
                     observed = self._repository_query(candidate, predicate)
                 self._query_observations[memo_key] = observed
+            elif candidate == self._root:
+                self._directory_chain(candidate)
+            elif candidate.is_relative_to(self._root):
+                witness = self._query_witnesses[memo_key]
+                if isinstance(witness, m.Cli.AtomicDirectoryInventory):
+                    self._record(directories=(witness,))
+                else:
+                    self._record(topology=(witness,))
+            if not self._capturing and memo_key in self._query_witnesses:
+                self._consumed_queries.add(memo_key)
             return self._resolve_query_result(
                 candidate, path, predicate, observed=observed
             )
@@ -1204,52 +1230,6 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                 "isdir": candidate.is_dir,
             }[predicate]()
 
-        def _is_epoch_directory(self, directory: Path) -> bool:
-            """Whether the path was a directory at construction time.
-
-            Returns:
-                The cached epoch nature of the path.
-
-            """
-            if directory in self._epoch_directories:
-                return True
-            if directory in self._epoch_nondirectories:
-                return False
-            is_dir = directory.is_dir()
-            (self._epoch_directories if is_dir else self._epoch_nondirectories).add(
-                directory,
-            )
-            return is_dir
-
-        def _epoch_members(
-            self,
-            directory: Path,
-        ) -> tuple[frozenset[str], frozenset[str]]:
-            """Return the directory's original-epoch ``(file, dir)`` names.
-
-            One scandir per directory for this owner's lifetime; the
-            construction-time filesystem is the authenticated epoch.
-
-            Returns:
-                The ``(file names, directory names)`` membership pair, empty
-                when the path is absent or not a directory.
-
-            """
-            members = self._epoch_member_index.get(directory)
-            if members is None:
-                files: set[str] = set()
-                dirs: set[str] = set()
-                try:
-                    with os.scandir(directory) as entries:
-                        for entry in entries:
-                            target = dirs if entry.is_dir() else files
-                            target.add(entry.name)
-                except OSError:
-                    files, dirs = frozenset(), frozenset()
-                members = (frozenset(files), frozenset(dirs))
-                self._epoch_member_index[directory] = members
-            return members
-
         def _repository_query(
             self,
             candidate: Path,
@@ -1263,11 +1243,6 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
 
             """
             parent = candidate.parent
-            if not self._is_epoch_directory(parent):
-                return False
-            parent_files, parent_dirs = self._epoch_members(parent)
-            if candidate.name not in parent_files and candidate.name not in parent_dirs:
-                return False
             inventory = self._inventory(parent)
             if inventory is None:
                 self._record_parent_witness(candidate, predicate)
@@ -1286,16 +1261,14 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                 self._topology[candidate.parent] = witness.model_copy(
                     update={"queries": tuple(sorted({*witness.queries, selector}))}
                 )
-            self._record(
-                topology=(
-                    witness.model_copy(
-                        update={
-                            "queries": ((candidate.name, predicate),),
-                            "membership_queried": False,
-                        }
-                    ),
-                ),
+            selection = witness.model_copy(
+                update={
+                    "queries": ((candidate.name, predicate),),
+                    "membership_queried": False,
+                },
             )
+            self._query_witnesses[candidate, predicate] = selection
+            self._record(topology=(selection,))
 
         def _record_parent_inventory(
             self,
@@ -1319,16 +1292,14 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                 )
             if not self._capturing:
                 self._inventories[candidate.parent] = inventory
-            self._record(
-                directories=(
-                    inventory.model_copy(
-                        update={
-                            "queries": ((candidate.name, predicate),),
-                            "membership_queried": False,
-                        }
-                    ),
-                )
+            selection = inventory.model_copy(
+                update={
+                    "queries": ((candidate.name, predicate),),
+                    "membership_queried": False,
+                },
             )
+            self._query_witnesses[candidate, predicate] = selection
+            self._record(directories=(selection,))
             return observed
 
         def _resolve_query_result(
@@ -1367,9 +1338,13 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
 
         def _observe_overlay(self, path: str) -> None:
             """Bind the exact planned sources contributing a virtual resource."""
+            if path in self._observed_overlays:
+                return
             if self._overlay.isfile(path):
+                self._observed_overlays.add(path)
                 self.read(path)
                 return
+            self._observed_overlays.add(path)
             for child in self._overlay.children(path):
                 self._observe_overlay(str(child))
 
@@ -1383,11 +1358,33 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
 
         def receipt_directories(self) -> tuple[m.Cli.AtomicDirectoryInventory, ...]:
             """Return this epoch's inventories plus imported planning receipts."""
-            return (*self.directories(), *self._imported_directories.values())
+            return (
+                *self.directories(),
+                *self._imported_directories.values(),
+                *(
+                    witness
+                    for key in sorted(self._consumed_queries)
+                    if isinstance(
+                        witness := self._query_witnesses[key],
+                        m.Cli.AtomicDirectoryInventory,
+                    )
+                ),
+            )
 
         def receipt_topology(self) -> tuple[m.Cli.AtomicDirectoryChainPlan, ...]:
             """Return this epoch's witnesses plus imported planning receipts."""
-            return (*self.topology(), *self._imported_topology.values())
+            return (
+                *self.topology(),
+                *self._imported_topology.values(),
+                *(
+                    witness
+                    for key in sorted(self._consumed_queries)
+                    if isinstance(
+                        witness := self._query_witnesses[key],
+                        m.Cli.AtomicDirectoryChainPlan,
+                    )
+                ),
+            )
 
         def children(
             self, path: str, *, follow_aliases: bool = True

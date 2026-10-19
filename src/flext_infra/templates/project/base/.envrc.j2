@@ -29,7 +29,7 @@ GIT_DISCOVERY_ROOT="$( {{ git_root_reader('"${PROJECT_ROOT}"') }} )"
 RUNTIME_ROOT="$( {{ runtime_root_reader('"${PROJECT_ROOT}"', uv_tool, uv_resolution) }} )"
 watch_file "${PROJECT_ROOT}/pyproject.toml"
 watch_file "${RUNTIME_ROOT}/pyproject.toml"
-{% for directory in (uv_resolution.local_directory, uv_resolution.standalone_directory) %}
+{% for directory in (uv_resolution.local_directory, uv_resolution.standalone_directory, uv_resolution.editable_directory) %}
 watch_file "${RUNTIME_ROOT}/{{ directory }}/pyproject.toml"
 watch_file "${RUNTIME_ROOT}/{{ directory }}/uv.lock"
 {% endfor %}
@@ -104,7 +104,7 @@ if [[ -f "${PROJECT_ROOT}/pyproject.toml" && -d "${VENV_DIR}" ]]; then
   if [[ "{{ '${' ~ uv_resolution.hosted_variable ~ ':-}' }}" == "{{ uv_resolution.hosted_value }}" ]]; then
     export UV_PROJECT="${RUNTIME_ROOT}/{{ uv_resolution.standalone_directory }}"
   else
-    export UV_PROJECT="${RUNTIME_ROOT}/{{ uv_resolution.local_directory }}"
+    export UV_PROJECT="${RUNTIME_ROOT}/{{ uv_resolution.editable_directory if uv_resolution.editable_supplier_root is not none else uv_resolution.local_directory }}"
   fi
   export UV_PROJECT_ENVIRONMENT="${VENV_DIR}"
   export VIRTUAL_ENV="${VENV_DIR}"

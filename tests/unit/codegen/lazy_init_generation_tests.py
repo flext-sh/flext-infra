@@ -458,14 +458,17 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, lacks="from ._settings import")
         tm.that(content, lacks="    _ = (")
 
-    def test_public_nested_package_preserves_lazy_exports(self) -> None:
-        """Test public nested package preserves lazy exports."""
+    @pytest.mark.parametrize("current_pkg", ["demo_pkg", "demo_pkg.services"])
+    def test_public_nested_package_preserves_lazy_exports(
+        self, current_pkg: str
+    ) -> None:
+        """Non-foundation initializers consume the public foundation installer."""
         plan = self._plan(
-            "demo_pkg.services",
+            current_pkg,
             ("Demo", "Nested"),
             MappingProxyType({
-                "Demo": ("demo_pkg.services.demo", "Demo"),
-                "Nested": ("demo_pkg.services.nested.item", "Nested"),
+                "Demo": (f"{current_pkg}.demo", "Demo"),
+                "Nested": (f"{current_pkg}.nested.item", "Nested"),
             }),
         )
 
@@ -475,9 +478,11 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(
             init_content,
             contains=(
-                f"from {c.Infra.LAZY_BOOTSTRAP_MODULE} import install_lazy_exports"
+                f"from {c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE} import "
+                "install_lazy_exports"
             ),
         )
+        tm.that(init_content, lacks=f"from {c.Infra.LAZY_BOOTSTRAP_MODULE} import")
         tm.that(init_content, contains='__all__: tuple[str, ...] = ("Demo", "Nested")')
         tm.that(init_content, contains="install_lazy_exports")
 
@@ -526,16 +531,28 @@ class TestsFlextInfraCodegenGeneration:
     def test_normal_package_initializer_keeps_full_lazy_map(self) -> None:
         """Keep ordinary package boundaries backed by the lazy runtime."""
         plan = self._plan(
-            "flext_core._models",
+            f"{c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE}._models",
             ("FlextModel",),
-            MappingProxyType({"FlextModel": ("flext_core._models.base", "FlextModel")}),
+            MappingProxyType({
+                "FlextModel": (
+                    f"{c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE}._models.base",
+                    "FlextModel",
+                ),
+            }),
             package_dir=Path(tm.not_none(flext_core.__file__)).parent / "_models",
         )
 
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="from flext_core.lazy import")
+        tm.that(
+            init_content,
+            contains=(
+                f"from {c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE} import "
+                "install_lazy_exports"
+            ),
+        )
+        tm.that(init_content, lacks=f"from {c.Infra.LAZY_BOOTSTRAP_MODULE} import")
         tm.that(init_content, contains='"FlextModel": ".base"')
         tm.that(init_content, contains="install_lazy_exports(")
 
@@ -811,8 +828,9 @@ class TestsFlextInfraCodegenGeneration:
         )
         tm.that(rendered, has=expected)
 
+    @pytest.mark.parametrize("planned_helpers", [False, True])
     def test_runtime_imports_are_one_isort_section_with_the_lazy_helpers(
-        self,
+        self, *, planned_helpers: bool
     ) -> None:
         """The helpers import sorts inside the first-party block it belongs to.
 
@@ -822,11 +840,20 @@ class TestsFlextInfraCodegenGeneration:
         by ``make fix`` after every ``make gen``.
         """
         root = c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE
+        helper_targets = (
+            {
+                name: (c.Infra.LAZY_BOOTSTRAP_MODULE, name)
+                for name in c.Infra.LAZY_BOOTSTRAP_HELPERS
+            }
+            if planned_helpers
+            else {}
+        )
         plan = self._plan(
             root,
-            ("FlextLazy", "__version__"),
+            ("FlextLazy", "__version__", *helper_targets),
             MappingProxyType({
                 "FlextLazy": (c.Infra.LAZY_BOOTSTRAP_MODULE, "FlextLazy"),
+                **helper_targets,
             }),
             eager_dunders=MappingProxyType({
                 "__version__": (f"{root}.__version__", "__version__"),
@@ -843,6 +870,11 @@ class TestsFlextInfraCodegenGeneration:
                 f"from {c.Infra.LAZY_BOOTSTRAP_MODULE} import {helpers}\n"
             ),
         )
+        tm.that(content, lacks=f"from {root} import")
+        published = u.Infra.public_export_names_source(content)
+        for helper in c.Infra.LAZY_BOOTSTRAP_HELPERS:
+            tm.that(published, has=helper)
+            tm.that(content, lacks=f'"{helper}":')
 
     def test_expanded_single_entry_mapping_keeps_its_trailing_comma(self) -> None:
         """An exploded one-entry mapping carries the comma COM812 requires.

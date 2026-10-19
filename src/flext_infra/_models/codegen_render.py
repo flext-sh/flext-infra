@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableSet
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
 
@@ -91,6 +91,10 @@ class FlextInfraModelsCodegenRender:
     class UvResolutionProject(FlextInfraConfigModelsContract.ConfigContract):
         """Authenticated project input to the native development resolution view."""
 
+        role: Literal["member", "supplier"] = m.Field(
+            default="member",
+            description="Member development graph or external runtime supplier",
+        )
         repository: Annotated[
             FlextInfraConfigModelsContexts.RepositoryRef,
             m.Field(
@@ -495,10 +499,6 @@ class FlextInfraModelsCodegenRender:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
-        owner_class: str = m.Field(
-            default="",
-            description="Namespace-layout owner of a class-owned test initializer.",
-        )
         docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
         runtime_import_lines: t.NonEmptyStr = m.Field(
             description=(

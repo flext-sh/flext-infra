@@ -890,9 +890,10 @@ class TestsFlextInfraLazyInitHelpers:
 
         planned = u.Tests.plan_lazy_init(repository_root)
 
-        tm.that(planned.failure, eq=True)
-        tm.that(planned.error, has="ambiguous")
-        tm.that(planned.error, has=f"{len(export_names)} collision(s)")
+        analysis = tm.ok(planned)
+        tm.that(analysis.files, eq=())
+        tm.that(analysis.issues[0].message, has="ambiguous")
+        tm.that(analysis.issues[0].message, has=f"{len(export_names)} collision(s)")
         captured = capsys.readouterr()
         for name in export_names:
             tm.that(captured.out + captured.err, has=f"export collision for {name!r}")
@@ -930,8 +931,9 @@ class TestsFlextInfraLazyInitHelpers:
 
         planned = u.Tests.plan_lazy_init(repository_root)
 
-        tm.that(planned.failure, eq=True)
-        tm.that(planned.error, has="ambiguous")
+        analysis = tm.ok(planned)
+        tm.that(analysis.files, eq=())
+        tm.that(analysis.issues[0].message, has="ambiguous")
         # The refusal is PRE-EFFECT: no facade gains either contested owner.
         after = self._generated_init(package_root)
         tm.that(after, eq=before)

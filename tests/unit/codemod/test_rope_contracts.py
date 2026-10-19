@@ -224,32 +224,42 @@ class TestsFlextInfraRopeContracts:
 
     @staticmethod
     @pytest.mark.parametrize(
-        "declaration",
+        ("declaration", "changes"),
         [
-            "values: list[str] = Field(default_factory=list)",
-            "values: dict[str, list[int]] = Field(default_factory=dict)",
-            "values: Meta[list[str], Field(default_factory=list)]",
-            "values: Meta[int, Field(default=3)]",
-            "values: set[str] = Field(default_factory=set)",
-            "values: tuple[str, ...] = Field(default_factory=tuple)",
-            "values: list[str] = Field(default_factory=list, description='d')",
+            ("values: list[str] = Field(default_factory=list)", False),
+            ("values: dict[str, list[int]] = Field(default_factory=dict)", False),
+            ("values: Meta[list[str], Field(default_factory=list)]", True),
+            ("values: Meta[int, Field(default=3)]", True),
+            ("values: set[str] = Field(default_factory=set)", False),
+            ("values: tuple[str, ...] = Field(default_factory=tuple)", True),
+            ("values: list[str] = Field(default_factory=list, description='d')", False),
             (
-                "values: dict[str, list[int]] = "
-                "Field(default_factory=dict, description='d')"
+                (
+                    "values: dict[str, list[int]] = "
+                    "Field(default_factory=dict, description='d')"
+                ),
+                False,
             ),
             (
-                "values: Meta[list[str], Field(description='d')] = "
-                "Field(default_factory=list)"
+                (
+                    "values: Meta[list[str], Field(description='d')] = "
+                    "Field(default_factory=list)"
+                ),
+                False,
             ),
             (
-                "values: Meta[dict[str, list[int]], Field(min_length=0)] = "
-                "Field(default_factory=dict)"
+                (
+                    "values: Meta[dict[str, list[int]], Field(min_length=0)] = "
+                    "Field(default_factory=dict)"
+                ),
+                False,
             ),
         ],
     )
     def test_real_defaults_preserve_runtime_and_converge(
         rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
         declaration: str,
+        changes: bool,
     ) -> None:
         """Native Rope retains independent instances and public JSON roundtrips."""
         source = (
@@ -264,9 +274,277 @@ class TestsFlextInfraRopeContracts:
             "    first.values['consumer'] = [1]\n"
             "restored = Payload.model_validate_json(first.model_dump_json())\n"
             "evidence = (first.model_dump_json(), second.model_dump_json(), "
-            "restored.model_dump_json())\n"
+            "restored.model_dump_json(), "
+            "Payload.model_fields['values'].default_factory)\n"
+        )
+        workspace, path = rope_contract_consumer
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        edits = tm.ok(
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=workspace,
+                sources={path: source},
+            )
+        )
+        tm.that(bool(edits), eq=changes)
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        updated = edits[0].updated_source if edits else source
+        path.write_text(updated, encoding=c.DEFAULT_ENCODING)
+        after = runpy.run_path(str(path))["evidence"]
+        tm.that(after[:3], eq=before[:3])
+        if not changes:
+            tm.that(after[3] is before[3], eq=True)
+        tm.that(
+            tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                    rope_workspace=workspace,
+                    sources={path: updated},
+                )
+            ),
+            empty=True,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "declaration",
+        [
+            "values: list[Domain.Item] = Field(default_factory=list)",
+            "values: t.MutableSequenceOf[Domain.Item] = Field(default_factory=list)",
+            "values: dict[str, Domain.Item] = Field(default_factory=dict)",
+            (
+                "values: Annotated[list[Domain.Item], 'metadata'] = "
+                "Field(default_factory=list)"
+            ),
+            (
+                "values: Annotated[dict[str, Domain.Item], 'metadata'] = "
+                "Field(default_factory=dict)"
+            ),
+            "values: list[Domain.Item] = Field(default_factory=list, description='d')",
+            "values: dict[str, Domain.Item] = Field(default_factory=dict, description='d')",
+        ],
+    )
+    def test_own_outer_contract_stays_deferred_during_class_construction(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        declaration: str,
+    ) -> None:
+        """Native mutable factories never evaluate an unfinished outer owner."""
+        source = (
+            "from __future__ import annotations\n"
+            "from typing import Annotated\n"
+            "from flext_core import t\n"
+            "from pydantic import BaseModel, Field\n"
+            "class Domain:\n"
+            "    class Item(BaseModel):\n"
+            "        label: str\n"
+            "    class Payload(BaseModel):\n"
+            f"        {declaration}\n"
+            "class Independent(BaseModel):\n"
+            "    values: list[str] = Field(default_factory=list)\n"
+            "deferred = not Domain.Payload.__pydantic_complete__\n"
+            "if not deferred:\n"
+            "    raise AssertionError('outer contract resolved during construction')\n"
+            "first, second = Domain.Payload(), Domain.Payload()\n"
+            "if isinstance(first.values, dict):\n"
+            "    first.values['entry'] = Domain.Item(label='consumer')\n"
+            "else:\n"
+            "    first.values.append(Domain.Item(label='consumer'))\n"
+            "restored = Domain.Payload.model_validate_json(first.model_dump_json())\n"
+            "evidence = (deferred, first.values is not second.values, "
+            "first.model_dump_json(), second.model_dump_json(), "
+            "restored.model_dump_json(), Independent().model_dump_json())\n"
+        )
+        u.Tests.prove_contract_migration(
+            rope_contract_consumer, source, expect_change=False
+        )
+        _workspace, path = rope_contract_consumer
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), contains=declaration)
+
+    @staticmethod
+    def test_own_class_contract_keeps_its_native_factory(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+    ) -> None:
+        """Pydantic self resolution does not bind the class name for field values."""
+        source = (
+            "from __future__ import annotations\n"
+            "from pydantic import BaseModel, Field\n"
+            "class Payload(BaseModel):\n"
+            "    values: list[Payload] = Field(default_factory=list)\n"
+            "class Independent(BaseModel):\n"
+            "    values: list[str] = Field(default_factory=list)\n"
+            "first, second = Payload(), Payload()\n"
+            "first.values.append(Payload())\n"
+            "restored = Payload.model_validate_json(first.model_dump_json())\n"
+            "evidence = (first.values is not second.values, first.model_dump_json(), "
+            "second.model_dump_json(), restored.model_dump_json(), "
+            "Independent().model_dump_json())\n"
+        )
+        u.Tests.prove_contract_migration(
+            rope_contract_consumer, source, expect_change=False
+        )
+        _workspace, path = rope_contract_consumer
+        tm.that(
+            path.read_text(encoding=c.DEFAULT_ENCODING),
+            contains="values: list[Payload] = Field(default_factory=list)",
+        )
+
+    @staticmethod
+    def test_already_bound_mutable_outer_contract_stays_native(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+    ) -> None:
+        """Binding an outer owner does not change a mutable factory's identity."""
+        source = (
+            "from __future__ import annotations\n"
+            "from pydantic import BaseModel, Field\n"
+            "class Domain:\n"
+            "    class Item(BaseModel):\n"
+            "        label: str\n"
+            "class Payload(BaseModel):\n"
+            "    values: list[Domain.Item] = Field(default_factory=list)\n"
+            "first, second = Payload(), Payload()\n"
+            "first.values.append(Domain.Item(label='consumer'))\n"
+            "restored = Payload.model_validate_json(first.model_dump_json())\n"
+            "evidence = (Payload.model_fields['values'].default_factory is list, "
+            "first.values is not second.values, first.model_dump_json(), "
+            "second.model_dump_json(), restored.model_dump_json())\n"
+        )
+        u.Tests.prove_contract_migration(
+            rope_contract_consumer, source, expect_change=False
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("minimum", [0, 1])
+    @pytest.mark.parametrize("alias", [False, True])
+    def test_readonly_factory_preserves_full_field_validation_and_freshness(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        minimum: int,
+        alias: bool,
+    ) -> None:
+        """The owning field validates all metadata, not just a collection origin."""
+        declaration = (
+            f"type Contract = Annotated[Sequence[str], Field(min_length={minimum})]\n"
+            if alias
+            else ""
+        )
+        annotation = (
+            "Contract"
+            if alias
+            else f"Annotated[Sequence[str], Field(min_length={minimum})]"
+        )
+        source = (
+            "from collections.abc import Sequence\n"
+            "from typing import Annotated\n"
+            "from pydantic import BaseModel, ConfigDict, Field, ValidationError\n"
+            f"{declaration}"
+            "class Payload(BaseModel):\n"
+            "    model_config = ConfigDict(validate_default=True)\n"
+            "    seed: int = 7\n"
+            f"    values: {annotation} = "
+            "Field(default_factory=list)\n"
+            "try:\n"
+            "    first, second = Payload(), Payload()\n"
+            "except ValidationError as error:\n"
+            "    default = tuple((item['type'], item['loc']) "
+            "for item in error.errors())\n"
+            "else:\n"
+            "    first.values.append('consumer')\n"
+            "    default = (first.values is not second.values, "
+            "first.model_dump_json(), second.model_dump_json())\n"
+            "try:\n"
+            "    Payload(values=[3])\n"
+            "except ValidationError as error:\n"
+            "    rejected = tuple((item['type'], item['loc']) "
+            "for item in error.errors())\n"
+            "else:\n"
+            "    raise AssertionError('element contract was discarded')\n"
+            "evidence = (default, rejected, "
+            "Payload.model_fields['values'].default_factory_takes_validated_data)\n"
         )
         u.Tests.prove_contract_migration(rope_contract_consumer, source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("origin", "factory", "changes"),
+        [
+            ("Sequence", "list", True),
+            ("MutableSequence", "list", False),
+            ("Mapping", "dict", True),
+            ("MutableMapping", "dict", False),
+            ("Set", "set", True),
+            ("MutableSet", "set", False),
+        ],
+    )
+    def test_alias_factory_admission_follows_native_origin_not_alias_spelling(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        origin: str,
+        factory: str,
+        changes: bool,
+    ) -> None:
+        """An arbitrary alias name cannot grant or deny collection mutability."""
+        arguments = "str, int" if factory == "dict" else "str"
+        source = (
+            f"from collections.abc import {origin}\n"
+            "from pydantic import BaseModel, ConfigDict, Field\n"
+            f"type Contract = {origin}[{arguments}]\n"
+            "class Payload(BaseModel):\n"
+            "    model_config = ConfigDict(validate_default=True)\n"
+            f"    values: Contract = Field(default_factory={factory})\n"
+            "first, second = Payload(), Payload()\n"
+            "evidence = (first.values is not second.values, "
+            "first.model_dump_json(), second.model_dump_json())\n"
+        )
+        u.Tests.prove_contract_migration(
+            rope_contract_consumer, source, expect_change=changes
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("factory", ["list[str]", "lambda: ['consumer']"])
+    def test_typed_constructor_and_authored_callback_keep_distinct_behavior(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        factory: str,
+    ) -> None:
+        """Only the catalogue's builtin factories are empty-factory candidates."""
+        source = (
+            "from collections.abc import Sequence\n"
+            "from pydantic import BaseModel, ConfigDict, Field\n"
+            f"factory = {factory}\n"
+            "class Payload(BaseModel):\n"
+            "    model_config = ConfigDict(validate_default=True)\n"
+            f"    values: Sequence[str] = Field(default_factory={factory})\n"
+            "first, second = Payload(), Payload()\n"
+            "evidence = (Payload.model_fields['values'].default_factory is factory, "
+            "first.values is not second.values, first.model_dump_json(), "
+            "second.model_dump_json())\n"
+        )
+        u.Tests.prove_contract_migration(
+            rope_contract_consumer, source, expect_change=False
+        )
+
+    @staticmethod
+    def test_readonly_deferred_outer_owner_keeps_native_field_resolution(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+    ) -> None:
+        """The SDK callback never evaluates an unfinished enclosing annotation."""
+        source = (
+            "from __future__ import annotations\n"
+            "from collections.abc import Sequence\n"
+            "from pydantic import BaseModel, ConfigDict, Field\n"
+            "class Domain:\n"
+            "    class Item(BaseModel):\n"
+            "        label: str\n"
+            "    class Payload(BaseModel):\n"
+            "        model_config = ConfigDict(validate_default=True)\n"
+            "        values: Sequence[Domain.Item] = Field(default_factory=list)\n"
+            "first, second = Domain.Payload(), Domain.Payload()\n"
+            "evidence = (first.values is not second.values, "
+            "first.model_dump_json(), second.model_dump_json())\n"
+        )
+        u.Tests.prove_contract_migration(rope_contract_consumer, source)
+        _workspace, path = rope_contract_consumer
+        updated = path.read_text(encoding=c.DEFAULT_ENCODING)
+        tm.that("TypeAdapter" not in updated, eq=True)
+        tm.that("TypeForm" not in updated, eq=True)
 
     @staticmethod
     def test_strict_json_boundary_and_validator_modes_survive_factory_migration(
@@ -299,7 +577,9 @@ class TestsFlextInfraRopeContracts:
             "context={'consumer': 'json'})\n"
             "evidence = (rejected, accepted.model_dump_json(), tuple(events))\n"
         )
-        u.Tests.prove_contract_migration(rope_contract_consumer, source)
+        u.Tests.prove_contract_migration(
+            rope_contract_consumer, source, expect_change=False
+        )
 
     @staticmethod
     def test_dependent_factory_preserves_call_order_and_instance_isolation(
@@ -344,37 +624,27 @@ class TestsFlextInfraRopeContracts:
             "evidence = (first.model_dump_json(), second.model_dump_json(), "
             "restored.model_dump_json())\n"
         )
-        u.Tests.prove_contract_migration(rope_contract_consumer, source)
+        u.Tests.prove_contract_migration(
+            rope_contract_consumer, source, expect_change=False
+        )
 
     @staticmethod
     def test_factory_migration_cannot_repeat_annotation_effects(
-        tmp_path: Path,
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """A repeated type expression must not run an authored callback twice."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "consumer.py"
         source = (
+            "from collections.abc import Sequence\n"
             "from pydantic import BaseModel, Field\n"
             "events = []\n"
             "def element_type():\n"
             "    events.append('annotation')\n"
             "    return str\n"
             "class Payload(BaseModel):\n"
-            "    values: list[element_type()] = Field(default_factory=list)\n"
+            "    values: Sequence[element_type()] = Field(default_factory=list)\n"
             "evidence = (tuple(events), Payload().model_dump_json())\n"
         )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        before = runpy.run_path(str(path))["evidence"]
-        with (
-            infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match=r"annotation.*repeat"),
-        ):
-            u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                rope_workspace=rope,
-                sources={path: source},
-            )
-        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+        u.Tests.prove_contract_migration(rope_contract_consumer, source)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -455,7 +725,9 @@ class TestsFlextInfraRopeContracts:
             "info.default_factory is list, "
             "u.Cli.env_read('consumer_key', {'consumer_key': 'value'}).unwrap())\n"
         )
-        u.Tests.prove_contract_migration(rope_contract_consumer, source)
+        u.Tests.prove_contract_migration(
+            rope_contract_consumer, source, expect_change=False
+        )
 
     @staticmethod
     def test_aliased_adapter_preserves_validation_and_failure_modes(

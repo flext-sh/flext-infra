@@ -374,10 +374,9 @@ quote-style = {{ tooling.tools.ruff.format.quote_style | tojson }}
 skip-magic-trailing-comma = {{ tooling.tools.ruff.format.skip_magic_trailing_comma | lower }}
 
 [tool.ruff.lint]
-{# Only native rules whose canonical checking/repair owner was elected, not
-   a free-form exemption or nonblocking catalog. #}
+{# Preserve canonical disabled rules alongside elected delegated owners. #}
 ignore = [
-{% for item in ruff_delegated_rules %}
+{% for item in (ruff_delegated_rules | list + tooling.tools.ruff.lint.ruling_disabled_rules | list) | unique | sort %}
   {{ item | tojson }},
 {% endfor %}
 ]

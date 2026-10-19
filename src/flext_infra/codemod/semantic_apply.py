@@ -1710,10 +1710,9 @@ class FlextInfraCodemodSemanticApply:
         root = root.resolve()
         # Findings cannot introduce foreign or generated paths into semantic input.
         paths = {
-            member / target
-            for member in u.Infra.import_project_roots(root)
+            root / target
             for target in u.Infra.ast_grep_scan_targets(
-                member, source_project=source_project
+                root, source_project=source_project
             )
         }
         sources: MutableMapping[Path, str] = {}

@@ -95,6 +95,18 @@ class FlextInfraConfigModelsMake(
             Path,
             m.Field(description="Runtime-root-relative hosted resolution directory"),
         ]
+        editable_directory: Annotated[
+            Path,
+            m.Field(
+                description="Runtime-root-relative opt-in supplier resolution directory"
+            ),
+        ]
+        editable_supplier_root: Annotated[
+            Path | None,
+            m.Field(
+                description="Explicit external workspace supplying local editable dependencies"
+            ),
+        ] = None
         hosted_variable: Annotated[
             t.NonEmptyStr,
             m.Field(description="Actual hosted runner environment key"),
@@ -124,7 +136,12 @@ class FlextInfraConfigModelsMake(
                     relative path or the two views share a directory.
 
             """
-            for directory in (self.local_directory, self.standalone_directory):
+            directories = (
+                self.local_directory,
+                self.standalone_directory,
+                self.editable_directory,
+            )
+            for directory in directories:
                 if (
                     directory.is_absolute()
                     or ".." in directory.parts
@@ -132,8 +149,14 @@ class FlextInfraConfigModelsMake(
                 ):
                     msg = "UV resolution directories must be nonempty relative paths"
                     raise ValueError(msg)
-            if self.local_directory == self.standalone_directory:
+            if len(set(directories)) != len(directories):
                 msg = "UV resolution views must use distinct directories"
+                raise ValueError(msg)
+            if (
+                self.editable_supplier_root is not None
+                and not self.editable_supplier_root.is_absolute()
+            ):
+                msg = "editable supplier root must be an absolute path"
                 raise ValueError(msg)
             return self
 

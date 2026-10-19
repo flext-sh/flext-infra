@@ -1,0 +1,13 @@
+id: ban-reverse-runtime-import-settings
+valid:
+  - |
+    if TYPE_CHECKING:
+        from pkg import s
+  - |
+    if TYPE_CHECKING:
+        import pkg.services.runtime
+invalid:
+  - from pkg import s
+  - from pkg import s as service
+  - from pkg.services import RuntimeService
+  - import pkg.services.runtime

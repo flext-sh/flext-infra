@@ -114,7 +114,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
 
         @staticmethod
         def profile_parent(
-            runner: FlextInfraPytestRunner,
+            runner: p.Tests.PytestProfileContext,
             output: Path,
             *,
             target_file: Path | None = None,
@@ -142,11 +142,13 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                         str(output),
                     ),
                     log,
-                    cwd=runner.root,
+                    cwd=runner.repository_root,
                     options=m.Cli.ProcessOptions(
                         env=u.Cli.process_env(
                             overrides={
-                                c.Infra.PYTEST_ENV_REPOSITORY_ROOT: str(runner.root),
+                                c.Infra.PYTEST_ENV_REPOSITORY_ROOT: str(
+                                    runner.repository_root
+                                ),
                                 c.Infra.PYTEST_ENV_TARGET: str(runner.target),
                                 c.Infra.PYTEST_ENV_TARGET_FILE: str(
                                     target_file
@@ -470,6 +472,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         *,
         cwd: Path,
         env: t.StrMapping | None = None,
+        private_env: t.MappingKV[str, t.SecretStr] | None = None,
         capture: bool = True,
     ) -> p.Result[p.Cli.CommandOutput]:
         """Run Make without undeclared state inherited from outer pytest.
@@ -477,7 +480,9 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         The network bootstrap asks gh for a token when no GITHUB_TOKEN is set.
         gh here reads no configuration (``os.devnull`` is not a directory) and
         reaches no keyring (the session bus is disabled), so the host
-        operator's stored credential never enters a test.
+        operator's stored credential never enters a test implicitly. Provisioning
+        may explicitly supply the credential already elected by its root Make;
+        private values are unwrapped only at the child-process boundary.
 
         Returns:
             The resulting ``p.Result[p.Cli.CommandOutput]``.
@@ -491,11 +496,16 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                     "GH_CONFIG_DIR": os.devnull,
                     "DBUS_SESSION_BUS_ADDRESS": "disabled:",
                     **(env or {}),
+                    **{
+                        key: value.get_secret_value()
+                        for key, value in (private_env or {}).items()
+                    },
                 },
                 remove_env_keys=tuple(
                     key
                     for key in c.Tests.MAKE_ISOLATION_ENV_KEYS
-                    if env is None or key not in env
+                    if (env is None or key not in env)
+                    and (private_env is None or key not in private_env)
                 ),
             ),
             capture=capture,

@@ -735,7 +735,22 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         for phase, source in sources:
             key = (phase, source.path)
             previous = by_key.get(key)
-            encoded = cls.source_record(phase, source, previous)
+            # A later phase may consume the same original absence after this
+            # journal created its parent. Keep the captured witness; the native
+            # state comparison separately proves any owned directory transition.
+            captured = (
+                previous
+                if previous is not None
+                else next(
+                    (
+                        item
+                        for item in by_key.values()
+                        if item.path == source.path and item.absent_parent is not None
+                    ),
+                    None,
+                )
+            )
+            encoded = cls.source_record(phase, source, captured)
             if encoded.failure:
                 return result_type.from_failure(encoded)
             if previous is not None and previous != encoded.value:

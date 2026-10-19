@@ -1,0 +1,9 @@
+id: specialize-settings-class-algebra
+valid:
+  - |
+    from flext_core import p, t
+    value: t.SettingsClass[p.SettingsType]
+invalid:
+  - |
+    from flext_core import p, t
+    value: t.SettingsClass | None

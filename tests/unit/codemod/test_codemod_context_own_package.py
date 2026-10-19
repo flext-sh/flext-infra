@@ -873,6 +873,88 @@ class TestsFlextInfraCodemodContextOwnPackage:
         tm.that(outcomes, eq=[False, True])
 
     @staticmethod
+    @pytest.mark.parametrize("same_generic", [True, False])
+    @pytest.mark.parametrize("bind_import", [True, False])
+    def test_generic_specialization_requires_original_binding(
+        mod_workspace: Path,
+        binding_probe_rule: m.Infra.CodemodRule,
+        *,
+        same_generic: bool,
+        bind_import: bool,
+    ) -> None:
+        """A same-named alias of another generic is never a migration target."""
+        namespace = u.Infra.project_package_name(mod_workspace)
+        module_name = f"{namespace}.generic_owner"
+        owner = mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace / "generic_owner.py"
+        selected = "Value" if same_generic else "Other"
+        owner.write_text(
+            "class Types:\n"
+            "    type Value[T] = str | T\n"
+            "    type Other[T] = bytes | T\n"
+            "t = Types\n"
+            "class Protocols:\n"
+            f"    type Value = Types.{selected}[int]\n"
+            "p = Protocols\n",
+            encoding="utf-8",
+        )
+        consumer = mod_workspace / "generic_consumer.py"
+        imported = "t" if bind_import else "p, t"
+        source = f"from {module_name} import {imported}\nvalue: t.Value\n"
+        consumer.write_text(source, encoding="utf-8")
+        rule = binding_probe_rule.model_copy(
+            update={
+                "context": (
+                    m.Infra.CodemodContextCondition(
+                        variable="OWNER",
+                        predicate=c.Infra.CodemodContextPredicate.GENERIC_SPECIALIZATION,
+                        of="MEMBER",
+                        arg=("p", "NAMESPACE") if bind_import else ("p",),
+                        holds=True,
+                    ),
+                ),
+            }
+        )
+        closed = u.Infra.codemod_binding_snapshot(
+            mod_workspace,
+            (tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True)),),
+            (module_name,),
+        )
+        start = source.index("t.Value")
+        captures: t.JsonMapping = {
+            "NAMESPACE": {
+                "text": module_name,
+                "range": {"byteOffset": {"start": 5, "end": 5 + len(module_name)}},
+            },
+            "OWNER": {
+                "text": "t",
+                "range": {"byteOffset": {"start": start, "end": start + 1}},
+            },
+            "MEMBER": {
+                "text": "Value",
+                "range": {"byteOffset": {"start": start + 2, "end": start + 7}},
+            },
+        }
+        with u.Infra.codemod_binding_project(
+            mod_workspace,
+            u.Infra.codemod_source_epoch(closed),
+        ) as (project, sources):
+            tm.that(
+                u.Infra.codemod_context_admits(
+                    m.Infra.CodemodAdmission(
+                        root=mod_workspace,
+                        rule=rule,
+                        file_path=consumer,
+                        captures=captures,
+                        facts=u.Infra.codemod_project_facts(mod_workspace, (rule,)),
+                        snapshot=closed,
+                    ),
+                    project=project,
+                    sources=sources,
+                ),
+                eq=same_generic,
+            )
+
+    @staticmethod
     def _write_occurrence_modules(
         mod_workspace: Path,
         *,

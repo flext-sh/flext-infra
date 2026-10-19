@@ -25,6 +25,15 @@ if TYPE_CHECKING:
 class FlextInfraProtocolsRope(Protocol):
     """Application contracts layered around the concrete Rope boundary."""
 
+    class CodemodContextOperands(Protocol):
+        """Read-only rule operands consumed by semantic context admission."""
+
+        @property
+        def arg(self) -> t.StrSequence: ...
+
+        @property
+        def as_(self) -> t.StrSequence: ...
+
     @runtime_checkable
     class SourceRewrite(Protocol):
         """Read-only source span and replacement consumed by native refactoring."""
@@ -73,10 +82,31 @@ class FlextInfraProtocolsRope(Protocol):
         def repeats(self) -> str | None: ...
 
         @property
+        def readonly_contract(self) -> str | None: ...
+
+        @property
+        def readonly_origins(self) -> t.StrSequence: ...
+
+        @property
         def drops(self) -> t.StrSequence: ...
 
         @property
         def call_target(self) -> str | None: ...
+
+        @property
+        def explicit_arguments(self) -> bool: ...
+
+        @property
+        def required_field(self) -> bool: ...
+
+        @property
+        def private_attribute(self) -> bool: ...
+
+        @property
+        def value_default(self) -> str | None: ...
+
+        @property
+        def factory_default(self) -> str | None: ...
 
         @property
         def missing_keywords(self) -> t.StrSequence: ...

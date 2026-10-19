@@ -49,7 +49,14 @@ class FlextInfraWorkspaceEnvironmentProvenance(
 
         """
         result = r[m.Cli.AtomicFileState]
-        installed = cls._member_installation(repository)
+        observed = cls._observe_environment(repository_root, (repository,))
+        if observed.failure:
+            return result.from_failure(observed)
+        installed = cls._member_installation(
+            repository,
+            metadata_paths=tuple(str(path) for path in observed.value.metadata_paths),
+            environment_root=observed.value.prefix,
+        )
         if installed.failure:
             return result.from_failure(installed)
         distribution, raw, receipt = installed.value
@@ -76,11 +83,15 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             repository,
             (distribution, raw, receipt),
             lock_state=lock_state,
+            environment_root=observed.value.prefix,
         )
 
     @staticmethod
     def _member_installation(
         repository: m.Infra.RepositoryRef,
+        *,
+        metadata_paths: t.StrSequence,
+        environment_root: Path,
     ) -> p.Result[t.Triple[Distribution, str, m.Infra.DirectUrlReceipt]]:
         """Read the member's unique installed distribution and native PEP 610 record.
 
@@ -89,13 +100,27 @@ class FlextInfraWorkspaceEnvironmentProvenance(
 
         """
         result = r[t.Triple[Distribution, str, m.Infra.DirectUrlReceipt]]
-        matches = u.installed_distributions(name=repository.distribution)
+        matches = u.installed_distributions(
+            name=repository.distribution,
+            path=metadata_paths,
+        )
         if len(matches) != 1:
             return result.fail(
                 "member declaration needs one installed distribution: "
                 f"{repository.distribution}",
             )
         distribution = matches[0]
+        if (
+            not Path(str(distribution.locate_file("")))
+            .resolve()
+            .is_relative_to(
+                environment_root.resolve(),
+            )
+        ):
+            return result.fail(
+                "member distribution is outside the owned environment: "
+                f"{repository.distribution}",
+            )
         raw = distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
         if raw is None:
             return result.fail(
@@ -159,6 +184,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         installation: t.Triple[Distribution, str, m.Infra.DirectUrlReceipt],
         *,
         lock_state: m.Cli.AtomicFileState | None,
+        environment_root: Path,
     ) -> p.Result[m.Cli.AtomicFileState]:
         """Bind the installed Git build to its lock and declared repository.
 
@@ -196,12 +222,18 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                 "member artifact origin differs from declared repository: "
                 f"{repository.distribution}",
             )
-        return cls._member_recorded_declaration(repository, distribution)
+        return cls._member_recorded_declaration(
+            repository,
+            distribution,
+            environment_root=environment_root,
+        )
 
     @staticmethod
     def _member_declaration_state(
         repository: m.Infra.RepositoryRef,
         distribution: Distribution,
+        *,
+        environment_root: Path,
     ) -> p.Result[t.Pair[PackagePath, m.Cli.AtomicFileState]]:
         """Read the unique producer declaration inside the installed environment.
 
@@ -223,7 +255,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             )
         resource = resources[0]
         path = Path(str(distribution.locate_file(resource))).resolve()
-        if not path.is_relative_to(Path(sys.prefix).resolve()):
+        if not path.is_relative_to(environment_root.resolve()):
             return result.fail(
                 "member declaration escapes its installed environment: "
                 f"{repository.distribution}",
@@ -238,6 +270,8 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         cls,
         repository: m.Infra.RepositoryRef,
         distribution: Distribution,
+        *,
+        environment_root: Path,
     ) -> p.Result[m.Cli.AtomicFileState]:
         """Authenticate declaration content through RECORD and the producer's wheel.
 
@@ -246,7 +280,11 @@ class FlextInfraWorkspaceEnvironmentProvenance(
 
         """
         result = r[m.Cli.AtomicFileState]
-        captured = cls._member_declaration_state(repository, distribution)
+        captured = cls._member_declaration_state(
+            repository,
+            distribution,
+            environment_root=environment_root,
+        )
         if captured.failure:
             return result.from_failure(captured)
         resource, state = captured.value
@@ -484,6 +522,89 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                 resolved_root,
                 metadata_paths=metadata_paths,
                 observation=observation,
+            )
+            if provenance.failure:
+                return r[int].from_failure(provenance)
+            validated += int(provenance.value)
+        return cls._validate_supplier_environment(
+            resolved_root, metadata_paths=metadata_paths
+        ).map(lambda count: validated + count)
+
+    @classmethod
+    def _validate_supplier_environment(
+        cls,
+        consumer_root: Path,
+        *,
+        metadata_paths: t.StrSequence | None,
+    ) -> p.Result[int]:
+        """Prove selected external editables through the consumer's owned runtime.
+
+        Returns:
+            The authenticated supplier count or the first provenance failure.
+
+        """
+        inputs = u.Infra.load_codegen_inputs(consumer_root)
+        if inputs.failure:
+            return r[int].from_failure(inputs)
+        supplier_root = inputs.value.spec.make.uv_resolution.editable_supplier_root
+        if supplier_root is None:
+            return r[int].ok(0)
+        return cls._validate_supplier_projects(
+            consumer_root, supplier_root, metadata_paths=metadata_paths
+        )
+
+    @classmethod
+    def _validate_supplier_projects(
+        cls,
+        consumer_root: Path,
+        supplier_root: Path,
+        *,
+        metadata_paths: t.StrSequence | None,
+    ) -> p.Result[int]:
+        """Authenticate supplier origins, imports and metadata in the consumer.
+
+        Returns:
+            The authenticated supplier count or the first native failure.
+
+        """
+        python = u.Infra.runtime_python(consumer_root, runtime_root=consumer_root)
+        targets = FlextInfraBindingService.plan_targets(
+            consumer_root=consumer_root,
+            flext_root=supplier_root,
+            python=python,
+        )
+        if targets.failure:
+            return r[int].from_failure(targets)
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(supplier_root)
+        if workspace.failure:
+            return r[int].from_failure(workspace)
+        repositories = tuple(
+            item
+            for item in (workspace.value.repository, *workspace.value.subprojects)
+            if u.Infra.dep_name(item.distribution) in targets.value
+        )
+        observed = FlextInfraBindingService.consumer_package_environment(
+            consumer_root=consumer_root,
+            python=python,
+            packages=tuple(
+                u.Infra.project_package_name(supplier_root / item.path)
+                for item in repositories
+            ),
+        )
+        if observed.failure:
+            return r[int].from_failure(observed)
+        paths = (
+            metadata_paths
+            if metadata_paths is not None
+            else tuple(str(path) for path in observed.value.metadata_paths)
+        )
+        validated = 0
+        for repository in repositories:
+            provenance = cls._validate_editable_provenance(
+                repository,
+                supplier_root,
+                metadata_paths=paths,
+                observation=observed.value,
             )
             if provenance.failure:
                 return r[int].from_failure(provenance)

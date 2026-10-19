@@ -565,6 +565,7 @@ Infra:
       uv_resolution:
         local_directory: .flext/uv/local
         standalone_directory: .flext/uv/standalone
+        editable_directory: .flext/uv/editable
         hosted_variable: GITHUB_ACTIONS
         hosted_value: 'true'
         virtual_distribution_suffix: '-resolution'
@@ -716,6 +717,9 @@ Infra:
         description: Run the strict code-smell audit as a dedicated gate.
       - name: test
         description: Run incremental tests through the persistent testmon cache.
+      - name: tests
+        arguments: [ FILE ]
+        description: Run incremental tests first, then the complete eligible suite using the same persistent testmon database, without a time limit.
       - name: test-full
         arguments: [ FILE ]
         description: Run incremental tests first, then the complete eligible suite using the same persistent testmon database, without a time limit.

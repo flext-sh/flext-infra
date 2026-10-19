@@ -688,7 +688,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ast.parse(source, filename=str(facade_path)),
             facade_path,
         )
-        owners, ancestors = cls._facade_protocol_owners(
+        owners, _ = cls._facade_protocol_owners(
             pkg_dir
             / FlextInfraUtilitiesCodegenNamespace.facade_families()[
                 c.Infra.FacadeFamily.P
@@ -696,10 +696,170 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             binding[1],
             project=binding[0],
         )
-        reachable = cls._reachable_bases(
-            tuple(cls._base_name(base) for base in namespace.bases),
-            ancestors,
+        project = binding[0]
+        module = FlextInfraUtilitiesRopeRuntime.build_string_module(
+            project,
+            source,
+            resource=project.get_resource(
+                facade_path.relative_to(Path(project.root.real_path)).as_posix()
+            ),
         )
+        scope = module.get_scope()
+        if namespace is not facade:
+            scope = next(
+                child
+                for child in scope.get_scopes()
+                if child.get_start() == facade.lineno
+            )
+        protocol_module = FlextInfraUtilitiesRopeRuntime.build_string_module(
+            project, "from typing import Protocol, runtime_checkable\n"
+        )
+        protocol = protocol_module.get_scope().get_name("Protocol").get_object()
+        runtime_checkable = (
+            protocol_module.get_scope().get_name("runtime_checkable").get_object()
+        )
+        base_objects: list[p.Infra.RopePyObject] = []
+        for base in namespace.bases:
+            resolved = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                scope, base.value if isinstance(base, ast.Subscript) else base
+            )
+            if resolved is None:
+                message = f"Unresolved protocol facade base: {ast.unparse(base)}"
+                raise ValueError(message)
+            base_objects.append(resolved.get_object())
+        inherited: list[p.Infra.RopePyObject] = []
+        pending = list(base_objects)
+        while pending:
+            owner = pending.pop(0)
+            if owner not in inherited:
+                inherited.append(owner)
+                pending.extend(owner.get_superclasses())
+        plain_owner = any(
+            owner is not protocol and protocol not in owner.get_superclasses()
+            for owner in base_objects
+        )
+        if namespace is not facade and plain_owner:
+            protocol_decorators = {
+                ast.unparse(decorator)
+                for decorator in namespace.decorator_list
+                if (
+                    resolved := FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                        scope, decorator
+                    )
+                )
+                is not None
+                and resolved.get_object() is runtime_checkable
+            }
+            wrapper = MetadataWrapper(parse_module(source))
+            positions = wrapper.resolve(PositionProvider)
+            for node, span in positions.items():
+                if (
+                    not isinstance(node, ClassDef)
+                    or span.start.line != namespace.lineno
+                ):
+                    continue
+                replacement = node.with_changes(
+                    bases=tuple(
+                        base
+                        for base in node.bases
+                        if base_objects[node.bases.index(base)] is not protocol
+                    ),
+                    decorators=tuple(
+                        decorator
+                        for decorator in node.decorators
+                        if wrapper.module.code_for_node(decorator.decorator)
+                        not in protocol_decorators
+                    ),
+                )
+                updated = wrapper.module.deep_replace(node, replacement)
+                if not isinstance(updated, Module):
+                    message = (
+                        "protocol namespace projection did not preserve the module"
+                    )
+                    raise ValueError(message)
+                source = updated.code
+                break
+            context = CodemodContext()
+            for name in (c.Infra.PROTOCOL_BASE, "runtime_checkable"):
+                RemoveImportsVisitor.remove_unused_import(context, "typing", name)
+            source = (
+                RemoveImportsVisitor(context)
+                .transform_module(parse_module(source))
+                .code
+            )
+            facade, namespace = cls._facade_classes(
+                ast.parse(source, filename=str(facade_path)),
+                facade_path,
+            )
+        shadows: list[ast.AnnAssign] = []
+        for member in namespace.body:
+            if not (
+                isinstance(member, ast.AnnAssign)
+                and isinstance(member.target, ast.Name)
+                and isinstance(member.annotation, ast.Subscript)
+                and isinstance(member.annotation.value, ast.Name)
+                and member.annotation.value.id == "type"
+                and member.value is not None
+            ):
+                continue
+            value = FlextInfraUtilitiesRopeRuntime.resolve_symbol(scope, member.value)
+            annotated = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                scope, member.annotation.slice
+            )
+            if value is None or annotated is None:
+                message = f"Unresolved protocol class attribute: {member.target.id}"
+                raise ValueError(message)
+            target = value.get_object()
+            if (
+                protocol in target.get_superclasses()
+                and target is not annotated.get_object()
+            ):
+                message = (
+                    f"ambiguous protocol class attribute {member.target.id}: "
+                    "annotation does not identify the declared contract"
+                )
+                raise ValueError(message)
+            inherited_member = next(
+                (
+                    owner.get_attributes()[member.target.id].get_object()
+                    for owner in base_objects
+                    if member.target.id in owner.get_attributes()
+                ),
+                None,
+            )
+            if (
+                target is inherited_member
+                and target is annotated.get_object()
+                and protocol in target.get_superclasses()
+            ):
+                shadows.append(member)
+            elif (
+                inherited_member is not None
+                and protocol in target.get_superclasses()
+                and any(
+                    target is attribute.get_object()
+                    for owner in base_objects
+                    for attribute in owner.get_attributes().values()
+                )
+            ):
+                message = (
+                    f"ambiguous protocol class attribute {member.target.id}: "
+                    "value does not identify the inherited contract"
+                )
+                raise ValueError(message)
+        if shadows:
+            lines = source.splitlines(keepends=True)
+            for member in reversed(shadows):
+                lines[member.lineno - 1 : member.end_lineno] = (
+                    [f"{' ' * member.col_offset}pass\n"]
+                    if len(shadows) == len(namespace.body) and member is shadows[0]
+                    else []
+                )
+            source = "".join(lines)
+            facade, namespace = cls._facade_classes(
+                ast.parse(source, filename=str(facade_path)),
+                facade_path,
+            )
         additions: list[t.Pair[str, str]] = []
         declared = {
             member.name
@@ -737,7 +897,12 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 if method in methods
             )
             if not candidates or any(
-                class_name in reachable for _module, class_name in candidates
+                project
+                .get_module(f"{pkg_dir.name}._protocols.{module}")
+                .get_attributes()[class_name]
+                .get_object()
+                in inherited
+                for module, class_name in candidates
             ):
                 continue
             if len(candidates) != 1:
@@ -748,7 +913,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 )
                 raise ValueError(message)
             additions.append(candidates[0])
-            reachable.update(cls._reachable_bases((candidates[0][1],), ancestors))
         if not additions:
             return source
         source = cls._insert_protocol_imports(
@@ -760,7 +924,12 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ast.parse(source, filename=str(facade_path)),
             facade_path,
         )
-        return cls._insert_bases(source, namespace, additions)
+        return cls._render_protocol_facade(
+            pkg_dir,
+            facade_path,
+            cls._insert_bases(source, namespace, additions),
+            binding=binding,
+        )
 
     @classmethod
     def _render_declared_facade(

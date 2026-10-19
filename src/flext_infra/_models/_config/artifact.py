@@ -857,6 +857,11 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 for directory in (
                     self.make.uv_resolution.local_directory,
                     self.make.uv_resolution.standalone_directory,
+                    *(
+                        (self.make.uv_resolution.editable_directory,)
+                        if self.make.uv_resolution.editable_supplier_root is not None
+                        else ()
+                    ),
                 )
             )
 
@@ -894,6 +899,11 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                     owner=owner.owner,
                     policy="full",
                     mode=owner.mode,
+                    tracking=(
+                        "runtime-local"
+                        if path.parent == self.make.uv_resolution.editable_directory
+                        else owner.tracking
+                    ),
                 )
                 for path in self.uv_resolution_pyprojects
             )

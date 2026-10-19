@@ -71,7 +71,10 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
             return None
         layer = FlextInfraUtilitiesImportLaw.module_import_layer(namespace[1])
         imported_modules = cls._imported_utility_modules(source, path)
-        if layer == order.index(c.Infra.FacadeFamily.U):
+        if layer in {
+            order.index(c.Infra.FacadeFamily.U),
+            order.index(c.Infra.FacadeFamily.M),
+        }:
             own_modules = imported_modules.intersection({namespace[0].name})
             return (path.resolve(), own_modules, True) if own_modules else None
         if layer <= order.index(c.Infra.FacadeFamily.M):

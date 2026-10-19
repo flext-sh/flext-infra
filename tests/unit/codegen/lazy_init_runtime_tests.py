@@ -52,10 +52,10 @@ class TestsFlextInfraLazyInitRuntime:
         ("imported_alias", "published_alias"),
         [(False, False), (True, False), (True, True)],
     )
-    def test_public_generation_owns_test_initialization_in_one_class(
+    def test_public_generation_publishes_test_exports_without_namespace_classes(
         tmp_path: Path, imported_alias: bool, published_alias: bool
     ) -> None:
-        """Class metadata publishes precise lazy aliases without module assignments."""
+        """Generated initializers propagate precise aliases at module scope."""
         repository, package = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-owned-tests",
@@ -97,6 +97,7 @@ class TestsFlextInfraLazyInitRuntime:
             what=c.Infra.CodegenConformSurface.LAZY_INIT,
             scope=c.Infra.CodegenConformScope.SELF,
         )
+        tm.ok(u.Tests.create_python_environment(repository))
 
         tm.ok(infra.codegen_generate(request))
 
@@ -106,8 +107,7 @@ class TestsFlextInfraLazyInitRuntime:
             source = content.decode(c.DEFAULT_ENCODING)
             module = ast.parse(source)
             roots = [node for node in module.body if isinstance(node, ast.ClassDef)]
-            tm.that(len(roots), eq=1)
-            tm.that(roots[0].name.startswith("TestsFlextOwnedTests"), eq=True)
+            tm.that(roots, empty=True)
             for node in module.body:
                 if isinstance(node, ast.If):
                     tm.that(isinstance(node.test, ast.Name), eq=True)
@@ -122,15 +122,20 @@ class TestsFlextInfraLazyInitRuntime:
                     )
                 else:
                     tm.that(
-                        isinstance(node, (ast.Import, ast.ImportFrom, ast.ClassDef)),
+                        isinstance(
+                            node,
+                            (ast.Import, ast.ImportFrom, ast.Assign, ast.AnnAssign),
+                        ),
                         eq=True,
                     )
             tm.that(
                 any(
-                    isinstance(node, ast.Expr)
-                    and isinstance(node.value, ast.Call)
-                    and ast.unparse(node.value.func) == "install_lazy_exports"
-                    for node in roots[0].body
+                    isinstance(node, ast.Assign)
+                    and any(
+                        isinstance(target, ast.Name) and target.id == "__getattr__"
+                        for target in node.targets
+                    )
+                    for node in module.body
                 ),
                 eq=True,
             )
@@ -368,6 +373,12 @@ class TestsFlextInfraLazyInitRuntime:
         for path, content in sources.items():
             path.parent.mkdir(parents=True, exist_ok=True)
             tm.ok(u.Cli.atomic_write_text_file(path, content))
+        u.Tests.git_run(
+            repository,
+            "add",
+            "--",
+            *(str(path.relative_to(repository)) for path in sources),
+        )
         if ownership == "module-only":
             with pytest.raises(ValueError, match="Module used as a class base"):
                 u.Infra.render_utility_facade(package, family="m")

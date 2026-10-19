@@ -55,14 +55,18 @@ endif
 {%- endif -%}
 {%- endmacro -%}
 {%- macro upg_resolution_projects() -%}
+{%- if make.uv_resolution.editable_supplier_root is not none -%}
+"$(RUNTIME_ROOT)/{{ make.uv_resolution.editable_directory }}"
+{%- else -%}
 "$(PROJECT_ROOT)/{{ make.uv_resolution.local_directory }}" "$(PROJECT_ROOT)/{{ make.uv_resolution.standalone_directory }}"
+{%- endif -%}
 {%- endmacro -%}
 {%- macro upg_lock_views(upgrade=false) -%}
 {{ "\t" }}@set -eu; \
 	desired_python="$$(mise -C "$(RUNTIME_ROOT)" which python)"; \
 	for resolution in {{ upg_resolution_projects() }}; do \
 		printf 'upg: {{ "upgrading" if upgrade else "reconciling" }} UV lock for %s\n' "$$resolution"; \
-		$(UV) lock --project "$$resolution" --python "$$desired_python"{% if upgrade %} --upgrade --refresh{% endif %}; \
+		$(UV) lock --project "$$resolution" --python "$$desired_python"{% if upgrade and make.uv_resolution.editable_supplier_root is none %} --upgrade --refresh{% endif %}; \
 		$(UV) lock --check --project "$$resolution" --python "$$desired_python"; \
 	done
 {%- endmacro -%}
@@ -158,6 +162,13 @@ ifeq ($(strip $(SELF_MAKE_EXECUTABLE)),)
 $(error Current Make executable has no physical path: $(MAKE_COMMAND))
 endif
 .DEFAULT_GOAL := help
+{% if make.uv_resolution.editable_supplier_root is not none %}
+ifneq ($(filter upg,$(MAKECMDGOALS)),)
+ifeq ($(strip $({{ make.uv_resolution.hosted_variable }})),{{ make.uv_resolution.hosted_value }})
+$(error Editable supplier reconciliation is local only)
+endif
+endif
+{% endif %}
 
 # Approval fixes its context before any topology, activation or credential read.
 ifneq ($(filter pre-commit,$(MAKECMDGOALS)),)
@@ -493,10 +504,24 @@ endif
 override FLEXT_INFRA_PYTHON := $(RUNTIME_PYTHON)
 override UV_LOCAL_PROJECT := $(RUNTIME_ROOT)/{{ make.uv_resolution.local_directory }}
 override UV_STANDALONE_PROJECT := $(RUNTIME_ROOT)/{{ make.uv_resolution.standalone_directory }}
+{% if make.uv_resolution.editable_supplier_root is not none %}
+ifneq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
+$(error Configure editable_supplier_root at the physical runtime root, not an attached member)
+endif
+ifneq ($(filter upg,$(MAKECMDGOALS)),)
+ifeq ($(shell if [ -f "$(RUNTIME_ROOT)/{{ make.uv_resolution.editable_directory }}/pyproject.toml" ]; then printf present; fi),)
+$(error Editable resolution manifest is missing; publish the declared supplier resolution inputs before upgrading)
+endif
+endif
+{% endif %}
 ifeq ($(strip $({{ make.uv_resolution.hosted_variable }})),{{ make.uv_resolution.hosted_value }})
 override UV_PROJECT := $(UV_STANDALONE_PROJECT)
 else
+{% if make.uv_resolution.editable_supplier_root is not none %}
+override UV_PROJECT := $(RUNTIME_ROOT)/{{ make.uv_resolution.editable_directory }}
+{% else %}
 override UV_PROJECT := $(UV_LOCAL_PROJECT)
+{% endif %}
 endif
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
 override VIRTUAL_ENV := $(RUNTIME_VENV)
@@ -552,7 +577,10 @@ INSTALL_RUNTIME_RECIPE = set -eu; \
 		exit 2; \
 	fi; \
 	mise -C "$(RUNTIME_ROOT)" config ls --json; \
-	$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "$$desired_python" $(UV_SYNC_FLAGS) --frozen --link-mode "$(UV_LINK_MODE)"
+{% if make.uv_resolution.editable_supplier_root is not none %}	if [ "$(UV_PROJECT)" != "$(UV_STANDALONE_PROJECT)" ]; then \
+		$$credential_env $(UV) lock --check --project "$(UV_PROJECT)" --python "$$desired_python"; \
+	fi; \
+{% endif %}	$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "$$desired_python" $(UV_SYNC_FLAGS) --frozen --link-mode "$(UV_LINK_MODE)"
 SETUP_ENVIRONMENT_RECIPE = $(INSTALL_RUNTIME_RECIPE); \
 	setup_scope="{{ 'all' if make_profile == 'workspace' else 'self' }}"; \
 	if [ "$(strip $({{ make.uv_resolution.hosted_variable }}))" = "{{ make.uv_resolution.hosted_value }}" ]; then setup_scope=self; fi; \
@@ -730,7 +758,9 @@ _builtin-pre-commit: _builtin_require_environment
 # before bootstrap, installation, hooks or lock resolution.
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
 upg: TOOL_BOOTSTRAP_LIFECYCLE := _upg_lifecycle
+{% if make.uv_resolution.editable_supplier_root is none %}
 upg: TOOL_BOOTSTRAP_RESOLVE := 1
+{% endif %}
 upg: _bootstrap_setup_tools
 else
 upg: _builtin_require_workspace
@@ -887,19 +917,29 @@ _upg_lifecycle: _builtin_setup_submodules
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
 	esac
+{% if make.uv_resolution.editable_supplier_root is not none %}
+	+@$(SELF_MAKE) _upg_resolve_locks
+	@$(SELF_MAKE) _upg_install_runtime
+	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope self
+	@$(SELF_MAKE) _upg_reconcile_locks
+	@$(SELF_MAKE) _upg_install_runtime
+	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
+	$(call RUN_PUBLIC_POST,upg)
+{% else %}
 	+@$(SELF_MAKE) _upg_resolve_locks
 	@$(SELF_MAKE) _upg_install_runtime
 	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope all
 	@$(SELF_MAKE) _upg_reconcile_locks
 	@$(SELF_MAKE) _upg_install_runtime
 	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
-	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what mise-config --scope all
+	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what mise-config --scope self
 	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what makefile --scope all
 	+@$(SELF_MAKE) _upg_provision_tools
 	@$(PROJECT_FLEXT_INFRA) deps modernize --repository-root "$(PROJECT_ROOT)" \
 		--apply --rewrite-constraints --projects .
 	$(call RUN_PUBLIC_PRODUCE,gen)
 	+@$(SELF_MAKE) _upg_converge
+{% endif %}
 
 # Reparse the projected dispatcher before resolving the declared native tool
 # locks. Each writable FLEXT member retains its own lock for independent setup;
@@ -1339,6 +1379,7 @@ _builtin-examples: _builtin_require_environment
 {% endif %}
 _builtin-check: _builtin_check_all
 _builtin-test: _builtin_test_all
+_builtin-tests: _builtin_test_full_all
 _builtin-test-full: _builtin_test_full_all
 _builtin-test-file: _builtin_test_file_all
 _builtin-file-gate: _builtin_file_gate_all

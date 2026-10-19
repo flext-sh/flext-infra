@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from importlib import import_module
-from typing import TypeIs
+from typing import TypeIs, get_protocol_members
 
 from flext_infra import c, p
 
@@ -78,7 +78,16 @@ class FlextInfraUtilitiesRopeRuntimeBase:
 
         """
         if not cls.semantic_module(value):
-            message = "Rope provider has no native semantic module"
+            missing = sorted(
+                member
+                for member in get_protocol_members(p.Infra.RopeSemanticModule)
+                if not hasattr(value, member)
+            )
+            message = (
+                "Rope provider has no native semantic module: "
+                f"{type(value).__module__}.{type(value).__qualname__}; "
+                f"missing members={missing}"
+            )
             raise TypeError(message)
         return value
 

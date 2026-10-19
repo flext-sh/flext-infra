@@ -17,11 +17,17 @@ from flext_infra.codegen import (
     FlextInfraCodegenConsolidator,
     FlextInfraCodegenLazyInit,
 )
-from tests import c, m, p, t, tm
-from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
-from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
-from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
-from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
+from tests import (
+    TestsFlextInfraUtilitiesGitMixin,
+    TestsFlextInfraUtilitiesProjectFixtureMixin,
+    TestsFlextInfraUtilitiesTomlMixin,
+    TestsFlextInfraUtilitiesToolingFixtureMixin,
+    c,
+    m,
+    p,
+    t,
+    tm,
+)
 
 
 class TestsFlextInfraUtilitiesCodegenMixin:
@@ -117,8 +123,11 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         return tm.ok(
             FlextInfraCodegenConform(
                 repository_root=root,
-                request=request,
-                initial_workspace=workspace,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    request=request,
+                    initial_workspace=workspace,
+                ),
             ).plan(request),
         )
 
@@ -382,9 +391,10 @@ class TestsFlextInfraUtilitiesCodegenMixin:
     def run_lazy_init_probe(
         probe: str,
         *,
-        python_paths: t.StrSequence,
+        python_paths: t.StrSequence = (),
         cwd: Path | None = None,
         arguments: t.StrSequence = (),
+        runtime_root: Path | None = None,
     ) -> t.StrSequence:
         """Run ``probe`` in a fresh interpreter importing generated packages.
 
@@ -395,12 +405,21 @@ class TestsFlextInfraUtilitiesCodegenMixin:
             The probe's standard output lines.
 
         """
-        probe_env = dict(os.environ)
-        probe_env["PYTHONPATH"] = os.pathsep.join(python_paths)
+        if runtime_root is not None:
+            if python_paths:
+                msg = "An installed project probe cannot inject Python source paths"
+                raise ValueError(msg)
+            command = [str(u.Infra.runtime_python(runtime_root)), "-I", "-c", probe]
+            options = m.Cli.ProcessOptions(remove_env_keys=("PYTHONPATH", "PYTHONHOME"))
+        else:
+            probe_env = dict(os.environ)
+            probe_env["PYTHONPATH"] = os.pathsep.join(python_paths)
+            command = [sys.executable, "-c", probe]
+            options = m.Cli.ProcessOptions(env=probe_env)
         result = tm.ok(
             u.Cli.run(
-                [sys.executable, "-c", probe, *arguments],
-                options=m.Cli.ProcessOptions(env=probe_env),
+                [*command, *arguments],
+                options=options,
                 cwd=cwd,
             ),
         )
@@ -498,6 +517,20 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                 )
             if result.failure:
                 return r[bool].from_failure(result)
+        for project in sorted({plan.project for plan in changed}):
+            if (project / ".git").exists():
+                TestsFlextInfraUtilitiesGitMixin.git_bootstrap(
+                    project,
+                    (
+                        "add",
+                        "--",
+                        *(
+                            str(plan.path.relative_to(project))
+                            for plan in changed
+                            if plan.project == project
+                        ),
+                    ),
+                )
         return r[bool].ok(value=True)
 
     @staticmethod

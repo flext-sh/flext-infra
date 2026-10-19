@@ -103,6 +103,67 @@ class TestsFlextInfraCodemodContextComposeModule:
             eq=False,
         )
 
+    @pytest.mark.parametrize(
+        ("relative", "module", "expected"),
+        [
+            ("_typings/base.py", "flext_cli.utilities", True),
+            ("_typings/base.py", "flext_cli._utilities.conversion", True),
+            ("_typings/nested/config.py", "flext_cli.utilities", True),
+            ("_models/base.py", "flext_cli.utilities", True),
+            ("_constants/base.py", "flext_cli.utilities", True),
+            ("_typings/base.py", "flext_cli.constants", False),
+            ("_config.py", "flext_cli.utilities", False),
+            ("_settings.py", "flext_cli.utilities", False),
+        ],
+    )
+    @pytest.mark.parametrize("outside_src", [False, True])
+    def test_compose_import_cannot_bypass_the_declaration_layer(
+        self,
+        mod_workspace: Path,
+        relative: str,
+        module: str,
+        *,
+        expected: bool,
+        outside_src: bool,
+    ) -> None:
+        """Real rule admission retains the importer's first architectural role."""
+        package = u.Infra.project_package_name(mod_workspace)
+        document = mod_workspace / c.PYPROJECT_FILENAME
+        document.write_text(
+            '[project]\nname = "mod-workspace"\nversion = "0.0.0"\n'
+            'dependencies = ["flext-cli"]\n',
+            encoding="utf-8",
+        )
+        base = (
+            mod_workspace
+            if outside_src
+            else mod_workspace / c.Infra.DEFAULT_SRC_DIR / package
+        )
+        path = base / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"from {module} import Probe\n", encoding="utf-8")
+        rule = next(
+            rule
+            for rule in u.Infra.codemod_rule_plan(mod_workspace).unwrap().rules
+            if rule.id == "ban-reverse-runtime-import"
+        )
+        with u.Infra.codemod_binding_project(
+            mod_workspace,
+            u.Infra.codemod_source_epoch(m.Infra.CodemodBindingSnapshot(states=())),
+        ) as (project, sources):
+            admitted = u.Infra.codemod_context_admits(
+                m.Infra.CodemodAdmission(
+                    root=mod_workspace,
+                    rule=rule,
+                    file_path=path,
+                    captures={"TARGET": {"text": module}},
+                    facts=u.Infra.codemod_project_facts(mod_workspace, (rule,)),
+                ),
+                project=project,
+                sources=sources,
+            )
+        tm.that(admitted, eq=expected)
+
     @staticmethod
     def _admits(root: Path, module: str) -> bool:
         """Admit one probe finding through the compose-module predicate.

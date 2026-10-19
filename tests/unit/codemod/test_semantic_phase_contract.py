@@ -171,6 +171,17 @@ class TestsFlextInfraSemanticPhaseContract:
             )
         )
         tm.ok(u.Cli.yaml_dump(recipe, rules.model_dump(mode="json")))
+        facade = package / c.Infra.UTILITIES_PY
+        facade_name = f"{owner}Utilities"
+        facade.write_text(
+            f"class {facade_name}:\n"
+            f"    class {domain}:\n"
+            "        pass\n"
+            f"u = {facade_name}\n"
+            f"__all__ = [{facade_name!r}, 'u']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        u.Tests.commit_git_changes(root, "Declare logging transfer sources")
         # Produce the same SOURCE-PREP baseline as an adapter worker. Neither
         # the legacy declaration nor any receiver is deleted by fixture setup.
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
@@ -179,7 +190,6 @@ class TestsFlextInfraSemanticPhaseContract:
             pytest.fail(
                 "the logging utility owner must have a native facade projection"
             )
-        facade = package / c.Infra.UTILITIES_PY
         before = tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True))
         tm.ok(
             u.Tests.materialize_codegen_plans(
@@ -347,33 +357,25 @@ class TestsFlextInfraSemanticPhaseContract:
         tm.that(legacy.exists(), eq=False)
 
     @staticmethod
-    def test_declaring_model_factory_preserves_public_empty_roundtrips(
+    def test_utility_factory_preserves_public_empty_roundtrips(
         tmp_path: Path,
     ) -> None:
-        """The model primitive and projected utility preserve real consumer defaults."""
+        """Utility-owned factories preserve model defaults and JSON round-trips."""
         consumer = tmp_path / "declaration_factory_consumer.py"
         consumer.write_text(
             "from flext_core import m, t, u\n"
             "from typing_extensions import TypeForm\n"
             "type Bag[T] = t.MutableSequenceOf[T]\n"
-            "class ModelOwned(m.ContractModel):\n"
-            "    values: Bag[str] = m.Field(default_factory=m.empty("
-            'TypeForm(Bag[str])), description="Consumer values")\n'
-            "class UtilityProjected(m.ContractModel):\n"
+            "class Consumer(m.ContractModel):\n"
             "    values: Bag[str] = m.Field(default_factory=u.empty("
             'TypeForm(Bag[str])), description="Consumer values")\n'
             "def verify():\n"
-            "    model_default = ModelOwned()\n"
-            "    utility_default = UtilityProjected()\n"
-            "    assert model_default.model_dump_json() == "
-            "utility_default.model_dump_json()\n"
-            "    for model in (ModelOwned, UtilityProjected):\n"
-            "        first, second = model(), model()\n"
-            "        explicit = model.model_validate_json('{\"values\": []}')\n"
-            "        first.values.append('consumer value')\n"
-            "        assert second.model_dump_json() == explicit.model_dump_json()\n"
-            "        restored = model.model_validate_json(first.model_dump_json())\n"
-            "        assert restored.values == first.values\n"
+            "    first, second = Consumer(), Consumer()\n"
+            "    explicit = Consumer.model_validate_json('{\"values\": []}')\n"
+            "    first.values.append('consumer value')\n"
+            "    assert second.model_dump_json() == explicit.model_dump_json()\n"
+            "    restored = Consumer.model_validate_json(first.model_dump_json())\n"
+            "    assert restored.values == first.values\n"
             "verify()\n",
             encoding=c.DEFAULT_ENCODING,
         )

@@ -1492,7 +1492,25 @@ policy. A consumer placed in an owner's named directory remains a consumer. Miss
 malformed project metadata blocks the gate and preserves the metadata reader's
 diagnostic; directory names are never identity fallbacks.
 
+## Service foundation
+
+The project service foundation must preserve the local service and its canonical
+command-context inheritance through the public `s` export. Rebinding an imported
+type alias to another class can retain the upstream identity in static consumers.
+Command fields remain declared once in the canonical model owner; duplicate fields,
+casts and suppressed diagnostics are not repairs. The local service-import law is
+authoritative: a conflicting named-import candidate requires explicit contract
+resolution rather than silently substituting an import or inventing undeclared exports.
+
 ## Codemod scanner contract
+
+Source-file discovery uses one pruned traversal per selected project, without a
+preliminary walk to elect directories or repeated ancestor checks for every file.
+The same walker handles filesystem and authenticated Rope reads. Nested repositories,
+ignored trees and declared non-participants are pruned before descent; top-level
+exclusions remain relative to the selected project, not matching nested tier names.
+Semantic migration consumes the root scanner's complete governed inventory directly;
+it does not rediscover import-provider roots and recursively rescan each member.
 
 Every codemod policy finding blocks the gate, whatever its rule severity. Failed rule
 discovery, failed scanner execution, incomplete output, and invalid diagnostic payloads
@@ -1520,6 +1538,9 @@ The check gate and the mod scanner share this input election, deduplicating
 source reads without reducing the rule inventory or its diagnostic evidence.
 Native module queries use the shared parsed and semantic module admission
 owners, retaining SDK object identity while exposing their declared protocols.
+Rejected semantic providers report their native type. Qualified identity lookup adds
+the requested module and identity as an exception note, retaining the original
+exception and traceback; neither failed admission nor a rule is silently skipped.
 Matcher patterns give captured expressions a parenthesized grammar context;
 their authenticated source bytes and original coordinate checks stay intact.
 

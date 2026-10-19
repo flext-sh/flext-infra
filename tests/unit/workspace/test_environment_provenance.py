@@ -1745,6 +1745,17 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 receipt,
             ),
         )
+        declaration = tm.ok(
+            FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
+                root,
+                repository,
+            ),
+        )
+        tm.that(declaration.path, eq=(root / c.PYPROJECT_FILENAME).resolve())
+        tm.that(
+            declaration.content,
+            eq=(root / c.PYPROJECT_FILENAME).read_bytes(),
+        )
         inventory = installed[0].files
         tm.that(inventory is not None, eq=True)
         if inventory is None:
@@ -1764,6 +1775,13 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 root,
                 installed[0],
                 receipt,
+            ),
+            has="pth exposes no declared package",
+        )
+        tm.fail(
+            FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
+                root,
+                repository,
             ),
             has="pth exposes no declared package",
         )

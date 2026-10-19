@@ -673,15 +673,16 @@ class FlextInfraModGateEngine:
         sys.stderr.flush()
         snapshot = epoch.snapshot
         with u.Infra.codemod_binding_project(root, epoch) as (project, sources):
-            entries = tuple(
-                entry.model_copy(update={"binding_states": snapshot.states})
-                if entry.rule_id in facts.binding_rule_ids
-                else entry
-                for entry in report.entries
+            accepted: list[m.Infra.ModScanFinding] = []
+            due = 0.0
+            for index, entry in enumerate(report.entries, start=1):
+                due = FlextInfraModGateEngine._progress(
+                    f"admission {index}/{len(report.entries)} rule={entry.rule_id} file={entry.file}",
+                    due,
+                )
                 # A drifted source carries no authenticated state: it stays
                 # deferred evidence and is never graded against the epoch.
-                if entry.source_state is None
-                or u.Infra.codemod_context_admits(
+                admitted = entry.source_state is None or u.Infra.codemod_context_admits(
                     m.Infra.CodemodAdmission(
                         root=root,
                         rule=rules_by_id[entry.rule_id],
@@ -695,7 +696,13 @@ class FlextInfraModGateEngine:
                     project=project,
                     sources=sources,
                 )
-            )
+                if admitted:
+                    accepted.append(
+                        entry.model_copy(update={"binding_states": snapshot.states})
+                        if entry.rule_id in facts.binding_rule_ids
+                        else entry
+                    )
+            entries = tuple(accepted)
         FlextInfraModGateEngine._progress(
             f"admission finish accepted={len(entries)}/{len(report.entries)}",
         )
@@ -1008,7 +1015,7 @@ class FlextInfraModGateEngine:
                 )
                 else "authored",
                 source_state=snapshot,
-                range=t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                range=u.json_mapping_adapter().validate_python(
                     finding.get("range"),
                 ),
                 text=str(finding.get("text")),

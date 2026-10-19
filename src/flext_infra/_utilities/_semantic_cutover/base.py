@@ -6,10 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from contextlib import closing
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesSemanticCutoverAliases,
     FlextInfraUtilitiesSemanticCutoverDynamicEnvironment,
     FlextInfraUtilitiesSemanticCutoverFacadeBases,
@@ -117,9 +119,14 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             A result containing a tuple of semantic migration edits.
 
         """
-        consumers = cls._plan_behavior_consumers(
-            rope_workspace.repository_root, sources
-        )
+        with closing(
+            FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+                rope_workspace.rope_project, sources
+            )
+        ) as project:
+            consumers = cls._plan_behavior_consumers(
+                rope_workspace.repository_root, sources, native_project=project
+            )
         if consumers.failure:
             return consumers
         working = dict(sources)
@@ -206,7 +213,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             return aliases
         working = dict(sources)
         working.update((edit.file_path, edit.updated_source) for edit in aliases.value)
-        api = cls._plan_api_aliases(workspace.repository_root, working, selected)
+        api = cls._plan_api_aliases(workspace, working, selected)
         if api.failure:
             return api
         working.update((edit.file_path, edit.updated_source) for edit in api.value)

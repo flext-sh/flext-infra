@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
@@ -166,12 +167,11 @@ class FlextInfraModelsWorkspace:
             FlextInfraModelsWorkspace.NativeBindingEvidence
         ] = m.Field(
             default_factory=u.empty(
-                TypeForm(
-                    t.MutableSequenceOf[
-                        "FlextInfraModelsWorkspace.NativeBindingEvidence"
-                    ]
-                )
+                contract_factory=lambda: TypeForm(
+                    t.MutableSequenceOf[FlextInfraModelsWorkspace.NativeBindingEvidence]
+                ),
             ),
+            validate_default=True,
             description="Ordered native binding and executable observations",
         )
         generated_owners: t.MutableMappingKV[
@@ -824,15 +824,11 @@ class FlextInfraModelsWorkspace:
                 alias="optional-dependencies",
                 description="Resolved edges by extra; absent when no extras exist",
             ),
-        ] = u.Field(
-            default_factory=u.empty(
-                TypeForm(
-                    t.MappingKV[
-                        str,
-                        t.VariadicTuple["FlextInfraModelsWorkspace.LockedDependency"],
-                    ]
-                )
-            )
+        ] = m.Field(
+            default_factory=lambda: MappingProxyType[
+                str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]
+            ]({}),
+            validate_default=True,
         )
         dev_dependencies: Annotated[
             t.MappingKV[
@@ -842,15 +838,11 @@ class FlextInfraModelsWorkspace:
                 alias="dev-dependencies",
                 description="Resolved edges by development group; absent means none",
             ),
-        ] = u.Field(
-            default_factory=u.empty(
-                TypeForm(
-                    t.MappingKV[
-                        str,
-                        t.VariadicTuple["FlextInfraModelsWorkspace.LockedDependency"],
-                    ]
-                )
-            )
+        ] = m.Field(
+            default_factory=lambda: MappingProxyType[
+                str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]
+            ]({}),
+            validate_default=True,
         )
         resolution_markers: Annotated[
             t.VariadicTuple[str],

@@ -418,16 +418,20 @@ class TestsFlextInfraFacadeAuthoredRuntime:
     @staticmethod
     @pytest.mark.parametrize("depth", [1, 2])
     @pytest.mark.parametrize("relative", [False, True])
+    @pytest.mark.parametrize(
+        "segment", ["child", "descriptive_namespace_for_deep_native_owner_projection"]
+    )
     def test_generated_imports_preserve_relative_alias_levels(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         depth: int,
+        segment: str,
         *,
         relative: bool,
     ) -> None:
-        """Execute generated ancestor aliases and absolute external imports."""
+        """Execute short own imports alongside ancestor and external imports."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        children = ("child",) * depth
+        children = (segment,) * depth
         child = package.joinpath(*children)
         child.mkdir(parents=True)
         namespace = ".".join((package.name, *children))
@@ -437,6 +441,10 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 "SENTINEL = 'native-sibling'\n",
             )
         )
+        provider = child / "provider.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(provider, "LOCAL_SENTINEL = 'native-child'\n")
+        )
         imports = FlextInfraCodegenGeneration.generate_type_checking(
             {
                 (
@@ -445,10 +453,12 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                     else f"{package.name}.sibling"
                 ): (("sibling", ""),),
                 "pathlib": (("Path", "Path"),),
+                f"{namespace}.{provider.stem}": (("LOCAL_SENTINEL", "LOCAL_SENTINEL"),),
             },
             include_flext_types=False,
             local_package_root=namespace,
         )
+        tm.that("\n".join(imports), has=f"from .{provider.stem} import LOCAL_SENTINEL")
         tm.ok(
             u.Cli.atomic_write_text_file(
                 child / c.Infra.INIT_PY,
@@ -458,9 +468,10 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
             "import pathlib\n"
-            f"from {namespace} import Path, sibling\n"
+            f"from {namespace} import LOCAL_SENTINEL, Path, sibling\n"
             "assert Path is pathlib.Path\n"
-            "assert sibling.SENTINEL == 'native-sibling'\n",
+            "assert sibling.SENTINEL == 'native-sibling'\n"
+            "assert LOCAL_SENTINEL == 'native-child'\n",
             cwd=root,
         )
 

@@ -156,9 +156,9 @@ homonyms and ordinary string payloads, and rewrites binding-qualified quoted typ
 and explicit exports. Provider, receivers and generated projections are prepared
 as one dependency group before a fresh physical consumer and zero-edit scan accept
 the candidate. Refusal never restores old bytes over already published gains.
-Explicit documentation selections retain their originally requested scope. The default consumer-migration mode
-continues to require an already-declared destination; no compatibility method is
-needed during a declaration cutover.
+Explicit documentation selections retain their originally requested scope. The
+default consumer-migration mode continues to require an already-declared destination;
+no compatibility method is needed during a declaration cutover.
 
 `text_globs` explicitly selects non-Python documentation and configuration text.
 `python_documentation` selects comments and actual module, class and function

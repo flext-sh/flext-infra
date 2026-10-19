@@ -26,6 +26,95 @@ class TestsFlextInfraUvNativeResolution:
     """Resolve real local Git packages without external-service prerequisites."""
 
     @staticmethod
+    @pytest.mark.parametrize("invalid", ["relative-supplier", "same-directory"])
+    def test_editable_resolution_policy_rejects_ambiguous_paths(invalid: str) -> None:
+        """Invalid opt-ins cannot silently select a default graph."""
+        policy = config.Infra.codegen.make.uv_resolution
+        payload = policy.model_dump()
+        if invalid == "relative-supplier":
+            payload["editable_supplier_root"] = Path("relative")
+        else:
+            payload["editable_directory"] = policy.local_directory
+        with pytest.raises(ValueError, match="absolute path|distinct directories"):
+            m.Infra.MakeUvResolutionSpec.model_validate(payload)
+
+    @staticmethod
+    def test_external_editable_supplier_preserves_default_view_and_metadata(
+        tmp_path: Path,
+    ) -> None:
+        """Resolve a supplier only in its opt-in graph without rewriting metadata."""
+        root = tmp_path / "consumer"
+        supplier_root = tmp_path / "supplier"
+        repository = u.Tests.repository_ref("native-consumer")
+        supplier = u.Tests.repository_ref("native-supplier")
+        u.Tests.write_native_resolution_project(supplier_root, supplier.distribution)
+        u.Tests.write_native_resolution_project(
+            root,
+            repository.distribution,
+            dependencies=(f"{supplier.distribution}>=0",),
+        )
+        consumer_text = (root / c.PYPROJECT_FILENAME).read_text(
+            encoding=c.DEFAULT_ENCODING
+        )
+        supplier_text = (supplier_root / c.PYPROJECT_FILENAME).read_text(
+            encoding=c.DEFAULT_ENCODING
+        )
+        owner = m.Infra.UvResolutionProject(
+            repository=repository,
+            directory=root,
+            document=u.Tests.toml_doc(consumer_text),
+        )
+        supplied = m.Infra.UvResolutionProject(
+            role="supplier",
+            repository=supplier,
+            directory=supplier_root,
+            document=u.Tests.toml_doc(supplier_text),
+        )
+        policy = config.Infra.codegen.make.uv_resolution
+        workspace = u.Tests.workspace_spec(repository)
+        default = tm.ok(
+            u.Infra.pyproject_native_resolution_view(
+                owner,
+                workspace=workspace,
+                members=(),
+                directory=root / policy.local_directory,
+                policy=policy,
+            )
+        )
+        default_text = u.Cli.toml_dumps(default)
+        directory = root / policy.editable_directory
+        editable = tm.ok(
+            u.Infra.pyproject_native_resolution_view(
+                owner,
+                workspace=workspace,
+                members=(supplied,),
+                directory=directory,
+                policy=policy,
+            )
+        )
+        locked = TestsFlextInfraUvNativeResolution._resolved_identity_lock(
+            directory, editable
+        )
+        package = next(
+            item for item in locked.package if item.name == supplier.distribution
+        )
+        tm.that(
+            package.source.editable,
+            eq=supplier_root.relative_to(directory, walk_up=True).as_posix(),
+        )
+        tm.that(u.Cli.toml_dumps(default), eq=default_text)
+        tm.that(
+            (root / c.PYPROJECT_FILENAME).read_text(encoding=c.DEFAULT_ENCODING),
+            eq=consumer_text,
+        )
+        tm.that(
+            (supplier_root / c.PYPROJECT_FILENAME).read_text(
+                encoding=c.DEFAULT_ENCODING
+            ),
+            eq=supplier_text,
+        )
+
+    @staticmethod
     def _conformed_alias_document(
         root: Path,
         repository: m.Infra.RepositoryRef,

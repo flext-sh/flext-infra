@@ -7,15 +7,14 @@ Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-from __future__ import annotations{# NOTE: real capability composed through local s. #}
+from __future__ import annotations{# NOTE: real capability composed through the named local foundation. #}
 
 from {{ upstream }} import r
 
-from {{ package_name }} import m, p, t
-from {{ package_name }}.base import s
+from {{ package_name }} import {{ class_stem }}Service, m, p, t
 
 
-class {{ class_stem }}Ping(s):
+class {{ class_stem }}Ping({{ class_stem }}Service):
     """Expose the configured health response through the public facade."""
 
     configuration: t.Port[p.{{ ns }}.Config] = m.Field(

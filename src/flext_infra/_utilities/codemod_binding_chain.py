@@ -102,6 +102,30 @@ class FlextInfraUtilitiesCodemodBindingChain:
             scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, start)
             if cls._type_payload_occurrence(module, text, start, end):
                 return False
+            if (
+                condition.predicate
+                is c.Infra.CodemodContextPredicate.GENERIC_SPECIALIZATION
+            ):
+                if condition.of is None or len(condition.arg) not in {1, 2}:
+                    msg = "generic-specialization requires an attribute capture and destination owner"
+                    raise ValueError(msg)
+                attribute = m.Infra.AstGrepCapture.model_validate(
+                    captures[condition.of]
+                ).text
+                return cls._generic_specialization_holds(
+                    (project, module, scope),
+                    f"{capture.text}.{attribute}",
+                    f"{condition.arg[0]}.{attribute}",
+                    start,
+                    sources,
+                    (
+                        m.Infra.AstGrepCapture.model_validate(
+                            captures[condition.arg[1]]
+                        ).text
+                        if len(condition.arg) == 2
+                        else None
+                    ),
+                )
             if condition.predicate in {
                 c.Infra.CodemodContextPredicate.SAME_BINDING,
                 c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
@@ -116,6 +140,67 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 start,
                 sources,
             )
+
+        @classmethod
+        def _generic_specialization_holds(
+            cls,
+            frame: t.Triple[
+                p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope
+            ],
+            original: str,
+            specialized: str,
+            start: int,
+            sources: t.MappingKV[Path, str],
+            namespace: str | None = None,
+        ) -> bool:
+            """Prove the destination alias specializes the exact original generic."""
+            runtime = FlextInfraUtilitiesRopeRuntimeModules
+            project, _module, scope = frame
+            target_frame = frame
+            target_start = start
+            if namespace is not None:
+                target_module = runtime.module(project, namespace)
+                target_source = cls._chain_module_text(target_module, sources)
+                if target_source is None:
+                    return False
+                target_frame = (project, target_module, target_module.get_scope())
+                target_start = len(target_source[1])
+            if not (
+                cls._stable_binding_chain(frame, original, start, sources)
+                and cls._stable_binding_chain(
+                    target_frame, specialized, target_start, sources
+                )
+            ):
+                return False
+            original_binding = runtime.expression_name(scope, original)
+            destination_binding = runtime.expression_name(target_frame[2], specialized)
+            if original_binding is None or destination_binding is None:
+                return False
+            destination_module, line = destination_binding.get_definition_location()
+            if destination_module is None or line is None:
+                return False
+            source = cls._chain_module_text(destination_module, sources)
+            if source is None:
+                return False
+            aliases = tuple(
+                node
+                for node in ast.walk(ast.parse(source[1]))
+                if isinstance(node, ast.TypeAlias)
+                and node.lineno == line
+                and isinstance(node.value, ast.Subscript)
+            )
+            if len(aliases) != 1:
+                return False
+            alias = aliases[0]
+            if not isinstance(alias.value, ast.Subscript):
+                return False
+            target_scope = runtime.scope_at(
+                destination_module, destination_module.lines.get_line_start(line)
+            )
+            generic = runtime.expression_name(
+                target_scope, ast.unparse(alias.value.value)
+            )
+            return cls._binding_symbols_match(original_binding, generic)
 
         @classmethod
         def _predicate_binding_verdict(

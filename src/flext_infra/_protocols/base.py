@@ -461,6 +461,9 @@ class FlextInfraProtocolsBase(Protocol):
         def class_stem(self) -> str: ...
 
         @property
+        def upstream(self) -> str: ...
+
+        @property
         def namespace(self) -> str: ...
 
     @runtime_checkable
@@ -1401,6 +1404,51 @@ class FlextInfraProtocolsBase(Protocol):
         show_diff: bool
         analysis_output: Path | None
         impact_map_output: Path | None
+
+    @runtime_checkable
+    class MiseRoleRequest(Protocol):
+        """Authenticated native role inputs and the isolated installation scope."""
+
+        @property
+        def declaration(self) -> p.Cli.AtomicFileReceipt: ...
+
+        @property
+        def reader(self) -> p.Cli.AtomicFileReceipt: ...
+
+        @property
+        def reader_manifest(self) -> p.Cli.AtomicFileReceipt: ...
+
+        @property
+        def reader_lock(self) -> p.Cli.AtomicFileReceipt: ...
+
+        @property
+        def scope_root(self) -> Path: ...
+
+        @property
+        def target_root(self) -> Path: ...
+
+    @runtime_checkable
+    class MiseRolePlan(Protocol):
+        """Role projection and lock accepted before native installation."""
+
+        @property
+        def request(self) -> FlextInfraProtocolsBase.MiseRoleRequest: ...
+
+        @property
+        def manifest(self) -> p.Cli.AtomicFileReceipt: ...
+
+        @property
+        def lock(self) -> p.Cli.AtomicFileReceipt: ...
+
+    @runtime_checkable
+    class MiseRoleInstallation(Protocol):
+        """Installed binaries pinned to the declaration and native lock."""
+
+        @property
+        def plan(self) -> FlextInfraProtocolsBase.MiseRolePlan: ...
+
+        @property
+        def executables(self) -> Mapping[str, p.Cli.AtomicFileReceipt]: ...
 
 
 __all__: list[str] = ["FlextInfraProtocolsBase"]

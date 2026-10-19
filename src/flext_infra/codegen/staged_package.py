@@ -618,7 +618,10 @@ class FlextInfraStagedPackage:
                 continue
             if observed != before:
                 return r[bool].fail(
-                    f"candidate original source identity changed: {before.path}",
+                    f"candidate original source identity changed: {before.path}; "
+                    f"content_changed={observed.content != before.content}; "
+                    f"expected={before.model_dump_json(exclude={'content'})}; "
+                    f"observed={observed.model_dump_json(exclude={'content'})}",
                 )
         return r[bool].ok(value=True)
 

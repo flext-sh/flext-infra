@@ -390,7 +390,15 @@ class FlextInfraModelsCodegenJournalModels:
                     self.absent_parent.target != self.path.parent
                     or not self.absent_parent.directories
                 ):
-                    msg = "source absence witness does not describe its missing parent"
+                    msg = (
+                        "source absence witness does not describe its missing parent"
+                        f"; phase={self.phase}; source={self.path}"
+                        f"; parent=({self.parent_device}, {self.parent_inode})"
+                        f"; witness_target={self.absent_parent.target}"
+                        f"; anchor={self.absent_parent.anchor_path}"
+                        f"; anchor_identity=({self.absent_parent.anchor_device}, {self.absent_parent.anchor_inode})"
+                        f"; missing_directories={self.absent_parent.directories!r}"
+                    )
                     raise ValueError(msg)
             elif self.absent_parent is not None:
                 msg = "existing source parent cannot carry an absence witness"
