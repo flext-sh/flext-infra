@@ -381,7 +381,7 @@ class FlextInfraStagedPackage:
                         if file.project.is_relative_to(workspace)
                     )
                 ),
-            ) as source_project:
+            ) as (source_project, _, _):
                 discovered = cls._normalized_updates(workspace, updates).flat_map(
                     lambda normalized: cls._workspace_layouts(
                         workspace, source_project=source_project
@@ -496,6 +496,8 @@ class FlextInfraStagedPackage:
             workspaces: Explicit non-overlapping composition roots for a joint view.
             modes: Validated file-effect modes covering every declared effect.
             declared_files: Original native file/absence witnesses.
+            source_directories: Original native namespace observations.
+            source_query_topology: Original native physical root and ancestry proofs.
 
         Returns:
             The composed joint plan, or the first scope composition failure.
@@ -601,6 +603,7 @@ class FlextInfraStagedPackage:
             normalized: Elected physical destinations of the desired sources.
             layouts: Retained provider layouts keyed by package name.
             inputs: Original caller snapshots, never replaced by a fresh observation.
+            source_project: The authenticated open source epoch of this repository.
 
         Returns:
             The elected layouts with their pinned source states.
@@ -970,6 +973,7 @@ class FlextInfraStagedPackage:
         Args:
             layout: The provider layout whose source paths are collected.
             governed: Whether rewrite targets elect the governed closure walk.
+            source_project: The open native epoch, absent for package previews.
 
         Returns:
             The collected physical paths, or the first symlink failure.
@@ -1028,6 +1032,7 @@ class FlextInfraStagedPackage:
         Args:
             directories: Physical directories admitted for the closure.
             governed: Whether the governed walk applies exclusion pruning.
+            source_project: Existing native namespace authority of the open epoch.
 
         Returns:
             The walked directory paths, or the first symlink failure.
@@ -1137,6 +1142,7 @@ class FlextInfraStagedPackage:
             states: Mutable pinned state mapping extended by each source.
             updates: Desired sources keyed by live path; None retires an artifact.
             originals: Original caller receipts required for every member.
+            source_project: The open native epoch; sealed replay uses originals only.
 
         Returns:
             The runtime imports of the pinned sources.
@@ -1166,7 +1172,7 @@ class FlextInfraStagedPackage:
         if updates is not None:
             source_paths.update(updates)
         for path in sorted(source_paths):
-            if path.is_symlink():
+            if originals is None and path.is_symlink():
                 return r[tuple[str, ...]].fail(f"candidate source is a symlink: {path}")
             present = (
                 path.is_file()
@@ -1273,6 +1279,7 @@ class FlextInfraStagedPackage:
             states: Mutable pinned state mapping extended by the closure.
             updates: Desired sources keyed by live path; None retires an artifact.
             originals: Original caller receipts required for every closure member.
+            source_project: The native epoch extending the initial closure, if open.
 
         Returns:
             The elected layouts of the traversed dependency closure.

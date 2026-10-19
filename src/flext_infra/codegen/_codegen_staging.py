@@ -37,7 +37,7 @@ class FlextInfraCodegenStaging:
         workspace: Path,
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
-        """Prepare each owning project's joint bytes against its planned policy.
+        """Seal each owning project's joint bytes against its planned policy.
 
         Each project consumes its own complete Python and metadata plans. Shared
         read-only workspace context does not join independent publication groups.
@@ -113,6 +113,10 @@ class FlextInfraCodegenStaging:
             None,
         )
         if existing is not None:
+            if existing.version != 1 or not existing.source_query_topology:
+                return result_type.fail(
+                    "candidate preparation receipt has no root authority"
+                )
             current = FlextInfraMiseArtifactsVerification.states_current(
                 existing.inputs
             )
@@ -130,6 +134,8 @@ class FlextInfraCodegenStaging:
             if set(hashes) != {plan.path for plan in plans} or any(
                 plan.prepared_sources is not existing
                 or plan.source_states != existing.inputs
+                or plan.source_directories != existing.source_directories
+                or plan.source_query_topology != existing.source_query_topology
                 or hashes[plan.path]
                 != (
                     None
@@ -173,12 +179,8 @@ class FlextInfraCodegenStaging:
         ))
         if inputs.failure:
             return result_type.from_failure(inputs)
-        directories, topology = u.Cli.atomic_merge_directory_query_receipts(
-            tuple(item for plan in plans for item in plan.source_directories)
-            + prepared.value.source_directories,
-            tuple(item for plan in plans for item in plan.source_query_topology)
-            + prepared.value.source_query_topology,
-        )
+        if inputs.value != prepared.value.inputs:
+            return result_type.fail("prepared source receipt omitted original inputs")
         return result_type.ok(
             tuple(
                 plan.model_copy(
@@ -189,9 +191,9 @@ class FlextInfraCodegenStaging:
                             is None
                             else content.encode(c.DEFAULT_ENCODING)
                         ),
-                        "source_states": inputs.value,
-                        "source_directories": directories,
-                        "source_query_topology": topology,
+                        "source_states": prepared.value.inputs,
+                        "source_directories": prepared.value.source_directories,
+                        "source_query_topology": prepared.value.source_query_topology,
                         "prepared_sources": prepared.value,
                     }
                 )
@@ -286,20 +288,33 @@ class FlextInfraCodegenStaging:
             session: Active journal authorizing the candidate input states.
 
         Returns:
-            The planned candidate sources, or the first planning failure.
+            A view descriptor backed only by sealed receipts, or the original rejection.
 
         """
         result_type = r[m.Infra.StageSourcePlan]
         receipts: list[p.Infra.StageSourceReceipt] = []
+        projects = {plan.project for plan in plans}
         for plan in plans:
             receipt = plan.prepared_sources
             if receipt is None:
                 return result_type.fail(
                     f"candidate has no preparation receipt: {plan.path}"
                 )
-            if plan.source_states != receipt.inputs:
+            if (
+                plan.source_states != receipt.inputs
+                or plan.source_directories != receipt.source_directories
+                or plan.source_query_topology != receipt.source_query_topology
+            ):
                 return result_type.fail(
                     f"candidate source receipt differs: {plan.path}"
+                )
+            if not (
+                receipt.workspace.is_relative_to(workspace)
+                or workspace.is_relative_to(receipt.workspace)
+                or receipt.workspace in projects
+            ):
+                return result_type.fail(
+                    "candidate preparation root differs from its scope"
                 )
             if all(receipt is not previous for previous in receipts):
                 receipts.append(receipt)
@@ -319,6 +334,7 @@ class FlextInfraCodegenStaging:
         updates = cls._composed_candidate_updates(staged_files, plans)
         prepared: dict[Path, str | None] = {}
         modes: dict[Path, int] = {}
+        layouts: dict[str, m.Infra.RopeProjectLayout] = {}
         for receipt in receipts:
             if receipt.version != 1 or not receipt.source_query_topology:
                 return result_type.fail(
@@ -347,6 +363,14 @@ class FlextInfraCodegenStaging:
                         f"candidate preparation modes disagree: {path}"
                     )
                 modes[path] = mode
+            for layout in receipt.layouts:
+                previous = layouts.get(layout.package_name)
+                if previous is not None and previous != layout:
+                    return result_type.fail(
+                        "candidate preparation package identity differs: "
+                        f"{layout.package_name}"
+                    )
+                layouts[layout.package_name] = layout
         if prepared != updates:
             return result_type.fail(
                 "staged candidate differs from sealed preparation bytes"
@@ -404,11 +428,7 @@ class FlextInfraCodegenStaging:
                 declared_files=tuple(
                     plan.model_copy(update={"prepared_sources": None}) for plan in plans
                 ),
-                layouts=tuple(
-                    dict.fromkeys(
-                        layout for receipt in receipts for layout in receipt.layouts
-                    )
-                ),
+                layouts=tuple(layouts.values()),
                 workspace_packages=tuple(
                     sorted({
                         name

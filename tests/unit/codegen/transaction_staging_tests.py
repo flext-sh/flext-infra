@@ -676,7 +676,7 @@ class TestsFlextInfraTransactionStaging:
                     (),
                     plans=prepared,
                     workspace=root,
-                )
+                ).map(lambda _: True)
             else:
                 refused = FlextInfraStagedPackage.consume_sources(receipt, consume)
             tm.fail(
