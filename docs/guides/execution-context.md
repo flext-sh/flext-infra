@@ -815,10 +815,11 @@ interpreter symlinks inside a physical environment are valid, but the candidate 
 must retain that environment's `sys.prefix`. A symlinked environment or an interpreter
 borrowed from another checkout fails before candidate checks or publication.
 
-The conflict-marker gate scans the full physical source inventory of an authenticated
-candidate when its runtime owner is explicit. A staged source tree does not contain a
-Git index. Ordinary checkout checks retain the tracked and unpublished Git inventory;
-both routes reject an empty inventory and use the same marker scanner.
+The conflict-marker gate consumes the explicit `GateContext.candidate_files` inventory
+of an authenticated candidate when its runtime owner is explicit. A staged source tree
+does not contain a Git index. Ordinary checkout checks retain the tracked and
+unpublished Git inventory; both routes reject an empty inventory and use the same
+marker scanner.
 
 ## Mise toolchain
 
@@ -1698,7 +1699,9 @@ An interrupted write preserves the previous readable profile. Corruption still
 fails the report reader explicitly; neither profiling nor reporting skips it.
 The infrastructure CLI profiler starts before importing its public CLI facade.
 Each completed invocation retains a uniquely named raw profile beside the latest
-profile through that same publisher; termination checkpoints have their own
+profile through that same publisher. It also retains the previous completed
+artifact before replacing the latest path, including profiles from older launchers
+that did not yet retain per-invocation artifacts. Termination checkpoints have their own
 invocation-owned artifact and never overwrite the last completed profile.
 Make parsing, guards, hooks and subprocess internals remain outside that Python
 window, so comparable generation measurements also record external elapsed time.

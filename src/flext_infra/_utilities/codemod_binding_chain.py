@@ -487,7 +487,9 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
             """
             start, end = span
-            finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(module)
+            finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(
+                module, arguments={}
+            )
             for match in finder.get_matches(
                 "${subscription_receiver}[${subscription_argument}]", {}
             ):
@@ -881,7 +883,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 )
                 for match in tuple(
                     FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(
-                        holder
+                        holder, arguments={}
                     ).get_matches(pattern, {})
                 )
                 if declaration.start_offset <= match.get_region()[0]

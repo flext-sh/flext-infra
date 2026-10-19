@@ -62,13 +62,7 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
             AttributeError: If native matching fails to resolve a semantic attribute.
 
         """
-        cache = cls._semantic_finders.get()
-        key = (module, tuple(sorted(arguments.items())))
-        finder = None if cache is None else cache.get(key)
-        if finder is None:
-            finder = cls.semantic_finder(module)
-            if cache is not None:
-                cache[key] = finder
+        finder = cls.semantic_finder(module, arguments=arguments)
         try:
             return tuple(
                 match.get_region()
@@ -88,11 +82,15 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
     def semantic_finder(
         cls,
         module: p.Infra.RopePyModule,
+        *,
+        arguments: t.MappingKV[str, str] | None = None,
     ) -> p.Infra.RopeSimilarFinder:
         """Create a native matcher for one immutable module and binding context.
 
         Rope caches matches by pattern text. A reused pattern must retain its
         identity arguments; distinct bindings require distinct wildcard names.
+        Explicit arguments opt into reuse within the active immutable pass;
+        callers that omit them receive a fresh matcher.
 
         Returns:
             Rope's identity-aware matcher for the supplied module.
@@ -101,12 +99,18 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
             TypeError: If Rope does not expose its semantic region contract.
 
         """
+        cache = None if arguments is None else cls._semantic_finders.get()
+        key = (module, tuple(sorted((arguments or {}).items())))
+        if cache is not None and (cached := cache.get(key)) is not None:
+            return cached
         finder = cls.runtime_callable("rope.refactor.similarfinder", "SimilarFinder")(
             module,
         )
         if not isinstance(finder, p.Infra.RopeSimilarFinder):
             message = "Rope SimilarFinder does not expose semantic match regions"
             raise TypeError(message)
+        if cache is not None:
+            cache[key] = finder
         return finder
 
     @classmethod

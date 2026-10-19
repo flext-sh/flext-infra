@@ -45,6 +45,9 @@ class TestsFlextInfraCProfileReport:
             else:
                 tm.that(len(profiles), eq=2)
                 tm.that(original in (path.read_bytes() for path in profiles), eq=True)
+                previous = tuple(tmp_path.glob("profile.previous-*.pstats"))
+                tm.that(len(previous), eq=1)
+                tm.that(previous[0].read_bytes(), eq=original)
             tm.that(
                 output.read_bytes() in (path.read_bytes() for path in profiles), eq=True
             )

@@ -30,6 +30,7 @@ class FlextInfraProfileEntry:
         """
         output = Path(sys.argv[1])
         immutable_output = output.with_stem(f"{output.stem}-{uuid4().hex}")
+        previous_output = output.with_stem(f"{output.stem}.previous-{uuid4().hex}")
         profiler = cProfile.Profile()
         previous = signal.getsignal(signal.SIGTERM)
         status: int | None = None
@@ -47,7 +48,10 @@ class FlextInfraProfileEntry:
             primary = sys.exception() if status is None else None
             try:
                 FlextInfraPytestClock.publish_profile(
-                    profiler, output, immutable_output=immutable_output
+                    profiler,
+                    output,
+                    immutable_output=immutable_output,
+                    previous_output=previous_output,
                 )
                 profiler.print_stats(sort="cumtime")
             except BaseException as publication_failure:

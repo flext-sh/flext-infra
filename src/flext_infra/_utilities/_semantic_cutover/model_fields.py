@@ -14,6 +14,7 @@ from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor
 
 from flext_infra._utilities import (
+    FlextInfraUtilitiesCodemodProject,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
@@ -146,7 +147,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
             )
             and len(
                 FlextInfraUtilitiesSemanticCutoverModelFields._field_reordered_calls(
-                    rule, module, match
+                    project, rule, module, match
                 )
             )
             == 1
@@ -257,13 +258,15 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
                 templates[pattern, goal] = None
         return tuple(templates)
 
-    @staticmethod
+    @classmethod
     def _field_reordered_calls(
+        cls,
+        project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
         module: p.Infra.RopePyModule,
         match: p.Infra.RopeContractMatch,
     ) -> t.SequenceOf[t.Pair[int, int]]:
-        """Exclude only the default expression that stays on the assignment RHS.
+        """Retain every call lacking an exact native evaluation-safety proof.
 
         Returns:
             Calls whose evaluation moves into the field annotation.
@@ -273,10 +276,102 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         calls = refactors.word_call_regions(module.source_code, match.get_region())
         if rule.defaulted_field and rule.value_default is not None:
             begin, end = refactors.semantic_capture_region(match, rule.value_default)
-            return tuple(
+            calls = tuple(
                 region for region in calls if not begin <= region[0] < region[1] <= end
             )
+        if rule.required_field:
+            pure = cls._pure_field_factory_metadata(project, rule, module, match)
+            calls = tuple(
+                region
+                for region in calls
+                if not any(begin <= region[0] < region[1] <= end for begin, end in pure)
+            )
         return calls
+
+    @classmethod
+    def _pure_field_factory_metadata(
+        cls,
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        module: p.Infra.RopePyModule,
+        match: p.Infra.RopeContractMatch,
+    ) -> t.SequenceOf[t.Pair[int, int]]:
+        """Prove direct SDK metadata that only stores a deferred builtin factory.
+
+        Returns:
+            Pure metadata-call regions whose relative evaluation is unobservable.
+
+        """
+        contract = match.get_ast("contract")
+        if not isinstance(contract, ast.AST):
+            return ()
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        scope = runtime.scope_at(module, match.get_region()[0])
+        annotated = runtime.qualified_name(project, "typing.Annotated")
+        regions: list[t.Pair[int, int]] = []
+        for node in ast.walk(contract):
+            if not isinstance(node, ast.Subscript) or not isinstance(
+                node.slice, ast.Tuple
+            ):
+                continue
+            if not runtime.same_name(
+                annotated, runtime.resolve_symbol(scope, node.value)
+            ):
+                continue
+            for metadata in node.slice.elts[1:]:
+                if not isinstance(
+                    metadata, ast.Call
+                ) or not cls._pure_deferred_field_call(
+                    project, rule, module, (scope, metadata)
+                ):
+                    continue
+                source = ast.get_source_segment(module.source_code, metadata)
+                if source is not None:
+                    begin = runtime.source_offset(module.source_code, metadata)
+                    regions.append((begin, begin + len(source)))
+        return tuple(regions)
+
+    @staticmethod
+    def _pure_deferred_field_call(
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        module: p.Infra.RopePyModule,
+        candidate: t.Pair[p.Infra.RopeScope, ast.Call],
+    ) -> bool:
+        """Keep builtin factories as values, never evaluate authored callbacks.
+
+        Returns:
+            Whether this exact SDK call has one inert deferred-factory argument.
+
+        """
+        scope, call = candidate
+        if call.args or len(call.keywords) != 1 or rule.call_target is None:
+            return False
+        keyword = call.keywords[0]
+        if keyword.arg != "default_factory" or not isinstance(keyword.value, ast.Name):
+            return False
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        builtin = project.get_module("__builtin__").get_attributes().get(keyword.value.id)
+        constraint = rule.arguments.get(rule.call_target)
+        if (
+            builtin is None
+            or constraint is None
+            or not runtime.same_name(
+                builtin, runtime.resolve_symbol(scope, keyword.value)
+            )
+        ):
+            return False
+        if not FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture(
+            project, module, call.func, constraint, name=rule.call_target
+        ):
+            return False
+        callee = ast.unparse(call.func)
+        return all(
+            FlextInfraUtilitiesCodemodProject.single_reaching_binding(
+                module, scope, name, runtime.source_offset(module.source_code, call)
+            )
+            for name in dict.fromkeys((callee.partition(".")[0], callee))
+        )
 
     @classmethod
     def _plan_model_fields(

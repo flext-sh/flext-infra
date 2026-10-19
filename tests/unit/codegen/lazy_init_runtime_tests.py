@@ -1062,14 +1062,14 @@ class TestsFlextInfraLazyInitRuntime:
         calls: list[str] = []
 
         def observe(frame: FrameType, event: str, _value: p.AttributeProbe) -> None:
-            if event == "call" and frame.f_code.co_name in {
-                "validate_python_plans",
-                "consume_source_runtime",
-                "normalize_source",
-                "normalize_sources",
-                "normalize_source_plan",
-                "execute_candidate",
-                "_execute_payload",
+            if event == "call" and frame.f_code.co_qualname in {
+                "FlextInfraCodegenStaging.validate_python_plans",
+                "FlextInfraCodegenTransaction.consume_source_runtime",
+                "FlextInfraUtilitiesProtectedEditLinting.normalize_source",
+                "FlextInfraUtilitiesProtectedEditLinting.normalize_sources",
+                "FlextInfraUtilitiesProtectedEditLinting.normalize_source_plan",
+                "FlextInfraWorkspaceChecker.execute_candidate",
+                "FlextInfraWorkspaceChecker._execute_payload",
             }:
                 calls.append(frame.f_code.co_qualname)
 
@@ -1133,7 +1133,7 @@ class TestsFlextInfraLazyInitRuntime:
         *,
         cyclic: bool,
     ) -> None:
-        """Mandatory runtime rejects missing and cyclic imports without repairing them."""
+        """Reject missing and cyclic authored imports before publication."""
         repository, package = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-source-only",

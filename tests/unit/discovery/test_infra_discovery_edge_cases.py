@@ -34,7 +34,8 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             for name in ("Alpha", "Beta", "Alpha"):
                 with u.Infra.facade_source_project(
                     tmp_path, planned_sources={module_path: f"class {name}: ...\n"}
-                ) as (project, _modules):
+                ) as binding:
+                    project = binding[0]
                     tm.that(
                         u.Infra.resolve_module_export_names(
                             project, project.get_file("module.py")

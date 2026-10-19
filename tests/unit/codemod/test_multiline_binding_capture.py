@@ -86,14 +86,24 @@ class TestsFlextInfraMultilineBindingCapture:
                 facts=u.Infra.codemod_project_facts(mod_workspace, (rule,)),
                 snapshot=snapshot,
             )
+            verdicts: t.MutableSequenceOf[bool] = []
+            finder_counts: t.MutableSequenceOf[int] = []
             with Profile() as profile:
-                verdicts = tuple(
-                    u.Infra.codemod_context_admits(
-                        admission, project=project, sources=sources
+                for _ in range(3):
+                    verdicts.append(
+                        u.Infra.codemod_context_admits(
+                            admission, project=project, sources=sources
+                        )
                     )
-                    for _ in range(3)
-                )
-            tm.that(verdicts, eq=(not require_binding,) * 3)
+                    finder_counts.append(
+                        sum(
+                            entry.callcount
+                            for entry in profile.getstats()
+                            if not isinstance(entry.code, str)
+                            and entry.code.co_qualname == "SimilarFinder.__init__"
+                        )
+                    )
+            tm.that(tuple(verdicts), eq=(not require_binding,) * 3)
             tm.that(
                 sum(
                     entry.callcount
@@ -103,12 +113,5 @@ class TestsFlextInfraMultilineBindingCapture:
                 ),
                 eq=1,
             )
-            tm.that(
-                sum(
-                    entry.callcount
-                    for entry in profile.getstats()
-                    if not isinstance(entry.code, str)
-                    and entry.code.co_qualname == "SimilarFinder.__init__"
-                ),
-                eq=1,
-            )
+            tm.that(finder_counts[0], gt=0)
+            tm.that(finder_counts, eq=[finder_counts[0]] * 3)

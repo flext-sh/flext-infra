@@ -189,9 +189,9 @@ class FlextInfraUtilitiesSemanticContracts(
         sources: t.MappingKV[t.Infra.RopeSourcePath, str],
         rules: t.SequenceOf[p.Infra.RopeContractRule],
         captured: p.Infra.CodemodSourceEpoch | None,
-    ) -> dict[t.Infra.RopeSourcePath, str]:
+    ) -> t.MutableMappingKV[t.Infra.RopeSourcePath, str]:
         # Elect receivers without making unrelated generated sources editable.
-        providers: dict[t.Infra.RopeSourcePath, str] = {}
+        providers: t.MutableMappingKV[t.Infra.RopeSourcePath, str] = {}
         for rule in rules:
             if rule.ownership_transfer is None and captured is None:
                 continue
@@ -245,9 +245,9 @@ class FlextInfraUtilitiesSemanticContracts(
         context: tuple[tuple[tuple[Path, str], ...], p.Infra.CodemodSourceEpoch],
         restrictions: tuple[bool, bool],
     ) -> tuple[
-        dict[Path, str],
+        t.MutableMappingKV[Path, str],
         t.MutableMappingKV[Path, t.MutableSequenceOf[str]],
-        dict[str, Path],
+        t.MutableMappingKV[str, Path],
     ]:
         working = dict(context[0])
         relocation = FlextInfraUtilitiesSemanticDeclarationRelocation
@@ -450,9 +450,9 @@ class FlextInfraUtilitiesSemanticContracts(
             bool,
         ],
         result: tuple[
-            dict[Path, str],
+            t.MutableMappingKV[Path, str],
             t.MutableMappingKV[Path, t.MutableSequenceOf[str]],
-            dict[str, Path],
+            t.MutableMappingKV[str, Path],
         ],
     ) -> p.Result[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
         items, epoch, staged_receivers, captured = context
@@ -828,7 +828,7 @@ class FlextInfraUtilitiesSemanticContracts(
         if not cls._admit_readonly_contract(project, rule, match, scope):
             return False
         cls._require_deferred_annotation(project, rule, module, match, (scope, sources))
-        cls._require_contract_evaluation(rule, module, match, scope)
+        cls._require_contract_evaluation(project, rule, module, match, scope)
         if not cls._admitted_unshadowed_builtins(rule, scope):
             if rule.pattern.startswith("assert "):
                 message = (
@@ -1101,6 +1101,7 @@ class FlextInfraUtilitiesSemanticContracts(
     @classmethod
     def _require_contract_evaluation(
         cls,
+        project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
         module: p.Infra.RopePyModule,
         match: p.Infra.RopeContractMatch,
@@ -1201,7 +1202,7 @@ class FlextInfraUtilitiesSemanticContracts(
             raise ValueError(message)
         if (
             rule.reorders_annotation
-            and len(cls._field_reordered_calls(rule, module, match)) != 1
+            and len(cls._field_reordered_calls(project, rule, module, match)) != 1
         ):
             message = (
                 f"{rule.id}: annotation evaluation cannot reorder authored calls "
@@ -1914,7 +1915,7 @@ class FlextInfraUtilitiesSemanticContracts(
             for parent in ast.walk(tree)
             for child in ast.iter_child_nodes(parent)
         }
-        nodes: dict[tuple[type[ast.AST], int], ast.AST] = {
+        nodes: t.MutableMappingKV[tuple[type[ast.AST], int], ast.AST] = {
             (type(node), runtime.source_offset(module.source_code, node)): node
             for node in ast.walk(tree)
             if isinstance(node, ast.Call | ast.Name)
