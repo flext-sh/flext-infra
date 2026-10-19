@@ -57,7 +57,9 @@ class FlextInfraAccessorRenamePhase(
                 for state in states
                 if state.content is not None
             },
-            source_states=states,
+            receipt=m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC, files=(), inputs=states
+            ),
         )
         if planned.failure:
             return r[bool].from_failure(planned)
@@ -72,8 +74,7 @@ class FlextInfraAccessorRenamePhase(
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: t.MappingKV[Path, str],
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+        receipt: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Plan origin-owned accessors on a separate immutable working view.
 
@@ -82,6 +83,7 @@ class FlextInfraAccessorRenamePhase(
 
         """
         del preflight
+        source_states, declared_files = receipt.inputs, receipt.files
         snapshot = u.Infra.snapshot_project(
             rope_workspace.rope_project,
             sources,
@@ -147,8 +149,7 @@ class FlextInfraAccessorRenamePhase(
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: t.MappingKV[Path, str],
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+        receipt: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Bind accessor effects to the original physical publication receipts.
 
@@ -156,6 +157,7 @@ class FlextInfraAccessorRenamePhase(
             The bound phase analysis, or the first planning failure.
 
         """
+        source_states, declared_files = receipt.inputs, receipt.files
         captured = FlextInfraCodegenPreconditions.unique_states((
             *source_states,
             *(state for plan in declared_files for state in plan.source_states),
@@ -168,8 +170,7 @@ class FlextInfraAccessorRenamePhase(
             preflight,
             rope_workspace,
             sources=sources,
-            source_states=source_states,
-            declared_files=declared_files,
+            receipt=receipt.model_copy(update={"inputs": source_states}),
         )
         if planned.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)

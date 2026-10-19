@@ -548,7 +548,8 @@ class TestsFlextInfraCodemodContextOwnPackage:
             "loggings.py": "import structlog\nclass NativeLogging:\n    pass\n",
             "consumer.py": "from .logging_api import Utilities\nimport structlog\n",
             "shadow.py": (
-                "from .logging_api import Utilities\nUtilities = None\nimport structlog\n"
+                "from .logging_api import Utilities\n"
+                "Utilities = None\nimport structlog\n"
             ),
         }
         for relative, text in contents.items():

@@ -1,11 +1,4 @@
-"""Warning-free Rope project boundary.
-
-Rope 1.14.0 and its current upstream branch decorate
-``Project._init_source_folders`` as deprecated while still calling it
-unconditionally from ``Project.__init__``.  A strict warnings-as-errors runtime
-therefore cannot construct the documented public ``Project`` at all.  The
-boundary below preserves Rope's initializer semantics without filtering the
-warning or weakening the process warning policy.
+"""Authenticated Rope project boundary over the installed native lifecycle.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -22,7 +15,7 @@ from os import PathLike
 from os.path import normpath, realpath
 from pathlib import Path
 from types import MappingProxyType
-from typing import Literal, Protocol, Self, cast, override
+from typing import Literal, Protocol, Self, cast, overload, override
 
 from flext_cli import u
 from rope.base.exceptions import ResourceNotFoundError
@@ -371,7 +364,7 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
     def get_relative_module(
         self,
         name: str,
-        folder: Folder | p.Infra.RopeRoot | None,
+        folder: Folder | p.Infra.RopeRoot,
         level: int,
     ) -> t.Infra.RopeNativeParsedModule:
         """Resolve a relative import from its native declaring resource.
@@ -409,13 +402,13 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
     def find_relative_module(
         self,
         modname: str,
-        folder: Folder | p.Infra.RopeRoot | None,
+        folder: Folder | p.Infra.RopeRoot,
         level: int,
     ) -> File | Folder | None:
         """Delegate relative resource election to its native SDK owner.
 
         Returns:
-            The elected native resource, or no resource without relative context.
+            The elected native resource, or no matching module in the folder.
 
         Raises:
             TypeError: The elected resource is not a native file or folder.
@@ -451,11 +444,19 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
         return found
 
     @staticmethod
+    @overload
+    def _native_folder(folder: Folder | p.Infra.RopeRoot) -> Folder: ...
+
+    @staticmethod
+    @overload
+    def _native_folder(folder: None) -> None: ...
+
+    @staticmethod
     def _native_folder(folder: Folder | p.Infra.RopeRoot | None) -> Folder | None:
         """Validate the native folder once at the SDK adapter boundary.
 
         Returns:
-            The supplied native folder or absent relative context.
+            The supplied native folder or absent absolute-lookup context.
 
         Raises:
             TypeError: The supplied folder is not native.
@@ -1823,25 +1824,6 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
         if isinstance(self.fscommands, self.SnapshotFiles | self.AtomicReadFiles):
             core = cast("p.Infra.RopeProject", self).get_pycore()
             core.observer.timekeeper = self.SnapshotChangeIndicator(self.fscommands)
-
-    @override
-    def _init_source_folders(self) -> None:
-        """Initialize configured source roots without Rope's warning wrapper.
-
-        Raises:
-            ValueError: If rope preference 'source_folders' is None; expected a list of
-                source folder paths.
-
-        """
-        source_folders = self.prefs.get("source_folders", [])
-        if source_folders is None:
-            msg = (
-                "rope preference 'source_folders' is None; "
-                "expected a list of source folder paths"
-            )
-            raise ValueError(msg)
-        for path in source_folders:
-            self._custom_source_folders.append(self.get_resource(path))
 
 
 __all__: list[str] = ["FlextInfraRopeProject"]

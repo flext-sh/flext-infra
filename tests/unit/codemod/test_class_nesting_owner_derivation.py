@@ -258,7 +258,7 @@ __all__: list[str] = ["LIMIT", "write"]
                 )
             )
         )
-        tm.that(ast.literal_eval(exports.value), eq=[root_owner.name])
+        tm.that(u.Infra.literal_string_sequence(exports.value), eq=(root_owner.name,))
         tm.that(self._top_level(updated[module]), eq=(root_owner.name,))
         tm.that(updated[consumer], has="payload = 'TestBehavior.Nested'")
         tm.that(updated[consumer], lacks="import TestBehavior as Subject")

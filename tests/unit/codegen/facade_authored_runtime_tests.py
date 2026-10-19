@@ -121,6 +121,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 path=source,
                 before=original,
                 desired_content=None,
+                desired_mode=None,
                 source_states=(incoming,),
             ),
             m.Infra.CodegenFilePlan(
@@ -128,6 +129,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 path=binary,
                 before=opaque,
                 desired_content=b"\xff\x00",
+                desired_mode=opaque.mode,
                 source_states=(incoming,),
             ),
         )

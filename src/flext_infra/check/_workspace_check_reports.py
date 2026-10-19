@@ -101,44 +101,46 @@ class FlextInfraWorkspaceCheckReportsMixin:
                         }),
                     )
                     sarif_results.append(cls._sarif_issue(issue, rule_id))
-        return m.Infra.SarifReport(
-            properties=summary,
-            runs=(
-                m.Infra.SarifRun(
-                    tool_name="flext-infra-check",
-                    information_uri=FlextInfraVersion.__url__,
-                    rules=tuple(rules_by_id.values()),
-                    results=tuple(sarif_results),
-                ),
+        return m.Infra.SarifReport.model_validate({
+            "properties": summary,
+            "runs": (
+                m.Infra.SarifRun.model_validate({
+                    "tool_name": "flext-infra-check",
+                    "information_uri": FlextInfraVersion.__url__,
+                    "rules": tuple(rules_by_id.values()),
+                    "results": tuple(sarif_results),
+                }),
             ),
-        )
+        })
 
     @staticmethod
     def _sarif_issue(issue: m.Infra.Issue, rule_id: str) -> m.Infra.SarifResult:
-        """Render one blocking occurrence while retaining its native severity.
+        """Render one occurrence while retaining its native severity.
 
         Returns:
             The resulting ``m.Infra.SarifResult``.
 
         """
+        severity = issue.severity.lower()
         level = (
-            "warning"
-            if issue.severity.lower() == c.Infra.SeverityLevel.WARNING
-            else "error"
+            c.Infra.GateSeverity.WARNING.value
+            if severity in {c.Infra.GateSeverity.WARNING, "warn"}
+            else c.Infra.GateSeverity.NOTE.value
+            if severity in {c.Infra.GateSeverity.NOTE, "info", "information", "hint"}
+            else c.Infra.GateSeverity.ERROR.value
         )
         return m.Infra.SarifResult.model_validate({
             "rule_id": rule_id,
             "level": level,
             "message": issue.message,
-            "locations": list(issue.locations)
-            if issue.locations
-            else [
-                m.Infra.SarifLocation(
-                    uri=issue.file,
-                    start_line=issue.line,
-                    start_column=issue.column,
-                ),
-            ],
+            "locations": issue.locations
+            or (
+                m.Infra.SarifLocation.model_validate({
+                    "uri": issue.file,
+                    "start_line": issue.line,
+                    "start_column": issue.column,
+                }),
+            ),
             "related_locations": issue.related_locations,
         })
 

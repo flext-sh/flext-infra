@@ -83,7 +83,11 @@ class FlextInfraImportNormalization(
                 project_root,
                 files,
                 sources=sources,
-                source_states=states,
+                receipt=m.Infra.CodegenPhaseAnalysis(
+                    phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                    inputs=states,
+                    files=(),
+                ),
                 rope_project=project,
             ).unwrap()
         return cls.publish_plan(project_root, planned).unwrap()
@@ -133,8 +137,10 @@ class FlextInfraImportNormalization(
         published = FlextInfraSemanticPublication.publish_semantic_artifact_plans(
             files_to_publish,
             repository_root=project_root,
-            projection_roots=(project_root,),
-            dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+            options=m.Infra.SemanticPublicationOptions(
+                projection_roots=(project_root,),
+                dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+            ),
         )
         if published.failure:
             return r[bool].from_failure(published)
@@ -147,9 +153,8 @@ class FlextInfraImportNormalization(
         files: t.SequenceOf[Path],
         *,
         sources: t.MappingKV[Path, str],
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
+        receipt: m.Infra.CodegenPhaseAnalysis,
         rope_project: p.Infra.RopeProject,
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Plan imports against immutable working sources and original receipts.
 
@@ -157,6 +162,7 @@ class FlextInfraImportNormalization(
             The planned phase analysis, or the first planning failure.
 
         """
+        source_states, declared_files = receipt.inputs, receipt.files
         captured = FlextInfraCodegenPreconditions.unique_states((
             *source_states,
             *(state for plan in declared_files for state in plan.source_states),
@@ -303,7 +309,7 @@ class FlextInfraImportNormalization(
                     layer=u.Infra.module_import_layer(module),
                     own_exports=cls._declared_exports(tree),
                     facade_dependencies=facade_dependencies,
-                    family_letter=cls._family_letter(namespace_dir, file_path),
+                    family_letter=cls.family_letter(namespace_dir, file_path),
                     direct_imports=u.Infra.import_direct_module(
                         namespace_dir,
                         file_path,
@@ -547,25 +553,6 @@ class FlextInfraImportNormalization(
                     and isinstance(element.value, str)
                 )
         return frozenset()
-
-    @staticmethod
-    def _family_letter(namespace_dir: Path, file_path: Path) -> str | None:
-        """Return the facade letter of the family package holding one module.
-
-        Returns:
-            The family letter, or ``None`` outside every family package.
-
-        """
-        relative = file_path.resolve().relative_to(namespace_dir.resolve())
-        return next(
-            (
-                letter
-                for part in (*relative.parts[:-1], relative.stem)
-                for letter, family in u.Infra.facade_families().items()
-                if part in {family.directory, family.module}
-            ),
-            None,
-        )
 
 
 __all__: list[str] = ["FlextInfraImportNormalization"]

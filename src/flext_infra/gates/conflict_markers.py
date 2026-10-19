@@ -36,12 +36,15 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
             ValueError: If the project has no Git inventory or no source files.
 
         """
-        _ = ctx
-        paths = u.Infra.git_tracked_scope_paths(project_dir)
-        if paths is None or not paths:
-            message = (
-                f"conflict-marker gate requires a nonempty Git inventory: {project_dir}"
+        paths = (
+            tuple(
+                path for path in ctx.candidate_files if path.is_relative_to(project_dir)
             )
+            if ctx.runtime_root is not None
+            else u.Infra.git_source_scope_paths(project_dir)
+        )
+        if paths is None or not paths:
+            message = f"conflict-marker gate requires a nonempty source inventory: {project_dir}"
             raise ValueError(message)
         return self._check_paths(paths, project_dir)
 

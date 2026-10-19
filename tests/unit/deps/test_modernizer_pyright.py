@@ -435,9 +435,10 @@ class TestsFlextInfraDepsModernizerPyright:
         root_modules = ("worker.py", "worker.pyi")
         for module in root_modules:
             (project_dir / module).write_text("VALUE = 1\n", encoding="utf-8")
-        historical = project_dir / "historical_guides"
-        historical.mkdir()
-        (historical / "index.md").write_text("Historical notes.\n", encoding="utf-8")
+        (project_dir / "historical_guides").mkdir()
+        (project_dir / "historical_guides" / "index.md").write_text(
+            "Historical notes.\n", encoding="utf-8"
+        )
         foreign = project_dir / "foreign_project"
         foreign.mkdir()
         (foreign / "pyproject.toml").write_text(
@@ -445,15 +446,13 @@ class TestsFlextInfraDepsModernizerPyright:
             encoding="utf-8",
         )
         (foreign / "probe.py").write_text("VALUE = 1\n", encoding="utf-8")
-        artifact_root = next(
+        artifact = project_dir / next(
             root
             for root in config.Infra.codegen.source_scan_ignored
             if not root.startswith(".")
         )
-        artifact = project_dir / artifact_root
         artifact.mkdir(parents=True, exist_ok=True)
         (artifact / "probe.py").write_text("VALUE = 1\n", encoding="utf-8")
-        path = project_dir / "pyproject.toml"
         topology = m.Infra.PyprojectDeclaredTopology(
             declared_python_dirs=(rules.source_dir, planned_root),
             declared_python_dirs_are_complete=complete,
@@ -462,7 +461,7 @@ class TestsFlextInfraDepsModernizerPyright:
             planned_sources={},
             project_name=project_name,
             package_name=package_name,
-            path=path,
+            path=project_dir / "pyproject.toml",
             scaffold_project=config.Infra.codegen.scaffold.project,
             runtime_dependency_overlay=(),
             declared_project_dependencies=(),
@@ -491,8 +490,8 @@ class TestsFlextInfraDepsModernizerPyright:
             tm.that(set(root_modules).isdisjoint(environment.extra_paths), eq=True)
         first = tm.ok(
             modernizer.conform_source(
-                path.read_text(encoding="utf-8"),
-                path=path,
+                (project_dir / "pyproject.toml").read_text(encoding="utf-8"),
+                path=project_dir / "pyproject.toml",
                 format_source=False,
                 topology=topology,
             ),
@@ -512,25 +511,28 @@ class TestsFlextInfraDepsModernizerPyright:
             ),
             eq=sorted(expected_roots),
         )
-        path.write_text(first, encoding="utf-8")
-        planned = project_dir / planned_root
-        planned.mkdir()
-        (planned / "probe.py").write_text("VALUE = 1\n", encoding="utf-8")
+        (project_dir / "pyproject.toml").write_text(first, encoding="utf-8")
+        (project_dir / planned_root).mkdir()
+        (project_dir / planned_root / "probe.py").write_text(
+            "VALUE = 1\n", encoding="utf-8"
+        )
         second_context = tm.ok(modernizer.resolve_tooling_context(request))
         tm.that(second_context.pyright_include, eq=first_context.pyright_include)
         tm.that(
             second_context.pyright_execution_environments,
             eq=first_context.pyright_execution_environments,
         )
-        second = tm.ok(
-            modernizer.conform_source(
-                first,
-                path=path,
-                format_source=False,
-                topology=topology,
+        tm.that(
+            tm.ok(
+                modernizer.conform_source(
+                    first,
+                    path=project_dir / "pyproject.toml",
+                    format_source=False,
+                    topology=topology,
+                )
             ),
+            eq=first,
         )
-        tm.that(second, eq=first)
 
     def test_repository_root_never_adopts_member_analyzer_roots(
         self,

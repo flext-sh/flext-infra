@@ -76,7 +76,9 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                 for state in states
                 if state.content is not None
             },
-            source_states=states,
+            receipt=m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC, files=(), inputs=states
+            ),
         )
         if planned.failure:
             return r[m.Infra.DuplicateCureOutcome].from_failure(planned)
@@ -102,8 +104,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         groups: t.SequenceOf[m.Infra.DuplicateGroup],
         *,
         sources: t.MappingKV[Path, str],
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+        receipt: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[
         t.Pair[m.Infra.DuplicateCureOutcome, t.VariadicTuple[m.Infra.DuplicateDeletion]]
     ]:
@@ -113,6 +114,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             The retained cure outcome with its deletions, or the first failure.
 
         """
+        source_states, declared_files = receipt.inputs, receipt.files
         captured = FlextInfraCodegenPreconditions.unique_states((
             *source_states,
             *(state for plan in declared_files for state in plan.source_states),

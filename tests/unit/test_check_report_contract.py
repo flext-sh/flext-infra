@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import c, config, m, main
+from flext_infra.gates.pyright import FlextInfraPyrightGate
 from tests import tm, u
 
 if TYPE_CHECKING:
@@ -80,40 +81,146 @@ class TestsFlextInfraCheckReportContract:
     @staticmethod
     def test_sarif_report_validates_its_own_emitted_json() -> None:
         """Test sarif report validates its own emitted json."""
-        report = m.Infra.SarifReport(
-            runs=(
-                m.Infra.SarifRun(
-                    tool_name="flext-infra-check",
-                    information_uri="https://example.invalid/tool",
-                    rules=(
+        report = m.Infra.SarifReport.model_validate({
+            "runs": (
+                m.Infra.SarifRun.model_validate({
+                    "tool_name": "flext-infra-check",
+                    "information_uri": "https://example.invalid/tool",
+                    "rules": (
                         m.Infra.SarifRule.model_validate({
                             "id": "unused-import",
                             "shortDescription": {"text": "Ruff Linter (lint) issue"},
                             "helpUri": "https://example.invalid/rule",
                         }),
                     ),
-                    results=(
+                    "results": (
                         m.Infra.SarifResult.model_validate({
                             "ruleId": "unused-import",
                             "level": "error",
                             "message": {"text": "`os` imported but unused"},
-                            "locations": [
-                                m.Infra.SarifLocation(
-                                    uri="src/p1/module.py",
-                                    start_line=3,
-                                    start_column=8,
-                                ),
-                            ],
+                            "locations": (
+                                m.Infra.SarifLocation.model_validate({
+                                    "uri": "src/p1/module.py",
+                                    "start_line": 3,
+                                    "start_column": 8,
+                                    "end_line": 4,
+                                    "end_column": 10,
+                                }),
+                            ),
+                            "related_locations": (
+                                m.Infra.SarifLocation.model_validate({
+                                    "uri": "other-project/src/module.py",
+                                    "start_line": 7,
+                                    "start_column": 2,
+                                    "end_line": 9,
+                                    "end_column": 4,
+                                }),
+                            ),
                         }),
                     ),
-                ),
+                }),
             ),
-        )
+        })
 
         emitted = report.model_dump_json()
 
         tm.that(emitted, has='"$schema":')
         tm.that(m.Infra.SarifReport.model_validate_json(emitted), eq=report)
+        finding = report.runs[0].results[0]
+        with pytest.raises(m.ValidationError, match="locations"):
+            m.Infra.SarifResult.model_validate({
+                "rule_id": finding.rule_id,
+                "level": finding.level,
+                "message": finding.message,
+                "locations": list(finding.locations),
+            })
+
+    @staticmethod
+    def test_public_check_preserves_native_diagnostic_levels_and_failure(
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Real Pyright findings produce readable SARIF, not a validation crash."""
+        project = u.Tests.mk_project(
+            tmp_path,
+            "diagnostic-levels",
+            pyproject=(
+                '[project]\nname = "diagnostic-levels"\nversion = "0.1.0"\n'
+                '[tool.pyright]\ntypeCheckingMode = "strict"\n'
+                'reportUnusedVariable = "warning"\n'
+            ),
+            with_src=True,
+        )
+        source = project / "src" / "diagnostics.py"
+        source.write_text(
+            "def diagnose() -> None:\n"
+            "    unused = 1\n"
+            '    value: int = "not an integer"\n'
+            "    reveal_type(value)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        before = u.Cli.sha256_bytes(source.read_bytes())
+        reports = tmp_path / "reports"
+        native = FlextInfraPyrightGate(repository_root=project).check(
+            project,
+            m.Infra.GateContext.model_validate({
+                "repository_root": project,
+                "reports_dir": tmp_path / "native",
+            }),
+        )
+
+        tm.that(
+            TestsFlextInfraCheckReportContract._check_run(
+                project,
+                reports,
+                gate="pyright",
+            ),
+            eq=1,
+        )
+
+        output = capsys.readouterr()
+        tm.that(output.out + output.err, has="quality checks failed for")
+        tm.that(output.out + output.err, lacks="ValidationError")
+        tm.that(output.out + output.err, lacks="SerializationError")
+        tm.that(u.Cli.sha256_bytes(source.read_bytes()), eq=before)
+        (report_path,) = reports.glob(f"*/{c.Infra.CHECK_REPORT_SARIF_FILENAME}")
+        report = m.Infra.SarifReport.model_validate_json(
+            report_path.read_text(encoding=c.DEFAULT_ENCODING),
+            strict=True,
+        )
+        assert report.properties is not None
+        project_result = report.properties.results[0]
+        execution = project_result.gates["pyright"]
+        tm.that(project_result.passed, eq=False)
+        tm.that(execution.outcome, eq=native.outcome)
+        tm.that(execution.issues, eq=native.issues)
+        tm.that(
+            {issue.severity for issue in execution.issues},
+            eq={"error", "warning", "information"},
+        )
+        findings = tm.ok(
+            u.Infra.check_report_findings(project, reports_dir=report_path.parent),
+        )
+        tm.that(len(findings), eq=execution.finding_count)
+        tm.that(project_result.total_findings, eq=len(findings))
+        for issue, finding in zip(execution.issues, findings, strict=True):
+            tm.that(finding.rule_id, eq=issue.code or "pyright")
+            tm.that(finding.message, eq=issue.message)
+            tm.that(
+                finding.level,
+                eq="note" if issue.severity == "information" else issue.severity,
+            )
+            tm.that(finding.locations[0].uri, eq=issue.file)
+            tm.that(finding.locations[0].start_line, eq=issue.line)
+            tm.that(finding.locations[0].start_column, eq=issue.column)
+            tm.that(finding.related_locations, eq=issue.related_locations)
+        tm.that(
+            m.Infra.SarifReport.model_validate_json(
+                report.model_dump_json(round_trip=True),
+                strict=True,
+            ),
+            eq=report,
+        )
 
     def test_check_without_apply_leaves_sources_and_reports_findings(
         self,
@@ -134,7 +241,7 @@ class TestsFlextInfraCheckReportContract:
         )
         assert report.properties is not None
         summary = report.properties
-        tm.that(summary.requested_gates, eq=(c.Infra.LINT,))
+        tm.that(tuple(summary.requested_gates), eq=(c.Infra.LINT,))
         tm.that(summary.selected_files, eq=())
         tm.that(len(summary.targets), eq=1)
         tm.that(summary.targets[0].name, eq=project.name)

@@ -98,7 +98,9 @@ class FlextInfraModelsCodegenPipelineModels:
             t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan],
             m.Field(description="Ordered desired publication states"),
         ]
-        failed_targets: t.VariadicTuple[t.Pair[Path, CodegenSourceReceipt]] = m.Field(
+        failed_targets: t.VariadicTuple[
+            t.Pair[Path, FlextInfraModelsCodegenPipelineModels.CodegenSourceReceipt]
+        ] = m.Field(
             default=(),
             description=(
                 "Rejected physical targets and their original consumption receipts"

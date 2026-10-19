@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, t
+from flext_infra import c, config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.services._codegen import (
     FlextInfraCodegenVscodeMixin as FlextInfraCodegen,
@@ -346,8 +346,7 @@ class TestsFlextInfraCodegenArtifactSsot:
             origin_url=u.Tests.repository_ref("artifact-ssot").url,
         )
         rendered: str = tm.ok(FlextInfraCodegen.render_vscode_settings(project))
-        parsed: t.JsonValue = tm.ok(u.Cli.json_parse(rendered))
-        settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed)
+        settings = u.Cli.JSON_MAPPING_ADAPTER.validate_json(rendered)
         tm.that(settings["files.exclude"], eq=dict(codegen.vscode_files_exclude_map))
         tm.that(settings["search.exclude"], eq=dict(codegen.vscode_search_exclude_map))
         tm.that(

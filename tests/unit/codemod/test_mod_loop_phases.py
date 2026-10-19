@@ -176,7 +176,11 @@ class TestsFlextInfraCodemodLoopPhases:
                 preflight,
                 rope,
                 sources=sources,
-                source_states=states,
+                receipt=m.Infra.CodegenPhaseAnalysis(
+                    phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                    inputs=states,
+                    files=(),
+                ),
             ).unwrap()
             tm.that(analysis.files, empty=False)
             tm.that(analysis.issues, empty=True)
@@ -347,7 +351,9 @@ class TestsFlextInfraCodemodLoopPhases:
             for path, content in before.items()
         }
         candidate = tm.ok(
-            FlextInfraStagedPackage.plan_sources(project, updates, inputs=states)
+            FlextInfraStagedPackage.plan_sources(
+                project, updates, options=m.Infra.StageSourceOptions(inputs=states)
+            )
         )
         plans = tuple(
             m.Infra.SemanticFilePlan(

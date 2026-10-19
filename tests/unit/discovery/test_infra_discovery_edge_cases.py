@@ -8,11 +8,53 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import tm, u
+import pytest
+
+from tests import c, tm, u
 
 
 class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
     """Edge-case tests for project discovery."""
+
+    @staticmethod
+    @pytest.mark.parametrize("suffix", [c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB])
+    def test_source_files_discover_their_authenticated_project_root(
+        tmp_path: Path, suffix: str
+    ) -> None:
+        """A source or stub file is never queried as an enclosing directory."""
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "package"
+        package.mkdir(parents=True)
+        source = package / f"module{suffix}"
+        source.write_text("", encoding=c.DEFAULT_ENCODING)
+        with u.Infra.facade_source_project(tmp_path) as (project, _, _):
+            tm.that(u.Infra.project_root(source, source_project=project), eq=tmp_path)
+
+    @staticmethod
+    @pytest.mark.parametrize("suffix", [c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB])
+    def test_publication_policy_preserves_explicit_project_layout(
+        tmp_path: Path, suffix: str
+    ) -> None:
+        """Implicit and supplied layouts publish the same authenticated policy."""
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "package"
+        package.mkdir(parents=True)
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+            "[project]\nname = 'package'\nversion = '1.0.0'\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (package / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
+        source = package / f"component{suffix}"
+        source.write_text(
+            "class Component:\n    pass\n\n__all__ = ['Component']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with u.Infra.facade_source_project(tmp_path) as (project, _, _):
+            layout = u.Infra.layout(tmp_path, rope_project=project)
+            assert layout is not None
+            implicit = u.Infra.publication_policy(source, rope_project=project)
+            explicit = u.Infra.publication_policy(
+                source, rope_project=project, project_layout=layout
+            )
+            tm.that(implicit.model_dump(), eq=explicit.model_dump())
 
     @staticmethod
     def test_standalone_never_discovers_undeclared_child_projects(

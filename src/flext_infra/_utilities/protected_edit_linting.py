@@ -76,7 +76,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         """
         planned = codegen.FlextInfraStagedPackage.plan_sources(
-            repository_root, updates, inputs=inputs, workspaces=workspaces
+            repository_root,
+            updates,
+            options=m.Infra.StageSourceOptions(inputs=inputs, workspaces=workspaces),
         )
         if planned.failure:
             return r[m.Infra.StageSourcePlan].from_failure(planned)

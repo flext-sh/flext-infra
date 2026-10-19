@@ -132,10 +132,47 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         )
         if prepared.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(prepared)
-        render_inputs, context = prepared.value
         targets = self._validated_scaffold_targets(codegen, root, scaffold_entries)
-        if targets.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(targets)
+        planned = targets.flat_map(
+            lambda _validated: self._scaffold_planned_entries(
+                prepared.value, scaffold_entries, workspace
+            )
+        )
+        if planned.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
+        files, render_inputs = planned.value
+        return self._qualified_existing_tooling(
+            render_inputs, contract, files, tooling_evidence
+        ).flat_map(
+            lambda qualified: self._with_planned_facade_rebinds(
+                planned=tuple(qualified),
+                scaffold_entries=scaffold_entries,
+                workspace=workspace,
+                render_inputs=render_inputs,
+                contract=contract,
+            )
+        )
+
+    def _scaffold_planned_entries(
+        self,
+        prepared: t.Pair[m.Infra.CodegenRenderInputs, m.Infra.ProjectRenderContext],
+        scaffold_entries: t.VariadicTuple[t.Pair[m.Infra.TemplateEntrySpec, str]],
+        workspace: m.Infra.WorkspaceSpec,
+    ) -> p.Result[
+        t.Pair[t.VariadicTuple[m.Infra.CodegenFilePlan], m.Infra.CodegenRenderInputs]
+    ]:
+        """Plan scaffold entries in dependency order, retaining render inputs.
+
+        Returns:
+            The ordered plans and final inputs, or the first entry failure.
+
+        """
+        result_type = r[
+            t.Pair[
+                t.VariadicTuple[m.Infra.CodegenFilePlan], m.Infra.CodegenRenderInputs
+            ]
+        ]
+        render_inputs, context = prepared
         planned: list[m.Infra.CodegenFilePlan] = []
         # The pyproject plans first: renders that derive from its requirements
         # (the dependabot cooldown exclusion) read the planned bytes.
@@ -151,23 +188,10 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 context=context,
             )
             if entry_plan.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                    entry_plan,
-                )
+                return result_type.from_failure(entry_plan)
             file_plan, render_inputs = entry_plan.value
             planned.append(file_plan)
-        qualified = self._qualified_existing_tooling(
-            render_inputs, contract, tuple(planned), tooling_evidence
-        )
-        if qualified.failure:
-            return qualified
-        return self._with_planned_facade_rebinds(
-            planned=tuple(qualified.value),
-            scaffold_entries=scaffold_entries,
-            workspace=workspace,
-            render_inputs=render_inputs,
-            contract=contract,
-        )
+        return result_type.ok((tuple(planned), render_inputs))
 
     def _scaffold_render_setup(
         self,
@@ -385,17 +409,16 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             render_inputs=final_inputs,
             context=context.value,
         )
-        if final.failure:
-            return result_type.from_failure(final)
-        pyproject_plan, _ = final.value
-        return self._qualified_existing_tooling(
-            final_inputs,
-            contract,
-            tuple(
-                pyproject_plan if plan.path == pyproject_plan.path else plan
-                for plan in planned
-            ),
-            evidence,
+        return final.flat_map(
+            lambda rendered: self._qualified_existing_tooling(
+                final_inputs,
+                contract,
+                tuple(
+                    rendered[0] if plan.path == rendered[0].path else plan
+                    for plan in planned
+                ),
+                evidence,
+            )
         )
 
     def _scaffold_entry_plan(

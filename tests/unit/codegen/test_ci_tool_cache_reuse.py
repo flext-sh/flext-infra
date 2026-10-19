@@ -36,8 +36,8 @@ class TestsFlextInfraCiToolCacheReuse:
         tm.that(save.get("uses"), eq=f"{cache.repository}/save@{cache.version}")
         # A failing gate must still warm the next run.
         tm.that("always()" in str(save.get("if")), eq=True)
-        restore_with = t.Cli.JSON_MAPPING_ADAPTER.validate_python(restore["with"])
-        save_with = t.Cli.JSON_MAPPING_ADAPTER.validate_python(save["with"])
+        restore_with = u.Cli.JSON_MAPPING_ADAPTER.validate_python(restore["with"])
+        save_with = u.Cli.JSON_MAPPING_ADAPTER.validate_python(save["with"])
         restore_paths = str(restore_with["path"]).split()
         for directory in config.Infra.codegen.make.clean.cache_dirs:
             tm.that(directory in restore_paths, eq=True)

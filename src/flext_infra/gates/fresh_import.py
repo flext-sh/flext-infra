@@ -21,6 +21,8 @@ from flext_infra.validate import FlextInfraValidateFreshImport
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from flext_infra import t
+
 
 class FlextInfraFreshImportGate(FlextInfraGate):
     """Fresh-process import gate over the checkout's own package."""
@@ -72,6 +74,31 @@ class FlextInfraFreshImportGate(FlextInfraGate):
             ).build_report(repository_roots=(project_dir,)),
             started=started,
         )
+
+    @override
+    def check_files(
+        self,
+        files: t.SequenceOf[Path],
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> m.Infra.GateExecution:
+        """Validate package imports when a source file selects this gate.
+
+        The import contract belongs to the published package, not an individual
+        source file. Run the same fresh-process proof as the project-level gate;
+        there is no external checker command to receive file arguments.
+
+        Returns:
+            The package import proof, or no acceptance for nonexistent targets.
+
+        """
+        if files:
+            selected = tuple(path for path in files if path.exists())
+            if not selected:
+                return self._skip_result(project_dir, time.monotonic())
+            for path in selected:
+                _ = path.relative_to(project_dir)
+        return self.check(project_dir, ctx)
 
 
 __all__: list[str] = ["FlextInfraFreshImportGate"]

@@ -396,7 +396,8 @@ class FlextInfraModelsCodegenJournalModels:
                         f"; parent=({self.parent_device}, {self.parent_inode})"
                         f"; witness_target={self.absent_parent.target}"
                         f"; anchor={self.absent_parent.anchor_path}"
-                        f"; anchor_identity=({self.absent_parent.anchor_device}, {self.absent_parent.anchor_inode})"
+                        f"; anchor_identity=({self.absent_parent.anchor_device}, "
+                        f"{self.absent_parent.anchor_inode})"
                         f"; missing_directories={self.absent_parent.directories!r}"
                     )
                     raise ValueError(msg)

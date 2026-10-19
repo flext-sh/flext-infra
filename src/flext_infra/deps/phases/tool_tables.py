@@ -14,8 +14,6 @@ from __future__ import annotations
 from contextlib import nullcontext
 from pathlib import Path
 
-from flext_core import FlextRuntime
-
 from flext_infra import c, config, m, p, t, u
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.workspace import FlextInfraWorkspaceDetector
@@ -197,16 +195,17 @@ class FlextInfraToolTablesPhase:
             ),
             toml.RemoveOp(key="ignore_errors"),
         ]
+        overrides: t.JsonValueList = [
+            {
+                "module": list(entry.modules),
+                "follow_untyped_imports": entry.follow_untyped_imports,
+            }
+            for entry in mypy.overrides
+        ]
         operations.append(
             toml.SetOp(
                 key="overrides",
-                value=FlextRuntime.normalize_to_json_value([
-                    {
-                        "module": list(entry.modules),
-                        "follow_untyped_imports": entry.follow_untyped_imports,
-                    }
-                    for entry in mypy.overrides
-                ]),
+                value=overrides,
             ),
         )
         settings: t.MappingKV[str, t.JsonValue] = {

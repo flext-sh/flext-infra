@@ -308,16 +308,16 @@ class FlextInfraDuplicationGate(FlextInfraGate):
 
         jscpd_config = m.Infra.JscpdConfig(
             absolute=True,
-            formats_exts={
+            formatsExts={
                 name: tuple(extensions)
                 for name, extensions in c.Infra.JSCPD_FORMAT_EXTENSIONS.items()
             },
             ignore=self._derived_ignore_patterns(),
-            min_lines=overrides.min_lines,
-            min_tokens=overrides.min_tokens,
+            minLines=overrides.min_lines,
+            minTokens=overrides.min_tokens,
             mode=overrides.mode,
-            no_colors=True,
-            no_tips=True,
+            noColors=True,
+            noTips=True,
             reporters=(c.Infra.OUTPUT_JSON,),
             threshold=overrides.threshold_percent,
         )

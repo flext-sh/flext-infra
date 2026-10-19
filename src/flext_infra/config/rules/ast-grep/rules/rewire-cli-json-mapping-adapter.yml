@@ -1,0 +1,22 @@
+id: rewire-cli-json-mapping-adapter
+language: python
+severity: error
+files:
+  - "src/**/*.py"
+  - "tests/**/*.py"
+  - "examples/**/*.py"
+  - "scripts/**/*.py"
+rule:
+  all:
+    - pattern: t.Cli.$ADAPTER
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          stopBy: end
+          matches: u-imported-from-flext
+constraints:
+  ADAPTER:
+    regex: "^JSON_(?:MAPPING|VALUE)_ADAPTER$"
+fix: u.Cli.$ADAPTER
+message: Use the original JSON mapping adapter factory on the utilities facade.

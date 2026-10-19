@@ -1,0 +1,9 @@
+id: rewire-cli-json-list-adapter
+valid:
+- |
+  from flext_core import u
+  value = u.json_list_adapter().validate_python(payload)
+invalid:
+- |
+  from flext_cli import t, u
+  value = u.Cli.JSON_LIST_ADAPTER.validate_python(payload)

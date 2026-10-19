@@ -29,7 +29,7 @@ class FlextInfraUtilitiesSemanticNestingTypes(
     """Share native annotation regions and original lexical binding identity."""
 
     @classmethod
-    def _quoted_type_edits(
+    def quoted_type_edits(
         cls,
         project: p.Infra.RopeProject,
         resource: p.Infra.RopeResource,
@@ -55,22 +55,7 @@ class FlextInfraUtilitiesSemanticNestingTypes(
             )
             and node.type_params
         )
-        lines = source.splitlines(keepends=True)
-        constants: list[t.Triple[int, int, str]] = []
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
-                continue
-            if node.end_lineno is None or node.end_col_offset is None:
-                msg = "quoted type constant has no complete original source range"
-                raise ValueError(msg)
-            end_prefix = (
-                lines[node.end_lineno - 1].encode()[: node.end_col_offset].decode()
-            )
-            constants.append((
-                FlextInfraUtilitiesRopeRuntimeModules.source_offset(source, node),
-                sum(map(len, lines[: node.end_lineno - 1])) + len(end_prefix),
-                node.value,
-            ))
+        constants = cls._quoted_constants(source, tree)
         regions: t.MutableMappingKV[
             t.Pair[int, int], t.Pair[str, p.Infra.RopeScope]
         ] = {}
@@ -118,6 +103,28 @@ class FlextInfraUtilitiesSemanticNestingTypes(
                 )
         return tuple(edits)
 
+    @staticmethod
+    def _quoted_constants(
+        source: str, tree: ast.Module
+    ) -> list[t.Triple[int, int, str]]:
+        lines = source.splitlines(keepends=True)
+        constants: list[t.Triple[int, int, str]] = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
+                continue
+            if node.end_lineno is None or node.end_col_offset is None:
+                msg = "quoted type constant has no complete original source range"
+                raise ValueError(msg)
+            end_prefix = (
+                lines[node.end_lineno - 1].encode()[: node.end_col_offset].decode()
+            )
+            constants.append((
+                FlextInfraUtilitiesRopeRuntimeModules.source_offset(source, node),
+                sum(map(len, lines[: node.end_lineno - 1])) + len(end_prefix),
+                node.value,
+            ))
+        return constants
+
     @classmethod
     def rewrite_quoted_types(
         cls,
@@ -128,7 +135,7 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         *,
         protected: t.Pair[int, int] | None = None,
     ) -> str:
-        edits = cls._quoted_type_edits(
+        edits = cls.quoted_type_edits(
             project,
             resource,
             source,
@@ -142,10 +149,8 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         ).new_contents
 
     @staticmethod
-    def _require_nesting_binding(
-        project: p.Infra.RopeProject,
-        module: p.Infra.RopePyModule,
-        scope: p.Infra.RopeScope,
+    def require_nesting_binding(
+        native: t.Triple[p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope],
         expression: str,
         offset: int,
         sources: t.MappingKV[Path, str],
@@ -156,12 +161,13 @@ class FlextInfraUtilitiesSemanticNestingTypes(
             ValueError: If the nesting binding is ambiguous or dynamic.
 
         """
+        project, module, scope = native
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         chain = FlextInfraUtilitiesCodemodBindingChain
         proof = chain.FlextInfraUtilitiesCodemodBindingChain
         actual = runtime.expression_name(scope, expression)
         if isinstance(actual, p.Infra.RopeImportedName) and not (
-            proof._single_reaching_declarations(module, scope, expression)
+            proof.single_reaching_declarations(module, scope, expression)
         ):
             importing = runtime.module_imports_for_pymodule(project, module)
             stars = [
@@ -173,14 +179,14 @@ class FlextInfraUtilitiesSemanticNestingTypes(
                 == actual.imported_module.module_name
                 and statement.import_info.level == actual.imported_module.level
             ]
-            if len(stars) == 1 and proof._chain_imported_binding(
+            if len(stars) == 1 and proof.chain_imported_binding(
                 project,
                 actual,
                 sources,
                 visited=frozenset(),
             ):
                 return
-        if not proof._stable_binding_chain(
+        if not proof.stable_binding_chain(
             (project, module, scope),
             expression,
             offset,
@@ -193,7 +199,7 @@ class FlextInfraUtilitiesSemanticNestingTypes(
             raise ValueError(msg)
 
     @staticmethod
-    def _checked_type_reference(scope: p.Infra.RopeScope, expression: str) -> str:
+    def checked_type_reference(scope: p.Infra.RopeScope, expression: str) -> str:
         if not all(part.isidentifier() for part in expression.split(".")):
             msg = f"quoted type destination is not an identifier chain: {expression}"
             raise TypeError(msg)

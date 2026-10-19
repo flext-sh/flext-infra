@@ -208,6 +208,10 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
                 description="Validated literal file selection; empty means project"
             ),
         ] = ()
+        candidate_files: Annotated[
+            t.VariadicTuple[Path],
+            m.Field(description="Complete sealed source-plan inventory for admission"),
+        ] = ()
 
         @m.model_validator(mode="after")
         def dependency_provenance_selection(self) -> Self:

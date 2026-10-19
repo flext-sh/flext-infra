@@ -48,8 +48,8 @@ class FlextInfraProtocolsRope(Protocol):
         def text(self) -> str: ...
 
     @runtime_checkable
-    class RopeContractRule(Protocol):
-        """Read-only policy consumed by the native contract planner."""
+    class RopeContractCapturePolicy(Protocol):
+        """Read-only capture and replacement constraints for a native rule."""
 
         @property
         def id(self) -> str: ...
@@ -85,10 +85,17 @@ class FlextInfraProtocolsRope(Protocol):
         def readonly_contract(self) -> str | None: ...
 
         @property
+        def deferred_contract(self) -> str | None: ...
+
+        @property
         def readonly_origins(self) -> t.StrSequence: ...
 
         @property
         def drops(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class RopeContractRule(RopeContractCapturePolicy, Protocol):
+        """Read-only policy consumed by the native contract planner."""
 
         @property
         def call_target(self) -> str | None: ...
@@ -230,7 +237,7 @@ class FlextInfraProtocolsRope(Protocol):
         def updated_source(self) -> str: ...
 
         @property
-        def changes(self) -> t.StrSequence: ...
+        def changes(self) -> t.VariadicTuple[str]: ...
 
         @property
         def retire_file(self) -> bool: ...

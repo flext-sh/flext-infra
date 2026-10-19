@@ -15,7 +15,7 @@ from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
 
-from flext_infra import t
+from flext_infra import c, t
 from flext_infra._models import (
     FlextInfraModelsBase,
     FlextInfraModelsCensus,
@@ -27,6 +27,7 @@ from flext_infra._models import (
 )
 from flext_infra._models._codegen import (
     FlextInfraModelsCodegenJournalModels,
+    FlextInfraModelsCodegenPipelineModels,
     FlextInfraModelsCodegenTransactionModels,
 )
 
@@ -41,6 +42,37 @@ class FlextInfraModelsRefactor(
     - ``ContractModel`` for configuration/policy contracts.
     - ``ArbitraryTypesModel`` for mutable report/result payloads.
     """
+
+    class NamespaceRelocationRequest(FlextInfraModelsBase.FrozenArbitrary):
+        """Selected source view and authenticated inputs for native relocation."""
+
+        project_root: Path = m.Field(description="Selected owning project")
+        findings: t.SequenceOf[
+            t.Pair[c.Infra.CodemodRelocation, FlextInfraModelsScan.ModScanFinding]
+        ] = m.Field(description="Native relocation selections")
+        py_files: t.SequenceOf[Path] = m.Field(description="Selected Python sources")
+        sources: t.MappingKV[Path, str] = m.Field(description="Immutable input sources")
+        receipt: FlextInfraModelsCodegenPipelineModels.CodegenPhaseAnalysis = m.Field(
+            description="Authenticated source states and prior declarations"
+        )
+
+    class NamespaceRelocationState(m.ArbitraryTypesModel):
+        """Mutable candidate bytes retaining their native authentication receipts."""
+
+        working: t.MutableMappingKV[Path, str] = m.Field(
+            description="Candidate sources changed only by native planning effects"
+        )
+        originals: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = m.Field(
+            description="Complete original dependency closure"
+        )
+        befores: t.MutableMappingKV[
+            Path, m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan
+        ] = m.Field(
+            description="Original file or absent-parent receipt for each output"
+        )
+        modes: t.MutableMappingKV[Path, int | None] = m.Field(
+            description="Authenticated file modes preserved by publication"
+        )
 
     class SemanticBehaviorOwners(m.ImmutableValueModel):
         """Declared modules and unique owners used for behavior relocation."""

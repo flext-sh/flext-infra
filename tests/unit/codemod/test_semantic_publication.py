@@ -226,8 +226,7 @@ class TestsFlextInfraSemanticPublication:
                 u.Tests.run_lazy_init_probe(
                     f"from {package}.consumer import VALUE\nprint(VALUE)\n",
                     python_paths=tuple(
-                        str(layout.source_root.parent)
-                        for layout in artifact.candidate.layouts
+                        str(layout.src_dir) for layout in artifact.candidate.layouts
                     ),
                 ),
                 eq=["True"],
@@ -275,7 +274,10 @@ class TestsFlextInfraSemanticPublication:
         source = package / f"{u.Tests.family_public_module(alias)}.py"
         source.write_text("", encoding=c.DEFAULT_ENCODING)
         with infra.rope_workspace(root) as graph:
-            owner = graph.convention(source).implementation_class
+            owner = (
+                graph.convention(source).module_policy.project_prefix
+                + u.Infra.facade_family_declared_by(source.name).suffix
+            )
         source.write_text(
             f'class {owner}:\n    """Native public family owner."""\n\n'
             'class Payload:\n    """Native introducing declaration."""\n'
@@ -595,7 +597,9 @@ class TestsFlextInfraSemanticPublication:
             FlextInfraSemanticPublication.publish_semantic_artifact_plans(
                 plans,
                 repository_root=mod_workspace,
-                projection_roots=(mod_workspace,),
+                options=m.Infra.SemanticPublicationOptions(
+                    projection_roots=(mod_workspace,),
+                ),
             ),
         )
         output = tm.ok(
@@ -753,7 +757,9 @@ class TestsFlextInfraSemanticPublication:
         result = FlextInfraSemanticPublication.publish_semantic_artifact_plans(
             (plan,),
             repository_root=mod_workspace,
-            projection_roots=(mod_workspace,),
+            options=m.Infra.SemanticPublicationOptions(
+                projection_roots=(mod_workspace,),
+            ),
         )
         if foreign_parent:
             tm.fail(result, has="parent chain changed")
@@ -857,7 +863,7 @@ class TestsFlextInfraSemanticPublication:
         published = FlextInfraSemanticPublication.publish_semantic_artifact_plans(
             plans,
             repository_root=mod_workspace,
-            validator=validate,
+            options=m.Infra.SemanticPublicationOptions(validator=validate),
         )
         tm.that(len(previews), eq=1)
         if accepted:

@@ -71,6 +71,27 @@ class TestsFlextInfraFreshImportGate:
 
         tm.that(result.passed, eq=True, msg=" | ".join(result.errors))
 
+    def test_a_file_selection_reports_the_real_import_prerequisite(
+        self, tmp_path: Path
+    ) -> None:
+        """File selection runs the package proof, not an empty external command."""
+        project = self._project(tmp_path)
+        context = m.Infra.GateContext(
+            repository_root=project,
+            reports_dir=project / ".reports",
+        )
+        result = (
+            FlextInfraFreshImportGate(repository_root=project)
+            .check_files((project / c.PYPROJECT_FILENAME,), project, context)
+            .result
+        )
+
+        tm.that(result.passed, eq=False)
+        tm.that(
+            " | ".join(result.errors),
+            has="fresh-import target interpreter is missing",
+        )
+
     def test_a_declared_non_package_repository_is_not_selected(
         self,
         tmp_path: Path,

@@ -51,7 +51,7 @@ class FlextInfraUtilitiesSemanticCutoverClassScope:
         )
 
     @classmethod
-    def _evaluated_parts(
+    def evaluated_parts(
         cls,
         node: ast.AST,
     ) -> t.VariadicTuple[tuple[t.VariadicTuple[ast.AST], frozenset[str]]]:
@@ -99,7 +99,7 @@ class FlextInfraUtilitiesSemanticCutoverClassScope:
             if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
                 return {node.id}
             loads: set[str] = set()
-            for children, bound in cls._evaluated_parts(node):
+            for children, bound in cls.evaluated_parts(node):
                 loads.update(
                     {name for child in children for name in visit(child)} - bound,
                 )

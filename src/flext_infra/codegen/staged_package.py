@@ -240,39 +240,35 @@ class FlextInfraStagedPackage:
         workspace: Path,
         updates: t.MappingKV[Path, str | None],
         *,
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
-        workspaces: t.VariadicTuple[Path] = (),
-        modes: t.MappingKV[Path, int] | None = None,
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+        options: m.Infra.StageSourceOptions | None = None,
     ) -> p.Result[m.Infra.StageSourcePlan]:
         """Pin real project inputs for preview without writing live source.
 
         Args:
             workspace: The root of the Git workspace containing the projects.
             updates: Desired content by live path; None retires an artifact.
-            inputs: Original caller snapshots, never replaced by a fresh observation.
-            workspaces: Explicit non-overlapping composition roots for a joint view.
-            modes: Desired file-effect modes derived from captured module move sources.
-            declared_files: Original native file/absence witnesses for
-            current virtual effects.
+            options: Original snapshots, composition roots and native file effects.
 
         Returns:
             A result wrapping the planned stage source or the first failure encountered.
 
         """
+        options = options or m.Infra.StageSourceOptions()
         result_type = r[m.Infra.StageSourcePlan]
         workspace = workspace.resolve()
-        validated = cls._validated_effect_modes(declared_files, updates, modes)
+        validated = cls._validated_effect_modes(
+            options.declared_files, updates, options.modes
+        )
         if validated.failure:
             return result_type.from_failure(validated)
         modes = validated.value
-        if workspaces:
+        if options.workspaces:
             return cls._composed_scope_plan(
                 updates,
-                inputs,
-                workspaces,
+                options.inputs,
+                options.workspaces,
                 modes,
-                declared_files,
+                options.declared_files,
             )
         discovered = cls._normalized_updates(
             workspace,
@@ -285,7 +281,9 @@ class FlextInfraStagedPackage:
         if discovered.failure:
             return result_type.from_failure(discovered)
         normalized, layouts = discovered.value
-        pinned = cls._pinned_source_closure(workspace, normalized, layouts, inputs)
+        pinned = cls._pinned_source_closure(
+            workspace, normalized, layouts, options.inputs
+        )
         if pinned.failure:
             return result_type.from_failure(pinned)
         selected, states = pinned.value
@@ -306,15 +304,16 @@ class FlextInfraStagedPackage:
                     normalized,
                     states,
                     modes,
-                    declared_files,
+                    options.declared_files,
                 ),
                 layouts=tuple(selected),
                 workspace_packages=tuple(sorted(layouts)),
             )
         )
 
-    @staticmethod
+    @classmethod
     def _validated_effect_modes(
+        cls,
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
         updates: t.MappingKV[Path, str | None],
         modes: t.MappingKV[Path, int] | None,
@@ -342,16 +341,12 @@ class FlextInfraStagedPackage:
         }
         if modes is not None:
             effect_modes.update(modes)
-        modes = effect_modes
-        for plan in declared_files:
-            if (
-                isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
-                and u.Cli.atomic_plan_directory_chain(plan.before.target) != plan.before
-            ):
-                return result_type.fail(f"virtual source ancestry changed: {plan.path}")
-        if modes is not None and not set(modes).issubset(updates):
+        ancestry = cls._declared_ancestry_current(declared_files)
+        if ancestry.failure:
+            return result_type.from_failure(ancestry)
+        if not set(effect_modes).issubset(updates):
             return result_type.fail("candidate mode has no declared file effect")
-        return result_type.ok(modes)
+        return result_type.ok(effect_modes)
 
     @classmethod
     def _composed_scope_plan(
@@ -394,18 +389,20 @@ class FlextInfraStagedPackage:
                     for path, source in updates.items()
                     if path.is_relative_to(root)
                 },
-                inputs=tuple(
-                    state for state in inputs if state.path.is_relative_to(root)
-                ),
-                modes=None
-                if modes is None
-                else {
-                    path: mode
-                    for path, mode in modes.items()
-                    if path.is_relative_to(root)
-                },
-                declared_files=tuple(
-                    file for file in declared_files if file.path.is_relative_to(root)
+                options=m.Infra.StageSourceOptions(
+                    inputs=tuple(
+                        state for state in inputs if state.path.is_relative_to(root)
+                    ),
+                    modes={
+                        path: mode
+                        for path, mode in modes.items()
+                        if path.is_relative_to(root)
+                    },
+                    declared_files=tuple(
+                        file
+                        for file in declared_files
+                        if file.path.is_relative_to(root)
+                    ),
                 ),
             )
             if planned.failure:
@@ -733,7 +730,7 @@ class FlextInfraStagedPackage:
         actual = cls._actual_source_inventory(plan, owners)
         if actual.failure:
             return r[bool].from_failure(actual)
-        ancestry = cls._declared_ancestry_current(plan)
+        ancestry = cls._declared_ancestry_current(plan.declared_files)
         if ancestry.failure:
             return r[bool].from_failure(ancestry)
         expected = {item.path for item in plan.inputs if item.content is not None}
@@ -776,23 +773,25 @@ class FlextInfraStagedPackage:
 
     @staticmethod
     def _declared_ancestry_current(
-        plan: m.Infra.StageSourcePlan,
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> p.Result[bool]:
         """Reprove every declared virtual effect's directory-chain ancestry.
 
         Args:
-            plan: The planned candidate sources pinned to original states.
+            declared_files: Candidate effects pinned to their original ancestry.
 
         Returns:
-            Acceptance while every declared preimage keeps its ancestry.
+            Acceptance while every declared preimage keeps its ancestry, or
+            the original directory planning failure.
 
         """
-        for effect in plan.declared_files:
-            if (
-                isinstance(effect.before, m.Cli.AtomicDirectoryChainPlan)
-                and u.Cli.atomic_plan_directory_chain(effect.before.target)
-                != effect.before
-            ):
+        for effect in declared_files:
+            if not isinstance(effect.before, m.Cli.AtomicDirectoryChainPlan):
+                continue
+            observed = u.Cli.atomic_plan_directory_chain(effect.before.target)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            if observed.value != effect.before:
                 return r[bool].fail(f"virtual source ancestry changed: {effect.path}")
         return r[bool].ok(value=True)
 

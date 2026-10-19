@@ -302,7 +302,7 @@ class TestsFlextInfraRefactorMainCli:
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
         payload = u.Tests.toml_mapping(payload_result.unwrap())
-        files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
+        files = u.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
         return [u.Tests.toml_mapping(item) for item in files]
 
     @staticmethod

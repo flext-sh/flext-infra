@@ -28,6 +28,9 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
         Returns:
             Matched character ranges from the module's immutable source snapshot.
 
+        Raises:
+            AttributeError: If native matching fails to resolve a semantic attribute.
+
         """
         finder = cls.semantic_finder(module)
         try:

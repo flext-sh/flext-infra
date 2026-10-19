@@ -31,12 +31,12 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
     ``alias.Owner.member`` without introducing a competing owner binding.
     """
 
-    @staticmethod
+    @classmethod
     def _nesting_import_route(
+        cls,
         project: p.Infra.RopeProject,
-        provider: p.Infra.RopePyModule,
+        modules: t.Pair[p.Infra.RopePyModule, p.Infra.RopePyModule],
         owner: str,
-        origin: p.Infra.RopePyModule,
         sources: t.MappingKV[Path, str],
         *,
         consumer: str,
@@ -46,11 +46,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
         Returns:
             The elected ``(module, owner)`` import route.
 
-        Raises:
-            ValueError: If the native public owner package has no source or is
-                ambiguous.
-
         """
+        provider, origin = modules
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         module = provider.get_name()
         private = FlextInfraUtilitiesPrivateImportFacades.private_owner(module)
@@ -65,8 +62,18 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
             and runtime.same_name(original_owner, exposed)
         ):
             return module, owner
-        facades = FlextInfraUtilitiesPrivateImportFacades
         package = origin.get_name().partition(".")[0]
+        inventory = cls._public_owner_inventory(project, package, sources)
+        return cls._public_owner_route(
+            project, (module, package), (origin, original_owner), owner, inventory
+        )
+
+    @staticmethod
+    def _public_owner_inventory(
+        project: p.Infra.RopeProject,
+        package: str,
+        sources: t.MappingKV[Path, str],
+    ) -> t.MappingKV[str, t.Pair[str, bool]]:
         native_package = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
             project.get_module(package),
         )
@@ -92,19 +99,32 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
                 msg = f"ambiguous native public owner module: {name}"
                 raise ValueError(msg)
             inventory[name] = source, module_resource.name == c.Infra.INIT_PY
+        return inventory
+
+    @staticmethod
+    def _public_owner_route(
+        project: p.Infra.RopeProject,
+        names: t.Pair[str, str],
+        original: t.Pair[p.Infra.RopePyModule, p.Infra.RopePyName | None],
+        owner: str,
+        inventory: t.MappingKV[str, t.Pair[str, bool]],
+    ) -> t.Pair[str, str]:
+        module, package = names
+        origin, original_owner = original
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        facades = FlextInfraUtilitiesPrivateImportFacades
         bindings, exports = facades.declared_exports(inventory)
         qualified = f"{origin.get_name()}.{owner}"
         declared = facades.declared_public_reference(qualified, bindings, exports)
         if declared is not None:
-            public_module, public_name = declared
             native = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
-                project.get_module(public_module),
+                project.get_module(declared[0]),
             )
             if original_owner is not None and runtime.same_name(
                 original_owner,
-                native.get_attribute(public_name),
+                native.get_attribute(declared[1]),
             ):
-                return public_module, public_name
+                return declared
         reference = facades.public_reference(
             owners=facades.discover(inventory).get(package, ()),
             package=package,

@@ -37,19 +37,17 @@ class TestsFlextInfraInfraTypings:
         tm.that(list(items), eq=expected)
 
     @staticmethod
-    def test_public_adapter_factories_reuse_native_instances_and_reject_bad_shapes() -> (
-        None
-    ):
+    def test_public_adapters_reuse_instances_and_reject_bad_shapes() -> None:
         """Cached owner adapters retain validation rather than normalizing failures."""
         tm.that(u.json_mapping_adapter() is u.json_mapping_adapter(), eq=True)
         tm.that(u.json_list_adapter() is u.json_list_adapter(), eq=True)
         tm.that(u.json_value_adapter() is u.json_value_adapter(), eq=True)
         tm.that(u.str_sequence_adapter() is u.str_sequence_adapter(), eq=True)
-        with pytest.raises(ValueError):
+        with pytest.raises(c.ValidationError):
             u.json_mapping_adapter().validate_python(["not", "a", "mapping"])
-        with pytest.raises(ValueError):
+        with pytest.raises(c.ValidationError):
             u.json_value_adapter().validate_python(Path("not-json"))
-        with pytest.raises(ValueError):
+        with pytest.raises(c.ValidationError):
             u.str_sequence_adapter().validate_python([{"not": "a string"}])
 
     @staticmethod

@@ -298,7 +298,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         module: p.Infra.RopePyModule,
     ) -> t.VariadicTuple[tuple[int, int, str, p.Infra.RopeScope]]:
         """Return only string constants occupying native annotation type positions."""
-        protected = cls.type_payload_ranges(source, module)
+        protected: frozenset[t.Pair[int, int]] | None = None
         literals = FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(source)
         selected: list[tuple[int, int, str, p.Infra.RopeScope]] = []
         for begin, end, line in cls.annotation_regions(source, module):
@@ -310,6 +310,8 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             for start, stop, _metadata in literals:
                 if not begin <= start < stop <= end or source[start] == "#":
                     continue
+                if protected is None:
+                    protected = cls.type_payload_ranges(source, module)
                 if any(first <= start and stop <= last for first, last in protected):
                     continue
                 literal = cls.string_constant(source[start:stop])
@@ -382,20 +384,31 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             # The native primary of a head word excludes its own ``.member``
             # chain; extend it forward so every emitted region is maximal and
             # no wrapper-alias prefix is ever split mid-path.
-            while source[end : end + 1] == ".":
-                following = end + 1
-                while following < len(source) and source[following].isspace():
-                    following += 1
-                if following >= len(source) or not (source[following].isidentifier()):
-                    break
-                _member_first, member_last = words.get_word_range(following)
-                if member_last <= following:
-                    break
-                end = member_last
+            end = cls._primary_chain_end(source, words, end)
             if all(part.isidentifier() for part in source[begin:end].split(".")):
                 regions.add((begin, end))
             cursor = last
         return tuple(sorted(regions))
+
+    @staticmethod
+    def _primary_chain_end(source: str, words: p.Infra.RopeWorder, end: int) -> int:
+        """Extend an identifier primary over the following native member chain.
+
+        Returns:
+            The end offset of the maximal advancing identifier chain.
+
+        """
+        while source[end : end + 1] == ".":
+            following = end + 1
+            while following < len(source) and source[following].isspace():
+                following += 1
+            if following >= len(source) or not source[following].isidentifier():
+                break
+            _member_first, member_last = words.get_word_range(following)
+            if member_last <= following:
+                break
+            end = member_last
+        return end
 
     @classmethod
     def scoped_quoted_type_references(

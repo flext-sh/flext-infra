@@ -193,7 +193,6 @@ class TestsFlextInfraCodegenGeneration:
         lazy_map: t.LazyAliasMap,
         *,
         eager_dunders: t.LazyAliasMap | None = None,
-        child_packages: t.StrSequence = (),
         package_dir: Path | None = None,
     ) -> m.Infra.LazyInitPlan:
         """Build one validated render plan for a synthetic package path.
@@ -216,7 +215,7 @@ class TestsFlextInfraCodegenGeneration:
             lazy_map=MappingProxyType(dict(lazy_map)),
             eager_dunders=MappingProxyType(dict(eager_dunders or {})),
             inline_constants=MappingProxyType({}),
-            child_packages_for_lazy=child_packages,
+            child_packages_for_lazy=(),
             excluded_lazy_names=("internal_only",),
         )
 
@@ -232,8 +231,7 @@ class TestsFlextInfraCodegenGeneration:
             eager_dunders=MappingProxyType({
                 "__version__": ("demo_pkg.__version__", "__version__"),
             }),
-            child_packages=("demo_pkg.services",),
-        )
+        ).model_copy(update={"child_packages_for_lazy": ("demo_pkg.services",)})
 
         content = FlextInfraCodegenGeneration.render_init(plan)
 

@@ -348,7 +348,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
                         move.target_module,
                         request.class_name,
                     )
-            return cls._checked_type_reference(scope, expression)
+            return cls.checked_type_reference(scope, expression)
 
         updated = cls.rewrite_quoted_types(
             project,

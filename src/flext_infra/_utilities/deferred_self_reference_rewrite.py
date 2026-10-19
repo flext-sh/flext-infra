@@ -165,7 +165,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
     def _deferred_type_nodes(expression: ast.expr) -> t.SequenceOf[ast.expr]:
         """Walk one deferred annotation without descending into call arguments.
 
-        Names inside nested calls (``u.Field(default_factory=...)``,
+        Names inside nested calls (``m.Field(default_factory=...)``,
         ``m.BeforeValidator(...)``) are runtime value positions, not type
         positions: pydantic resolves them through the parent frame locals at
         deferred-evaluation time, and static checkers evaluate them in the
@@ -202,7 +202,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
         """Repair owner-qualified siblings in one annotation's value positions.
 
         Every call reached through the annotation's type positions carries
-        value arguments (``u.Field(default_factory=...)``); a sibling there
+        value arguments (``m.Field(default_factory=...)``); a sibling there
         must stay bare, so ``Owner.X`` is rewritten back to the ``X`` the
         parent-frame locals resolve.
 
@@ -233,7 +233,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
     ) -> None:
         """Append one statement's deferred annotations, then descend.
 
-        Names inside nested calls (``u.Field(default_factory=...)``,
+        Names inside nested calls (``m.Field(default_factory=...)``,
         ``m.BeforeValidator(...)``) are runtime value positions, not type
         positions: pydantic resolves them through the parent frame locals at
         deferred-evaluation time, and static checkers evaluate them in the

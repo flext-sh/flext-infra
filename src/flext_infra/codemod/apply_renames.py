@@ -224,8 +224,7 @@ class FlextInfraApplyRenames:
                 changes = FlextInfraRenameSymbols.plan(
                     project,
                     python,
-                    pairs,
-                    params.bindings,
+                    (pairs, params.bindings),
                     rename_definitions=params.rename_definitions,
                     resource_paths=tuple(sorted(selected)),
                 )

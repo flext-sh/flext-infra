@@ -19,6 +19,9 @@ from typing import ClassVar
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
+from flext_infra._utilities._git.semantic_identity import (
+    FlextInfraUtilitiesGitSemanticIdentityMixin,
+)
 from flext_infra._utilities.protected_edit_linting import (
     FlextInfraUtilitiesProtectedEditLinting,
 )
@@ -1240,11 +1243,12 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def refactor_report_evidence_root(root: Path) -> p.Result[Path]:
-        """Elect the existing Git control plane without mutating source inputs."""
-        from flext_infra._utilities._git.semantic_identity import (
-            FlextInfraUtilitiesGitSemanticIdentityMixin,
-        )
+        """Elect the existing Git control plane without mutating source inputs.
 
+        Returns:
+            The exact worktree Git directory, or the original identity failure.
+
+        """
         return FlextInfraUtilitiesGitSemanticIdentityMixin.exact_worktree_root(
             root
         ).map(lambda identity: identity.git_dir)

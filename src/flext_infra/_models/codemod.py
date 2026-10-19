@@ -20,6 +20,16 @@ from flext_infra._models import FlextInfraModelsBase
 class FlextInfraModelsCodemod:
     """Typed contracts for native codemod scans and mutation reports."""
 
+    class ContractAdmissionOptions(FlextInfraModelsBase.FrozenArbitrary):
+        """Independent native admission selectors for one contract planning pass."""
+
+        annotation_only: bool = m.Field(
+            default=False, description="Limit admission to annotation-only contracts"
+        )
+        class_alias_only: bool = m.Field(
+            default=False, description="Limit admission to class-alias contracts"
+        )
+
     class AstGrepCapture(FlextInfraModelsBase.FrozenArbitrary):
         """Authenticate an occurrence against native UTF-8 capture coordinates."""
 
@@ -245,11 +255,11 @@ class FlextInfraModelsCodemod:
                 description="Native Rope identity constraints or admitted alternatives"
             ),
         ]
-        imports: t.MappingKV[str, str] = u.Field(
+        imports: t.MappingKV[str, str] = m.Field(
             default_factory=u.empty(TypeForm(t.MappingKV[str, str])),
             description="Destination bindings and their native import declarations",
         )
-        bindings: t.MappingKV[str, str] = u.Field(
+        bindings: t.MappingKV[str, str] = m.Field(
             default_factory=u.empty(TypeForm(t.MappingKV[str, str])),
             description="Destination expressions and their required Rope identities",
         )
@@ -271,6 +281,12 @@ class FlextInfraModelsCodemod:
         readonly_contract: t.NonEmptyStr | None = m.Field(
             default=None,
             description="Capture requiring a proven read-only collection origin",
+        )
+        deferred_contract: t.NonEmptyStr | None = m.Field(
+            default=None,
+            description=(
+                "Capture resolved by a canonical typed factory after declaration"
+            ),
         )
         readonly_origins: t.VariadicTuple[str] = m.Field(
             default=(),
@@ -343,11 +359,13 @@ class FlextInfraModelsCodemod:
                 if capture is not None and f"${{{capture}}}" not in self.pattern:
                     msg = "native default proof must name a pattern capture"
                     raise ValueError(msg)
-            if (self.required_field or self.private_attribute) and (
+            field_metadata = self.required_field or self.private_attribute
+            invalid_field_mode = self.required_field and self.private_attribute
+            if field_metadata and (
                 self.call_target is None
                 or not self.model_bases
                 or self.scope_kinds != (c.Infra.RopeScopeKind.CLASS,)
-                or (self.required_field and self.private_attribute)
+                or invalid_field_mode
             ):
                 msg = (
                     "native field metadata requires one mode, a callee "

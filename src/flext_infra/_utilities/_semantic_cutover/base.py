@@ -59,6 +59,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
         findings: t.SequenceOf[m.Infra.ModOccurrence] = (),
+        import_normalizer: p.Infra.SourceImportNormalizer | None = None,
     ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
         """Plan one phase without effects; the first exception escapes unchanged.
 
@@ -95,6 +96,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                     rope_workspace,
                     sources,
                     selected,
+                    import_normalizer,
                 )
             case (
                 c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT
@@ -159,6 +161,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
         selected: t.SequenceOf[m.Infra.ModOccurrence],
+        import_normalizer: p.Infra.SourceImportNormalizer | None,
     ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
         root = rope_workspace.repository_root
         dispatch = {
@@ -175,7 +178,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                 cls._plan_rope_contracts(rope_workspace, sources)
             ),
             c.Infra.SemanticCutoverPhase.COMPAT_ALIAS: lambda: cls._plan_alias_cutover(
-                rope_workspace, sources, selected
+                rope_workspace, sources, selected, import_normalizer
             ),
             c.Infra.SemanticCutoverPhase.PRIVATE_IMPORT: lambda: (
                 cls._plan_private_imports(root, sources, selected)
@@ -199,6 +202,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
         selected: t.SequenceOf[m.Infra.ModOccurrence],
+        import_normalizer: p.Infra.SourceImportNormalizer | None,
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Compose model-alias retirement with existing API-alias policy.
 
@@ -213,7 +217,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             return aliases
         working = dict(sources)
         working.update((edit.file_path, edit.updated_source) for edit in aliases.value)
-        api = cls._plan_api_aliases(workspace, working, selected)
+        api = cls._plan_api_aliases(workspace, working, selected, import_normalizer)
         if api.failure:
             return api
         working.update((edit.file_path, edit.updated_source) for edit in api.value)

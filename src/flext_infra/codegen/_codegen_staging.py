@@ -50,7 +50,7 @@ class FlextInfraCodegenStaging:
         projects = tuple(dict.fromkeys(plan.project for plan in plans))
         if len(projects) > 1:
             return cls._prepare_split_project_plans(workspace, plans, projects)
-        if not any(
+        if not projects or not any(
             plan.path.suffix in {".py", ".pyi"} and plan.desired_content is not None
             for plan in plans
         ):
@@ -236,6 +236,7 @@ class FlextInfraCodegenStaging:
             workspace: Shared read-only workspace root of the plans.
             staged_files: Already staged replacements to bind into the view.
             plans: Declared file effects of the prepared publication.
+            session: Active journal authorizing the candidate input states.
 
         Returns:
             The planned candidate sources, or the first planning failure.
@@ -266,14 +267,16 @@ class FlextInfraCodegenStaging:
         planned = FlextInfraStagedPackage.plan_sources(
             workspace,
             updates,
-            inputs=current_inputs.value,
-            workspaces=tuple(
-                scope
-                for scope in scopes
-                if not any(
-                    scope != parent and scope.is_relative_to(parent)
-                    for parent in scopes
-                )
+            options=m.Infra.StageSourceOptions(
+                inputs=current_inputs.value,
+                workspaces=tuple(
+                    scope
+                    for scope in scopes
+                    if not any(
+                        scope != parent and scope.is_relative_to(parent)
+                        for parent in scopes
+                    )
+                ),
             ),
         )
         if planned.failure:

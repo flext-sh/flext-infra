@@ -206,7 +206,11 @@ class TestsFlextInfraCodemodDuplicateApply:
                     rope,
                     (group,),
                     sources=sources,
-                    source_states=states,
+                    receipt=m.Infra.CodegenPhaseAnalysis(
+                        phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                        inputs=states,
+                        files=(),
+                    ),
                 )
             )
             tm.that(planned.edits, empty=False)

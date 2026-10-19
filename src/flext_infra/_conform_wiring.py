@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING
 
 from flext_infra import m, r, t, u
 from flext_infra.codegen import (
-    FlextInfraCodegenConform,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
@@ -43,9 +42,9 @@ class FlextInfraConformWiring:
 
     @staticmethod
     def codegen_footprint(
-        request: m.Infra.CodegenConformRequest,
+        request: m.Infra.CodegenFootprintRequest,
     ) -> p.Result[str]:
-        """Inspect recorded authority and the public plan without any writer route.
+        """Inspect recorded effects against physical topology without planning writes.
 
         Returns:
             The resulting ``p.Result[str]``.
@@ -57,7 +56,7 @@ class FlextInfraConformWiring:
         observed = transaction.inspect_journal()
         if observed.failure:
             return r[str].from_failure(observed)
-        # Preserve the actual journal receipt even if subsequent planning fails.
+        # Preserve recorded authority even if topology or authorization fails.
         u.Cli.info(observed.value.model_dump_json())
         policy = transaction.participant_policy()
         if policy.failure:
@@ -75,33 +74,11 @@ class FlextInfraConformWiring:
         authorized = bounded.validate_footprint(footprint)
         if authorized.failure:
             return r[str].from_failure(authorized)
-        footprint = authorized.value
-        planned = FlextInfraCodegenConform(
-            repository_root=request.root,
-            state=m.Infra.CodegenConformState(repository_root=request.root),
-        ).plan(request)
-        if planned.failure:
-            return r[str].from_failure(planned)
-        current = bounded.validate_footprint(footprint)
-        if current.failure:
-            return r[str].from_failure(current)
         return r[str].ok(
-            current.value.model_copy(
+            authorized.value.model_copy(
                 update={
                     "authorized_roots": tuple(
                         root.target for root in policy.value.roots
-                    ),
-                    "planned_roots": tuple(
-                        dict.fromkeys((
-                            *(
-                                environment.project_root
-                                for environment in planned.value.uv_environments
-                            ),
-                            *(file.project for file in planned.value.files),
-                        )),
-                    ),
-                    "planned_destinations": tuple(
-                        file.path for file in planned.value.files
                     ),
                 },
             ).model_dump_json(),

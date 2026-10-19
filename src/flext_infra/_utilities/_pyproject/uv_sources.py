@@ -131,6 +131,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
             for item in members
             if item.role == "supplier"
         }
+        root_overrides = cls._resolution_explicit_overrides(state)
         for supplier in (item for item in members if item.role == "supplier"):
             name = canonicalize_name(supplier.repository.distribution)
             payload = cls._resolution_project_payload(supplier)
@@ -161,7 +162,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 and (
                     not isinstance(entry, str)
                     or FlextInfraUtilitiesDependencies.dep_name(entry)
-                    not in supplied_names
+                    not in supplied_names | root_overrides
                 )
             )
             # Replace source provenance only; preserve bounds, extras and markers.
@@ -554,16 +555,32 @@ class FlextInfraUtilitiesPyprojectUvSources(
     def _resolution_override_wire(
         entries: t.SequenceOf[str | m.Infra.UvScopedOverride],
     ) -> t.JsonValueList:
-        """Serialize the ordered native override variants through their model.
+        """Elect later global declarations while preserving native scoped policy.
 
         Returns:
-            Native strings and scoped tables without changing scope or operands.
+            Native overrides with project/local global values above inherited ones.
 
         """
         parsed = m.Infra.UvOverrideEntries.model_validate(list(entries), strict=True)
+        selected: list[str | m.Infra.UvScopedOverride] = []
+        seen: set[t.Pair[str, str | None]] = set()
+        for entry in reversed(parsed.root):
+            if isinstance(entry, str):
+                requirement = Requirement(entry)
+                identity = (
+                    canonicalize_name(requirement.name),
+                    str(requirement.marker) if requirement.marker is not None else None,
+                )
+                if identity in seen:
+                    continue
+                seen.add(identity)
+            selected.append(entry)
+        elected = m.Infra.UvOverrideEntries.model_validate(
+            list(reversed(selected)), strict=True
+        )
         return list(
             u.json_list_adapter().validate_python(
-                parsed.model_dump(mode="json", exclude_none=True),
+                elected.model_dump(mode="json", exclude_none=True),
             )
         )
 

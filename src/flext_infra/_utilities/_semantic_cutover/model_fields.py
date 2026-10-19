@@ -38,7 +38,15 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
     def _contract_arguments(
         rule: p.Infra.RopeContractRule,
     ) -> t.MappingKV[str, str | t.StrSequence]:
-        """Constrain ordinary captures before native call admission."""
+        """Constrain ordinary captures before native call admission.
+
+        Returns:
+            The argument constraints that remain applicable to the native call.
+
+        Raises:
+            ValueError: If an ownership transfer lacks one native receiver constraint.
+
+        """
         if rule.ownership_transfer is not None:
             if len(rule.arguments) != 1 or not all(
                 isinstance(value, str) and value.startswith("name=")
@@ -65,7 +73,15 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         module: p.Infra.RopePyModule,
         match: p.Infra.RopeContractMatch,
     ) -> bool:
-        """Prove native model metadata without evaluating authored expressions."""
+        """Prove native model metadata without evaluating authored expressions.
+
+        Returns:
+            Whether the captured field metadata satisfies the native rule.
+
+        Raises:
+            ValueError: If the native field metadata has no original callee AST.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         tree = module.get_ast()
         if rule.call_target is None or not isinstance(tree, ast.AST):
@@ -85,10 +101,12 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
             )
         )
         constraint = rule.arguments.get(rule.call_target)
-        if invocation is None or constraint is None:
-            return False
-        if not FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture(
-            project, module, invocation.func, constraint, name=rule.call_target
+        if (
+            invocation is None
+            or constraint is None
+            or not FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture(
+                project, module, invocation.func, constraint, name=rule.call_target
+            )
         ):
             return False
         declaration = next(

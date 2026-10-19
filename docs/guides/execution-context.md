@@ -197,6 +197,13 @@ base order declared in their configured private family. Protocol projection keep
 its consumer-based ownership resolution. The utility path delegates directly to
 the declaration planner. Static and runtime consumer checks retain their own
 import-failure verdicts.
+Generated protocol and model namespace assignments are derived output, not new
+contract declarations. When an assignment resolves to an exact inherited class,
+projection removes that binding and inherits the canonical private owners in C3
+order, including their declared overrides. A stale renamed alias cannot publish
+itself or shadow a different inherited contract. The generated ownership marker
+and native class identity are both required; unrelated namespace members remain
+unchanged, and contradictory authored class bindings still fail before publication.
 Generated Python imports use their absolute native package owner. The planner
 selects exports once; rendering groups those declarations without another
 name-based exclusion policy. Compact lazy-loader targets remain loader data.
@@ -638,6 +645,9 @@ configured view paths while the workspace supplies the UV binary and Python
 runtime. Final convergence reconciles those locks without advancing dependency
 references again. Only the elected workspace runtime receives an installation;
 member runtimes are not provisioned separately.
+Editable-supplier upgrades use that same member-lock stage without bumping or
+provisioning the root supplier's tools. Preserving the shared runtime's pins does
+not exempt a writable member's standalone lock from its declared tool manifest.
 It runs generation's producer half, relocks the projected manifests, reinstalls
 and verifies the resulting runtime before generation's activation half. A
 requirement or Mise self-management release that only the upgraded generator
@@ -711,6 +721,17 @@ with their existing editable policy. Authored native workspace declarations and
 custom sources are preserved rather than erased by a generic FLEXT rewrite.
 Regenerate the owner with `make gen` and update its locks with `make upg` when
 the declared composition changes.
+
+Resolver-wide source election is explicit policy in
+`Infra.codegen.toolchain.uv_override_dependencies`, not inferred from an installed
+SDK or a direct requirement. The strict library, project and local config layers
+append their declarations in that order. Rendering elects the last global override
+for each normalized distribution and marker, preserving other marker variants and
+native scoped tables. An editable supplier cannot replace the resolution root's
+global policy for a distribution. The same elected policy reaches package metadata
+and every native resolution view; no repository-specific resolver branch is needed.
+Unconfigured conflicting direct and transitive sources remain native UV failures.
+
 Runtime requirements are calculated from the target's import use through the native
 dependency analysis. Generation consumes the target's authenticated PEP 621
 projection; neither a project-name catalog nor an upstream dependency profile may
@@ -1594,8 +1615,15 @@ tree. Equal desired bytes alone do not authorize this path.
 Journal footprint inspection and authorization hold the same root journal lease
 as publication. Authorization observes the current journal under that lease;
 an earlier read-only snapshot does not become a global generation precondition.
-Planning releases the lease, then reports a newly authorized observation. Recovery
-and publication retain their own exact journal receipts and physical-state guards.
+The public footprint diagnostic authorizes the recorded effects against current
+physical participant policy, then returns that current observation with its journal
+identity and pending-effect fields. It never invokes prospective conform planning,
+source scans or report publication; its root-only request has no generation
+selectors. The native journal lease retains its persistent lock identity, but no
+participant lease or recovery is acquired. Recovery and publication retain their
+own exact journal receipts and physical-state guards. Generation planning reports
+continue to use the compact `CodegenPlanningReport` evidence projection rather than
+serializing native file-plan authorization snapshots.
 
 Documentation generation publishes one scope batch before capturing and rendering
 the next scope. A member batch captures its own sources, the shared root guides and

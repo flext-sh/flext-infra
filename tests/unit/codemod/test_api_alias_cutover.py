@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, infra, m, t
+from flext_infra.refactor import FlextInfraImportNormalization
 from tests import tm, u
 
 
@@ -23,7 +24,12 @@ class TestsFlextInfraApiAliasCutover:
         tmp_path: Path,
         consumer: str,
     ) -> t.Pair[Path, t.MappingKV[Path, str]]:
-        """Build a real local foundation with the existing lazy root publisher."""
+        """Build a real local foundation with the existing lazy root publisher.
+
+        Returns:
+            The project root and its declared source contents.
+
+        """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         sources = {
             package / "foundation.py": (
@@ -45,8 +51,9 @@ class TestsFlextInfraApiAliasCutover:
                 '__all__ = ["FlextSampleService", "s"]\n'
             ),
             package / "consumer.py": consumer.replace("sample_pkg", package.name),
-            package
-            / "kernel.py": "from flext_core import s\nclass Kernel(s[str]):\n    pass\n",
+            package / "kernel.py": (
+                "from flext_core import s\nclass Kernel(s[str]):\n    pass\n"
+            ),
         }
         for path, source in sources.items():
             path.write_text(source, encoding=c.DEFAULT_ENCODING)
@@ -82,6 +89,7 @@ class TestsFlextInfraApiAliasCutover:
             edits = tm.ok(
                 u.Infra.plan_semantic_cutover(
                     c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
+                    import_normalizer=FlextInfraImportNormalization.normalize_source,
                     rope_workspace=workspace,
                     sources=sources,
                 )
@@ -114,6 +122,7 @@ class TestsFlextInfraApiAliasCutover:
                 tm.ok(
                     u.Infra.plan_semantic_cutover(
                         c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
+                        import_normalizer=FlextInfraImportNormalization.normalize_source,
                         rope_workspace=workspace,
                         sources=updated,
                     )
@@ -130,7 +139,8 @@ class TestsFlextInfraApiAliasCutover:
                     f"import sys; sys.path.insert(0, {str(owner.parent.parent)!r}); "
                     f"from {owner.parent.name} import FlextSampleService; "
                     f"from {owner.parent.name}.consumer import Consumer; "
-                    f"from pathlib import Path; service = Consumer(repository_root={str(root)!r}); "
+                    "from pathlib import Path; "
+                    f"service = Consumer(repository_root={str(root)!r}); "
                     f"assert service.repository_root == Path({str(root)!r}); "
                     "assert service.delayed() is FlextSampleService"
                 ),
@@ -143,7 +153,10 @@ class TestsFlextInfraApiAliasCutover:
         ("consumer", "reason"),
         [
             (
-                "from sample_pkg import s\ndef capture(FlextSampleService):\n    return s\n",
+                (
+                    "from sample_pkg import s\n"
+                    "def capture(FlextSampleService):\n    return s\n"
+                ),
                 "shadowed",
             ),
             ('import sample_pkg\nvalue = getattr(sample_pkg, "s")\n', "reflective"),
@@ -164,6 +177,7 @@ class TestsFlextInfraApiAliasCutover:
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
+                import_normalizer=FlextInfraImportNormalization.normalize_source,
                 rope_workspace=workspace,
                 sources=sources,
             )
@@ -217,6 +231,7 @@ class TestsFlextInfraApiAliasCutover:
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
+                import_normalizer=FlextInfraImportNormalization.normalize_source,
                 rope_workspace=rope,
                 sources=sources,
                 findings=(finding,),
@@ -312,6 +327,7 @@ class TestsFlextInfraApiAliasCutover:
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
+                import_normalizer=FlextInfraImportNormalization.normalize_source,
                 rope_workspace=rope,
                 sources=sources,
                 findings=(finding,),
@@ -328,6 +344,7 @@ class TestsFlextInfraApiAliasCutover:
             tm.that(rewritten[owner], lacks="sample = FlextSample")
             converged = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
+                import_normalizer=FlextInfraImportNormalization.normalize_source,
                 rope_workspace=rope,
                 sources=rewritten,
                 findings=(finding,),
@@ -442,6 +459,7 @@ class TestsFlextInfraApiAliasCutover:
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
+                import_normalizer=FlextInfraImportNormalization.normalize_source,
                 rope_workspace=rope,
                 sources=sources,
                 findings=(finding,),
@@ -511,6 +529,7 @@ class TestsFlextInfraApiAliasCutover:
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
+                import_normalizer=FlextInfraImportNormalization.normalize_source,
                 rope_workspace=rope,
                 sources=sources,
                 findings=(finding,),

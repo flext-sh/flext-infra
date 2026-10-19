@@ -31,9 +31,7 @@ class FlextInfraSemanticPublication:
         plans: t.SequenceOf[m.Infra.CodegenFilePlan],
         *,
         repository_root: Path,
-        validator: Callable[[Path], p.Result[bool]] | None = None,
-        projection_roots: t.VariadicTuple[Path] = (),
-        dependency_group: str | None = None,
+        options: m.Infra.SemanticPublicationOptions | None = None,
         publish: bool = True,
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Publish exact create/rewrite/remove effects through the shared journal.
@@ -60,11 +58,9 @@ class FlextInfraSemanticPublication:
         return cls._publish_joint_analysis(
             analysis,
             repository_root=repository_root,
-            options=m.Infra.SemanticPublicationOptions(
-                projection_roots=projection_roots,
-                validator=validator,
-                dependency_group=dependency_group,
-            ),
+            options=m.Infra.SemanticPublicationOptions()
+            if options is None
+            else options,
             publish=publish,
         )
 
@@ -445,13 +441,15 @@ class FlextInfraSemanticPublication:
             lambda view_root, _candidate: (
                 r[bool].ok(value=True) if validator is None else validator(view_root)
             ),
-            inputs=analysis.inputs,
-            workspaces=workspaces,
-            modes={
-                item.path: item.desired_mode
-                for item in analysis.files
-                if item.desired_mode is not None
-            },
+            options=m.Infra.CodegenSourcePreviewOptions(
+                inputs=analysis.inputs,
+                workspaces=workspaces,
+                modes={
+                    item.path: item.desired_mode
+                    for item in analysis.files
+                    if item.desired_mode is not None
+                },
+            ),
         )
         if accepted.failure:
             return r[bool].from_failure(accepted)
@@ -559,6 +557,7 @@ class FlextInfraSemanticPublication:
             analysis.phase,
             analysis.files,
             publication_policy=m.Infra.CodegenPhasePublicationPolicy(
+                directories=(),
                 staged_validator=lambda current, staged: (
                     FlextInfraCodegenStaging.validate_python_plans(
                         current,

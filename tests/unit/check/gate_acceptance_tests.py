@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, m, p
+from flext_infra import c, config, m, p, t
 from flext_infra.check import FlextInfraGateRegistry, FlextInfraWorkspaceChecker
 from flext_infra.gates import (
     FlextInfraMarkdownGate,
@@ -83,14 +83,14 @@ class TestsFlextInfraGateAcceptance:
     def test_tooling_contract_rejects_retired_bandit_catalog() -> None:
         """An owner-specific security exemption cannot return through config."""
         tools = config.Infra.tooling.tools
-        payload = tools.model_dump(
+        payload: t.JsonDict = tools.model_dump(
             mode="json",
             by_alias=True,
             exclude_computed_fields=True,
         )
-        payload["bandit"] = {"authorized-exceptions": []}
+        payload["bandit"] = {"authorized-exceptions": list[t.JsonValue]()}
         with pytest.raises(m.ValidationError, match="bandit"):
-            type(tools).model_validate_json(tm.ok(u.Cli.json_dumps(payload)))
+            type(tools).model_validate(payload)
 
     @staticmethod
     @pytest.mark.parametrize("verdict", [False, True])
@@ -115,12 +115,11 @@ class TestsFlextInfraGateAcceptance:
             locations=(location,),
             related_locations=(location,),
         )
-        diagnostic: p.Infra.Issue = issue
         params = m.Infra.GateExecutionParams(
             project_dir=tmp_path,
             verdict=verdict,
             outcome=c.Infra.ToolOutcome.FINDINGS,
-            issues=(diagnostic,),
+            issues=(issue,),
             raw_output="native diagnostic\n",
             started=1.0,
         )

@@ -149,6 +149,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             workspace: Loaded workspace specification.
             planned: Desired file plans of the complete repository plan.
             sources: Mutable source list extended with every consulted state.
+            selected_names: Normalized distribution names selected for resolution.
 
         Returns:
             The owner-first resolution projects, or the first collection

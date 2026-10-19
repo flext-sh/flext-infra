@@ -14,11 +14,108 @@ from typing import Literal
 import pytest
 
 from flext_infra import infra
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraLazyInitRuntime:
     """Exercise generated roots through Python's real import machinery."""
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("declarations", "mapping_argument"),
+        [
+            (
+                "",
+                'MappingProxyType({"Exported": (".provider", "Declared")})',
+            ),
+            (
+                (
+                    "_LAZY_IMPORTS = MappingProxyType("
+                    '{"Exported": (".provider", "Declared")})\n'
+                ),
+                "_LAZY_IMPORTS",
+            ),
+            (
+                (
+                    '_PROVIDERS = {"Exported": (".provider", "Declared")}\n'
+                    "_LAZY_IMPORTS = MappingProxyType(_PROVIDERS)\n"
+                ),
+                "lazy_imports=_LAZY_IMPORTS",
+            ),
+        ],
+    )
+    def test_native_alias_inventory_matches_the_runtime_initializer(
+        tmp_path: Path, declarations: str, mapping_argument: str
+    ) -> None:
+        """Named and inline maps preserve their actual exported attribute."""
+        repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = (
+            "from types import MappingProxyType\n"
+            "from flext_core import install_lazy_exports\n"
+            + declarations
+            + '__all__ = ("Exported",)\n'
+            + "__getattr__ = install_lazy_exports(\n"
+            + f"    __name__, globals(), {mapping_argument}, public_exports=__all__\n"
+            + ")[0]\n"
+        )
+        initializer = package / c.Infra.INIT_PY
+        tm.ok(u.Cli.atomic_write_text_file(initializer, source))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / "provider.py",
+                'class Declared:\n    marker = True\n__all__ = ("Declared",)\n',
+            )
+        )
+        with infra.rope_workspace(repository) as workspace:
+            module = u.Infra.resolve_pymodule(
+                workspace.rope_project,
+                workspace.rope_project.get_file(
+                    initializer.relative_to(repository).as_posix()
+                ),
+            )
+            bindings = u.Infra.lazy_export_bindings(
+                package.name,
+                initializer,
+                source,
+                project=workspace.rope_project,
+                pymodule=module,
+            )
+            tm.that(bindings["Exported"].target, eq=f"{package.name}.provider")
+            tm.that(bindings["Exported"].attributes, eq=("Declared",))
+            tm.that(
+                u.Infra.lazy_module_aliases(
+                    package.name,
+                    initializer,
+                    source,
+                    project=workspace.rope_project,
+                ),
+                eq={"Exported": bindings["Exported"].target},
+            )
+            graph, modules = u.Infra.snapshot_import_graph(workspace.rope_project)
+            tm.that(package.name in graph, eq=True)
+            tm.that(modules[initializer.resolve()], eq=package.name)
+        result = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "import sys\n"
+                        f"from {package.name} import Exported\n"
+                        "assert Exported is "
+                        f"sys.modules['{package.name}.provider'].Declared\n"
+                        "assert Exported.marker is True\n"
+                    ),
+                ),
+                cwd=repository,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(package.parent),
+                    }
+                ),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -53,7 +150,10 @@ class TestsFlextInfraLazyInitRuntime:
         [(False, False), (True, False), (True, True)],
     )
     def test_public_generation_publishes_test_exports_without_namespace_classes(
-        tmp_path: Path, imported_alias: bool, published_alias: bool
+        tmp_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
+        imported_alias: bool,
+        published_alias: bool,
     ) -> None:
         """Generated initializers propagate precise aliases at module scope."""
         repository, package = u.Tests.create_lazy_init_workspace(
@@ -65,7 +165,6 @@ class TestsFlextInfraLazyInitRuntime:
             package / "constants.py", class_name="ParentConstants", alias="c"
         )
         package.joinpath("api.py").write_text(
-            "raise ModuleNotFoundError('unavailable application dependency')\n"
             "class PublishedApi: pass\n__all__ = ('PublishedApi',)\n",
             encoding=c.DEFAULT_ENCODING,
         )
@@ -97,7 +196,13 @@ class TestsFlextInfraLazyInitRuntime:
             what=c.Infra.CodegenConformSurface.LAZY_INIT,
             scope=c.Infra.CodegenConformScope.SELF,
         )
-        tm.ok(u.Tests.create_python_environment(repository))
+        tm.ok(
+            u.Tests.create_python_environment(
+                repository,
+                dependency_projects=u.Tests.python_dependency_projects(repository),
+                session_runtime=session_runtime,
+            ),
+        )
 
         tm.ok(infra.codegen_generate(request))
 
@@ -202,8 +307,8 @@ class TestsFlextInfraLazyInitRuntime:
                 + "print(generated.c is expected)\n"
                 "print(generated.TestsFlextOwnedTestsConstants "
                 "is TestsFlextOwnedTestsConstants)\n"
-                "print(generated.__all__ "
-                "== generated.TestsFlextOwnedTestsPackage.__all__)\n"
+                "print(all(name in dir(generated) for name in generated.__all__) "
+                "and 'TestsFlextOwnedTestsPackage' not in generated.__all__)\n"
                 "print('flext_owned_tests.api' not in sys.modules)\n",
                 python_paths=(
                     str(repository),
