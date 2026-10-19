@@ -517,6 +517,89 @@ def test_specialized_alias_closes_over_its_model_payload(
     )
 
 
+def test_recursive_member_annotations_resolve_through_real_owner_names(
+    member_root: t.DirectoryPath,
+) -> None:
+    """Mutual model references remain resolvable without own-facade reentry."""
+    package = member_root / "src" / MEMBER
+    domain = package / "_models/domain.py"
+    source = (
+        domain
+        .read_text(encoding=c.DEFAULT_ENCODING)
+        .replace(
+            "class DemoMemberModels(m):",
+            "class NodeA(m.FrozenModel):\n"
+            '    """A node referencing the second model."""\n'
+            '    peer: "NodeB | None" = m.Field(default=None, description="Peer.")\n'
+            "class NodeB(m.FrozenModel):\n"
+            '    """A node referencing the first model."""\n'
+            '    peer: NodeA | None = m.Field(default=None, description="Peer.")\n'
+            "NodeA.model_rebuild()\n\nclass DemoMemberModels(m):",
+        )
+        .replace(
+            "Order = Order",
+            "Order = Order\n        NodeA = NodeA\n        NodeB = NodeB",
+        )
+    )
+    domain.write_text(source, encoding=c.DEFAULT_ENCODING)
+    (package / "consumer.py").write_text(
+        "from demo_member import p\n"
+        "def accept(value: p.DemoMember.NodeA) -> None: ...\n",
+        encoding=c.DEFAULT_ENCODING,
+    )
+    _probe(
+        member_root,
+        consumer="from demo_member import m, p\n"
+        'assert get_type_hints(p.DemoMember.NodeA.peer.fget)["return"] == p.DemoMember.NodeB | None\n'
+        'assert get_type_hints(p.DemoMember.NodeB.peer.fget)["return"] == p.DemoMember.NodeA | None\n'
+        "assert isinstance(m.DemoMember.NodeA(peer=m.DemoMember.NodeB()), p.DemoMember.NodeA)\n",
+    )
+
+
+def test_budgeted_owners_are_resolvable_through_the_generated_barrel(
+    member_root: t.DirectoryPath,
+) -> None:
+    """A real multi-part projection exports every requested model contract."""
+    package = member_root / "src" / MEMBER
+    domain = package / "_models/domain.py"
+    declarations = "\n\n".join(
+        f'class Bulk{index}(m.FrozenModel):\n    """A budgeted model."""\n'
+        + "\n".join(
+            f'    field{field}: str = m.Field(default="value", description="Field.")'
+            for field in range(25)
+        )
+        for index in range(18)
+    )
+    source = (
+        domain
+        .read_text(encoding=c.DEFAULT_ENCODING)
+        .replace(
+            "class DemoMemberModels(m):",
+            f"{declarations}\n\nclass DemoMemberModels(m):",
+        )
+        .replace(
+            "Order = Order",
+            "Order = Order\n"
+            + "\n".join(f"        Bulk{index} = Bulk{index}" for index in range(18)),
+        )
+    )
+    domain.write_text(source, encoding=c.DEFAULT_ENCODING)
+    types = ", ".join(f"p.DemoMember.Bulk{index}" for index in range(18))
+    (package / "consumer.py").write_text(
+        f"from demo_member import p\ndef accept(values: tuple[{types}]) -> None: ...\n",
+        encoding=c.DEFAULT_ENCODING,
+    )
+    _probe(
+        member_root,
+        consumer="from demo_member import m, p\n"
+        "for index in range(18):\n"
+        '    port = getattr(p.DemoMember, f"Bulk{index}")\n'
+        '    model = getattr(m.DemoMember, f"Bulk{index}")\n'
+        "    assert isinstance(model(), port)\n"
+        '    assert get_type_hints(port.field24.fget)["return"] is str\n',
+    )
+
+
 @pytest.mark.parametrize(
     ("imports", "alias", "signature", "message"),
     [

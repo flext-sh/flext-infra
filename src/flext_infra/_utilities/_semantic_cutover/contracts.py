@@ -118,23 +118,6 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 raise ValueError(message)
         return tuple(rules)
 
-    @staticmethod
-    def _contract_arguments(
-        rule: p.Infra.RopeContractRule,
-    ) -> t.MappingKV[str, str | t.StrSequence]:
-        """Require a transfer's single native receiver constraint."""
-        if rule.ownership_transfer is None:
-            return rule.arguments
-        if len(rule.arguments) != 1 or not all(
-            isinstance(value, str) and value.startswith("name=")
-            for value in rule.arguments.values()
-        ):
-            message = (
-                f"{rule.id}: ownership transfer requires one native receiver constraint"
-            )
-            raise ValueError(message)
-        return {}
-
     @classmethod
     def plan_contract_rules(
         cls,
@@ -569,6 +552,14 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         resource = module.get_resource()
+        if rule.value_default is not None:
+            default = match.get_ast(rule.value_default)
+            if isinstance(default, ast.Constant) and default.value is Ellipsis:
+                return False
+        if rule.factory_default is not None:
+            factory = match.get_ast(rule.factory_default)
+            if isinstance(factory, ast.Constant) and factory.value is None:
+                return False
         if rule.implementation_owner is not None:
             identity = rule.implementation_owner
             # Native matching elects the analysis; unrelated rules need no graph walk.
@@ -590,7 +581,10 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 and Path(resource.real_path) in implementation_owners[identity]
             ):
                 return False
-        if rule.call_target is not None:
+        if rule.required_field or rule.private_attribute:
+            if not cls._admitted_field_metadata(project, rule, module, match):
+                return False
+        elif rule.call_target is not None:
             captured = match.get_ast(rule.call_target)
             tree = module.get_ast()
             if captured is None or not isinstance(tree, ast.AST):

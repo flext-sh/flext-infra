@@ -296,7 +296,23 @@ class FlextInfraModelsCodemod:
         )
         call_target: t.NonEmptyStr | None = m.Field(
             default=None,
-            description="Capture admitted only as the callee, preserving arguments",
+            description="Capture admitted as a native callee or required field call",
+        )
+        required_field: bool = m.Field(
+            default=False,
+            description="Require metadata without a field default or factory",
+        )
+        private_attribute: bool = m.Field(
+            default=False,
+            description="Require an unset native private model attribute",
+        )
+        value_default: t.NonEmptyStr | None = m.Field(
+            default=None,
+            description="Default capture that must not denote a required field",
+        )
+        factory_default: t.NonEmptyStr | None = m.Field(
+            default=None,
+            description="Factory capture that must not denote an absent factory",
         )
         missing_keywords: t.VariadicTuple[str] = m.Field(
             default=(),
@@ -309,6 +325,19 @@ class FlextInfraModelsCodemod:
 
         @m.model_validator(mode="after")
         def _validate_call_target(self) -> Self:
+            for capture in (self.value_default, self.factory_default):
+                if capture is not None and f"${{{capture}}}" not in self.pattern:
+                    msg = "native default proof must name a pattern capture"
+                    raise ValueError(msg)
+            if self.required_field or self.private_attribute:
+                if (
+                    self.call_target is None
+                    or not self.model_bases
+                    or self.scope_kinds != (c.Infra.RopeScopeKind.CLASS,)
+                    or (self.required_field and self.private_attribute)
+                ):
+                    msg = "native field metadata requires one mode, a callee and model class scope"
+                    raise ValueError(msg)
             if self.missing_keywords and self.call_target is None:
                 msg = "missing-keyword proof requires a call target"
                 raise ValueError(msg)

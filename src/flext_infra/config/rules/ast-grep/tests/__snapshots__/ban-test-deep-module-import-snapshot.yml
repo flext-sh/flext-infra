@@ -1,0 +1,40 @@
+id: ban-test-deep-module-import
+snapshots:
+  from flext_core._models.registry import FlextModelsRegistry:
+    labels:
+    - source: from flext_core._models.registry import FlextModelsRegistry
+      style: primary
+      start: 0
+      end: 59
+  from flext_core.services import FlextServiceRegistry:
+    labels:
+    - source: from flext_core.services import FlextServiceRegistry
+      style: primary
+      start: 0
+      end: 52
+  ? |
+    from flext_infra.codegen import (
+        FlextInfraCodegenConform,
+        FlextInfraCodegenLazyInit,
+    )
+  : labels:
+    - source: |-
+        from flext_infra.codegen import (
+            FlextInfraCodegenConform,
+            FlextInfraCodegenLazyInit,
+        )
+      style: primary
+      start: 0
+      end: 96
+  from flext_ldif.services import FlextLdifParser as Parser:
+    labels:
+    - source: from flext_ldif.services import FlextLdifParser as Parser
+      style: primary
+      start: 0
+      end: 57
+  from flext_tests.pytest_bootstrap import bootstrap:
+    labels:
+    - source: from flext_tests.pytest_bootstrap import bootstrap
+      style: primary
+      start: 0
+      end: 50

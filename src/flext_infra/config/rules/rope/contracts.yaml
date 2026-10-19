@@ -88,8 +88,38 @@ rules:
     bindings:
       u.type_adapter: pydantic.TypeAdapter
       TypeForm: typing_extensions.TypeForm
+  - id: pydantic-required-field-metadata
+    phase: contract-normalization
+    reorders_annotation: true
+    required_field: true
+    call_target: field
+    model_bases: [pydantic.BaseModel]
+    scope_kinds: [Class]
+    pattern: '${name}: ${contract} = ${field}'
+    goal: '${name}: Annotated[${contract}, ${field}]'
+    arguments:
+      field:
+        - name=pydantic.Field
+        - name=flext_core.FlextModels.Field
+    imports:
+      Annotated: from typing import Annotated
+    bindings:
+      Annotated: typing.Annotated
+  - id: pydantic-unset-private-attribute
+    phase: contract-normalization
+    private_attribute: true
+    call_target: field
+    model_bases: [pydantic.BaseModel]
+    scope_kinds: [Class]
+    pattern: '${name}: ${contract} = ${field}()'
+    goal: '${name}: ${contract}'
+    arguments:
+      field:
+        - name=pydantic.PrivateAttr
+        - name=flext_core.FlextModels.PrivateAttr
   - id: pydantic-annotated-factory
     phase: contract-normalization
+    factory_default: factory
     reorders_annotation: true
     model_bases: [pydantic.BaseModel]
     pattern: '${name}: ${annotated}[${contract}, ${field}(default_factory=${factory})]'
@@ -101,6 +131,7 @@ rules:
         - name=flext_core.FlextModels.Field
   - id: pydantic-annotated-default
     phase: contract-normalization
+    value_default: default
     reorders_annotation: true
     model_bases: [pydantic.BaseModel]
     pattern: '${name}: ${annotated}[${contract}, ${field}(default=${default})]'

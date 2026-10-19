@@ -34,6 +34,10 @@ class FlextInfraCodegenProtocolModelAnnotations:
         self.dependencies: set[str] = set()
         self.references: dict[str, str] = {}
         self.owner = ""
+        self.local_members: frozenset[str] = frozenset()
+        self.protocol_package = (
+            f"{project.package_name}.{u.Infra.facade_families()['p'].directory}"
+        )
 
     @staticmethod
     def identity(value: p.Infra.RopePyObject) -> str:
@@ -207,7 +211,16 @@ class FlextInfraCodegenProtocolModelAnnotations:
                 msg = f"annotation has no authenticated native identity: {ast.unparse(node)}"
                 raise ValueError(msg)
             for name, declaration in self.declarations.items():
-                if u.Infra.same_name(declaration, binding):
+                published: p.Infra.RopePyName | None = self.protocol_facade
+                for member in name.split("."):
+                    published = (
+                        published.get_object().get_attributes().get(member)
+                        if published is not None
+                        else None
+                    )
+                if u.Infra.same_name(declaration, binding) or u.Infra.same_name(
+                    published, binding
+                ):
                     self.dependencies.add(name)
                     reference = self.references.get(name)
                     if reference is None:
@@ -229,10 +242,12 @@ class FlextInfraCodegenProtocolModelAnnotations:
                         return ast.Name(
                             id=declaration.get_object().get_name(), ctx=ast.Load()
                         )
-                    owner = reference.partition(".")[0]
-                    if owner != self.owner:
-                        statement = f"from {self.project.package_name}._protocols import {owner}"
+                    if name in self.local_members:
+                        reference = f"{self.owner}.{name.rpartition('.')[2]}"
+                    elif reference.partition(".")[0] != self.owner:
+                        statement = f"import {self.protocol_package}"
                         self.imports[statement] = statement
+                        reference = f"{self.protocol_package}.{reference}"
                     return ast.parse(reference, mode="eval").body
             root, separator, tail = ast.unparse(node).partition(".")
             root_binding = u.Infra.expression_name(scope, root)
@@ -327,7 +342,7 @@ class FlextInfraCodegenProtocolModelAnnotations:
         barrel = u.Infra.qualified_name(
             self.workspace.rope_project,
             parts[0],
-            module_name=f"{self.project.package_name}._protocols",
+            module_name=self.protocol_package,
         )
         selected = barrel
         for member in parts[1:]:
@@ -339,9 +354,9 @@ class FlextInfraCodegenProtocolModelAnnotations:
         if not u.Infra.same_name(selected, binding):
             msg = "protocol barrel changes the authenticated declaration identity"
             raise ValueError(msg)
-        statement = f"from {self.project.package_name}._protocols import {parts[0]}"
+        statement = f"import {self.protocol_package}"
         self.imports[statement] = statement
-        return ".".join(parts)
+        return f"{self.protocol_package}.{'.'.join(parts)}"
 
     def record_imports(self, source: str, scope: p.Infra.RopeScope) -> set[str]:
         """Retain imports only from the authenticated declaring lexical module."""
@@ -353,6 +368,12 @@ class FlextInfraCodegenProtocolModelAnnotations:
             source[begin:end].partition(".")[0]
             for begin, end in u.Infra.reference_regions(source)
         }
+        protocol = u.Infra.expression_name(module.get_scope(), "p")
+        upstream_protocol = protocol is not None and (
+            u.Infra.same_name(protocol, self.protocol_facade)
+            or protocol.get_object()
+            in u.Infra.class_ancestry(self.protocol_facade.get_object())
+        )
         imported_roots: set[str] = set()
         for information in u.Infra.native_import_infos(
             self.workspace.rope_project, module
@@ -361,6 +382,7 @@ class FlextInfraCodegenProtocolModelAnnotations:
                 (name, alias)
                 for name, alias in information.names_and_aliases
                 if (alias or name.partition(".")[0]) in roots
+                and not (upstream_protocol and (alias or name.partition(".")[0]) == "p")
             )
             if aliases:
                 imported_roots.update(

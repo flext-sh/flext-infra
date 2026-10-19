@@ -92,6 +92,11 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
                 position = self.get_metadata(PositionProvider, node).start
                 if (position.line, position.column) in self.plan.preserved_reads:
                     return None
+                upstream_read = any(
+                    name.source is QualifiedNameSource.IMPORT
+                    and name.name == self.plan.upstream_aliases[node.value]
+                    for name in names
+                )
                 names = frozenset(
                     name
                     for name in names
@@ -100,7 +105,7 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
                         and name.name == self.plan.upstream_aliases[node.value]
                     )
                 )
-                if not names:
+                if not names and upstream_read:
                     return self._checked_target(
                         node, self.plan.local_aliases[node.value]
                     )

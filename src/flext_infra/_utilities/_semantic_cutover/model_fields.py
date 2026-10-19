@@ -1,4 +1,4 @@
-"""Narrow untrusted model-class boundaries before required field access.
+"""Prove native field metadata and narrow untrusted model-class boundaries.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,6 +13,10 @@ import libcst as cst
 from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor
 
+from flext_infra._utilities import (
+    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+)
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
     FlextInfraUtilitiesSemanticCutoverModelFieldsBindings,
@@ -29,6 +33,119 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
     FlextInfraUtilitiesSemanticCutoverModelFieldsBindings,
 ):
     """Keep existing invalid-input errors while proving model-class identity."""
+
+    @staticmethod
+    def _contract_arguments(
+        rule: p.Infra.RopeContractRule,
+    ) -> t.MappingKV[str, str | t.StrSequence]:
+        """Constrain ordinary captures before native call admission."""
+        if rule.ownership_transfer is not None:
+            if len(rule.arguments) != 1 or not all(
+                isinstance(value, str) and value.startswith("name=")
+                for value in rule.arguments.values()
+            ):
+                msg = f"{rule.id}: ownership transfer requires one native receiver constraint"
+                raise ValueError(msg)
+            return {}
+        if rule.required_field:
+            return {
+                name: constraint
+                for name, constraint in rule.arguments.items()
+                if name != rule.call_target
+            }
+        return rule.arguments
+
+    @staticmethod
+    def _admitted_field_metadata(
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        module: p.Infra.RopePyModule,
+        match: p.Infra.RopeContractMatch,
+    ) -> bool:
+        """Prove native model metadata without evaluating authored expressions."""
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        tree = module.get_ast()
+        if rule.call_target is None or not isinstance(tree, ast.AST):
+            msg = f"{rule.id}: native field metadata has no original callee AST"
+            raise ValueError(msg)
+        captured = match.get_ast(rule.call_target)
+        invocation = (
+            captured
+            if isinstance(captured, ast.Call)
+            else next(
+                (
+                    node
+                    for node in ast.walk(tree)
+                    if isinstance(node, ast.Call) and node.func is captured
+                ),
+                None,
+            )
+        )
+        constraint = rule.arguments.get(rule.call_target)
+        if invocation is None or constraint is None:
+            return False
+        if not FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture(
+            project, module, invocation.func, constraint, name=rule.call_target
+        ):
+            return False
+        declaration = next(
+            (
+                node
+                for node in ast.walk(tree)
+                if isinstance(node, ast.AnnAssign) and node.value is invocation
+            ),
+            None,
+        )
+        if declaration is None or not isinstance(declaration.target, ast.Name):
+            return False
+        annotation = declaration.annotation
+        if isinstance(annotation, ast.Constant) and isinstance(annotation.value, str):
+            annotation = ast.parse(annotation.value, mode="eval").body
+        scope = runtime.scope_at(module, match.get_region()[0])
+        classvar = runtime.qualified_name(project, "typing.ClassVar")
+        if any(
+            runtime.same_name(classvar, runtime.resolve_symbol(scope, node))
+            for node in ast.walk(annotation)
+            if isinstance(node, (ast.Name, ast.Attribute))
+        ):
+            return False
+        name = declaration.target.id
+        if rule.private_attribute:
+            return (
+                name.startswith("_")
+                and not name.startswith("__")
+                and not invocation.args
+                and not invocation.keywords
+            )
+        if name.startswith("_"):
+            return False
+        return (
+            len(invocation.args) <= 1
+            and all(
+                isinstance(argument, ast.Constant) and argument.value is Ellipsis
+                for argument in invocation.args
+            )
+            and all(
+                keyword.arg is not None
+                and (
+                    keyword.arg not in {"default", "default_factory"}
+                    or (
+                        isinstance(keyword.value, ast.Constant)
+                        and (
+                            (
+                                keyword.arg == "default"
+                                and keyword.value.value is Ellipsis
+                            )
+                            or (
+                                keyword.arg == "default_factory"
+                                and keyword.value.value is None
+                            )
+                        )
+                    )
+                )
+                for keyword in invocation.keywords
+            )
+        )
 
     @classmethod
     def _plan_model_fields(

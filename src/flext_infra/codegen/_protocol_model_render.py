@@ -34,31 +34,70 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
                 declaration exceeds configured LOC cap.
 
         """
-        grouped: t.MutableMappingKV[str, t.ListOf[t.Pair[str, str]]] = defaultdict(list)
+        self.references = {
+            name: f"{self.project.class_stem}{name.rpartition('.')[0].replace('.', '')}ProtocolsGeneratedModels.{name.rpartition('.')[2]}"
+            for name in models
+        }
+        graph: dict[str, set[str]] = {}
         for name, model in sorted(models.items()):
             declaration = self.declarations[name].get_object()
             scope = declaration.get_scope()
             if scope is None:
                 msg = f"model declaration has no native scope: {name}"
                 raise ValueError(msg)
-            body = self._render_protocol(name.rpartition(".")[2], model, scope)
-            grouped[name.rpartition(".")[0]].append((self.identity(declaration), body))
+            self.dependencies.clear()
+            self._render_protocol(name.rpartition(".")[2], model, scope)
+            graph[name] = self.dependencies.intersection(models)
+        components = {
+            min(component): tuple(sorted(component))
+            for component in u.Infra.strongly_connected_components(graph)
+        }
+        component_for = {
+            name: key for key, names in components.items() for name in names
+        }
+        ordered = u.Infra.dependency_order(
+            tuple(sorted(components)),
+            dependencies=lambda key: tuple(
+                sorted({
+                    component_for[dependency]
+                    for name in components[key]
+                    for dependency in graph[name]
+                    if component_for[dependency] != key
+                })
+            ),
+            normalize=lambda name: name,
+        )
         modules: t.MutableMappingKV[Path, str] = {}
-        for namespace, bodies in grouped.items():
+        grouped: dict[str, list[str]] = defaultdict(list)
+        for key in ordered:
+            for name in components[key]:
+                grouped[name.rpartition(".")[0]].append(name)
+        for namespace, names in grouped.items():
             parts: list[tuple[str, str]] = []
             token = namespace.replace(".", "_").lower()
             stem = f"generated_models_{token}" if token else "generated_models"
+            members: list[str] = []
             chunk = ""
-            for _owner, body in bodies:
+            for name in names:
+                self.owner = f"{self.project.class_stem}ProtocolsGeneratedPart{len(modules) + 1:02d}"
+                body = self._render_chunk((*members, name), models)
                 header = self._module_header(self.project, self.imports)
                 if chunk and (
-                    header.count("\n") + chunk.count("\n") + body.count("\n") + 4
+                    header.count("\n") + body.count("\n") + 4
                     > config.Infra.codegen.loc_cap.max_lines
                 ):
+                    previous = self._render_chunk(tuple(members), models)
                     self._append_part(
-                        modules, parts, protocol_directory / stem, chunk, header
+                        modules,
+                        parts,
+                        protocol_directory / stem,
+                        previous,
+                        self._module_header(self.project, self.imports),
                     )
-                    chunk = ""
+                    members = []
+                    self.owner = f"{self.project.class_stem}ProtocolsGeneratedPart{len(modules) + 1:02d}"
+                    body = self._render_chunk((name,), models)
+                    header = self._module_header(self.project, self.imports)
                 if (
                     header.count("\n") + body.count("\n") + 4
                     > config.Infra.codegen.loc_cap.max_lines
@@ -67,7 +106,8 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
                         f"protocol declaration exceeds configured LOC cap: {namespace}"
                     )
                     raise ValueError(msg)
-                chunk += body
+                members.append(name)
+                chunk = body
             if chunk:
                 self._append_part(
                     modules,
@@ -80,17 +120,31 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
                 f"{self.project.class_stem}{namespace.replace('.', '')}"
                 "ProtocolsGeneratedModels"
             )
-            imports = "\n".join(
-                f"from .{module} import {owner}" for module, owner in parts
-            )
+            self.owner = aggregate
+            self.local_members = frozenset()
+            self.imports.clear()
+            for _module, owner in parts:
+                statement = f"from {self.protocol_package} import {owner}"
+                self.imports[statement] = statement
             bases = ", ".join(owner for _module, owner in parts)
-            alias_lines = [
-                f"    type {name.rpartition('.')[2]} = {annotation}"
-                for name, annotation in aliases.items()
-                if name.rpartition(".")[0] == namespace
-            ]
+            alias_lines: list[str] = []
+            for name in aliases:
+                if name.rpartition(".")[0] != namespace:
+                    continue
+                binding = u.Infra.qualified_name(
+                    self.workspace.rope_project,
+                    f"m.{name}",
+                    module_name=self.project.package_name,
+                )
+                alias = self.alias_definition(binding)
+                if alias is None:
+                    msg = f"protocol alias has no authenticated source declaration: {name}"
+                    raise ValueError(msg)
+                node, lexical = alias
+                annotation = self.source(ast.unparse(node.value), lexical)
+                alias_lines.append(f"    type {name.rpartition('.')[2]} = {annotation}")
             modules[protocol_directory / f"{stem}.py"] = (
-                f"{self._module_header(self.project, {})}{imports}\n\n"
+                self._module_header(self.project, self.imports, structural=False) + "\n"
                 f"class {aggregate}({bases}):\n"
                 '    """Compose the generated structural declarations."""\n'
                 + "\n".join(alias_lines)
@@ -101,6 +155,23 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
                 msg = f"protocol module exceeds configured LOC cap: {path}"
                 raise ValueError(msg)
         return modules
+
+    def _render_chunk(
+        self, names: t.StrSequence, models: t.MappingKV[str, p.Infra.RopePyName]
+    ) -> str:
+        """Recompute exact imports and local references for a budgeted owner."""
+        self.local_members = frozenset(names)
+        self.imports.clear()
+        bodies: list[str] = []
+        for name in names:
+            scope = models[name].get_object().get_scope()
+            if scope is None:
+                msg = f"model has no native source scope: {name}"
+                raise ValueError(msg)
+            bodies.append(
+                self._render_protocol(name.rpartition(".")[2], models[name], scope)
+            )
+        return "".join(bodies)
 
     def _render_protocol(
         self,
@@ -424,7 +495,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         module = f"{target.name}_{index:02d}"
         owner = f"{self.project.class_stem}ProtocolsGeneratedPart{len(modules) + 1:02d}"
         modules[target.with_name(f"{module}.py")] = (
-            f"{header}class {owner}:\n{indent(body, '    ')}\n__all__: list[str] = []\n"
+            f'{header}class {owner}:\n{indent(body, "    ")}\n__all__: list[str] = ["{owner}"]\n'
         )
         parts.append((module, owner))
 
@@ -432,8 +503,10 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         self,
         project: p.Infra.ProjectSpec,
         imports: t.MappingKV[str, str],
+        *,
+        structural: bool = True,
     ) -> str:
-        """Import the package object without eagerly reading its composing facade.
+        """Use upstream protocol bases and the elected same-family owner imports.
 
         Returns:
             The resulting ``str``.
@@ -443,9 +516,12 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         return (
             "# AUTO-GENERATED FILE — Regenerate with: make gen\n"
             "from __future__ import annotations\n\n"
-            "from typing import Protocol, runtime_checkable\n"
-            f"from {upstream} import p\n"
-            f"import {project.package_name} as _public\n"
+            + (
+                "from typing import Protocol, runtime_checkable\n"
+                f"from {upstream} import p\n"
+                if structural
+                else ""
+            )
             + "\n".join(sorted(imports.values()))
             + "\n\n"
         )
