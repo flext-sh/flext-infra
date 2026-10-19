@@ -642,11 +642,10 @@ class TestsFlextInfraModTextGateEngine:
             )
         tm.that(working, eq=frozen)
         virtual = first.parent / "planned" / "candidate.py"
-        absence = tm.ok(u.Cli.atomic_plan_directory_chain(virtual.parent))
         declaration = m.Infra.CodegenFilePlan(
             project=mod_workspace,
             path=virtual,
-            before=absence,
+            before=tm.ok(u.Cli.atomic_plan_directory_chain(virtual.parent)),
             desired_content=original[first].encode(c.DEFAULT_ENCODING),
             desired_mode=tm.not_none(
                 next(state.mode for state in states if state.path == first)
@@ -663,7 +662,7 @@ class TestsFlextInfraModTextGateEngine:
         )
         tm.that(candidate.issues, empty=True)
         virtual_plan = next(plan for plan in candidate.files if plan.path == virtual)
-        tm.that(virtual_plan.before, eq=absence)
+        tm.that(virtual_plan.before, eq=declaration.before)
         tm.that(
             virtual_plan.desired_content,
             eq=original[first].replace("before", "after").encode(c.DEFAULT_ENCODING),

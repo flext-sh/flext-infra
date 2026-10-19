@@ -64,7 +64,8 @@ class Shipment(m.FrozenModel):
     """A validated shipment referencing its order."""
 
     order: Order | None = m.Field(default=None, description="Shipped order.")
-    envelope: Envelope[str] | None = m.Field(default=None, description="Typed envelope.")
+    envelope: Envelope[str] | None = m.Field(
+        default=None, description="Typed envelope.")
 
 
 class Inventory(m.BaseModel):
@@ -170,14 +171,13 @@ __all__ = ["DemoMemberTypes", "t"]
 '''
 
 
-def _provision_member(parent: t.DirectoryPath) -> t.DirectoryPath:
-    """Resolve this project's own locks, then provision its frozen runtime.
+def _verify_supplier_sources() -> t.Pair[t.DirectoryPath, str]:
+    """Capture the supplier's source and locked dependency identities.
 
     Returns:
-        The resulting ``t.DirectoryPath``.
+        The supplier root and the original source receipt declarations.
 
     """
-    github_token = t.SecretStr(settings.env_required("GITHUB_TOKEN"))
     source_context = tm.ok(infra.project_context(Path.cwd()))
     supplier_root = tm.not_none(source_context.runtime).runtime_root
     supplier_modules = ("flext_core", "flext_cli", "flext_infra")
@@ -213,6 +213,26 @@ def _provision_member(parent: t.DirectoryPath) -> t.DirectoryPath:
         f"fixture source rope={rope_distribution.metadata['Name']}; "
         f"commit={tm.not_none(rope_receipt.vcs_info).commit_id}"
     )
+    return supplier_root, (
+        f"modules = {supplier_modules!r}\n"
+        f"states = {tuple(state.model_dump_json() for state in supplier_states)!r}\n"
+        "identities = "
+        f"{tuple((str(i.repo_root), i.head_oid) for i in supplier_identities)!r}\n"
+        f"rope_name = {rope_distribution.metadata['Name']!r}\n"
+        "expected_rope = m.Infra.DirectUrlReceipt.model_validate_json("
+        f"{rope_receipt.model_dump_json()!r})\n"
+    )
+
+
+def _provision_member(parent: t.DirectoryPath) -> t.DirectoryPath:
+    """Provision the member with its canonical frozen runtime.
+
+    Returns:
+        The provisioned member root.
+
+    """
+    github_token = t.SecretStr(settings.env_required("GITHUB_TOKEN"))
+    supplier_root, supplier_receipt = _verify_supplier_sources()
     root = parent / "demo-member"
     u.Tests.WorktreeFixture.write_python_project(root, root.name)
     package = root / c.Infra.DEFAULT_SRC_DIR / MEMBER
@@ -272,9 +292,17 @@ def _provision_member(parent: t.DirectoryPath) -> t.DirectoryPath:
         u.Infra.runtime_evaluated_base_classes(
             root, proposed, (), source_project=binding[0]
         )
-    workspace = u.Tests.workspace_spec(
-        repository, project=u.Tests.project_spec(root.name)
+    _conform_member(
+        root,
+        u.Tests.workspace_spec(repository, project=u.Tests.project_spec(root.name)),
     )
+    _install_member_runtime(root, supplier_root, github_token)
+    _verify_member_runtime(root, supplier_receipt)
+    return root
+
+
+def _conform_member(root: t.DirectoryPath, workspace: m.Infra.WorkspaceSpec) -> None:
+    """Materialize the member's native Make and resolution surfaces."""
     manifest = m.Infra.WorkspaceManifestSpec(
         version=c.Infra.WORKSPACE_MANIFEST_VERSION,
         name=workspace.name,
@@ -320,6 +348,12 @@ def _provision_member(parent: t.DirectoryPath) -> t.DirectoryPath:
             m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=root, apply=True)
         )
     )
+
+
+def _install_member_runtime(
+    root: t.DirectoryPath, supplier_root: t.DirectoryPath, github_token: t.SecretStr
+) -> None:
+    """Install and verify the member's independently elected runtime."""
     resolution = tm.ok(FlextInfraWorkspaceDetector.resolution_context(root))
     policy = tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.uv_resolution
     tm.that(
@@ -344,6 +378,12 @@ def _provision_member(parent: t.DirectoryPath) -> t.DirectoryPath:
     environment = u.Infra.runtime_environment_dir(root)
     tm.that(environment.is_symlink(), eq=False)
     tm.that((environment / "pyvenv.cfg").is_file(), eq=True)
+
+
+def _verify_member_runtime(root: t.DirectoryPath, supplier_receipt: str) -> None:
+    """Compare the installed runtime against the supplier source identities."""
+    package = root / c.Infra.DEFAULT_SRC_DIR / MEMBER
+    environment = u.Infra.runtime_environment_dir(root)
     u.Tests.run_lazy_init_probe(
         "import sys\n"
         "from pathlib import Path\n"
@@ -356,33 +396,40 @@ def _provision_member(parent: t.DirectoryPath) -> t.DirectoryPath:
         f"assert Path(sys.prefix).resolve() == Path({str(environment)!r}).resolve()\n"
         f"package = find_spec({MEMBER!r})\n"
         "assert package is not None and package.origin is not None\n"
-        f"assert Path(package.origin).resolve() == Path({str(package / c.Infra.INIT_PY)!r}).resolve()\n"
-        f"modules = {supplier_modules!r}\n"
-        f"states = {tuple(state.model_dump_json() for state in supplier_states)!r}\n"
-        f"identities = {tuple((str(item.repo_root), item.head_oid) for item in supplier_identities)!r}\n"
-        "for module, encoded, identity in zip(modules, states, identities, strict=True):\n"
+        "assert Path(package.origin).resolve() == "
+        f"Path({str(package / c.Infra.INIT_PY)!r}).resolve()\n"
+        + supplier_receipt
+        + "for module, encoded, identity in "
+        "zip(modules, states, identities, strict=True):\n"
         "    expected = m.Cli.AtomicFileState.model_validate_json(encoded)\n"
         "    elected = find_spec(module)\n"
         "    assert elected is not None and elected.origin is not None\n"
         "    assert Path(elected.origin).resolve() == expected.path\n"
-        "    assert tm.ok(u.Cli.atomic_read_binary_file_state(expected.path, required=True)) == expected\n"
-        "    current = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=expected.path.parent)))\n"
+        "    assert tm.ok(u.Cli.atomic_read_binary_file_state("
+        "expected.path, required=True)) == expected\n"
+        "    current = tm.ok(u.Infra.git_identity("
+        "m.Infra.GitRepoRequest(repo_root=expected.path.parent)))\n"
         "    assert (str(current.repo_root), current.head_oid) == identity\n"
-        f"    print(f'fixture supplier module={module} source={elected.origin}; head={current.head_oid}; dirty={current.dirty}')\n"
+        "    print(f'fixture supplier module="
+        "{module} source={elected.origin}; '"
+        "f'head={current.head_oid}; dirty={current.dirty}')\n"
         "rope = distribution('rope')\n"
-        f"assert rope.metadata['Name'] == {rope_distribution.metadata['Name']!r}\n"
-        "observed_rope = m.Infra.DirectUrlReceipt.model_validate_json(tm.not_none(rope.read_text('direct_url.json')))\n"
-        f"expected_rope = m.Infra.DirectUrlReceipt.model_validate_json({rope_receipt.model_dump_json()!r})\n"
-        "assert observed_rope.url == expected_rope.url and observed_rope.vcs_info == expected_rope.vcs_info\n"
+        "assert rope.metadata['Name'] == rope_name\n"
+        "observed_rope = m.Infra.DirectUrlReceipt.model_validate_json("
+        "tm.not_none(rope.read_text('direct_url.json')))\n"
+        "assert observed_rope.url == expected_rope.url "
+        "and observed_rope.vcs_info == expected_rope.vcs_info\n"
         "rope_module = find_spec('rope')\n"
         "assert rope_module is not None and rope_module.origin is not None\n"
-        f"assert Path(rope_module.origin).resolve().is_relative_to(Path({str(environment)!r}).resolve())\n"
-        "print(f'fixture runtime prefix={sys.prefix}; rope={rope.metadata[\"Name\"]}; vcs={observed_rope.vcs_info}')\n"
-        "assert tm.ok(FlextInfraWorkspaceEnvironmentProvenance.validate_locked(root)) > 0\n",
+        "assert Path(rope_module.origin).resolve().is_relative_to("
+        f"Path({str(environment)!r}).resolve())\n"
+        "print(f'fixture runtime prefix={sys.prefix}; "
+        'rope={rope.metadata["Name"]}; vcs={observed_rope.vcs_info}\')\n'
+        "assert tm.ok(FlextInfraWorkspaceEnvironmentProvenance."
+        "validate_locked(root)) > 0\n",
         runtime_root=root,
         cwd=root,
     )
-    return root
 
 
 @pytest.fixture
@@ -442,15 +489,19 @@ def test_apply_generates_runtime_checkable_contracts(
         "assert report in receipt.written_files\n"
         "assert report not in result.written_files\n"
         "assert set(result.written_files) <= set(receipt.written_files)\n"
-        "assert root / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH in receipt.written_files\n"
-        "assert any(report in batch.written_files and report in batch.effect_targets for batch in receipt.batches)\n"
-        "public = m.Infra.CodegenPhaseOutcome.model_validate_json(report.read_bytes())\n"
+        "assert root / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH "
+        "in receipt.written_files\n"
+        "assert any(report in batch.written_files and report in batch.effect_targets "
+        "for batch in receipt.batches)\n"
+        "public = m.Infra.CodegenPhaseOutcome.model_validate_json("
+        "report.read_bytes())\n"
         "assert public.transaction_id == receipt.transaction_id and public.completed\n"
         "tm.ok(FlextInfra(repository_root=root).codegen_conform(m.Infra.CodegenConformRequest(\n"
         "    root=root, mode=c.Infra.CodegenConformMode.CHECK)))\n"
         "again = tm.ok(service.execute())\n"
         "assert not again.written_files\n"
-        "assert again.publication_receipt is not None and again.publication_receipt.completed\n"
+        "assert again.publication_receipt is not None "
+        "and again.publication_receipt.completed\n"
         "assert again.publication_receipt.written_files\n",
     )
 
@@ -479,25 +530,32 @@ def test_projected_outputs_keep_original_transaction_inputs(
     _probe(
         member_root,
         "from flext_infra import c, config, m, u\n"
-        "from flext_infra.codegen import FlextInfraCodegenMiseArtifacts, FlextInfraCodegenTransaction\n"
+        "from flext_infra.codegen import FlextInfraCodegenMiseArtifacts, "
+        "FlextInfraCodegenTransaction\n"
         'source = root / "original-input.txt"\n'
         'source.write_bytes(b"original input\\n")\n'
         'target = root / "unchanged-output.txt"\n'
         "requested_change = None\n"
         "phase = c.Infra.CodegenStagedFilePhase.LAZY_INIT\n"
-        "owner = FlextInfraCodegenTransaction(FlextInfraCodegenMiseArtifacts(repository_root=root))\n"
+        "owner = FlextInfraCodegenTransaction("
+        "FlextInfraCodegenMiseArtifacts(repository_root=root))\n"
         "roots = owner.capability_roots(phase.value, (root,))\n"
         "def publish(scope_root):\n"
-        "    original = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))\n"
-        "    before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=False))\n"
+        "    original = tm.ok(u.Cli.atomic_read_binary_file_state("
+        "source, required=True))\n"
+        "    before = tm.ok(u.Cli.atomic_read_binary_file_state("
+        "target, required=False))\n"
         "    plan = m.Infra.CodegenFilePlan(\n"
-        '        project=root, path=target, before=before, desired_content=b"published output\\n",\n'
+        "        project=root, path=target, before=before, "
+        'desired_content=b"published output\\n",\n'
         "        desired_mode=config.Infra.codegen.modes.file_default)\n"
-        "    with u.Infra.facade_source_project(root, source_states=(original,), declared_files=(plan,)) as binding:\n"
+        "    with u.Infra.facade_source_project("
+        "root, source_states=(original,), declared_files=(plan,)) as binding:\n"
         "        assert binding[0].source_bytes(source) == original.content\n"
         "        assert target in binding[0].source_children(root)\n"
         "        states, directories, topology = binding[1]()\n"
-        "        physical = next(item for item in directories if item.root.path == root and item.membership_queried)\n"
+        "        physical = next(item for item in directories "
+        "if item.root.path == root and item.membership_queried)\n"
         "        assert target.name not in {item.name for item in physical.entries}\n"
         "    change = requested_change\n"
         '    if change == "content":\n'
@@ -505,17 +563,21 @@ def test_projected_outputs_keep_original_transaction_inputs(
         '    elif change == "membership":\n'
         '        (root / "unplanned-input.txt").write_bytes(b"unplanned\\n")\n'
         "    plan = plan.model_copy(update={\n"
-        '        "source_states": states, "source_directories": directories, "source_query_topology": topology})\n'
+        '        "source_states": states, "source_directories": directories, '
+        '"source_query_topology": topology})\n'
         "    analysis = m.Infra.CodegenPhaseAnalysis(\n"
-        "        phase=phase, files=(plan,), inputs=states, source_directories=directories, source_query_topology=topology)\n"
-        "    return owner.publish_file_phase_locked(scope_root, roots, analysis, m.Infra.CodegenPhasePublicationPolicy(directories=()))\n"
+        "        phase=phase, files=(plan,), inputs=states, "
+        "source_directories=directories, source_query_topology=topology)\n"
+        "    return owner.publish_file_phase_locked(scope_root, roots, analysis, "
+        "m.Infra.CodegenPhasePublicationPolicy(directories=()))\n"
         "tm.ok(owner.run_files_locked(roots, publish))\n"
         'assert target.read_bytes() == b"published output\\n"\n'
         'target = root / "planned-output.txt"\n'
         f"requested_change = {change!r}\n"
         + (
             "from pytest import raises\n"
-            'with raises(ValueError, match="source directory membership changed:.*unplanned-input.txt"):\n'
+            'with raises(ValueError, match="source directory membership '
+            'changed:.*unplanned-input.txt"):\n'
             "    owner.run_files_locked(roots, publish)\n"
             "assert not target.exists()\n"
             if change == "membership"
@@ -523,7 +585,8 @@ def test_projected_outputs_keep_original_transaction_inputs(
             + (
                 "assert outcome.failure\nassert not target.exists()\n"
                 if change == "content"
-                else 'tm.ok(outcome)\nassert target.read_bytes() == b"published output\\n"\n'
+                else "tm.ok(outcome)\nassert target.read_bytes() "
+                '== b"published output\\n"\n'
             )
         ),
         consumer="",
@@ -556,53 +619,70 @@ def test_missing_parent_epoch_requires_a_journal_owned_transition(
     _probe(
         member_root,
         "from flext_infra import c, config, m, r, u\n"
-        "from flext_infra.codegen import FlextInfraCodegenMiseArtifacts, FlextInfraCodegenTransaction, FlextInfraMiseArtifactsJournal, FlextInfraMiseArtifactsVerification, FlextInfraStagedPackage\n"
+        "from flext_infra.codegen import FlextInfraCodegenMiseArtifacts, "
+        "FlextInfraCodegenTransaction, FlextInfraMiseArtifactsJournal, "
+        "FlextInfraMiseArtifactsVerification, FlextInfraStagedPackage\n"
         'source = root / "input-parent" / "input.txt"\n'
         'target = root / "owned-parent-output.txt"\n'
         "phase = c.Infra.CodegenStagedFilePhase.LAZY_INIT\n"
-        "owner = FlextInfraCodegenTransaction(FlextInfraCodegenMiseArtifacts(repository_root=root))\n"
+        "owner = FlextInfraCodegenTransaction("
+        "FlextInfraCodegenMiseArtifacts(repository_root=root))\n"
         "roots = owner.capability_roots(phase.value, (root,))\n"
         "def publish(scope_root):\n"
-        "    original = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=False))\n"
+        "    original = tm.ok(u.Cli.atomic_read_binary_file_state("
+        "source, required=False))\n"
         "    assert original.parent_device is None and original.content is None\n"
-        "    before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=False))\n"
-        "    session = tm.ok(owner.begin_files_locked(scope_root, roots, (original,)))\n"
+        "    before = tm.ok(u.Cli.atomic_read_binary_file_state("
+        "target, required=False))\n"
+        "    session = tm.ok(owner.begin_files_locked("
+        "scope_root, roots, (original,)))\n"
         f"    owned = {owned_parent!r}\n"
         "    if owned:\n"
-        "        session = tm.ok(owner.append_directories_locked(session, c.Infra.CodegenStagedFilePhase.LAYOUT, (source.parent,)))\n"
+        "        session = tm.ok(owner.append_directories_locked("
+        "session, c.Infra.CodegenStagedFilePhase.LAYOUT, (source.parent,)))\n"
         "    else:\n"
         "        source.parent.mkdir()\n"
-        "    bound = FlextInfraMiseArtifactsVerification.session_input_states((original,), session)\n"
+        "    bound = FlextInfraMiseArtifactsVerification.session_input_states("
+        "(original,), session)\n"
         "    if owned:\n"
         "        accepted = tm.ok(bound)\n"
         "        assert accepted[0].content is None and accepted[0].device is None\n"
         "        assert accepted[0].parent_inode == source.parent.stat().st_ino\n"
-        "        candidate = tm.ok(FlextInfraStagedPackage.plan_sources(root, {}, inputs=accepted))\n"
-        "        assert next(item for item in candidate.inputs if item.path == source) == accepted[0]\n"
+        "        candidate = tm.ok(FlextInfraStagedPackage.plan_sources("
+        "root, {}, inputs=accepted))\n"
+        "        assert next(item for item in candidate.inputs "
+        "if item.path == source) == accepted[0]\n"
         "        assert original.parent_inode is None and original.content is None\n"
         "    else:\n"
         "        assert bound.failure\n"
         "    plan = m.Infra.CodegenFilePlan(\n"
-        '        project=root, path=target, before=before, desired_content=b"owned transition\\n",\n'
-        "        desired_mode=config.Infra.codegen.modes.file_default, source_states=(original,))\n"
+        "        project=root, path=target, before=before, "
+        'desired_content=b"owned transition\\n",\n'
+        "        desired_mode=config.Infra.codegen.modes.file_default, "
+        "source_states=(original,))\n"
         "    appended = owner.append_phase_locked(session, phase, (plan,))\n"
         "    if not owned:\n"
         "        assert appended.failure\n"
-        '        assert "parent" in appended.error and str(source.parent) in appended.error\n'
+        '        assert "parent" in appended.error '
+        "and str(source.parent) in appended.error\n"
         "        assert source.parent.is_dir() and not target.exists()\n"
         "        return r[tuple[Path, ...]].from_failure(appended)\n"
         "    ready = tm.ok(appended)\n"
-        "    journal, _state = tm.ok(FlextInfraMiseArtifactsJournal.read(ready.plan.layout))\n"
-        "    assert any(item.created is not None and item.created.path == source.parent for item in journal.directories)\n"
+        "    journal, _state = tm.ok(FlextInfraMiseArtifactsJournal.read("
+        "ready.plan.layout))\n"
+        "    assert any(item.created is not None "
+        "and item.created.path == source.parent for item in journal.directories)\n"
         "    records = [item for item in journal.sources if item.path == source]\n"
         "    assert any(item.phase == phase for item in records)\n"
-        "    assert all(item.parent_device is None and item.absent_parent is not None and source.parent in item.absent_parent.directories for item in records)\n"
+        "    assert all(item.parent_device is None and item.absent_parent is not None "
+        "and source.parent in item.absent_parent.directories for item in records)\n"
         "    return owner.commit_locked(ready)\n"
         "result = owner.run_files_locked(roots, publish)\n"
         + (
             'tm.ok(result)\nassert target.read_bytes() == b"owned transition\\n"\n'
             if owned_parent
-            else "assert result.failure\nassert not target.exists()\nassert source.parent.is_dir()\n"
+            else "assert result.failure\nassert not target.exists()\n"
+            "assert source.parent.is_dir()\n"
         ),
         consumer="",
     )
@@ -616,16 +696,23 @@ def test_candidate_inputs_advance_only_through_native_publication(
     _probe(
         member_root,
         "from flext_infra import c, config, m, r, u\n"
-        "from flext_infra.codegen import FlextInfraCodegenMiseArtifacts, FlextInfraCodegenTransaction\n"
+        "from flext_infra.codegen import FlextInfraCodegenMiseArtifacts, "
+        "FlextInfraCodegenTransaction\n"
         'source = root / "publication-input.txt"\n'
-        "original = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=False))\n"
+        "original = tm.ok(u.Cli.atomic_read_binary_file_state("
+        "source, required=False))\n"
         "phase = c.Infra.CodegenStagedFilePhase.LAZY_INIT\n"
-        "owner = FlextInfraCodegenTransaction(FlextInfraCodegenMiseArtifacts(repository_root=root))\n"
+        "owner = FlextInfraCodegenTransaction("
+        "FlextInfraCodegenMiseArtifacts(repository_root=root))\n"
         "roots = owner.capability_roots(phase.value, (root,))\n"
         "def publish(scope_root):\n"
-        "    session = tm.ok(owner.begin_files_locked(scope_root, roots, (original,)))\n"
-        "    plan = m.Infra.CodegenFilePlan(project=root, path=source, before=original,\n"
-        '        desired_content=b"owned bytes\\n", desired_mode=config.Infra.codegen.modes.file_default, source_states=(original,))\n'
+        "    session = tm.ok(owner.begin_files_locked("
+        "scope_root, roots, (original,)))\n"
+        "    plan = m.Infra.CodegenFilePlan("
+        "project=root, path=source, before=original,\n"
+        '        desired_content=b"owned bytes\\n", '
+        "desired_mode=config.Infra.codegen.modes.file_default, "
+        "source_states=(original,))\n"
         "    ready = tm.ok(owner.append_phase_locked(session, phase, (plan,)))\n"
         "    receipt = tm.ok(owner.publication_outcome(ready, completed=True))\n"
         "    return owner.commit_locked(ready).map(lambda _: receipt)\n"
@@ -639,8 +726,11 @@ def test_candidate_inputs_advance_only_through_native_publication(
         '    foreign.write_bytes(b"owned bytes\\n")\n'
         "    foreign.chmod(source.stat().st_mode)\n"
         "    foreign.replace(source)\n"
-        "reader = FlextInfraCodegenTransaction(FlextInfraCodegenMiseArtifacts(repository_root=root), prior_publications=(receipt,))\n"
-        "view = reader.preview_sources(root, {}, lambda candidate, _: (candidate / source.name).read_bytes(),\n"
+        "reader = FlextInfraCodegenTransaction("
+        "FlextInfraCodegenMiseArtifacts(repository_root=root), "
+        "prior_publications=(receipt,))\n"
+        "view = reader.preview_sources(root, {}, "
+        "lambda candidate, _: (candidate / source.name).read_bytes(),\n"
         "    inputs=(original,), runtime_check=False)\n"
         "if change is None:\n"
         '    assert tm.ok(view) == b"owned bytes\\n"\n'
@@ -696,7 +786,8 @@ def test_model_namespaces_preserve_nested_contracts(
             "class DemoMemberModels(m):",
             "class Root(m.FrozenModel):\n"
             '    """A strongly typed nested payload."""\n'
-            '    root: tuple[str, ...] = m.Field(default=(), description="Payload.")\n\n\n'
+            "    root: tuple[str, ...] = m.Field(default=(), "
+            'description="Payload.")\n\n\n'
             "class NamespaceParts:\n"
             '    """Inherited model declarations."""\n'
             "    Root: ClassVar[type[Root]] = Root\n"
@@ -732,7 +823,8 @@ def test_model_namespaces_preserve_nested_contracts(
         "for contract in (ports.Root, ports.AliasRoot):\n"
         "    assert isinstance(value, contract)\n"
         "    assert get_type_hints(contract.root.fget)['return'] == tuple[str, ...]\n"
-        "    assert contract.__module__.startswith('demo_member._protocols.generated')\n"
+        "    assert contract.__module__.startswith("
+        "'demo_member._protocols.generated')\n"
         "assert callable(ports.ManualPort.bind)\n"
         "assert (get_type_hints(ports.ManualPort.selected)['return']\n"
         "        is ports.ManualPort.Record)\n",
@@ -752,13 +844,16 @@ def test_model_namespaces_preserve_nested_contracts(
     _probe(
         member_root,
         "from flext_infra import u\n"
-        "from flext_infra.workspace import FlextInfraRopeWorkspace, FlextInfraWorkspaceDetector\n"
-        "project = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root)).project\n"
+        "from flext_infra.workspace import FlextInfraRopeWorkspace, "
+        "FlextInfraWorkspaceDetector\n"
+        "project = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec("
+        "root)).project\n"
         "with u.Infra.facade_source_project(root) as binding:\n"
         "    with FlextInfraRopeWorkspace.open_workspace(root,\n"
         "            rope_repository_root=Path(binding[0].root.real_path),\n"
         "            source_project=binding[0]) as workspace:\n"
-        "        modules, identities = tm.ok(service.render_modules(project, workspace))\n"
+        "        modules, identities = tm.ok(service.render_modules("
+        "project, workspace))\n"
         f"assert identities[{namespace + '.Root'!r}] == identities['Mirror.Root']\n"
         "assert modules\n",
         consumer="",
@@ -797,7 +892,8 @@ def test_apply_is_idempotent(member_root: t.DirectoryPath) -> None:
         "assert {path: path.read_bytes() "
         'for path in generated.glob("generated*.py")} == before\n'
         "tm.ok(FlextInfraCodegenProtocolModels(\n"
-        "    repository_root=root, apply_changes=False, conform=service.conform).execute())\n",
+        "    repository_root=root, apply_changes=False, "
+        "conform=service.conform).execute())\n",
     )
 
 
@@ -819,7 +915,8 @@ def test_check_only_reports_drift(member_root: t.DirectoryPath) -> None:
     _probe(
         member_root,
         "result = FlextInfraCodegenProtocolModels(\n"
-        "    repository_root=root, apply_changes=False, conform=service.conform).execute()\n"
+        "    repository_root=root, apply_changes=False, "
+        "conform=service.conform).execute()\n"
         'assert result.failure and "drifted" in result.error\n',
         consumer="",
     )
@@ -863,7 +960,8 @@ def test_authored_model_projection_transfers_without_removing_operational_ports(
         "assert p.DemoMember.ManualPort is ManualPort\n"
         "assert callable(ManualPort.bind)\n"
         'assert get_type_hints(p.DemoMember.Order.quantity.fget)["return"] is int\n'
-        'assert isinstance(m.DemoMember.Order(sku="transferred"), p.DemoMember.Order)\n',
+        'assert isinstance(m.DemoMember.Order(sku="transferred"), '
+        "p.DemoMember.Order)\n",
     )
 
 
@@ -958,7 +1056,8 @@ def test_tooling_observes_the_projected_facade_and_export_epoch(
         member_root,
         consumer="from demo_member import consumer, m, p\n"
         'assert get_type_hints(consumer.ship)["order"] is p.DemoMember.Order\n'
-        'assert isinstance(m.DemoMember.Order(sku="fresh-source"), p.DemoMember.Order)\n',
+        'assert isinstance(m.DemoMember.Order(sku="fresh-source"), '
+        "p.DemoMember.Order)\n",
     )
 
 
@@ -1002,8 +1101,10 @@ def test_distinct_same_named_models_cannot_silently_collapse_a_union(
     source = domain.read_text(encoding=c.DEFAULT_ENCODING)
     source = source.replace(
         "type Payload = Order | ShipmentPayload",
-        'class Left:\n    class Item(m.FrozenModel):\n        left: str = m.Field(description="Left value.")\n'
-        'class Right:\n    class Item(m.FrozenModel):\n        right: int = m.Field(description="Right value.")\n'
+        "class Left:\n    class Item(m.FrozenModel):\n"
+        '        left: str = m.Field(description="Left value.")\n'
+        "class Right:\n    class Item(m.FrozenModel):\n"
+        '        right: int = m.Field(description="Right value.")\n'
         "type Payload = Left.Item | Right.Item",
     ).replace(
         "Payload = Payload",
@@ -1013,7 +1114,8 @@ def test_distinct_same_named_models_cannot_silently_collapse_a_union(
     _probe(
         member_root,
         "result = service.execute()\n"
-        'assert result.failure and "competing generated protocol member identities" in result.error\n',
+        'assert result.failure and "competing generated protocol member identities" '
+        "in result.error\n",
         consumer="",
     )
 
@@ -1068,9 +1170,12 @@ def test_recursive_member_annotations_resolve_through_real_owner_names(
     _probe(
         member_root,
         consumer="from demo_member import m, p\n"
-        'assert get_type_hints(p.DemoMember.NodeA.peer.fget)["return"] == p.DemoMember.NodeB | None\n'
-        'assert get_type_hints(p.DemoMember.NodeB.peer.fget)["return"] == p.DemoMember.NodeA | None\n'
-        "assert isinstance(m.DemoMember.NodeA(peer=m.DemoMember.NodeB()), p.DemoMember.NodeA)\n",
+        'assert get_type_hints(p.DemoMember.NodeA.peer.fget)["return"] '
+        "== p.DemoMember.NodeB | None\n"
+        'assert get_type_hints(p.DemoMember.NodeB.peer.fget)["return"] '
+        "== p.DemoMember.NodeA | None\n"
+        "assert isinstance(m.DemoMember.NodeA(peer=m.DemoMember.NodeB()), "
+        "p.DemoMember.NodeA)\n",
     )
 
 
@@ -1087,7 +1192,8 @@ def test_budgeted_owners_are_resolvable_through_the_generated_barrel(
             for field in range(25)
         )
         + (
-            f'\n    previous: Bulk{index - 1} | None = m.Field(default=None, description="Previous model.")'
+            f"\n    previous: Bulk{index - 1} | None = m.Field(default=None, "
+            'description="Previous model.")'
             if index
             else ""
         )
@@ -1121,7 +1227,8 @@ def test_budgeted_owners_are_resolvable_through_the_generated_barrel(
         "    assert isinstance(model(), port)\n"
         '    assert get_type_hints(port.field24.fget)["return"] is str\n'
         "    if index:\n"
-        '        assert get_type_hints(port.previous.fget)["return"] == getattr(p.DemoMember, f"Bulk{index - 1}") | None\n',
+        '        assert get_type_hints(port.previous.fget)["return"] '
+        '== getattr(p.DemoMember, f"Bulk{index - 1}") | None\n',
     )
 
 
@@ -1151,8 +1258,10 @@ def test_weak_or_untyped_method_contracts_fail_before_publication(
         "from flext_core import m, t", f"{imports}from flext_core import m, t\n{alias}"
     )
     source = source.replace(
-        '    quantity: int = m.Field(default=1, description="Number of units ordered.")',
-        '    quantity: int = m.Field(default=1, description="Number of units ordered.")\n'
+        "    quantity: int = m.Field(default=1, "
+        'description="Number of units ordered.")',
+        "    quantity: int = m.Field(default=1, "
+        'description="Number of units ordered.")\n'
         f"    def inspect(self, {signature}) -> str: ...",
     )
     domain.write_text(source, encoding=c.DEFAULT_ENCODING)

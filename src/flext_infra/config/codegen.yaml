@@ -131,12 +131,7 @@ Infra:
       # Keep reasons here; an empty list removes constraints from all projections.
       # Dependency compatibility is resolved from the declared project graph;
       # upstream packages own any bounds their public contracts require.
-      # mypy 2.4.0 crashes internally (AssertionError "Must not defer during
-      # final iteration", mypy semanal.py) on the fleet's nested ldif model
-      # inference — held below 2.4.0 until upstream fixes the deferral bug.
-      # Bead trail: flext-0ftd.3 family + flext-mlr2m root parser finding.
-      uv_constraint_dependencies:
-      - mypy<2.4.0
+      uv_constraint_dependencies: []
       # Explicit resolver-wide SDK source election. Repository/local declarations
       # of the same normalized name and marker take precedence at rendering.
       # The fork release repairs region coverage for try/else/finally matching;
@@ -792,7 +787,7 @@ Infra:
         description: Regenerate declared projections with guarded publication per participant, without repairing authored inputs or resolving locks.
         requires_activation: false
       - name: gen-footprint
-        description: Inspect the pending generation journal and declared physical effect footprint without leases, recovery, or publication.
+        description: Inspect the pending generation journal and physical effect footprint without generation planning, participant leases, recovery, or publication.
         requires_activation: false
       - name: initialize
         description: Bootstrap this target's own declaration and canonical Makefile.

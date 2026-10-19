@@ -924,6 +924,7 @@ _upg_lifecycle: _builtin_setup_submodules
 	@$(SELF_MAKE) _upg_reconcile_locks
 	@$(SELF_MAKE) _upg_install_runtime
 	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
+	+@$(SELF_MAKE) _upg_refresh_member_locks
 	$(call RUN_PUBLIC_POST,upg)
 {% else %}
 	+@$(SELF_MAKE) _upg_resolve_locks
@@ -935,6 +936,7 @@ _upg_lifecycle: _builtin_setup_submodules
 	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what mise-config --scope self
 	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what makefile --scope all
 	+@$(SELF_MAKE) _upg_provision_tools
+	+@$(SELF_MAKE) _upg_refresh_member_locks
 	@$(PROJECT_FLEXT_INFRA) deps modernize --repository-root "$(PROJECT_ROOT)" \
 		--apply --rewrite-constraints --projects .
 	$(call RUN_PUBLIC_PRODUCE,gen)
@@ -947,12 +949,17 @@ _upg_lifecycle: _builtin_setup_submodules
 .PHONY: _upg_provision_tools
 _upg_provision_tools:
 	@mise -C "$(PROJECT_ROOT)" lock --bump
+	@{{ mise_install_command("$(PROJECT_ROOT)", mise_install_tools) }}
+
+# Member lock resolution is independent of root tool provisioning: an editable
+# supplier keeps the runtime's pins while members refresh their standalone locks.
+.PHONY: _upg_refresh_member_locks
+_upg_refresh_member_locks:
 {% for repository in workspace_repositories if repository.kind == "internal_flext" and repository.codegen != "none" and not repository.read_only %}
 	@printf 'upg: resolving native tool and UV locks for %s\n' "$(PROJECT_ROOT)/{{ repository.path }}"
 	@mise -C "$(PROJECT_ROOT)/{{ repository.path }}" lock --bump
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(PROJECT_ROOT)" -f "$(PROJECT_ROOT)/{{ repository.path }}/Makefile" _upg_resolve_locks
 {% endfor %}
-	@{{ mise_install_command("$(PROJECT_ROOT)", mise_install_tools) }}
 
 # Complete the upgrade against the projections just published. Re-reading the
 # current Makefile selects the new recipes without restarting the upgrade or
@@ -1306,7 +1313,7 @@ _builtin_gen_all: _builtin_require_interpreter
 	$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --scope "$$scope"
 
 _builtin-gen-footprint: _builtin_require_interpreter
-	@$(PROJECT_FLEXT_INFRA) codegen footprint --root "$(PROJECT_ROOT)" --scope all
+	@$(PROJECT_FLEXT_INFRA) codegen footprint --root "$(PROJECT_ROOT)"
 
 _builtin-bootstrap-candidate: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen candidate-bootstrap --repository-root "$(PROJECT_ROOT)"

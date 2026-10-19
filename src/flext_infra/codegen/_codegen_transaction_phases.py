@@ -869,23 +869,9 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             return result_type.from_failure(aligned)
         session = aligned.value
         layout = session.plan.layout
-        existing_paths = {entry.path for entry in session.journal.entries}
-        for plan in changed:
-            relative = FlextInfraMiseArtifactsFiles.transaction_relative(
-                layout, plan.path
-            )
-            if relative.failure:
-                return result_type.from_failure(relative)
-            if relative.value in existing_paths:
-                return result_type.from_failure(
-                    self._recover_failure(
-                        layout,
-                        r[bool].fail(
-                            "multiple generation phases own one destination: "
-                            f"{relative.value}",
-                        ),
-                    ),
-                )
+        destinations = self._unique_phase_destinations(session, changed)
+        if destinations.failure:
+            return result_type.from_failure(destinations)
         sources = FlextInfraCodegenPreconditions.phase_sources(phase, plans)
         if sources.failure:
             return result_type.from_failure(
@@ -916,6 +902,35 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
         )
         source_states = tuple(source for _phase, source in sources.value)
         return result_type.ok((session, sources.value, source_states))
+
+    def _unique_phase_destinations(
+        self,
+        session: m.Infra.CodegenTransactionSession,
+        changed: t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ) -> p.Result[bool]:
+        """Authenticate paths and reject destinations owned by an earlier phase.
+
+        Returns:
+            Success, or the original path or recovered ownership failure.
+
+        """
+        layout = session.plan.layout
+        existing_paths = {entry.path for entry in session.journal.entries}
+        for plan in changed:
+            relative = FlextInfraMiseArtifactsFiles.transaction_relative(
+                layout, plan.path
+            )
+            if relative.failure:
+                return r[bool].from_failure(relative)
+            if relative.value in existing_paths:
+                return self._recover_failure(
+                    layout,
+                    r[bool].fail(
+                        "multiple generation phases own one destination: "
+                        f"{relative.value}",
+                    ),
+                )
+        return r[bool].ok(value=True)
 
     def _stage_authorized_phase(
         self,

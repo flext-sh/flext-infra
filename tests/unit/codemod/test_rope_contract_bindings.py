@@ -48,7 +48,8 @@ class TestsFlextInfraRopeContractBindings:
             "try:\n"
             "    Payload.model_validate({})\n"
             "except ValidationError as error:\n"
-            "    rejected = tuple((item['type'], item['loc']) for item in error.errors())\n"
+            "    rejected = tuple((item['type'], item['loc']) "
+            "for item in error.errors())\n"
             "evidence = (Payload.model_json_schema(), raw, "
             "restored.model_dump_json(by_alias=True), rejected)\n"
         )

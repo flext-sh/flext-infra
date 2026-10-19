@@ -93,16 +93,16 @@ class TestsFlextInfraApplyRenames:
             tm.that(path.read_bytes(), eq=content)
 
     @staticmethod
-    @pytest.mark.parametrize(
-        "authority", ["workspace", "member", "standalone", "external"]
-    )
-    @pytest.mark.parametrize("operation", ["class", "module"])
-    def test_provider_rename_reaches_all_native_consumer_scopes(
+    def _provider_rename_workspace(
         tmp_path: Path,
         authority: str,
-        operation: str,
-    ) -> None:
-        """Public aliases, transitive users and generated exports cut over together."""
+    ) -> tuple[Path, Path, list[Path], list[Path], Path, bytes]:
+        """Create independent providers and every native receiver scope.
+
+        Returns:
+            Root, Python, project and package paths, provider and unrelated bytes.
+
+        """
         root, package = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-provider",
@@ -150,18 +150,17 @@ class TestsFlextInfraApplyRenames:
                         for project in projects[1:]
                     )
                 )
-                inventory_source = root / "_inventory.py"
-                inventory_source.write_text(
+                provider = root / "_inventory.py"
+                provider.write_text(
                     '"""Expose the selected canonical host inventory."""\n'
                     "import sys\n"
                     f"sys.stdout.write({(inventory.model_dump_json() + chr(10))!r})\n",
                     encoding=c.DEFAULT_ENCODING,
                 )
-                configuration = root / "config"
-                configuration.mkdir()
-                (configuration / "codegen.yaml").write_text(
+                (root / "config").mkdir()
+                (root / "config" / "codegen.yaml").write_text(
                     "Infra:\n  codegen:\n    workspace_inventory_command: "
-                    + json.dumps((str(python), "-B", str(inventory_source)))
+                    + json.dumps((str(python), "-B", str(provider)))
                     + "\n",
                     encoding=c.DEFAULT_ENCODING,
                 )
@@ -234,7 +233,6 @@ class TestsFlextInfraApplyRenames:
             "__all__: list[str] = []\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        original_unrelated = unrelated.read_bytes()
         for project in projects:
             tests = project / "tests"
             tests.mkdir(exist_ok=True)
@@ -245,6 +243,22 @@ class TestsFlextInfraApplyRenames:
                 "VALUE = Selected.value()\n",
                 encoding=c.DEFAULT_ENCODING,
             )
+        return root, python, projects, packages, provider, unrelated.read_bytes()
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "authority", ["workspace", "member", "standalone", "external"]
+    )
+    @pytest.mark.parametrize("operation", ["class", "module"])
+    def test_provider_rename_reaches_all_native_consumer_scopes(
+        tmp_path: Path,
+        authority: str,
+        operation: str,
+    ) -> None:
+        """Public aliases, transitive users and generated exports cut over together."""
+        root, python, projects, packages, provider, original_unrelated = (
+            TestsFlextInfraApplyRenames._provider_rename_workspace(tmp_path, authority)
+        )
         driver = root / "renames.csv"
         driver.write_text(
             "old,new\nFlextProvider,FlextRenamedProvider\n", encoding=c.DEFAULT_ENCODING
@@ -302,7 +316,26 @@ class TestsFlextInfraApplyRenames:
                 tm.that(provider.exists(), eq=False)
                 tm.that(provider.with_name("meaningful.py").is_file(), eq=True)
             exported_name = "FlextProvider"
-        tm.that(unrelated.read_bytes(), eq=original_unrelated)
+        tm.that((packages[-1] / "unrelated.py").read_bytes(), eq=original_unrelated)
+        TestsFlextInfraApplyRenames._verify_renamed_consumers(
+            root, python, projects, packages, exported_name
+        )
+        if operation == "class":
+            again = tm.ok(FlextInfraApplyRenames.run(request))
+            tm.that(again.files_changed, eq=0)
+
+    @staticmethod
+    def _verify_renamed_consumers(
+        root: Path,
+        python: Path,
+        projects: list[Path],
+        packages: list[Path],
+        exported_name: str,
+    ) -> None:
+        """Exercise provider identity and local test imports in fresh interpreters."""
+        package = packages[0]
+        first = packages[1] if len(packages) > 1 else package
+        second = packages[2] if len(packages) > 2 else package
         code = (
             "from typing import get_args, get_type_hints\n"
             f"from provider_pkg import {exported_name} as CanonicalProvider\n"
@@ -370,9 +403,6 @@ class TestsFlextInfraApplyRenames:
                 )
             )
             tm.that(u.Cli.process_succeeded(checked.outcome), eq=True)
-        if operation == "class":
-            again = tm.ok(FlextInfraApplyRenames.run(request))
-            tm.that(again.files_changed, eq=0)
 
     @staticmethod
     @pytest.mark.parametrize(

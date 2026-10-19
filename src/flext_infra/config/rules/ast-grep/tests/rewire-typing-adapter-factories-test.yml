@@ -1,0 +1,18 @@
+id: rewire-typing-adapter-factories
+valid:
+  - |
+    from flext_core import u
+    value = u.json_mapping_adapter().validate_python(payload)
+  - |
+    from flext_core import t
+    value = t.json_mapping_adapter().validate_python(payload)
+  - |
+    from flext_core import t, u
+    value: t.JsonMapping = payload
+invalid:
+  - |
+    from flext_core import t, u
+    value = t.json_mapping_adapter().validate_python(payload)
+  - |
+    from flext_core import t, u
+    value = t.str_adapter().validate_json(payload)

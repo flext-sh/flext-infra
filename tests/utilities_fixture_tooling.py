@@ -10,11 +10,13 @@ import os
 import shutil
 import sys
 import time
+from functools import cache
 from pathlib import Path
 from textwrap import indent
 
 from flext_infra import config, u
 from flext_infra.validate import FlextInfraPytestRunner
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, r, t, tm
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
 
@@ -306,12 +308,100 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         return str(tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, checkout)))
 
     @staticmethod
+    def python_dependency_projects(root: Path) -> t.VariadicTuple[Path]:
+        """Resolve declared fixture dependencies to actual workspace source owners.
+
+        Returns:
+            The declared projects and their local runtime dependency closure.
+
+        Raises:
+            ValueError: If a declared fixture dependency has no workspace owner.
+
+        """
+        checkout = Path(__file__).resolve().parents[1]
+        context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(checkout))
+        workspace = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(context.runtime_root),
+        )
+        projects = {
+            repository.distribution: context.runtime_root / repository.path
+            for repository in (workspace.repository, *workspace.subprojects)
+        }
+        metadata = tm.ok(u.Infra.read_project_metadata_result(root))
+        selected: dict[str, Path] = {}
+        pending = list(metadata.project.dependencies)
+        while pending:
+            requirement = pending.pop()
+            name = u.Infra.dep_name(requirement)
+            if name in selected:
+                continue
+            if name is None or name not in projects:
+                msg = f"Fixture dependency has no workspace source owner: {requirement}"
+                raise ValueError(msg)
+            project = projects[name]
+            selected[name] = project
+            dependency = tm.ok(u.Infra.read_project_metadata_result(project))
+            pending.extend(
+                value
+                for value in dependency.project.dependencies
+                if u.Infra.dep_name(value) in projects
+            )
+        return tuple(selected.values())
+
+    @staticmethod
+    @cache
+    def python_dependency_wheels(
+        directory: Path,
+        dependency_projects: t.VariadicTuple[Path],
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Build current dependency sources once in the shared worker allocation.
+
+        UV reuses its native artifact cache; no installed executor package or
+        environment is copied into a fixture. The session owner removes the wheels.
+
+        Returns:
+            Real wheels, or the original build failure without retrying it.
+
+        """
+        fixture = TestsFlextInfraUtilitiesToolingFixtureMixin
+        binary = fixture.managed_uv()
+        wheels: list[Path] = []
+        with u.Infra.codegen_transaction_lease(directory / "dependency-wheels.lock"):
+            for project in dependency_projects:
+                metadata = tm.ok(u.Infra.read_project_metadata_result(project))
+                destination = directory / "dependency-wheels" / metadata.project.name
+                destination.mkdir(parents=True, exist_ok=True)
+                built = u.Cli.run_checked(
+                    (
+                        binary,
+                        "build",
+                        "--wheel",
+                        "--python",
+                        sys.executable,
+                        "--out-dir",
+                        str(destination),
+                        str(project),
+                    ),
+                    cwd=project,
+                )
+                if built.failure:
+                    return r[t.VariadicTuple[Path]].from_failure(built)
+                artifacts = tuple(destination.glob("*.whl"))
+                if len(artifacts) != 1:
+                    return r[t.VariadicTuple[Path]].fail(
+                        f"Dependency build must publish one wheel: {destination}",
+                    )
+                wheels.extend(artifacts)
+        return r[t.VariadicTuple[Path]].ok(tuple(wheels))
+
+    @staticmethod
     def create_python_environment(
         root: Path,
         *,
         dependency_projects: t.SequenceOf[Path] = (),
+        session_runtime: p.Tests.SessionRuntime | None = None,
     ) -> p.Result[bool]:
-        """Provision a fixture with the executor's declared physical resolver.
+        """Provision a physical fixture venv with session-built real dependencies.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -329,6 +419,14 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         )
         if created.failure or not dependency_projects:
             return created
+        if session_runtime is None:
+            return r[bool].fail("Fixture dependency builds require a session runtime")
+        wheels = TestsFlextInfraUtilitiesToolingFixtureMixin.python_dependency_wheels(
+            session_runtime.directory,
+            tuple(dependency_projects),
+        )
+        if wheels.failure:
+            return r[bool].from_failure(wheels)
         return u.Cli.run_checked(
             (
                 str(binary.value),
@@ -336,7 +434,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                 "install",
                 "--python",
                 str(environment),
-                *(str(project) for project in dependency_projects),
+                *(str(wheel) for wheel in wheels.value),
             ),
             cwd=root,
         )

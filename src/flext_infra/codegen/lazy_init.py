@@ -167,6 +167,9 @@ class FlextInfraCodegenLazyInit(
         Returns:
             The resulting ``p.Result[m.Infra.CodegenPhaseAnalysis]``.
 
+        Raises:
+            OSError: If the original source epoch cannot be authenticated.
+
         """
         roots = (
             (self.repository_root.resolve(),)
@@ -357,30 +360,8 @@ class FlextInfraCodegenLazyInit(
         """
         analyses: list[m.Infra.CodegenPhaseAnalysis] = []
         inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
-        candidates: t.MutableMappingKV[
-            Path, t.Pair[t.VariadicTuple[Path], p.Infra.RopeSourceConsumption]
-        ] = {}
+        candidates = self._target_repository_candidates(roots, source_project)
         consumption: p.Infra.RopeSourceConsumption | None = None
-        if self.target_module:
-            for root in roots:
-                if (
-                    not root.is_relative_to(self.repository_root.resolve())
-                    or not root.is_dir()
-                ):
-                    continue
-                with (
-                    source_project.source_consumption() as consumption,
-                    source_project.source_consumer(consumer_root=root) as binding,
-                    FlextInfraRopeWorkspace.open_workspace(
-                        root,
-                        rope_repository_root=Path(binding.root.real_path),
-                        source_project=binding,
-                    ) as rope,
-                ):
-                    candidates[root] = (
-                        self._target_package_dirs(rope.workspace_index, root),
-                        consumption,
-                    )
         target_roots = sum(len(paths) for paths, _ in candidates.values())
         for root in roots:
             analyzed: p.Result[m.Infra.CodegenPhaseAnalysis | None] | None = None
@@ -546,6 +527,9 @@ class FlextInfraCodegenLazyInit(
     ) -> t.MutableMappingKV[Path, m.Cli.AtomicFileState]:
         """Fold one repository's input states into the shared per-path mapping.
 
+        Returns:
+            The unique captured states indexed by their physical paths.
+
         Raises:
             OSError: When the folded snapshot fails and an earlier analysis
                 recorded the original exception.
@@ -561,6 +545,44 @@ class FlextInfraCodegenLazyInit(
                 raise original from exc
             raise
         return {state.path: state for state in merged}
+
+    def _target_repository_candidates(
+        self,
+        roots: t.VariadicTuple[Path],
+        source_project: p.Infra.RopeProject,
+    ) -> t.MutableMappingKV[
+        Path, t.Pair[t.VariadicTuple[Path], p.Infra.RopeSourceConsumption]
+    ]:
+        """Capture the selected target packages before repository analysis.
+
+        Returns:
+            Candidate paths and their original native source consumption.
+
+        """
+        candidates: t.MutableMappingKV[
+            Path, t.Pair[t.VariadicTuple[Path], p.Infra.RopeSourceConsumption]
+        ] = {}
+        if self.target_module:
+            for root in roots:
+                if (
+                    not root.is_relative_to(self.repository_root.resolve())
+                    or not root.is_dir()
+                ):
+                    continue
+                with (
+                    source_project.source_consumption() as consumption,
+                    source_project.source_consumer(consumer_root=root) as binding,
+                    FlextInfraRopeWorkspace.open_workspace(
+                        root,
+                        rope_repository_root=Path(binding.root.real_path),
+                        source_project=binding,
+                    ) as rope,
+                ):
+                    candidates[root] = (
+                        self._target_package_dirs(rope.workspace_index, root),
+                        consumption,
+                    )
+        return candidates
 
     def _target_package_dirs(
         self,

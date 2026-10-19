@@ -382,7 +382,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         )
         tm.fail(rejected)
         tm.that(rejected.exception, is_=ValueError, msg=rejected.error)
-        with pytest.raises(ValueError) as raised:
+        with pytest.raises(ValueError, match=r"operator\.invalid") as raised:
             rejected.unwrap()
         tm.that(raised.value is rejected.exception, eq=True)
         settings_path = root / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME

@@ -274,7 +274,9 @@ class FlextInfraModelsCodemod:
         )
         deferred_contract: t.NonEmptyStr | None = m.Field(
             default=None,
-            description="Capture resolved by a canonical typed factory after declaration",
+            description=(
+                "Capture resolved by a canonical typed factory after declaration"
+            ),
         )
         readonly_origins: t.VariadicTuple[str] = m.Field(
             default=(),
@@ -347,11 +349,13 @@ class FlextInfraModelsCodemod:
                 if capture is not None and f"${{{capture}}}" not in self.pattern:
                     msg = "native default proof must name a pattern capture"
                     raise ValueError(msg)
-            if (self.required_field or self.private_attribute) and (
+            field_metadata = self.required_field or self.private_attribute
+            invalid_field_mode = self.required_field and self.private_attribute
+            if field_metadata and (
                 self.call_target is None
                 or not self.model_bases
                 or self.scope_kinds != (c.Infra.RopeScopeKind.CLASS,)
-                or (self.required_field and self.private_attribute)
+                or invalid_field_mode
             ):
                 msg = (
                     "native field metadata requires one mode, a callee "

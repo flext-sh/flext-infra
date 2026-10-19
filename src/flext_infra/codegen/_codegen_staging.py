@@ -236,6 +236,7 @@ class FlextInfraCodegenStaging:
             workspace: Shared read-only workspace root of the plans.
             staged_files: Already staged replacements to bind into the view.
             plans: Declared file effects of the prepared publication.
+            session: Active journal authorizing the candidate input states.
 
         Returns:
             The planned candidate sources, or the first planning failure.

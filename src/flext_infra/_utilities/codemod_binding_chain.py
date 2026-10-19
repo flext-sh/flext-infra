@@ -70,6 +70,9 @@ class FlextInfraUtilitiesCodemodBindingChain:
             Returns:
                 The resulting ``bool``.
 
+            Raises:
+                ValueError: If generic specialization lacks its required operands.
+
             """
             root, source, project = frame
             capture = m.Infra.AstGrepCapture.model_validate(
@@ -107,22 +110,24 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 is c.Infra.CodemodContextPredicate.GENERIC_SPECIALIZATION
             ):
                 if condition.of is None or len(condition.arg) not in {1, 2}:
-                    msg = "generic-specialization requires an attribute capture and destination owner"
+                    msg = (
+                        "generic-specialization requires an attribute capture "
+                        "and destination owner"
+                    )
                     raise ValueError(msg)
                 attribute = m.Infra.AstGrepCapture.model_validate(
                     captures[condition.of]
                 ).text
                 return cls._generic_specialization_holds(
                     (project, module, scope),
-                    f"{capture.text}.{attribute}",
-                    f"{condition.arg[0]}.{attribute}",
+                    (f"{capture.text}.{attribute}", f"{condition.arg[0]}.{attribute}"),
                     start,
                     sources,
-                    (
+                    namespace=(
                         m.Infra.AstGrepCapture.model_validate(
                             captures[condition.arg[1]]
                         ).text
-                        if len(condition.arg) == 2
+                        if len(condition.arg) == cls.RESOLVED_SYMBOL_OPERAND_COUNT
                         else None
                     ),
                 )
@@ -147,14 +152,20 @@ class FlextInfraUtilitiesCodemodBindingChain:
             frame: t.Triple[
                 p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope
             ],
-            original: str,
-            specialized: str,
+            expressions: t.Pair[str, str],
             start: int,
             sources: t.MappingKV[Path, str],
+            *,
             namespace: str | None = None,
         ) -> bool:
-            """Prove the destination alias specializes the exact original generic."""
+            """Prove the destination alias specializes the exact original generic.
+
+            Returns:
+                Whether the destination resolves to the original generic binding.
+
+            """
             runtime = FlextInfraUtilitiesRopeRuntimeModules
+            original, specialized = expressions
             project, _module, scope = frame
             target_frame = frame
             target_start = start
@@ -176,6 +187,24 @@ class FlextInfraUtilitiesCodemodBindingChain:
             destination_binding = runtime.expression_name(target_frame[2], specialized)
             if original_binding is None or destination_binding is None:
                 return False
+            return cls._specialization_binding_matches(
+                original_binding, destination_binding, sources
+            )
+
+        @classmethod
+        def _specialization_binding_matches(
+            cls,
+            original_binding: p.Infra.RopePyName,
+            destination_binding: p.Infra.RopePyName,
+            sources: t.MappingKV[Path, str],
+        ) -> bool:
+            """Compare the destination alias's generic with the original binding.
+
+            Returns:
+                Whether one source alias specializes the original generic.
+
+            """
+            runtime = FlextInfraUtilitiesRopeRuntimeModules
             destination_module, line = destination_binding.get_definition_location()
             if destination_module is None or line is None:
                 return False

@@ -151,7 +151,10 @@ class TestsFlextInfraModelAliasRetirement:
         root, sources = TestsFlextInfraModelAliasRetirement._workspace(
             tmp_path, consumer
         )
-        with infra.rope_workspace(root) as workspace, pytest.raises(ValueError):
+        with (
+            infra.rope_workspace(root) as workspace,
+            pytest.raises(ValueError, match=r"model alias|model import"),
+        ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
                 rope_workspace=workspace,

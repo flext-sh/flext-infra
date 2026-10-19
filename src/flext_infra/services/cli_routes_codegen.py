@@ -124,8 +124,10 @@ class FlextInfraCodegenRoutes:
             ),
             m.Cli.ResultCommandRoute(
                 name="footprint",
-                help_text="Read the actual generation journal and plan without effects",
-                model_cls=m.Infra.CodegenConformRequest,
+                help_text=(
+                    "Inspect recorded generation effects without planning or publication"
+                ),
+                model_cls=m.Infra.CodegenFootprintRequest,
                 handler=infra.codegen_footprint,
             ),
             *(

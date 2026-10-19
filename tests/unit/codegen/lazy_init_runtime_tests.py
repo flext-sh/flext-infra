@@ -14,7 +14,7 @@ from typing import Literal
 import pytest
 
 from flext_infra import infra
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraLazyInitRuntime:
@@ -29,14 +29,18 @@ class TestsFlextInfraLazyInitRuntime:
                 'MappingProxyType({"Exported": (".provider", "Declared")})',
             ),
             (
-                ("_LAZY_IMPORTS = MappingProxyType("
-                '{"Exported": (".provider", "Declared")})\n'),
+                (
+                    "_LAZY_IMPORTS = MappingProxyType("
+                    '{"Exported": (".provider", "Declared")})\n'
+                ),
                 "_LAZY_IMPORTS",
             ),
             (
-                ('_PROVIDERS = {"Exported": (".provider", "Declared")}\n'
-                "_LAZY_IMPORTS = MappingProxyType(_PROVIDERS)\n"),
-                "aliases=_LAZY_IMPORTS",
+                (
+                    '_PROVIDERS = {"Exported": (".provider", "Declared")}\n'
+                    "_LAZY_IMPORTS = MappingProxyType(_PROVIDERS)\n"
+                ),
+                "lazy_imports=_LAZY_IMPORTS",
             ),
         ],
     )
@@ -78,11 +82,13 @@ class TestsFlextInfraLazyInitRuntime:
                 (
                     sys.executable,
                     "-c",
-                    ("import sys\n"
-                    f"from {package.name} import Exported\n"
-                    "assert Exported is "
-                    f"sys.modules['{package.name}.provider'].Declared\n"
-                    "assert Exported.marker is True\n"),
+                    (
+                        "import sys\n"
+                        f"from {package.name} import Exported\n"
+                        "assert Exported is "
+                        f"sys.modules['{package.name}.provider'].Declared\n"
+                        "assert Exported.marker is True\n"
+                    ),
                 ),
                 cwd=repository,
                 options=m.Cli.ProcessOptions(
@@ -127,7 +133,10 @@ class TestsFlextInfraLazyInitRuntime:
         [(False, False), (True, False), (True, True)],
     )
     def test_public_generation_publishes_test_exports_without_namespace_classes(
-        tmp_path: Path, imported_alias: bool, published_alias: bool
+        tmp_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
+        imported_alias: bool,
+        published_alias: bool,
     ) -> None:
         """Generated initializers propagate precise aliases at module scope."""
         repository, package = u.Tests.create_lazy_init_workspace(
@@ -171,7 +180,13 @@ class TestsFlextInfraLazyInitRuntime:
             what=c.Infra.CodegenConformSurface.LAZY_INIT,
             scope=c.Infra.CodegenConformScope.SELF,
         )
-        tm.ok(u.Tests.create_python_environment(repository))
+        tm.ok(
+            u.Tests.create_python_environment(
+                repository,
+                dependency_projects=u.Tests.python_dependency_projects(repository),
+                session_runtime=session_runtime,
+            ),
+        )
 
         tm.ok(infra.codegen_generate(request))
 

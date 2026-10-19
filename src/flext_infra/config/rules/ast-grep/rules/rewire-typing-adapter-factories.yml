@@ -1,0 +1,22 @@
+id: rewire-typing-adapter-factories
+language: python
+severity: error
+files:
+  - "src/**/*.py"
+  - "tests/**/*.py"
+  - "examples/**/*.py"
+  - "scripts/**/*.py"
+rule:
+  all:
+    - pattern: t.$FACTORY($$$ARGS)
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          stopBy: end
+          matches: u-imported-from-flext
+constraints:
+  FACTORY:
+    regex: "^[a-z][a-z0-9_]*_adapter$"
+fix: u.$FACTORY($$$ARGS)
+message: Adapter factories belong to the utilities facade, not type declarations.

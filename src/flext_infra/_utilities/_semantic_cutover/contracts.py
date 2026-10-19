@@ -71,7 +71,7 @@ class FlextInfraUtilitiesSemanticContracts(
     def declared_contract_rules(
         repository_root: t.Infra.RopeSourcePath,
     ) -> t.SequenceOf[p.Infra.RopeContractRule]:
-        """Load universal and elected repo rules; reject duplicate IDs/unknown families."""
+        """Load universal and elected repo rules with unique IDs and known families."""
         packaged = (
             type(config).ssot_config_dir().parent
             / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
@@ -238,8 +238,10 @@ class FlextInfraUtilitiesSemanticContracts(
                     first, last = match.get_region()
                     if annotation_only and not any(
                         begin <= first < last <= end
-                        for begin, end, _line in FlextInfraUtilitiesSemanticFamilyTypeReferences.annotation_regions(
-                            module.source_code, module
+                        for begin, end, _line in (
+                            FlextInfraUtilitiesSemanticFamilyTypeReferences.annotation_regions(
+                                module.source_code, module
+                            )
                         )
                     ):
                         return False
@@ -432,7 +434,10 @@ class FlextInfraUtilitiesSemanticContracts(
                         local = alias or name
                         binding = runtime.expression_name(module.get_scope(), local)
                         if binding is None:
-                            msg = f"consumer import has no native binding: {local} in {path}"
+                            msg = (
+                                "consumer import has no native binding: "
+                                f"{local} in {path}"
+                            )
                             raise ValueError(msg)
                         owner = binding.get_object().get_module()
                         resource = owner.get_resource() if owner is not None else None
@@ -453,7 +458,10 @@ class FlextInfraUtilitiesSemanticContracts(
                             class_bases=bases,
                         )
                         if reference is None or reference.partition(".")[0] != "p":
-                            msg = f"projected receiver has no unique public protocol export: {qualified}"
+                            msg = (
+                                "projected receiver has no unique public protocol "
+                                f"export: {qualified}"
+                            )
                             raise ValueError(msg)
                         primaries = [
                             (sources[path][begin:end], runtime.scope_at(module, begin))
@@ -463,8 +471,10 @@ class FlextInfraUtilitiesSemanticContracts(
                         ]
                         primaries.extend(
                             (value[begin:end], lexical)
-                            for value, lexical, _line in references.scoped_quoted_type_references(
-                                sources[path], project, module
+                            for value, lexical, _line in (
+                                references.scoped_quoted_type_references(
+                                    sources[path], project, module
+                                )
                             )
                             for begin, end in references.reference_regions(value)
                         )
@@ -482,7 +492,10 @@ class FlextInfraUtilitiesSemanticContracts(
                             if not runtime.same_name(
                                 public, runtime.expression_name(lexical, primary)
                             ):
-                                msg = f"public receiver changes native identity: {primary} in {path}"
+                                msg = (
+                                    "public receiver changes native identity: "
+                                    f"{primary} in {path}"
+                                )
                                 raise ValueError(msg)
                         imported_module = FlextInfraUtilitiesRopeAnalysis.resolve_import_module(
                             current_package=FlextInfraUtilitiesRopeAnalysis.package_name_for_module(
@@ -562,8 +575,43 @@ class FlextInfraUtilitiesSemanticContracts(
         owned_modules: t.MappingKV[str, t.Infra.RopeSourcePath] | None = None,
     ) -> bool:
         """Prove native receivers, evaluation safety and destination bindings."""
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        if not cls._admit_contract_origin(
+            project, rule, module, match, (implementation_owners, sources)
+        ) or not cls._admit_contract_call(project, rule, module, match):
+            return False
+        if rule.receiver_methods and not cls._admitted_factory_receiver(
+            project, module, match, rule.receiver_methods
+        ):
+            return False
+        scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
+            module, match.get_region()[0]
+        )
+        if not cls._admit_contract_transfer(
+            project, rule, module, match, (scope, owned_modules)
+        ) or not cls._admit_contract_scope(project, rule, module, scope):
+            return False
+        if not cls._admit_readonly_contract(project, rule, match, scope):
+            return False
+        cls._require_deferred_annotation(project, rule, module, match, (scope, sources))
+        cls._require_contract_evaluation(rule, module, match, scope)
+        if not cls._admitted_unshadowed_builtins(rule, scope):
+            return False
+        return FlextInfraUtilitiesImportLaw.import_contract_bindings(
+            project, rule, module, scope, match.get_region()[0]
+        )
+
+    @staticmethod
+    def _admit_contract_origin(
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        module: p.Infra.RopePyModule,
+        match: p.Infra.RopeContractMatch,
+        context: tuple[
+            t.MutableMappingKV[t.Pair[str, str], t.Infra.RopeImplementationPaths],
+            t.MappingKV[t.Infra.RopeSourcePath, str],
+        ],
+    ) -> bool:
+        implementation_owners, sources = context
         resource = module.get_resource()
         if rule.value_default is not None:
             default = match.get_ast(rule.value_default)
@@ -597,6 +645,16 @@ class FlextInfraUtilitiesSemanticContracts(
                 and Path(resource.real_path) in implementation_owners[identity]
             ):
                 return False
+        return True
+
+    @classmethod
+    def _admit_contract_call(
+        cls,
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        module: p.Infra.RopePyModule,
+        match: p.Infra.RopeContractMatch,
+    ) -> bool:
         if rule.required_field or rule.private_attribute:
             if not cls._admitted_field_metadata(project, rule, module, match):
                 return False
@@ -640,11 +698,21 @@ class FlextInfraUtilitiesSemanticContracts(
         elif rule.missing_keywords:
             msg_0 = f"{rule.id}: missing-keyword proof requires a call target"
             raise ValueError(msg_0)
-        if rule.receiver_methods and not cls._admitted_factory_receiver(
-            project, module, match, rule.receiver_methods
-        ):
-            return False
-        scope = runtime.scope_at(module, match.get_region()[0])
+        return True
+
+    @staticmethod
+    def _admit_contract_transfer(
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        module: p.Infra.RopePyModule,
+        match: p.Infra.RopeContractMatch,
+        context: tuple[
+            p.Infra.RopeScope,
+            t.MappingKV[str, t.Infra.RopeSourcePath] | None,
+        ],
+    ) -> bool:
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        scope, owned_modules = context
         if rule.ownership_transfer is not None:
             if owned_modules is None:
                 message = (
@@ -682,20 +750,45 @@ class FlextInfraUtilitiesSemanticContracts(
                 "rope.base.pyobjects", "get_unknown"
             )()
             if actual is None or actual.get_object() == unknown:
-                message = f"{rule.id}: unproven transferred receiver in {module.get_name()}:{scope.get_start()}"
+                message = (
+                    f"{rule.id}: unproven transferred receiver in "
+                    f"{module.get_name()}:{scope.get_start()}"
+                )
                 raise ValueError(message)
             if not runtime.same_name(original, actual):
                 return False
+        return True
+
+    @classmethod
+    def _admit_contract_scope(
+        cls,
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        module: p.Infra.RopePyModule,
+        scope: p.Infra.RopeScope,
+    ) -> bool:
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
         if rule.scope_kinds and scope.get_kind() not in rule.scope_kinds:
             return False
         if rule.families and not cls._admitted_family(rule, module):
             return False
         ancestry = FlextInfraUtilitiesDeclarationPayload.class_ancestry(scope.pyobject)
-        if rule.model_bases and not any(
-            runtime.qualified_name(project, name).get_object() in ancestry
-            for name in rule.model_bases
-        ):
-            return False
+        return not (
+            rule.model_bases
+            and not any(
+                runtime.qualified_name(project, name).get_object() in ancestry
+                for name in rule.model_bases
+            )
+        )
+
+    @staticmethod
+    def _admit_readonly_contract(
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        match: p.Infra.RopeContractMatch,
+        scope: p.Infra.RopeScope,
+    ) -> bool:
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
         if rule.readonly_contract is not None:
             if not rule.readonly_origins:
                 message = f"{rule.id}: read-only admission requires native origins"
@@ -719,6 +812,18 @@ class FlextInfraUtilitiesSemanticContracts(
                 )
             ):
                 return False
+        return True
+
+    @classmethod
+    def _require_deferred_annotation(
+        cls,
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        module: p.Infra.RopePyModule,
+        match: p.Infra.RopeContractMatch,
+        context: tuple[p.Infra.RopeScope, t.MappingKV[t.Infra.RopeSourcePath, str]],
+    ) -> None:
+        scope, sources = context
         if rule.deferred_contract is not None:
             captured = match.get_ast(rule.deferred_contract)
             tree = module.get_ast()
@@ -742,6 +847,16 @@ class FlextInfraUtilitiesSemanticContracts(
             cls._require_deferred_contract(
                 project, rule, module, scope, annotation, match, sources
             )
+
+    @classmethod
+    def _require_contract_evaluation(
+        cls,
+        rule: p.Infra.RopeContractRule,
+        module: p.Infra.RopePyModule,
+        match: p.Infra.RopeContractMatch,
+        scope: p.Infra.RopeScope,
+    ) -> None:
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         for capture in rule.drops:
             if not isinstance(match.get_ast(capture), ast.Constant):
                 message = (
@@ -778,15 +893,6 @@ class FlextInfraUtilitiesSemanticContracts(
                 f"in {module.get_name()}:{scope.get_start()}"
             )
             raise ValueError(message)
-        if not cls._admitted_unshadowed_builtins(rule, scope):
-            return False
-        return FlextInfraUtilitiesImportLaw.import_contract_bindings(
-            project,
-            rule,
-            module,
-            scope,
-            match.get_region()[0],
-        )
 
     @classmethod
     def _require_deferred_contract(
@@ -1319,7 +1425,10 @@ class FlextInfraUtilitiesSemanticContracts(
                     isinstance(argument, ast.Starred) for argument in invocation.args
                 )
             ):
-                message = f"unproven native bound context: {module.get_name()}:{invocation.lineno}"
+                message = (
+                    "unproven native bound context: "
+                    f"{module.get_name()}:{invocation.lineno}"
+                )
                 raise ValueError(message)
             signature = inspect.signature(declared)
             signature.bind(
@@ -1335,13 +1444,19 @@ class FlextInfraUtilitiesSemanticContracts(
                 parameter.kind == inspect.Parameter.VAR_KEYWORD
                 for parameter in signature.parameters.values()
             ):
-                message = f"unproven native bound keywords: {module.get_name()}:{invocation.lineno}"
+                message = (
+                    "unproven native bound keywords: "
+                    f"{module.get_name()}:{invocation.lineno}"
+                )
                 raise ValueError(message)
             for argument in invocation.args:
                 if not refactors.semantic_capture(
                     project, module, argument, "type=builtins.str", name=""
                 ):
-                    message = f"unproven native bound key: {module.get_name()}:{invocation.lineno}"
+                    message = (
+                        "unproven native bound key: "
+                        f"{module.get_name()}:{invocation.lineno}"
+                    )
                     raise ValueError(message)
             for keyword in invocation.keywords:
                 prove_value(keyword.value)
@@ -1395,12 +1510,18 @@ class FlextInfraUtilitiesSemanticContracts(
                     isinstance(argument, ast.Starred) for argument in invocation.args
                 )
             ):
-                message = f"unproven native logging emission contract: {module.get_name()}:{invocation.lineno}"
+                message = (
+                    "unproven native logging emission contract: "
+                    f"{module.get_name()}:{invocation.lineno}"
+                )
                 raise ValueError(message)
             if not refactors.semantic_capture(
                 project, module, invocation.args[0], "type=builtins.str", name=""
             ):
-                message = f"logging migration requires a proven string message: {module.get_name()}:{invocation.lineno}"
+                message = (
+                    "logging migration requires a proven string message: "
+                    f"{module.get_name()}:{invocation.lineno}"
+                )
                 raise ValueError(message)
             for argument in invocation.args[1:]:
                 # Native literals have no authored evaluation to discard or run

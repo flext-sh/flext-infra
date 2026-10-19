@@ -23,7 +23,12 @@ class TestsFlextInfraApiAliasCutover:
         tmp_path: Path,
         consumer: str,
     ) -> t.Pair[Path, t.MappingKV[Path, str]]:
-        """Build a real local foundation with the existing lazy root publisher."""
+        """Build a real local foundation with the existing lazy root publisher.
+
+        Returns:
+            The project root and its declared source contents.
+
+        """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         sources = {
             package / "foundation.py": (
@@ -45,8 +50,9 @@ class TestsFlextInfraApiAliasCutover:
                 '__all__ = ["FlextSampleService", "s"]\n'
             ),
             package / "consumer.py": consumer.replace("sample_pkg", package.name),
-            package
-            / "kernel.py": "from flext_core import s\nclass Kernel(s[str]):\n    pass\n",
+            package / "kernel.py": (
+                "from flext_core import s\nclass Kernel(s[str]):\n    pass\n"
+            ),
         }
         for path, source in sources.items():
             path.write_text(source, encoding=c.DEFAULT_ENCODING)
@@ -130,7 +136,8 @@ class TestsFlextInfraApiAliasCutover:
                     f"import sys; sys.path.insert(0, {str(owner.parent.parent)!r}); "
                     f"from {owner.parent.name} import FlextSampleService; "
                     f"from {owner.parent.name}.consumer import Consumer; "
-                    f"from pathlib import Path; service = Consumer(repository_root={str(root)!r}); "
+                    "from pathlib import Path; "
+                    f"service = Consumer(repository_root={str(root)!r}); "
                     f"assert service.repository_root == Path({str(root)!r}); "
                     "assert service.delayed() is FlextSampleService"
                 ),
@@ -143,7 +150,10 @@ class TestsFlextInfraApiAliasCutover:
         ("consumer", "reason"),
         [
             (
-                "from sample_pkg import s\ndef capture(FlextSampleService):\n    return s\n",
+                (
+                    "from sample_pkg import s\n"
+                    "def capture(FlextSampleService):\n    return s\n"
+                ),
                 "shadowed",
             ),
             ('import sample_pkg\nvalue = getattr(sample_pkg, "s")\n', "reflective"),

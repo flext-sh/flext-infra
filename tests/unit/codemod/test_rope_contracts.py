@@ -38,7 +38,7 @@ class TestsFlextInfraRopeContracts:
         source: str,
     ) -> None:
         """The owned writer cannot discard effects or another public binding."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"__all__|exports"):
             u.Infra.remove_runtime_alias_export(source, alias="u")
 
     @staticmethod
@@ -125,7 +125,7 @@ class TestsFlextInfraRopeContracts:
     def test_constructor_target_preserves_arguments_and_noncall_references(
         rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
-        """Native callee replacement needs no signature catalogue or argument rewrite."""
+        """Replace native callees without a signature catalogue or argument rewrite."""
         workspace, path = rope_contract_consumer
         source = (
             "events = []\n"
@@ -323,7 +323,10 @@ class TestsFlextInfraRopeContracts:
                 "Field(default_factory=dict)"
             ),
             "values: list[Domain.Item] = Field(default_factory=list, description='d')",
-            "values: dict[str, Domain.Item] = Field(default_factory=dict, description='d')",
+            (
+                "values: dict[str, Domain.Item] = "
+                "Field(default_factory=dict, description='d')"
+            ),
         ],
     )
     def test_own_outer_contract_stays_deferred_during_class_construction(
@@ -503,7 +506,8 @@ class TestsFlextInfraRopeContracts:
         workspace, path = rope_contract_consumer
         source = (
             "from collections.abc import Mapping\n"
-            "from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError\n"
+            "from pydantic import (BaseModel, ConfigDict, Field, "
+            "TypeAdapter, ValidationError)\n"
             "class Payload(BaseModel):\n"
             "    model_config = ConfigDict(strict=True, validate_default=False)\n"
             f"    values: {contract} = Field(default_factory={factory})\n"
@@ -759,7 +763,8 @@ class TestsFlextInfraRopeContracts:
         )
         schema = (
             "def schema(source_type, handler):\n"
-            "    return core_schema.with_info_after_validator_function(append_marker, handler(source_type))\n"
+            "    return core_schema.with_info_after_validator_function("
+            "append_marker, handler(source_type))\n"
             if marker == "GetPydanticSchema"
             else ""
         )
@@ -796,8 +801,10 @@ class TestsFlextInfraRopeContracts:
             "    model_config = ConfigDict(validate_default=True)\n"
             f"    values: {annotation} = Field(default_factory=u.empty(\n"
             f"        contract_factory=lambda: TypeForm({annotation})))\n"
-            "second = RepeatedValidation.model_validate({}, context={'consumer': 'field'})\n"
-            "evidence = (tuple(first.values), first_events, tuple(second.values), tuple(events))\n"
+            "second = RepeatedValidation.model_validate("
+            "{}, context={'consumer': 'field'})\n"
+            "evidence = (tuple(first.values), first_events, "
+            "tuple(second.values), tuple(events))\n"
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         before = runpy.run_path(str(path))["evidence"]
@@ -1285,7 +1292,7 @@ class TestsFlextInfraRopeContracts:
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         with pytest.raises(
-            ValueError, match="unproven native logging|proven string message"
+            ValueError, match=r"unproven native logging|proven string message"
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
@@ -1431,7 +1438,8 @@ class TestsFlextInfraRopeContracts:
             "level = diagnostics.WARNING\n"
             "logger = acquire('contract.imports')\n"
             "logger.info('retained %s', level)\n"
-            "evidence = u.Cli.env_read('consumer_key', {'consumer_key': 'value'}).unwrap()\n"
+            "evidence = u.Cli.env_read("
+            "'consumer_key', {'consumer_key': 'value'}).unwrap()\n"
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         edits = tm.ok(
@@ -1480,7 +1488,7 @@ class TestsFlextInfraRopeContracts:
         *,
         literal: bool,
     ) -> None:
-        """Keep the exact native receiver and argument evaluation when removing a flag."""
+        """Keep native receiver and argument evaluation when removing a flag."""
         workspace, path = rope_contract_consumer
         source = (
             "from flext_cli import u as cli\n"
@@ -1546,7 +1554,7 @@ class TestsFlextInfraRopeContracts:
         ],
         expression: str,
     ) -> None:
-        """Calls, properties and name lookup retain effects or fail before publication."""
+        """Keep call, property and name lookup effects or fail before publication."""
         workspace, path = rope_contract_consumer
         source = (
             "from flext_cli import u as cli\n"

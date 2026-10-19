@@ -638,6 +638,9 @@ configured view paths while the workspace supplies the UV binary and Python
 runtime. Final convergence reconciles those locks without advancing dependency
 references again. Only the elected workspace runtime receives an installation;
 member runtimes are not provisioned separately.
+Editable-supplier upgrades use that same member-lock stage without bumping or
+provisioning the root supplier's tools. Preserving the shared runtime's pins does
+not exempt a writable member's standalone lock from its declared tool manifest.
 It runs generation's producer half, relocks the projected manifests, reinstalls
 and verifies the resulting runtime before generation's activation half. A
 requirement or Mise self-management release that only the upgraded generator
@@ -1605,8 +1608,15 @@ tree. Equal desired bytes alone do not authorize this path.
 Journal footprint inspection and authorization hold the same root journal lease
 as publication. Authorization observes the current journal under that lease;
 an earlier read-only snapshot does not become a global generation precondition.
-Planning releases the lease, then reports a newly authorized observation. Recovery
-and publication retain their own exact journal receipts and physical-state guards.
+The public footprint diagnostic authorizes the recorded effects against current
+physical participant policy, then returns that current observation with its journal
+identity and pending-effect fields. It never invokes prospective conform planning,
+source scans or report publication; its root-only request has no generation
+selectors. The native journal lease retains its persistent lock identity, but no
+participant lease or recovery is acquired. Recovery and publication retain their
+own exact journal receipts and physical-state guards. Generation planning reports
+continue to use the compact `CodegenPlanningReport` evidence projection rather than
+serializing native file-plan authorization snapshots.
 
 Documentation generation publishes one scope batch before capturing and rendering
 the next scope. A member batch captures its own sources, the shared root guides and

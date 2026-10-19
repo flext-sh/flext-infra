@@ -123,9 +123,7 @@ class TestsFlextInfraUvNativeResolution:
         root = tmp_path / "consumer"
         sdk = tmp_path / "sdk"
         provider = tmp_path / "provider"
-        sdk_name = "source-election-sdk"
-        provider_name = "source-election-provider"
-        u.Tests.write_native_resolution_project(sdk, sdk_name)
+        u.Tests.write_native_resolution_project(sdk, sdk.name)
         u.Tests.initialize_git_repo(sdk)
         previous = tm.ok(
             u.Cli.capture([c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=sdk)
@@ -135,15 +133,14 @@ class TestsFlextInfraUvNativeResolution:
         current = tm.ok(
             u.Cli.capture([c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=sdk)
         ).strip()
-        stale = f"{sdk_name} @ git+{sdk.as_uri()}@{previous}"
-        selected = f"{sdk_name} @ git+{sdk.as_uri()}@{current}"
+        stale = f"{sdk.name} @ git+{sdk.as_uri()}@{previous}"
+        selected = f"{sdk.name} @ git+{sdk.as_uri()}@{current}"
         u.Tests.write_native_resolution_project(
-            provider, provider_name, dependencies=(stale,)
+            provider, provider.name, dependencies=(stale,)
         )
         repository = u.Tests.repository_ref("source-election-root")
         leaf = u.Tests.repository_ref("source-election-leaf")
-        leaf_directory = tmp_path / "leaf"
-        requirements = (selected, f"{provider_name} @ {provider.as_uri()}")
+        requirements = (selected, f"{provider.name} @ {provider.as_uri()}")
         u.Tests.write_native_resolution_project(
             root,
             repository.distribution,
@@ -157,7 +154,7 @@ class TestsFlextInfraUvNativeResolution:
         members: list[m.Infra.UvResolutionProject] = []
         if consumer != "root":
             u.Tests.write_native_resolution_project(
-                leaf_directory,
+                tmp_path / "leaf",
                 leaf.distribution,
                 dependencies=requirements,
                 uv=(
@@ -170,9 +167,9 @@ class TestsFlextInfraUvNativeResolution:
                 m.Infra.UvResolutionProject(
                     role="supplier" if consumer == "supplier" else "member",
                     repository=leaf,
-                    directory=leaf_directory,
+                    directory=tmp_path / "leaf",
                     document=u.Tests.toml_doc(
-                        (leaf_directory / c.PYPROJECT_FILENAME).read_text(
+                        (tmp_path / "leaf" / c.PYPROJECT_FILENAME).read_text(
                             encoding="utf-8"
                         )
                     ),
@@ -187,17 +184,21 @@ class TestsFlextInfraUvNativeResolution:
         )
         originals = [u.Cli.toml_dumps(item.document) for item in (owner, *members)]
         directory = root / config.Infra.codegen.make.uv_resolution.local_directory
-        view = tm.ok(
-            u.Infra.pyproject_native_resolution_view(
-                owner,
-                workspace=u.Tests.workspace_spec(repository),
-                members=members,
-                directory=directory,
-                policy=config.Infra.codegen.make.uv_resolution,
+        directory.mkdir(parents=True)
+        tm.ok(
+            u.Cli.toml_write_document(
+                directory / c.PYPROJECT_FILENAME,
+                tm.ok(
+                    u.Infra.pyproject_native_resolution_view(
+                        owner,
+                        workspace=u.Tests.workspace_spec(repository),
+                        members=members,
+                        directory=directory,
+                        policy=config.Infra.codegen.make.uv_resolution,
+                    )
+                ),
             )
         )
-        directory.mkdir(parents=True)
-        tm.ok(u.Cli.toml_write_document(directory / c.PYPROJECT_FILENAME, view))
         process = tm.ok(u.Tests.resolve_native_identity_fixture(directory))
         tm.that(
             u.Cli.process_succeeded(process.outcome),
@@ -205,15 +206,17 @@ class TestsFlextInfraUvNativeResolution:
             msg=process.stdout + process.stderr,
         )
         if configured:
-            locator = TestsFlextInfraUvNativeResolution._provider_source_locator(
-                directory, sdk_name
+            tm.that(
+                TestsFlextInfraUvNativeResolution._provider_source_locator(
+                    directory, sdk.name
+                )["git"],
+                has=current,
+                lacks=previous,
             )
-            tm.that(locator["git"], has=current)
-            tm.that(locator["git"], lacks=previous)
         else:
             tm.that(
                 process.stdout + process.stderr,
-                has=f"Requirements contain conflicting URLs for package `{sdk_name}`",
+                has=f"Requirements contain conflicting URLs for package `{sdk.name}`",
             )
         tm.that(
             [u.Cli.toml_dumps(item.document) for item in (owner, *members)],
@@ -230,7 +233,7 @@ class TestsFlextInfraUvNativeResolution:
             payload["editable_supplier_root"] = Path("relative")
         else:
             payload["editable_directory"] = policy.local_directory
-        with pytest.raises(ValueError, match="absolute path|distinct directories"):
+        with pytest.raises(ValueError, match=r"absolute path|distinct directories"):
             m.Infra.MakeUvResolutionSpec.model_validate(payload)
 
     @staticmethod
@@ -290,11 +293,10 @@ class TestsFlextInfraUvNativeResolution:
         locked = TestsFlextInfraUvNativeResolution._resolved_identity_lock(
             directory, editable
         )
-        package = next(
-            item for item in locked.package if item.name == supplier.distribution
-        )
         tm.that(
-            package.source.editable,
+            next(
+                item for item in locked.package if item.name == supplier.distribution
+            ).source.editable,
             eq=supplier_root.relative_to(directory, walk_up=True).as_posix(),
         )
         tm.that(u.Cli.toml_dumps(default), eq=default_text)

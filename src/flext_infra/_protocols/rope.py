@@ -48,8 +48,8 @@ class FlextInfraProtocolsRope(Protocol):
         def text(self) -> str: ...
 
     @runtime_checkable
-    class RopeContractRule(Protocol):
-        """Read-only policy consumed by the native contract planner."""
+    class RopeContractCapturePolicy(Protocol):
+        """Read-only capture and replacement constraints for a native rule."""
 
         @property
         def id(self) -> str: ...
@@ -92,6 +92,10 @@ class FlextInfraProtocolsRope(Protocol):
 
         @property
         def drops(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class RopeContractRule(RopeContractCapturePolicy, Protocol):
+        """Read-only policy consumed by the native contract planner."""
 
         @property
         def call_target(self) -> str | None: ...

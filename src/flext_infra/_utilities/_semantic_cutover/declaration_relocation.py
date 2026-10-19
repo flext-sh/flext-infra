@@ -44,7 +44,15 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         repository_root: t.Infra.RopeSourcePath,
         rule: p.Infra.RopeContractRule,
     ) -> t.Infra.RopeSourcePath:
-        """Bind retirement to the project owning its authenticated catalogue."""
+        """Bind retirement to the project owning its authenticated catalogue.
+
+        Returns:
+            The unique project owner, or the repository when no inputs are declared.
+
+        Raises:
+            ValueError: If the catalogue has no unique owner inside the workspace.
+
+        """
         owners = {
             FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
                 repository_root, state.path

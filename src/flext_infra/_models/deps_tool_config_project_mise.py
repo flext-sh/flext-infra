@@ -70,6 +70,14 @@ class FlextInfraModelsDepsToolConfigProjectMise:
                 msg = "role tools must have unique native names"
                 raise ValueError(msg)
             for entry in self.tools:
+                custom_installation = any((
+                    entry.http is not None,
+                    entry.bin is not None,
+                    entry.postinstall is not None,
+                    bool(entry.depends),
+                    bool(entry.install_env),
+                    entry.version_prefix is not None,
+                ))
                 if (
                     not re.fullmatch(r"[a-z][a-z0-9_-]*", entry.name)
                     or not re.fullmatch(
@@ -77,12 +85,7 @@ class FlextInfraModelsDepsToolConfigProjectMise:
                     )
                     or entry.selector not in {None, entry.name}
                     or not entry.lock_checksum
-                    or entry.http is not None
-                    or entry.bin is not None
-                    or entry.postinstall is not None
-                    or entry.depends
-                    or entry.install_env
-                    or entry.version_prefix is not None
+                    or custom_installation
                 ):
                     msg = (
                         f"role requires an exact checksummed native tool: {entry.name}"
@@ -146,7 +149,9 @@ class FlextInfraModelsDepsToolConfigProjectMise:
         plan: Annotated[
             FlextInfraModelsDepsToolConfigProjectMise.MiseRolePlan,
             m.Field(
-                description="Unchanged declaration and locked projection used for acquisition"
+                description=(
+                    "Unchanged declaration and locked projection used for acquisition"
+                )
             ),
         ]
         executables: Annotated[

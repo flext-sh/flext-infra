@@ -134,13 +134,22 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
             return self._checked_target(node, targets.pop())
 
         def _checked_target(self, node: cst.Name | cst.Attribute, target: str) -> str:
-            """Refuse a rename that would capture a different lexical destination."""
+            """Refuse a rename that would capture a different lexical destination.
+
+            Returns:
+                The target name after checking its lexical bindings.
+
+            Raises:
+                TypeError: If the alias reference has no lexical scope.
+                ValueError: If another binding shadows the alias destination.
+
+            """
             if isinstance(node, cst.Attribute):
                 return target
             scope = self.get_metadata(ScopeProvider, node, None)
             if not isinstance(scope, Scope):
                 message = "alias reference has no lexical scope"
-                raise ValueError(message)
+                raise TypeError(message)
             expected = {
                 f"{alias.rpartition('.')[0]}.{target}"
                 for alias, destination in self.plan.qualified_aliases.items()

@@ -114,7 +114,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         *,
         visiting: frozenset[tuple[str, int]] = frozenset(),
     ) -> p.Infra.RopePyName | None:
-        """Resolve outer native types and aliases without evaluating element types."""
+        """Resolve outer native types and aliases without evaluating element types.
+
+        Returns:
+            The native outer type identity, or None when no safe origin is proven.
+
+        """
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
             return cls.annotation_origin(
                 project,
@@ -124,26 +129,24 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             )
         primary = node.value if isinstance(node, ast.Subscript) else node
         binding = cls.resolve_symbol(scope, primary)
-        if binding is None:
-            return None
-        if isinstance(node, ast.Subscript) and cls.same_name(
-            binding, cls.qualified_name(project, "typing.Annotated")
+        if (
+            binding is not None
+            and isinstance(node, ast.Subscript)
+            and cls.same_name(binding, cls.qualified_name(project, "typing.Annotated"))
         ):
             if not isinstance(node.slice, ast.Tuple) or not node.slice.elts:
                 return None
             return cls.annotation_origin(
                 project, node.slice.elts[0], scope, visiting=visiting
             )
-        alias = cls.annotation_alias_definition(binding)
+        alias = None if binding is None else cls.annotation_alias_definition(binding)
         if alias is None:
             return binding
         declaration, lexical = alias
         module = lexical.pyobject.get_module()
-        if module is None:
+        if module is None or (module.get_name(), declaration.lineno) in visiting:
             return None
         identity = (module.get_name(), declaration.lineno)
-        if identity in visiting:
-            return None
         return cls.annotation_origin(
             project, declaration.value, lexical, visiting=visiting | {identity}
         )
@@ -938,46 +941,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                 raise TypeError(msg)
             locations.append(location)
         return tuple(locations)
-
-    @classmethod
-    def from_import(
-        cls,
-        module_name: str,
-        level: int,
-        names_and_aliases: t.SequenceOf[t.Pair[str, str | None]],
-    ) -> t.Infra.RopeFromImport:
-        from_import_factory = cls.runtime_callable(
-            "rope.refactor.importutils.importinfo",
-            "FromImport",
-        )
-        from_import = from_import_factory(module_name, level, list(names_and_aliases))
-        if not isinstance(from_import, p.Infra.RopeFromImport):
-            msg = "rope FromImport does not satisfy p.Infra.RopeFromImport"
-            raise TypeError(msg)
-        return from_import
-
-    @classmethod
-    def normal_import(
-        cls,
-        names_and_aliases: t.SequenceOf[t.Pair[str, str | None]],
-    ) -> t.Infra.RopeNormalImport:
-        """Build Rope's native plain ``import`` record.
-
-        Returns:
-            The native ``NormalImport`` for the given names.
-
-        Raises:
-            TypeError: If Rope's record does not satisfy its protocol.
-
-        """
-        normal_import = cls.runtime_callable(
-            "rope.refactor.importutils.importinfo",
-            "NormalImport",
-        )(list(names_and_aliases))
-        if not isinstance(normal_import, p.Infra.RopeNormalImport):
-            msg = "rope NormalImport does not satisfy p.Infra.RopeNormalImport"
-            raise TypeError(msg)
-        return normal_import
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeRuntimeModules"]

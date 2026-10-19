@@ -9,8 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_core import r
 
+from flext_infra import r, settings
+from flext_infra.codegen import FlextInfraCodegenMiseToolchainProof
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, t, tm, u
 
 pytestmark = [pytest.mark.slow, pytest.mark.remote]
@@ -18,6 +20,181 @@ pytestmark = [pytest.mark.slow, pytest.mark.remote]
 
 class TestsFlextInfraCodegenUpgWorkspace:
     """Upgrade a real workspace with an indexed, uninitialized member."""
+
+    @staticmethod
+    def test_editable_upg_refreshes_member_locks_without_bumping_runtime_tools(
+        tmp_path: Path,
+    ) -> None:
+        """The public editable upgrade resolves member locks, not member installs."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.WORKSPACE,
+            bootstrap=True,
+        )
+        member, _ = u.Tests.render_make_environment(
+            root,
+            c.Infra.MakeProfile.STANDALONE,
+            bootstrap=True,
+            shape=u.Tests.MakeEnvironmentShape(project_name="editable-lock-member"),
+        )
+        u.Tests.WorktreeFixture.attach_submodule(
+            root,
+            member,
+            distribution=member.name,
+            relative_path=member.relative_to(root).as_posix(),
+        )
+        u.Tests.git_run(root, "submodule", "absorbgitdirs")
+        supplier, _ = u.Tests.render_make_environment(
+            tmp_path / "supplier",
+            c.Infra.MakeProfile.WORKSPACE,
+            bootstrap=True,
+        )
+        source = u.Tests.infra_source_checkout(supplier)
+        u.Tests.WorktreeFixture.attach_submodule(
+            supplier,
+            source,
+            distribution=source.name,
+            relative_path=source.relative_to(supplier).as_posix(),
+        )
+        u.Tests.git_run(supplier, "submodule", "absorbgitdirs")
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / "codegen.local.yaml",
+                {
+                    "Infra": {
+                        "codegen": {
+                            "make": {
+                                "uv_resolution": {
+                                    "editable_supplier_root": supplier.as_posix(),
+                                },
+                            },
+                        },
+                    },
+                },
+            )
+        )
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        for surface in (
+            c.Infra.CodegenConformSurface.PYPROJECT,
+            c.Infra.CodegenConformSurface.MAKEFILE,
+        ):
+            plan = u.Tests.conform_plan(root, workspace, what=surface)
+            tm.ok(
+                u.Tests.materialize_codegen_plans(
+                    r[tuple[m.Infra.CodegenFilePlan, ...]].ok(plan.files),
+                )
+            )
+        # Model a cold member: only the real upgrade may create its native locks.
+        (member / c.Infra.MISE_LOCK_FILENAME).unlink()
+        for relative in tm.ok(
+            u.Infra.load_codegen_inputs(member)
+        ).spec.uv_resolution_pyprojects:
+            tm.that(
+                (member / relative.with_name(c.Infra.UV_LOCK_FILENAME)).exists(),
+                eq=False,
+            )
+        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
+        preserved = (
+            *(
+                project / name
+                for project in (root, supplier, source)
+                for name in (c.Infra.MISE_TOML_FILENAME, c.Infra.MISE_LOCK_FILENAME)
+            ),
+            *(
+                root / directory / c.Infra.UV_LOCK_FILENAME
+                for directory in (
+                    inputs.spec.make.uv_resolution.local_directory,
+                    inputs.spec.make.uv_resolution.standalone_directory,
+                )
+            ),
+        )
+        before = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in preserved
+        )
+        upgraded = tm.ok(
+            u.Tests.run_isolated_make(
+                ["upg"],
+                cwd=root,
+                env={
+                    inputs.spec.make.ci.variable: inputs.spec.make.ci.local_value,
+                    inputs.spec.make.uv_resolution.hosted_variable: "",
+                },
+                private_env={
+                    "GITHUB_TOKEN": t.SecretStr(settings.env_required("GITHUB_TOKEN")),
+                },
+            )
+        )
+        u.Tests.record_dependency_command_output(upgraded)
+        tm.that(
+            u.Cli.process_succeeded(upgraded.outcome),
+            eq=True,
+            msg=upgraded.stdout + upgraded.stderr,
+        )
+        tm.that(
+            tuple(
+                tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in preserved
+            ),
+            eq=before,
+        )
+        tm.that(
+            (
+                root
+                / inputs.spec.make.uv_resolution.editable_directory
+                / c.Infra.UV_LOCK_FILENAME
+            ).is_file(),
+            eq=True,
+        )
+        tm.that(
+            (root / c.Infra.ENVIRONMENT_DIRECTORY / "pyvenv.cfg").is_file(), eq=True
+        )
+        for project in (member, supplier, source):
+            tm.that((project / c.Infra.ENVIRONMENT_DIRECTORY).exists(), eq=False)
+        TestsFlextInfraCodegenUpgWorkspace._assert_member_native_locks(root, member)
+
+    @staticmethod
+    def _assert_member_native_locks(root: Path, member: Path) -> None:
+        """Read member expectations from its SSOT and ask native UV for ownership."""
+        inputs = tm.ok(u.Infra.load_codegen_inputs(member))
+        lock = tm.ok(u.Cli.toml_read_json(member / c.Infra.MISE_LOCK_FILENAME))
+        for tool in inputs.spec.toolchain.tools:
+            tm.ok(
+                FlextInfraCodegenMiseToolchainProof.lock_identity(
+                    tool,
+                    lock,
+                    tm.ok(FlextInfraCodegenMiseToolchainProof.current_platform()),
+                    requested_version=inputs.spec.toolchain.tool_version_pins.get(
+                        tool.name, tool.version
+                    ),
+                )
+            )
+        binary = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
+        for manifest in inputs.spec.uv_resolution_pyprojects:
+            resolution = member / manifest.parent
+            tm.that((resolution / c.Infra.UV_LOCK_FILENAME).is_file(), eq=True)
+            owner = tm.ok(
+                u.Cli.capture(
+                    [str(binary), "workspace", "dir", "--project", str(resolution)],
+                    cwd=root,
+                    options=m.Cli.ProcessOptions(
+                        remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+                    ),
+                )
+            )
+            tm.that(Path(owner).resolve(), eq=resolution.resolve())
+            checked = tm.ok(
+                u.Cli.run_raw(
+                    [str(binary), "lock", "--check", "--project", str(resolution)],
+                    cwd=root,
+                    options=m.Cli.ProcessOptions(
+                        remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+                    ),
+                )
+            )
+            tm.that(
+                u.Cli.process_succeeded(checked.outcome),
+                eq=True,
+                msg=checked.stdout + checked.stderr,
+            )
 
     @staticmethod
     def _declared_member_checkout(

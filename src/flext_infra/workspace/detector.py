@@ -58,30 +58,48 @@ class FlextInfraWorkspaceDetector(
         )
         runtime_root = project_root
         if not standalone:
-            runtime = u.Infra.git_repository_root(request)
+            runtime = cls._local_runtime_root(repository_root, project_root, git_root)
             if runtime.failure:
                 return result_type.from_failure(runtime)
-            attached = runtime.value.repository_root.resolve()
-            if attached != git_root and (attached / c.PYPROJECT_FILENAME).is_file():
-                runtime_root = attached
-            else:
-                scope = cls._native_resolution_scope(project_root, git_root)
-                if scope.failure:
-                    return result_type.from_failure(scope)
-                if scope.value != project_root:
-                    native = cls._native_resolution_owner(project_root, scope.value)
-                    if native.failure:
-                        return result_type.from_failure(native)
-                    runtime_root = native.value
+            runtime_root = runtime.value
         if runtime_root != project_root and policy.editable_supplier_root is not None:
             return result_type.fail(
-                "configure editable_supplier_root at the physical runtime root, not an attached member"
+                "configure editable_supplier_root at the physical runtime root, "
+                "not an attached member"
             )
         return cls._uv_runtime_context(
             project_root,
             runtime_root,
             standalone=standalone,
         )
+
+    @classmethod
+    def _local_runtime_root(
+        cls,
+        repository_root: Path,
+        project_root: Path,
+        git_root: Path,
+    ) -> p.Result[Path]:
+        """Elect the physical local runtime from Git attachment and native UV scope.
+
+        Returns:
+            The owning runtime root or the original discovery failure.
+
+        """
+        runtime = u.Infra.git_repository_root(
+            m.Infra.GitRepoRequest(repo_root=repository_root)
+        )
+        if runtime.failure:
+            return r[Path].from_failure(runtime)
+        attached = runtime.value.repository_root.resolve()
+        if attached != git_root and (attached / c.PYPROJECT_FILENAME).is_file():
+            return r[Path].ok(attached)
+        scope = cls._native_resolution_scope(project_root, git_root)
+        if scope.failure:
+            return r[Path].from_failure(scope)
+        if scope.value != project_root:
+            return cls._native_resolution_owner(project_root, scope.value)
+        return r[Path].ok(project_root)
 
     @staticmethod
     def _uv_runtime_context(

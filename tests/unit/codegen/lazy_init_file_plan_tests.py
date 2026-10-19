@@ -784,7 +784,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
     def test_failed_target_epoch_conflict_keeps_healthy_publication(
         tmp_path: Path,
     ) -> None:
-        """Keep failed-target evidence separate from healthy publication dependencies."""
+        """Separate failed-target evidence from healthy publication dependencies."""
         failed_root, failed_package = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="a-failed",

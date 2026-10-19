@@ -140,9 +140,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             raise TypeError(message)
         aliases: t.MutableMappingKV[str, m.Infra.SourceClassReference] = {}
         for occurrence in finder.find_occurrences(pymodule=parsed):
-            mapping = cls._call_alias_source(
-                source, words, occurrence.offset, parsed
-            )
+            mapping = cls._call_alias_source(source, words, occurrence.offset, parsed)
             if mapping is None:
                 continue
             for key, (provider, attribute) in cls._literal_exports(mapping).items():
@@ -169,7 +167,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
 
         Args:
             source: Full native source text of the parsed package initializer.
-            words: Rope's native parameter reader over that source text.
+            words: Rope's native primary and parenthesis reader.
             offset: Lexical offset of the candidate call occurrence.
             module: Authenticated native module supplying the call bindings.
 
@@ -177,17 +175,38 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             The literal mapping source, or None when the occurrence is not a
             lazy-exports call carrying mapping data.
 
+        Raises:
+            TypeError: If the lazy export occurrence has no native call expression.
+            ValueError: If its mapping argument has no native source span.
+
         """
         if not words.is_a_function_being_called(offset):
             return None
-        first, last = words.get_word_parens_range(offset)
-        arguments, keywords = words.get_parameters(first, last - 1)
-        named = dict(keywords)
-        mapping = named.get("aliases")
-        if mapping is None and len(arguments) >= 3:
-            mapping = arguments[2]
-        if mapping is None:
+        start, _end = words.get_primary_range(offset)
+        _first, last = words.get_word_parens_range(offset)
+        call_source = source[start:last]
+        call = ast.parse(call_source, mode="eval").body
+        if not isinstance(call, ast.Call):
+            message = "Lazy export occurrence has no native call expression"
+            raise TypeError(message)
+        argument = next(
+            (
+                keyword.value
+                for keyword in call.keywords
+                if keyword.arg == "lazy_imports"
+            ),
+            None,
+        )
+        if argument is None:
+            match call.args:
+                case [_, _, positional_mapping, *_]:
+                    argument = positional_mapping
+        if argument is None:
             return None
+        mapping = ast.get_source_segment(call_source, argument)
+        if mapping is None:
+            message = "Lazy export mapping argument has no native source span"
+            raise ValueError(message)
         return cls._declared_alias_mapping_source(mapping, module)
 
     @staticmethod

@@ -317,7 +317,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         tmp_path: Path,
     ) -> None:
         """Each owning project receives only its own planned lint policy."""
-        workspace, _package = u.Tests.create_lazy_init_workspace(tmp_path)
+        workspace = u.Tests.create_lazy_init_workspace(tmp_path)[0]
         plans: list[m.Infra.CodegenFilePlan] = []
         destinations: list[Path] = []
         metadata_paths: list[Path] = []

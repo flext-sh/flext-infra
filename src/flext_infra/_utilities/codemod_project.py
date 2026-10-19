@@ -512,43 +512,11 @@ class FlextInfraUtilitiesCodemodProject(
             # This also applies before native declaration/binding evaluation.
             if condition.variable not in captures:
                 continue
-            if (
-                condition.predicate
-                is c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION
-            ):
-                if (
-                    admission.snapshot is None
-                    or project is None
-                    or sources is None
-                    or source not in sources
-                ):
-                    msg = (
-                        f"{rule.id}: execution context requires its "
-                        "original native epoch"
-                    )
-                    raise ValueError(msg)
-                if (
-                    cls._isolated_execution_holds(project, condition, source, sources)
-                    is not condition.holds
-                ):
-                    return False
-                continue
-            if (
-                condition.predicate
-                is c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER
-            ):
-                if (
-                    admission.snapshot is None
-                    or project is None
-                    or sources is None
-                    or source not in sources
-                ):
-                    msg = f"{rule.id}: implementation context requires its native epoch"
-                    raise ValueError(msg)
-                if (
-                    source
-                    in cls._implementation_owner_modules(project, condition, sources)
-                ) is not condition.holds:
+            native = cls._native_context_holds(
+                admission, condition, source, project, sources
+            )
+            if native is not None:
+                if native is not condition.holds:
                     return False
                 continue
             if (
@@ -618,8 +586,49 @@ class FlextInfraUtilitiesCodemodProject(
                 return False
         return True
 
-    @staticmethod
+    @classmethod
+    def _native_context_holds(
+        cls,
+        admission: m.Infra.CodemodAdmission,
+        condition: m.Infra.CodemodContextCondition,
+        source: Path,
+        project: p.Infra.RopeProject | None,
+        sources: t.MappingKV[Path, str] | None,
+    ) -> bool | None:
+        """Evaluate native execution and implementation predicates.
+
+        Returns:
+            The native verdict, or None for a different predicate.
+
+        Raises:
+            ValueError: If a native predicate lacks its original source epoch.
+
+        """
+        messages = {
+            c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION: (
+                f"{admission.rule.id}: execution context requires its "
+                "original native epoch"
+            ),
+            c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER: (
+                f"{admission.rule.id}: implementation context requires its native epoch"
+            ),
+        }
+        if condition.predicate not in messages:
+            return None
+        if (
+            admission.snapshot is None
+            or project is None
+            or sources is None
+            or source not in sources
+        ):
+            raise ValueError(messages[condition.predicate])
+        if condition.predicate is c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION:
+            return cls._isolated_execution_holds(project, condition, source, sources)
+        return source in cls._implementation_owner_modules(project, condition, sources)
+
+    @classmethod
     def _isolated_execution_holds(
+        cls,
         project: p.Infra.RopeProject,
         condition: p.Infra.CodemodContextOperands,
         source: Path,
@@ -678,22 +687,61 @@ class FlextInfraUtilitiesCodemodProject(
                 scope.get_body_start() <= node.lineno <= scope.get_end()
             ):
                 continue
-            fields = {keyword.arg: keyword.value for keyword in node.keywords}
+            target_path = cls._execution_entrypoint(
+                project, module, scope, node, sources
+            )
+            if target_path == source:
+                found = True
+        if not found:
+            return False
+        imports = ast.walk(ast.parse(sources[source]))
+        return all(
+            all(
+                alias.name.partition(".")[0] in sys.stdlib_module_names
+                for alias in node.names
+            )
+            if isinstance(node, ast.Import)
+            else node.level == 0
+            and (node.module or "").partition(".")[0] in sys.stdlib_module_names
+            for node in imports
+            if isinstance(node, ast.Import | ast.ImportFrom)
+        )
+
+    @staticmethod
+    def _execution_entrypoint(
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        scope: p.Infra.RopeScope,
+        node: ast.Call,
+        sources: t.MappingKV[Path, str],
+    ) -> Path | None:
+        """Resolve one native execution metadata constructor's entrypoint.
+
+        Returns:
+            Its source path, or None for an unrelated constructor.
+
+        Raises:
+            ValueError: If the metadata or its entrypoint identity is invalid.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        fields = {keyword.arg: keyword.value for keyword in node.keywords}
             if set(fields) != set(m.Cli.PythonScriptExecution.model_fields):
-                continue
+                return None
             position = runtime.source_offset(module.source_code, node.func)
             lexical = runtime.scope_at(module, position)
             if lexical is not scope:
-                continue
+                return None
             constructor = runtime.resolve_symbol(lexical, node.func)
             if constructor is None or not types.py_class(constructor.get_object()):
-                continue
+                return None
             contract = m.Cli.PythonScriptExecution
             expected = runtime.qualified_name(
                 project, contract.__qualname__, module_name=contract.__module__
             )
             if not runtime.same_name(constructor, expected):
-                continue
+                return None
             entry, role = (
                 fields["module"],
                 fields["role"],
@@ -729,22 +777,7 @@ class FlextInfraUtilitiesCodemodProject(
                     f"execution entrypoint is outside the captured epoch: {target_path}"
                 )
                 raise ValueError(msg)
-            if target_path == source:
-                found = True
-        if not found:
-            return False
-        imports = ast.walk(ast.parse(sources[source]))
-        return all(
-            all(
-                alias.name.partition(".")[0] in sys.stdlib_module_names
-                for alias in node.names
-            )
-            if isinstance(node, ast.Import)
-            else node.level == 0
-            and (node.module or "").partition(".")[0] in sys.stdlib_module_names
-            for node in imports
-            if isinstance(node, ast.Import | ast.ImportFrom)
-        )
+            return target_path
 
     @staticmethod
     def _implementation_owner_modules(

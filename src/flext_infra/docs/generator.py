@@ -289,12 +289,6 @@ class FlextInfraDocGenerator(
             publication_receipts=publication_receipts,
         )
 
-    def prepare_batches(
-        self,
-    ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
-        """Yield one rendered scope at a time for immediate guarded publication."""
-        return self._prepare_batches(self._configured_request())
-
     @override
     def execute(self) -> p.Result[bool]:
         """Execute the configured docs generation flow.

@@ -191,7 +191,12 @@ class FlextInfraMiseArtifactsVerification(
 
     @staticmethod
     def publication_storage_root(root: Path) -> p.Result[Path]:
-        """Keep live journal evidence outside the consumed source namespace."""
+        """Keep live journal evidence outside the consumed source namespace.
+
+        Returns:
+            The native evidence root, or its resolution failure.
+
+        """
         return u.Infra.refactor_report_evidence_root(root)
 
     @classmethod
@@ -349,47 +354,66 @@ class FlextInfraMiseArtifactsVerification(
                     return result_type.from_failure(unchanged)
                 states.append(original)
                 continue
-            records = (
-                record
-                for batch in history.value[1]
-                for record in (*batch.sources, *batch.outputs)
-                if record.path == original.path
-            )
-            matched = False
-            for record in records:
-                if cls._state_receipt_identity(original) == (
-                    record.parent_device,
-                    record.parent_inode,
-                    record.sha256,
-                    record.mode,
-                    record.device,
-                    record.inode,
-                    record.link_count,
-                    record.file_attributes,
-                    record.reparse_tag,
-                ):
-                    matched = True
-                    break
-            if not matched:
-                return result_type.fail(
-                    f"candidate input has no publication preimage: {original.path}"
-                )
-            observed = FlextInfraMiseArtifactsFiles.read_state(
-                original.path, required=output.sha256 is not None
-            )
+            observed = cls._published_input_state(original, output, history.value[1])
             if observed.failure:
                 return result_type.from_failure(observed)
-            recorded = FlextInfraMiseArtifactsJournalRelocation.source_record(
-                output.phase, observed.value, previous=output
-            )
-            if recorded.failure:
-                return result_type.from_failure(recorded)
-            if recorded.value != output:
-                return result_type.fail(
-                    f"candidate publication state changed: {original.path}"
-                )
             states.append(observed.value)
         return result_type.ok(tuple(states))
+
+    @classmethod
+    def _published_input_state(
+        cls,
+        original: m.Cli.AtomicFileState,
+        output: m.Infra.CodegenJournalSource,
+        batches: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+    ) -> p.Result[m.Cli.AtomicFileState]:
+        """Authenticate an input preimage and its exact terminal publication.
+
+        Returns:
+            The observed state, or the first provenance or physical-state failure.
+
+        """
+        state_result = r[m.Cli.AtomicFileState]
+        records = (
+            record
+            for batch in batches
+            for record in (*batch.sources, *batch.outputs)
+            if record.path == original.path
+        )
+        matched = any(
+            cls._state_receipt_identity(original)
+            == (
+                record.parent_device,
+                record.parent_inode,
+                record.sha256,
+                record.mode,
+                record.device,
+                record.inode,
+                record.link_count,
+                record.file_attributes,
+                record.reparse_tag,
+            )
+            for record in records
+        )
+        if not matched:
+            return state_result.fail(
+                f"candidate input has no publication preimage: {original.path}"
+            )
+        observed = FlextInfraMiseArtifactsFiles.read_state(
+            original.path, required=output.sha256 is not None
+        )
+        if observed.failure:
+            return state_result.from_failure(observed)
+        recorded = FlextInfraMiseArtifactsJournalRelocation.source_record(
+            output.phase, observed.value, previous=output
+        )
+        if recorded.failure:
+            return state_result.from_failure(recorded)
+        if recorded.value != output:
+            return state_result.fail(
+                f"candidate publication state changed: {original.path}"
+            )
+        return observed
 
     @classmethod
     def _publication_history_current(

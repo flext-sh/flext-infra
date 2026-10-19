@@ -344,8 +344,13 @@ class FlextInfraModelsCodegenTransactionModels:
                 msg = "codegen journal directory has no project participant"
                 raise ValueError(msg)
 
+    class CodegenFootprintRequest(m.Value):
+        """Inspect recorded generation authority, not prospective generation inputs."""
+
+        root: Path = m.Field(description="Repository or workspace coordination root")
+
     class CodegenFootprint(m.Value):
-        """Effect-free observed journal and requested publication footprint."""
+        """Observed journal identity and recorded physical effect footprint."""
 
         scope_root: Path = m.Field(description="Authenticated coordination root")
         journal_path: Path = m.Field(description="Canonical journal anchor")
@@ -382,14 +387,6 @@ class FlextInfraModelsCodegenTransactionModels:
         )
         pending_staging: t.VariadicTuple[Path] = m.Field(
             description="Absolute recorded staging paths",
-        )
-        planned_roots: t.VariadicTuple[Path] = m.Field(
-            default=(),
-            description="Roots selected by the public conform plan",
-        )
-        planned_destinations: t.VariadicTuple[Path] = m.Field(
-            default=(),
-            description="Absolute requested publication paths",
         )
         journal: (
             FlextInfraModelsCodegenTransactionModels.CodegenTransactionJournal | None

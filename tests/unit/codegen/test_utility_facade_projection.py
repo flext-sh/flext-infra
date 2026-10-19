@@ -9,12 +9,13 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+from typing import Literal
 
 import pytest
 
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenLazyInit
-from tests import c, m, r, t, tm, u
+from tests import c, m, p, r, t, tm, u
 
 
 class TestsFlextInfraUtilityFacadeProjection:
@@ -166,11 +167,15 @@ class TestsFlextInfraUtilityFacadeProjection:
         if root is not None:
             u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
 
-    @pytest.mark.parametrize("scope", ["single", "independent", "collision"])
-    def test_future_exposure_uses_planned_owners_and_original_receipts(
+    def _future_exposure_sources(
         self, tmp_path: Path, scope: str
-    ) -> None:
-        """Project future MRO exports without publishing or conflating providers."""
+    ) -> tuple[list[Path], list[m.Infra.RopeProjectLayout], dict[Path, str], list[str]]:
+        """Declare original and planned providers for each exposure scenario.
+
+        Returns:
+            Project roots, layouts, planned sources and runtime probe statements.
+
+        """
         roots: list[Path] = []
         layouts: list[m.Infra.RopeProjectLayout] = []
         desired: dict[Path, str] = {}
@@ -215,6 +220,66 @@ class TestsFlextInfraUtilityFacadeProjection:
                 f"assert any(base.__name__ == 'Owner' for base in {suffix}.__mro__)\n"
                 f"assert not hasattr({suffix}, 'Owner')\n"
             )
+        return roots, layouts, desired, scripts
+
+    @staticmethod
+    def _future_facade_plans(
+        tmp_path: Path,
+        scope: str,
+        layouts: list[m.Infra.RopeProjectLayout],
+        originals: tuple[m.Cli.AtomicFileState, ...],
+        plans: tuple[m.Infra.CodegenFilePlan, ...],
+    ) -> list[m.Infra.CodegenFilePlan]:
+        """Render future facades while proving collisions preserve originals.
+
+        Returns:
+            Facade plans for the elected layouts, or none after a collision.
+
+        """
+        by_path = {state.path: state for state in originals}
+        facade_plans = []
+        with u.Infra.facade_source_project(
+            tmp_path,
+            source_states=originals,
+            declared_files=plans,
+            project_roots=tuple(layout.project_root for layout in layouts),
+        ) as binding:
+            for layout in layouts:
+                package = layout.package_dir
+                if scope == "collision":
+                    rejected = r[str | None].create_from_callable(
+                        lambda package=package: u.Infra.render_utility_facade(
+                            package, project=binding[0], sources=binding[2]
+                        ),
+                    )
+                    tm.fail(rejected, has="Owner")
+                    tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
+                    return []
+                facade = package / c.Infra.UTILITIES_PY
+                rendered = tm.not_none(
+                    u.Infra.render_utility_facade(
+                        package, project=binding[0], sources=binding[2]
+                    ),
+                )
+                facade_plans.append(
+                    m.Infra.CodegenFilePlan(
+                        project=layout.project_root,
+                        path=facade,
+                        before=by_path[facade],
+                        desired_content=rendered.encode(c.DEFAULT_ENCODING),
+                        desired_mode=tm.not_none(by_path[facade].mode),
+                    ),
+                )
+        return facade_plans
+
+    @pytest.mark.parametrize("scope", ["single", "independent", "collision"])
+    def test_future_exposure_uses_planned_owners_and_original_receipts(
+        self, tmp_path: Path, scope: str
+    ) -> None:
+        """Project future MRO exports without publishing or conflating providers."""
+        roots, layouts, desired, scripts = self._future_exposure_sources(
+            tmp_path, scope
+        )
         originals = tuple(
             tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
             for root in roots
@@ -236,39 +301,11 @@ class TestsFlextInfraUtilityFacadeProjection:
             )
             for path, source in desired.items()
         )
-        facade_plans = []
-        with u.Infra.facade_source_project(
-            tmp_path,
-            source_states=originals,
-            declared_files=plans,
-            project_roots=tuple(roots),
-        ) as binding:
-            for layout in layouts:
-                package = layout.package_dir
-                if scope == "collision":
-                    rejected = r[str | None].create_from_callable(
-                        lambda: u.Infra.render_utility_facade(
-                            package, project=binding[0], sources=binding[2]
-                        ),
-                    )
-                    tm.fail(rejected, has="Owner")
-                    tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
-                    return
-                facade = package / c.Infra.UTILITIES_PY
-                rendered = tm.not_none(
-                    u.Infra.render_utility_facade(
-                        package, project=binding[0], sources=binding[2]
-                    ),
-                )
-                facade_plans.append(
-                    m.Infra.CodegenFilePlan(
-                        project=layout.project_root,
-                        path=facade,
-                        before=by_path[facade],
-                        desired_content=rendered.encode(c.DEFAULT_ENCODING),
-                        desired_mode=tm.not_none(by_path[facade].mode),
-                    ),
-                )
+        facade_plans = self._future_facade_plans(
+            tmp_path, scope, layouts, originals, plans
+        )
+        if scope == "collision":
+            return
         service = FlextInfraCodegenLazyInit(
             repository_root=tmp_path, project_scope_roots=tuple(roots)
         )
@@ -294,10 +331,9 @@ class TestsFlextInfraUtilityFacadeProjection:
             declared_files=analysis.files,
             project_roots=tuple(roots),
         ) as binding:
-            repeated = tm.ok(service.plan_files(source_project=binding[0]))
-        for file in repeated.files:
-            tm.that(file.desired_content, eq=combined[file.path].desired_content)
-            tm.that(file.desired_mode, eq=combined[file.path].desired_mode)
+            for file in tm.ok(service.plan_files(source_project=binding[0])).files:
+                tm.that(file.desired_content, eq=combined[file.path].desired_content)
+                tm.that(file.desired_mode, eq=combined[file.path].desired_mode)
         candidate = tmp_path / "candidate"
         for state in originals:
             if state.content is not None:
@@ -327,16 +363,18 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         tm.that(u.Cli.process_succeeded(cold.outcome), eq=True, msg=cold.stderr)
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
-        changed = next(iter(desired))
-        self._write(changed, desired[changed])
-        with pytest.raises(ValueError, match="atomic source changed"):
-            with u.Infra.facade_source_project(
+        path = next(iter(desired))
+        self._write(path, desired[path])
+        with (
+            pytest.raises(ValueError, match="atomic source changed"),
+            u.Infra.facade_source_project(
                 tmp_path,
                 source_states=originals,
                 declared_files=plans,
                 project_roots=tuple(roots),
-            ):
-                pass
+            ),
+        ):
+            pass
 
     def test_moved_service_retires_its_utility_composition(
         self,
@@ -2005,7 +2043,10 @@ class TestsFlextInfraUtilityFacadeProjection:
                 f"            {owner_name}.Payload\n"
                 "        )\n"
                 if multiline
-                else f"        Payload: type[{owner_name}.Payload] = {owner_name}.Payload\n"
+                else (
+                    f"        Payload: type[{owner_name}.Payload] = "
+                    f"{owner_name}.Payload\n"
+                )
             )
             if shadow
             else "        pass\n"
@@ -2048,7 +2089,8 @@ class TestsFlextInfraUtilityFacadeProjection:
                         "class Missing:\n    pass\n"
                         "assert p.Sample.Payload is PayloadOwner.Payload\n"
                         "assert p.Sample.Unrelated is OtherOwner.Payload\n"
-                        "assert get_type_hints(p.Sample)['Unrelated'] == type[OtherOwner.Payload]\n"
+                        "assert get_type_hints(p.Sample)['Unrelated'] == "
+                        "type[OtherOwner.Payload]\n"
                         "assert PayloadOwner in p.Sample.__mro__\n"
                         "assert 'Payload' not in get_type_hints(p.Sample)\n"
                         "assert isinstance(Value(), p.Sample.Payload)\n"
@@ -2088,7 +2130,8 @@ class TestsFlextInfraUtilityFacadeProjection:
             "from flext_sample._protocols import PayloadOwner\n"
             "class FlextSampleProtocols:\n"
             "    class Sample(PayloadOwner):\n"
-            f"        {published}: type[PayloadOwner.{actual}] = PayloadOwner.{actual}\n"
+            f"        {published}: type[PayloadOwner.{actual}] = "
+            f"PayloadOwner.{actual}\n"
             "p = FlextSampleProtocols\n"
             "__all__ = ['FlextSampleProtocols', 'p']\n",
         )
@@ -2192,3 +2235,56 @@ class TestsFlextInfraUtilityFacadeProjection:
             msg=result.stderr or result.stdout,
         )
         tm.that(u.Infra.render_utility_facade(package, family="m"), eq=rendered)
+
+    @pytest.mark.parametrize("family", ["p", "m"])
+    @pytest.mark.parametrize("compact", [False, True])
+    def test_class_alias_removal_obeys_effective_diamond_owner(
+        self,
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+        family: Literal["p", "m"],
+        *,
+        compact: bool,
+    ) -> None:
+        """C3 beats the left base's inherited alias and keeps adjacent statements."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        module = c.Infra.PROTOCOLS_PY if family == "p" else c.Infra.MODELS_PY
+        directory = u.Infra.facade_family_declared_by(module).directory
+        facade = package / module
+        self._write(package / c.Infra.INIT_PY, "")
+        self._write(
+            package / directory / "owners.py",
+            "class RootPart:\n    class Payload:\n        pass\n"
+            "class LeftPart(RootPart):\n    pass\n"
+            "class RightPart(RootPart):\n    class Payload:\n        pass\n"
+            "__all__ = ['RootPart', 'LeftPart', 'RightPart']\n",
+        )
+        self._write(
+            facade,
+            f"from {package.name}.{directory}.owners import LeftPart, RightPart\n"
+            "class Facade(LeftPart, RightPart):"
+            + (
+                " Payload = RightPart.Payload; marker = 'retained'\n"
+                if compact
+                else "\n    Payload = RightPart.Payload\n"
+            )
+            + f"{family} = Facade\n__all__ = ['Facade', '{family}']\n",
+        )
+        service = u.Tests.create_lazy_init_service(root)
+        service.target_module = f"{package.name}.{directory}"
+        tm.ok(u.Tests.materialize_lazy_init(service))
+        rendered = tm.not_none(u.Infra.render_utility_facade(package, family=family))
+        self._write(facade, rendered)
+        tm.that(u.Infra.render_utility_facade(package, family=family), eq=rendered)
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name} import {family} as public\n"
+            f"from {package.name}.{directory} import RootPart, LeftPart, RightPart\n"
+            "assert LeftPart.Payload is RootPart.Payload\n"
+            "assert public.Payload is RightPart.Payload\n"
+            "assert public.Payload is not RootPart.Payload\n"
+            "assert 'Payload' not in vars(public)\n"
+            + ("assert public.marker == 'retained'\n" if compact else ""),
+            cwd=root,
+        )

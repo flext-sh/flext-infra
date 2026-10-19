@@ -104,7 +104,9 @@ class FlextInfraConfigModelsMake(
         editable_supplier_root: Annotated[
             Path | None,
             m.Field(
-                description="Explicit external workspace supplying local editable dependencies"
+                description=(
+                    "Explicit external workspace supplying local editable dependencies"
+                )
             ),
         ] = None
         hosted_variable: Annotated[

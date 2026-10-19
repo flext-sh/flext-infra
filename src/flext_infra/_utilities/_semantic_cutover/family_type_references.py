@@ -382,20 +382,31 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             # The native primary of a head word excludes its own ``.member``
             # chain; extend it forward so every emitted region is maximal and
             # no wrapper-alias prefix is ever split mid-path.
-            while source[end : end + 1] == ".":
-                following = end + 1
-                while following < len(source) and source[following].isspace():
-                    following += 1
-                if following >= len(source) or not (source[following].isidentifier()):
-                    break
-                _member_first, member_last = words.get_word_range(following)
-                if member_last <= following:
-                    break
-                end = member_last
+            end = cls._primary_chain_end(source, words, end)
             if all(part.isidentifier() for part in source[begin:end].split(".")):
                 regions.add((begin, end))
             cursor = last
         return tuple(sorted(regions))
+
+    @staticmethod
+    def _primary_chain_end(source: str, words: p.Infra.RopeWorder, end: int) -> int:
+        """Extend an identifier primary over the following native member chain.
+
+        Returns:
+            The end offset of the maximal advancing identifier chain.
+
+        """
+        while source[end : end + 1] == ".":
+            following = end + 1
+            while following < len(source) and source[following].isspace():
+                following += 1
+            if following >= len(source) or not source[following].isidentifier():
+                break
+            _member_first, member_last = words.get_word_range(following)
+            if member_last <= following:
+                break
+            end = member_last
+        return end
 
     @classmethod
     def scoped_quoted_type_references(

@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Protocol, cast, override
+from collections.abc import Callable, Mapping
+from typing import cast, override
 
 from rope.base.project import Project
 from rope.refactor.restructure import Restructure
@@ -51,37 +51,29 @@ class FlextInfraRopeRestructure(Restructure):
             raise TypeError(message)
         default: p.Infra.RopeWildcard[str] = DefaultWildcard(project)
 
-        class _NativeRestructureInit(Protocol):
-            """Typed initializer view over the fork's untyped constructor."""
-
-            def __init__(
-                self,
-                project: Project,
-                pattern: str,
-                goal: str,
-                args: (
-                    t.MappingKV[str, str | t.Pair[str, t.VariadicTuple[str]]] | None
-                ) = None,
-                imports: t.StrSequence | None = None,
-                wildcards: (t.MappingKV[str, p.Infra.RopeWildcard[str]] | None) = None,
-            ) -> None: ...
-
-        cast("_NativeRestructureInit", super()).__init__(
+        initialize = cast(
+            "Callable[[Project, str, str, "
+            "t.MappingKV[str, str | t.Pair[str, t.VariadicTuple[str]]] | None, "
+            "t.StrSequence | None, "
+            "t.MappingKV[str, p.Infra.RopeWildcard[str]] | None], None]",
+            super().__init__,
+        )
+        initialize(
             project,
             request.pattern,
             request.goal,
-            args={
+            {
                 name: value
                 if isinstance(value, str)
                 else ("identity_choices", tuple(value))
                 for name, value in request.arguments.items()
             },
-            imports=list(
+            list(
                 request.imports.values()
                 if isinstance(request.imports, Mapping)
                 else request.imports
             ),
-            wildcards={
+            {
                 wildcard.get_name(): wildcard
                 for wildcard in (
                     default,
@@ -120,18 +112,12 @@ class FlextInfraRopeRestructure(Restructure):
         self.matched_count += len(matches)
         self.admitted_count += len(selected)
 
-        class _NativeChangeComputation(Protocol):
-            """Typed view of the fork's native change computation."""
-
-            def _compute_changes(
-                self,
-                matches: t.SequenceOf[t.Infra.RopeNativeMatch],
-                pymodule: t.Infra.RopeNativeSourceModule,
-            ) -> t.Infra.RopeChangeComputer: ...
-
-        return cast("_NativeChangeComputation", super())._compute_changes(
-            selected, pymodule
+        compute = cast(
+            "Callable[[t.SequenceOf[t.Infra.RopeNativeMatch], "
+            "t.Infra.RopeNativeSourceModule], t.Infra.RopeChangeComputer]",
+            super()._compute_changes,
         )
+        return compute(selected, pymodule)
 
     @override
     def _add_imports(
@@ -162,19 +148,11 @@ class FlextInfraRopeRestructure(Restructure):
                 if binding not in names
             )
 
-        class _NativeImportWriter(Protocol):
-            """Typed view of the fork's native import writer."""
-
-            def _add_imports(
-                self,
-                resource: t.Infra.RopeNativeResource,
-                source: str,
-                imports: t.StrSequence,
-            ) -> str: ...
-
-        return cast("_NativeImportWriter", super())._add_imports(
-            resource, source, selected
+        write_imports = cast(
+            "Callable[[t.Infra.RopeNativeResource, str, t.StrSequence], str]",
+            super()._add_imports,
         )
+        return write_imports(resource, source, selected)
 
 
 __all__: list[str] = ["FlextInfraRopeRestructure"]

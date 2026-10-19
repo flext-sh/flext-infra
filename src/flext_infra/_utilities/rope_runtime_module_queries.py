@@ -25,6 +25,55 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
     """Authenticate native suppliers and construct Rope source snapshots."""
 
     @classmethod
+    def from_import(
+        cls,
+        module_name: str,
+        level: int,
+        names_and_aliases: t.SequenceOf[t.Pair[str, str | None]],
+    ) -> t.Infra.RopeFromImport:
+        """Build the native relative or absolute from-import record.
+
+        Returns:
+            The native import record for the supplied module and bindings.
+
+        Raises:
+            TypeError: If the native factory does not satisfy its import protocol.
+
+        """
+        from_import_factory = cls.runtime_callable(
+            "rope.refactor.importutils.importinfo",
+            "FromImport",
+        )
+        from_import = from_import_factory(module_name, level, list(names_and_aliases))
+        if not isinstance(from_import, p.Infra.RopeFromImport):
+            msg = "rope FromImport does not satisfy p.Infra.RopeFromImport"
+            raise TypeError(msg)
+        return from_import
+
+    @classmethod
+    def normal_import(
+        cls,
+        names_and_aliases: t.SequenceOf[t.Pair[str, str | None]],
+    ) -> t.Infra.RopeNormalImport:
+        """Build Rope's native plain ``import`` record.
+
+        Returns:
+            The native ``NormalImport`` for the given names.
+
+        Raises:
+            TypeError: If Rope's record does not satisfy its protocol.
+
+        """
+        normal_import = cls.runtime_callable(
+            "rope.refactor.importutils.importinfo",
+            "NormalImport",
+        )(list(names_and_aliases))
+        if not isinstance(normal_import, p.Infra.RopeNormalImport):
+            msg = "rope NormalImport does not satisfy p.Infra.RopeNormalImport"
+            raise TypeError(msg)
+        return normal_import
+
+    @classmethod
     def native_module_source(cls, module_name: str) -> p.Result[Path]:
         """Authenticate native module election without calling an upper service.
 

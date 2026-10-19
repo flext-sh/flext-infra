@@ -1,4 +1,8 @@
-"""Real native Mise roles retain source, lock, scope and binary identities."""
+"""Real native Mise roles retain source, lock, scope and binary identities.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -59,6 +63,7 @@ class TestsMiseRoleAcquisition:
     def test_exact_role_is_locked_installed_and_proven_in_its_own_scope(
         self, tmp_path: Path
     ) -> None:
+        """Acquire the declared role and authenticate its installed binary."""
         request = self._request(tmp_path)
         assert isinstance(request.reader, p.Cli.AtomicFileReceipt)
         plan = tm.ok(FlextInfraCodegenMiseToolchainProof.plan_role(request))
@@ -86,6 +91,7 @@ class TestsMiseRoleAcquisition:
     def test_changed_declaration_is_denied_before_target_creation(
         self, tmp_path: Path
     ) -> None:
+        """Reject a changed declaration before creating the installation target."""
         request = self._request(tmp_path)
         path = Path(request.declaration.path)
         tm.ok(
@@ -100,6 +106,7 @@ class TestsMiseRoleAcquisition:
         assert not request.target_root.exists()
 
     def test_target_outside_explicit_scope_is_denied(self, tmp_path: Path) -> None:
+        """Reject installation targets outside the request's declared scope."""
         request = self._request(tmp_path)
         document = request.model_dump(mode="python")
         document["target_root"] = tmp_path.parent / (tmp_path.name + "-outside")
@@ -113,6 +120,7 @@ class TestsMiseRoleAcquisition:
     def test_changed_native_lock_cannot_be_used_for_installation(
         self, tmp_path: Path
     ) -> None:
+        """Reject a changed native lock before installing the requested role."""
         request = self._request(tmp_path)
         plan = tm.ok(FlextInfraCodegenMiseToolchainProof.plan_role(request))
         path = Path(plan.lock.path)

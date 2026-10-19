@@ -133,9 +133,47 @@ class FlextInfraUtilitiesSemanticModelAliases:
         if assignments is None:
             return
         wrapper = module.get_attribute(name)
+        resolved = cls._resolve_alias_targets(project, path, wrapper, assignments)
+        if resolved is None:
+            return
+        aliases, targets = resolved
+        consumers = cls._prove_uses(project, wrapper, aliases, targets, working)
+        cls._inline_aliases(project, path, name, aliases, working)
+        cls._remove_alias_namespace(resource, path, name, working)
+        snapshot = runtime.snapshot_project(project, working)
+        try:
+            organizer = runtime.import_organizer(snapshot)
+            for changed in consumers | {path}:
+                source = working[changed]
+                if source.startswith(c.Infra.AUTOGEN_HEADERS):
+                    continue
+                native = organizer.organize_imports(cls._resource(snapshot, changed))
+                if native is not None:
+                    for change in refactors.change_set_members(
+                        native.changes,
+                        "model-alias import organization returned a non-content change",
+                    ).unwrap():
+                        working[Path(change.resource.real_path).resolve()] = (
+                            change.new_contents
+                        )
+        finally:
+            snapshot.close()
+
+    @classmethod
+    def _resolve_alias_targets(
+        cls,
+        project: p.Infra.RopeProject,
+        path: Path,
+        wrapper: p.Infra.RopePyName,
+        assignments: tuple[ast.Assign, ...],
+    ) -> tuple[dict[str, p.Infra.RopePyName], dict[str, tuple[str, str]]] | None:
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
         scope = wrapper.get_object().get_scope()
         if scope is None:
-            msg = f"model alias namespace has no native scope: {path}:{name}"
+            msg = (
+                f"model alias namespace has no native scope: "
+                f"{path}:{wrapper.get_object().get_name()}"
+            )
             raise ValueError(msg)
         aliases: dict[str, p.Infra.RopePyName] = {}
         targets: dict[str, tuple[str, str]] = {}
@@ -143,17 +181,22 @@ class FlextInfraUtilitiesSemanticModelAliases:
             alias = ast.unparse(assignment.targets[0])
             target = runtime.expression_name(scope, ast.unparse(assignment.value))
             if target is None:
-                msg = f"unresolved model alias target: {path}:{name}.{alias}"
+                msg = (
+                    f"unresolved model alias target: "
+                    f"{path}:{wrapper.get_object().get_name()}.{alias}"
+                )
                 raise ValueError(msg)
             value = target.get_object()
             if (
                 value
-                == refactors.runtime_callable("rope.base.pyobjects", "get_unknown")()
+                == FlextInfraUtilitiesRopeRuntimeRefactors.runtime_callable(
+                    "rope.base.pyobjects", "get_unknown"
+                )()
             ):
                 msg = f"unresolved model alias target identity: {path}:{alias}"
                 raise ValueError(msg)
             if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
-                return
+                return None
             provider = value.get_module()
             provider_resource = None if provider is None else provider.get_resource()
             if provider_resource is None:
@@ -164,7 +207,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
                 origin.parent.name,
             )
             if family != c.Infra.FacadeFamily.M:
-                return
+                return None
             declarations = FlextInfraUtilitiesDeclarationPayload.declaration_names(
                 project,
                 origin,
@@ -191,7 +234,19 @@ class FlextInfraUtilitiesSemanticModelAliases:
                 raise ValueError(msg)
             aliases[alias] = wrapper.get_object().get_attribute(alias)
             targets[alias] = (provider.get_name(), canonical[0])
-        consumers = cls._prove_uses(project, wrapper, aliases, targets, working)
+        return aliases, targets
+
+    @classmethod
+    def _inline_aliases(
+        cls,
+        project: p.Infra.RopeProject,
+        path: Path,
+        name: str,
+        aliases: t.MappingKV[str, p.Infra.RopePyName],
+        working: t.MutableMappingKV[Path, str],
+    ) -> None:
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         # Keep declarations during SDK planning: a last assignment without a
         # docstring must never leave an unparsable empty class in the overlay.
         for alias in aliases:
@@ -235,6 +290,14 @@ class FlextInfraUtilitiesSemanticModelAliases:
                     working[changed] = change.new_contents
             finally:
                 snapshot.close()
+
+    @staticmethod
+    def _remove_alias_namespace(
+        resource: p.Infra.RopeResource,
+        path: Path,
+        name: str,
+        working: t.MutableMappingKV[Path, str],
+    ) -> None:
         # The wrapper's own declaration and export are the only authored
         # structural removal; consumer edits above belong entirely to Rope.
         source = working[path]
@@ -273,25 +336,9 @@ class FlextInfraUtilitiesSemanticModelAliases:
                             text="",
                         )
                     )
-        working[path] = refactors.content_change(resource, source, edits).new_contents
-        snapshot = runtime.snapshot_project(project, working)
-        try:
-            organizer = runtime.import_organizer(snapshot)
-            for changed in consumers | {path}:
-                source = working[changed]
-                if source.startswith(c.Infra.AUTOGEN_HEADERS):
-                    continue
-                native = organizer.organize_imports(cls._resource(snapshot, changed))
-                if native is not None:
-                    for change in refactors.change_set_members(
-                        native.changes,
-                        "model-alias import organization returned a non-content change",
-                    ).unwrap():
-                        working[Path(change.resource.real_path).resolve()] = (
-                            change.new_contents
-                        )
-        finally:
-            snapshot.close()
+        working[path] = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+            resource, source, edits
+        ).new_contents
 
     @classmethod
     def _prove_uses(

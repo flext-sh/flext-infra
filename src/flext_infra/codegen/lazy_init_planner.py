@@ -178,10 +178,9 @@ class FlextInfraCodegenLazyInitPlanner(
             ) as workspace,
         ):
             planner = type(self)(rope_workspace=workspace, lazy_init=self.lazy_init)
-            planner._source_plan_cache.update(self._source_plan_cache)
-            planner._plan_receipts.update(self._plan_receipts)
+            planner.seed_source_plans(self._source_plan_cache, self._plan_receipts)
             plan = planner.build_plan(pkg_dir, dir_exports=dir_exports)
-            self._collision_count += planner._collision_count
+            self._collision_count += planner.collision_count
         receipt = consumption.receipt()
         return plan.model_copy(
             update={
@@ -190,6 +189,20 @@ class FlextInfraCodegenLazyInitPlanner(
                 "source_query_topology": receipt.source_query_topology,
             }
         ), receipt
+
+    @property
+    def collision_count(self) -> int:
+        """The export collisions observed by this isolated planner."""
+        return self._collision_count
+
+    def seed_source_plans(
+        self,
+        plans: t.MappingKV[str, m.Infra.LazyInitPlan],
+        receipts: t.MappingKV[str, m.Infra.CodegenPhaseAnalysis],
+    ) -> None:
+        """Seed prior package decisions without copying native semantic caches."""
+        self._source_plan_cache.update(plans)
+        self._plan_receipts.update(receipts)
 
     def source_receipt(self, package_dir: Path) -> m.Infra.CodegenPhaseAnalysis:
         """Return only the sealed receipt minted for an actual package decision.

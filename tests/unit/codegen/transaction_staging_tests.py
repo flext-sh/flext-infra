@@ -13,6 +13,7 @@ from threading import Event
 
 import pytest
 
+from flext_infra import infra
 from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraMiseArtifactsJournal,
@@ -475,6 +476,133 @@ class TestsFlextInfraTransactionStaging:
         tm.that(target.read_text(), eq="VALUE = 3\n")
 
     @staticmethod
+    @pytest.mark.parametrize(
+        "selector",
+        ["what", "scope", "mode", "module", "declaration_kind"],
+    )
+    def test_footprint_request_rejects_generation_selectors(
+        tmp_path: Path,
+        selector: str,
+    ) -> None:
+        """Inspection cannot silently accept prospective generation selectors."""
+        with pytest.raises(e.PydanticValidationError):
+            m.Infra.CodegenFootprintRequest.model_validate({
+                "root": tmp_path,
+                selector: "generation-selector",
+            })
+
+    @staticmethod
+    def test_public_footprint_does_not_plan_sources_or_publish_reports(
+        tmp_path: Path,
+    ) -> None:
+        """An absent journal needs topology, not parseable generation sources."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "unreadable_source.py"
+        source.write_bytes(b"\xffnot Python\n")
+        report = root / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH
+        report.parent.mkdir(parents=True, exist_ok=True)
+        report.write_bytes(b"preserve the existing report\n")
+        originals = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for path in (source, report)
+        )
+        owner = transaction.FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        observed = tm.ok(owner.inspect_journal())
+        policy = tm.ok(owner.participant_policy())
+        expected = observed.model_copy(
+            update={"authorized_roots": tuple(item.target for item in policy.roots)},
+        )
+        request = m.Infra.CodegenFootprintRequest(root=root)
+
+        for _ in range(2):
+            tm.that(
+                tm.ok(infra.codegen_footprint(request)),
+                eq=expected.model_dump_json(),
+            )
+            tm.that(tm.ok(owner.inspect_journal()), eq=observed)
+            tm.that(
+                tuple(
+                    tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+                    for path in (source, report)
+                ),
+                eq=originals,
+            )
+            tm.that(observed.journal_path.exists(), eq=False)
+            tm.that((root / c.Infra.TRANSACTION_STATE_DIRNAME).exists(), eq=False)
+
+    @staticmethod
+    @pytest.mark.parametrize("state", ["staging", "prepared", "committed"])
+    def test_public_footprint_retains_all_recorded_pending_effects(
+        tmp_path: Path,
+        state: str,
+    ) -> None:
+        """Retain native journal authority without recovery or publication."""
+        root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
+        target = root / "recorded.md"
+        target.write_bytes(b"original document\n")
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+        owner = transaction.FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        roots = {"@docs-0": root}
+
+        def record(scope_root: Path) -> p.Result[m.Infra.CodegenTransactionSession]:
+            session = tm.ok(owner.begin_files_locked(scope_root, roots, (before,)))
+            plan = m.Infra.CodegenFilePlan(
+                project=root,
+                path=target,
+                before=before,
+                desired_content=b"recorded document\n",
+                desired_mode=before.mode,
+                owner="docs",
+            )
+            if state == "staging":
+                return owner.prepare_phase_staging_locked(session, "docs", (plan,))
+            prepared = tm.ok(owner.append_phase_locked(session, "docs", (plan,)))
+            if state == "committed":
+                journal = m.Infra.CodegenTransactionJournal.model_validate({
+                    **prepared.journal.model_dump(),
+                    "state": state,
+                })
+                written = tm.ok(
+                    FlextInfraMiseArtifactsJournal.write(
+                        prepared.plan.layout,
+                        journal,
+                        expected=prepared.journal_state,
+                    ),
+                )
+                prepared = prepared.model_copy(
+                    update={"journal": journal, "journal_state": written},
+                )
+            return r[m.Infra.CodegenTransactionSession].ok(prepared)
+
+        tm.ok(owner.run_files_locked(roots, record))
+        observed = tm.ok(owner.inspect_journal())
+        tm.that(observed.journal_state, eq=state)
+        tm.that(bool(observed.pending_roots), eq=True)
+        tm.that(bool(observed.pending_directories), eq=True)
+        tm.that(bool(observed.pending_staging), eq=True)
+        tm.that(bool(observed.pending_destinations), eq=state != "staging")
+        policy = tm.ok(owner.participant_policy())
+        expected = observed.model_copy(
+            update={"authorized_roots": tuple(item.target for item in policy.roots)},
+        )
+        target_state = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+
+        tm.that(
+            tm.ok(infra.codegen_footprint(m.Infra.CodegenFootprintRequest(root=root))),
+            eq=expected.model_dump_json(),
+        )
+        tm.that(tm.ok(owner.inspect_journal()), eq=observed)
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
+            eq=target_state,
+        )
+        tm.that((root / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH).exists(), eq=False)
+
+    @staticmethod
     def test_footprint_authorization_observes_the_serialized_current_journal(
         tmp_path: Path,
     ) -> None:
@@ -620,7 +748,7 @@ class TestsFlextInfraTransactionStaging:
 
     @staticmethod
     @pytest.mark.parametrize("inside", [False, True])
-    @pytest.mark.parametrize("boundary", ["managed", "file"])
+    @pytest.mark.parametrize("boundary", ["managed", "file", "footprint"])
     @pytest.mark.parametrize("state", ["staging", "prepared", "committed"])
     def test_request_authorization_preserves_foreign_pending_journal(
         tmp_path: Path,
@@ -630,7 +758,7 @@ class TestsFlextInfraTransactionStaging:
         inside: bool,
     ) -> None:
         """Reject undeclared capabilities without recovery or publication."""
-        root = u.Tests.git_repository(tmp_path / "source")
+        root, _package = u.Tests.create_lazy_init_workspace(tmp_path / "source")
         foreign = root / "undeclared" if inside else tmp_path / "foreign"
         foreign.mkdir()
         marker = foreign / "unknown-wip.bin"
@@ -688,7 +816,10 @@ class TestsFlextInfraTransactionStaging:
                 "unapproved publication\n",
             )
 
-        if boundary == "managed":
+        result: p.Result[str] | p.Result[bool]
+        if boundary == "footprint":
+            result = infra.codegen_footprint(m.Infra.CodegenFootprintRequest(root=root))
+        elif boundary == "managed":
             result = owner.run_locked(
                 prepare=True,
                 operation=publish_unapproved,
@@ -720,7 +851,7 @@ class TestsFlextInfraTransactionStaging:
     @staticmethod
     def test_effect_free_inspection_preserves_corrupt_journal(tmp_path: Path) -> None:
         """Preserve the original parser failure without creating recovery state."""
-        root = u.Tests.git_repository(tmp_path)
+        root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
         owner = transaction.FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
         )
@@ -739,6 +870,8 @@ class TestsFlextInfraTransactionStaging:
         )
         with pytest.raises(e.PydanticValidationError):
             owner.inspect_journal()
+        with pytest.raises(e.PydanticValidationError):
+            infra.codegen_footprint(m.Infra.CodegenFootprintRequest(root=root))
         tm.that(
             tm.ok(
                 u.Cli.atomic_read_binary_file_state(
