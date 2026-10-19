@@ -272,6 +272,9 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         """
         if outcome.transaction_id is None or outcome.root != root:
             return r[bool].fail("publication receipt lacks its actual scope identity")
+        storage = FlextInfraMiseArtifactsVerification.publication_storage_root(root)
+        if storage.failure:
+            return r[bool].from_failure(storage)
         path = c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
         digest = u.Cli.sha256_content(outcome.model_dump_json())
         archived = u.Infra.publish_refactor_report_evidence(
@@ -297,7 +300,9 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
             return r[bool].from_failure(latest)
         if surface is not c.Infra.CodegenConformSurface.ALL:
             return r[bool].ok(value=True)
-        return FlextInfraCodegenTransactionRecovery._retire_partial_receipts(root)
+        return FlextInfraCodegenTransactionRecovery._retire_partial_receipts(
+            storage.value
+        )
 
     @staticmethod
     def _retire_partial_receipts(root: Path) -> p.Result[bool]:
@@ -442,19 +447,178 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         admitted = cls._admitted_operation_receipt(outcome, operation)
         if admitted.failure:
             return r[m.Infra.CodegenPhaseOutcome].from_failure(admitted)
-        with cls.mutation_lease(root):
-            if state.completed:
+        if state.completed:
+            with cls.mutation_lease(root):
                 current = (
                     FlextInfraMiseArtifactsVerification.publication_outputs_current(
-                        batches,
+                        batches
                     )
                 )
-                if current.failure:
-                    return r[m.Infra.CodegenPhaseOutcome].from_failure(current)
+            if current.failure:
+                return r[m.Infra.CodegenPhaseOutcome].from_failure(current)
+            return cls._owned_publication_outcome(outcome).flat_map(
+                cls.publish_operation_report
+            )
+        with cls.mutation_lease(root):
             written = cls.publish_outcome(root, outcome)
         if written.failure:
             return r[m.Infra.CodegenPhaseOutcome].from_failure(written)
         return cls._owned_publication_outcome(outcome)
+
+    @classmethod
+    def publish_operation_report(
+        cls, outcome: m.Infra.CodegenPhaseOutcome
+    ) -> p.Result[m.Infra.CodegenPhaseOutcome]:
+        """Publish the final user reports through the existing native file journal."""
+        from flext_infra import config
+        from flext_infra.codegen import (
+            FlextInfraCodegenMiseArtifacts,
+            FlextInfraCodegenTransaction,
+        )
+
+        result_type = r[m.Infra.CodegenPhaseOutcome]
+        born = FlextInfraMiseArtifactsVerification.publication_birth_current(outcome)
+        if born.failure:
+            return result_type.from_failure(born)
+        root, surface = outcome.root, outcome.surface
+        if root is None or surface is None or outcome.transaction_id is None:
+            return result_type.fail(
+                "final report requires its native operation identity"
+            )
+        if not outcome.completed:
+            return result_type.fail(
+                "source reports require a completed native operation"
+            )
+        if not outcome.batches:
+            return result_type.fail("completed operation has no native artifact batch")
+        content = outcome.model_dump_json().encode(c.DEFAULT_ENCODING)
+        report = FlextInfraMiseArtifactsVerification.publication_receipt(surface)
+        archive = (
+            c.Infra.CODEGEN_PUBLICATION_ARCHIVE_RELATIVE_PATH
+            / outcome.transaction_id
+            / f"{u.Cli.sha256_bytes(content)}{report.suffix}"
+        )
+        desired: dict[Path, bytes | None] = {
+            root / archive: content,
+            root / report: content,
+        }
+        inputs: tuple[m.Cli.AtomicFileState, ...] = ()
+        if surface is c.Infra.CodegenConformSurface.ALL:
+            storage = FlextInfraMiseArtifactsVerification.publication_storage_root(root)
+            if storage.failure:
+                return result_type.from_failure(storage)
+            evidence = FlextInfraMiseArtifactsFiles.read_state(
+                storage.value / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH, required=True
+            )
+            if evidence.failure:
+                return result_type.from_failure(evidence)
+            # CHECK may publish a new plan observation. Retain this operation's
+            # bytes in the existing immutable native store, not its mutable slot.
+            retained = u.Infra.publish_mod_native_artifact(
+                storage.value, evidence.value.path
+            )
+            evidence = FlextInfraMiseArtifactsFiles.read_state(
+                retained.path, required=True
+            )
+            if evidence.failure:
+                return result_type.from_failure(evidence)
+            if evidence.value.content is None:
+                return result_type.fail(
+                    "native planning report lacks its original bytes"
+                )
+            desired[root / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH] = (
+                evidence.value.content
+            )
+            inputs = (evidence.value,)
+        plans: list[m.Infra.CodegenFilePlan] = []
+        for path, payload in desired.items():
+            before = u.Infra.codegen_target_snapshot(path)
+            if before.failure:
+                return result_type.from_failure(before)
+            plans.append(
+                m.Infra.CodegenFilePlan(
+                    project=root,
+                    path=path,
+                    before=before.value,
+                    desired_content=payload,
+                    desired_mode=config.Infra.codegen.modes.file_default
+                    if payload is not None
+                    else None,
+                    source_states=inputs,
+                )
+            )
+        if surface is c.Infra.CodegenConformSurface.ALL:
+            for partial_surface in c.Infra.CodegenConformSurface:
+                if partial_surface is c.Infra.CodegenConformSurface.ALL:
+                    continue
+                path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
+                    partial_surface
+                )
+                before = FlextInfraMiseArtifactsFiles.read_state(path, required=False)
+                if before.failure:
+                    return result_type.from_failure(before)
+                if before.value.content is not None:
+                    plans.append(
+                        m.Infra.CodegenFilePlan(
+                            project=root,
+                            path=path,
+                            before=before.value,
+                            desired_content=None,
+                            desired_mode=None,
+                            source_states=inputs,
+                        )
+                    )
+        members = tuple(sorted(plan.path for plan in plans))
+        plans = [
+            plan.model_copy(
+                update={
+                    "dependency_group": f"publication-evidence:{outcome.transaction_id}",
+                    "dependency_members": members,
+                }
+            )
+            for plan in plans
+        ]
+        owner = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root)
+        )
+        phase = c.Infra.CodegenStagedFilePhase.CONFORM
+        roots = owner.capability_roots(phase.value, (root,))
+        receipts: list[m.Infra.CodegenPhaseOutcome] = []
+        published = owner.run_files_locked(
+            roots,
+            lambda scope: owner.publish_file_phase_locked(
+                scope,
+                roots,
+                m.Infra.CodegenPhaseAnalysis(
+                    phase=phase, files=tuple(plans), inputs=inputs
+                ),
+                m.Infra.CodegenPhasePublicationPolicy(
+                    directories=tuple(
+                        sorted({
+                            plan.path.parent
+                            for plan in plans
+                            if plan.desired_content is not None
+                            and isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
+                        })
+                    )
+                ),
+                publication_receipts=receipts,
+            ),
+        )
+        if published.failure:
+            return result_type.from_failure(published)
+        recorded = outcome.model_copy(
+            update={
+                "batches": (*outcome.batches, *receipts),
+                "written_files": tuple(
+                    dict.fromkeys((*outcome.written_files, *published.value))
+                ),
+            }
+        )
+        persisted = cls.publish_outcome(root, recorded)
+        if persisted.failure:
+            return result_type.from_failure(persisted)
+        return cls._owned_publication_outcome(recorded)
 
     def bind_publication_proof(
         self,

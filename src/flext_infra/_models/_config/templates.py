@@ -10,6 +10,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated, Literal, Self
 
+import flext_core
 from flext_cli import m
 from typing_extensions import TypeForm
 
@@ -39,7 +40,10 @@ class FlextInfraConfigModelsTemplates:
         additional_settings: Annotated[
             t.JsonMapping,
             m.Field(description="Portable project-owned extension declarations"),
-        ] = m.Field(default_factory=m.empty(TypeForm(t.JsonMapping)))
+        ] = m.Field(
+            default_factory=lambda: flext_core.u.empty(TypeForm(t.JsonMapping))(),
+            validate_default=True,
+        )
 
         @m.field_validator("additional_settings")
         @classmethod

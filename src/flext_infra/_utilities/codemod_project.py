@@ -621,7 +621,7 @@ class FlextInfraUtilitiesCodemodProject(
     @staticmethod
     def _isolated_execution_holds(
         project: p.Infra.RopeProject,
-        condition: m.Infra.CodemodContextCondition,
+        condition: p.Infra.CodemodContextOperands,
         source: Path,
         sources: t.MappingKV[Path, str],
     ) -> bool:
@@ -1805,31 +1805,41 @@ class FlextInfraUtilitiesCodemodProject(
         root: Path,
         file_path: Path,
         imported: str,
-        condition: m.Infra.CodemodContextCondition,
+        condition: p.Infra.CodemodContextOperands,
     ) -> bool:
         """Return whether an import reaches a later layer than its module's.
 
         Layers and their order are the tooling import-layer order. A
-        module's layer is a family it belongs to (its own ``__all__`` or its
-        family package's facade) or the layer its stem names (``settings``,
-        ``base``, ``api``); an imported letter is its own layer. A rule may
+        module's layer is its first architectural role relative to the owned
+        repository, including tests and examples outside src. An imported
+        letter is its own layer. A rule may
         name the layer to compare with (``arg``) instead of the module's, and
         the layer an imported name that is no layer stands for (``as``).
 
         Returns:
             Whether an import reaches a later layer than its module's.
 
+        Raises:
+            ValueError: If a comparison layer is undeclared or the source
+                lies outside its selected repository.
+
         """
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         if condition.arg:
             owner = cls._layer_rank(order, frozenset(condition.arg))
         else:
-            namespace = FlextInfraUtilitiesImportLaw.import_namespace(root, file_path)
-            if namespace is None:
-                return False
-            owner = FlextInfraUtilitiesImportLaw.module_import_layer(namespace[1])
+            namespace = ".".join(file_path.relative_to(root).with_suffix("").parts)
+            owner = FlextInfraUtilitiesImportLaw.module_import_layer(namespace)
         if owner is None:
-            return False
+            message = f"import comparison layer is undeclared: {condition.arg!r}"
+            raise ValueError(message)
+        if not condition.as_:
+            layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
+            if layout is None:
+                message = f"import comparison project namespace is undeclared: {root}"
+                raise ValueError(message)
+            if imported == layout.package_name:
+                return False
         if imported in order:
             target_layers: frozenset[str] = frozenset({imported})
         elif imported.isidentifier() and condition.as_:
@@ -1841,9 +1851,13 @@ class FlextInfraUtilitiesCodemodProject(
                     return False
                 target_rank = FlextInfraUtilitiesImportLaw.module_import_layer(imported)
                 return target_rank > owner
-            target_layers = cls._path_layers(target)
+            namespace = ".".join(target.relative_to(root).with_suffix("").parts)
+            return FlextInfraUtilitiesImportLaw.module_import_layer(namespace) > owner
         target_rank = cls._layer_rank(order, target_layers)
-        return target_rank is not None and target_rank > owner
+        if target_rank is None:
+            message = f"import target layer is undeclared: {condition.as_!r}"
+            raise ValueError(message)
+        return target_rank > owner
 
     @staticmethod
     def _has_class_stem(root: Path, file_path: Path, name: str) -> bool:

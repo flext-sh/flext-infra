@@ -165,13 +165,10 @@ class FlextInfraModelsWorkspace:
         evidence: t.MutableSequenceOf[
             FlextInfraModelsWorkspace.NativeBindingEvidence
         ] = m.Field(
-            default_factory=u.empty(
-                TypeForm(
-                    t.MutableSequenceOf[
-                        "FlextInfraModelsWorkspace.NativeBindingEvidence"
-                    ]
-                )
-            ),
+            default_factory=lambda: list[
+                FlextInfraModelsWorkspace.NativeBindingEvidence
+            ](),
+            validate_default=True,
             description="Ordered native binding and executable observations",
         )
         generated_owners: t.MutableMappingKV[
@@ -825,14 +822,15 @@ class FlextInfraModelsWorkspace:
                 description="Resolved edges by extra; absent when no extras exist",
             ),
         ] = u.Field(
-            default_factory=u.empty(
+            default_factory=lambda: u.empty(
                 TypeForm(
                     t.MappingKV[
                         str,
-                        t.VariadicTuple["FlextInfraModelsWorkspace.LockedDependency"],
+                        t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency],
                     ]
                 )
-            )
+            )(),
+            validate_default=True,
         )
         dev_dependencies: Annotated[
             t.MappingKV[
@@ -843,14 +841,15 @@ class FlextInfraModelsWorkspace:
                 description="Resolved edges by development group; absent means none",
             ),
         ] = u.Field(
-            default_factory=u.empty(
+            default_factory=lambda: u.empty(
                 TypeForm(
                     t.MappingKV[
                         str,
-                        t.VariadicTuple["FlextInfraModelsWorkspace.LockedDependency"],
+                        t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency],
                     ]
                 )
-            )
+            )(),
+            validate_default=True,
         )
         resolution_markers: Annotated[
             t.VariadicTuple[str],

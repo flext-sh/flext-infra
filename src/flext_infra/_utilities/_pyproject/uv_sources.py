@@ -126,16 +126,41 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
         """
         requirements = cls.document_requirement_lines(root.document).unwrap()
+        supplied_names = {
+            canonicalize_name(item.repository.distribution)
+            for item in members
+            if item.role == "supplier"
+        }
         for supplier in (item for item in members if item.role == "supplier"):
             name = canonicalize_name(supplier.repository.distribution)
-            metadata = cls._resolution_project_payload(supplier).get(
-                c.Infra.PROJECT, {}
-            )
+            payload = cls._resolution_project_payload(supplier)
+            metadata = payload.get(c.Infra.PROJECT, {})
             identity = u.json_mapping_adapter().validate_python(metadata).get("name")
             if not isinstance(identity, str) or canonicalize_name(identity) != name:
                 return r[bool].fail(
                     f"editable supplier identity mismatch: {supplier.directory}"
                 )
+            tool = u.json_mapping_adapter().validate_python(payload.get(c.Infra.TOOL, {}))
+            project_uv = u.json_mapping_adapter().validate_python(tool.get("uv", {}))
+            state.constraints.extend(
+                constraint
+                for constraint in u.str_sequence_adapter().validate_python(
+                    project_uv.get("constraint-dependencies", [])
+                )
+                if constraint not in state.constraints
+            )
+            overrides = m.Infra.UvOverrideEntries.model_validate(
+                project_uv.get("override-dependencies", []), strict=True
+            ).root
+            state.retained_overrides.extend(
+                entry
+                for entry in overrides
+                if entry not in state.retained_overrides
+                and (
+                    not isinstance(entry, str)
+                    or FlextInfraUtilitiesDependencies.dep_name(entry) not in supplied_names
+                )
+            )
             # Replace source provenance only; preserve bounds, extras and markers.
             replaced = [
                 entry

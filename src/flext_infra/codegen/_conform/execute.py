@@ -1152,12 +1152,18 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             failures.append(completed)
             if first_exception is None:
                 first_exception = completed.exception
+            else:
+                first_exception.add_note(
+                    f"generation receipt publication also failed: {completed.error}"
+                )
         if first_exception is not None:
             raise first_exception
         if failures:
             return r[p.Infra.CodegenResult].from_failure(failures[0])
         payload: p.Infra.CodegenResult = m.Infra.CodegenResult(
             plan=planned.value,
+            # Managed projection delta is distinct from the final evidence
+            # phase; the native receipt retains every physical effect.
             written_files=tuple(
                 path for batch in batches for path in batch.written_files
             ),
@@ -1625,9 +1631,25 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
 
         """
         result_type = r[t.VariadicTuple[Path]]
+        current_inputs = FlextInfraMiseArtifactsVerification.publication_input_states(
+            tuple(source for file in analysis.files for source in file.source_states),
+            tuple(receipts),
+        )
+        if current_inputs.failure:
+            return result_type.from_failure(current_inputs)
+        by_path = {state.path: state for state in current_inputs.value}
         prepared = FlextInfraCodegenStaging.prepare_python_plans(
             request.root,
-            analysis.files,
+            tuple(
+                file.model_copy(
+                    update={
+                        "source_states": tuple(
+                            by_path[state.path] for state in file.source_states
+                        ),
+                    }
+                )
+                for file in analysis.files
+            ),
         )
         if prepared.failure:
             return result_type.from_failure(prepared)

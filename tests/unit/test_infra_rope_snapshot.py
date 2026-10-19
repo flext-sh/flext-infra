@@ -95,6 +95,77 @@ class TestsFlextInfraRopeSnapshot:
         tm.that(str(rejected.value), has="same_model_type=True")
 
     @staticmethod
+    @pytest.mark.parametrize("declared", [False, True])
+    def test_lazy_planning_keeps_physical_receipts_for_both_overlay_routes(
+        tmp_path: Path, *, declared: bool
+    ) -> None:
+        """Repeated export planning never authenticates its own proposed bytes."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        layout = tm.not_none(u.Infra.layout(root))
+        source = package / "provider.py"
+        physical_name = f"{layout.class_stem}Original"
+        planned_name = f"{layout.class_stem}Projected"
+        physical = (
+            f'class {physical_name}:\n    """Original declaration."""\n'
+            f"__all__ = [{physical_name!r}]\n"
+        ).encode("utf-8")
+        proposed = (
+            f'class {planned_name}:\n    """Projected declaration."""\n'
+            f"__all__ = [{planned_name!r}]\n"
+        ).encode("utf-8")
+        source.write_bytes(physical)
+        original = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+        declarations = (
+            (
+                m.Infra.CodegenFilePlan(
+                    project=root,
+                    path=source,
+                    before=original,
+                    desired_content=proposed,
+                    desired_mode=original.mode,
+                ),
+            )
+            if declared
+            else ()
+        )
+        overlay = {} if declared else {source: proposed.decode("utf-8")}
+        service = u.Tests.create_lazy_init_service(root)
+        with u.Infra.facade_source_project(
+            root,
+            source_states=(original,),
+            declared_files=declarations,
+            planned_sources=overlay,
+        ) as (project, receipts, _):
+            for _ in range(2):
+                analysis = tm.ok(service.plan_files(source_project=project))
+                initializer = next(
+                    plan
+                    for plan in analysis.files
+                    if plan.path == package / "__init__.py"
+                )
+                rendered = tm.not_none(initializer.desired_content).decode("utf-8")
+                tm.that(rendered, has=planned_name)
+                tm.that(physical_name in rendered, eq=False)
+                tm.that(
+                    tuple(state for state in receipts()[0] if state.path == source),
+                    eq=(original,),
+                )
+                tm.ok(u.Cli.atomic_verify_binary_file_states((original,)))
+
+        with pytest.raises(ValueError, match="atomic source changed"):
+            with u.Infra.facade_source_project(
+                root,
+                source_states=(original,),
+                declared_files=declarations,
+                planned_sources=overlay,
+            ) as (project, _, _):
+                tm.ok(service.plan_files(source_project=project))
+                with source.open("r+b") as stream:
+                    stream.write(proposed)
+                    stream.truncate()
+                project.verify_source_states()
+
+    @staticmethod
     def test_module_lookup_uses_declared_source_roots(tmp_path: Path) -> None:
         """Unrelated root packages never expand live or snapshot import roots."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(

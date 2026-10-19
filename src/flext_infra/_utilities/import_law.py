@@ -7,17 +7,203 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from flext_infra import c, config, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntimeModules,
 )
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesImportLaw:
     """Single owner of the import-law facts the enforcement routes read."""
+
+    @classmethod
+    def import_contract_routes(
+        cls,
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        resources: t.SequenceOf[p.Infra.RopeResource],
+        sources: t.MappingKV[Path, str],
+    ) -> t.SequenceOf[
+        t.Pair[p.Infra.RopeContractRule, t.SequenceOf[p.Infra.RopeResource]]
+    ]:
+        """Bind a family's new calls through its declared helper, never its facade."""
+        routes: list[tuple[p.Infra.RopeContractRule, list[p.Infra.RopeResource]]] = []
+        for resource in resources:
+            routed = cls._import_contract_rule(project, rule, resource, sources)
+            group = next(
+                (
+                    entry
+                    for entry in routes
+                    if entry[0].goal == routed.goal
+                    and entry[0].imports == routed.imports
+                    and entry[0].bindings == routed.bindings
+                ),
+                None,
+            )
+            if group is None:
+                routes.append((routed, [resource]))
+            else:
+                group[1].append(resource)
+        return tuple((selected, tuple(items)) for selected, items in routes)
+
+    @classmethod
+    def _import_contract_rule(
+        cls,
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        resource: p.Infra.RopeResource,
+        sources: t.MappingKV[Path, str],
+    ) -> p.Infra.RopeContractRule:
+        """Apply existing family publication law to one consumer's native goals."""
+        from flext_infra import m
+        from flext_infra.refactor import FlextInfraImportNormalization
+
+        path = Path(resource.real_path).resolve()
+        root = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+            Path(project.root.real_path), path, source_project=project
+        )
+        located = (
+            cls.import_namespace(root, path, sources=sources)
+            if root is not None
+            else None
+        )
+        if root is None or located is None or not rule.bindings:
+            return rule
+        namespace, module_name = located
+        letter = FlextInfraImportNormalization._family_letter(namespace, path)
+        if letter is None:
+            return rule
+        family = FlextInfraUtilitiesCodegenNamespace.facade_families()[letter]
+        directory = namespace / family.directory
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
+        scope = module.get_scope()
+        goal, imports, bindings = rule.goal, dict(rule.imports), dict(rule.bindings)
+        for expression, identity in rule.bindings.items():
+            binding = runtime.qualified_name(project, identity)
+            provider = binding.get_object().get_module()
+            provider_resource = (
+                provider.get_resource() if provider is not None else None
+            )
+            if provider is None or provider_resource is None:
+                continue
+            provider_path = Path(provider_resource.real_path).resolve()
+            if not provider_path.is_relative_to(directory):
+                continue
+            relative = identity.removeprefix(f"{provider.get_name()}.")
+            owner, separator, member = relative.partition(".")
+            if not separator or owner not in (
+                FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                    sources[provider_path]
+                )
+            ):
+                continue
+            owner_binding = runtime.qualified_name(
+                project, f"{provider.get_name()}.{owner}"
+            )
+            package = FlextInfraImportNormalization._lazy_source(
+                m.Infra.ImportLawScope(
+                    project_root=root,
+                    file_path=path,
+                    namespace_dir=namespace,
+                    module=module_name,
+                    layer=cls.module_import_layer(module_name),
+                    own_exports=frozenset(
+                        FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                            module.source_code
+                        )
+                    ),
+                    family_letter=letter,
+                ),
+                provider.get_name(),
+                owner,
+                sources=sources,
+            )
+            local = next(
+                (
+                    name
+                    for name, candidate in scope.get_names().items()
+                    if runtime.same_name(owner_binding, candidate)
+                ),
+                owner,
+            )
+            if not runtime.same_name(owner_binding, scope.get_names().get(local)):
+                local = next(
+                    (
+                        f"{name}.{owner}"
+                        for name, candidate in scope.get_names().items()
+                        if runtime.same_name(
+                            owner_binding,
+                            candidate.get_object().get_attributes().get(owner),
+                        )
+                    ),
+                    local,
+                )
+            if package is None and not runtime.same_name(
+                owner_binding, scope.get_names().get(local)
+            ):
+                message = f"{identity}: same-family destination has no lazy publication"
+                raise ValueError(message)
+            destination = f"{local}.{member}"
+            del bindings[expression]
+            bindings[destination] = identity
+            old_root = expression.split(".", 1)[0]
+            if not any(name.split(".", 1)[0] == old_root for name in bindings):
+                imports.pop(old_root, None)
+            if package is not None and "." not in local:
+                imports[local] = f"from {package} import {owner}" + (
+                    f" as {local}" if local != owner else ""
+                )
+            goal = goal.replace(expression, destination)
+        if (goal, imports, bindings) == (rule.goal, rule.imports, rule.bindings):
+            return rule
+        return m.Infra.RopeContractRule.model_validate(
+            rule, from_attributes=True
+        ).model_copy(update={"goal": goal, "imports": imports, "bindings": bindings})
+
+    @staticmethod
+    def import_contract_bindings(
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        module: p.Infra.RopePyModule,
+        scope: p.Infra.RopeScope,
+        offset: int,
+    ) -> bool:
+        """Prove each destination and its preceding unconditional import."""
+        from flext_infra import p
+
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        for expression, expected in rule.bindings.items():
+            identity = runtime.qualified_name(project, expected)
+            root = expression.split(".", 1)[0]
+            root_name = runtime.expression_name(scope, root)
+            if root_name is None:
+                continue
+            actual = runtime.expression_name(scope, expression)
+            if not runtime.same_name(identity, actual):
+                message = (
+                    f"{rule.id}: destination {expression} is shadowed "
+                    f"in {module.get_name()}:{scope.get_start()}"
+                )
+                raise ValueError(message)
+            if isinstance(
+                root_name, (p.Infra.RopeImportedName, p.Infra.RopeImportedModule)
+            ) and not runtime.imported_binding_precedes(project, module, root, offset):
+                message = (
+                    f"{rule.id}: destination {expression} has no preceding "
+                    f"unconditional import in {module.get_name()}:{scope.get_start()}"
+                )
+                raise ValueError(message)
+        return True
 
     @classmethod
     def import_namespace(

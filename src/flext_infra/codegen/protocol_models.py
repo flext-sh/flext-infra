@@ -17,22 +17,20 @@ from flext_infra.codegen import FlextInfraCodegenProtocolModelRender
 class FlextInfraCodegenProtocolModels(FlextInfraServiceBase):
     """Select source model identities and publish through ordinary conformance."""
 
-    def execute(self) -> r[m.Infra.CodegenReport]:
+    def execute(self) -> p.Result[p.Infra.CodegenResult]:
         """Execute the canonical planner, transaction and publication owner."""
         from flext_infra import FlextInfra
 
-        outcome = FlextInfra(repository_root=self.repository_root).codegen_conform(
+        return FlextInfra(repository_root=self.repository_root).codegen_conform(
             m.Infra.CodegenConformRequest(
-                repository_root=self.repository_root,
-                apply=self.apply_changes,
-                check=not self.apply_changes,
+                root=self.repository_root,
                 scope=c.Infra.CodegenConformScope.SELF,
-                verbose=self.verbose,
-                suppress_report=bool(self.suppress_report),
+                mode=(
+                    c.Infra.CodegenConformMode.CHECK
+                    if self.effective_dry_run
+                    else c.Infra.CodegenConformMode.APPLY
+                ),
             )
-        )
-        return outcome.flat_map(
-            lambda result: result.to_codegen_result(self.apply_changes)
         )
 
     @classmethod

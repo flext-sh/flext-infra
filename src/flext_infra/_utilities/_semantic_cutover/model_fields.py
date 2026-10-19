@@ -44,7 +44,10 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
                 isinstance(value, str) and value.startswith("name=")
                 for value in rule.arguments.values()
             ):
-                msg = f"{rule.id}: ownership transfer requires one native receiver constraint"
+                msg = (
+                    f"{rule.id}: ownership transfer requires "
+                    "one native receiver constraint"
+                )
                 raise ValueError(msg)
             return {}
         if rule.required_field:

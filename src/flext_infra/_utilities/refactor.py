@@ -1239,6 +1239,17 @@ class FlextInfraUtilitiesRefactor:
         return r[bool].ok(value=True)
 
     @staticmethod
+    def refactor_report_evidence_root(root: Path) -> p.Result[Path]:
+        """Elect the existing Git control plane without mutating source inputs."""
+        from flext_infra._utilities._git.semantic_identity import (
+            FlextInfraUtilitiesGitSemanticIdentityMixin,
+        )
+
+        return FlextInfraUtilitiesGitSemanticIdentityMixin.exact_worktree_root(
+            root
+        ).map(lambda identity: identity.git_dir)
+
+    @staticmethod
     def publish_refactor_report_evidence(
         root: Path,
         report: m.ContractModel | m.ArbitraryTypesModel,
@@ -1259,7 +1270,10 @@ class FlextInfraUtilitiesRefactor:
         content = (report.model_dump_json(indent=2, round_trip=True) + "\n").encode(
             c.DEFAULT_ENCODING,
         )
-        report_path = root.resolve() / relative_path
+        storage = FlextInfraUtilitiesRefactor.refactor_report_evidence_root(root)
+        if storage.failure:
+            return r[Path].from_failure(storage)
+        report_path = storage.value / relative_path
         return FlextInfraUtilitiesRefactor._published_mod_scan_bytes(
             report_path, content
         ).map(lambda _published: report_path)

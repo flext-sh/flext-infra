@@ -99,6 +99,11 @@ class TestsFlextInfraApiAliasCutover:
             tm.that(updated[owner], lacks='"s"')
             destination = expected.replace("sample_pkg", owner.parent.name)
             tm.that(updated[consumer], has=f"class Consumer({destination}[str]):")
+            if base == "s":
+                tm.that(
+                    updated[consumer],
+                    has=f"from {owner.parent.name} import FlextSampleService",
+                )
             tm.that(updated[consumer], has="def shadowed(s):\n    return s")
             tm.that(updated[consumer], has='literal = "s"')
             tm.that(
@@ -135,21 +140,28 @@ class TestsFlextInfraApiAliasCutover:
 
     @staticmethod
     @pytest.mark.parametrize(
-        "consumer",
+        ("consumer", "reason"),
         [
-            "from sample_pkg import s\ndef capture(FlextSampleService):\n    return s\n",
-            'import sample_pkg\nvalue = getattr(sample_pkg, "s")\n',
+            (
+                "from sample_pkg import s\ndef capture(FlextSampleService):\n    return s\n",
+                "shadowed",
+            ),
+            ('import sample_pkg\nvalue = getattr(sample_pkg, "s")\n', "reflective"),
         ],
     )
     def test_service_retirement_refuses_uncovered_bindings(
         tmp_path: Path,
         consumer: str,
+        reason: str,
     ) -> None:
         """A captured destination or reflective access prevents owner retirement."""
         root, sources = TestsFlextInfraApiAliasCutover._service_workspace(
             tmp_path, consumer
         )
-        with infra.rope_workspace(root) as workspace, pytest.raises(ValueError):
+        with (
+            infra.rope_workspace(root) as workspace,
+            pytest.raises(ValueError, match=reason),
+        ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
                 rope_workspace=workspace,

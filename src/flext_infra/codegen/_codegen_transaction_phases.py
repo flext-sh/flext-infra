@@ -899,7 +899,8 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                     ),
                 ),
             )
-        # Capture absence witnesses before staging creates their missing parents.
+        # Reuse the original witnesses: requested directory effects may already
+        # have materialized parents under this journal before file authorization.
         recorded = FlextInfraMiseArtifactsJournal.append_prepared(
             session.plan, session.journal, (), sources=sources.value
         )

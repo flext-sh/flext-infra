@@ -12,7 +12,7 @@ from pathlib import Path
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformFilePlans
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
-from flext_infra.workspace import FlextInfraBindingService, FlextInfraWorkspaceDetector
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans):
@@ -51,7 +51,12 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         suppliers: list[m.Infra.UvResolutionProject] = []
         supplier_root = inputs.spec.make.uv_resolution.editable_supplier_root
         if supplier_root is not None:
-            collected = self._collected_supplier_projects(root, supplier_root, sources)
+            requirements = u.Infra.document_requirement_lines(projects.value[0].document)
+            if requirements.failure:
+                return result_type.from_failure(requirements)
+            collected = self._collected_supplier_projects(
+                root, supplier_root, sources, requirements=requirements.value
+            )
             if collected.failure:
                 return result_type.from_failure(collected)
             suppliers = collected.value
@@ -72,6 +77,8 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         root: Path,
         supplier_root: Path,
         sources: list[m.Cli.AtomicFileState],
+        *,
+        requirements: t.StrSequence,
     ) -> p.Result[list[m.Infra.UvResolutionProject]]:
         """Authenticate active external suppliers and their generation inputs.
 
@@ -83,18 +90,25 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         runtime = FlextInfraWorkspaceDetector.resolution_context(root)
         if runtime.failure:
             return result_type.from_failure(runtime)
-        targets = FlextInfraBindingService.plan_targets(
-            consumer_root=root,
-            flext_root=supplier_root,
-            python=u.Infra.runtime_python(
-                root, runtime_root=runtime.value.runtime_root
-            ),
-        )
-        if targets.failure:
-            return result_type.from_failure(targets)
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(supplier_root)
         if workspace.failure:
             return result_type.from_failure(workspace)
+        declared = {
+            name
+            for requirement in requirements
+            if (name := u.Infra.dep_name(requirement)) is not None
+        }
+        targets = tuple(
+            name
+            for repository in (workspace.value.repository, *workspace.value.subprojects)
+            if repository.package
+            and (name := u.Infra.dep_name(repository.distribution)) is not None
+            and name in declared
+        )
+        if not targets:
+            return result_type.fail(
+                f"editable supplier selects no declared dependency: {supplier_root}"
+            )
         inputs = u.Infra.load_codegen_inputs(supplier_root)
         if inputs.failure:
             return result_type.from_failure(inputs)
@@ -110,7 +124,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             workspace.value,
             (),
             sources,
-            selected_names=targets.value,
+            selected_names=targets,
         ).map(
             lambda projects: [
                 item.model_copy(update={"role": "supplier"}) for item in projects

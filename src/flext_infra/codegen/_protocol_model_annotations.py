@@ -238,6 +238,8 @@ class FlextInfraCodegenProtocolModelAnnotations:
                             if not u.Infra.same_name(parent, published):
                                 msg = f"model dependency has no elected protocol receiver: {name}"
                                 raise ValueError(msg)
+                            statement = f"from {self.project.upstream} import p"
+                            self.imports[statement] = statement
                             return ast.parse(f"p.{name}", mode="eval").body
                         return ast.Name(
                             id=declaration.get_object().get_name(), ctx=ast.Load()
@@ -271,6 +273,8 @@ class FlextInfraCodegenProtocolModelAnnotations:
                         else None
                     )
                 if u.Infra.same_name(selected, binding):
+                    statement = f"from {self.project.upstream} import p"
+                    self.imports[statement] = statement
                     return ast.parse(f"p.{tail}", mode="eval").body
                 if u.Infra.same_name(self.protocol_facade, root_binding):
                     return ast.parse(

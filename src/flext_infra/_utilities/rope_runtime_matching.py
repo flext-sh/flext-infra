@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_infra import p, t
-from flext_infra._utilities.rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
+from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeBase
 
 
 class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase):
@@ -30,10 +30,20 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
 
         """
         finder = cls.semantic_finder(module)
-        return tuple(
-            match.get_region()
-            for match in finder.get_matches(pattern, arguments, start=start, end=end)
-        )
+        try:
+            return tuple(
+                match.get_region()
+                for match in finder.get_matches(
+                    pattern, arguments, start=start, end=end
+                )
+            )
+        except AttributeError as error:
+            resource = module.get_resource()
+            error.add_note(
+                f"Rope semantic match resource={resource.path if resource else None!r} "
+                f"pattern={pattern!r} arguments={arguments!r} region={(start, end)!r}",
+            )
+            raise
 
     @classmethod
     def semantic_finder(

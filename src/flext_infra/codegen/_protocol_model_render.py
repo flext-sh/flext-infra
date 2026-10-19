@@ -72,6 +72,8 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         for key in ordered:
             for name in components[key]:
                 grouped[name.rpartition(".")[0]].append(name)
+        for name in aliases:
+            grouped.setdefault(name.rpartition(".")[0], [])
         for namespace, names in grouped.items():
             parts: list[tuple[str, str]] = []
             token = namespace.replace(".", "_").lower()
@@ -513,16 +515,16 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
 
         """
         upstream = project.upstream
+        statements = set(imports.values())
+        if structural:
+            statements.update((
+                "from typing import Protocol, runtime_checkable",
+                f"from {upstream} import p",
+            ))
         return (
             "# AUTO-GENERATED FILE — Regenerate with: make gen\n"
             "from __future__ import annotations\n\n"
-            + (
-                "from typing import Protocol, runtime_checkable\n"
-                f"from {upstream} import p\n"
-                if structural
-                else ""
-            )
-            + "\n".join(sorted(imports.values()))
+            + "\n".join(sorted(statements))
             + "\n\n"
         )
 

@@ -67,10 +67,15 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             return r[T].fail(
                 "cold source authority permits an unchanged reference view only",
             )
+        current_inputs = FlextInfraMiseArtifactsVerification.publication_input_states(
+            inputs, self._prior_publications
+        )
+        if current_inputs.failure:
+            return r[T].from_failure(current_inputs)
         planned = FlextInfraStagedPackage.plan_sources(
             workspace,
             updates,
-            inputs=inputs,
+            inputs=current_inputs.value,
             workspaces=workspaces,
             modes=modes,
         )

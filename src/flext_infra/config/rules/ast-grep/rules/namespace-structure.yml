@@ -176,7 +176,7 @@ id: ban-reverse-runtime-import
 language: python
 severity: error
 files:
-  - "src/**/*.py"
+  - "**/*.py"
 ignores:
   - "**/__init__.py"
 metadata:

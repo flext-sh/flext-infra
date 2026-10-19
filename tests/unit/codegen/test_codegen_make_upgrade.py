@@ -21,6 +21,22 @@ class TestsFlextInfraCodegenMakeUpgrade:
     """Prove only ``upg`` resolves locks and setup preserves native lock inputs."""
 
     @staticmethod
+    def test_help_parses_before_runtime_provisioning(
+        generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
+    ) -> None:
+        """Public help parses bootstrap recipes without creating an environment."""
+        _profile, root = generated_make_template
+        environment = root / c.Infra.ENVIRONMENT_DIRECTORY
+        tm.that(environment.exists(), eq=False)
+        output = tm.ok(u.Tests.run_isolated_make(["help"], cwd=root))
+        tm.that(
+            u.Cli.process_succeeded(output.outcome),
+            eq=True,
+            msg=output.stdout + output.stderr,
+        )
+        tm.that(environment.exists(), eq=False)
+
+    @staticmethod
     def test_bootstrap_seed_has_native_resolution_inputs_without_lock_writes(
         generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
     ) -> None:
@@ -582,7 +598,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         order = [
             next(i for i, step in enumerate(steps) if needle in step)
             for needle in (
-                "--what mise-config --scope all",
+                "--what mise-config --scope self",
                 "--what makefile --scope all",
                 "_upg_provision_tools",
                 "deps modernize",

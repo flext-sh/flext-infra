@@ -116,6 +116,7 @@ class TestsFlextInfraCodemodContextComposeModule:
             ("_settings.py", "flext_cli.utilities", False),
         ],
     )
+    @pytest.mark.parametrize("outside_src", [False, True])
     def test_compose_import_cannot_bypass_the_declaration_layer(
         self,
         mod_workspace: Path,
@@ -123,6 +124,7 @@ class TestsFlextInfraCodemodContextComposeModule:
         module: str,
         *,
         expected: bool,
+        outside_src: bool,
     ) -> None:
         """Real rule admission retains the importer's first architectural role."""
         package = u.Infra.project_package_name(mod_workspace)
@@ -132,7 +134,12 @@ class TestsFlextInfraCodemodContextComposeModule:
             'dependencies = ["flext-cli"]\n',
             encoding="utf-8",
         )
-        path = mod_workspace / c.Infra.DEFAULT_SRC_DIR / package / relative
+        base = (
+            mod_workspace
+            if outside_src
+            else mod_workspace / c.Infra.DEFAULT_SRC_DIR / package
+        )
+        path = base / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(f"from {module} import Probe\n", encoding="utf-8")
         rule = next(

@@ -23,6 +23,58 @@ class TestsFlextInfraRopeRuntimePymodule:
     """Validate the module predicate over rope modules and packages."""
 
     @staticmethod
+    @pytest.mark.parametrize("warm_ast", [False, True])
+    def test_semantic_regions_include_try_else_with_finally(
+        tmp_path: Path,
+        *,
+        warm_ast: bool,
+    ) -> None:
+        """A later else binding must not break an earlier bounded native match."""
+        source = (
+            "r = str\n"
+            "def consume(token):\n"
+            "    before = r(token)\n"
+            "    try:\n"
+            "        token.strip()\n"
+            "    except ValueError:\n"
+            "        return before\n"
+            "    else:\n"
+            "        return r(token)\n"
+            "    finally:\n"
+            "        token.strip()\n"
+        )
+        consumer = tmp_path / "consumer.py"
+        consumer.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with closing(u.Infra.init_rope_project(tmp_path)) as project:
+            module = u.Infra.resolve_pymodule(
+                project,
+                u.Infra.require_file_resource(
+                    project.get_resource(consumer.name), consumer
+                ),
+            )
+            tree = module.get_ast()
+            binding = module.get_attribute("r")
+            if warm_ast:
+                tm.that(
+                    bool(u.Infra.semantic_regions(module, "before", arguments={})),
+                    is_true=True,
+                )
+            start = source.index("r(token)")
+            tm.that(
+                u.Infra.semantic_regions(
+                    module,
+                    "(\nr\n)",
+                    arguments={},
+                    start=start,
+                    end=start + len("r"),
+                ),
+                eq=((start, start + len("r")),),
+            )
+            tm.that(module.get_ast() is tree, eq=True)
+            tm.that(module.get_attribute("r") is binding, eq=True)
+            tm.that(module.source_code, eq=source)
+
+    @staticmethod
     @pytest.mark.parametrize("reuse_binding", [False, True])
     @pytest.mark.parametrize("admitted", [False, True])
     def test_native_restructuring_preserves_admission_and_import_bindings(

@@ -298,6 +298,12 @@ class FlextInfraModelsCodemod:
             default=None,
             description="Capture admitted as a native callee or required field call",
         )
+        explicit_arguments: bool = m.Field(
+            default=False,
+            description=(
+                "Require proven call arguments without positional or keyword expansion"
+            ),
+        )
         required_field: bool = m.Field(
             default=False,
             description="Require metadata without a field default or factory",
@@ -336,7 +342,10 @@ class FlextInfraModelsCodemod:
                     or self.scope_kinds != (c.Infra.RopeScopeKind.CLASS,)
                     or (self.required_field and self.private_attribute)
                 ):
-                    msg = "native field metadata requires one mode, a callee and model class scope"
+                    msg = (
+                        "native field metadata requires one mode, a callee "
+                        "and model class scope"
+                    )
                     raise ValueError(msg)
             if self.missing_keywords and self.call_target is None:
                 msg = "missing-keyword proof requires a call target"

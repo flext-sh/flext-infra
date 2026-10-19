@@ -17,6 +17,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodemodProject,
+    FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesPrivateImportAncestry,
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesProjectDiscovery,
@@ -29,7 +30,7 @@ from flext_infra._utilities import (
 from flext_infra._utilities._rope_analysis import FlextInfraUtilitiesRopeAnalysisExports
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
-    FlextInfraUtilitiesSemanticCutoverEdits,
+    FlextInfraUtilitiesSemanticCutoverModelFields,
     FlextInfraUtilitiesSemanticDeclarationRelocation,
 )
 from flext_infra._utilities._semantic_cutover.declaration_retirement import (
@@ -43,7 +44,9 @@ from flext_infra._utilities._semantic_cutover.private_imports import (
 )
 
 
-class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdits):
+class FlextInfraUtilitiesSemanticContracts(
+    FlextInfraUtilitiesSemanticCutoverModelFields
+):
     """Reuse the joint semantic loop and immutable Rope source inventory."""
 
     @classmethod
@@ -129,10 +132,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         annotation_only: bool = False,
         class_alias_only: bool = False,
     ) -> p.Result[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
-        """Plan native changes against one authenticated source epoch.
-
-        Filters narrow matches without weakening receiver or import proofs.
-        """
+        """Plan native changes against one authenticated source epoch."""
         items = cls._editable_sources(sources)
         # Elect receivers without making unrelated generated sources editable.
         providers: dict[t.Infra.RopeSourcePath, str] = {}
@@ -195,7 +195,6 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
             if captured is not None
             else cls._contract_epoch(workspace, sources, rules)
         )
-        # Every snapshot retains the staged view and the original captured epoch.
         project: p.Infra.RopeProject | None = None
         try:
             project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
@@ -229,6 +228,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                     for path in working
                 )
                 selected_project = project
+                selected_rule = rule
 
                 def admit(
                     module: p.Infra.RopePyModule,
@@ -264,7 +264,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                             return False
                     return cls._admit_contract_match(
                         selected_project,
-                        rule,
+                        selected_rule,
                         module,
                         match,
                         implementation_owners=implementation_owners,
@@ -272,20 +272,31 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                         owned_modules=owned_modules,
                     )
 
-                changes = FlextInfraUtilitiesRopeRuntimeRefactors.restructure_changes(
-                    project,
-                    m.Infra.RopeRestructureRequest(
-                        pattern=rule.pattern,
-                        goal=rule.goal,
-                        arguments=cls._contract_arguments(rule),
-                        resources=resources,
-                        imports=rule.imports,
-                        match_filter=admit,
-                    ),
-                )
-                members = FlextInfraUtilitiesRopeRuntimeRefactors.change_set_members(
-                    changes.changes, f"{rule.id}: invalid Rope content changes"
-                ).unwrap()
+                members: list[p.Infra.RopeChangeContents] = []
+                for (
+                    selected_rule,
+                    selected_resources,
+                ) in FlextInfraUtilitiesImportLaw.import_contract_routes(
+                    project, rule, resources, {**epoch.sources, **working}
+                ):
+                    changes = (
+                        FlextInfraUtilitiesRopeRuntimeRefactors.restructure_changes(
+                            project,
+                            m.Infra.RopeRestructureRequest(
+                                pattern=selected_rule.pattern,
+                                goal=selected_rule.goal,
+                                arguments=cls._contract_arguments(selected_rule),
+                                resources=selected_resources,
+                                imports=selected_rule.imports,
+                                match_filter=admit,
+                            ),
+                        )
+                    )
+                    members.extend(
+                        FlextInfraUtilitiesRopeRuntimeRefactors.change_set_members(
+                            changes.changes, f"{rule.id}: invalid Rope content changes"
+                        ).unwrap()
+                    )
                 changed = False
                 for change in members:
                     path = Path(change.resource.real_path).resolve()
@@ -562,7 +573,6 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                 return False
         if rule.implementation_owner is not None:
             identity = rule.implementation_owner
-            # Native matching elects the analysis; unrelated rules need no graph walk.
             if identity not in implementation_owners:
                 implementation_owners[identity] = (
                     FlextInfraUtilitiesCodemodProject._implementation_owner_modules(
@@ -600,6 +610,12 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
             )
             if invocation is None:
                 return False
+            if rule.explicit_arguments and (
+                any(isinstance(argument, ast.Starred) for argument in invocation.args)
+                or any(keyword.arg is None for keyword in invocation.keywords)
+            ):
+                message = f"{rule.id}: expanded arguments have no proven contract"
+                raise ValueError(message)
             if rule.missing_keywords:
                 if any(
                     keyword.arg in rule.missing_keywords
@@ -612,6 +628,9 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                         "injected ports"
                     )
                     raise ValueError(msg_0)
+        elif rule.explicit_arguments:
+            message = f"{rule.id}: explicit-argument proof requires a call target"
+            raise ValueError(message)
         elif rule.missing_keywords:
             msg_0 = f"{rule.id}: missing-keyword proof requires a call target"
             raise ValueError(msg_0)
@@ -701,7 +720,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
             raise ValueError(message)
         if not cls._admitted_unshadowed_builtins(rule, scope):
             return False
-        return cls._admitted_bindings(
+        return FlextInfraUtilitiesImportLaw.import_contract_bindings(
             project,
             rule,
             module,
@@ -955,39 +974,6 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
             return False
         for receiver in uses:
             prove_arguments(receiver)
-        return True
-
-    @staticmethod
-    def _admitted_bindings(
-        project: p.Infra.RopeProject,
-        rule: p.Infra.RopeContractRule,
-        module: p.Infra.RopePyModule,
-        scope: p.Infra.RopeScope,
-        offset: int,
-    ) -> bool:
-        """Prove each destination and its preceding unconditional import."""
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        for expression, expected in rule.bindings.items():
-            identity = runtime.qualified_name(project, expected)
-            root = expression.split(".", 1)[0]
-            root_name = runtime.expression_name(scope, root)
-            if root_name is None:
-                continue
-            actual = runtime.expression_name(scope, expression)
-            if not runtime.same_name(identity, actual):
-                message = (
-                    f"{rule.id}: destination {expression} is shadowed "
-                    f"in {module.get_name()}:{scope.get_start()}"
-                )
-                raise ValueError(message)
-            if isinstance(
-                root_name, (p.Infra.RopeImportedName, p.Infra.RopeImportedModule)
-            ) and not runtime.imported_binding_precedes(project, module, root, offset):
-                message = (
-                    f"{rule.id}: destination {expression} has no preceding "
-                    f"unconditional import in {module.get_name()}:{scope.get_start()}"
-                )
-                raise ValueError(message)
         return True
 
 

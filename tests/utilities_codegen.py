@@ -391,9 +391,10 @@ class TestsFlextInfraUtilitiesCodegenMixin:
     def run_lazy_init_probe(
         probe: str,
         *,
-        python_paths: t.StrSequence,
+        python_paths: t.StrSequence = (),
         cwd: Path | None = None,
         arguments: t.StrSequence = (),
+        runtime_root: Path | None = None,
     ) -> t.StrSequence:
         """Run ``probe`` in a fresh interpreter importing generated packages.
 
@@ -404,12 +405,21 @@ class TestsFlextInfraUtilitiesCodegenMixin:
             The probe's standard output lines.
 
         """
-        probe_env = dict(os.environ)
-        probe_env["PYTHONPATH"] = os.pathsep.join(python_paths)
+        if runtime_root is not None:
+            if python_paths:
+                msg = "An installed project probe cannot inject Python source paths"
+                raise ValueError(msg)
+            command = [str(u.Infra.runtime_python(runtime_root)), "-I", "-c", probe]
+            options = m.Cli.ProcessOptions(remove_env_keys=("PYTHONPATH", "PYTHONHOME"))
+        else:
+            probe_env = dict(os.environ)
+            probe_env["PYTHONPATH"] = os.pathsep.join(python_paths)
+            command = [sys.executable, "-c", probe]
+            options = m.Cli.ProcessOptions(env=probe_env)
         result = tm.ok(
             u.Cli.run(
-                [sys.executable, "-c", probe, *arguments],
-                options=m.Cli.ProcessOptions(env=probe_env),
+                [*command, *arguments],
+                options=options,
                 cwd=cwd,
             ),
         )

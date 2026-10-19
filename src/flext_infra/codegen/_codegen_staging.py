@@ -177,6 +177,7 @@ class FlextInfraCodegenStaging:
             workspace,
             staged_files,
             plans,
+            session,
         )
         if planned.failure:
             return result_type.from_failure(planned)
@@ -227,6 +228,7 @@ class FlextInfraCodegenStaging:
         workspace: Path,
         staged_files: t.VariadicTuple[m.Infra.CodegenStagedFile],
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        session: m.Infra.CodegenTransactionSession,
     ) -> p.Result[m.Infra.StageSourcePlan]:
         """Plan the composed candidate view consumed by native admission.
 
@@ -246,6 +248,13 @@ class FlextInfraCodegenStaging:
         )
         if inputs.failure:
             return result_type.from_failure(inputs)
+        current_inputs = (
+            codegen.FlextInfraMiseArtifactsVerification.session_input_states(
+                inputs.value, session
+            )
+        )
+        if current_inputs.failure:
+            return result_type.from_failure(current_inputs)
         projects = tuple(dict.fromkeys(plan.project for plan in plans))
         scopes: list[Path] = []
         for project in projects:
@@ -257,7 +266,7 @@ class FlextInfraCodegenStaging:
         planned = FlextInfraStagedPackage.plan_sources(
             workspace,
             updates,
-            inputs=inputs.value,
+            inputs=current_inputs.value,
             workspaces=tuple(
                 scope
                 for scope in scopes

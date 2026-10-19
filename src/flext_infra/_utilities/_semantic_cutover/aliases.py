@@ -244,7 +244,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
     ) -> p.Result[
         t.Pair[t.MappingKV[Path, t.StrMapping], t.MappingKV[str, t.StrMapping]]
     ]:
-        """Index every API alias finding by owner file and importable module.
+        """Index local aliases by declaration owner and importable namespace.
 
         Returns:
             The resulting ``p.Result[t.Pair[t.MappingKV[Path, t.StrMapping],
@@ -294,7 +294,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         sources: t.MappingKV[Path, str],
         findings: t.SequenceOf[m.Infra.ModOccurrence],
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        """Plan API alias removals and AST-proven consumer rewrites.
+        """Plan local alias removal and binding-proven consumer rewrites atomically.
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
