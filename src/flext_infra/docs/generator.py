@@ -178,7 +178,6 @@ class FlextInfraDocGenerator(
     def _generation_reports(
         self,
         bundle: m.Infra.DocsGenerationBundle,
-        committed_plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         written: frozenset[Path],
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Report only destinations committed by the shared transaction.
@@ -190,12 +189,10 @@ class FlextInfraDocGenerator(
         reports: list[m.Infra.DocsPhaseReport] = []
         first_scope = bundle.scopes[0].scope
         root_scope = first_scope if first_scope.name == c.Infra.RK_ROOT else None
-        offset = 0
         for scoped in bundle.scopes:
             scope = scoped.scope
-            plans = committed_plans[offset : offset + len(scoped.artifacts)]
-            offset += len(scoped.artifacts)
-            changed = tuple(plan for plan in plans if plan.path in written)
+            paths = tuple(scope.path / item.relative_path for item in scoped.artifacts)
+            changed = tuple(path for path in paths if path in written)
             collocated = self._is_collocated_workspace_project(
                 scope,
                 root_scope=root_scope,
@@ -210,10 +207,10 @@ class FlextInfraDocGenerator(
                 items=tuple(
                     m.Infra.DocsPhaseItemModel(
                         phase="generate",
-                        path=str(plan.path),
-                        written=plan.path in written,
+                        path=str(path),
+                        written=path in written,
                     )
-                    for plan in plans
+                    for path in paths
                 ),
                 result=c.Infra.ResultStatus.OK,
                 reason=(
@@ -291,6 +288,12 @@ class FlextInfraDocGenerator(
             self._configured_request(),
             publication_receipts=publication_receipts,
         )
+
+    def prepare_batches(
+        self,
+    ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
+        """Yield one rendered scope at a time for immediate guarded publication."""
+        return self._prepare_batches(self._configured_request())
 
     @override
     def execute(self) -> p.Result[bool]:

@@ -413,9 +413,10 @@ class TestsFlextInfraWorkspaceCheckCli:
             "flext-core",
         ])
 
-        # The residual-fix verdict is deliberately RED (flext-itpd1.13.1):
-        # an unparsable neighbour leaves findings, so the fix run exits 1.
-        tm.that(exit_code, eq=1)
+        # The unparsable neighbour leaves findings for the read-only check; a
+        # repair fails only on an ERROR outcome (tracker memory
+        # operator-ruling-2026-10-10-fix-residual-verdict).
+        tm.that(exit_code, eq=0)
         tm.that(
             sample.read_text(encoding="utf-8"),
             has="    @staticmethod\n    def value() -> int:\n",
