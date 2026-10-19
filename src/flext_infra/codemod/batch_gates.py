@@ -1120,6 +1120,28 @@ class FlextInfraModGateEngine:
                 return r[m.Infra.ModScanReport].fail(
                     f"finding source changed during admission: {state.path}",
                     error_code=c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE,
+                    error_data={
+                        "same_content": observed.content == state.content,
+                        "same_path": observed.path == state.path,
+                        "same_parent": (
+                            observed.parent_device,
+                            observed.parent_inode,
+                        )
+                        == (state.parent_device, state.parent_inode),
+                        "same_leaf": (
+                            observed.device,
+                            observed.inode,
+                            observed.link_count,
+                        )
+                        == (state.device, state.inode, state.link_count),
+                        "same_permissions": (
+                            observed.mode,
+                            observed.file_attributes,
+                            observed.reparse_tag,
+                        )
+                        == (state.mode, state.file_attributes, state.reparse_tag),
+                        "same_model_type": type(observed) is type(state),
+                    },
                 )
             authenticated_states[state.path] = state
         return r.ok(

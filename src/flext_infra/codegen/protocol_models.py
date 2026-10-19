@@ -218,6 +218,19 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
                 continue
             candidate = FlextInfraCodegenProtocolModelRender.member(facades["m"], name)
             protocol = FlextInfraCodegenProtocolModelRender.member(facades["p"], name)
+            if (
+                protocol is not None
+                and candidate is not None
+                and any(
+                    not member.startswith("_")
+                    and member not in candidate.get_object().get_attributes()
+                    for member in protocol.get_object().get_attributes()
+                )
+            ):
+                manual = cls._manual_dependencies(renderer, protocol, name)
+                if manual.failure:
+                    return result_type.from_failure(manual)
+                continue
             model_namespace = protocol_namespace = None
             if name not in renderer.declarations:
                 model_namespace = cls._namespace_owner(

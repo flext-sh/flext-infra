@@ -701,6 +701,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             (*templates.value, *custom),
             custom,
             initializers,
+            complete_governed=contract.complete_governed,
         )
 
     @staticmethod
@@ -756,11 +757,16 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         planned: t.SequenceOf[m.Infra.CodegenFilePlan],
         custom: t.SequenceOf[m.Infra.CodegenFilePlan],
         initializers: t.SequenceOf[m.Infra.CodegenFilePlan],
+        *,
+        complete_governed: bool,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Publish facade consumers together with their declared family barrels.
+        """Compose the projections consumed by the publication's native checks.
+
+        Complete generation checks the whole project before publication, so its
+        bootstrap must stage every planned initializer, even without a facade.
 
         Returns:
-            Independent plans followed by the original dependent runtime plans.
+            Original plans grouped with the generated sources their checks consume.
 
         """
         result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
@@ -768,7 +774,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             item for item in custom if item.path.suffix == c.Infra.EXT_PYTHON
         )
         packages = {item.path.parent for item in facades}
-        if not packages:
+        if not packages and not complete_governed:
             return result_type.ok(tuple(planned))
         families = tuple(
             package / family.directory
@@ -779,7 +785,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             item
             for item in initializers
             if (
-                item.path.name != c.Infra.INIT_PY
+                complete_governed
+                or item.path.name != c.Infra.INIT_PY
                 or item.path.parent in packages
                 or any(item.path.is_relative_to(family) for family in families)
             )
@@ -791,6 +798,15 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 return result_type.fail(
                     f"runtime barrel has competing bootstrap plans: {barrel.path}"
                 )
+        if complete_governed:
+            by_path.update((item.path, item) for item in barrels)
+            group = f"{c.Infra.CodegenConformSurface.ALL.value}:{root}"
+            return result_type.ok(
+                tuple(
+                    item.model_copy(update={"dependency_group": group})
+                    for item in by_path.values()
+                )
+            )
         grouped_paths = {item.path for item in (*barrels, *facades)}
         group = f"{c.Infra.CodegenConformSurface.FACADES.value}:{root}"
         return result_type.ok((
@@ -813,8 +829,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         never the previous projection on disk: a stale initializer otherwise
         blocks its own regeneration, on every conform surface (a partial
         surface such as ``dependencies`` derives tooling too). Required runtime
-        barrels join their facade consumers in the bootstrap dependency group;
-        the later lazy-init phase publishes the remaining initializer plans.
+        barrels join their facade consumers in the bootstrap dependency group.
+        Complete generation stages every initializer before its project-wide
+        admission; narrower surfaces retain their declared publication scope.
 
         Returns:
             The repository's planned lazy-init file plans, or the planning failure.

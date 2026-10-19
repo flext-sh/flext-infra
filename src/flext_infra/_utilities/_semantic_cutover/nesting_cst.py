@@ -75,7 +75,11 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         selected = [
             item
             for item in facts
-            if item.indent == 0 and cls._native_member_name(item) in definitions
+            if item.indent == 0
+            and all(
+                cls._native_member_name(part) in definitions
+                for part in cls._nesting_statement_parts(item)
+            )
         ]
         scopes = {
             scope.pyobject.get_name(): scope
@@ -99,6 +103,16 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         """
         if item.category == c.Infra.StatementCategory.FUNC_DEF:
             return "@staticmethod\n" + body
+        members = cls._nesting_statement_parts(item)
+        if len(members) > 1:
+            for part in reversed(members):
+                first = part.start_offset - item.start_offset
+                last = part.end_offset - item.start_offset
+                rendered = cls._nested_member_body(
+                    part, part.text, native, classvar_name
+                ).rstrip("\n")
+                body = body[:first] + rendered + body[last:]
+            return body
         annotation = cls._member_annotation(item, *native)
         if annotation is not None:
             parts = FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments(
@@ -401,7 +415,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             item.category
             in {c.Infra.StatementCategory.ASSIGN, c.Infra.StatementCategory.ANN_ASSIGN}
             and cls._member_annotation(item, module, typing) is not None
-            for item in selection[0]
+            for selected in selection[0]
+            for item in cls._nesting_statement_parts(selected)
         ):
             source, classvar_name = (
                 FlextInfraUtilitiesRopeRuntimeModules.import_binding(
@@ -415,8 +430,16 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             selection = cls._nesting_selection(module, facts, definitions)
         else:
             classvar_name = ""
-        if {cls._native_member_name(item) for item in selection[0]} != set(definitions):
-            msg = f"class-nesting structure mismatch for {owner_name}"
+        observed = {
+            cls._native_member_name(part)
+            for item in selection[0]
+            for part in cls._nesting_statement_parts(item)
+        }
+        if observed != set(definitions):
+            msg = (
+                f"class-nesting structure mismatch for {owner_name}: "
+                f"expected {sorted(definitions)}, observed {sorted(observed)}"
+            )
             raise ValueError(msg)
         indentation = FlextInfraUtilitiesRopeRuntimeRefactors.runtime_callable(
             "rope.refactor.sourceutils", "get_indent"
@@ -511,7 +534,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         tree: ast.Module,
         native: t.Pair[p.Infra.RopeProject, p.Infra.RopeResource],
         policy: t.Pair[frozenset[str] | None, bool],
-    ) -> t.Triple[dict[str, str], list[str], bool]:
+    ) -> t.Triple[t.MutableMappingKV[str, str], list[str], bool]:
         project, resource = native
         original_bindings, composition = policy
         fixtures = {"fixture", "hookimpl"} | {
@@ -521,7 +544,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             for alias in node.names
             if alias.name in {"fixture", "hookimpl"}
         }
-        bindings: dict[str, str] = {}
+        bindings: t.MutableMappingKV[str, str] = {}
         metadata: list[str] = []
         registrations = False
         patterns = cls._pytest_collection_patterns(Path(project.root.real_path))
@@ -705,6 +728,39 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         ).new_contents
 
     @staticmethod
+    def _nesting_statement_parts(
+        statement: m.Infra.LogicalStatement,
+    ) -> t.SequenceOf[m.Infra.LogicalStatement]:
+        """Retain each simple declaration inside its original logical region.
+
+        Returns:
+            Individually categorized members with character-based source offsets.
+
+        """
+        if ";" not in statement.text or statement.category not in {
+            c.Infra.StatementCategory.ASSIGN,
+            c.Infra.StatementCategory.ANN_ASSIGN,
+            c.Infra.StatementCategory.TYPE_ALIAS,
+        }:
+            return (statement,)
+        regions = FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments(
+            statement.text, 0, len(statement.text), ";"
+        )
+        if len(regions) <= 1:
+            return (statement,)
+        return tuple(
+            FlextInfraUtilitiesRopeStructure.logical_statements(
+                statement.text[first:last]
+            )[0].model_copy(
+                update={
+                    "start_offset": statement.start_offset + first,
+                    "end_offset": statement.start_offset + last,
+                }
+            )
+            for first, last in regions
+        )
+
+    @staticmethod
     def _native_member_name(statement: m.Infra.LogicalStatement) -> str:
         if statement.category == c.Infra.StatementCategory.TYPE_ALIAS:
             return FlextInfraUtilitiesRopeStructure.header_name(
@@ -723,12 +779,19 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         module: p.Infra.RopePyModule,
         typing: p.Infra.RopeSemanticModule,
     ) -> str | None:
-        if statement.category not in {
-            c.Infra.StatementCategory.ANN_ASSIGN,
-            c.Infra.StatementCategory.ASSIGN,
-        }:
-            return None
         types = FlextInfraUtilitiesSemanticFamilyTypeReferences
+        if (
+            statement.category
+            not in {
+                c.Infra.StatementCategory.ANN_ASSIGN,
+                c.Infra.StatementCategory.ASSIGN,
+            }
+            or len(
+                types.expression_segments(statement.text, 0, len(statement.text), "=")
+            )
+            == 1
+        ):
+            return None
         parts = types.expression_segments(statement.text, 0, len(statement.text), ":=")
         match parts:
             case [_, annotation_region, _]:

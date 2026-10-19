@@ -6,4 +6,4 @@ valid:
 invalid:
 - |
   from flext_cli import t, u
-  value = u.Cli.JSON_MAPPING_ADAPTER.validate_python(payload)
+  value = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload)

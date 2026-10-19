@@ -119,7 +119,7 @@ class FlextInfraCodegenProtocolModelAnnotations:
         """
         return ast.unparse(
             self._expression(
-                ast.parse(annotation, mode="eval").body,
+                ast.parse(annotation.strip(), mode="eval").body,
                 scope,
                 parameters if parameters is not None else {},
                 (),
@@ -322,8 +322,8 @@ class FlextInfraCodegenProtocolModelAnnotations:
     ) -> ast.expr:
         for name, declaration in self.declarations.items():
             published = self.member(self.protocol_facade, name)
-            if u.Infra.same_name(declaration, binding) or (
-                published is not None and u.Infra.same_name(published, binding)
+            if declaration.get_object() is binding.get_object() or (
+                published is not None and published.get_object() is binding.get_object()
             ):
                 self.dependencies.add(name)
                 return self._model_reference(name, declaration)
@@ -465,7 +465,7 @@ class FlextInfraCodegenProtocolModelAnnotations:
                 msg = f"protocol barrel member is unresolved: {'.'.join(parts)}"
                 raise ValueError(msg)
             selected = child
-        if not u.Infra.same_name(selected, binding):
+        if selected.get_object() is not value:
             selected_value = selected.get_object()
             selected_module = selected_value.get_module()
             selected_module_name = (

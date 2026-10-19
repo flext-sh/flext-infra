@@ -275,15 +275,13 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         methods: dict[str, list[p.Infra.RopeScope]] = {}
         for ancestor in reversed(self.source_lineage(model)):
             owner = ancestor.get_module()
-            lexical = ancestor.get_scope()
             resource = owner.get_resource() if owner is not None else None
-            if (
-                resource is None
-                or lexical is None
-                or not Path(resource.real_path).is_relative_to(
-                    self.workspace.repository_root
-                )
+            if resource is None or not Path(resource.real_path).is_relative_to(
+                self.workspace.repository_root
             ):
+                continue
+            lexical = ancestor.get_scope()
+            if lexical is None:
                 continue
             declared: dict[str, list[p.Infra.RopeScope]] = {}
             for method in lexical.get_scopes():
@@ -321,9 +319,27 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         if not u.Infra.source_module(module) or lexical is None:
             msg = f"method has no authenticated lexical module: {method_name}"
             raise TypeError(msg)
+        if any(
+            self.is_type(
+                decorator.func if isinstance(decorator, ast.Call) else decorator,
+                lexical,
+                self.project.upstream,
+                f"u.{validator}",
+            )
+            for decorator in node.decorator_list
+            for validator in ("field_validator", "model_validator")
+        ):
+            return []
         signature = self._method_signature(name, method, node, module)
         lines: list[str] = []
         for decorator in node.decorator_list:
+            if self.is_type(
+                decorator.func if isinstance(decorator, ast.Call) else decorator,
+                lexical,
+                self.project.upstream,
+                "u.computed_field",
+            ):
+                continue
             if any(
                 self.is_type(decorator, lexical, "builtins", descriptor)
                 for descriptor in ("property", "classmethod", "staticmethod")

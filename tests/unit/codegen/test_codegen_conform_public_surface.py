@@ -18,6 +18,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenConform,
     FlextInfraCodegenMakeBootstrap,
     FlextInfraMiseArtifactsVerification,
+    FlextInfraStagedPackage,
 )
 from flext_infra.services import FlextInfraCodegenRoutes
 from tests import c, m, tm, u
@@ -28,6 +29,89 @@ pytestmark = [pytest.mark.slow]
 
 class TestsFlextInfraCodegenConformPublicSurface:
     """The conform public surface: docs bootstrap, CLI routing, dependency scope."""
+
+    @staticmethod
+    def test_complete_bootstrap_stages_planned_initializers_without_facades(
+        infra_git_repo: Path,
+        tmp_path: Path,
+    ) -> None:
+        """Admission sees new exports, not removed owners in an old projection."""
+        root = infra_git_repo
+        TestsFlextInfraConformSupport.seed_infra_package_tree(root)
+        package = root / c.Infra.DEFAULT_SRC_DIR / config.Infra.name.replace("-", "_")
+        auxiliary = package / "admission_probe"
+        auxiliary.mkdir()
+        initializer = auxiliary / c.Infra.INIT_PY
+        initializer.write_text(
+            f"{c.Infra.AUTOGEN_HEADERS[0]}\n"
+            "from .removed import Replacement\n"
+            "__all__ = ['Replacement']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        provider = auxiliary / "replacement.py"
+        provider.write_text(
+            "class Replacement:\n    pass\n__all__ = ['Replacement']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        u.Tests.git_bootstrap(
+            root,
+            ("add", "--", str(package.relative_to(root))),
+        )
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(initializer, required=True))
+        request = u.Tests.conform_request(
+            root,
+            what=c.Infra.CodegenConformSurface.ALL,
+            scope=c.Infra.CodegenConformScope.SELF,
+        )
+        plan = tm.ok(FlextInfraCodegenConform(repository_root=root).plan(request))
+        tm.that(plan.issues, eq=())
+        tm.that(plan.exception, eq=None)
+        projected = next(file for file in plan.files if file.path == initializer)
+        metadata = next(
+            file for file in plan.files if file.path == root / c.PYPROJECT_FILENAME
+        )
+        group = tm.not_none(projected.dependency_group)
+        tm.that(metadata.dependency_group, eq=group)
+        tm.that(projected.before, eq=before)
+        tm.that(b".removed" in tm.not_none(projected.desired_content), eq=False)
+        cohort = tuple(file for file in plan.files if file.dependency_group == group)
+        candidate = tm.ok(
+            FlextInfraStagedPackage.plan_sources(
+                root,
+                {
+                    file.path: (
+                        None
+                        if file.desired_content is None
+                        else file.desired_content.decode(c.DEFAULT_ENCODING)
+                    )
+                    for file in cohort
+                },
+                options=m.Infra.StageSourceOptions(
+                    inputs=(before,),
+                    declared_files=cohort,
+                ),
+            )
+        )
+        view = tmp_path / "admission-view"
+        view.mkdir()
+        tm.ok(FlextInfraStagedPackage.materialize_sources(candidate, view))
+        tm.that(
+            (view / initializer.relative_to(root)).read_bytes(),
+            eq=projected.desired_content,
+        )
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                f"from {package.name}.{auxiliary.name} import Replacement\n"
+                "print(Replacement.__name__)\n",
+                python_paths=(str(view / c.Infra.DEFAULT_SRC_DIR),),
+                cwd=view,
+            ),
+            eq=["Replacement"],
+        )
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(initializer, required=True)),
+            eq=before,
+        )
 
     @staticmethod
     def test_dependency_apply_rejects_before_creating_target(tmp_path: Path) -> None:

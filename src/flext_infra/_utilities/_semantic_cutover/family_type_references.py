@@ -298,7 +298,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         module: p.Infra.RopePyModule,
     ) -> t.VariadicTuple[tuple[int, int, str, p.Infra.RopeScope]]:
         """Return only string constants occupying native annotation type positions."""
-        protected = cls.type_payload_ranges(source, module)
+        protected: frozenset[t.Pair[int, int]] | None = None
         literals = FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(source)
         selected: list[tuple[int, int, str, p.Infra.RopeScope]] = []
         for begin, end, line in cls.annotation_regions(source, module):
@@ -310,6 +310,8 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             for start, stop, _metadata in literals:
                 if not begin <= start < stop <= end or source[start] == "#":
                     continue
+                if protected is None:
+                    protected = cls.type_payload_ranges(source, module)
                 if any(first <= start and stop <= last for first, last in protected):
                     continue
                 literal = cls.string_constant(source[start:stop])

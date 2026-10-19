@@ -793,6 +793,12 @@ class FlextInfraUtilitiesSemanticContracts(
         cls._require_deferred_annotation(project, rule, module, match, (scope, sources))
         cls._require_contract_evaluation(rule, module, match, scope)
         if not cls._admitted_unshadowed_builtins(rule, scope):
+            if rule.pattern.startswith("assert "):
+                message = (
+                    f"{rule.id}: assert lowering requires unshadowed builtins "
+                    f"in {module.get_name()}:{scope.get_start()}"
+                )
+                raise ValueError(message)
             return False
         return FlextInfraUtilitiesImportLaw.import_contract_bindings(
             project, rule, module, scope, match.get_region()[0]
@@ -1064,6 +1070,62 @@ class FlextInfraUtilitiesSemanticContracts(
         scope: p.Infra.RopeScope,
     ) -> None:
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        if rule.pattern.startswith("assert "):
+            source = module.source_code
+            region = match.get_region()
+            tree = module.get_ast()
+            if not isinstance(tree, ast.Module):
+                message = f"{rule.id}: assert lowering requires its native module AST"
+                raise TypeError(message)
+            statement = next(
+                (
+                    node
+                    for node in ast.walk(tree)
+                    if isinstance(node, ast.Assert)
+                    and node.test is match.get_ast("predicate")
+                ),
+                None,
+            )
+            message = (
+                f"{rule.id}: assert lowering requires a complete standalone statement "
+                f"with retained trivia in {module.get_name()}:"
+                f"{statement.lineno if statement is not None else scope.get_start()}"
+            )
+            line_start = source.rfind("\n", 0, region[0]) + 1
+            if (
+                statement is None
+                or statement.msg is not match.get_ast("message")
+                or (
+                    ast.get_source_segment(source, statement)
+                    != source[region[0] : region[1]]
+                )
+                or source[line_start : region[0]].strip()
+                or source[region[1] :].partition("\n")[0].strip()
+                or source[:line_start].rstrip("\r\n").endswith("\\")
+            ):
+                raise ValueError(message)
+            captures = tuple(
+                refactors.semantic_capture_region(match, name)
+                for name in ("predicate", "message")
+                if match.get_ast(name) is not None
+            )
+            # Native Restructure retains only captured text and reindents every
+            # subsequent line. Never drop trivia or indent a literal's payload.
+            for ignored in refactors.ignored_regions(source):
+                if region[0] <= ignored[0] < region[1] and (
+                    (
+                        source[ignored[0] : ignored[1]].startswith("#")
+                        and not any(
+                            start <= ignored[0] < ignored[1] <= stop
+                            for start, stop in captures
+                        )
+                    )
+                    or (
+                        line_start < region[0]
+                        and len(source[ignored[0] : ignored[1]].splitlines()) > 1
+                    )
+                ):
+                    raise ValueError(message)
         for capture in rule.drops:
             match match.get_ast(capture):
                 case ast.Constant():

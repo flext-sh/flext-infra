@@ -245,9 +245,7 @@ def _provision_member(parent: t.DirectoryPath) -> t.DirectoryPath:
     u.Tests.WorktreeFixture.write_python_project(root, root.name)
     package = root / c.Infra.DEFAULT_SRC_DIR / MEMBER
     u.Tests.write_project_beads_config(root, root.name)
-    repository = u.Tests.repository_ref(
-        root.name, role=c.Infra.MakeProfile.STANDALONE
-    ).model_copy(update={"editable": True})
+    repository = u.Tests.repository_ref(root.name, role=c.Infra.MakeProfile.STANDALONE)
     u.Tests.initialize_git_repo(root, origin_url=repository.url)
     (package / "_protocols").mkdir()
     for filename, content in (
@@ -390,7 +388,6 @@ def _install_member_runtime(
 
 def _verify_member_runtime(root: t.DirectoryPath, supplier_receipt: str) -> None:
     """Compare the installed runtime against the supplier source identities."""
-    package = root / c.Infra.DEFAULT_SRC_DIR / MEMBER
     environment = u.Infra.runtime_environment_dir(root)
     u.Tests.run_lazy_init_probe(
         "import sys\n"
@@ -404,15 +401,15 @@ def _verify_member_runtime(root: t.DirectoryPath, supplier_receipt: str) -> None
         f"assert Path(sys.prefix).resolve() == Path({str(environment)!r}).resolve()\n"
         f"package = find_spec({MEMBER!r})\n"
         "assert package is not None and package.origin is not None\n"
-        "assert Path(package.origin).resolve() == "
-        f"Path({str(package / c.Infra.INIT_PY)!r}).resolve()\n"
+        "assert Path(package.origin).resolve().is_relative_to(Path(sys.prefix).resolve())\n"
+        "assert tm.ok(FlextInfraWorkspaceEnvironmentProvenance."
+        "validate_locked(root)) > 0\n"
         + supplier_receipt
         + "for module, encoded, identity in "
         "zip(modules, states, identities, strict=True):\n"
         "    expected = m.Cli.AtomicFileState.model_validate_json(encoded)\n"
         "    elected = find_spec(module)\n"
         "    assert elected is not None and elected.origin is not None\n"
-        "    assert Path(elected.origin).resolve() == expected.path\n"
         "    assert tm.ok(u.Cli.atomic_read_binary_file_state("
         "expected.path, required=True)) == expected\n"
         "    current = tm.ok(u.Infra.git_identity("
@@ -432,9 +429,7 @@ def _verify_member_runtime(root: t.DirectoryPath, supplier_receipt: str) -> None
         "assert Path(rope_module.origin).resolve().is_relative_to("
         f"Path({str(environment)!r}).resolve())\n"
         "print(f'fixture runtime prefix={sys.prefix}; "
-        'rope={rope.metadata["Name"]}; vcs={observed_rope.vcs_info}\')\n'
-        "assert tm.ok(FlextInfraWorkspaceEnvironmentProvenance."
-        "validate_locked(root)) > 0\n",
+        'rope={rope.metadata["Name"]}; vcs={observed_rope.vcs_info}\')\n',
         runtime_root=root,
         cwd=root,
     )

@@ -7,12 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import runpy
+import sys
 from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import infra
-from tests import c, p, t, tm, u
+from tests import c, m, p, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -20,6 +21,185 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraRopeContractBindings:
     """Prove lexical identity and execution order without publishing unsafe edits."""
+
+    @staticmethod
+    def _assertion_rules() -> t.SequenceOf[p.Infra.RopeContractRule]:
+        """Declare the Python statement contract consumed by the native writer."""
+        return tuple(
+            m.Infra.RopeContractRule(
+                id=f"native-assert-{name}",
+                pattern=pattern,
+                goal=goal,
+                arguments={},
+                unshadowed_builtins=("AssertionError",),
+            )
+            for name, pattern, goal in (
+                (
+                    "predicate",
+                    "assert ${predicate}",
+                    "if not (${predicate}):\n    raise AssertionError",
+                ),
+                (
+                    "message",
+                    "assert ${predicate}, ${message}",
+                    "if not (${predicate}):\n    raise AssertionError((${message}))",
+                ),
+            )
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "statement",
+        [
+            "assert (retained := predicate(value)) is not None",
+            "assert (retained := predicate(value)) is not None, diagnostic()",
+            "assert (retained := predicate(value)) is not None, ('one', 'two')",
+            "assert isinstance((retained := predicate(value)), str), diagnostic()",
+            "assert 0 < len((retained := predicate(value)) or '') < 100",
+            (
+                "assert (retained := predicate(\n"
+                "        value,  # predicate capture comment\n"
+                "    )) is not None, diagnostic()"
+            ),
+            (
+                "assert (retained := predicate(value)) is not None, diagnostic(\n"
+                "        # message capture comment\n"
+                "    )"
+            ),
+        ],
+    )
+    def test_assert_lowering_preserves_lazy_values_and_optimized_checks(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        infra_subprocess: p.Cli.CommandRunner,
+        statement: str,
+    ) -> None:
+        """Real Rope retains evaluation, exception payloads, trivia and narrowing."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "events = []\n"
+            "class Message:\n"
+            "    def __str__(self):\n"
+            "        raise RuntimeError('message must not be formatted')\n"
+            "message = Message()\n"
+            "def predicate(value: str | None) -> str | None:\n"
+            "    events.append(('predicate', value))\n"
+            "    return value\n"
+            "def diagnostic():\n"
+            "    events.append(('message',))\n"
+            "    return message\n"
+            "def check(value: str | None) -> int:\n"
+            f"    {statement}\n"
+            "    events.append(('after', value))\n"
+            "    return len(retained)\n"
+            "results = []\n"
+            "for value in ('ready', None):\n"
+            "    try:\n"
+            "        results.append(check(value))\n"
+            "    except AssertionError as error:\n"
+            "        results.append((len(error.args), "
+            "not error.args or error.args[0] is message))\n"
+            "evidence = (results, events)\n"
+            "print(repr(evidence))\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        rules = TestsFlextInfraRopeContractBindings._assertion_rules()
+        edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules))
+        tm.that(len(edits), eq=1)
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        updated = edits[0].updated_source
+        path.write_text(updated, encoding=c.DEFAULT_ENCODING)
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+        tm.that(
+            tm.ok(
+                infra_subprocess.capture(
+                    (sys.executable, "-O", str(path)), cwd=path.parent
+                )
+            ),
+            eq=repr(before),
+        )
+        tm.that(
+            tuple(
+                updated[start:end]
+                for start, end, _metadata in u.Infra.ignored_regions(updated)
+                if updated[start:end].startswith("#")
+            ),
+            eq=tuple(
+                source[start:end]
+                for start, end, _metadata in u.Infra.ignored_regions(source)
+                if source[start:end].startswith("#")
+            ),
+        )
+        tm.that(
+            tm.ok(u.Infra.plan_contract_rules(workspace, {path: updated}, rules)),
+            empty=True,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "source",
+        [
+            "assert True; effect()\n",
+            "effect(); assert True\n",
+            "if True: assert True\n",
+            "if True: assert True; effect()\n",
+            "if True: \\\n    assert True\n",
+            "def check(): assert True\n",
+            "assert True  # retained trailing comment\n",
+            "assert (  # outside predicate capture\n    True\n)\n",
+            "assert True, (  # outside message capture\n    'message'\n)\n",
+            "def check():\n    assert True, '''first\nsecond'''\n",
+            "def check():\n    assert '''first\nsecond'''\n",
+            "def check():\n    assert 'first\vsecond'\n",
+        ],
+    )
+    def test_assert_lowering_refuses_incomplete_effects_and_lost_trivia(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        source: str,
+    ) -> None:
+        """Unsupported native slices fail before an edit or a source write exists."""
+        workspace, path = rope_contract_consumer
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with pytest.raises(ValueError, match="complete standalone statement"):
+            u.Infra.plan_contract_rules(
+                workspace,
+                {path: source},
+                TestsFlextInfraRopeContractBindings._assertion_rules(),
+            )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "source",
+        [
+            "AssertionError = ValueError\nassert True\n",
+            "assert True\nAssertionError = ValueError\n",
+            "from builtins import AssertionError\nassert True\n",
+            "from builtins import ValueError as AssertionError\nassert True\n",
+            "def check(AssertionError):\n    assert True\n",
+            "def check():\n    AssertionError = ValueError\n    assert True\n",
+            (
+                "def outer(AssertionError):\n"
+                "    def check():\n"
+                "        assert True\n"
+                "    return check\n"
+            ),
+        ],
+    )
+    def test_assert_lowering_requires_the_interpreter_exception_binding(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        source: str,
+    ) -> None:
+        """LOAD_ASSERTION_ERROR must not become a shadowed lexical constructor."""
+        workspace, path = rope_contract_consumer
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with pytest.raises(ValueError, match="requires unshadowed builtins"):
+            u.Infra.plan_contract_rules(
+                workspace,
+                {path: source},
+                TestsFlextInfraRopeContractBindings._assertion_rules(),
+            )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
     @pytest.mark.parametrize(

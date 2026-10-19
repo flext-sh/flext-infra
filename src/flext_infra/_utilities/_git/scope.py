@@ -121,6 +121,31 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
         return tuple(sorted(scope_paths))
 
     @classmethod
+    def git_source_scope_paths(cls, scope_root: Path) -> t.VariadicTuple[Path] | None:
+        """Inventory tracked and unpublished source paths without following links."""
+        root = cls._git_repo_root(str(scope_root))
+        if root is None:
+            return None
+        repository = Path(root)
+        output = cls._repo(repository).git.ls_files(
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "-z",
+            strip_newline_in_stdout=False,
+        )
+        scope = scope_root.resolve()
+        return tuple(
+            sorted({
+                repository / path
+                for path in output.split("\0")
+                if path
+                and (repository / path).is_relative_to(scope)
+                and ((repository / path).is_file() or (repository / path).is_symlink())
+            })
+        )
+
+    @classmethod
     def git_tracked_scope_paths(cls, scope_root: Path) -> t.SequenceOf[Path] | None:
         """Return tracked files under one scope as absolute paths when Git is active.
 
