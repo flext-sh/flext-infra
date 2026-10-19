@@ -69,7 +69,7 @@ class FlextInfraCodegenLazyInitPlanner(
         default_factory=dict[str, m.Infra.LazyInitPlan],
     )
     _plan_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = m.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict[str, m.Infra.CodegenPhaseAnalysis],
     )
     _parent_package_cache: MutableMapping[str, t.StrSequence] = m.PrivateAttr(
         default_factory=dict[str, t.StrSequence],
@@ -485,8 +485,44 @@ class FlextInfraCodegenLazyInitPlanner(
             plan = plan.model_copy(
                 update={"ownership": "generator", "disposition": "planned"},
             )
+        self._consume_exported_bases(plan)
         self._source_plan_cache[str(plan.context.pkg_dir.resolve())] = plan
         return plan
+
+    def _consume_exported_bases(self, plan: m.Infra.LazyInitPlan) -> None:
+        """Attribute native class ancestry before sealing a package's source receipt.
+
+        Explicit export-name inventories do not evaluate Rope's lazy base bindings.
+        Resolve only this package's published local bindings; child decisions already
+        replay their own receipts, and unrelated supplier modules are not traversed.
+
+        Raises:
+            ValueError: A published dependency source has no workspace resource.
+
+        """
+        project = self.rope_workspace.rope_project
+        pending: list[p.Infra.RopePyObject] = []
+        for module_name, name in dict.fromkeys(plan.lazy_map.values()):
+            source = self._module_file(module_name)
+            if source is None or source.parent != plan.context.pkg_dir:
+                continue
+            resource = self.rope_workspace.resource(source)
+            if resource is None:
+                msg = f"unindexed publication dependency source: {source}"
+                raise ValueError(msg)
+            module = u.Infra.resolve_pymodule(project, resource).get_module()
+            binding = module.get_attributes().get(name)
+            if binding is not None:
+                pending.append(binding.get_object())
+        visited: set[int] = set()
+        while pending:
+            owner = pending.pop()
+            if u.Infra.instance_object(owner):
+                owner = owner.get_type()
+            if not u.Infra.abstract_class(owner) or id(owner) in visited:
+                continue
+            visited.add(id(owner))
+            pending.extend(owner.get_superclasses())
 
     @override
     def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext:

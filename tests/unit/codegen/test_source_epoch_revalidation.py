@@ -15,14 +15,69 @@ from typing import cast
 import pytest
 
 from flext_infra import config, p
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 
-class TestsSourceEpochRevalidation:
+class TestsFlextInfraSourceEpochRevalidation:
     """Observe real filesystem edits through the public authenticated planner."""
 
     @staticmethod
-    def test_source_succession_does_not_adopt_permission_failures(
+    def test_published_native_ancestry_survives_warm_export_name_cache(
+        tmp_path: Path,
+    ) -> None:
+        """Two-hop supplier bases stay proven without consuming unrelated modules."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        provider_root = tmp_path / "upstream-provider"
+        provider_package = provider_root / "src" / "upstream_provider"
+        provider_package.mkdir(parents=True)
+        (provider_root / "pyproject.toml").write_text(
+            '[project]\nname = "upstream-provider"\nversion = "0.0.1"\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (provider_package / c.Infra.INIT_PY).write_text(
+            'from .provider import c\n__all__ = ["c"]\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        base = provider_package / "base.py"
+        base.write_text("class BaseConstants: pass\n", encoding=c.DEFAULT_ENCODING)
+        provider = provider_package / "provider.py"
+        provider.write_text(
+            "from .base import BaseConstants\n"
+            "class ProviderConstants(BaseConstants): pass\n"
+            'c = ProviderConstants\n__all__ = ["c"]\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        unrelated = provider_package / "unrelated.py"
+        unrelated.write_text("class Unrelated: pass\n", encoding=c.DEFAULT_ENCODING)
+        (package / c.Infra.CONSTANTS_PY).write_text(
+            "from upstream_provider import c as upstream_c\n"
+            "class FlextTestProjectConstants(upstream_c): pass\n"
+            "c = FlextTestProjectConstants\n"
+            '__all__ = ["FlextTestProjectConstants", "c"]\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with u.Infra.facade_source_project(
+            tmp_path, project_roots=(root, provider_root)
+        ) as (project, _, _):
+            for _ in range(2):
+                analysis = tm.ok(
+                    u.Tests.create_lazy_init_service(root).plan_files(
+                        source_project=project
+                    )
+                )
+                tm.that(analysis.exception, eq=None)
+                planned = next(
+                    file
+                    for file in analysis.files
+                    if file.path == package / c.Infra.INIT_PY
+                )
+                consumed = {state.path for state in planned.source_states}
+                tm.that(provider in consumed, eq=True)
+                tm.that(base in consumed, eq=True)
+                tm.that(unrelated in consumed, eq=False)
+
+    @staticmethod
+    def test_source_adoption_does_not_adopt_permission_failures(
         tmp_path: Path,
     ) -> None:
         """An unreadable source is a causal IO error, not verified stale evidence."""
@@ -30,16 +85,16 @@ class TestsSourceEpochRevalidation:
         source = package / "provider.py"
         source.write_text("VALUE = 1\n", encoding=c.DEFAULT_ENCODING)
         with u.Infra.facade_source_project(root) as (project, _, _):
-            with project.source_consumption():
+            with project.source_consumption() as consumed:
                 project.source_text(source)
             mode = source.stat().st_mode
-            source.chmod(0)
-            try:
-                with pytest.raises(PermissionError):
-                    with project.source_successor():
-                        pytest.fail("an unreadable predecessor cannot advance")
-            finally:
-                source.chmod(mode)
+            with project.source_successor() as successor:
+                source.chmod(0)
+                try:
+                    with pytest.raises(ValueError, match="Permission denied"):
+                        successor.adopt_source_consumption(consumed.receipt())
+                finally:
+                    source.chmod(mode)
             tm.that(project.source_epoch_failure, eq=None)
 
     @staticmethod
@@ -49,11 +104,31 @@ class TestsSourceEpochRevalidation:
         """A consumer's syntax error escapes unchanged instead of being retried."""
         root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
         original = SyntaxError("invalid consumer input")
+        with (
+            u.Infra.facade_source_project(root) as (project, _, _),
+            pytest.raises(SyntaxError) as failure,
+            project.source_successor(),
+        ):
+            raise original
+        tm.that(failure.value is original, eq=True)
+
+    @staticmethod
+    def test_source_adoption_rejects_invalid_topology(tmp_path: Path) -> None:
+        """An alias policy failure must escape, not turn into a drift receipt."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        alias = package / "candidate.py"
+        source.write_text("VALUE = 1\n", encoding=c.DEFAULT_ENCODING)
         with u.Infra.facade_source_project(root) as (project, _, _):
-            with pytest.raises(SyntaxError) as failure:
-                with project.source_successor():
-                    raise original
-            tm.that(failure.value is original, eq=True)
+            with project.source_consumption() as consumed:
+                tm.that(project.source_query(alias, "isfile"), eq=False)
+            with project.source_successor() as successor:
+                alias.symlink_to(source)
+                try:
+                    with pytest.raises(OSError, match="physical alias"):
+                        successor.adopt_source_consumption(consumed.receipt())
+                finally:
+                    alias.unlink()
 
     @staticmethod
     def test_successor_adopts_only_authentic_independent_receipts(
@@ -75,7 +150,7 @@ class TestsSourceEpochRevalidation:
             project.replay_source_consumption(stale.receipt())
             project.source_text(independent)
         changed.write_text("VALUE = 3\n", encoding=c.DEFAULT_ENCODING)
-        with pytest.raises(ValueError) as failure:
+        with pytest.raises(ValueError, match="atomic source changed") as failure:
             contexts.close()
         tm.that(project.source_epoch_failure is failure.value, eq=True)
         with project.source_successor() as successor:
@@ -94,9 +169,11 @@ class TestsSourceEpochRevalidation:
                 tm.that(successor.source_state(independent) is original, eq=True)
                 tm.that(successor.source_text(changed), eq="VALUE = 3\n")
             tm.that(original in replayed.receipt().inputs, eq=True)
-            with successor.source_consumption():
-                with pytest.raises(ValueError, match="original epoch"):
-                    successor.replay_source_consumption(valid.receipt())
+            with (
+                successor.source_consumption(),
+                pytest.raises(ValueError, match="original epoch"),
+            ):
+                successor.replay_source_consumption(valid.receipt())
         tm.that(project.source_epoch_failure is failure.value, eq=True)
         tm.that(project.source_text(changed), eq="VALUE = 1\n")
 
@@ -114,7 +191,7 @@ class TestsSourceEpochRevalidation:
         with project.source_consumption() as dependent:
             project.replay_source_consumption(election.receipt())
         born.write_text("VALUE = 1\n", encoding=c.DEFAULT_ENCODING)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="source"):
             contexts.close()
         with project.source_successor() as successor:
             tm.that(
@@ -140,7 +217,7 @@ class TestsSourceEpochRevalidation:
         *,
         topology: bool,
     ) -> None:
-        """Schedule a real edit after planning, without replacing any production owner."""
+        """Schedule a real post-planning edit without replacing production owners."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         left = package / "left"
         right = package / "right"
@@ -154,7 +231,7 @@ class TestsSourceEpochRevalidation:
             "class Independent: pass\n__all__ = ['Independent']\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        calls: dict[Path, int] = {}
+        calls: t.MutableMappingKV[Path, int] = {}
         observed: list[m.Infra.CodegenPhaseAnalysis] = []
         edits = 0
 
@@ -181,7 +258,7 @@ class TestsSourceEpochRevalidation:
         try:
             sys.setprofile(observe)
             if not config.Infra.codegen.source_replan_limit:
-                with pytest.raises(ValueError):
+                with pytest.raises(ValueError, match="source"):
                     u.Tests.create_lazy_init_service(root).plan_files()
                 return
             analysis = tm.ok(u.Tests.create_lazy_init_service(root).plan_files())

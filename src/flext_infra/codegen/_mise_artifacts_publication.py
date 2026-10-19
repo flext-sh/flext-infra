@@ -310,9 +310,14 @@ class FlextInfraMisePublication:
         """
         result_type = r[tuple[m.Cli.AtomicFileState, ...]]
         inputs = FlextInfraCodegenPreconditions.unique_states(analysis.inputs)
-        declared = FlextInfraCodegenPreconditions.unique_states(
-            tuple(source for plan in analysis.files for source in plan.source_states)
-        )
+        declared = FlextInfraCodegenPreconditions.unique_states((
+            *(source for file in analysis.files for source in file.source_states),
+            *(
+                source
+                for publication in analysis.publications
+                for source in publication.source_states
+            ),
+        ))
         if inputs.failure:
             return result_type.from_failure(inputs)
         if declared.failure:
@@ -320,15 +325,29 @@ class FlextInfraMisePublication:
         if u.Cli.atomic_merge_directory_query_receipts(
             analysis.source_directories, analysis.source_query_topology
         ) != u.Cli.atomic_merge_directory_query_receipts(
-            tuple(
-                receipt
-                for file in analysis.files
-                for receipt in file.source_directories
+            (
+                *(
+                    receipt
+                    for file in analysis.files
+                    for receipt in file.source_directories
+                ),
+                *(
+                    receipt
+                    for publication in analysis.publications
+                    for receipt in publication.source_directories
+                ),
             ),
-            tuple(
-                receipt
-                for file in analysis.files
-                for receipt in file.source_query_topology
+            (
+                *(
+                    receipt
+                    for file in analysis.files
+                    for receipt in file.source_query_topology
+                ),
+                *(
+                    receipt
+                    for publication in analysis.publications
+                    for receipt in publication.source_query_topology
+                ),
             ),
         ):
             return result_type.fail(

@@ -209,12 +209,13 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             The resulting ``p.Result[bool]``.
 
         """
+        runtime_errors: tuple[type[Exception], ...] = (OSError, *c.EXC_BROAD_RUNTIME)
         try:
             verified = u.Cli.atomic_verify_binary_file_states(states)
             if verified.failure:
                 return r[bool].from_failure(verified)
             return u.Cli.atomic_verify_directory_queries(directories, topology)
-        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+        except runtime_errors as exc:
             return r[bool].fail(str(exc), exception=exc)
 
     @classmethod
@@ -275,7 +276,10 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         """
         if project.source_epoch_failure is not cause:
             raise cause
-        scopes = (*analysis.files, *analysis.publications)
+        scopes: tuple[m.Infra.CodegenFilePlan | m.Infra.LazyInitPlan, ...] = (
+            *analysis.files,
+            *analysis.publications,
+        )
         states = m.Infra.CodemodBindingSnapshot(
             states=(
                 *(state for scope in scopes for state in scope.source_states),
@@ -321,7 +325,9 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             for original in project.consumed_source_topology()
             if cls._verify_original_sources((), (), (original,)).failure
         )
-        candidates = (*directories, *topology)
+        candidates: tuple[
+            m.Cli.AtomicDirectoryInventory | m.Cli.AtomicDirectoryChainPlan, ...
+        ] = (*directories, *topology)
         if not cls._original_plans_covered(
             (*failed_directories, *failed_topology), candidates
         ):
@@ -362,7 +368,10 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 publications.append(publication)
         if not affected:
             raise cause
-        retained = (*accepted, *publications)
+        retained: tuple[m.Infra.CodegenFilePlan | m.Infra.LazyInitPlan, ...] = (
+            *accepted,
+            *publications,
+        )
         retained_states = m.Infra.CodemodBindingSnapshot(
             states=tuple(state for scope in retained for state in scope.source_states)
         ).states
@@ -393,6 +402,8 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                             column=0,
                             code=c.Infra.ToolOutcome.ERROR.value,
                             message=str(cause),
+                            locations=(),
+                            related_locations=(),
                         )
                         for path in sorted(affected)
                     ),

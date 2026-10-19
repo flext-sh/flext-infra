@@ -57,6 +57,9 @@ from flext_infra._utilities._rope_analysis.importstate import (
 from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
+from flext_infra._utilities.rope_runtime_matching import (
+    FlextInfraUtilitiesRopeRuntimeMatching,
+)
 
 
 class FlextInfraUtilitiesCodemodProject(
@@ -1124,7 +1127,8 @@ class FlextInfraUtilitiesCodemodProject(
         ):
             token = cls._type_payload_cache.set({})
             try:
-                yield project, sources
+                with FlextInfraUtilitiesRopeRuntimeMatching.semantic_matching_context():
+                    yield project, sources
             finally:
                 cls._type_payload_cache.reset(token)
 

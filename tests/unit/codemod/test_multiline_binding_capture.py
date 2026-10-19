@@ -103,3 +103,12 @@ class TestsFlextInfraMultilineBindingCapture:
                 ),
                 eq=1,
             )
+            tm.that(
+                sum(
+                    entry.callcount
+                    for entry in profile.getstats()
+                    if not isinstance(entry.code, str)
+                    and entry.code.co_qualname == "SimilarFinder.__init__"
+                ),
+                eq=1,
+            )

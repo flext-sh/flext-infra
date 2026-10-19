@@ -332,6 +332,10 @@ class FlextInfraModelsCodemod:
             default=False,
             description="Require metadata without a field default or factory",
         )
+        defaulted_field: Annotated[
+            bool,
+            m.Field(description="Extract one concrete field default outside metadata"),
+        ] = False
         private_attribute: bool = m.Field(
             default=False,
             description="Require an unset native private model attribute",
@@ -359,8 +363,13 @@ class FlextInfraModelsCodemod:
                 if capture is not None and f"${{{capture}}}" not in self.pattern:
                     msg = "native default proof must name a pattern capture"
                     raise ValueError(msg)
-            field_metadata = self.required_field or self.private_attribute
-            invalid_field_mode = self.required_field and self.private_attribute
+            field_modes = (
+                self.required_field,
+                self.defaulted_field,
+                self.private_attribute,
+            )
+            field_metadata = any(field_modes)
+            invalid_field_mode = sum(field_modes) > 1
             if field_metadata and (
                 self.call_target is None
                 or not self.model_bases
@@ -370,6 +379,16 @@ class FlextInfraModelsCodemod:
                 msg = (
                     "native field metadata requires one mode, a callee "
                     "and model class scope"
+                )
+                raise ValueError(msg)
+            if self.defaulted_field and (
+                self.value_default is None
+                or f"${{{self.call_target}}}(${{{self.value_default}}})"
+                not in self.pattern
+                or f"${{{self.call_target}}}()" not in self.goal
+            ):
+                msg = (
+                    "native default extraction requires its call and default templates"
                 )
                 raise ValueError(msg)
             if self.missing_keywords and self.call_target is None:

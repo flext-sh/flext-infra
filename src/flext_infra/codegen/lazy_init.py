@@ -198,7 +198,6 @@ class FlextInfraCodegenLazyInit(
             The resulting ``p.Result[m.Infra.CodegenPhaseAnalysis]``.
 
         Raises:
-            OSError: If the original source epoch cannot be authenticated.
             RuntimeError: The convergence loop has no terminal outcome.
 
         """
@@ -261,7 +260,7 @@ class FlextInfraCodegenLazyInit(
                 classified = self.classify_source_conflict(planned.value, project, exc)
                 if first_conflict is None:
                     first_conflict = exc
-                if source_project is not None:
+                if source_project is not None or planned.value.exception is not None:
                     return r[m.Infra.CodegenPhaseAnalysis].ok(classified)
                 if attempt == config.Infra.codegen.source_replan_limit:
                     if first_conflict is exc:
@@ -429,10 +428,6 @@ class FlextInfraCodegenLazyInit(
             The resulting ``p.Result[t.Triple[list[m.Infra.CodegenPhaseAnalysis],
                 t.MappingKV[Path, m.Cli.AtomicFileState], int]]``.
 
-        Raises:
-            OSError: When the underlying source state verification fails
-                outside a source-epoch conflict.
-
         """
         analyses: list[m.Infra.CodegenPhaseAnalysis] = []
         inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
@@ -513,6 +508,8 @@ class FlextInfraCodegenLazyInit(
                             code=c.Infra.ToolOutcome.ERROR.value,
                             message=analyzed.error
                             or f"lazy-init analysis failed: {root}",
+                            locations=(),
+                            related_locations=(),
                         ),
                     ),
                     exception=analyzed.exception,
@@ -543,6 +540,8 @@ class FlextInfraCodegenLazyInit(
                                     "lazy-init target module is ambiguous: "
                                     f"{self.target_module}"
                                 ),
+                                locations=(),
+                                related_locations=(),
                             ),
                         ),
                     }
@@ -613,10 +612,6 @@ class FlextInfraCodegenLazyInit(
 
         Returns:
             The unique captured states indexed by their physical paths.
-
-        Raises:
-            OSError: When the folded snapshot fails and an earlier analysis
-                recorded the original exception.
 
         """
         runtime_errors: tuple[type[Exception], ...] = (OSError, *c.EXC_BROAD_RUNTIME)
@@ -865,7 +860,19 @@ class FlextInfraCodegenLazyInit(
                 inputs=rope.rope_project.consumed_source_states(),
                 source_directories=rope.rope_project.consumed_source_directories(),
                 source_query_topology=rope.rope_project.consumed_source_topology(),
-                publications=package_plans.value,
+                publications=tuple(
+                    plan.model_copy(
+                        update={
+                            "source_states": receipt.inputs,
+                            "source_directories": receipt.source_directories,
+                            "source_query_topology": receipt.source_query_topology,
+                        }
+                    )
+                    for plan in package_plans.value
+                    for receipt in (
+                        self._file_plan_cache[str(plan.context.pkg_dir.resolve())][1],
+                    )
+                ),
             ),
         )
 

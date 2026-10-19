@@ -6,12 +6,42 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Generator
+from contextlib import contextmanager
+from contextvars import ContextVar
+from typing import ClassVar
+
 from flext_infra import p, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeBase
 
 
 class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase):
     """Delegate semantic matching and capture queries to Rope's native SDK."""
+
+    _semantic_finders: ClassVar[
+        ContextVar[
+            t.MutableMappingKV[
+                t.Pair[p.Infra.RopePyModule, t.VariadicTuple[t.Pair[str, str]]],
+                p.Infra.RopeSimilarFinder,
+            ]
+            | None
+        ]
+    ] = ContextVar("rope_semantic_finders", default=None)
+
+    @classmethod
+    @contextmanager
+    def semantic_matching_context(cls) -> Generator[None]:
+        """Retain native matchers only within one immutable semantic pass.
+
+        Yields:
+            A context whose native matcher caches cannot escape to another epoch.
+
+        """
+        token = cls._semantic_finders.set({})
+        try:
+            yield
+        finally:
+            cls._semantic_finders.reset(token)
 
     @classmethod
     def semantic_regions(
@@ -32,7 +62,13 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
             AttributeError: If native matching fails to resolve a semantic attribute.
 
         """
-        finder = cls.semantic_finder(module)
+        cache = cls._semantic_finders.get()
+        key = (module, tuple(sorted(arguments.items())))
+        finder = None if cache is None else cache.get(key)
+        if finder is None:
+            finder = cls.semantic_finder(module)
+            if cache is not None:
+                cache[key] = finder
         try:
             return tuple(
                 match.get_region()
@@ -53,7 +89,7 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
         cls,
         module: p.Infra.RopePyModule,
     ) -> p.Infra.RopeSimilarFinder:
-        """Reuse one native matcher across an immutable module's semantic queries.
+        """Create a native matcher for one immutable module and binding context.
 
         Rope caches matches by pattern text. A reused pattern must retain its
         identity arguments; distinct bindings require distinct wildcard names.

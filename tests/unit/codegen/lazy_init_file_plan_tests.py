@@ -10,6 +10,7 @@ import sys
 from contextlib import ExitStack
 from pathlib import Path
 from re import escape
+from traceback import format_exception
 
 import pytest
 
@@ -233,7 +234,14 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
 
         outcome = owner.run_files_locked(roots, publish)
         tm.that(outcome.failure, eq=True)
-        tm.that(outcome.exception is retained[0].exception, eq=True)
+        assert outcome.exception is retained[0].exception, (
+            outcome.error,
+            outcome.exception,
+            outcome.error_data,
+            format_exception(outcome.exception)
+            if outcome.exception is not None
+            else (),
+        )
         tm.that(
             conftest.read_text(encoding=c.DEFAULT_ENCODING),
             eq=source + "# Concurrent source edit\n",

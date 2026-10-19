@@ -23,6 +23,36 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
     """Edge-case tests for project discovery."""
 
     @staticmethod
+    def test_export_cache_reuses_only_identical_authenticated_content(
+        tmp_path: Path,
+    ) -> None:
+        """Planned content, not an unchanged physical mtime, owns export facts."""
+        module_path = tmp_path / "module.py"
+        module_path.write_text("class Alpha: ...\n", encoding=c.DEFAULT_ENCODING)
+        before = module_path.stat()
+        with Profile() as profile:
+            for name in ("Alpha", "Beta", "Alpha"):
+                with u.Infra.facade_source_project(
+                    tmp_path, planned_sources={module_path: f"class {name}: ...\n"}
+                ) as (project, _modules):
+                    tm.that(
+                        u.Infra.resolve_module_export_names(
+                            project, project.get_file("module.py")
+                        ),
+                        eq=(name,),
+                    )
+        tm.that(module_path.stat().st_mtime_ns, eq=before.st_mtime_ns)
+        tm.that(
+            sum(
+                entry.callcount
+                for entry in profile.getstats()
+                if not isinstance(entry.code, str)
+                and entry.code.co_name == "_module_export_names"
+            ),
+            eq=2,
+        )
+
+    @staticmethod
     def test_authenticated_publication_reuses_syntax_and_records_each_consumption(
         tmp_path: Path,
     ) -> None:

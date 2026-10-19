@@ -241,12 +241,7 @@ class _RopeProjectSourceAccessMixin:
         return self._authenticated_reads.receipt_topology()
 
     def verify_source_states(self) -> None:
-        """Verify the original input epoch after semantic planning.
-
-        Raises:
-            OSError: When the original input epoch fails verification.
-
-        """
+        """Verify the original input epoch after semantic planning."""
         reads = self._authenticated_reads
         runtime_errors: tuple[type[Exception], ...] = (OSError, *c.EXC_BROAD_RUNTIME)
         try:
@@ -798,8 +793,8 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             # each (path, predicate) observation is stable for this owner's
             # lifetime. Every access still attributes its original witnesses
             # to the current native consumption scopes, including cache hits.
-            self._query_observations: dict[tuple[Path, str], bool] = {}
-            self._query_witnesses: dict[
+            self._query_observations: t.MutableMappingKV[tuple[Path, str], bool] = {}
+            self._query_witnesses: t.MutableMappingKV[
                 tuple[Path, str],
                 m.Cli.AtomicDirectoryInventory | m.Cli.AtomicDirectoryChainPlan,
             ] = {}
@@ -1010,15 +1005,38 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                 )
                 if current != state:
                     return r[bool].fail(f"Rope source receipt changed: {state.path}")
-            try:
-                require_value(
-                    u.Cli.atomic_verify_directory_queries(
-                        receipt.source_directories, receipt.source_query_topology
+            directories: list[m.Cli.AtomicDirectoryInventory] = []
+            for inventory in receipt.source_directories:
+                chain = require_value(
+                    u.Cli.atomic_plan_directory_chain(inventory.root.path)
+                )
+                if chain.directories:
+                    return r[bool].fail(
+                        "Rope source receipt directory disappeared: "
+                        f"{inventory.root.path}"
                     )
+                current_inventory = require_value(
+                    u.Cli.atomic_inventory_physical_directory(inventory.root.path)
+                )
+                # Invalid aliases and IO failures are not comparison failures.
+                # Validate selectors before entering the pure receipt merge.
+                for name, predicate in inventory.queries:
+                    u.Cli.atomic_directory_query_value(
+                        current_inventory, name, predicate
+                    )
+                directories.append(current_inventory)
+            topology = tuple(
+                require_value(u.Cli.atomic_plan_directory_chain(witness.target))
+                for witness in receipt.source_query_topology
+            )
+            try:
+                u.Cli.atomic_merge_directory_query_receipts(
+                    (*receipt.source_directories, *directories),
+                    (*receipt.source_query_topology, *topology),
                 )
             except ValueError as exc:
-                # Only the native directory verifier's comparison errors are
-                # drift here: issuance has already authenticated the payload.
+                # All observations succeeded. This owner performs comparisons
+                # only, so a mismatch cannot hide a failed filesystem operation.
                 return r[bool].fail(str(exc), exception=exc)
             return r[bool].ok(value=True)
 
@@ -1649,7 +1667,7 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             require_value(u.Cli.atomic_verify_binary_file_states(self.states()))
             require_value(
                 u.Cli.atomic_verify_directory_queries(
-                    self._directory_receipts(), self._topology_receipts()
+                    self.receipt_directories(), self.receipt_topology()
                 )
             )
             for path in sorted({*self._consumed, *self._consumed_effects}):

@@ -141,32 +141,142 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         if name.startswith("_"):
             return False
         return (
-            len(invocation.args) <= 1
-            and all(
-                isinstance(argument, ast.Constant) and argument.value is Ellipsis
-                for argument in invocation.args
+            FlextInfraUtilitiesSemanticCutoverModelFields._concrete_field_default(
+                invocation
             )
-            and all(
-                keyword.arg is not None
-                and (
-                    keyword.arg not in {"default", "default_factory"}
-                    or (
-                        isinstance(keyword.value, ast.Constant)
-                        and (
-                            (
-                                keyword.arg == "default"
-                                and keyword.value.value is Ellipsis
-                            )
-                            or (
-                                keyword.arg == "default_factory"
-                                and keyword.value.value is None
+            and len(
+                FlextInfraUtilitiesSemanticCutoverModelFields._field_reordered_calls(
+                    rule, module, match
+                )
+            )
+            == 1
+            if rule.defaulted_field
+            else (
+                len(invocation.args) <= 1
+                and all(
+                    isinstance(argument, ast.Constant) and argument.value is Ellipsis
+                    for argument in invocation.args
+                )
+                and all(
+                    keyword.arg is not None
+                    and (
+                        keyword.arg not in {"default", "default_factory"}
+                        or (
+                            isinstance(keyword.value, ast.Constant)
+                            and (
+                                (
+                                    keyword.arg == "default"
+                                    and keyword.value.value is Ellipsis
+                                )
+                                or (
+                                    keyword.arg == "default_factory"
+                                    and keyword.value.value is None
+                                )
                             )
                         )
                     )
+                    for keyword in invocation.keywords
                 )
+            )
+        )
+
+    @staticmethod
+    def _concrete_field_default(invocation: ast.Call) -> bool:
+        """Admit exactly one explicit concrete default, never a factory.
+
+        Returns:
+            Whether extraction preserves an explicit, unambiguous native default.
+
+        """
+        defaults = [
+            *invocation.args,
+            *(
+                keyword.value
+                for keyword in invocation.keywords
+                if keyword.arg == "default"
+            ),
+        ]
+        return (
+            len(defaults) == 1
+            and not isinstance(defaults[0], ast.Starred)
+            and not (
+                isinstance(defaults[0], ast.Constant) and defaults[0].value is Ellipsis
+            )
+            and all(
+                keyword.arg is not None and keyword.arg != "default_factory"
                 for keyword in invocation.keywords
             )
         )
+
+    @classmethod
+    def _field_contract_templates(
+        cls,
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        resources: t.SequenceOf[p.Infra.RopeResource],
+    ) -> t.SequenceOf[t.Pair[str, str]]:
+        """Specialize explicit argument shapes, leaving matching/writing to Rope.
+
+        Returns:
+            Native pattern/goal pairs retaining each metadata keyword capture.
+
+        """
+        if not rule.defaulted_field:
+            return ((rule.pattern, rule.goal),)
+        templates: t.MutableMappingKV[t.Pair[str, str], None] = {}
+        field = f"${{{rule.call_target}}}"
+        default = f"${{{rule.value_default}}}"
+        for resource in resources:
+            module = project.get_pymodule(resource)
+            tree = module.get_ast()
+            if not isinstance(tree, ast.AST):
+                continue
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.AnnAssign) or not isinstance(
+                    node.value, ast.Call
+                ):
+                    continue
+                call = node.value
+                if not cls._concrete_field_default(call):
+                    continue
+                arguments = [default] if call.args else []
+                metadata: list[str] = []
+                for index, keyword in enumerate(call.keywords):
+                    if keyword.arg == "default":
+                        arguments.append(f"default={default}")
+                    else:
+                        captured = f"{keyword.arg}=${{metadata_{index}}}"
+                        arguments.append(captured)
+                        metadata.append(captured)
+                pattern = rule.pattern.replace(
+                    f"{field}({default})", field + "(" + ", ".join(arguments) + ")"
+                )
+                goal = rule.goal.replace(
+                    f"{field}()", field + "(" + ", ".join(metadata) + ")"
+                )
+                templates[pattern, goal] = None
+        return tuple(templates)
+
+    @staticmethod
+    def _field_reordered_calls(
+        rule: p.Infra.RopeContractRule,
+        module: p.Infra.RopePyModule,
+        match: p.Infra.RopeContractMatch,
+    ) -> t.SequenceOf[t.Pair[int, int]]:
+        """Exclude only the default expression that stays on the assignment RHS.
+
+        Returns:
+            Calls whose evaluation moves into the field annotation.
+
+        """
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        calls = refactors.word_call_regions(module.source_code, match.get_region())
+        if rule.defaulted_field and rule.value_default is not None:
+            begin, end = refactors.semantic_capture_region(match, rule.value_default)
+            return tuple(
+                region for region in calls if not begin <= region[0] < region[1] <= end
+            )
+        return calls
 
     @classmethod
     def _plan_model_fields(

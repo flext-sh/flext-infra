@@ -242,6 +242,125 @@ class TestsFlextInfraRopeContractBindings:
 
     @staticmethod
     @pytest.mark.parametrize(
+        ("argument", "expression"),
+        [
+            ("()", "()"),
+            ("default=()", "()"),
+            ("default=None", "None"),
+            ("default=Choice.READY", "Choice.READY"),
+            ("default=make_default()", "make_default()"),
+            ("default='ready'", "'ready'"),
+        ],
+    )
+    def test_defaulted_metadata_single_rule_preserves_concrete_default(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        argument: str,
+        expression: str,
+    ) -> None:
+        """Preview exactly one native rule before proving runtime and fixed point."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "from enum import StrEnum\n"
+            "from pydantic import BaseModel, Field\n"
+            "events = []\n"
+            "class Choice(StrEnum):\n"
+            "    READY = 'ready'\n"
+            "def make_default():\n"
+            "    events.append('default')\n"
+            "    return ()\n"
+            "class Payload(BaseModel):\n"
+            "    value: tuple[str, ...] | str | None = "
+            f"Field({argument}, description='Retained', validate_default=True)\n"
+            "evidence = (Payload().model_dump_json(), "
+            "Payload.model_json_schema(), events)\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        rules = tuple(
+            rule
+            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
+            if rule.id == "pydantic-defaulted-field-metadata"
+        )
+        tm.that(len(rules), eq=1)
+        edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules))
+        tm.that(len(edits), eq=1)
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        updated = edits[0].updated_source
+        tm.that(
+            f"Field(description='Retained', validate_default=True)] = {expression}"
+            in updated,
+            eq=True,
+        )
+        path.write_text(updated, encoding=c.DEFAULT_ENCODING)
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+        tm.that(
+            tm.ok(u.Infra.plan_contract_rules(workspace, {path: updated}, rules)),
+            empty=True,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "arguments",
+        [
+            "description='Required'",
+            "...",
+            "default=...",
+            "default_factory=tuple",
+            "default=(), default_factory=tuple",
+            "(), default=()",
+            "(), default_factory=None",
+            "(), description=describe()",
+            "*defaults",
+            "**metadata",
+        ],
+    )
+    def test_defaulted_metadata_preserves_required_factories_and_invalid_calls(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        arguments: str,
+    ) -> None:
+        """Unsupported/default-conflicting calls retain their native behavior."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "from pydantic import BaseModel, Field\n"
+            "defaults = ((),)\n"
+            "metadata = {'default': ()}\n"
+            "def describe():\n"
+            "    return 'Retained authored call'\n"
+            "class Payload(BaseModel):\n"
+            f"    value: tuple[str, ...] = Field({arguments})\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        rules = tuple(
+            rule
+            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
+            if rule.id == "pydantic-defaulted-field-metadata"
+        )
+        tm.that(
+            tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules)),
+            empty=True,
+        )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        if arguments in {"(), default=()", "default=(), default_factory=tuple"}:
+            with pytest.raises(TypeError):
+                runpy.run_path(str(path))
+
+    @staticmethod
+    def test_defaulted_metadata_composes_distinct_shapes_in_one_native_epoch(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+    ) -> None:
+        """Native sequential shapes never overwrite another field's proposed edit."""
+        source = (
+            "from pydantic import BaseModel, Field\n"
+            "class Payload(BaseModel):\n"
+            "    first: tuple[str, ...] = Field((), description='First')\n"
+            "    second: str | None = Field(description='Second', "
+            "default=None, validate_default=True)\n"
+            "evidence = (Payload().model_dump_json(), Payload.model_json_schema())\n"
+        )
+        u.Tests.prove_contract_migration(rope_contract_consumer, source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
         "metadata", ["description='Value'", "default_factory=None"]
     )
     def test_required_metadata_preserves_annotation_factory_precedence(

@@ -107,6 +107,9 @@ class FlextInfraProtocolsRope(Protocol):
         def required_field(self) -> bool: ...
 
         @property
+        def defaulted_field(self) -> bool: ...
+
+        @property
         def private_attribute(self) -> bool: ...
 
         @property

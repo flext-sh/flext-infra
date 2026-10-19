@@ -11,7 +11,9 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import ClassVar, TypeGuard
 
-from flext_infra import m, p, settings, t
+from flext_cli import u
+
+from flext_infra import c, m, p, settings, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
@@ -51,26 +53,26 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
 
     @staticmethod
     def resource_cache_key(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-    ) -> t.Triple[str, str, int]:
-        """Resource cache key.
+        rope_project: p.Infra.RopeProject,
+        resource: p.Infra.RopeResource,
+    ) -> t.Triple[str, str, str]:
+        """Key export facts by authenticated source, not physical timestamps.
 
         Returns:
-            The resulting ``t.Triple[str, str, int]``.
+            The project, resource path, and authenticated source digest.
+
+        Raises:
+            TypeError: If the resource has no native source module.
 
         """
-        file_path = FlextInfraUtilitiesRopeCore.resource_file_path(
-            rope_project,
-            resource,
-        )
-        mtime_ns = (
-            file_path.stat().st_mtime_ns
-            if file_path is not None and file_path.exists()
-            else 0
-        )
-        project_root = getattr(getattr(rope_project, "root", None), "real_path", "")
-        return (str(project_root), resource.path, mtime_ns)
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            rope_project, resource
+        ).get_module()
+        if not FlextInfraUtilitiesRopeRuntime.source_module(module):
+            message = "Rope export facts require an authenticated source module"
+            raise TypeError(message)
+        digest = u.Cli.sha256_bytes(module.source_code.encode(c.DEFAULT_ENCODING))
+        return (rope_project.root.real_path, resource.path, digest)
 
     @staticmethod
     def local_name(pyname: t.Infra.RopePyName, resource: t.Infra.RopeResource) -> bool:
