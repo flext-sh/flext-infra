@@ -69,6 +69,8 @@ Infra:
       evidence: "name: flext-strict-jsonvalue-session-continuation"
     # Fresh import probes are independent subprocesses within one validation.
     fresh_import_workers: 3
+    # Bound concurrent-edit convergence without discarding independent plans.
+    source_replan_limit: 3
     # Protected-edit lint snapshots run their gate subprocesses in this many
     # threads per level (paths, then gates per path); mypy keeps its own
     # resource-limited deadline, so the bound caps concurrent type checkers.

@@ -13,7 +13,7 @@ import traceback
 from pathlib import Path
 from uuid import uuid4
 
-from flext_infra import main
+import flext_infra
 from flext_infra._pytest_clock import FlextInfraPytestClock
 
 
@@ -39,7 +39,7 @@ class FlextInfraProfileEntry:
         )
         profiler.enable()
         try:
-            status = main(sys.argv[2:])
+            status = flext_infra.main(sys.argv[2:])
             return status
         finally:
             profiler.disable()

@@ -21,7 +21,11 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
 
     conform: Annotated[
         Callable[[p.Infra.CodegenConformRequest], p.Result[p.Infra.CodegenResult]],
-        m.Field(exclude=True, description="Caller-bound native conformance handler."),
+        m.Field(
+            ...,
+            exclude=True,
+            description="Caller-bound native conformance handler.",
+        ),
     ]
 
     @override
@@ -172,7 +176,8 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
                     previous = inventory.setdefault(route, binding)
                     if not u.Infra.same_name(previous, binding):
                         return result_type.fail(
-                            f"model facade route has competing native identities: {route}"
+                            "model facade route has competing native identities: "
+                            f"{route}"
                         )
                 # Models may also expose nested models through several public routes.
                 if u.Infra.py_class(child):

@@ -16,7 +16,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import json
 import sys
 from collections.abc import Generator, Mapping, MutableMapping
 from contextlib import closing, contextmanager
@@ -776,8 +775,8 @@ class FlextInfraUtilitiesCodemodProject(
         if target is None or (target_resource := target.get_resource()) is None:
             msg = "execution entrypoint has no original source resource"
             raise ValueError(msg)
-        _ = m.Cli.PythonScriptExecution.model_validate_json(
-            json.dumps({"module": target.get_name(), "role": role.value}),
+        _ = m.Cli.PythonScriptExecution.model_validate(
+            {"module": target.get_name(), "role": role.value},
         )
         target_path = Path(target_resource.real_path)
         if target_path not in sources:
@@ -1100,9 +1099,10 @@ class FlextInfraUtilitiesCodemodProject(
             )
         )
 
-    @staticmethod
+    @classmethod
     @contextmanager
     def codemod_binding_project(
+        cls,
         root: Path,
         epoch: m.Infra.CodemodSourceEpoch,
     ) -> Generator[t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]]]:
@@ -1122,7 +1122,11 @@ class FlextInfraUtilitiesCodemodProject(
             ) as project,
             project.frozen_layout(),
         ):
-            yield project, sources
+            token = cls._type_payload_cache.set({})
+            try:
+                yield project, sources
+            finally:
+                cls._type_payload_cache.reset(token)
 
     @classmethod
     def codemod_binding_snapshot(

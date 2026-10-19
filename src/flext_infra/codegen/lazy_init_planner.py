@@ -114,8 +114,13 @@ class FlextInfraCodegenLazyInitPlanner(
                     else pkg_dir
                 )
                 u.Cli.info(f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}")
-            plan, receipt = self._isolated_plan(pkg_dir, dir_exports=dir_exports)
             package_key = str(pkg_dir.resolve())
+            plan = self._source_plan_cache.get(package_key)
+            if plan is None:
+                plan, receipt = self._isolated_plan(pkg_dir, dir_exports=dir_exports)
+            else:
+                receipt = self.source_receipt(pkg_dir)
+                self.rope_workspace.rope_project.replay_source_consumption(receipt)
             self._source_plan_cache[package_key] = plan
             self._plan_receipts[package_key] = receipt
             if report_progress:
@@ -203,6 +208,11 @@ class FlextInfraCodegenLazyInitPlanner(
         """Seed prior package decisions without copying native semantic caches."""
         self._source_plan_cache.update(plans)
         self._plan_receipts.update(receipts)
+
+    @property
+    def source_plans(self) -> t.MappingKV[str, m.Infra.LazyInitPlan]:
+        """Expose immutable decisions, never native semantic cache objects."""
+        return self._source_plan_cache
 
     def source_receipt(self, package_dir: Path) -> m.Infra.CodegenPhaseAnalysis:
         """Return only the sealed receipt minted for an actual package decision.

@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from contextvars import ContextVar
 from pathlib import Path
 from typing import ClassVar
 
@@ -44,6 +45,14 @@ class FlextInfraUtilitiesCodemodBindingChain:
         """Prove an occurrence's binding: one stable reaching declaration per link."""
 
         RESOLVED_SYMBOL_OPERAND_COUNT: ClassVar[int] = 2
+        _type_payload_cache: ClassVar[
+            ContextVar[
+                t.MutableMappingKV[
+                    t.Pair[p.Infra.RopePyModule, str], frozenset[t.Pair[int, int]]
+                ]
+                | None
+            ]
+        ] = ContextVar("codemod_type_payload_cache", default=None)
 
         @classmethod
         def _occurrence_binding_holds(
@@ -425,8 +434,9 @@ class FlextInfraUtilitiesCodemodBindingChain:
                     return False
             return True
 
-        @staticmethod
+        @classmethod
         def _type_payload_occurrence(
+            cls,
             module: p.Infra.RopePyModule,
             text: str,
             start: int,
@@ -441,10 +451,14 @@ class FlextInfraUtilitiesCodemodBindingChain:
             payload_ranges = (
                 FlextInfraUtilitiesSemanticFamilyTypeReferences.type_payload_ranges
             )
-            return any(
-                left <= start < end <= right
-                for left, right in payload_ranges(text, module)
-            )
+            cache = cls._type_payload_cache.get()
+            key = (module, text)
+            ranges = None if cache is None else cache.get(key)
+            if ranges is None:
+                ranges = payload_ranges(text, module)
+                if cache is not None:
+                    cache[key] = ranges
+            return any(left <= start < end <= right for left, right in ranges)
 
         @classmethod
         def _subscript_bindings_stable(

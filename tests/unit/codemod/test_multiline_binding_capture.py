@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from cProfile import Profile
 from typing import TYPE_CHECKING
 
 import pytest
@@ -67,29 +68,38 @@ class TestsFlextInfraMultilineBindingCapture:
         with u.Infra.codemod_binding_project(
             mod_workspace, u.Infra.codemod_source_epoch(snapshot)
         ) as (project, sources):
-            tm.that(
-                u.Infra.codemod_context_admits(
-                    m.Infra.CodemodAdmission(
-                        root=mod_workspace,
-                        rule=rule,
-                        file_path=consumer,
-                        captures={
-                            "OWNER": {
-                                "text": capture,
-                                "range": {
-                                    "byteOffset": {
-                                        "start": start,
-                                        "end": start
-                                        + len(capture.encode(c.DEFAULT_ENCODING)),
-                                    }
-                                },
+            admission = m.Infra.CodemodAdmission(
+                root=mod_workspace,
+                rule=rule,
+                file_path=consumer,
+                captures={
+                    "OWNER": {
+                        "text": capture,
+                        "range": {
+                            "byteOffset": {
+                                "start": start,
+                                "end": start + len(capture.encode(c.DEFAULT_ENCODING)),
                             }
                         },
-                        facts=u.Infra.codemod_project_facts(mod_workspace, (rule,)),
-                        snapshot=snapshot,
-                    ),
-                    project=project,
-                    sources=sources,
+                    }
+                },
+                facts=u.Infra.codemod_project_facts(mod_workspace, (rule,)),
+                snapshot=snapshot,
+            )
+            with Profile() as profile:
+                verdicts = tuple(
+                    u.Infra.codemod_context_admits(
+                        admission, project=project, sources=sources
+                    )
+                    for _ in range(3)
+                )
+            tm.that(verdicts, eq=(not require_binding,) * 3)
+            tm.that(
+                sum(
+                    entry.callcount
+                    for entry in profile.getstats()
+                    if not isinstance(entry.code, str)
+                    and entry.code.co_name == "type_payload_ranges"
                 ),
-                eq=not require_binding,
+                eq=1,
             )

@@ -24,6 +24,12 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
     """Convert resolved lazy-init decisions into immutable publication plans."""
 
     if TYPE_CHECKING:
+        _file_plan_cache: t.MutableMappingKV[
+            str,
+            t.Pair[
+                t.VariadicTuple[m.Infra.CodegenFilePlan], m.Infra.CodegenPhaseAnalysis
+            ],
+        ]
 
         @property
         def source_project(self) -> p.Infra.RopeProject: ...
@@ -583,16 +589,32 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         """
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         cleanup_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = {}
-        retired = self._retired_support_plans(
-            plans,
-            index,
-            source_receipts,
-            cleanup_receipts=cleanup_receipts,
-        )
-        if retired.failure:
-            return result_type.from_failure(retired)
-        by_path = retired.value
+        by_path: MutableMapping[Path, m.Infra.CodegenFilePlan] = {}
+        retired_by_package: MutableMapping[
+            str, t.VariadicTuple[m.Infra.CodegenFilePlan]
+        ] = {}
         for plan in plans:
+            key = str(plan.context.pkg_dir.resolve())
+            cached = self._file_plan_cache.get(key)
+            if cached is not None:
+                files, receipt = cached
+                self.source_project.replay_source_consumption(receipt)
+                by_path.update((file.path, file) for file in files)
+                continue
+            retired = self._retired_support_plans(
+                (plan,),
+                index,
+                source_receipts,
+                cleanup_receipts=cleanup_receipts,
+            )
+            if retired.failure:
+                return result_type.from_failure(retired)
+            by_path.update(retired.value)
+            retired_by_package[key] = tuple(retired.value.values())
+        for plan in plans:
+            key = str(plan.context.pkg_dir.resolve())
+            if key in self._file_plan_cache:
+                continue
             with self.source_project.source_consumption() as consumption:
                 self.source_project.replay_source_consumption(
                     source_receipts[str(plan.context.pkg_dir.resolve())],
@@ -608,10 +630,15 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 )
             if artifact_plans.failure:
                 return result_type.from_failure(artifact_plans)
-            for artifact_plan in self._bound_file_plans(
+            bound = self._bound_file_plans(
                 artifact_plans.value,
                 consumption.receipt(),
-            ):
+            )
+            self._file_plan_cache[key] = (
+                (*retired_by_package[key], *bound),
+                consumption.receipt(),
+            )
+            for artifact_plan in bound:
                 existing = by_path.get(artifact_plan.path)
                 if existing is not None and existing != artifact_plan:
                     return result_type.fail(
