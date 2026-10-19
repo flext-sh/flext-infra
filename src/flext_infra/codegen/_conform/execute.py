@@ -35,7 +35,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
     """
 
     _generation_issues: t.MutableSequenceOf[m.Infra.Issue] = m.PrivateAttr(
-        default_factory=list,
+        default_factory=list[m.Infra.Issue],
     )
 
     @classmethod

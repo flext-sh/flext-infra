@@ -815,6 +815,11 @@ interpreter symlinks inside a physical environment are valid, but the candidate 
 must retain that environment's `sys.prefix`. A symlinked environment or an interpreter
 borrowed from another checkout fails before candidate checks or publication.
 
+The conflict-marker gate scans the full physical source inventory of an authenticated
+candidate when its runtime owner is explicit. A staged source tree does not contain a
+Git index. Ordinary checkout checks retain the tracked and unpublished Git inventory;
+both routes reject an empty inventory and use the same marker scanner.
+
 ## Mise toolchain
 
 Mise manages itself: the generated `.mise.toml` declares the `toolchain.mise_selector`
@@ -1242,6 +1247,20 @@ Selected functional gates remain blocking. `make check` fails when the selection
 contains no projects or when a selected project has no `pyproject.toml`; no project is
 skipped silently.
 
+`make check-pyright` runs the selected project's complete Pyright configuration
+through the native gate capture service and retains its raw report and exit status.
+From a workspace root, `make -f <member>/Makefile check-pyright` selects that
+member's declared configuration and the containing workspace's physical environment.
+It is a diagnosis verb; full `make check` remains the acceptance boundary.
+
+`make mod-types` applies the AST migrations declared by
+`make.type_contract_rules` to the complete selected project. The native AST engine
+verifies rule fixtures, resolves bindings, and repeats safe rewrites to its fixed
+point. Source models and protocols own the resulting contracts: consumers pass
+declared state models directly, and field defaults remain visible to both Pydantic
+and synthesized constructors. Required private attributes use their annotations;
+attributes with actual defaults or factories retain those declarations.
+
 Local runs, CI, and hooks derive their gates from the same active set: `CI=N make check`
 and `make check` without `CI` run the complete active set. `CI=Y make check` excludes
 only the declared `make.ci.local_check_gates` (Pyrefly remains in CI). The
@@ -1609,8 +1628,19 @@ source view.
 A nonempty admitted file phase with no required byte, permission, or directory
 effects publishes a fresh observation under the same root lease. It still verifies
 its producer, input and output identities, and rejects pending journals or foreign
-residue. It does not materialize a candidate source view or a publication staging
-tree. Equal desired bytes alone do not authorize this path.
+residue. It does not materialize a publication staging tree. Mandatory runtime
+admission still consumes the sealed candidate in its read-only view, including
+unchanged Python proposals. Equal desired bytes alone do not authorize this path.
+
+Generation seals the exact bytes proposed by its renderer, without running source
+repairs or the full workspace checker. Its physical runtime authentication, sealed
+import origins and runtime census remain mandatory; a negative census report is
+rejected even when the subprocess itself succeeded. Semantic publication explicitly
+selects normalization before sealing and adds every native default check inside
+the guarded candidate consumer. Reusing a sealed receipt never removes that
+operation's selected preparation or admission policy. Both operations retain
+source, membership, inode, candidate-tree, lease and journal verification. The
+independent `make check` surface continues to own its complete configured gates.
 
 Journal footprint inspection and authorization hold the same root journal lease
 as publication. Authorization observes the current journal under that lease;

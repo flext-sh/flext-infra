@@ -95,11 +95,24 @@ class FlextInfraUtilitiesProtectedEditLinting:
         )
         if planned.failure:
             return r[m.Infra.StageSourcePlan].from_failure(planned)
+        return cls.normalize_source_plan(planned.value)
+
+    @classmethod
+    def normalize_source_plan(
+        cls,
+        plan: m.Infra.StageSourcePlan,
+    ) -> p.Result[m.Infra.StageSourcePlan]:
+        """Normalize an authenticated proposal without reopening its source election.
+
+        Returns:
+            Sealed repaired bytes retaining the original physical evidence.
+
+        """
         return codegen.FlextInfraStagedPackage.prepare_sources(
-            planned.value, cls._repair_staged_sources
+            plan, cls._repair_staged_sources
         ).flat_map(
             lambda prepared: codegen.FlextInfraStagedPackage.seal_sources(
-                planned.value, prepared
+                plan, prepared
             )
         )
 

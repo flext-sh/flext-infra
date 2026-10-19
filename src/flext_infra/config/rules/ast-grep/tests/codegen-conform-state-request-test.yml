@@ -1,0 +1,7 @@
+id: codegen-conform-state-request
+valid:
+  - |
+    FlextInfraCodegenConform(repository_root=root, state=m.Infra.CodegenConformState(repository_root=root, request=request))
+invalid:
+  - |
+    FlextInfraCodegenConform(repository_root=root, request=request)

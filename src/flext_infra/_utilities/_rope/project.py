@@ -296,8 +296,7 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                 sorted(
                     name
                     for name, module in tuple(sys.modules.items())
-                    if module is not None
-                    and name.partition(".")[0] in sys.stdlib_module_names
+                    if name.partition(".")[0] in sys.stdlib_module_names
                     and module.__spec__ is not None
                     and module.__spec__.origin in {"built-in", "frozen"}
                 )

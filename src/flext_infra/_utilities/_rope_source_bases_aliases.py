@@ -203,6 +203,8 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             match call.args:
                 case [_, _, positional_mapping, *_]:
                     argument = positional_mapping
+                case _:
+                    return None
         if argument is None:
             return None
         mapping = ast.get_source_segment(call_source, argument)

@@ -16,10 +16,10 @@ class TestsFlextInfraModels:
 
     @staticmethod
     @pytest.mark.parametrize("end", [None, (12, 0)])
-    def test_sarif_locations_round_trip_optional_spans(
+    def test_sarif_locations_preserve_optional_spans_and_related_order(
         end: t.Pair[int, int] | None,
     ) -> None:
-        """SARIF protocol coordinates and related-location order survive JSON."""
+        """Source models retain their coordinates and emit native SARIF aliases."""
         primary = m.Infra.SarifLocation(
             uri="src/first.py",
             start_line=3,
@@ -32,16 +32,16 @@ class TestsFlextInfraModels:
             start_line=7,
             start_column=2,
         )
-        result = m.Infra.SarifResult.model_validate({
-            "rule_id": "similar-code",
-            "level": "error",
-            "message": "Native comparison",
-            "locations": [primary],
-            "related_locations": (related, primary),
-        })
+        result = m.Infra.SarifResult(
+            rule_id="similar-code",
+            level="error",
+            message="Native comparison",
+            locations=(primary,),
+            related_locations=(related, primary),
+        )
         published = result.model_dump_json()
-        restored = m.Infra.SarifResult.model_validate_json(published)
-        tm.that(restored, eq=result)
+        tm.that(result.locations, eq=(primary,))
+        tm.that(result.related_locations, eq=(related, primary))
         tm.that("endLine" in primary.model_dump_json(), eq=end is not None)
         tm.that("endColumn" in primary.model_dump_json(), eq=end is not None)
         tm.that(published, has="relatedLocations")

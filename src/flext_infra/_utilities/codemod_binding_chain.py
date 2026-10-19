@@ -101,6 +101,18 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 return cls._unreferenced_import_holds(
                     project, module, capture.text, (start, end)
                 )
+            scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, start)
+            resolved_symbol = (
+                condition.predicate is c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL
+            )
+            if resolved_symbol and not cls._resolved_expression_holds(
+                (project, module, scope),
+                condition,
+                capture.text,
+                start,
+                sources,
+            ):
+                return False
             if (start, end) not in (
                 FlextInfraUtilitiesRopeRuntimeRefactors.semantic_regions(
                     module,
@@ -111,7 +123,6 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 )
             ):
                 return False
-            scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, start)
             if cls._type_payload_occurrence(module, text, start, end):
                 return False
             if (
@@ -147,7 +158,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 project, module, text, (start, end), sources
             ):
                 return False
-            return cls._predicate_binding_verdict(
+            return resolved_symbol or cls._predicate_binding_verdict(
                 (project, module, scope),
                 condition,
                 capture.text,

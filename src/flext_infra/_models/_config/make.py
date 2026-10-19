@@ -839,6 +839,13 @@ class FlextInfraConfigModelsMake(
                 description="Default ordered violations-sweep Make operations",
             ),
         ]
+        type_contract_rules: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description="Exact AST migrations of source-declared type contracts",
+            ),
+        ]
         common_arguments: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Named controls accepted by every generated Make verb"),
@@ -1242,7 +1249,9 @@ class FlextInfraConfigModelsMake(
                 tuple(sorted(overrides.items())),
             )
 
-    class CustomHandlerPolicy(FlextInfraConfigModelsContract.ConfigContract):
+    class CustomHandlerPolicy(
+        FlextInfraConfigModelsContract.ConfigContract, frozen=True
+    ):
         """Strict schema for the only handwritten Make extension file."""
 
         filename: Annotated[

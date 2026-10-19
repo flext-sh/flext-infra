@@ -403,7 +403,7 @@ class FlextInfraModelsCodegenPipelineModels:
             description="Facade-bound docs planning and participant authorization",
         )
         planning_issues: t.MutableSequenceOf[FlextInfraModelsCheck.Issue] = m.Field(
-            default_factory=list,
+            default_factory=list[FlextInfraModelsCheck.Issue],
             exclude=True,
             description="Native file planning failures retained by this invocation",
         )
@@ -423,7 +423,7 @@ class FlextInfraModelsCodegenPipelineModels:
             description="Whether this invocation initialized an unpublished Git root",
         )
         _generation_issues: t.MutableSequenceOf[FlextInfraModelsCheck.Issue] = (
-            m.PrivateAttr(default_factory=list)
+            m.PrivateAttr(default_factory=list[FlextInfraModelsCheck.Issue])
         )
 
     class CodegenPipelineState(m.ArbitraryTypesModel):
