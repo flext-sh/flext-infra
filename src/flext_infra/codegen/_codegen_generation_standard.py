@@ -86,9 +86,13 @@ class FlextInfraCodegenGenerationStandardMixin(
                     cls._type_checking_sort_key(rendered_module, root_names),
                     cls._format_import("", rendered_module, parts),
                 ))
-        # Initializers bootstrap through the defining module, independently of
-        # the facade export maps that this generator is responsible for repairing.
-        lazy_module = c.Infra.LAZY_BOOTSTRAP_MODULE
+        # Only the foundation root bootstraps its kernel; consumers use its
+        # already-bound public helper, including foundation subpackages.
+        lazy_module = (
+            c.Infra.LAZY_BOOTSTRAP_MODULE
+            if current_pkg == c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE
+            else c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE
+        )
         statements.append((
             cls._type_checking_sort_key(lazy_module, root_names),
             cls._format_import(
@@ -233,12 +237,24 @@ class FlextInfraCodegenGenerationStandardMixin(
         """
         lazy_map = cls._lazy_export_map(plan)
         current_pkg = plan.context.current_pkg
+        bootstrap_helpers = (
+            c.Infra.LAZY_BOOTSTRAP_HELPERS
+            if current_pkg == c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE
+            else ()
+        )
         public_type_checking_imports = cls._type_checking_filtered(plan)
-        if current_pkg == c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE:
+        if bootstrap_helpers:
+            # The installer removes lazy targets from globals. Keep the exact
+            # eager kernel bindings while publishing them in the root contract.
+            lazy_map = {
+                name: target
+                for name, target in lazy_map.items()
+                if name not in bootstrap_helpers
+            }
             public_type_checking_imports = {
                 name: target
                 for name, target in public_type_checking_imports.items()
-                if name not in c.Infra.LAZY_BOOTSTRAP_HELPERS
+                if name not in bootstrap_helpers
             }
         # The generated blocks rank imports by the project's ruff isort
         # sections, so they read the one owner that projects known-first-party
@@ -291,6 +307,7 @@ class FlextInfraCodegenGenerationStandardMixin(
                             for name in plan.exports
                             if name in lazy_map or name in plan.eager_dunders
                         ),
+                        *bootstrap_helpers,
                     ),
                     lazy_map,
                 ),

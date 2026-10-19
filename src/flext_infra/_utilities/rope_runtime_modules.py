@@ -55,6 +55,68 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         return module, module.logical_lines.logical_line_in(annotation.lineno)[0]
 
     @classmethod
+    def annotation_alias_definition(
+        cls,
+        binding: p.Infra.RopePyName,
+    ) -> tuple[ast.TypeAlias, p.Infra.RopeScope] | None:
+        """Locate a PEP 695 alias without evaluating its deferred value."""
+        module, line = cls.definition_location(binding)
+        if (
+            not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module)
+            or line is None
+        ):
+            return None
+        for node in ast.walk(module.get_ast()):
+            if isinstance(node, ast.TypeAlias) and node.lineno == line:
+                return node, cls.scope_at(
+                    module, cls.source_offset(module.source_code, node)
+                )
+        return None
+
+    @classmethod
+    def annotation_origin(
+        cls,
+        project: p.Infra.RopeProject,
+        node: ast.expr,
+        scope: p.Infra.RopeScope,
+        *,
+        visiting: frozenset[tuple[str, int]] = frozenset(),
+    ) -> p.Infra.RopePyName | None:
+        """Resolve outer native types and aliases without evaluating element types."""
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return cls.annotation_origin(
+                project,
+                ast.parse(node.value, mode="eval").body,
+                scope,
+                visiting=visiting,
+            )
+        primary = node.value if isinstance(node, ast.Subscript) else node
+        binding = cls.resolve_symbol(scope, primary)
+        if binding is None:
+            return None
+        if isinstance(node, ast.Subscript) and cls.same_name(
+            binding, cls.qualified_name(project, "typing.Annotated")
+        ):
+            if not isinstance(node.slice, ast.Tuple) or not node.slice.elts:
+                return None
+            return cls.annotation_origin(
+                project, node.slice.elts[0], scope, visiting=visiting
+            )
+        alias = cls.annotation_alias_definition(binding)
+        if alias is None:
+            return binding
+        declaration, lexical = alias
+        module = lexical.pyobject.get_module()
+        if module is None:
+            return None
+        identity = (module.get_name(), declaration.lineno)
+        if identity in visiting:
+            return None
+        return cls.annotation_origin(
+            project, declaration.value, lexical, visiting=visiting | {identity}
+        )
+
+    @classmethod
     def expression_name(
         cls, scope: p.Infra.RopeScope, expression: str
     ) -> p.Infra.RopePyName | None:

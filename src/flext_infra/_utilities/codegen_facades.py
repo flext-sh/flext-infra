@@ -810,6 +810,15 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 message = f"Unresolved protocol class attribute: {member.target.id}"
                 raise ValueError(message)
             target = value.get_object()
+            if (
+                protocol in target.get_superclasses()
+                and target is not annotated.get_object()
+            ):
+                message = (
+                    f"ambiguous protocol class attribute {member.target.id}: "
+                    "annotation does not identify the declared contract"
+                )
+                raise ValueError(message)
             inherited_member = next(
                 (
                     owner.get_attributes()[member.target.id].get_object()

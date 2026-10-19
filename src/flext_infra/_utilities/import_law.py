@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -24,6 +25,67 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesImportLaw:
     """Single owner of the import-law facts the enforcement routes read."""
+
+    @staticmethod
+    def model_utility_target(
+        project: p.Infra.RopeProject,
+        qualified: str,
+    ) -> t.Triple[str, str, str] | None:
+        """Prove a model helper's native static identity and lazy publication.
+
+        Returns:
+            The published package, owner and member of a source static method.
+
+        Raises:
+            ValueError: If the method needs facade dispatch or is not published.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        binding = runtime.qualified_name(project, qualified)
+        if binding.get_object().get_kind() not in {"function", "method", "classmethod"}:
+            return None
+        holder, line = binding.get_definition_location()
+        if holder is None or line is None:
+            msg = f"model utility has no source owner: {qualified}"
+            raise ValueError(msg)
+        tree = holder.get_ast()
+        if not isinstance(tree, ast.Module):
+            msg = f"model utility has no source declaration: {qualified}"
+            raise ValueError(msg)
+        declarations = [
+            (owner, method)
+            for owner in tree.body
+            if isinstance(owner, ast.ClassDef)
+            for method in owner.body
+            if isinstance(method, ast.FunctionDef | ast.AsyncFunctionDef)
+            and method.lineno == line
+        ]
+        if len(declarations) != 1:
+            msg = f"model utility has no unique static owner: {qualified}"
+            raise ValueError(msg)
+        owner, method = declarations[0]
+        owner_scope = next(
+            scope
+            for scope in holder.get_scope().get_scopes()
+            if scope.get_start() == owner.lineno
+        )
+        staticmethod_binding = runtime.qualified_name(project, "builtins.staticmethod")
+        if not any(
+            runtime.same_name(
+                staticmethod_binding, runtime.resolve_symbol(owner_scope, decorator)
+            )
+            for decorator in method.decorator_list
+        ):
+            msg = f"model utility requires facade dispatch: {qualified}"
+            raise ValueError(msg)
+        public_module = holder.get_name().rpartition(".")[0]
+        exported = runtime.qualified_name(
+            project, f"{owner.name}.{method.name}", module_name=public_module
+        )
+        if not runtime.same_name(binding, exported):
+            msg = f"model utility owner is not lazy-published: {qualified}"
+            raise ValueError(msg)
+        return public_module, owner.name, method.name
 
     @classmethod
     def import_contract_routes(
@@ -97,7 +159,16 @@ class FlextInfraUtilitiesImportLaw:
             if provider is None or provider_resource is None:
                 continue
             provider_path = Path(provider_resource.real_path).resolve()
-            if not provider_path.is_relative_to(directory):
+            own_utility = letter == "m" and provider_path.is_relative_to(
+                namespace
+                / FlextInfraUtilitiesCodegenNamespace.facade_families()["u"].directory
+            )
+            if own_utility and cls.model_utility_target(project, identity) is None:
+                message = (
+                    f"model utility destination is not a static method: {identity}"
+                )
+                raise ValueError(message)
+            if not own_utility and not provider_path.is_relative_to(directory):
                 continue
             relative = identity.removeprefix(f"{provider.get_name()}.")
             owner, separator, member = relative.partition(".")

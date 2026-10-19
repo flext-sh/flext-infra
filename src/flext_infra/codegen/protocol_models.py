@@ -126,8 +126,19 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase):
                 continue
             alias = renderer.alias_definition(candidate)
             if alias is None:
+                declaration = candidate.get_object()
+                identity = (
+                    renderer.identity(declaration)
+                    if u.Infra.py_class(declaration)
+                    else type(declaration).__qualname__
+                )
+                ancestors = tuple(
+                    ancestor.get_name()
+                    for ancestor in u.Infra.class_ancestry(declaration)
+                )
                 return result_type.fail(
-                    f"referenced protocol p.{name} is not a model declaration"
+                    f"referenced protocol p.{name} is not a model declaration: "
+                    f"m.{name} resolved to {identity}; native ancestry={ancestors!r}"
                 )
             node, scope = alias
             if node.type_params:

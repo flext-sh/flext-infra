@@ -139,18 +139,27 @@ rules:
     arguments:
       annotated: name=typing.Annotated
       field: *pydantic_field_bindings
-  # An empty collection factory derives from the field's own contract through
-  # u.empty(TypeForm(...)), so the default's static type and runtime value
-  # both come from the annotation. Annotated metadata stays where it is; only
-  # its first argument, the contract, is evaluated again. ``dict`` is matched
+  # Only proven read-only contracts need a native factory callback. Capture the
+  # builtin once; the owning field retains its full schema and validate_default
+  # policy. No annotation is copied into runtime. ``dict`` is matched
   # as an unshadowed builtin: inside a model body Rope can resolve the name to
   # the inherited ``BaseModel.dict`` method.
   - id: pydantic-annotated-empty-factory
     phase: contract-normalization
-    repeats: contract
+    factory_default: collection
+    readonly_contract: contract
+    readonly_origins: &readonly_origins
+      - collections.abc.Mapping
+      - collections.abc.Sequence
+      - collections.abc.Set
+      - typing.Mapping
+      - typing.Sequence
+      - typing.AbstractSet
+      - builtins.tuple
+      - builtins.frozenset
     model_bases: [pydantic.BaseModel]
     pattern: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=${collection})'
-    goal: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=u.empty(TypeForm(${contract})))'
+    goal: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=lambda _factory=${collection}: _factory())'
     arguments:
       annotated: name=typing.Annotated
       collection: &empty_collections
@@ -158,65 +167,56 @@ rules:
         - name=__builtin__.set
         - name=__builtin__.tuple
       field: *pydantic_field_bindings
-    imports: &empty_imports
-      u: from flext_core import u
-      TypeForm: from typing_extensions import TypeForm
-    bindings: &empty_bindings
-      u.empty: flext_core._models.pydantic.FlextModelsPydantic.empty
-      TypeForm: typing_extensions.TypeForm
   - id: pydantic-annotated-empty-dict-factory
     phase: contract-normalization
-    repeats: contract
+    readonly_contract: contract
+    readonly_origins: *readonly_origins
     model_bases: [pydantic.BaseModel]
     unshadowed_builtins: [dict]
     pattern: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=dict)'
-    goal: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=u.empty(TypeForm(${contract})))'
+    goal: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=lambda _factory=dict: _factory())'
     arguments:
       annotated: name=typing.Annotated
       field: *pydantic_field_bindings
-    imports: *empty_imports
-    bindings: *empty_bindings
   - id: pydantic-empty-factory
     phase: contract-normalization
-    repeats: contract
+    factory_default: collection
+    readonly_contract: contract
+    readonly_origins: *readonly_origins
     model_bases: [pydantic.BaseModel]
     pattern: '${name}: ${contract} = ${field}(default_factory=${collection})'
-    goal: '${name}: ${contract} = ${field}(default_factory=u.empty(TypeForm(${contract})))'
+    goal: '${name}: ${contract} = ${field}(default_factory=lambda _factory=${collection}: _factory())'
     arguments:
       collection: *empty_collections
       field: *pydantic_field_bindings
-    imports: *empty_imports
-    bindings: *empty_bindings
   - id: pydantic-empty-dict-factory
     phase: contract-normalization
-    repeats: contract
+    readonly_contract: contract
+    readonly_origins: *readonly_origins
     model_bases: [pydantic.BaseModel]
     unshadowed_builtins: [dict]
     pattern: '${name}: ${contract} = ${field}(default_factory=dict)'
-    goal: '${name}: ${contract} = ${field}(default_factory=u.empty(TypeForm(${contract})))'
+    goal: '${name}: ${contract} = ${field}(default_factory=lambda _factory=dict: _factory())'
     arguments:
       field: *pydantic_field_bindings
-    imports: *empty_imports
-    bindings: *empty_bindings
   - id: pydantic-described-empty-factory
     phase: contract-normalization
-    repeats: contract
+    factory_default: collection
+    readonly_contract: contract
+    readonly_origins: *readonly_origins
     model_bases: [pydantic.BaseModel]
     pattern: '${name}: ${contract} = ${field}(default_factory=${collection}, description=${description})'
-    goal: '${name}: ${contract} = ${field}(default_factory=u.empty(TypeForm(${contract})), description=${description})'
+    goal: '${name}: ${contract} = ${field}(default_factory=lambda _factory=${collection}: _factory(), description=${description})'
     arguments:
       collection: *empty_collections
       field: *pydantic_field_bindings
-    imports: *empty_imports
-    bindings: *empty_bindings
   - id: pydantic-described-empty-dict-factory
     phase: contract-normalization
-    repeats: contract
+    readonly_contract: contract
+    readonly_origins: *readonly_origins
     model_bases: [pydantic.BaseModel]
     unshadowed_builtins: [dict]
     pattern: '${name}: ${contract} = ${field}(default_factory=dict, description=${description})'
-    goal: '${name}: ${contract} = ${field}(default_factory=u.empty(TypeForm(${contract})), description=${description})'
+    goal: '${name}: ${contract} = ${field}(default_factory=lambda _factory=dict: _factory(), description=${description})'
     arguments:
       field: *pydantic_field_bindings
-    imports: *empty_imports
-    bindings: *empty_bindings

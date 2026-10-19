@@ -10,6 +10,7 @@ import ast
 from pathlib import Path
 
 from flext_infra import c, p, t, u
+from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeModules
 
 
 class FlextInfraCodegenProtocolModelAnnotations:
@@ -64,20 +65,9 @@ class FlextInfraCodegenProtocolModelAnnotations:
             u.Infra.expression_name(scope, ast.unparse(node)),
         )
 
-    @staticmethod
-    def alias_definition(
-        binding: p.Infra.RopePyName,
-    ) -> tuple[ast.TypeAlias, p.Infra.RopeScope] | None:
-        """Locate a PEP 695 alias in its original native module."""
-        module, line = u.Infra.definition_location(binding)
-        if not u.Infra.source_module(module) or line is None:
-            return None
-        for node in ast.walk(module.get_ast()):
-            if isinstance(node, ast.TypeAlias) and node.lineno == line:
-                return node, u.Infra.scope_at(
-                    module, u.Infra.source_offset(module.source_code, node)
-                )
-        return None
+    alias_definition = staticmethod(
+        FlextInfraUtilitiesRopeRuntimeModules.annotation_alias_definition
+    )
 
     def source(
         self,

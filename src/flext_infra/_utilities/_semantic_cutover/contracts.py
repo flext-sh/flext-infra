@@ -30,6 +30,7 @@ from flext_infra._utilities import (
 from flext_infra._utilities._rope_analysis import FlextInfraUtilitiesRopeAnalysisExports
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesSemanticCutoverClassScope,
     FlextInfraUtilitiesSemanticCutoverModelFields,
     FlextInfraUtilitiesSemanticDeclarationRelocation,
 )
@@ -537,6 +538,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 ),
                 *(identity for rule in rules for identity in rule.bindings.values()),
                 *(base for rule in rules for base in rule.model_bases),
+                *(origin for rule in rules for origin in rule.readonly_origins),
                 *(
                     ".".join(rule.implementation_owner)
                     for rule in rules
@@ -570,6 +572,10 @@ class FlextInfraUtilitiesSemanticContracts(
         if rule.factory_default is not None:
             factory = match.get_ast(rule.factory_default)
             if isinstance(factory, ast.Constant) and factory.value is None:
+                return False
+            if rule.readonly_contract is not None and not isinstance(
+                factory, ast.Name | ast.Attribute
+            ):
                 return False
         if rule.implementation_owner is not None:
             identity = rule.implementation_owner
@@ -690,6 +696,29 @@ class FlextInfraUtilitiesSemanticContracts(
             for name in rule.model_bases
         ):
             return False
+        if rule.readonly_contract is not None:
+            if not rule.readonly_origins:
+                message = f"{rule.id}: read-only admission requires native origins"
+                raise ValueError(message)
+            contract = match.get_ast(rule.readonly_contract)
+            if not isinstance(contract, ast.expr):
+                message = f"{rule.id}: read-only contract has no native expression"
+                raise ValueError(message)
+            origin = runtime.annotation_origin(project, contract, scope)
+            unknown = FlextInfraUtilitiesRopeRuntimeTypes.runtime_callable(
+                "rope.base.pyobjects", "get_unknown"
+            )()
+            if (
+                origin is None
+                or origin.get_object() == unknown
+                or not any(
+                    (expected := runtime.qualified_name(project, identity)).get_object()
+                    != unknown
+                    and runtime.same_name(origin, expected)
+                    for identity in rule.readonly_origins
+                )
+            ):
+                return False
         for capture in rule.drops:
             if not isinstance(match.get_ast(capture), ast.Constant):
                 message = (
@@ -706,6 +735,14 @@ class FlextInfraUtilitiesSemanticContracts(
             message = (
                 f"{rule.id}: annotation evaluation cannot repeat authored calls "
                 f"in {module.get_name()}:{scope.get_start()}"
+            )
+            raise ValueError(message)
+        if rule.repeats is not None and not cls._admitted_repeated_contract(
+            scope, match.get_ast(rule.repeats)
+        ):
+            message = (
+                f"{rule.id}: annotation has an unbound enclosing owner; "
+                "retain the native factory and fix its declaring source"
             )
             raise ValueError(message)
         if (
@@ -727,6 +764,49 @@ class FlextInfraUtilitiesSemanticContracts(
             scope,
             match.get_region()[0],
         )
+
+    @staticmethod
+    def _admitted_repeated_contract(
+        scope: p.Infra.RopeScope,
+        contract: p.Infra.RopeAstNode | None,
+    ) -> bool:
+        """Keep annotation-only references to classes still under construction lazy."""
+        if not isinstance(contract, ast.AST):
+            message = "repeated contract requires the original native syntax tree"
+            raise TypeError(message)
+        constructing: list[p.Infra.RopePyObject] = []
+        enclosing: p.Infra.RopeScope | None = scope
+        while (
+            enclosing is not None
+            and enclosing.get_kind() == c.Infra.RopeScopeKind.CLASS
+        ):
+            constructing.append(enclosing.pyobject)
+            enclosing = enclosing.parent
+        if not constructing:
+            return True
+        pending: list[tuple[ast.AST, frozenset[str]]] = [(contract, frozenset())]
+        while pending:
+            node, bound = pending.pop()
+            primary = node
+            while isinstance(primary, ast.Attribute):
+                primary = primary.value
+            if (
+                isinstance(node, ast.Name | ast.Attribute)
+                and isinstance(primary, ast.Name)
+                and isinstance(primary.ctx, ast.Load)
+                and primary.id not in bound
+            ):
+                binding = FlextInfraUtilitiesRopeRuntimeModules.resolve_symbol(
+                    scope, node
+                )
+                if binding is not None and binding.get_object() in constructing:
+                    return False
+            for (
+                children,
+                local,
+            ) in FlextInfraUtilitiesSemanticCutoverClassScope._evaluated_parts(node):
+                pending.extend((child, bound | local) for child in children)
+        return True
 
     @staticmethod
     def _admitted_family(

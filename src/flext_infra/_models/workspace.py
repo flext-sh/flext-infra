@@ -166,7 +166,11 @@ class FlextInfraModelsWorkspace:
         evidence: t.MutableSequenceOf[
             FlextInfraModelsWorkspace.NativeBindingEvidence
         ] = m.Field(
-            default_factory=list,
+            default_factory=u.empty(
+                contract_factory=lambda: TypeForm(
+                    t.MutableSequenceOf[FlextInfraModelsWorkspace.NativeBindingEvidence]
+                ),
+            ),
             validate_default=True,
             description="Ordered native binding and executable observations",
         )

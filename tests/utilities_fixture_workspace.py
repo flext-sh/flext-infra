@@ -30,6 +30,8 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
     def prove_contract_migration(
         consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
         source: str,
+        *,
+        expect_change: bool = True,
     ) -> None:
         """Prove public runtime equivalence, atomic planning and convergence."""
         workspace, path = consumer
@@ -42,9 +44,9 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                 sources={path: source},
             ),
         )
-        tm.that(len(edits), eq=1)
+        tm.that(len(edits), eq=int(expect_change))
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
-        updated = edits[0].updated_source
+        updated = edits[0].updated_source if edits else source
         path.write_text(updated, encoding=c.DEFAULT_ENCODING)
         tm.that(runpy.run_path(str(path))["evidence"], eq=before)
         tm.that(

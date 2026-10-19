@@ -268,6 +268,14 @@ class FlextInfraModelsCodemod:
                 "no authored call"
             ),
         )
+        readonly_contract: t.NonEmptyStr | None = m.Field(
+            default=None,
+            description="Capture requiring a proven read-only collection origin",
+        )
+        readonly_origins: t.VariadicTuple[str] = m.Field(
+            default=(),
+            description="Native read-only collection identities admitting the capture",
+        )
         drops: t.VariadicTuple[str] = m.Field(
             default=(),
             description="Discarded captures that must be inert native constants",
