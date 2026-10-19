@@ -12,16 +12,143 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import pytest
+
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraCodegenRepositoryRootScope:
     """Tests for ``FlextInfraCodegenRepositoryRootScope``."""
 
     @staticmethod
-    def _recorded_activation_env(tmp_path: Path) -> t.Pair[dict[str, str], Path]:
+    @pytest.mark.parametrize(
+        ("project_name", "authored_root"),
+        [("flext-alpha", "automation"), ("flext-beta", "quality_tools")],
+    )
+    def test_pyproject_generation_retains_owned_python_scope(
+        tmp_path: Path,
+        project_name: str,
+        authored_root: str,
+    ) -> None:
+        """The generated Pyright projection retains authored scopes at fixed point."""
+        u.Tests.copy_tracked_mise_seeds(tmp_path)
+        root = u.Tests.mk_project(
+            tmp_path,
+            project_name,
+            pyproject=f"[project]\nname='{project_name}'\nversion='0.1.0'\n",
+        )
+        project = u.Tests.project_spec(project_name)
+        roots = (
+            config.Infra.tooling.tools.pyright.path_rules.source_dir,
+            "docs",
+            "scripts",
+            "examples",
+            authored_root,
+        )
+        for relative in roots:
+            directory = root / relative / project.package_name
+            directory.mkdir(parents=True, exist_ok=True)
+            (directory / "__init__.py").write_text("", encoding="utf-8")
+        repository = u.Tests.repository_ref(project_name).model_copy(
+            update={"role": c.Infra.MakeProfile.STANDALONE},
+        )
+        request = u.Tests.conform_request(
+            root,
+            what=c.Infra.CodegenConformSurface.PYPROJECT,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        service = FlextInfraCodegenConform(
+            repository_root=root,
+            request=request,
+            initial_workspace=u.Tests.workspace_spec(repository, project=project),
+        )
+        first_plan = tm.ok(service.plan(request))
+        first = next(
+            item for item in first_plan.files if item.path.name == c.PYPROJECT_FILENAME
+        )
+        rendered = u.Tests.codegen_file_text(first)
+        pyright = u.Tests.toml_table_at(rendered, "tool", "pyright")
+        includes = frozenset(u.Tests.toml_strings(pyright["include"]))
+        tm.that(frozenset(roots).issubset(includes), eq=True)
+        tm.that(
+            frozenset(
+                str(u.Tests.toml_mapping(env)["root"])
+                for env in u.Tests.toml_list(pyright["executionEnvironments"])
+            ),
+            eq=includes,
+        )
+        published = root / c.PYPROJECT_FILENAME
+        published.write_bytes(tm.not_none(first.desired_content))
+        published.chmod(tm.not_none(first.desired_mode))
+        second_plan = tm.ok(service.plan(request))
+        second = next(
+            item for item in second_plan.files if item.path.name == c.PYPROJECT_FILENAME
+        )
+        tm.that(second.desired_content, eq=first.desired_content)
+        tm.that(u.Infra.codegen_file_requires_effect(second), eq=False)
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_selected_member_mod_text_owns_its_real_workspace_scope(
+        tmp_path: Path,
+    ) -> None:
+        """A generated member Makefile rewrites its member from workspace CWD."""
+        root = tmp_path / "scope-workspace"
+        member = u.Tests.WorktreeFixture.governed_workspace_with_member(root)
+        request = u.Tests.conform_request(
+            root,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+            scope=c.Infra.CodegenConformScope.ALL,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        tm.ok(FlextInfraCodegenConform(repository_root=root, request=request).execute())
+        for verb in ("upg", "setup"):
+            provisioned = tm.ok(u.Tests.run_isolated_make([verb], cwd=root))
+            tm.that(
+                u.Cli.process_succeeded(provisioned.outcome),
+                eq=True,
+                msg=provisioned.stdout + provisioned.stderr,
+            )
+        sentinel = root / "scope_sentinel.py"
+        selected = member / "scope_selected.py"
+        original = 'value = "scope_before"\n'
+        tm.ok(u.Cli.atomic_write_text_file(sentinel, original))
+        tm.ok(u.Cli.atomic_write_text_file(selected, original))
+        for project in (root, member):
+            relative = sentinel.name if project == root else selected.name
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    project / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
+                    "rules:\n"
+                    "  - id: private-scope-contract\n"
+                    f"    include: ['{relative}']\n"
+                    "    find: 'scope_before'\n"
+                    "    replace: 'scope_after'\n",
+                )
+            )
+        result = tm.ok(
+            u.Tests.run_isolated_make(
+                [
+                    "-f",
+                    str((member / c.Infra.MAKEFILE_FILENAME).relative_to(root)),
+                    "mod-text",
+                ],
+                cwd=root,
+            )
+        )
+        tm.that(
+            u.Cli.process_succeeded(result.outcome),
+            eq=True,
+            msg=result.stdout + result.stderr,
+        )
+        tm.that(selected.read_text(encoding="utf-8"), eq='value = "scope_after"\n')
+        tm.that(sentinel.read_text(encoding="utf-8"), eq=original)
+
+    @staticmethod
+    def _recorded_activation_env(tmp_path: Path) -> t.Pair[t.StrMapping, Path]:
         """Record the local-context activation instead of entering a host shell.
 
         ``make upg`` is a local verb (CI forbids resolution), so its lifecycle
@@ -81,12 +208,13 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         self,
         tmp_path: Path,
     ) -> None:
-        """`make test` stays one incremental phase; `test-file` runs its file whole.
+        """`make test` stays bounded; `test-file` runs both phases without a deadline.
 
         `make test` runs in CI and pre-commit, so slow-marked items stay out of
         it (operator 2026-10-01: nothing slow in CI or pre-commit). `test-file`
         is the sole single-file path and runs only locally, so its one ``file``
-        entry runs the complete declared file once, including slow items;
+        entry runs incremental then complete on the declared file, including slow
+        items;
         a file whose items are all slow-marked never ends the verb
         with zero executed tests. Neither recipe appends the full suite.
         """
@@ -104,6 +232,29 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         tm.that(
             recipe,
             has=f'{cache.database_environment_variable}="$$database"',
+        )
+        tm.that(recipe, has="$(PYTEST_BOUNDED)")
+        file_recipe = rendered.split("_builtin_test_file_all:", 1)[1].split("\n\n", 1)[
+            0
+        ]
+        tm.that(file_recipe.count("-m flext_infra._pytest_entry file"), eq=1)
+        tm.that(file_recipe, lacks="$(PYTEST_BOUNDED)")
+        tm.that(
+            file_recipe.count(f'export {c.Infra.PYTEST_ENV_TARGET_FILE}="$(FILE)";'),
+            eq=1,
+        )
+        tm.that(
+            file_recipe,
+            has=f'{cache.database_environment_variable}="$$database"',
+        )
+        full_recipe = rendered.split("_builtin_test_full_all:", 1)[1].split("\n\n", 1)[
+            0
+        ]
+        tm.that(full_recipe.count("-m flext_infra._pytest_entry full"), eq=1)
+        tm.that(full_recipe, lacks="$(PYTEST_BOUNDED)")
+        tm.that(
+            full_recipe.count(f'export {c.Infra.PYTEST_ENV_TARGET_FILE}="$(FILE)";'),
+            eq=1,
         )
 
     def test_file_profile_does_not_execute_bounded_tests(self, tmp_path: Path) -> None:
@@ -209,15 +360,8 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         dry run enters that lifecycle directly, and its recursive ``+``
         activation re-enters the checkout through ``direnv exec``.
         """
-        repository_root = self._render_root_makefile(tmp_path)
-        env, activations = self._recorded_activation_env(tmp_path)
-
-        execution = tm.ok(
-            u.Tests.run_isolated_make(
-                ["--dry-run", "_upg_lifecycle"],
-                cwd=repository_root,
-                env=env,
-            ),
+        repository_root, activations, execution = self._run_upg_lifecycle(
+            tmp_path,
         )
 
         tm.that(
@@ -247,14 +391,8 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         gen's activation half demands the pinned Mise release, then checks
         uv.lock before post-upg.
         """
-        repository_root = self._render_root_makefile(tmp_path)
-        env, activations = self._recorded_activation_env(tmp_path)
-        execution = tm.ok(
-            u.Tests.run_isolated_make(
-                ["--dry-run", "_upg_lifecycle"],
-                cwd=repository_root,
-                env=env,
-            ),
+        _, activations, execution = self._run_upg_lifecycle(
+            tmp_path,
         )
         tm.that(
             activations.read_text(encoding="utf-8"),
@@ -429,3 +567,31 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         return repository_root
+
+    @classmethod
+    def _run_upg_lifecycle(
+        cls,
+        tmp_path: Path,
+    ) -> t.Triple[Path, Path, p.Cli.CommandOutput]:
+        """Render the workspace root and dry-run the canonical ``upg`` lifecycle.
+
+        Every ``upg`` recipe assertion shares the same premise: a rendered
+        workspace Makefile whose ``_upg_lifecycle`` re-enters through the
+        recorded direnv activation. Running the isolated dry run once keeps the
+        two tests on a single owner.
+
+        Returns:
+            The repository root, the recorded activation log, and the dry-run
+            output.
+
+        """
+        repository_root = cls._render_root_makefile(tmp_path)
+        env, activations = cls._recorded_activation_env(tmp_path)
+        execution = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--dry-run", "_upg_lifecycle"],
+                cwd=repository_root,
+                env=env,
+            ),
+        )
+        return repository_root, activations, execution

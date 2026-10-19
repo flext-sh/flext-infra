@@ -122,6 +122,36 @@ class TestsFlextInfraWorkspaceCheckCli:
 
         tm.that(exit_code, eq=1)
 
+    @staticmethod
+    @pytest.mark.parametrize(
+        "entrypoint",
+        [("flext-infra",), (sys.executable, "-m", "flext_infra")],
+        ids=["installed_console", "module"],
+    )
+    def test_process_entrypoints_preserve_rejected_gate_exit(
+        tmp_path: Path,
+        entrypoint: t.StrSequence,
+    ) -> None:
+        """Both shipped entrypoints retain a failed Result's native exit status."""
+        workspace = TestsFlextInfraWorkspaceCheckCli._create_workspace(tmp_path)
+        gate = "invalid-exit-contract-gate"
+        output = tm.ok(
+            u.Cli.run_raw([
+                *entrypoint,
+                "check",
+                "run",
+                "--repository-root",
+                str(workspace),
+                "--projects",
+                "flext-core",
+                "--gates",
+                gate,
+            ])
+        )
+
+        tm.that(output.outcome.raw_return_code, eq=c.Cli.EXIT_CODE_FAILURE)
+        tm.that(output.stdout + output.stderr, has=f"unknown gate '{gate}'")
+
     @pytest.mark.parametrize("reports_directory", [None, "artifacts/check"])
     def test_run_cli_handles_multiple_projects(
         self,
@@ -240,11 +270,82 @@ class TestsFlextInfraWorkspaceCheckCli:
             )
             tm.that(receipt.read_text(encoding="utf-8"), has=findings[0].message)
 
-    def test_run_cli_fix_completes_and_keeps_remaining_findings(
+    @staticmethod
+    @pytest.mark.parametrize("residual", [False, True])
+    @pytest.mark.parametrize("workspace_member", [False, True])
+    def test_run_cli_file_apply_repairs_only_selected_source(
+        tmp_path: Path,
+        *,
+        residual: bool,
+        workspace_member: bool,
+    ) -> None:
+        """Standalone and member file repairs retain effects and native failures."""
+        root = u.Tests.mk_project(tmp_path, "file-workspace", with_src=True)
+        project = root
+        if workspace_member:
+            project = u.Tests.mk_project(root, "file-member", with_src=True)
+            u.Tests.declare_workspace_projects(root, (project.name,))
+        (project / "ruff.toml").write_text(
+            '[lint]\nselect = ["F401", "F821"]\n',
+            encoding="utf-8",
+        )
+        selected = project / "src" / "selected.py"
+        unselected = selected.with_name("unselected.py")
+        selected.write_text(
+            "import os\n" + ("missing_name()\n" if residual else ""),
+            encoding="utf-8",
+        )
+        unselected.write_text("import os\n", encoding="utf-8")
+        exit_code = main([
+            "check",
+            "run",
+            "--repository-root",
+            str(root),
+            "--file",
+            str(selected.relative_to(root)),
+            "--gates",
+            c.Infra.LINT,
+            "--apply",
+        ])
+        tm.that(exit_code, eq=int(residual))
+        tm.that(selected.read_text(encoding="utf-8"), lacks="import os")
+        tm.that(unselected.read_text(encoding="utf-8"), eq="import os\n")
+
+    @pytest.mark.parametrize("residual", [False, True])
+    def test_run_cli_fix_accepts_only_native_clean_output(
+        self,
+        tmp_path: Path,
+        *,
+        residual: bool,
+    ) -> None:
+        """A fixed-diagnostics exit is accepted only after native verification."""
+        workspace = self._create_workspace(tmp_path)
+        module_path = self._write_module(
+            workspace,
+            "flext-core",
+            "import os\n" + ("missing_name()\n" if residual else ""),
+        )
+        exit_code = main([
+            "check",
+            "run",
+            "--repository-root",
+            str(workspace),
+            "--gates",
+            c.Infra.LINT,
+            "--apply",
+            "--ruff-args",
+            "--select F401,F821 --exit-non-zero-on-fix",
+            "--projects",
+            "flext-core",
+        ])
+        tm.that(exit_code, eq=int(residual))
+        tm.that(module_path.read_text(encoding="utf-8"), lacks="import os")
+
+    def test_run_cli_fix_rejects_remaining_findings(
         self,
         tmp_path: Path,
     ) -> None:
-        """A repair run completes; what it cannot repair stays for check."""
+        """A repair run stays red when the native postrepair check has findings."""
         workspace = self._create_workspace(tmp_path)
         module_path = self._write_module(workspace, "flext-core", "def broken(:\n")
 
@@ -262,10 +363,7 @@ class TestsFlextInfraWorkspaceCheckCli:
             "flext-core",
         ])
 
-        # Ruff completes and reports the syntax error as a finding of the
-        # code: the verb does not break, and the module is never rewritten.
-        # The residual-fix verdict is deliberately RED (flext-itpd1.13.1):
-        # a fix run that leaves findings exits 1.
+        # Ruff leaves the invalid module untouched and the repair verdict red.
         tm.that(exit_code, eq=1)
         tm.that(
             module_path.read_text(encoding="utf-8"),
@@ -279,7 +377,7 @@ class TestsFlextInfraWorkspaceCheckCli:
         """A no-self-use repair applies beside a module that cannot parse.
 
         The repair lands in the parsable module; the unparsable one stays
-        untouched and its residual finding stays for check.
+        untouched and its residual finding fails this repair invocation.
         """
         workspace = TestsFlextInfraWorkspaceCheckCli._create_workspace(tmp_path)
         broken = TestsFlextInfraWorkspaceCheckCli._write_module(
@@ -315,9 +413,10 @@ class TestsFlextInfraWorkspaceCheckCli:
             "flext-core",
         ])
 
-        # The residual-fix verdict is deliberately RED (flext-itpd1.13.1):
-        # an unparsable neighbour leaves findings, so the fix run exits 1.
-        tm.that(exit_code, eq=1)
+        # The unparsable neighbour leaves findings for the read-only check; a
+        # repair fails only on an ERROR outcome (tracker memory
+        # operator-ruling-2026-10-10-fix-residual-verdict).
+        tm.that(exit_code, eq=0)
         tm.that(
             sample.read_text(encoding="utf-8"),
             has="    @staticmethod\n    def value() -> int:\n",

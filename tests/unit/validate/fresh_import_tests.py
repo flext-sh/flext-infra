@@ -15,10 +15,63 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.validate import FlextInfraValidateFreshImport
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+def _probe_publication(
+    package: Path,
+    *,
+    init_path: Path,
+    current_pkg: str | None = None,
+    surface: str | None = None,
+    exports: t.StrSequence = (),
+) -> m.Infra.LazyInitPlan:
+    """Compose one generated-`__init__` publication probe.
+
+    Returns:
+        The resulting ``m.Infra.LazyInitPlan``.
+
+    """
+    return m.Infra.LazyInitPlan(
+        context=m.Infra.LazyInitPackageContext(
+            pkg_dir=package,
+            init_path=init_path,
+            current_pkg=current_pkg or package.name,
+            surface=surface or package.name,
+            importable=True,
+            generated_init=True,
+        ),
+        action=c.Infra.LazyInitAction.WRITE,
+        exports=tuple(exports),
+        lazy_map={},
+        eager_dunders={},
+        inline_constants={},
+    )
+
+
+def _probe_report(
+    tmp_path: Path,
+    *,
+    packages: t.StrSequence = (),
+    publications: t.SequenceOf[m.Infra.LazyInitPlan] = (),
+    repository_roots: t.SequenceOf[Path] = (),
+) -> m.Infra.ValidationReport:
+    """Build one fresh-import report over the probe checkout.
+
+    Returns:
+        The resulting validated ``m.Infra.ValidationReport``.
+
+    """
+    return tm.ok(
+        FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
+            packages=packages,
+            publications=publications,
+            repository_roots=repository_roots,
+        ),
+    )
 
 
 class TestsFlextInfraFreshImport:
@@ -138,22 +191,33 @@ class TestsFlextInfraFreshImport:
         tm.that(report.passed, eq=True, msg=str(report.violations))
 
     @staticmethod
-    @pytest.mark.parametrize("missing_export", [False, True])
+    @pytest.mark.parametrize(
+        ("content", "missing_export"),
+        [
+            ("", False),
+            ("__all__ = ()\n", False),
+            ("__all__ = ('missing_export',)\n", True),
+        ],
+    )
     def test_preserved_initializer_uses_real_publication_contract(
         tmp_path: Path,
+        content: str,
         *,
         missing_export: bool,
     ) -> None:
         """A preserved package is imported and its live exports must resolve."""
         repository_root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         initializer = package / c.Infra.INIT_PY
-        content = "__all__ = ('missing_export',)\n" if missing_export else ""
         initializer.write_text(content, encoding=c.DEFAULT_ENCODING)
+        before = initializer.read_bytes()
         analysis = tm.ok(u.Tests.plan_lazy_init(repository_root))
-        publication = next(
-            plan for plan in analysis.publications if plan.context.pkg_dir == package
+        tm.that(
+            any(
+                file.path == initializer and u.Infra.codegen_file_requires_effect(file)
+                for file in analysis.files
+            ),
+            eq=False,
         )
-        tm.that(publication.action, eq=c.Infra.LazyInitAction.SKIP)
 
         report = tm.ok(
             FlextInfraValidateFreshImport(repository_root=repository_root).build_report(
@@ -163,7 +227,7 @@ class TestsFlextInfraFreshImport:
         )
 
         tm.that(report.passed, eq=not missing_export, msg=str(report.violations))
-        tm.that(initializer.read_text(encoding=c.DEFAULT_ENCODING), eq=content)
+        tm.that(initializer.read_bytes(), eq=before)
         if missing_export:
             tm.that(report.violations[0], has="missing_export")
             tm.that(report.violations[0], has="Traceback")
@@ -268,25 +332,11 @@ class TestsFlextInfraFreshImport:
             f'[project.{script_group}]\nprobe = "{package.name}.cli:main"\n',
             encoding="utf-8",
         )
-        publication = m.Infra.LazyInitPlan(
-            context=m.Infra.LazyInitPackageContext(
-                pkg_dir=package,
-                init_path=initializer,
-                current_pkg=package.name,
-                surface=package.name,
-                importable=True,
-                generated_init=True,
-            ),
-            action=c.Infra.LazyInitAction.WRITE,
-            lazy_map={},
-            eager_dunders={},
-            inline_constants={},
-        )
-        report = tm.ok(
-            FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
-                publications=(publication,),
-                repository_roots=(tmp_path,),
-            ),
+        publication = _probe_publication(package, init_path=initializer)
+        report = _probe_report(
+            tmp_path,
+            publications=(publication,),
+            repository_roots=(tmp_path,),
         )
         tm.that(report.passed, eq=False)
         tm.that(report.violations, length=1)
@@ -315,25 +365,11 @@ class TestsFlextInfraFreshImport:
             f'[project.scripts]\nprobe = "{package.name}.cli:main"\n',
             encoding="utf-8",
         )
-        publication = m.Infra.LazyInitPlan(
-            context=m.Infra.LazyInitPackageContext(
-                pkg_dir=package,
-                init_path=initializer,
-                current_pkg=package.name,
-                surface=package.name,
-                importable=True,
-                generated_init=True,
-            ),
-            action=c.Infra.LazyInitAction.WRITE,
-            lazy_map={},
-            eager_dunders={},
-            inline_constants={},
-        )
-        report = tm.ok(
-            FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
-                publications=(publication,),
-                repository_roots=(tmp_path,),
-            ),
+        publication = _probe_publication(package, init_path=initializer)
+        report = _probe_report(
+            tmp_path,
+            publications=(publication,),
+            repository_roots=(tmp_path,),
         )
         tm.that(report.passed, eq=False)
         tm.that(report.violations[0], has="ImportError")
@@ -347,11 +383,7 @@ class TestsFlextInfraFreshImport:
             "__all__ = ('missing_export',)\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        report = tm.ok(
-            FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
-                packages=(package.name,),
-            ),
-        )
+        report = _probe_report(tmp_path, packages=(package.name,))
         tm.that(report.passed, eq=False)
         tm.that(report.violations[0], has="missing_export")
         tm.that(report.violations[0], has="Traceback")
@@ -381,25 +413,11 @@ class TestsFlextInfraFreshImport:
             f'[project.scripts]\nprobe = "{package.name}.consumer:main"\n',
             encoding=c.DEFAULT_ENCODING,
         )
-        publication = m.Infra.LazyInitPlan(
-            context=m.Infra.LazyInitPackageContext(
-                pkg_dir=package,
-                init_path=initializer,
-                current_pkg=package.name,
-                surface=package.name,
-                importable=True,
-                generated_init=True,
-            ),
-            action=c.Infra.LazyInitAction.WRITE,
-            lazy_map={},
-            eager_dunders={},
-            inline_constants={},
-        )
-        report = tm.ok(
-            FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
-                publications=(publication,),
-                repository_roots=(tmp_path,),
-            ),
+        publication = _probe_publication(package, init_path=initializer)
+        report = _probe_report(
+            tmp_path,
+            publications=(publication,),
+            repository_roots=(tmp_path,),
         )
         tm.that(report.passed, eq=dependency_present, msg=str(report.violations))
         if not dependency_present:
@@ -425,26 +443,15 @@ class TestsFlextInfraFreshImport:
             '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
             encoding=c.DEFAULT_ENCODING,
         )
-        publication = m.Infra.LazyInitPlan(
-            context=m.Infra.LazyInitPackageContext(
-                pkg_dir=package,
-                init_path=initializer,
-                current_pkg=package.name,
-                surface=package.name,
-                importable=True,
-                generated_init=True,
-            ),
-            action=c.Infra.LazyInitAction.WRITE,
+        publication = _probe_publication(
+            package,
+            init_path=initializer,
             exports=exports,
-            lazy_map={},
-            eager_dunders={},
-            inline_constants={},
         )
-        report = tm.ok(
-            FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
-                publications=(publication,),
-                repository_roots=(tmp_path,),
-            ),
+        report = _probe_report(
+            tmp_path,
+            publications=(publication,),
+            repository_roots=(tmp_path,),
         )
         tm.that(report.passed, eq=True, msg=str(report.violations))
 
@@ -471,26 +478,15 @@ class TestsFlextInfraFreshImport:
             '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
             encoding=c.DEFAULT_ENCODING,
         )
-        publication = m.Infra.LazyInitPlan(
-            context=m.Infra.LazyInitPackageContext(
-                pkg_dir=package,
-                init_path=initializer,
-                current_pkg=package.name,
-                surface=package.name,
-                importable=True,
-                generated_init=True,
-            ),
-            action=c.Infra.LazyInitAction.WRITE,
+        publication = _probe_publication(
+            package,
+            init_path=initializer,
             exports=("value",),
-            lazy_map={},
-            eager_dunders={},
-            inline_constants={},
         )
-        report = tm.ok(
-            FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
-                publications=(publication,),
-                repository_roots=(tmp_path,),
-            ),
+        report = _probe_report(
+            tmp_path,
+            publications=(publication,),
+            repository_roots=(tmp_path,),
         )
         tm.that(report.passed, eq=False)
         tm.that(report.violations[0], has="ImportError")
@@ -527,20 +523,10 @@ class TestsFlextInfraFreshImport:
             '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
             encoding=c.DEFAULT_ENCODING,
         )
-        publication = m.Infra.LazyInitPlan(
-            context=m.Infra.LazyInitPackageContext(
-                pkg_dir=package,
-                init_path=initializer,
-                current_pkg=package.name,
-                surface=package.name,
-                importable=True,
-                generated_init=True,
-            ),
-            action=c.Infra.LazyInitAction.WRITE,
+        publication = _probe_publication(
+            package,
+            init_path=initializer,
             exports=("value",),
-            lazy_map={},
-            eager_dunders={},
-            inline_constants={},
         )
         report = tm.ok(
             FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
@@ -583,31 +569,22 @@ class TestsFlextInfraFreshImport:
             encoding=c.DEFAULT_ENCODING,
         )
         publications = tuple(
-            m.Infra.LazyInitPlan(
-                context=m.Infra.LazyInitPackageContext(
-                    pkg_dir=pkg_dir,
-                    init_path=pkg_dir / c.Infra.INIT_PY,
-                    current_pkg=current_pkg,
-                    surface=package.name,
-                    importable=True,
-                    generated_init=True,
-                ),
-                action=c.Infra.LazyInitAction.WRITE,
+            _probe_publication(
+                pkg_dir,
+                init_path=pkg_dir / c.Infra.INIT_PY,
+                current_pkg=current_pkg,
+                surface=package.name,
                 exports=exports,
-                lazy_map={},
-                eager_dunders={},
-                inline_constants={},
             )
             for pkg_dir, current_pkg, exports in (
                 (subpackage, f"{package.name}.sub", ("leaf",)),
                 (package, package.name, ("value",)),
             )
         )
-        report = tm.ok(
-            FlextInfraValidateFreshImport(repository_root=tmp_path).build_report(
-                publications=publications,
-                repository_roots=(tmp_path,),
-            ),
+        report = _probe_report(
+            tmp_path,
+            publications=publications,
+            repository_roots=(tmp_path,),
         )
         tm.that(report.passed, eq=True, msg=str(report.violations))
 

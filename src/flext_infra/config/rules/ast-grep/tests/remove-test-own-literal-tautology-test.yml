@@ -1,0 +1,62 @@
+id: remove-test-own-literal-tautology
+valid:
+  - |
+    from flext_core import c
+    assert c.Core.TIMEOUT == runtime.timeout
+  - tm.that(result.value, eq=c.Tests.CASES)
+  - |
+    from tests import tm
+    assert result.failure
+  - "assert left == 3"
+  - "assert first.success or second.failure, explain()"
+  - "assert result.success and check()"
+  - |
+    settings = runtime.settings
+    assert settings.workers == 4
+  - |
+    from flext_core import c, tm
+    tm.that(c.Core.TIMEOUT, lte=runtime.deadline)
+invalid:
+  - |
+    from flext_core import c
+    assert c.Core.TIMEOUT == 30
+  - |
+    from tests import settings, tm
+    tm.that(settings.Tests.workers, eq=4)
+  - "assert result.success or result.failure"
+  # These remain findings, never automatic removals, even with observable effects.
+  - "assert result.success or result.failure, explain()"
+  - "assert (result.success or result.failure) and check(), explain()"
+  - "assert check() and (result.failure or result.success)"
+  - "assert produce().success or produce().failure, explain()"
+  - |
+    from flext_core import c
+    assert c.Core.TIMEOUT == 30, explain()
+  - |
+    from flext_core import c
+    assert c.Core.TIMEOUT != 30
+  - |
+    from flext_core import c
+    assert c.Core.TIMEOUT < 30
+  - |
+    from flext_core import r
+    result = r.Ok(1)
+    assert result.failure or result.success
+  - |
+    from flext_core import config
+    assert config.Api.base_url == "https://example"
+  - |
+    from flext_core import config
+    def test_contract():
+        assert config.Api.base_url == "https://example"
+  - |
+    from tests import settings, tm
+    def test_contract():
+        tm.that(settings.Tests.workers, eq=4)
+  - |
+    from flext_core import c
+    assert c.Core.TIMEOUT == 30; observe()
+  - "assert result.success or result.failure; observe()"
+  - |
+    def test_contract():
+        assert result.success or result.failure

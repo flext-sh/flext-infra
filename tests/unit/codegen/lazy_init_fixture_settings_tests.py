@@ -12,10 +12,29 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests import c, tm, u
+from tests import c, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+def _run_lazy_init_and_read_mapping(
+    repository_root: Path,
+    package_root: Path,
+) -> t.Pair[str, t.VariadicTuple[t.Pair[str, t.StrSequence]]]:
+    """Generate lazy init and return its content with the elected mapping.
+
+    Returns:
+        The generated initializer text and the parsed module-to-exports map.
+
+    """
+    result = u.Tests.run_lazy_init(repository_root)
+    init_content = (package_root / c.Infra.INIT_PY).read_text(
+        encoding=c.DEFAULT_ENCODING,
+    )
+    tm.that(result, eq=0)
+    entries, _refs = u.Infra.lazy_import_mapping_source(init_content)
+    return init_content, entries
 
 
 class TestsFlextInfraLazyInitFixtureSettingsCollision:
@@ -53,13 +72,10 @@ class TestsFlextInfraLazyInitFixtureSettingsCollision:
             encoding=c.DEFAULT_ENCODING,
         )
 
-        result = u.Tests.run_lazy_init(repository_root)
-
-        init_content = (package_root / c.Infra.INIT_PY).read_text(
-            encoding=c.DEFAULT_ENCODING,
+        init_content, entries = _run_lazy_init_and_read_mapping(
+            repository_root,
+            package_root,
         )
-        tm.that(result, eq=0)
-        entries, _refs = u.Infra.lazy_import_mapping_source(init_content)
         tm.that(dict(entries).get("._config", ()), has="config")
         tm.that(dict(entries).get("._settings", ()), has="settings")
         tm.that(dict(entries), lacks="._fixtures.settings")
@@ -106,13 +122,10 @@ class TestsFlextInfraLazyInitFixtureSettingsCollision:
             encoding=c.DEFAULT_ENCODING,
         )
 
-        result = u.Tests.run_lazy_init(repository_root)
-
-        init_content = (package_root / c.Infra.INIT_PY).read_text(
-            encoding=c.DEFAULT_ENCODING,
+        init_content, entries = _run_lazy_init_and_read_mapping(
+            repository_root,
+            package_root,
         )
-        tm.that(result, eq=0)
-        entries, _refs = u.Infra.lazy_import_mapping_source(init_content)
         tm.that(
             dict(entries).get("._settings", ()),
             eq=("FlextSampleSettings", "settings"),

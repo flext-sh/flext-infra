@@ -1,0 +1,53 @@
+# Shape only: the engine admits a finding when the imported module's root is
+# the scanned project's own package (context own-package) and the finding's
+# file belongs to the declared utilities facade family (context file-family).
+# A directory name alone never establishes the producer role. The law is per
+# letter: this producer tree bans only its own letter `u` — a different
+# letter from the own root is facade assembly (consumption-law.md:52) and
+# stays legal.
+id: ban-utilities-own-letter-import
+valid:
+  - |
+    from ai_hub import uextra as u
+  # A different letter from the own root is legal facade assembly.
+  - |
+    from ai_hub import m
+  # The canonical producer form: the sibling through its private submodule.
+  - |
+    from ai_hub._utilities.base import AiHubUtilitiesModelValidation
+  # A non-letter root binding is the public class export, not a letter.
+  - |
+    from ai_hub import AiHubSettings
+  # The letter regex is anchored: a name that merely starts with the letter is
+  # a different binding.
+  - |
+    from ai_hub import uextra
+  # A root binding without a letter component reaches no family facade.
+  - |
+    import ai_hub
+invalid:
+  # These remain syntactic candidates in both tests and production. Native
+  # admission distinguishes tests/_utilities from tests/unit/_utilities.
+  - |
+    from tests import u
+  - |
+    import tests.utilities
+  - |
+    from ai_hub import u as aliased
+  - |
+    def load() -> None:
+        from ai_hub import u
+  - |
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from ai_hub import u
+  - |
+    import ai_hub.utilities
+  # The producer binds its own letter from the own root.
+  - |
+    from ai_hub import u
+  - |
+    from ai_hub import u, m
+  # The plain-import form reaches the letter as a submodule of the root.
+  - |
+    import ai_hub.u

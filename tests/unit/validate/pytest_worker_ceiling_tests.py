@@ -14,7 +14,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraPytestRunner, config
+from flext_infra import config
+from flext_infra.validate import FlextInfraPytestRunner
 from tests import m, tm, u
 
 
@@ -100,7 +101,9 @@ class TestsFlextInfraPytestWorkerCeiling:
         """A tree without ``[project].name`` takes the fleet-wide ceiling."""
         policy = config.Infra.tooling.tools.pytest
         runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
-        assert runner.parallel_worker_budget(policy) == policy.parallel_workers
+        tm.that(
+            runner.parallel_worker_budget(policy) == policy.parallel_workers, truth=True
+        )
 
     @staticmethod
     def test_worker_ceiling_follows_the_declared_project_override(
@@ -123,7 +126,7 @@ class TestsFlextInfraPytestWorkerCeiling:
             os.process_cpu_count(),
         )
         budget = runner.parallel_worker_budget(policy)
-        assert budget == expected_workers
+        tm.that(budget == expected_workers, truth=True)
         command = runner.build_command(report)
         workers = command[command.index("-n") + 1]
-        assert workers == str(budget)
+        tm.that(workers == str(budget), truth=True)

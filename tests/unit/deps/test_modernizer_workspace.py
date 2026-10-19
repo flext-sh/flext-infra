@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import FlextInfraPyprojectModernizer, config, main
+from flext_infra import config, main
+from flext_infra.deps import FlextInfraPyprojectModernizer
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:

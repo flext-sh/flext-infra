@@ -3,15 +3,12 @@
     "placeholder_patterns": [
       "(^|[^A-Za-z])TODO[ ]*:",
       "(^|[^A-Za-z])FIXME[ ]*:",
-      "(^|[^A-Za-z])placeholder([^A-Za-z]|$)",
+      "(?im)^\\s*(?:#{1,6}\\s+)?placeholder\\s*(?::|$)|<placeholder>",
       "(^|[^A-Za-z])Lorem([^A-Za-z]|$)",
       "No sections found"
     ],
-    "forbidden_terms": [
-      "check_changed_projects",
-      "text_rules.yml",
-      "scripts/hooks"
-    ],
+    "forbidden_terms": {{ docs_audit.forbidden_terms | tojson }},
+    "container_home_identities": {{ docs_audit.container_home_identities | tojson }},
     "stale_symbols": {{ docs_audit.stale_symbols | tojson }},
     "stale_symbol_exempt_paths": {{ docs_audit.stale_symbol_exempt_paths | tojson }},
     "historical_evidence_files": {{ docs_audit.historical_evidence_files | map('string') | list | tojson }}

@@ -11,7 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraPytestRunner, c, config, m, u
+from flext_infra import c, config, m, u
+from flext_infra.validate import FlextInfraPytestRunner
 from tests import tm
 
 
@@ -302,7 +303,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
     ) -> None:
         """A second run of one declared file executes it, never a cache hit.
 
-        The declared file always runs under noselect, so the restored cache
+        The declared file always runs under forceselect, so the restored cache
         selects nothing for it; that empty selection must not be read as a
         cache hit holding executed tests.
         """

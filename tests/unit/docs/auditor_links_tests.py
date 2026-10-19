@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests import m, tm, u
 
 if TYPE_CHECKING:
@@ -67,69 +69,25 @@ class TestsFlextInfraAuditorLinks:
             tm.that(len(issues), gte=0)
 
         @staticmethod
-        def test_broken_link_issues_with_valid_links(tmp_path: Path) -> None:
-            """Test docs_broken_link_issues ignores valid links."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("[link](test.md)")
-            scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
-            )
-            issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
-
-        @staticmethod
-        def test_broken_link_issues_with_external_links(tmp_path: Path) -> None:
-            """Test docs_broken_link_issues ignores external links."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("[link](https://example.com)")
-            scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
-            )
-            issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
-
-        @staticmethod
-        def test_broken_link_issues_with_fragments(tmp_path: Path) -> None:
-            """Test docs_broken_link_issues ignores fragment-only links."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("[link](#section)")
-            scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
-            )
-            issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
-
-        @staticmethod
-        def test_broken_link_issues_in_code_blocks(tmp_path: Path) -> None:
-            """Test docs_broken_link_issues ignores links in code blocks."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("```\n[link](nonexistent.md)\n```")
-            scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
-            )
-            issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
-
-        @staticmethod
-        def test_broken_link_issues_with_should_skip_target_true(
+        @pytest.mark.parametrize(
+            "markdown",
+            [
+                pytest.param("[link](test.md)", id="valid-links"),
+                pytest.param("[link](https://example.com)", id="external-links"),
+                pytest.param("[link](#section)", id="fragment-links"),
+                pytest.param("```\n[link](nonexistent.md)\n```", id="code-block-links"),
+                pytest.param("[a, b]", id="should-skip-target-text"),
+                pytest.param("[some text]", id="plain-bracket-text"),
+            ],
+        )
+        def test_broken_link_issues_ignore_non_findings(
             tmp_path: Path,
+            markdown: str,
         ) -> None:
-            """Test broken link issues skip targets when should_skip_target is True."""
+            """Test docs_broken_link_issues ignores well-formed non-finding markdown."""
             docs_dir = tmp_path / "docs"
             docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("[a, b]")
+            (docs_dir / "test.md").write_text(markdown)
             scope = m.Infra.DocScope(
                 name="test",
                 path=tmp_path,
@@ -181,20 +139,6 @@ class TestsFlextInfraAuditorLinks:
             )
 
         @staticmethod
-        def test_broken_link_issues_skips_some_text(tmp_path: Path) -> None:
-            """Test docs_broken_link_issues skips plain text brackets."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text("[some text]")
-            scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
-            )
-            issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues), gte=0)
-
-        @staticmethod
         def test_broken_link_issues_with_space_in_url_skips(
             tmp_path: Path,
         ) -> None:
@@ -212,66 +156,85 @@ class TestsFlextInfraAuditorLinks:
             tm.that(len(issues), eq=0)
 
     class TestAuditorGithubLinks:
-        """Governed GitHub URL audit and rewrite."""
+        """Audit and repair links through real native repository facts."""
+
+        @staticmethod
+        def _owner(root: Path) -> m.Infra.DocsGithubRepoSpec:
+            u.Tests.initialize_git_repo(
+                root,
+                origin_url="https://github.com/fixture-owner/fixture-docs.git",
+            )
+            directory = root / "config"
+            directory.mkdir(exist_ok=True)
+            (directory / "codegen.yaml").write_text(
+                "Infra:\n  codegen:\n    repository:\n      integration:\n"
+                "        provider: github\n        branch: docs/fixture-line\n",
+                encoding="utf-8",
+            )
+            return tm.not_none(
+                u.Infra.docs_github_repo_lookup(
+                    "fixture-owner",
+                    "fixture-docs",
+                    repository_root=root,
+                )
+            )
 
         @staticmethod
         def test_github_stale_organization(tmp_path: Path) -> None:
-            """Placeholder organization URLs are high-severity defects."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text(
-                "[x](https://github.com/organization/flext/blob/main/docs/index.md)\n",
+            """Test github stale organization."""
+            repo = TestsFlextInfraAuditorLinks.TestAuditorGithubLinks._owner(tmp_path)
+            placeholder = next(iter(u.Infra.docs_stale_github_organizations()))
+            docs = tmp_path / "docs"
+            docs.mkdir()
+            (docs / "test.md").write_text(
+                f"[x](https://github.com/{placeholder}/{repo.repository}/blob/{repo.branch}/README.md)\n",
+                encoding="utf-8",
             )
             scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
+                name="fixture", path=tmp_path, report_dir=tmp_path / "reports"
             )
             issues = u.Infra.docs_broken_link_issues(scope)
-            types = {issue.issue_type for issue in issues}
-            tm.that("stale_github_organization" in types, eq=True)
+            tm.that(
+                "stale_github_organization" in {item.issue_type for item in issues},
+                eq=True,
+            )
 
         @staticmethod
         def test_github_wrong_branch(tmp_path: Path) -> None:
-            """Wrong working-line branch is reported for governed repos."""
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "test.md").write_text(
-                "[x](https://github.com/flext-sh/flext/blob/main/README.md)\n",
+            """Test github wrong branch."""
+            repo = TestsFlextInfraAuditorLinks.TestAuditorGithubLinks._owner(tmp_path)
+            docs = tmp_path / "docs"
+            docs.mkdir()
+            (docs / "test.md").write_text(
+                f"[x](https://github.com/{repo.organization}/{repo.repository}/blob/foreign/ref/README.md)\n",
+                encoding="utf-8",
             )
             scope = m.Infra.DocScope(
-                name="test",
-                path=tmp_path,
-                report_dir=tmp_path / "reports",
+                name="fixture", path=tmp_path, report_dir=tmp_path / "reports"
             )
             issues = u.Infra.docs_broken_link_issues(scope)
-            types = {issue.issue_type for issue in issues}
-            tm.that("wrong_github_branch" in types, eq=True)
+            tm.that(
+                "wrong_github_branch" in {item.issue_type for item in issues}, eq=True
+            )
 
         @staticmethod
         def test_github_rewrite_fix(tmp_path: Path) -> None:
-            """Fix rewrites a stale organization on the governed branch only.
-
-            A foreign ref may contain ``/``, so its ref/path boundary is not
-            decidable from the URL: that link is left for the audit to report,
-            never rewritten by guess.
-            """
-            branch = tm.not_none(
-                u.Infra.docs_github_repo_lookup("flext-sh", "flext"),
-            ).branch
-            docs_dir = tmp_path / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            target = docs_dir / "test.md"
-            foreign = "https://github.com/organization/flext/blob/feature/fix/README.md"
+            """Test github rewrite fix."""
+            repo = TestsFlextInfraAuditorLinks.TestAuditorGithubLinks._owner(tmp_path)
+            placeholder = next(iter(u.Infra.docs_stale_github_organizations()))
+            docs = tmp_path / "docs"
+            docs.mkdir()
+            target = docs / "test.md"
+            foreign = f"https://github.com/{placeholder}/{repo.repository}/blob/foreign/ref/README.md"
             target.write_text(
-                f"[x](https://github.com/organization/flext/blob/{branch}/README.md)\n"
+                f"[x](https://github.com/{placeholder}/{repo.repository}/blob/{repo.branch}/README.md#L1)\n"
                 f"[y]({foreign})\n",
+                encoding="utf-8",
             )
             item = u.Infra.docs_process_markdown_file(target, apply=True)
             tm.that(item.links, gte=1)
-            text = target.read_text()
             tm.that(
-                f"https://github.com/flext-sh/flext/blob/{branch}/README.md" in text,
-                eq=True,
+                target.read_text(),
+                has=f"https://github.com/{repo.organization}/{repo.repository}/blob/{repo.branch}/README.md#L1",
             )
-            tm.that(foreign in text, eq=True)
+            tm.that(target.read_text(), has=foreign)

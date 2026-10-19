@@ -69,7 +69,8 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         candidates = tuple(
             path
             for path in sorted(editable)
-            if c.Infra.DIR_TESTS in path.parts
+            if path.is_relative_to(workspace.repository_root)
+            and c.Infra.DIR_TESTS in path.parts
             and (
                 workspace.convention(path).module_policy.is_fixture_module
                 or (path.stem.startswith("_") and path.stem != "__init__")
@@ -185,7 +186,9 @@ class FlextInfraUtilitiesSemanticTestHelpers(
                 continue
             target = cls._test_utilities_owner(workspace, path, sources)
             target_resource = project.get_resource(target.relative_to(root).as_posix())
-            target_module = project.get_pymodule(target_resource)
+            target_module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+                project, target_resource
+            )
             if name in target_module.get_attributes() and not (
                 cls._destination_imports_moving_declaration(
                     project,
@@ -225,7 +228,9 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         ):
             return False
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        expected = project.get_pymodule(source).get_attribute(name)
+        expected = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+            project, source
+        ).get_attribute(name)
         return runtime.same_name(expected, bound) and (
             runtime.imported_module_path(project, bound)
             == Path(source.real_path).resolve()

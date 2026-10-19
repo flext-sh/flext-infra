@@ -58,22 +58,22 @@ class FlextInfraDocAuditorChecksMixin:
             Machine-local paths outside exact historical evidence files.
 
         """
+        policy = u.Infra.docs_audit_policy(scope)
         return u.Infra.docs_machine_path_issues(
             scope,
-            historical_evidence_files=(
-                u.Infra.docs_audit_policy(scope).historical_evidence_files
-            ),
+            historical_evidence_files=policy.historical_evidence_files,
+            container_home_identities=policy.container_home_identities,
         )
 
     def _collect_issues(
         self,
         scope: m.Infra.DocScope,
-        checks: t.StrSequence,
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
-        """Collect issues for the requested check set in canonical order.
+        check: str,
+    ) -> t.Pair[t.StrSequence, t.SequenceOf[m.Infra.AuditIssue]]:
+        """Resolve selection from the handlers and collect issues in canonical order.
 
         Returns:
-            The resulting ``t.SequenceOf[m.Infra.AuditIssue]``.
+            Sorted selected checks and their issues in handler execution order.
 
         """
         handlers: t.VariadicTuple[
@@ -90,7 +90,10 @@ class FlextInfraDocAuditorChecksMixin:
             ("docstrings", u.Infra.docs_public_docstring_issues),
             ("python-codeblocks", u.Infra.docs_python_codeblock_issues),
         )
-        return tuple(
+        checks = {part.strip() for part in check.split(",") if part.strip()}
+        if not checks or "all" in checks:
+            checks = {check_name for check_name, _ in handlers}
+        return sorted(checks), tuple(
             issue
             for check_name, handler in handlers
             if check_name in checks

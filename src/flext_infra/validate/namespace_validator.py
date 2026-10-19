@@ -11,13 +11,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, override
+from typing import override
 
-from flext_infra import m, p, r, s, t, u
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from flext_infra import m, p, r, s, t
+from flext_infra.codemod import FlextInfraModGateEngine
 
 
 class FlextInfraNamespaceValidator(s[bool]):
@@ -40,8 +37,8 @@ class FlextInfraNamespaceValidator(s[bool]):
         """Scan the project with the rule engine and report its findings.
 
         Each violation reads ``[<rule-id>] <file>:<line> — <message>``. The
-        scope is the project's declared ``[tool.flext.namespace].scan_dirs``
-        when it declares one, every scanned file otherwise.
+        scope is the canonical governed source inventory. Configured directory
+        declarations never suppress findings in other active Python sources.
 
         Returns:
             The resulting ``p.Result[m.Infra.ValidationReport]``.
@@ -55,7 +52,6 @@ class FlextInfraNamespaceValidator(s[bool]):
             f"[{entry.rule_id}] {entry.file.as_posix()}:"
             f"{self._line(entry)} — {self._message(entry)}"
             for entry in scanned.value.entries
-            if self._in_declared_scan_scope(project_root / entry.file, project_root)
         )
         passed = not violations
         return r[m.Infra.ValidationReport].ok(
@@ -99,25 +95,11 @@ class FlextInfraNamespaceValidator(s[bool]):
             TypeError: If ast-grep finding without a message.
 
         """
-        message = entry.payload.get("message")
-        if not isinstance(message, str):
+        message = entry.message
+        if message is None:
             msg = f"ast-grep finding without a message: {entry.rule_id}"
             raise TypeError(msg)
         return " ".join(message.split())
-
-    @staticmethod
-    def _in_declared_scan_scope(filepath: Path, project_root: Path) -> bool:
-        """Return whether ``filepath`` lies inside the declared namespace scope.
-
-        Returns:
-            Whether ``filepath`` lies inside the declared namespace scope.
-
-        """
-        declared = u.Infra.namespace_meta(project_root).get("scan_dirs")
-        if not isinstance(declared, list) or not declared:
-            return True
-        scope = frozenset(str(item).strip() for item in declared if str(item).strip())
-        return filepath.relative_to(project_root).parts[0] in scope
 
 
 __all__: t.StrSequence = ("FlextInfraNamespaceValidator",)

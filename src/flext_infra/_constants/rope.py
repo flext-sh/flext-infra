@@ -77,22 +77,28 @@ class FlextInfraConstantsRope:
     ROPE_IMPORTUTILS_MODULE: ClassVar[str] = "rope.refactor.importutils"
     "Public Rope import planning and organization module."
 
-    ROPE_IGNORED_RESOURCES: ClassVar[t.VariadicTuple[str]] = (
-        ".venv",
-        "venv",
-        "node_modules",
-        "*.pyc",
-        "dist/",
-        "build/",
-        ".tox/",
-        ".cache/",
-        "__pycache__",
-        ".mypy_cache",
-        ".pyrefly_cache",
-        ".pytest_cache",
-        ".git",
+    ROPE_PYOBJECTS_MODULE: ClassVar[str] = "rope.base.pyobjects"
+    "Rope module owning the native semantic object classes."
+
+    PYDANTIC_MODEL_IDENTITY: ClassVar[str] = "pydantic.BaseModel"
+    "Qualified identity every relocated payload model must inherit."
+
+    PYDANTIC_SETTINGS_IDENTITY: ClassVar[str] = "pydantic_settings.BaseSettings"
+    "Qualified identity that excludes a settings model from payload relocation."
+
+    TYPING_GUARD_IDENTITY: ClassVar[str] = "typing.TYPE_CHECKING"
+    "Qualified identity of the only guard that keeps a guarded import importable."
+
+    DECLARATION_RELOCATION_IDENTITIES: ClassVar[t.VariadicTuple[str]] = (
+        PYDANTIC_MODEL_IDENTITY,
+        PYDANTIC_SETTINGS_IDENTITY,
+        TYPING_GUARD_IDENTITY,
     )
-    "Resources rope should ignore when scanning the project tree."
+    "Identities declaration relocation resolves; its planning epoch captures them."
+
+    # NOTE: ROPE_IGNORED_RESOURCES was removed: the rope project election
+    # derives ignored resources from the codegen artifact SSOT
+    # (source_scan_ignored) through the typed RopeProjectElection owner.
 
     PROPERTY_DECORATORS: ClassVar[frozenset[str]] = frozenset({
         "property",
@@ -100,6 +106,22 @@ class FlextInfraConstantsRope:
         "computed_field",
     })
     "Decorator names that mark Python descriptors / Pydantic computed fields."
+
+    PYDANTIC_PAYLOAD_DECORATORS: ClassVar[t.VariadicTuple[str]] = (
+        "pydantic.field_validator",
+        "pydantic.model_validator",
+        "pydantic.field_serializer",
+        "pydantic.model_serializer",
+        "pydantic.computed_field",
+    )
+    "Native Pydantic declaration decorators, resolved by Rope identity."
+
+    PAYLOAD_DESCRIPTOR_DECORATORS: ClassVar[t.VariadicTuple[str]] = (
+        "builtins.classmethod",
+        "builtins.staticmethod",
+        "builtins.property",
+    )
+    "Native descriptors permitted around a Pydantic declaration decorator."
 
 
 __all__: list[str] = ["FlextInfraConstantsRope"]

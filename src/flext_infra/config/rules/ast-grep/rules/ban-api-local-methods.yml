@@ -1,0 +1,17 @@
+# Ban local method definitions in api.py — the facade must be pure MRO.
+# All handlers belong in services/*.py and are composed via cooperative MRO.
+id: ban-api-local-methods
+language: Python
+severity: error
+files:
+  - "**/src/**/api.py"
+rule:
+  kind: function_definition
+  inside:
+    kind: class_definition
+    stopBy: end
+# Detection only: handlers must be relocated by the semantic make mod planner.
+message: |
+  api.py must be a pure MRO facade — no local method definitions allowed.
+  Move handlers to services/*.py and compose via MRO.
+  See: ADR-014, flext-family-shape (api.py canonical form)

@@ -6,13 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests import c, m, tm, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class TestsFlextInfraDocsGeneratorPlan:
@@ -141,7 +138,7 @@ class TestsFlextInfraDocsGeneratorPlan:
             if plan.desired_content is not None
             and plan.path.parent not in directories_before
         }
-        tm.that(planned_new_parents.difference(required.value), eq=set())
+        tm.that(planned_new_parents.difference(required.value), empty=True)
 
     def test_plan_files_returns_exact_read_only_docs_plans(
         self,

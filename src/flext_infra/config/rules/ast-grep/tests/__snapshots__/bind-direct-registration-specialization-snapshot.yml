@@ -1,0 +1,28 @@
+id: bind-direct-registration-specialization
+snapshots:
+  ? |
+    from flext_core._typings import FlextTypesServices
+    value: FlextTypesServices.GuardInput
+  : fixed: |
+      from flext_core import p
+      from flext_core._typings import FlextTypesServices
+      value: FlextTypesServices.GuardInput
+    labels:
+    - source: from flext_core._typings import FlextTypesServices
+      style: primary
+      start: 0
+      end: 50
+    - source: FlextTypesServices.GuardInput
+      style: secondary
+      start: 58
+      end: 87
+    - source: |
+        from flext_core._typings import FlextTypesServices
+        value: FlextTypesServices.GuardInput
+      style: secondary
+      start: 0
+      end: 88
+    - source: FlextTypesServices
+      style: secondary
+      start: 32
+      end: 50

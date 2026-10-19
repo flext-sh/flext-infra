@@ -55,8 +55,11 @@ class TestsFlextInfraProjectGitignorePatterns:
 
         text = tm.ok(rendered)
         section = text.index(c.Infra.GITIGNORE_PROJECT_SECTION_NAME)
-        assert text.index(".dmypy/", section) < text.index("mcp/generated/*", section)
-        assert "!mcp/generated/.gitkeep" in text[section:]
+        tm.that(
+            text.index(".dmypy/", section) < text.index("mcp/generated/*", section),
+            truth=True,
+        )
+        tm.that("!mcp/generated/.gitkeep" in text[section:], truth=True)
 
     def test_patterns_compose_across_documents_without_duplicates(
         self,
@@ -78,7 +81,7 @@ class TestsFlextInfraProjectGitignorePatterns:
         resolved = u.Infra.load_project_managed_artifacts(root)
 
         patterns = tm.ok(resolved).artifacts.Gitignore.patterns
-        assert sorted(patterns) == [".dmypy/", ".serena/", "logs/"]
+        tm.that(sorted(patterns) == [".dmypy/", ".serena/", "logs/"], truth=True)
 
     def test_absent_declaration_adds_no_section(self, tmp_path: Path) -> None:
         """Test absent declaration adds no section."""
@@ -94,7 +97,9 @@ class TestsFlextInfraProjectGitignorePatterns:
             project_dir=root,
         )
 
-        assert c.Infra.GITIGNORE_PROJECT_SECTION_NAME not in tm.ok(rendered)
+        tm.that(
+            c.Infra.GITIGNORE_PROJECT_SECTION_NAME not in tm.ok(rendered), truth=True
+        )
 
     def test_empty_pattern_is_rejected(self, tmp_path: Path) -> None:
         """Test empty pattern is rejected."""
@@ -161,9 +166,9 @@ class TestsFlextInfraProjectGitignorePatterns:
                 template,
             ),
         )
-        assert planned.rendered == first
-        assert first.endswith("\n\n" + external)
-        assert "old policy" not in first
+        tm.that(planned.rendered == first, truth=True)
+        tm.that(external in first, truth=True)
+        tm.that("old policy" not in first, truth=True)
         (root / ".gitignore").write_bytes(first.encode())
         second = tm.ok(
             FlextInfraCodegenConform.render_project_gitignore(
@@ -173,7 +178,55 @@ class TestsFlextInfraProjectGitignorePatterns:
                 project_dir=root,
             ),
         )
-        assert second.encode() == first.encode()
+        tm.that(second.encode() == first.encode(), truth=True)
+
+    def test_runtime_policy_survives_preserved_negation(self, tmp_path: Path) -> None:
+        """Git enforces local-artifact policy after retaining an external whitelist."""
+        root = self._external_project(tmp_path / "project")
+        tm.ok(u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=root)))
+        relative = Path("runtime-binding.json")
+        artifact = m.Infra.ManagedFileSpec(
+            path=relative,
+            owner=c.Infra.CODEGEN_OWNER_VSCODE,
+            policy="merge",
+            tracking="runtime-local",
+        )
+        codegen = config.Infra.codegen.model_copy(
+            update={"managed_files": (artifact,)},
+        )
+        external = (
+            "# BEGIN external projection\n"
+            f"!/{relative.as_posix()}\n"
+            "# END external projection\n"
+        )
+        ignore = root / c.Infra.GITIGNORE
+        ignore.write_text(external, encoding=c.DEFAULT_ENCODING)
+        rendered = tm.ok(
+            FlextInfraCodegenConform.render_project_gitignore(
+                codegen,
+                profile=c.Infra.MakeProfile.STANDALONE,
+                project_name=root.name,
+                project_dir=root,
+            ),
+        )
+        tm.that(external in rendered, truth=True)
+        ignore.write_text(rendered, encoding=c.DEFAULT_ENCODING)
+        observed = tm.ok(
+            u.Cli.run(
+                (c.Infra.GIT, "check-ignore", "--no-index", relative.as_posix()),
+                cwd=root,
+            ),
+        )
+        tm.that(observed.stdout.strip(), eq=relative.as_posix())
+        repeated = tm.ok(
+            FlextInfraCodegenConform.render_project_gitignore(
+                codegen,
+                profile=c.Infra.MakeProfile.STANDALONE,
+                project_name=root.name,
+                project_dir=root,
+            ),
+        )
+        tm.that(repeated, eq=rendered)
 
     @pytest.mark.parametrize(
         "current",
@@ -204,8 +257,10 @@ class TestsFlextInfraProjectGitignorePatterns:
             project_dir=root,
         )
 
-        assert result.failure
-        assert (root / ".gitignore").read_text(encoding="utf-8") == current
+        tm.that(result.failure, truth=True)
+        tm.that(
+            (root / ".gitignore").read_text(encoding="utf-8") == current, truth=True
+        )
 
     def test_undeclared_external_block_is_not_retained(self, tmp_path: Path) -> None:
         """Only the project's typed configuration delegates block ownership."""
@@ -227,7 +282,7 @@ class TestsFlextInfraProjectGitignorePatterns:
             ),
         )
 
-        assert "# BEGIN external projection" not in rendered
+        tm.that("# BEGIN external projection" not in rendered, truth=True)
 
     def test_overlapping_declared_blocks_fail(self, tmp_path: Path) -> None:
         """Nested ownership regions are ambiguous and cannot be composed."""
@@ -253,7 +308,7 @@ class TestsFlextInfraProjectGitignorePatterns:
             project_dir=root,
         )
 
-        assert result.failure
+        tm.that(result.failure, truth=True)
 
     def test_distinct_prefix_markers_preserve_both_blocks(
         self,
@@ -287,8 +342,8 @@ class TestsFlextInfraProjectGitignorePatterns:
                 project_dir=root,
             ),
         )
-        assert first.count("# BEGIN external projection\n") == 1
-        assert first.count("# BEGIN external projection extended\n") == 1
+        tm.that(first.count("# BEGIN external projection\n") == 1, truth=True)
+        tm.that(first.count("# BEGIN external projection extended\n") == 1, truth=True)
         (root / ".gitignore").write_text(first, encoding="utf-8")
         second = tm.ok(
             FlextInfraCodegenConform.render_project_gitignore(
@@ -298,7 +353,7 @@ class TestsFlextInfraProjectGitignorePatterns:
                 project_dir=root,
             ),
         )
-        assert second == first
+        tm.that(second == first, truth=True)
 
     def test_comment_mentioning_marker_is_not_a_delimiter(
         self,
@@ -321,9 +376,12 @@ class TestsFlextInfraProjectGitignorePatterns:
             ),
         )
 
-        assert "# This comment quotes" not in rendered
-        assert rendered.endswith(
-            "# BEGIN external projection\n/owned\n# END external projection\n",
+        tm.that("# This comment quotes" not in rendered, truth=True)
+        tm.that(
+            rendered.endswith(
+                "# BEGIN external projection\n/owned\n# END external projection\n"
+            ),
+            truth=True,
         )
 
     def test_duplicate_block_declaration_fails(self, tmp_path: Path) -> None:
@@ -344,4 +402,4 @@ class TestsFlextInfraProjectGitignorePatterns:
             },
         )
 
-        assert u.Infra.load_project_managed_artifacts(root).failure
+        tm.that(u.Infra.load_project_managed_artifacts(root).failure, truth=True)

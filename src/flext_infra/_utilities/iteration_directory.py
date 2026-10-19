@@ -20,6 +20,27 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesIterationDirectory(FlextInfraUtilitiesGitScopeMixin):
     """Static helpers for iterating Python files within a single directory tree."""
 
+    @staticmethod
+    def source_scan_ignored_path(root: Path, file_path: Path) -> bool:
+        """Return whether ``file_path`` lies in a source-scan-ignored tree.
+
+        The names are the codegen artifact SSOT (``source_scan_ignored``):
+        environments such as the checkout-local ``.venv`` and ``site-packages``,
+        tool caches, generated sources and archives such as ``legado``. Only the
+        parts below ``root`` are judged, so an ancestor directory of the
+        checkout that happens to carry one of those names never hides it.
+        Paths are compared as given: callers pass a ``file_path`` under
+        ``root`` in the same (resolved or unresolved) form; any other path is
+        a caller defect that ``relative_to`` reports.
+
+        Returns:
+            Whether ``file_path`` lies in a source-scan-ignored tree.
+
+        """
+        return not frozenset(config.Infra.codegen.source_scan_ignored).isdisjoint(
+            file_path.relative_to(root).parts,
+        )
+
     @classmethod
     def iter_directory_python_files(cls, directory: Path) -> t.SequenceOf[Path]:
         """Iterate production Python files in one configured source tree.
@@ -55,9 +76,7 @@ class FlextInfraUtilitiesIterationDirectory(FlextInfraUtilitiesGitScopeMixin):
             for file_path in files
             if file_path.is_file()
             and file_path.suffixes == [c.Infra.EXT_PYTHON]
-            and not frozenset(config.Infra.codegen.source_scan_ignored).intersection(
-                file_path.relative_to(resolved_directory).parts,
-            )
+            and not cls.source_scan_ignored_path(resolved_directory, file_path)
         ]
 
 

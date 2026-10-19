@@ -1,8 +1,9 @@
 {#- Native mise bootstrap (F0): mise self-manages through the [tools] entry the
-   committed mise.lock pins. One host mise (the mise.run installer or the CI
-   action) runs `mise install`; the pinned github:jdx/mise release is
-   provisioned from that lock, and every later `mise` resolved through the
-   mise-managed shims runs exactly that release. The version guard replaces
+   committed mise.lock pins. The pinned github:jdx/mise release is
+   provisioned from that lock without requiring a host Mise, and every later
+   `mise` resolved through the mise-managed shims runs exactly that release.
+   A host Mise is required only when upg must establish a missing self-pin.
+   The version guard replaces
    the retired mise.version pin file: the running mise must match the lock
    pin, or the environment is stale and only `make setup` repairs it.
    `mise install` always receives the explicit declared tool list
@@ -33,81 +34,178 @@ awk -v section="[tools.\"{{ mise_selector }}\".\"platforms.$${mise_platform}\"]"
 mise -C "{{ project_root }}" install --locked --yes{% for tool in install_tools %} "{{ tool }}"{% endfor %}
 {%- endmacro %}
 
-{% macro tool_bootstrap_recipe(target, project_root, toolchain, install_tools, lifecycle, make) -%}
+{% macro mise_locked_qualification(project_root, toolchain) -%}
+{% set mise_selector = toolchain.mise_selector -%}
+	mise_bootstrap_root="$${XDG_CACHE_HOME:-$${HOME}/.cache}/flext/infra/mise-bootstrap"; \
+	mise_probe() { \
+		if mise_version_output="$$("$$1" --version)"; then :; else return $$?; fi; \
+		mise_receipt="$${mise_version_output%% *}"; \
+	}; \
+	mise_qualify() { \
+	mise_pin=; \
+	if [ -f "{{ project_root }}/mise.lock" ]; then \
+		mise_pin="$$( {{ mise_lock_pin_reader(project_root, mise_selector) }} )"; \
+	fi; \
+	if [ -z "$${mise_pin}" ]; then \
+		bootstrap_stage=lock-pin; \
+		printf 'ERROR: mise.lock pins no {{ mise_selector }} release\n' >&2; \
+		exit 2; \
+	fi; \
+	bootstrap_stage=platform; \
+	case "$$(uname -s)/$$(uname -m)" in \
+{% for host, platform in toolchain.mise_platforms_by_host.items() %}		({{ host }}) mise_platform={{ platform }} ;; \
+{% endfor %}		(*) printf 'ERROR: no {{ mise_selector }} lock platform maps to %s/%s; install mise %s (https://mise.run) and retry\n' "$$(uname -s)" "$$(uname -m)" "$${mise_pin}" >&2; exit 2 ;; \
+	esac; \
+	bootstrap_stage=release-asset; \
+	mise_key=url; \
+	mise_url="$$( {{ mise_lock_platform_reader(project_root, mise_selector) }} )"; \
+	case "$${mise_url}" in \
+		(https://github.com/*/releases/download/*) ;; \
+		(*) printf 'ERROR: mise.lock has no release URL for {{ mise_selector }} on %s\n' "$${mise_platform}" >&2; exit 2 ;; \
+	esac; \
+	mise_key=checksum; \
+	mise_checksum="$$( {{ mise_lock_platform_reader(project_root, mise_selector) }} )"; \
+	case "$${mise_checksum}" in \
+		(sha256:*) mise_sha256="$${mise_checksum#sha256:}" ;; \
+		(*) printf 'ERROR: mise.lock has no sha256 for {{ mise_selector }} on %s\n' "$${mise_platform}" >&2; exit 2 ;; \
+	esac; \
+	mise_bootstrap_bin="$${mise_bootstrap_root}/$${mise_pin}/mise"; \
+	mise_recover=true; \
+	if [ -x "$${mise_bootstrap_bin}" ]; then \
+		bootstrap_stage=release-verification; \
+		mise_probe "$${mise_bootstrap_bin}"; \
+		if [ "$${mise_receipt}" = "$${mise_pin}" ]; then mise_recover=false; fi; \
+	fi; \
+	if [ "$${mise_recover}" = true ]; then \
+		printf 'setup: recovering {{ mise_selector }} %s from the mise.lock release asset for %s\n' "$${mise_pin}" "$${mise_platform}"; \
+		mkdir -p "$$(dirname "$${mise_bootstrap_bin}")"; \
+		mise_stage="$$(mktemp -d "$$(dirname "$${mise_bootstrap_bin}")/.stage.XXXXXXXX")"; \
+		curl --proto '=https' --tlsv1.2 -fsSL -o "$${mise_stage}/archive" "$${mise_url}"; \
+		if command -v sha256sum >/dev/null 2>&1; then \
+			echo "$${mise_sha256}  $${mise_stage}/archive" | sha256sum -c -; \
+		else \
+			echo "$${mise_sha256}  $${mise_stage}/archive" | shasum -a 256 -c -; \
+		fi; \
+		tar -xf "$${mise_stage}/archive" -C "$${mise_stage}"; \
+		bootstrap_stage=release-verification; \
+		chmod +x "$${mise_stage}/mise/bin/mise"; \
+		mise_probe "$${mise_stage}/mise/bin/mise"; \
+		if [ "$${mise_receipt}" != "$${mise_pin}" ]; then \
+			printf 'ERROR: recovered Mise %s differs from the mise.lock pin %s\n' "$${mise_receipt}" "$${mise_pin}" >&2; \
+			exit 2; \
+		fi; \
+		mv "$${mise_stage}/mise/bin/mise" "$${mise_bootstrap_bin}"; \
+		rm -rf "$${mise_stage}"; \
+		mise_stage=; \
+	fi; \
+	export MISE_SHIMS_DIR="$${mise_bootstrap_root}/$${mise_receipt}/shims"; \
+	};
+{%- endmacro %}
+
+{% macro mise_staging_cleanup() -%}
+		if [ -n "$${mise_stage}" ]; then \
+			if rm -rf "$${mise_stage}"; then :; else \
+				mise_cleanup_status=$$?; \
+				printf "ERROR: bootstrap staging cleanup failed (exit %s); original exit %s\n" "$${mise_cleanup_status}" "$${bootstrap_status}" >&2; \
+				if [ "$${bootstrap_status}" -eq 0 ]; then bootstrap_status=$${mise_cleanup_status}; fi; \
+			fi; \
+		fi;
+{%- endmacro %}
+
+{% macro mise_network_admission() -%}
+	bootstrap_stage=network-auth; \
+	$(GITHUB_AUTH_DIAGNOSTICS); \
+	if [ "$(GITHUB_AUTH_SOURCE)" = gh ]; then \
+		if [ "$(GITHUB_AUTH_STATUS)" != 0 ]; then \
+			printf 'ERROR: selected gh auth token failed (exit %s); refusing anonymous provisioning\n' '$(GITHUB_AUTH_STATUS)' >&2; \
+			exit "$(GITHUB_AUTH_STATUS)"; \
+		fi; \
+		if [ "$(GITHUB_AUTH_PRESENT)" != yes ]; then \
+			printf 'ERROR: selected gh auth token returned no credential; refusing anonymous provisioning\n' >&2; \
+			exit 2; \
+		fi; \
+	fi;
+{%- endmacro %}
+
+{% macro tool_bootstrap_recipe(target, project_root, toolchain, install_tools, lifecycle, make, report_literal, report_relative_path, network_auth) -%}
 {% set mise_selector = toolchain.mise_selector -%}
 .PHONY: {{ target }}
 
 {{ target }}:
 	# The lifecycle invokes recursive make through mise, so preserve jobserver FDs.
 	+@set -eu; \
-	if ! command -v mise >/dev/null 2>&1; then \
-		printf 'ERROR: mise is not installed; install it (https://mise.run) and retry\n' >&2; \
-		exit 2; \
-	fi; \
+	bootstrap_stage=host-mise; bootstrap_completed=false; bootstrap_sha=null; bootstrap_git_status=null; mise_stage=; \
+	bootstrap_report="{{ project_root }}/{{ report_relative_path }}"; \
+	bootstrap_publish_report() { \
+		if mkdir -p "$$(dirname "$${bootstrap_report}")"; then :; else return $$?; fi; \
+		if printf '%s\n' {{ report_literal }} | sed \
+			-e "s/@@SHA@@/$${bootstrap_sha}/" \
+			-e "s/@@GIT_EXIT@@/$${bootstrap_git_status}/" \
+			-e "s/@@EXIT@@/$${bootstrap_status}/" \
+			-e "s/@@STAGE@@/$${bootstrap_stage}/" \
+			-e "s/@@COMPLETE@@/$${bootstrap_completed}/" > "$${bootstrap_report}.pending"; then :; else return $$?; fi; \
+		mv "$${bootstrap_report}.pending" "$${bootstrap_report}"; \
+	}; \
+	trap 'bootstrap_status=$$?; trap - EXIT; \
+		{{ mise_staging_cleanup() }} \
+		if bootstrap_publish_report; then :; else \
+			bootstrap_report_status=$$?; \
+			printf "ERROR: bootstrap evidence publication failed (exit %s); original exit %s\n" "$${bootstrap_report_status}" "$${bootstrap_status}" >&2; \
+			if [ "$${bootstrap_status}" -eq 0 ]; then bootstrap_status=$${bootstrap_report_status}; fi; \
+		fi; \
+		exit "$${bootstrap_status}"' EXIT; \
+	if bootstrap_candidate="$$(git -C "{{ project_root }}" rev-parse --verify HEAD)"; then \
+		bootstrap_git_status=0; \
+		case "$${bootstrap_candidate}" in \
+			*[!0-9a-f]*) printf 'ERROR: bootstrap candidate is not a Git object ID\n' >&2; exit 2 ;; \
+		esac; \
+		case "{% raw %}$${#bootstrap_candidate}{% endraw %}" in \
+			40|64) bootstrap_sha="\"$${bootstrap_candidate}\"" ;; \
+			*) printf 'ERROR: bootstrap candidate has an invalid object ID length\n' >&2; exit 2 ;; \
+		esac; \
+	else bootstrap_git_status=$$?; fi; \
+{% if network_auth %}	{{ mise_network_admission() }} \
+{% endif %}	bootstrap_stage=lock-pin; \
 	mise_pin=; mise_resolved=0; \
+	bootstrap_stage=lock-pin; \
 	if [ -f "{{ project_root }}/mise.lock" ]; then \
 		mise_pin="$$( {{ mise_lock_pin_reader(project_root, mise_selector) }} )"; \
 	fi; \
-	if [ -z "$$mise_pin" ] && [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
+	if [ -z "$${mise_pin}" ] && [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ]; then \
+		bootstrap_stage=host-mise; \
+		if ! command -v mise >/dev/null 2>&1; then \
+			printf 'ERROR: resolving a missing Mise self-pin requires an available native Mise\n' >&2; \
+			exit 2; \
+		fi; \
+		bootstrap_stage=lock-pin; \
 		mise -C "{{ project_root }}" lock --upgrade --bump; \
 		mise_resolved=1; \
 		mise_pin="$$( {{ mise_lock_pin_reader(project_root, mise_selector) }} )"; \
 	fi; \
-	if [ -z "$$mise_pin" ]; then \
-		printf 'ERROR: mise.lock pins no {{ mise_selector }} release; run make upg\n' >&2; \
-		exit 2; \
-	fi; \
-	case "$$(uname -s)/$$(uname -m)" in \
-{% for host, platform in toolchain.mise_platforms_by_host.items() %}		{{ host }}) mise_platform={{ platform }} ;; \
-{% endfor %}		*) printf 'ERROR: no {{ mise_selector }} lock platform maps to %s/%s; install mise %s (https://mise.run) and retry\n' "$$(uname -s)" "$$(uname -m)" "$$mise_pin" >&2; exit 2 ;; \
-	esac; \
-	mise_key=url; \
-	mise_url="$$( {{ mise_lock_platform_reader(project_root, mise_selector) }} )"; \
-	case "$$mise_url" in \
-		https://github.com/*/releases/download/*) ;; \
-		*) printf 'ERROR: mise.lock has no release URL for {{ mise_selector }} on %s\n' "$$mise_platform" >&2; exit 2 ;; \
-	esac; \
-	mise_key=checksum; \
-	mise_checksum="$$( {{ mise_lock_platform_reader(project_root, mise_selector) }} )"; \
-	case "$$mise_checksum" in \
-		sha256:*) mise_sha256="$${mise_checksum#sha256:}" ;; \
-		*) printf 'ERROR: mise.lock has no sha256 for {{ mise_selector }} on %s\n' "$$mise_platform" >&2; exit 2 ;; \
-	esac; \
-	mise_bootstrap_root="$${XDG_CACHE_HOME:-$$HOME/.cache}/flext/infra/mise-bootstrap"; \
-	mise_bootstrap_bin="$$mise_bootstrap_root/$$mise_pin/mise"; \
-	if [ ! -x "$$mise_bootstrap_bin" ]; then \
-		printf 'setup: recovering {{ mise_selector }} %s from the mise.lock release asset for %s\n' "$$mise_pin" "$$mise_platform"; \
-		mise_stage="$$mise_bootstrap_root/$$mise_pin/stage"; \
-		rm -rf "$$mise_stage"; \
-		mkdir -p "$$mise_stage" "$$(dirname "$$mise_bootstrap_bin")"; \
-		curl --proto '=https' --tlsv1.2 -fsSL -o "$$mise_stage/archive" "$$mise_url"; \
-		if command -v sha256sum >/dev/null 2>&1; then \
-			echo "$$mise_sha256  $$mise_stage/archive" | sha256sum -c -; \
-		else \
-			echo "$$mise_sha256  $$mise_stage/archive" | shasum -a 256 -c -; \
-		fi; \
-		tar -xf "$$mise_stage/archive" -C "$$mise_stage"; \
-		mv "$$mise_stage/mise/bin/mise" "$$mise_bootstrap_bin"; \
-		chmod +x "$$mise_bootstrap_bin"; \
-		rm -rf "$$mise_stage"; \
-	fi; \
-	mise_receipt="$$("$$mise_bootstrap_bin" --version | cut -d ' ' -f1)"; \
-	if [ "$$mise_receipt" != "$$mise_pin" ]; then \
-		printf 'ERROR: recovered Mise %s differs from the mise.lock pin %s; delete %s and run make setup\n' "$$mise_receipt" "$$mise_pin" "$$mise_bootstrap_bin" >&2; \
-		exit 2; \
-	fi; \
+	{{ mise_locked_qualification(project_root, toolchain) }} \
+	mise_qualify; \
 {#- Project setup never writes the host shim farm: a shim is bound to the mise
     that wrote it, so every install and reshim the bootstrap and its lifecycle
     run writes a farm scoped to the running release instead (measured: a
     cached mise rebound every ~/.local/share/mise/shims entry to itself).
     Tool installs stay in the shared data directory. #}
-	export MISE_SHIMS_DIR="$$mise_bootstrap_root/$$mise_receipt/shims"; \
-	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ] && [ "$$mise_resolved" = "0" ]; then \
-		"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" lock --upgrade --bump; \
+	bootstrap_stage=tool-lock; \
+	if [ "$(TOOL_BOOTSTRAP_RESOLVE)" = "1" ] && [ "$${mise_resolved}" = "0" ]; then \
+		"$${mise_bootstrap_bin}" -C "$(PROJECT_ROOT)" lock --upgrade --bump; \
+		mise_qualify; \
 	fi; \
-	"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" install --locked --yes{% for tool in install_tools %} "{{ tool }}"{% endfor %}; \
-	"$$mise_bootstrap_bin" reshim; \
-	printf 'setup: mise %s provisioned from mise.lock\n' "$$mise_receipt"; \
+	bootstrap_stage=tool-install; \
+	"$${mise_bootstrap_bin}" -C "$(PROJECT_ROOT)" install --locked --yes{% for tool in install_tools %} "{{ tool }}"{% endfor %}; \
+	bootstrap_stage=shims; \
+	"$${mise_bootstrap_bin}" reshim; \
+{#- A hosted runner gives every later step only the PATH entries recorded in
+    GITHUB_PATH. The release-scoped farm is the only farm setup writes, so the
+    scanner gates of later verbs (jscpd, qlty) resolve through it there; the
+    host farm the runner image lists stays without project tools. #}
+	if [ -n "$${GITHUB_PATH:-}" ]; then printf '%s\n' "$${MISE_SHIMS_DIR}" >> "$${GITHUB_PATH}"; fi; \
+	printf 'setup: mise %s provisioning complete\n' "$${mise_receipt}"; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
-	"$$mise_bootstrap_bin" -C "$(PROJECT_ROOT)" exec -- env "PATH=$$(dirname "$$mise_bootstrap_bin"):$${MISE_SHIMS_DIR}:$${PATH}" "{{ make.ci.variable }}=$({{ make.ci.variable }})" {{ lifecycle }}
+	bootstrap_stage=lifecycle; \
+	"$${mise_bootstrap_bin}" -C "$(PROJECT_ROOT)" exec -- env "PATH=$$(dirname "$${mise_bootstrap_bin}"):$${MISE_SHIMS_DIR}:$${PATH}" "{{ make.ci.variable }}=$({{ make.ci.variable }})" {{ lifecycle }}; \
+	bootstrap_stage=complete; bootstrap_completed=true
 {%- endmacro %}

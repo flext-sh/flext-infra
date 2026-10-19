@@ -1,0 +1,29 @@
+# Module-header transformations are composed once on u.Infra.
+#
+# The rewrite emits `u.Infra.$METHOD(...)`, so it is only safe when the module
+# binds the utilities facade `u` (the shared u-imported-from-flext util).
+# Modules without the binding are flagged by the detection-only companion
+# rewire-transformer-header-private-call-missing-u-import — a blind textual fix
+# would emit an undefined name (Ruff F821). Native Rope contract rewrites,
+# unlike this syntactic rule, complete imports with lexical identity proof.
+id: rewire-transformer-header-private-call
+language: Python
+severity: error
+files:
+  - "flext-infra/src/**/*.py"
+ignores:
+  - "**/utilities.py"
+rule:
+  all:
+    - pattern: FlextInfraUtilitiesTransformerHeader.$METHOD($$$ARGS)
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          stopBy: end
+          matches: u-imported-from-flext
+constraints:
+  METHOD:
+    regex: "^(?:alias_locally_bound|alias_used|ensure_alias_import|ensure_future_annotations|has_alias_import)$"
+fix: u.Infra.$METHOD($$$ARGS)
+message: Consume module-header transformations through u.Infra.

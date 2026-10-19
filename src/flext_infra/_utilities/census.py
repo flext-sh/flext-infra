@@ -15,7 +15,7 @@ from typing import ClassVar
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesProtectedEdit,
     FlextInfraUtilitiesRopeAnalysis,
@@ -773,8 +773,8 @@ class FlextInfraUtilitiesRefactorCensus:
         workspace: Path,
         candidate: m.Infra.RemovalCandidate,
         *,
-        gates: t.StrSequence,
-        source_cache: MutableMapping[Path, str] | None = None,
+        options: m.Infra.RemovalPreviewOptions,
+        source_preview: p.Infra.SourcePreview,
     ) -> p.Result[bool]:
         """Preview one simple removal candidate, requiring clean gates.
 
@@ -790,19 +790,19 @@ class FlextInfraUtilitiesRefactorCensus:
         planned = FlextInfraUtilitiesRefactorCensus._planned_simple_removal(
             rope,
             candidate,
-            source_cache=source_cache,
+            source_cache=options.source_cache,
         )
         if planned.failure:
             if planned.error_code == c.Infra.CENSUS_UNSUPPORTED_SIMPLE_REMOVAL_CODE:
                 return r[bool].ok(value=False)
             return r[bool].from_failure(planned)
-        updates, post_write = planned.unwrap()
+        updates = planned.unwrap()[0]
         try:
             applied, reports = FlextInfraUtilitiesProtectedEdit.preview_source_writes(
                 updates,
                 workspace=workspace,
-                gates=gates,
-                post_write=post_write,
+                source_preview=source_preview,
+                gates=options.gates,
             )
         except RuntimeError as exc:
             FlextInfraUtilitiesRefactorCensus._census_log.warning(
@@ -937,7 +937,9 @@ class FlextInfraUtilitiesRefactorCensus:
         shutil.copytree(
             resolved_source,
             resolved_destination,
-            ignore=shutil.ignore_patterns(*c.Infra.VALIDATION_CLONE_EXCLUDES),
+            ignore=shutil.ignore_patterns(
+                *config.Infra.codegen.validation_clone_excluded_dirs,
+            ),
             symlinks=False,
         )
         return resolved_destination

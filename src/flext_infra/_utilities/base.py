@@ -13,7 +13,7 @@ from pathlib import Path
 
 from flext_cli import u as cli_u
 
-from flext_infra import c, t
+from flext_infra import c, m, t
 from flext_infra._settings import FlextInfraSettings
 
 if os.name != "nt":
@@ -59,7 +59,9 @@ class FlextInfraUtilitiesBase:
         return default.strip() if value is None else value.strip()
 
     @staticmethod
-    def resolve_repository_root_or_cwd(repository_root: Path | None = None) -> Path:
+    def resolve_repository_root_or_cwd(
+        repository_root: t.Infra.Path | None = None,
+    ) -> t.Infra.Path:
         """Resolve the root a verb operates on from its invocation point.
 
         Scope follows where the verb is invoked: run it at the workspace and it
@@ -77,10 +79,9 @@ class FlextInfraUtilitiesBase:
             The resulting ``Path``.
 
         """
-        target = repository_root or Path.cwd()
-        if target.is_file():
-            target = target.parent
-        return target.resolve()
+        return m.Infra.CommandContext.model_validate(
+            {"repository_root": repository_root} if repository_root is not None else {},
+        ).repository_root
 
     @staticmethod
     def real_account_home() -> Path:
@@ -100,17 +101,14 @@ class FlextInfraUtilitiesBase:
         )
 
     @staticmethod
-    def normalize_optional_path(value: str | Path | None) -> Path | None:
+    def normalize_optional_path(value: t.Cli.TextPath | None) -> t.Infra.Path | None:
         """Resolve one optional path-like value when present.
 
         Returns:
             The resulting ``Path | None``.
 
         """
-        if value is None:
-            return None
-        path = value if isinstance(value, Path) else Path(value)
-        return path.resolve()
+        return m.Infra.CommandContext.model_validate({"report_path": value}).report_path
 
     @staticmethod
     def normalize_cli_values(*values: str | None) -> t.StrSequence:
@@ -120,13 +118,10 @@ class FlextInfraUtilitiesBase:
             The resulting ``t.StrSequence``.
 
         """
-        return tuple(
-            item.strip()
-            for value in values
-            for group in (value or "").split(",")
-            for item in group.split()
-            if item.strip()
-        )
+        normalized = m.Infra.CommandContext.model_validate(
+            {"project_filter": tuple(value for value in values if value is not None)},
+        ).project_filter
+        return tuple(normalized.split(",")) if normalized else ()
 
     @staticmethod
     def normalize_sequence_values(values: t.StrSequence | None) -> t.StrSequence | None:

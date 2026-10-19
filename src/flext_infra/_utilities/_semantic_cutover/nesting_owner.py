@@ -8,31 +8,249 @@ from __future__ import annotations
 
 import ast
 import typing
+from fnmatch import fnmatch
+from shlex import split
 from typing import TYPE_CHECKING
 
+import pytest
+from _pytest.config.findpaths import determine_setup
 from flext_cli import u
 
-from flext_infra import r, t
+from flext_infra import p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, p
+    from flext_infra import m
 
 
 class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     """Derive one module owner and the loose members it absorbs.
 
-    A family module holds exactly one class, its facade-family owner. The
-    owner's name is never listed: it is the declared owner when the module
-    declares one, otherwise the project class stem (the source of
-    ``require-project-class-stem``) followed by the family suffix and, for a
-    module of a private family package, the module stem. Everything else at
-    module level that ``ban-loose-module-object`` reports — a function other
-    than ``main``, a value binding that is not a name alias or a typing
-    declaration, any further class — is a member of that owner.
+    Family owners follow their declared facade contract. Ordinary modules elect
+    their existing unique owner before deriving a new name from the convention.
+    Functions (including entry points), values and helper classes become members;
+    definition-time dependencies remain subject to the same safety checks.
     """
+
+    @staticmethod
+    def _pytest_collection_patterns(
+        root: Path,
+    ) -> t.Triple[t.StrTuple, t.StrTuple, t.StrTuple]:
+        """Read native configuration and defaults without running consumer plugins.
+
+        Returns:
+            A triple of ``(python_files, python_classes, python_functions)``
+            collection pattern tuples.
+
+        """
+        _root, _path, configured, _ignored = determine_setup(
+            inifile=None,
+            override_ini=[],
+            args=[str(root)],
+            rootdir_cmd_arg=None,
+            invocation_dir=root,
+        )
+        manager = pytest.PytestPluginManager()
+        manager.import_plugin("python")
+        defaults = pytest.Config(manager)
+
+        def patterns(key: str) -> t.StrTuple:
+            configured_value = configured.get(key)
+            value = (
+                configured_value.value
+                if configured_value is not None
+                else defaults.getini(key)
+            )
+            if (
+                isinstance(value, str)
+                and configured_value is not None
+                and configured_value.mode == "ini"
+            ):
+                return tuple(split(value))
+            if isinstance(value, list) and all(isinstance(item, str) for item in value):
+                return tuple(item for item in value if isinstance(item, str))
+            msg = f"pytest collection setting {key} must contain strings"
+            raise TypeError(msg)
+
+        return (
+            patterns("python_files"),
+            patterns("python_classes"),
+            patterns("python_functions"),
+        )
+
+    @staticmethod
+    def _pytest_name_matches(name: str, patterns: t.StrSequence) -> bool:
+        """Match pytest's native prefix-or-glob class/function selectors.
+
+        Returns:
+            Whether ``name`` matches any prefix or glob pattern.
+
+        """
+        return any(
+            name.startswith(pattern) or fnmatch(name, pattern) for pattern in patterns
+        )
+
+    @classmethod
+    def _pytest_class_binding(
+        cls,
+        name: str,
+        binding: p.Infra.RopePyName,
+        patterns: t.StrSequence,
+    ) -> bool:
+        """Prove native class selection, including source-owned inherited flags.
+
+        The suite need not define test methods itself: native pytest also visits
+        inherited tests and custom method collectors on the original class object.
+
+        Returns:
+            Whether the binding is a natively collected test class.
+
+        Raises:
+            TypeError: When the ``__test__`` flag's definition location is not
+                a captured source module.
+            ValueError: When the ``__test__`` flag lacks native collection
+                evidence.
+
+        """
+        if not cls._pytest_name_matches(name, patterns):
+            return False
+        definition = binding.get_object()
+        scope = definition.get_scope()
+        if scope is None or scope.get_kind() != "Class":
+            return False
+        flag = definition.get_attributes().get("__test__")
+        if flag is None:
+            return True
+        provider, line = flag.get_definition_location()
+        if not isinstance(provider, p.Infra.RopePyModule):
+            msg = f"pytest class flag has no captured source: {name}"
+            raise TypeError(msg)
+        for node in ast.walk(ast.parse(provider.source_code)):
+            if (
+                isinstance(node, ast.Assign | ast.AnnAssign)
+                and node.lineno == line
+                and isinstance(node.value, ast.Constant)
+                and isinstance(node.value.value, bool)
+            ):
+                return node.value.value
+        msg = (
+            "pytest class flag requires native collection "
+            f"evidence: {provider.get_name()}.{name}"
+        )
+        raise ValueError(msg)
+
+    @staticmethod
+    def _pytest_mark_decorator(decorator: ast.expr, tree: ast.Module) -> bool:
+        """Prove a decorator comes from pytest.mark, including imported spellings.
+
+        Returns:
+            Whether the decorator resolves to ``pytest.mark``.
+
+        """
+        expression = decorator.func if isinstance(decorator, ast.Call) else decorator
+        if not isinstance(expression, ast.Attribute):
+            return False
+        mark = expression.value
+        for statement in tree.body:
+            if isinstance(statement, ast.Import) and any(
+                alias.name == "pytest"
+                and isinstance(mark, ast.Attribute)
+                and mark.attr == "mark"
+                and isinstance(mark.value, ast.Name)
+                and mark.value.id == (alias.asname or alias.name)
+                for alias in statement.names
+            ):
+                return True
+            if isinstance(statement, ast.ImportFrom) and statement.module == "pytest":
+                if any(
+                    alias.name == "mark"
+                    and isinstance(mark, ast.Name)
+                    and mark.id == (alias.asname or alias.name)
+                    for alias in statement.names
+                ):
+                    return True
+        return False
+
+    @classmethod
+    def _test_module_owner(
+        cls,
+        convention: m.Infra.RopeModuleConvention,
+        file_path: Path,
+        classes: t.MappingKV[str, ast.ClassDef],
+        patterns: t.StrSequence,
+        function_patterns: t.StrSequence,
+        *,
+        require_collection: bool,
+        composition: bool = False,
+    ) -> p.Result[str]:
+        """Elect an existing collected suite, otherwise derive Tests<Unit>.
+
+        Returns:
+            The elected or derived suite class name, or a failure when
+            collection is ambiguous or the derived suite is not collected.
+
+        """
+        elected = r[str]
+        prefix = convention.module_policy.project_prefix
+        prefix = prefix if prefix.startswith("Tests") else f"Tests{prefix}"
+        if composition:
+            stem = (
+                file_path.stem
+                .removeprefix("test_")
+                .removesuffix("_tests")
+                .removesuffix("_test")
+            )
+            owner = prefix + u.derive_class_stem(stem)
+            while owner in classes:
+                owner += u.derive_class_stem("module")
+            return elected.ok(owner)
+        suites = [
+            name
+            for name, node in classes.items()
+            if cls._pytest_name_matches(name, patterns)
+            and any(
+                isinstance(member, ast.FunctionDef | ast.AsyncFunctionDef)
+                and cls._pytest_name_matches(member.name, function_patterns)
+                for member in node.body
+            )
+        ]
+        if len(suites) > 1:
+            return elected.fail(
+                f"class-nesting requires exactly one collected suite for "
+                f"{convention.module_name}: {', '.join(suites)}",
+            )
+        if suites and suites[0].startswith(prefix):
+            return elected.ok(suites[0])
+        if suites:
+            return elected.fail(
+                f"class-nesting requires native Rope prefix rename before electing "
+                f"{convention.module_name}.{suites[0]} (required prefix {prefix})",
+            )
+        if len(classes) == 1:
+            existing = next(iter(classes))
+            if existing.startswith(prefix) and (
+                not require_collection or cls._pytest_name_matches(existing, patterns)
+            ):
+                return elected.ok(existing)
+        stem = (
+            file_path.stem
+            .removeprefix("test_")
+            .removesuffix("_tests")
+            .removesuffix("_test")
+        )
+        owner = (
+            prefix if prefix.startswith("Tests") else f"Tests{prefix}"
+        ) + u.derive_class_stem(stem)
+        if not owner.isidentifier() or (
+            require_collection and not cls._pytest_name_matches(owner, patterns)
+        ):
+            return elected.fail(
+                f"class-nesting derived suite {owner} is not collected by pytest "
+                f"in {convention.module_name}",
+            )
+        return elected.ok(owner)
 
     @staticmethod
     def _tail_name(node: ast.expr) -> str:
@@ -93,24 +311,34 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         return isinstance(value, ast.Name)
 
     @classmethod
-    def _loose_value_name(cls, node: ast.stmt) -> str | None:
-        """Return the bound name when ``node`` is a loose module value binding.
+    def _loose_value_name(cls, node: ast.stmt, *, strict: bool = False) -> str | None:
+        """Return the bound name of a loose value or explicit PEP 695 alias.
 
         Returns:
             The bound identifier, or ``None`` for an allowed or foreign shape.
 
         """
+        if isinstance(node, ast.TypeAlias):
+            return node.name.id
+        if (
+            strict
+            and isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+        ):
+            return node.target.id
         if isinstance(node, ast.Assign) and len(node.targets) == 1:
             target, value, annotation = node.targets[0], node.value, None
         elif isinstance(node, ast.AnnAssign) and node.value is not None:
             target, value, annotation = node.target, node.value, node.annotation
         else:
             return None
-        loose = (
-            isinstance(target, ast.Name)
-            and not (target.id.startswith("__") and target.id.endswith("__"))
-            and not cls._is_pure_reference(value)
-            and not cls._is_typing_declaration(value, annotation)
+        loose = isinstance(target, ast.Name) and (
+            strict
+            or (
+                not (target.id.startswith("__") and target.id.endswith("__"))
+                and not cls._is_pure_reference(value)
+                and not cls._is_typing_declaration(value, annotation)
+            )
         )
         return target.id if loose and isinstance(target, ast.Name) else None
 
@@ -120,6 +348,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         tree: ast.Module,
         *,
         values: bool,
+        strict: bool = False,
     ) -> t.VariadicTuple[str]:
         """Return loose functions and value bindings in module order.
 
@@ -130,11 +359,13 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         names: list[str] = []
         for node in tree.body:
             if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-                if node.name != "main" and not (
-                    node.name.startswith("__") and node.name.endswith("__")
-                ):
-                    names.append(node.name)
-            elif values and (name := cls._loose_value_name(node)) is not None:
+                names.append(node.name)
+            elif isinstance(node, ast.TypeAlias):
+                names.append(node.name.id)
+            elif (
+                values
+                and (name := cls._loose_value_name(node, strict=strict)) is not None
+            ):
                 names.append(name)
         return tuple(dict.fromkeys(names))
 
@@ -197,6 +428,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         *,
         owner: str,
         module_name: str,
+        strict: bool = False,
     ) -> p.Result[t.VariadicTuple[str]]:
         """Return the loose members the owner body can hold, in module order.
 
@@ -218,12 +450,12 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         """
         checked = r[t.VariadicTuple[str]]
         selected = frozenset(members)
-        nodes_by_member: dict[str, ast.stmt] = {}
+        nodes_by_member: t.MutableMappingKV[str, ast.stmt] = {}
         for node in tree.body:
             name = (
                 node.name
                 if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
-                else cls._loose_value_name(node)
+                else cls._loose_value_name(node, strict=strict)
             )
             if name is not None and name in selected:
                 nodes_by_member[name] = node
@@ -232,7 +464,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             name = (
                 node.name
                 if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
-                else cls._loose_value_name(node)
+                else cls._loose_value_name(node, strict=strict)
             )
             if name is None or name not in selected or name in bound:
                 continue
@@ -321,7 +553,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         classes: t.MappingKV[str, ast.ClassDef],
         exports: frozenset[str],
     ) -> p.Result[str]:
-        """Return the declared owner, or the owner the family derivation names.
+        """Return the semantic owner, or derive one from the module convention.
 
         Returns:
             The owner class name, or a failure when the derivation is ambiguous.
@@ -333,6 +565,37 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         families = namespace.facade_families()
         directory_family = namespace.facade_family_of_directory(file_path.parent.name)
         file_family = namespace.facade_family_of_file(file_path.name)
+        if directory_family is None and file_family is None:
+            owner = policy.expected_family
+            if owner is not None and owner in classes:
+                return derived.ok(owner)
+            owner = policy.project_prefix + u.derive_class_stem(
+                file_path.stem.strip("_")
+                if policy.project_prefix
+                else convention.module_name,
+            )
+            if owner in classes:
+                return derived.ok(owner)
+            if len(classes) == 1:
+                return derived.ok(next(iter(classes)))
+            candidates = sorted(name for name in classes if name in exports)
+            if not candidates:
+                candidates = sorted(
+                    name for name in classes if not name.startswith("_")
+                )
+            if len(candidates) == 1:
+                return derived.ok(candidates[0])
+            if candidates:
+                return derived.fail(
+                    "class-nesting requires exactly one declared module owner for "
+                    f"{convention.module_name}; discovered: {', '.join(candidates)}",
+                )
+            if not owner.isidentifier():
+                return derived.fail(
+                    "class-nesting cannot derive a valid owner for "
+                    f"{convention.module_name}",
+                )
+            return derived.ok(owner)
         if directory_family is not None:
             suffix_root = families[directory_family].suffix
             suffix = suffix_root + u.derive_class_stem(file_path.stem.strip("_"))

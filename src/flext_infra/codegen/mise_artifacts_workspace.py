@@ -10,12 +10,15 @@ import stat
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, r, u
-from flext_infra.codegen import FlextInfraMiseArtifactsFiles
+from flext_infra import c, config, m, r, t, u
+from flext_infra.codegen import (
+    FlextInfraMiseArtifactsFiles,
+    FlextInfraMiseArtifactsVerification,
+)
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraMiseWorkspacePlanner:
@@ -36,7 +39,7 @@ class FlextInfraMiseWorkspacePlanner:
         physical = self._physical_directory(requested)
         if physical.failure:
             return r[m.Infra.GitIdentityReport].from_failure(physical)
-        identity = self._exact_git_identity(requested)
+        identity = u.Infra.exact_worktree_root(requested)
         if identity.failure or not identity.value.is_attached_submodule:
             return identity
         return self._submodule_scope_identity(requested, identity.value)
@@ -70,7 +73,7 @@ class FlextInfraMiseWorkspacePlanner:
         physical_scope = self._physical_directory(scope_root)
         if physical_scope.failure:
             return r[m.Infra.GitIdentityReport].from_failure(physical_scope)
-        return self._exact_git_identity(scope_root)
+        return u.Infra.exact_worktree_root(scope_root)
 
     def scope_root(self) -> p.Result[Path]:
         """Return the authenticated generation coordination root.
@@ -84,26 +87,12 @@ class FlextInfraMiseWorkspacePlanner:
             return r[Path].from_failure(identity)
         return r[Path].ok(identity.value.repo_root)
 
-    @staticmethod
-    def _exact_git_identity(requested: Path) -> p.Result[m.Infra.GitIdentityReport]:
-        """Reject Git parent discovery when the requested path is not its root.
-
-        # Why: delegates to the promoted `u.Infra.exact_worktree_root` owner
-        # (codegen `init` reuses the same exact-root contract) instead of
-        # duplicating the check locally.
-
-        Returns:
-            The resulting ``p.Result[m.Infra.GitIdentityReport]``.
-
-        """
-        return u.Infra.exact_worktree_root(requested)
-
     def layout(
         self,
         scope_root: Path | None = None,
         *,
         transaction_id: str | None = None,
-        initial_workspace: m.Infra.WorkspaceSpec | None = None,
+        initial_workspace: p.Infra.WorkspaceSpec | None = None,
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
         """Resolve governed topology after the stable workspace lock is held.
 
@@ -123,23 +112,22 @@ class FlextInfraMiseWorkspacePlanner:
         if resolved_scope.failure:
             return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(resolved_scope)
         scope_root = resolved_scope.value
-        workspace = (
-            FlextInfraWorkspaceDetector.load_workspace_spec(scope_root)
-            if initial_workspace is None
-            else r[m.Infra.WorkspaceSpec].ok(initial_workspace)
-        )
-        if workspace.failure:
-            return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(workspace)
+        workspace = initial_workspace
+        if workspace is None:
+            observed = FlextInfraWorkspaceDetector.load_workspace_spec(scope_root)
+            if observed.failure:
+                return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(observed)
+            workspace = observed.value
         if requested != scope_root and not any(
             (scope_root / project.path).absolute() == requested
-            for project in workspace.value.subprojects
+            for project in workspace.subprojects
         ):
             return r[m.Infra.MiseToolchainWorkspaceLayout].fail(
                 f"Git submodule is absent from governed workspace: {requested}",
             )
         selectors = (
             ".",
-            *(project.path.as_posix() for project in workspace.value.subprojects),
+            *(project.path.as_posix() for project in workspace.subprojects),
         )
         return self.layout_from_selectors(
             scope_root,
@@ -160,7 +148,7 @@ class FlextInfraMiseWorkspacePlanner:
             The resulting ``p.Result[m.Infra.MiseToolchainWorkspaceLayout]``.
 
         """
-        identity = self._exact_git_identity(scope_root)
+        identity = u.Infra.exact_worktree_root(scope_root)
         if identity.failure:
             return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(identity)
         return self._layout_from_identity(
@@ -195,9 +183,33 @@ class FlextInfraMiseWorkspacePlanner:
 
         """
         result_type = r[m.Infra.MiseToolchainWorkspaceLayout]
-        identity = self._exact_git_identity(scope_root)
+        identity = u.Infra.exact_worktree_root(scope_root)
         if identity.failure:
             return result_type.from_failure(identity)
+        return self.file_layout_from_identity(
+            identity.value,
+            roots,
+            transaction_id=transaction_id,
+        )
+
+    def file_layout_from_identity(
+        self,
+        identity: m.Infra.GitIdentityReport,
+        roots: t.MappingKV[str, Path],
+        *,
+        transaction_id: str,
+    ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
+        """Derive file topology from the original native scope observation.
+
+        The transaction owns that observation's lease; this constructor grants
+        no authority and still observes each physical participant and state root.
+
+        Returns:
+            Layout data retaining the original journal anchor.
+
+        """
+        result_type = r[m.Infra.MiseToolchainWorkspaceLayout]
+        scope_root = identity.repo_root
         participants: list[m.Infra.CodegenFileParticipant] = []
         for selector, root in sorted(roots.items()):
             if not root.is_absolute() or ".." in root.parts or root.resolve() != root:
@@ -225,7 +237,7 @@ class FlextInfraMiseWorkspacePlanner:
             m.Infra.MiseToolchainWorkspaceLayout(
                 scope_root=scope_root,
                 state_root=state_root.value,
-                journal_path=self.journal_path(identity.value),
+                journal_path=self.journal_path(identity),
                 transaction_id=transaction_id,
                 projects=(),
                 file_participants=tuple(participants),
@@ -417,64 +429,140 @@ class FlextInfraMiseWorkspacePlanner:
         )
 
     @staticmethod
+    def _project_replacement(
+        layout: m.Infra.MiseToolchainProjectLayout,
+        before: m.Cli.AtomicFileState,
+        config_plan: m.Infra.CodegenFilePlan | None,
+    ) -> p.Result[t.Pair[bytes, int]]:
+        """Resolve the exact replacement content and mode for one project config.
+
+        Args:
+            layout: Project layout whose configuration destination is planned.
+            before: Authenticated preflight state of the live configuration.
+            config_plan: Planned configuration change, or ``None`` when the
+                project is not directly governed by a generated plan.
+
+        Returns:
+            The exact replacement bytes with their permission mode, or the
+            first resolution failure.
+
+        """
+        failure = r[t.Pair[bytes, int]]
+        if config_plan is None:
+            if before.content is None:
+                return failure.fail(
+                    f"committed Mise configuration is absent: {layout.config}",
+                )
+            declarations = tuple(
+                item
+                for item in config.Infra.codegen.managed_file_specs
+                if item.path == Path(c.Infra.CONFIG_SPEC[0])
+            )
+            if len(declarations) != 1:
+                return failure.fail(
+                    "Mise configuration requires exactly one managed file declaration",
+                )
+            return failure.ok((before.content, declarations[0].mode))
+        if config_plan.desired_content is None or config_plan.desired_mode is None:
+            return failure.fail(f"invalid Mise configuration plan: {config_plan.path}")
+        return failure.ok((config_plan.desired_content, config_plan.desired_mode))
+
+    @staticmethod
+    def _project_config_sources(
+        layout: m.Infra.MiseToolchainProjectLayout,
+        config_plan: m.Infra.CodegenFilePlan | None,
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        """Resolve the authoritative configuration source baseline for a project.
+
+        Args:
+            layout: Project layout whose configuration sources are baselined.
+            config_plan: Planned configuration change, or ``None`` when no
+                pre-publication provenance exists.
+
+        Returns:
+            The ordered configuration source states, or the first failure.
+
+        """
+        if (
+            config_plan is not None
+            and isinstance(config_plan.before, m.Cli.AtomicFileState)
+            and config_plan.before.content is not None
+        ):
+            authenticated = FlextInfraMiseArtifactsVerification.states_current(
+                config_plan.source_states,
+            )
+            if authenticated.failure:
+                return r[t.VariadicTuple[m.Cli.AtomicFileState]].from_failure(
+                    authenticated
+                )
+            # The complete render inputs remain authenticated, but set equality
+            # owns only this project's direct configuration sources.
+            return r[t.VariadicTuple[m.Cli.AtomicFileState]].ok(
+                tuple(
+                    sorted(
+                        (
+                            source
+                            for source in config_plan.source_states
+                            if u.Infra.direct_config_source(layout.root, source.path)
+                        ),
+                        key=lambda source: source.path,
+                    )
+                )
+            )
+        # A first publication (scaffold or newly governed project) has no
+        # pre-publication provenance: the transaction itself publishes the
+        # config sources, so the authoritative barrier baseline is the
+        # on-disk reality at transaction begin.
+        current_sources = u.Infra.snapshot_config_sources(layout.root)
+        if current_sources.failure:
+            return r[t.VariadicTuple[m.Cli.AtomicFileState]].from_failure(
+                current_sources,
+            )
+        return r[t.VariadicTuple[m.Cli.AtomicFileState]].ok(current_sources.value)
+
+    @staticmethod
     def _project_state(
         layout: m.Infra.MiseToolchainProjectLayout,
         config_plan: m.Infra.CodegenFilePlan | None,
     ) -> p.Result[m.Infra.MiseToolchainProjectState]:
+        """Snapshot one project's destination, replacement and source baseline.
+
+        Args:
+            layout: Project layout whose state is snapshotted.
+            config_plan: Planned configuration change, or ``None``.
+
+        Returns:
+            The immutable project state, or the first snapshot failure.
+
+        """
         config_state = FlextInfraMiseArtifactsFiles.read_state(
             layout.config,
             required=config_plan is None,
         )
         if config_state.failure:
             return r[m.Infra.MiseToolchainProjectState].from_failure(config_state)
-        if config_plan is None:
-            if config_state.value.content is None:
-                return r[m.Infra.MiseToolchainProjectState].fail(
-                    f"committed Mise configuration is absent: {layout.config}",
-                )
-            replacement_content = config_state.value.content
-            declarations = tuple(
-                item
-                for item in config.Infra.codegen.managed_files
-                if item.path == Path(c.Infra.CONFIG_SPEC[0])
-            )
-            if len(declarations) != 1:
-                return r[m.Infra.MiseToolchainProjectState].fail(
-                    "Mise configuration requires exactly one managed file declaration",
-                )
-            replacement_mode = declarations[0].mode
-        else:
-            if config_plan.desired_content is None or config_plan.desired_mode is None:
-                return r[m.Infra.MiseToolchainProjectState].fail(
-                    f"invalid Mise configuration plan: {config_plan.path}",
-                )
-            replacement_content = config_plan.desired_content
-            replacement_mode = config_plan.desired_mode
-        if (
-            config_plan is not None
-            and isinstance(config_plan.before, m.Cli.AtomicFileState)
-            and config_plan.before.content is not None
-        ):
-            config_sources = config_plan.source_states
-        else:
-            # A first publication (scaffold or newly governed project) has no
-            # pre-publication provenance: the transaction itself publishes the
-            # config sources, so the authoritative barrier baseline is the
-            # on-disk reality at transaction begin.
-            current_sources = u.Infra.snapshot_config_sources(layout.root)
-            if current_sources.failure:
-                return r[m.Infra.MiseToolchainProjectState].from_failure(
-                    current_sources,
-                )
-            config_sources = current_sources.value
+        replacement = FlextInfraMiseWorkspacePlanner._project_replacement(
+            layout,
+            config_state.value,
+            config_plan,
+        )
+        if replacement.failure:
+            return r[m.Infra.MiseToolchainProjectState].from_failure(replacement)
+        sources = FlextInfraMiseWorkspacePlanner._project_config_sources(
+            layout,
+            config_plan,
+        )
+        if sources.failure:
+            return r[m.Infra.MiseToolchainProjectState].from_failure(sources)
+        content, mode = replacement.value
         return r[m.Infra.MiseToolchainProjectState].ok(
             m.Infra.MiseToolchainProjectState(
                 layout=layout,
                 config=m.Infra.MiseToolchainConfigState(
                     before=config_state.value,
-                    replacement_content=replacement_content,
-                    replacement_mode=replacement_mode,
-                    sources=config_sources,
+                    replacement_content=content,
+                    replacement_mode=mode,
+                    sources=sources.value,
                 ),
             ),
         )

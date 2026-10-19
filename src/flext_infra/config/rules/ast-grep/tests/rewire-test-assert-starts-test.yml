@@ -1,0 +1,10 @@
+id: rewire-test-assert-starts
+valid:
+  - assert name.startswith('flext')
+  - |
+    from tests import tm
+    assert name.startswith('flext'), 'prefixed'
+invalid:
+  - |
+    from tests import tm
+    assert name.startswith('flext')

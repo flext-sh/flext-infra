@@ -9,6 +9,7 @@
         with:
           path: |
 {% include "_fragments/toolchain_cache_paths.j2" %}
-          key: {% raw %}${{ runner.os }}-{% endraw %}{{ python_version }}{% raw %}-tools-${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml') }}{% endraw %}
+          key: {% raw %}${{ runner.os }}-{% endraw %}{{ python_version }}{% raw %}-tools-${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', '.mise.toml') }}-${{ github.run_id }}-${{ github.run_attempt }}{% endraw %}
           restore-keys: |
+            {% raw %}${{ runner.os }}-{% endraw %}{{ python_version }}{% raw %}-tools-${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', '.mise.toml') }}-{% endraw %}
             {% raw %}${{ runner.os }}-{% endraw %}{{ python_version }}{% raw %}-tools-{% endraw %}

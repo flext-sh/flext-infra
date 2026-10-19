@@ -1,0 +1,16 @@
+# Shape only: the engine admits the finding when the module is the own package.
+id: ban-local-import-alias
+valid:
+  - from pkg import m
+  - from pkg import m as m
+  - from pkg.child import Owner as Owner
+  - |
+    if TYPE_CHECKING:
+        from pkg import _child as _child
+  - import pkg.models
+invalid:
+  - from pkg import m as models
+  - |
+    if TYPE_CHECKING:
+        from pkg import child as renamed
+  - import pkg.models as models

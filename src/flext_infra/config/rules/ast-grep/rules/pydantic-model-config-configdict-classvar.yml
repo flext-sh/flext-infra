@@ -1,0 +1,22 @@
+# Same contract as `pydantic-model-config-m-configdict-classvar`, for modules
+# that bind `ConfigDict` directly instead of through the `m` facade.
+#
+# Idempotent: the rewrite yields an annotated assignment, which the plain
+# assignment pattern never matches.
+id: pydantic-model-config-configdict-classvar
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  all:
+    - pattern: "model_config = ConfigDict($$$ARGS)"
+    - inside:
+        kind: block
+        stopBy: end
+        inside:
+          kind: class_definition
+fix: "model_config: ClassVar[ConfigDict] = ConfigDict($$$ARGS)"
+message: >-
+  model_config must be a ClassVar; a bare assignment declares a pydantic
+  field instead of model metadata.

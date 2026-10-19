@@ -23,7 +23,7 @@ import pytest
 
 from flext_infra import infra, main
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, t, tm, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -94,9 +94,13 @@ class TestsFlextInfraWorkspaceMemberPropagation:
                 u.Tests.commit_git_changes(root, "declare members")
                 for name in settled:
                     tm.ok(
-                        FlextInfraCodegenConform.settle_repository(
-                            root / name,
-                            ports=infra.codegen_conform_collaborators(),
+                        FlextInfraCodegenConform.execute_request(
+                            m.Infra.CodegenConformRequest(
+                                root=root / name,
+                                scope=c.Infra.CodegenConformScope.ALL,
+                                mode=c.Infra.CodegenConformMode.APPLY,
+                            ),
+                            execution_context=infra,
                         ),
                     )
                     u.Tests.commit_git_changes(root / name, "settle projections")
@@ -117,7 +121,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
             Each ``t.Pair[Path, Path]``.
 
         """
-        # Every settle and propagation locks against the run's local mirrors.
+        # Dependency reads use the run's local mirrors without resolving locks.
         with u.Tests.env_vars_context(env_vars=hermetic):
             root = tmp_path / "workspace"
             shutil.copytree(self._template(settled, hermetic), root, symlinks=True)
@@ -236,16 +240,11 @@ class TestsFlextInfraWorkspaceMemberPropagation:
             )
             tm.that(self._published(tmp_path, self.SETTLED), eq="")
             tm.that(self._on_clean_base(settled), eq=True)
-            # A member is standalone: its generated Makefile never declares the
-            # workspace-only verb.
-            public = next(
-                line
-                for line in (settled / c.Infra.MAKEFILE_FILENAME)
-                .read_text(encoding="utf-8")
-                .splitlines()
-                if line.startswith("PUBLIC_VERBS")
+            help_output = tm.ok(
+                u.Cli.run_raw([c.Infra.MAKE, "help"], cwd=settled),
             )
-            tm.that("propagate" in public.split(), eq=False)
+            tm.that(u.Cli.process_succeeded(help_output.outcome), eq=True)
+            tm.that(help_output.stdout, lacks="propagate")
             recorded = gh_log.read_text(encoding="utf-8")
             tm.that(recorded.count("pr create"), eq=1)
             tm.that(
@@ -312,7 +311,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
         consumer_root = tmp_path / "consumer"
         consumer_root.mkdir()
         (consumer_root / "Makefile").write_text(
-            "upg gen fix-namespace fix-accessors fix fmt:\n"
+            "gen fix-namespace fix-accessors fix fmt:\n"
             "\tprintf '%s\\n' \"$@\" >> ran.txt\n",
             encoding="utf-8",
         )
@@ -349,7 +348,6 @@ class TestsFlextInfraWorkspaceMemberPropagation:
             tm.that(
                 verbs_ran.splitlines(),
                 eq=[
-                    "upg",
                     "gen",
                     "fix-namespace",
                     "fix-accessors",

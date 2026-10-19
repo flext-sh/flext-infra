@@ -18,6 +18,117 @@ from tests import tm, u
 class TestsFlextInfraGitFacet:
     """Exercise the public Git facade against a real repository worktree."""
 
+    @pytest.mark.parametrize("index_mode", ["ordinary", "v4", "split"])
+    def test_retire_index_artifact_preserves_live_and_staged_siblings(
+        self,
+        tmp_path: Path,
+        index_mode: str,
+    ) -> None:
+        """Native Git retains the other index entries and every working file."""
+        repository = u.Tests.git_repository(tmp_path, "consumer")
+        artifact = repository / "runtime.json"
+        sibling = repository / "source.py"
+        artifact.write_text('{"portable": true}\n', encoding=c.DEFAULT_ENCODING)
+        sibling.write_text("value = 1\n", encoding=c.DEFAULT_ENCODING)
+        u.Tests.git_run(repository, "add", "--", artifact.name, sibling.name)
+        u.Tests.git_run(repository, "commit", "-m", "test: track fixture artifacts")
+        sibling.write_text("value = 2\n", encoding=c.DEFAULT_ENCODING)
+        u.Tests.git_run(repository, "add", "--", sibling.name)
+        sibling.write_text("value = 3\n", encoding=c.DEFAULT_ENCODING)
+        artifact.write_text('{"operator": true}\n', encoding=c.DEFAULT_ENCODING)
+        if index_mode == "v4":
+            u.Tests.git_run(repository, "update-index", "--index-version=4")
+        elif index_mode == "split":
+            u.Tests.git_run(repository, "update-index", "--split-index")
+        original_artifact = artifact.read_bytes()
+        original_sibling = sibling.read_bytes()
+        captured_sibling = tm.ok(
+            u.Infra.git_capture_index_file(
+                m.Infra.GitRelativePathRequest(
+                    repo_root=repository,
+                    relative_path=sibling.name,
+                ),
+            ),
+        )
+        captured = tm.ok(
+            u.Infra.git_capture_index_file(
+                m.Infra.GitRelativePathRequest(
+                    repo_root=repository,
+                    relative_path=artifact.name,
+                ),
+            ),
+        )
+        assert captured.entry is not None
+        tm.ok(
+            u.Infra.git_retire_index_file(
+                m.Infra.GitIndexRetirementRequest(
+                    repo_root=repository,
+                    entry=captured.entry,
+                ),
+            ),
+        )
+        observed_sibling = tm.ok(
+            u.Infra.git_capture_index_file(
+                m.Infra.GitRelativePathRequest(
+                    repo_root=repository,
+                    relative_path=sibling.name,
+                ),
+            ),
+        )
+        tm.that(observed_sibling, eq=captured_sibling)
+        tm.that(artifact.read_bytes(), eq=original_artifact)
+        tm.that(sibling.read_bytes(), eq=original_sibling)
+        removed = tm.ok(
+            u.Infra.git_is_tracked(
+                m.Infra.GitRelativePathRequest(
+                    repo_root=repository,
+                    relative_path=artifact.name,
+                ),
+            ),
+        )
+        tm.that(removed.value, eq=False)
+        native_tree = tm.ok(
+            u.Cli.run((c.Infra.GIT, "write-tree"), cwd=repository),
+        ).stdout.strip()
+        native_artifact = tm.ok(
+            u.Cli.run(
+                (c.Infra.GIT, "ls-tree", native_tree, "--", artifact.name),
+                cwd=repository,
+            ),
+        )
+        tm.that(native_artifact.stdout, eq="")
+
+    def test_retire_index_artifact_refuses_changed_preimage(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """An outside staging operation leaves new index bytes and live data intact."""
+        repository = u.Tests.git_repository(tmp_path, "consumer")
+        artifact = repository / "runtime.json"
+        artifact.write_text('{"initial": true}\n', encoding=c.DEFAULT_ENCODING)
+        u.Tests.git_run(repository, "add", "--", artifact.name)
+        captured = tm.ok(
+            u.Infra.git_capture_index_file(
+                m.Infra.GitRelativePathRequest(
+                    repo_root=repository,
+                    relative_path=artifact.name,
+                ),
+            ),
+        )
+        assert captured.entry is not None
+        artifact.write_text('{"new": true}\n', encoding=c.DEFAULT_ENCODING)
+        u.Tests.git_run(repository, "add", "--", artifact.name)
+        before = self._lane_bytes(repository)
+        rejected = u.Infra.git_retire_index_file(
+            m.Infra.GitIndexRetirementRequest(
+                repo_root=repository,
+                entry=captured.entry,
+            ),
+        )
+        tm.fail(rejected)
+        tm.that(rejected.exception, is_=ValueError)
+        tm.that(self._lane_bytes(repository), eq=before)
+
     @staticmethod
     def _lane_repository(tmp_path: Path) -> t.Triple[Path, Path, str]:
         """Publish a real member whose superproject declares its integration line.
@@ -357,7 +468,11 @@ class TestsFlextInfraGitFacet:
 
         paths = tm.not_none(u.Infra.git_tracked_scope_paths(scope))
 
-        tm.that(set(paths), eq={tracked, raw_name, removed, destination, untracked})
+        # Tracked authority: index plus dirty tracked paths only. The staged
+        # deletion stays (rm --cached), the ignored file stays (force-indexed),
+        # and the untracked file never enters the inventory.
+        tm.that(set(paths), eq={tracked, raw_name, removed, destination})
+        tm.that(untracked in paths, eq=False)
 
     @staticmethod
     def test_tracked_scope_propagates_corrupt_index_failure(
@@ -515,21 +630,21 @@ class TestsFlextInfraGitFacet:
         head = u.Infra.git_repository_head(
             m.Infra.GitRepoRequest(repo_root=real_git_repo),
         )
-        assert head.success
+        tm.that(head.success, truth=True)
         tm.that(head.value.oid, length=c.Infra.GIT_OID_HEX_LENGTH_SHA1)
         status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=real_git_repo))
-        assert status.success
+        tm.that(status.success, truth=True)
         assert isinstance(status.value.porcelain, str)
         assert status.value.dirty is False
         primary = u.Infra.git_primary_worktree_root(
             m.Infra.GitRepoRequest(repo_root=real_git_repo),
         )
-        assert primary.success
-        assert primary.value.primary_root == real_git_repo.resolve()
+        tm.that(primary.success, truth=True)
+        tm.that(primary.value.primary_root == real_git_repo.resolve(), truth=True)
         report = FlextInfraGitService(repository_root=real_git_repo).execute()
-        assert report.success
+        tm.that(report.success, truth=True)
         assert isinstance(report.value, m.Infra.GitStatusReport)
-        assert report.value.repo_root == real_git_repo.resolve()
+        tm.that(report.value.repo_root == real_git_repo.resolve(), truth=True)
         assert report.value.dirty is False
 
     @staticmethod
@@ -538,23 +653,23 @@ class TestsFlextInfraGitFacet:
         bare_root = tmp_path / "bare"
         bare_root.mkdir()
         init_result = u.Cli.run_checked([c.Infra.GIT, "init", "--bare"], cwd=bare_root)
-        assert init_result.success
+        tm.that(init_result.success, truth=True)
         assert (bare_root / "HEAD").is_file()
         captured = u.Cli.capture([c.Infra.GIT, "rev-parse", "--git-dir"], cwd=bare_root)
-        assert captured.success
-        assert captured.value.strip() in {".", str(bare_root.resolve())}
+        tm.that(captured.success, truth=True)
+        tm.that(captured.value.strip() in {".", str(bare_root.resolve())}, truth=True)
 
     @staticmethod
     def test_service_status_reports_dirty_tree(real_git_repo: Path) -> None:
         """The status-only service flips dirty when the worktree changes."""
         clean = FlextInfraGitService(repository_root=real_git_repo).execute()
-        assert clean.success
+        tm.that(clean.success, truth=True)
         assert clean.value.dirty is False
         (real_git_repo / "dirty.txt").write_text("x", encoding="utf-8")
         dirty = FlextInfraGitService(repository_root=real_git_repo).execute()
-        assert dirty.success
+        tm.that(dirty.success, truth=True)
         assert dirty.value.dirty is True
-        assert "dirty.txt" in dirty.value.porcelain
+        tm.that("dirty.txt" in dirty.value.porcelain, truth=True)
 
     @staticmethod
     @pytest.mark.parametrize("change", ["tracked", "staged", "untracked"])
@@ -777,9 +892,9 @@ class TestsFlextInfraGitFacet:
         empty_path.mkdir()
         with tm.scope(env={"PATH": str(empty_path)}):
             result = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=tmp_path))
-        assert result.failure
+        tm.that(result.failure, truth=True)
         assert result.error is not None
-        assert "git executable not found" in result.error
+        tm.that("git executable not found" in result.error, truth=True)
 
     @staticmethod
     def test_refresh_binary_reports_the_resolved_executable() -> None:
@@ -820,7 +935,10 @@ class TestsFlextInfraGitFacet:
 
         assert lane.is_dir()
         assert (repository / "member").is_dir()
-        assert (repository / ".gitmodules").read_text(encoding="utf-8") == gitmodules
+        tm.that(
+            (repository / ".gitmodules").read_text(encoding="utf-8") == gitmodules,
+            truth=True,
+        )
         assert (
             tm.ok(
                 u.Cli.capture(
@@ -941,7 +1059,7 @@ class TestsFlextInfraGitFacet:
             ),
         )
 
-        assert result.failure
+        tm.that(result.failure, truth=True)
         assert result.error is not None
 
     @staticmethod

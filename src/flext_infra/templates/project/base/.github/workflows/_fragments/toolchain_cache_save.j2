@@ -1,8 +1,11 @@
 
       - name: Save tool caches
-        if: {% raw %}${{ always() && steps.tool-cache.outputs.cache-hit != 'true' }}{% endraw %}
+        # Native cache action access mode remains authoritative before upload.
+        # Only declared events may publish; fork requests remain restore-only.
+        if: >-
+          {% raw %}${{ always() && !cancelled() && steps.tool-cache.outcome == 'success' && steps.tool-cache.outputs.cache-primary-key != '' && ((github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')) || github.event_name == 'workflow_dispatch'{% endraw %}{% if toolchain_cache_pull_request %}{% raw %} || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository){% endraw %}{% endif %}{% raw %}) }}{% endraw %}
         uses: {{ github_actions["cache"].repository }}/save@{{ github_actions["cache"].version }}
         with:
           path: |
 {% include "_fragments/toolchain_cache_paths.j2" %}
-          key: {% raw %}${{ runner.os }}-{% endraw %}{{ python_version }}{% raw %}-tools-${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml') }}{% endraw %}
+          key: {% raw %}${{ steps.tool-cache.outputs.cache-primary-key }}{% endraw %}

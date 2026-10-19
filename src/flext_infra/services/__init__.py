@@ -10,11 +10,11 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_core import install_lazy_exports
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.services import _codegen
-    from flext_infra.services._codegen.vscode import FlextInfraCodegenVscodeMixin
+    from flext_infra.services import _codegen as _codegen
+    from flext_infra.services._codegen import FlextInfraCodegenVscodeMixin
     from flext_infra.services.candidate_bootstrap import (
         FlextInfraCandidateBootstrapService,
     )
@@ -28,7 +28,8 @@ if TYPE_CHECKING:
         FlextInfraValidationCommandRoutes,
     )
     from flext_infra.services.cli_routes_workspace import FlextInfraWorkspaceRoutes
-    from flext_infra.services.codegen import FlextInfraCodegen
+    from flext_infra.services.codegen import FlextInfraCodegenHandlers
+    from flext_infra.services.mod import FlextInfraModHandlers
 
 
 __all__: tuple[str, ...] = (
@@ -36,9 +37,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraCliDispatchService",
     "FlextInfraCliModProgress",
     "FlextInfraCliRouteService",
-    "FlextInfraCodegen",
+    "FlextInfraCodegenHandlers",
     "FlextInfraCodegenRoutes",
     "FlextInfraCodegenVscodeMixin",
+    "FlextInfraModHandlers",
     "FlextInfraRefactorRoutes",
     "FlextInfraValidationCommandRoutes",
     "FlextInfraValidationRoutes",
@@ -54,9 +56,10 @@ install_lazy_exports(
         "FlextInfraCliDispatchService": ".cli_dispatch",
         "FlextInfraCliModProgress": ".cli_mod_progress",
         "FlextInfraCliRouteService": ".cli_routes",
-        "FlextInfraCodegen": ".codegen",
+        "FlextInfraCodegenHandlers": ".codegen",
         "FlextInfraCodegenRoutes": ".cli_routes_codegen",
         "FlextInfraCodegenVscodeMixin": "._codegen.vscode",
+        "FlextInfraModHandlers": ".mod",
         "FlextInfraRefactorRoutes": ".cli_routes_refactor",
         "FlextInfraValidationCommandRoutes": ".cli_routes_validate_commands",
         "FlextInfraValidationRoutes": ".cli_routes_validate",

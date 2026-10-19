@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from operator import itemgetter
 
-from flext_infra import c, config, m, t, u
+from flext_infra import c, config, m, p, t, u
 from flext_infra.codegen import FlextInfraCodegenGenerationRenderersMixin
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
 
@@ -64,16 +64,17 @@ class FlextInfraCodegenGenerationStandardMixin(
         current_pkg = plan.context.current_pkg
         statements: t.MutableSequenceOf[tuple[t.StrPair, t.StrSequence]] = []
         for module in sorted(set(plan.wildcard_runtime_modules)):
-            rendered_module = cls._absolute_import_module(current_pkg, module)
+            rendered_module = cls.normalize_type_checking_module_path(
+                module, current_pkg
+            )
             statements.append((
                 cls._type_checking_sort_key(rendered_module, root_names),
                 (f"from {rendered_module} import *",),
             ))
         eager_groups = cls._group_imports(plan.eager_dunders)
         for module in eager_groups:
-            rendered_module = cls._absolute_import_module(
-                current_pkg,
-                cls._compact_lazy_module_path(current_pkg, module),
+            rendered_module = cls.normalize_type_checking_module_path(
+                cls._compact_lazy_module_path(current_pkg, module), current_pkg
             )
             parts = tuple(
                 cls._format_import_part(imported_name, export_name)
@@ -85,14 +86,11 @@ class FlextInfraCodegenGenerationStandardMixin(
                     cls._type_checking_sort_key(rendered_module, root_names),
                     cls._format_import("", rendered_module, parts),
                 ))
-        # The bootstrap owner imports the helpers from the module that defines
-        # them: its root re-exports them, so importing the root from inside it
-        # binds each helper to itself (a cyclic facade binding and a partially
-        # initialized import). Every other distribution imports the root.
+        # Only the foundation root bootstraps its kernel; consumers use its
+        # already-bound public helper, including foundation subpackages.
         lazy_module = (
             c.Infra.LAZY_BOOTSTRAP_MODULE
-            if current_pkg.split(".", maxsplit=1)[0]
-            == c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE
+            if current_pkg == c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE
             else c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE
         )
         statements.append((
@@ -225,7 +223,12 @@ class FlextInfraCodegenGenerationStandardMixin(
         return "\n".join(lines)
 
     @classmethod
-    def _root_context(cls, plan: m.Infra.LazyInitPlan) -> m.Infra.LazyInitRootRender:
+    def _root_context(
+        cls,
+        plan: m.Infra.LazyInitPlan,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> m.Infra.LazyInitRootRender:
         """Build one lazy context for a public package root.
 
         Returns:
@@ -234,12 +237,24 @@ class FlextInfraCodegenGenerationStandardMixin(
         """
         lazy_map = cls._lazy_export_map(plan)
         current_pkg = plan.context.current_pkg
+        bootstrap_helpers = (
+            c.Infra.LAZY_BOOTSTRAP_HELPERS
+            if current_pkg == c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE
+            else ()
+        )
         public_type_checking_imports = cls._type_checking_filtered(plan)
-        if current_pkg == c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE:
+        if bootstrap_helpers:
+            # The installer removes lazy targets from globals. Keep the exact
+            # eager kernel bindings while publishing them in the root contract.
+            lazy_map = {
+                name: target
+                for name, target in lazy_map.items()
+                if name not in bootstrap_helpers
+            }
             public_type_checking_imports = {
                 name: target
                 for name, target in public_type_checking_imports.items()
-                if name not in c.Infra.LAZY_BOOTSTRAP_HELPERS
+                if name not in bootstrap_helpers
             }
         # The generated blocks rank imports by the project's ruff isort
         # sections, so they read the one owner that projects known-first-party
@@ -249,11 +264,19 @@ class FlextInfraCodegenGenerationStandardMixin(
         project_root = next(
             candidate
             for candidate in (plan.context.pkg_dir, *plan.context.pkg_dir.parents)
-            if (candidate / c.PYPROJECT_FILENAME).is_file()
+            if (
+                (candidate / c.PYPROJECT_FILENAME).is_file()
+                if source_project is None
+                else source_project.source_query(
+                    candidate / c.PYPROJECT_FILENAME, "isfile"
+                )
+            )
         )
         first_party_names = {
             current_pkg,
-            *FlextInfraToolTablesPhase.first_party_namespaces(path=project_root),
+            *FlextInfraToolTablesPhase.first_party_namespaces(
+                path=project_root, source_project=source_project
+            ),
         }
         type_checking_root_names = frozenset(first_party_names)
         type_checking_lines = "\n".join(
@@ -270,7 +293,9 @@ class FlextInfraCodegenGenerationStandardMixin(
             autogen_header=c.Infra.AUTOGEN_HEADER,
             docstring=cls._format_root_package_docstring(
                 current_pkg,
-                u.Infra.copyright_notice(plan.context.pkg_dir),
+                u.Infra.copyright_notice(
+                    plan.context.pkg_dir, source_project=source_project
+                ),
             ),
             runtime_import_lines=runtime_import_lines,
             type_checking_lines=type_checking_lines,
@@ -282,6 +307,7 @@ class FlextInfraCodegenGenerationStandardMixin(
                             for name in plan.exports
                             if name in lazy_map or name in plan.eager_dunders
                         ),
+                        *bootstrap_helpers,
                     ),
                     lazy_map,
                 ),
@@ -290,7 +316,12 @@ class FlextInfraCodegenGenerationStandardMixin(
         )
 
     @classmethod
-    def _render_root(cls, plan: m.Infra.LazyInitPlan) -> str:
+    def _render_root(
+        cls,
+        plan: m.Infra.LazyInitPlan,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> str:
         """Render one inline lazy public-root initializer.
 
         Returns:
@@ -299,8 +330,9 @@ class FlextInfraCodegenGenerationStandardMixin(
         """
         return cls._render_model(
             c.Infra.TEMPLATE_ROOT_INIT,
-            cls._root_context(plan),
+            cls._root_context(plan, source_project=source_project),
             target_filename=str(plan.context.init_path),
+            source_project=source_project,
         )
 
 

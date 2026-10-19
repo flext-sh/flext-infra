@@ -10,13 +10,16 @@ from collections.abc import MutableMapping, Set as AbstractSet
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
-from flext_infra import c, m, r, t, u
+from flext_infra import m, r, t, u
 from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
+from flext_infra.codegen._mise_artifacts_comparison import (
+    FlextInfraMiseArtifactsComparison,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
 
-type _JournalFileRole = Literal["desired", "backup", "rollback", "restore"]
+type _JournalFileRole = Literal["desired"]
 
 
 class FlextInfraMiseArtifactsVerificationManifest:
@@ -196,6 +199,8 @@ class FlextInfraMiseArtifactsVerificationManifest:
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
         directory: m.Infra.CodegenJournalDirectory,
+        *,
+        reconciliation_inputs: t.VariadicTuple[m.Cli.AtomicDirectoryState] = (),
     ) -> p.Result[m.Cli.AtomicPhysicalTreeManifest]:
         """Observe a tree, prove it is a journal-authorized projection, then return it.
 
@@ -218,15 +223,192 @@ class FlextInfraMiseArtifactsVerificationManifest:
             return result_type.fail(
                 f"temporary tree contains an unregistered alias: {directory.path}",
             )
-        transition = cls._validate_manifest_transition(
-            layout,
-            journal,
-            directory.manifest,
-            observed.value,
+        authorized = directory.manifest
+        return (
+            cls
+            ._reconciliation_comparison(
+                layout, journal, directory, observed.value, reconciliation_inputs
+            )
+            .flat_map(
+                lambda compared: cls._validate_manifest_transition(
+                    layout,
+                    journal,
+                    authorized,
+                    compared,
+                ),
+            )
+            .map(lambda _: observed.value)
         )
-        if transition.failure:
-            return result_type.from_failure(transition)
-        return result_type.ok(observed.value)
+
+    @classmethod
+    def _reconciliation_comparison(
+        cls,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+        directory: m.Infra.CodegenJournalDirectory,
+        observed: m.Cli.AtomicPhysicalTreeManifest,
+        inputs: t.VariadicTuple[m.Cli.AtomicDirectoryState],
+    ) -> p.Result[m.Cli.AtomicPhysicalTreeManifest]:
+        """Prove current empty inputs separately from original manifest authority.
+
+        Returns:
+            A comparison-only view; the original manifest and journal are untouched.
+
+        """
+        result = r[m.Cli.AtomicPhysicalTreeManifest]
+        selected = {
+            state.path: state
+            for state in inputs
+            if state.path != observed.root.path
+            and state.path.is_relative_to(observed.root.path)
+        }
+        if not selected:
+            return result.ok(observed)
+        if directory.manifest is None:
+            return result.fail("reconciliation requires the original tree manifest")
+        expected = {entry.path for entry in directory.manifest.entries}
+        current = {entry.path: entry for entry in observed.entries}
+        for path, state in selected.items():
+            intention = next(
+                (
+                    item
+                    for item in journal.directories
+                    if item.disposition == "temporary"
+                    and item.created is None
+                    and item.before is not None
+                    and item.before.path == path
+                ),
+                None,
+            )
+            entry = current.get(path)
+            if intention is None or entry is None:
+                return result.fail(
+                    f"pending empty-directory input lacks its journal entry: {path}"
+                )
+            if (
+                path in expected
+                or not cls._matches_state_entry(entry, state)
+                or entry.link_count != state.link_count
+                or any(path in child.parents for child in current)
+            ):
+                return result.fail(
+                    f"pending empty-directory input differs from its intention: {path}"
+                )
+            admissible = cls.reconciliation_input_current(
+                layout, journal, intention, state
+            )
+            if admissible.failure:
+                return result.from_failure(admissible)
+        return result.ok(
+            observed.model_copy(
+                update={
+                    "entries": tuple(
+                        entry
+                        for entry in observed.entries
+                        if entry.path not in selected
+                    ),
+                },
+            ),
+        )
+
+    @staticmethod
+    def reconciliation_input_current(
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+        intent: m.Infra.CodegenJournalDirectory,
+        current: m.Cli.AtomicDirectoryState,
+    ) -> p.Result[bool]:
+        """Bind a current cleanup input to its original unused temporary intention.
+
+        Returns:
+            The intent, original parent and mode proof, or the first refusal.
+
+        """
+        target = files.resolve_transaction(
+            layout, intent.path, purpose="pending temporary directory input"
+        ).unwrap()
+        roots = {
+            project.transaction_root
+            for project in files.transaction_participants(layout)
+        }
+        owner = next(
+            (
+                directory
+                for directory in journal.directories
+                if directory.project == intent.project
+                and directory.created is not None
+                and directory.manifest is not None
+                and directory.created.path in roots
+                and target.parent.is_relative_to(directory.created.path)
+            ),
+            None,
+        )
+        before = intent.before
+        if (
+            before is None
+            or owner is None
+            or owner.created is None
+            or owner.manifest is None
+        ):
+            return r[bool].fail(
+                f"pending temporary directory lacks original authority: {intent.path}"
+            )
+        consumers = (
+            *(source.path for source in (*journal.sources, *journal.outputs)),
+            *(item.before.path for item in journal.staging_intents),
+            *(path for entry in journal.entries for path in entry.source_paths),
+            *(
+                files.resolve_transaction(
+                    layout, selector, purpose="pending directory consumer"
+                ).unwrap()
+                for entry in journal.entries
+                for selector in (
+                    entry.path,
+                    entry.desired_staging,
+                    entry.original_staging,
+                )
+                if selector is not None
+            ),
+        )
+        declared = (
+            intent in journal.directories
+            and intent.created is None
+            and intent.disposition == "temporary"
+            and current.exists
+            and (before.path, current.path) == (target, target)
+        )
+        if not declared or any(
+            path == target or path.is_relative_to(target) for path in consumers
+        ):
+            return r[bool].fail(
+                "pending temporary directory declaration or consumers differ: "
+                f"{intent.path}"
+            )
+        parent = next(
+            (
+                entry
+                for entry in (owner.manifest.root, *owner.manifest.entries)
+                if entry.path == target.parent and entry.kind == "directory"
+            ),
+            None,
+        )
+        if (
+            parent is None
+            or (before.parent_device, before.parent_inode)
+            != (parent.device, parent.inode)
+            or (current.parent_device, current.parent_inode)
+            != (parent.device, parent.inode)
+            or (current.mode, current.file_attributes, current.reparse_tag)
+            != (
+                owner.created.mode,
+                owner.created.file_attributes,
+                owner.created.reparse_tag,
+            )
+        ):
+            return r[bool].fail(
+                f"pending temporary directory parent or mode differs: {intent.path}"
+            )
+        return r[bool].ok(value=True)
 
     @classmethod
     def _validate_manifest_transition(
@@ -249,7 +431,9 @@ class FlextInfraMiseArtifactsVerificationManifest:
             The resulting ``p.Result[bool]``.
 
         """
-        if not cls._same_directory_identity(authorized.root, observed.root):
+        if not FlextInfraMiseArtifactsComparison.same_directory_identity(
+            authorized.root, observed.root
+        ):
             return r[bool].fail(
                 f"temporary tree root identity changed: {authorized.root.path}",
             )
@@ -258,11 +442,15 @@ class FlextInfraMiseArtifactsVerificationManifest:
         file_specs = cls._journal_file_specs(layout, journal)
         if file_specs.failure:
             return r[bool].from_failure(file_specs)
-        consumable = {
-            path
-            for path, (role, _entry) in file_specs.value.items()
-            if role in {"desired", "rollback", "restore"}
-        }
+        consumable = set(file_specs.value)
+        for entry in journal.entries:
+            if entry.recover_group and entry.original_staging is not None:
+                preimage = files.resolve_transaction(
+                    layout, entry.original_staging, purpose="group preimage consumption"
+                )
+                if preimage.failure:
+                    return r[bool].from_failure(preimage)
+                consumable.add(preimage.value)
         expected_check = cls._verified_expected_entries(expected, current, consumable)
         if expected_check.failure:
             return expected_check
@@ -306,23 +494,19 @@ class FlextInfraMiseArtifactsVerificationManifest:
 
         """
         result_type = r[t.MappingKV[Path, m.Cli.AtomicPhysicalTreeEntry]]
+        remaining = dict(current)
+        roots = frozenset(
+            item.transaction_root
+            for item in files.transaction_participants(layout)
+            if item.transaction_root is not None
+        )
         for intent in journal.staging_intents:
             path = intent.before.path
-            participant = next(
-                (
-                    item
-                    for item in files.transaction_participants(layout)
-                    if item.transaction_root is not None
-                    and path != item.transaction_root
-                    and path.is_relative_to(item.transaction_root)
-                ),
-                None,
-            )
-            if participant is None:
+            if roots.isdisjoint(path.parents):
                 return result_type.fail(
                     f"staging intention escapes transaction root: {path}",
                 )
-            entry = current.get(path)
+            entry = remaining.get(path)
             if entry is None or path in expected:
                 continue
             if intent.created is not None:
@@ -330,7 +514,6 @@ class FlextInfraMiseArtifactsVerificationManifest:
                     return result_type.fail(
                         f"finalized staging identity changed: {path}",
                     )
-                current = {key: value for key, value in current.items() if key != path}
             elif (
                 entry.kind,
                 entry.sha256,
@@ -349,11 +532,9 @@ class FlextInfraMiseArtifactsVerificationManifest:
                 return result_type.fail(
                     f"pending staging identity differs from intention: {path}",
                 )
-            else:
-                # These exact bytes were authorized before creation; recovery
-                # must not pretend a finalized physical receipt already exists.
-                current = {key: value for key, value in current.items() if key != path}
-        return result_type.ok(current)
+            # Exact bytes or a finalized identity have now been authenticated.
+            del remaining[path]
+        return result_type.ok(remaining)
 
     @classmethod
     def _verified_expected_entries(
@@ -377,7 +558,9 @@ class FlextInfraMiseArtifactsVerificationManifest:
                     f"journaled temporary-tree entry is missing: {path}",
                 )
             if entry.kind == "directory":
-                if not cls._same_directory_identity(entry, current_entry):
+                if not FlextInfraMiseArtifactsComparison.same_directory_identity(
+                    entry, current_entry
+                ):
                     return r[bool].fail(
                         f"temporary-tree directory identity changed: {path}",
                     )
@@ -426,7 +609,7 @@ class FlextInfraMiseArtifactsVerificationManifest:
         for entry in additions:
             receipt = created_by_path.get(entry.path)
             if receipt is not None:
-                if not cls._matches_created_entry(entry, receipt):
+                if not cls._matches_state_entry(entry, receipt):
                     return r[bool].fail(
                         f"created temporary-tree identity changed: {entry.path}",
                     )
@@ -445,12 +628,12 @@ class FlextInfraMiseArtifactsVerificationManifest:
         return r[bool].ok(value=True)
 
     @classmethod
-    def _matches_created_entry(
+    def _matches_state_entry(
         cls,
         entry: m.Cli.AtomicPhysicalTreeEntry,
         receipt: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryState,
     ) -> bool:
-        """Authenticate additions from invocation receipts, never their inventory.
+        """Compare inventory identity against a separately captured native state.
 
         Returns:
             The resulting ``bool``.
@@ -503,18 +686,6 @@ class FlextInfraMiseArtifactsVerificationManifest:
         for entry in journal.entries:
             selectors: t.VariadicTuple[t.Pair[_JournalFileRole, str | None]] = (
                 ("desired", entry.desired_staging),
-                ("backup", entry.original_backup),
-                ("rollback", entry.rollback_staging),
-                (
-                    "restore",
-                    (
-                        Path(entry.original_backup).with_suffix(".restore").as_posix()
-                        if entry.original_backup is not None
-                        and entry.rollback_staging is None
-                        and journal.state in {"prepared", "recovering"}
-                        else None
-                    ),
-                ),
             )
             for role, selector in selectors:
                 if selector is None:
@@ -538,41 +709,20 @@ class FlextInfraMiseArtifactsVerificationManifest:
     def _matches_journal_file(
         cls,
         observed: m.Cli.AtomicPhysicalTreeEntry,
-        role: _JournalFileRole,
+        _role: _JournalFileRole,
         entry: m.Infra.CodegenJournalEntry,
     ) -> bool:
         if observed.kind != "file":
             return False
-        if role == "desired":
-            expected = (
-                entry.desired_sha256,
-                entry.desired_mode,
-                entry.desired_device,
-                entry.desired_inode,
-                entry.desired_link_count,
-                entry.desired_file_attributes,
-                entry.desired_reparse_tag,
-            )
-        elif role == "rollback":
-            expected = (
-                entry.rollback_sha256,
-                entry.rollback_mode,
-                entry.rollback_device,
-                entry.rollback_inode,
-                entry.rollback_link_count,
-                entry.rollback_file_attributes,
-                entry.rollback_reparse_tag,
-            )
-        else:
-            expected = (
-                entry.original_sha256,
-                entry.original_mode if role == "restore" else c.Infra.JOURNAL_MODE,
-                observed.device,
-                observed.inode,
-                1,
-                observed.file_attributes,
-                observed.reparse_tag,
-            )
+        expected = (
+            entry.desired_sha256,
+            entry.desired_mode,
+            entry.desired_device,
+            entry.desired_inode,
+            entry.desired_link_count,
+            entry.desired_file_attributes,
+            entry.desired_reparse_tag,
+        )
         actual = (
             observed.sha256,
             observed.mode,
@@ -583,42 +733,6 @@ class FlextInfraMiseArtifactsVerificationManifest:
             observed.reparse_tag,
         )
         return actual == expected
-
-    @classmethod
-    def _same_directory_identity(
-        cls,
-        expected: m.Cli.AtomicPhysicalTreeEntry,
-        observed: m.Cli.AtomicPhysicalTreeEntry,
-    ) -> bool:
-        return (
-            expected.path,
-            expected.kind,
-            expected.parent_device,
-            expected.parent_inode,
-            expected.parent_mount_id,
-            expected.mode,
-            expected.device,
-            expected.inode,
-            expected.mount_id,
-            expected.uid,
-            expected.gid,
-            expected.file_attributes,
-            expected.reparse_tag,
-        ) == (
-            observed.path,
-            observed.kind,
-            observed.parent_device,
-            observed.parent_inode,
-            observed.parent_mount_id,
-            observed.mode,
-            observed.device,
-            observed.inode,
-            observed.mount_id,
-            observed.uid,
-            observed.gid,
-            observed.file_attributes,
-            observed.reparse_tag,
-        )
 
     @classmethod
     def _manifest_root_matches_created(

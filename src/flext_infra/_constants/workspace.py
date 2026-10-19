@@ -23,6 +23,28 @@ if TYPE_CHECKING:
 class FlextInfraConstantsWorkspace:
     """Workspace infrastructure constants."""
 
+    WORKSPACE_MANIFEST_VERSION: ClassVar[int] = 3
+
+    # CPython Include/object.h: Py_TPFLAGS_IMMUTABLETYPE.
+    CPYTHON_IMMUTABLE_TYPE_FLAG: ClassVar[int] = 1 << 8
+
+    @unique
+    class OpCode(StrEnum):
+        """CPython dis opcode names consumed by native reference analysis."""
+
+        COPY = "COPY"
+        DELETE_FAST = "DELETE_FAST"
+        DELETE_GLOBAL = "DELETE_GLOBAL"
+        LOAD_ATTR = "LOAD_ATTR"
+        LOAD_FAST = "LOAD_FAST"
+        LOAD_FAST_LOAD_FAST = "LOAD_FAST_LOAD_FAST"
+        LOAD_GLOBAL = "LOAD_GLOBAL"
+        STORE_ATTR = "STORE_ATTR"
+        STORE_FAST = "STORE_FAST"
+        STORE_GLOBAL = "STORE_GLOBAL"
+        STORE_NAME = "STORE_NAME"
+        SWAP = "SWAP"
+
     @unique
     class BeadIssueStatus(StrEnum):
         """Beads issue status values."""
@@ -106,11 +128,36 @@ class FlextInfraConstantsWorkspace:
     "Interpreter metadata identifying a provisioned virtual environment."
     DISTRIBUTION_DIRECT_URL_FILE: ClassVar[str] = "direct_url.json"
     "PEP 610 installer receipt recording a distribution's direct-reference origin."
+    DISTRIBUTION_RECORD_ROW_FIELDS: ClassVar[int] = 3
+    "Native RECORD CSV rows contain path, hash and size columns."
     BINDING_RESOLUTION_FILES: ClassVar[t.VariadicTuple[t.StrPair]] = (
         ("--overrides", "overrides.txt"),
         ("--constraints", "constraints.txt"),
     )
     "UV resolution inputs written only inside the consumer environment."
+    BINDING_PACKAGE_SCRIPT: ClassVar[
+        str
+    ] = """import importlib.util, json, sys, sysconfig
+from pathlib import Path
+packages = {}
+for name in sys.argv[1:]:
+    spec = importlib.util.find_spec(name)
+    packages[name] = (
+        list(spec.submodule_search_locations)
+        if spec is not None and spec.submodule_search_locations is not None
+        else []
+    )
+print(json.dumps({
+    "prefix": sys.prefix,
+    "metadata_paths": list(dict.fromkeys(
+        str(Path(sysconfig.get_path(kind)).resolve(strict=True))
+        for kind in ("purelib", "platlib")
+    )),
+    "import_paths": sys.path,
+    "package_directories": packages,
+}))
+"""
+
     BINDING_MARKER_SCRIPT: ClassVar[str] = """import json, os, platform, sys
 version = sys.implementation.version
 implementation_version = '.'.join(str(part) for part in version[:3])
@@ -163,17 +210,29 @@ print(json.dumps({
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "fleet-verb.json"
     )
     "Typed receipts of the latest fleet verb run, one per governed member."
-    LIFECYCLE_VERBS: ClassVar[t.StrSequence] = (
-        "setup",
-        "gen",
-        "upg",
-        "setup",
-        "gen",
-        "gen",
-    )
-    "Fixed serial lifecycle, including the post-upgrade generation fixed point."
     LIFECYCLE_REPORT_RELATIVE_PATH: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "validate-lifecycle.json"
+    )
+    WORKSPACE_OPERATION_REPORT_DIRECTORY: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "setup-operations"
+    )
+    WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH: ClassVar[Path] = (
+        WORKSPACE_OPERATION_REPORT_DIRECTORY / "tool-bootstrap.json"
+    )
+    CODEGEN_PLAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "codegen-plan.json"
+    )
+    CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME)
+        / "codegen-publication.json"
+    )
+    "Latest generation receipt: only a complete `all` operation occupies it."
+    CODEGEN_PUBLICATION_ARCHIVE_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "codegen-publication"
+    )
+    "Per-transaction archive holding every publication receipt."
+    CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "codegen-lazy-plan.json"
     )
     "Typed receipts for the invoking workspace root and governed members."
     FLEET_GAPS_REPORT_RELATIVE_PATH: ClassVar[Path] = (

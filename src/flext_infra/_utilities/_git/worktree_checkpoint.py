@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from git import GitCommandError
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitWorktreeMaterializationMixin,
 )
@@ -29,7 +29,7 @@ class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
         """
         return tuple(
             f":(exclude){name}"
-            for name in sorted(c.Infra.WORKTREE_TRANSACTION_EXCLUDED_DIRS)
+            for name in sorted(config.Infra.codegen.worktree_transaction_excluded_dirs)
         )
 
     @classmethod

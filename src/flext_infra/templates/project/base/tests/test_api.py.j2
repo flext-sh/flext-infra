@@ -1,0 +1,35 @@
+"""Public runtime contract for {{ package_name }}.
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from flext_tests import tm
+
+from {{ package_name }} import {{ class_stem }}, config, m, settings
+
+
+class Tests{{ class_stem }}Api:
+    """Exercise the configured API through its real dependency ports."""
+
+    @staticmethod
+    def test_ping_uses_injected_settings() -> None:
+        """Independent runtime settings select their configured responses."""
+        adjusted = settings.clone({{ ns }}={"enabled": not settings.{{ ns }}.enabled})
+        for runtime in (settings, adjusted):
+            service = {{ class_stem }}(
+                configuration=config,
+                runtime_options=runtime,
+                runtime_settings=runtime,
+            )
+            result = tm.ok(service.ping(m.{{ ns }}.PingInput()))
+            expected = (
+                config.{{ ns }}.ping_reply
+                if runtime.{{ ns }}.enabled
+                else config.{{ ns }}.disabled_reply
+            )
+            tm.that(result.message, eq=expected)
+            tm.that(service.settings is runtime, eq=True)
+        tm.that(settings.{{ ns }}.enabled != adjusted.{{ ns }}.enabled, eq=True)

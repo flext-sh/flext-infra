@@ -6,24 +6,82 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 from enum import StrEnum, unique
-from typing import ClassVar
-
-from flext_cli import t
 
 
 class FlextInfraConfigVocabulary:
     """Canonical closed contracts required before project facades initialize."""
 
-    DEPENDENCY_GROUPS: ClassVar[str] = "dependency-groups"
-    """PEP 735 dependency-groups table key."""
+    @unique
+    class RepositoryState(StrEnum):
+        """Lifecycle state used by repository selection."""
 
-    WORKSPACE_MANIFEST_VERSION: ClassVar[int] = 3
+        ACTIVE = "active"
+        EXCLUDED = "excluded"
 
-    GIT_COMMIT_OID_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$",
-    )
+    @unique
+    class MemberArchitectureLayer(StrEnum):
+        """Declared architecture layer of one workspace member.
+
+        The per-member ``flext-layer`` attribute in ``.gitmodules`` owns the
+        declaration; consumers derive domain/platform member name sets from
+        it instead of hand-maintained package lists.
+        """
+
+        DOMAIN = "domain"
+        PLATFORM = "platform"
+
+    @unique
+    class CodegenKind(StrEnum):
+        """Code-generation policy applied to one repository."""
+
+        CONFORM = "conform"
+        PYTHON = "python"
+        NONE = "none"
+
+    @unique
+    class ProjectKind(StrEnum):
+        """Own governance profile; external forks retain upstream contracts."""
+
+        INTERNAL_FLEXT = "internal_flext"
+        INTERNAL = "internal"
+        THIRD_PARTY_FORK = "third_party_fork"
+
+    @unique
+    class MakeProfile(StrEnum):
+        """Generated Make profile proven by the repository checkout topology."""
+
+        WORKSPACE = "workspace"
+        STANDALONE = "standalone"
+
+    class PytestCacheEnvironment(StrEnum):
+        """OS and pytest-testmon keys consumed by the Make cache contract."""
+
+        DATA_HOME = "XDG_CACHE_HOME"
+        USER_HOME = "HOME"
+        DATABASE_FILE = "TESTMON_DATAFILE"
+
+    class MypyCacheEnvironment(StrEnum):
+        """Mypy cache and XDG keys consumed by the Make cache contract."""
+
+        CACHE_DIR = "MYPY_CACHE_DIR"
+        DATA_HOME = "XDG_CACHE_HOME"
+        USER_HOME = "HOME"
+
+    @unique
+    class GateKind(StrEnum):
+        """Owner of a gate's rule catalog, independent of its execution engine."""
+
+        EXTERNAL = "external"
+        TYPE_CHECKER = "type-checker"
+        INFRA = "infra"
+
+    @unique
+    class GateAcceptancePolicy(StrEnum):
+        """Whether evidence claims clean quality or complete diagnostic execution."""
+
+        CLEAN = "clean"
+        COMPLETE_EXECUTION = "complete_execution"
 
     @unique
     class CodegenConformSurface(StrEnum):
@@ -38,3 +96,8 @@ class FlextInfraConfigVocabulary:
         MAKEFILE = "makefile"
         MISE_CONFIG = "mise-config"
         PYPROJECT = "pyproject"
+        RUNTIME_BINDINGS = "runtime-bindings"
+        WORKFLOWS = "workflows"
+
+
+__all__: list[str] = ["FlextInfraConfigVocabulary"]

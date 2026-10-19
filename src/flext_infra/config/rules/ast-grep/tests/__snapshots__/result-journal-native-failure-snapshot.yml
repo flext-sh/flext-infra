@@ -1,0 +1,19 @@
+id: result-journal-native-failure
+snapshots:
+  ? |
+    if result.failure:
+        return inspect(layout, result.error or "journal failed")
+  : fixed: |
+      if result.failure:
+          return inspect(layout, result, context=result.error or "journal failed")
+    labels:
+    - source: inspect(layout, result.error or "journal failed")
+      style: primary
+      start: 30
+      end: 79
+    - source: |-
+        if result.failure:
+            return inspect(layout, result.error or "journal failed")
+      style: secondary
+      start: 0
+      end: 79

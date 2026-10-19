@@ -1,0 +1,80 @@
+id: specialize-registration-algebra
+snapshots:
+  ? |
+    from flext_core import p, t
+    def guard(value: t.GuardInput) -> bool:
+        return isinstance(value, str)
+  : fixed: |
+      from flext_core import p, t
+      def guard(value: p.GuardInput) -> bool:
+          return isinstance(value, str)
+    labels:
+    - source: t.GuardInput
+      style: primary
+      start: 45
+      end: 57
+    - source: p
+      style: secondary
+      start: 23
+      end: 24
+    - source: from flext_core import p, t
+      style: secondary
+      start: 0
+      end: 27
+    - source: |
+        from flext_core import p, t
+        def guard(value: t.GuardInput) -> bool:
+            return isinstance(value, str)
+      style: secondary
+      start: 0
+      end: 102
+  ? |
+    from flext_core import p, t
+    value: t.RegisterableService
+  : fixed: |
+      from flext_core import p, t
+      value: p.RegisterableService
+    labels:
+    - source: t.RegisterableService
+      style: primary
+      start: 35
+      end: 56
+    - source: p
+      style: secondary
+      start: 23
+      end: 24
+    - source: from flext_core import p, t
+      style: secondary
+      start: 0
+      end: 27
+    - source: |
+        from flext_core import p, t
+        value: t.RegisterableService
+      style: secondary
+      start: 0
+      end: 57
+  ? |
+    from flext_core import p, t
+    values: t.ServiceMap
+  : fixed: |
+      from flext_core import p, t
+      values: p.ServiceMap
+    labels:
+    - source: t.ServiceMap
+      style: primary
+      start: 36
+      end: 48
+    - source: p
+      style: secondary
+      start: 23
+      end: 24
+    - source: from flext_core import p, t
+      style: secondary
+      start: 0
+      end: 27
+    - source: |
+        from flext_core import p, t
+        values: t.ServiceMap
+      style: secondary
+      start: 0
+      end: 49

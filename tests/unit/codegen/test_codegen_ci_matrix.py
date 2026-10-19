@@ -50,13 +50,9 @@ class TestsFlextInfraCodegenCiMatrix:
             The resulting ``Path``.
 
         """
-        # The scaffold lands inside a governed tree: generation formats through
-        # the committed Mise declaration and lock, never a moving selector.
-        # They land in the output root before the scaffold renders into it;
-        # resolution in a root outside any governed tree is flext-pvhid.
-        root.mkdir(parents=True, exist_ok=True)
-        u.Tests.copy_tracked_mise_seeds(root)
+        # The executor owns its provisioned tools before the destination exists.
         service = FlextInfraCodegenProjectNew(
+            repository_root=Path.cwd(),
             flext_source=u.Tests.flext_source(),
             name="flext-demo",
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
@@ -220,7 +216,7 @@ class TestsFlextInfraCodegenCiMatrix:
         tm.that(workflow.get("permissions"), eq=None)
         permissions = t.Cli.JSON_MAPPING_ADAPTER.validate_python(ci_job["permissions"])
         tm.that(permissions["contents"], eq="read")
-        tm.that("merge-guard" in jobs, eq=True)
+        tm.that("merge-guard" in jobs, eq=False)
 
     @staticmethod
     def test_every_approval_verb_blocks_on_push_and_pull_request(
@@ -427,7 +423,13 @@ class TestsFlextInfraCodegenCiMatrix:
         )
 
         tm.that(workflow, has="concurrency:")
-        tm.that(workflow, has="group: ${{ github.workflow }}-${{ github.ref }}")
+        tm.that(
+            workflow,
+            has=(
+                "group: ${{ github.workflow }}-${{ github.event_name }}-"
+                "${{ github.event.pull_request.number || github.ref }}"
+            ),
+        )
         tm.that(workflow, has="cancel-in-progress: true")
 
     def test_ci_workflow_is_identical_across_fresh_checkouts(
@@ -756,28 +758,21 @@ class TestsFlextInfraCodegenCiMatrix:
         self._assert_dispatch_only(triggers)
 
     @staticmethod
-    def test_draft_wip_selects_no_jobs_and_review_blocks_wip_head(
+    def test_draft_selection_preserves_gate_jobs_without_subject_merge_lock(
         rendered_project: Path,
     ) -> None:
-        """Draft is remote durability; only a promoted non-WIP head may land."""
-        root = rendered_project
-        workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
-            encoding="utf-8",
+        """Workflow gates retain native results without a separate WIP veto."""
+        workflow = tm.ok(
+            u.Cli.yaml_parse(
+                (rendered_project / ".github/workflows/ci.yml").read_text(
+                    encoding="utf-8",
+                ),
+            ),
         )
-        _, jobs = workflow.split("\njobs:\n", maxsplit=1)
-        ci_job, merge_guard = jobs.split("\n  merge-guard:", maxsplit=1)
-
-        tm.that(ci_job, has="github.event.pull_request.draft == false")
-        tm.that(ci_job, has="make check")
-        tm.that(merge_guard, has="github.event.pull_request.draft == false")
-        # The merge guard must inspect the PR head, not the refs/pull/N/merge
-        # commit that actions/checkout selects by default on pull_request.
-        tm.that(merge_guard, has="ref: ${{ github.event.pull_request.head.sha }}")
-        tm.that(merge_guard, has="subject=$(git log -1 --format=%s)")
-        # WIP markers are config-owned data; the guard matches them generically.
-        tm.that(merge_guard, has="grep -qiE")
-        tm.that(merge_guard, has="WIP head cannot merge")
-        tm.that(merge_guard, lacks="DRAFT PR cannot merge")
+        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
+        ci = t.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["ci"])
+        tm.that(ci["if"], has="github.event.pull_request.draft == false")
+        tm.that("merge-guard" in jobs, eq=False)
 
     @staticmethod
     def test_docs_workflow_covers_every_blocking_ci_branch(

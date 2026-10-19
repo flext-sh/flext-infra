@@ -15,6 +15,29 @@ dependency lists are CUSTOM afterwards, so the declaration then rules. -#}
 {%- endif -%}
 {%- endmacro -%}
 
+{%- macro hatch_target_declaration(target) -%}
+[tool.hatch.build.targets.{{ target }}]
+{% if packaged_data_excludes %}
+exclude = [
+{% for data_path in packaged_data_excludes %}
+  {{ ("/" ~ data_path) | tojson }},
+{% endfor %}
+]
+{% endif %}
+only-include = [
+  "src/{{ package_name }}",
+{% for package in root_packages %}
+  {{ ("src/" ~ package) | tojson }},
+{% endfor %}
+{% for data_path in packaged_data_paths if data_path not in packaged_data_files %}
+  {{ data_path | tojson }},
+{% endfor %}
+{% for namespace in repository_namespace_packages %}
+  {{ namespace | tojson }},
+{% endfor %}
+]
+{%- endmacro -%}
+
 # [MANAGED] build-system
 [build-system]
 build-backend = {{ scaffold.build.backend | tojson }}
@@ -26,7 +49,7 @@ requires = [
 
 # [CUSTOM] name, description, authors, maintainers, scripts, entry-points, classifiers, keywords, license, urls, readme, version, dependencies, optional-dependencies
 # [MANAGED] requires-python
-# Runtime profile requirements take precedence over same-name CUSTOM dependencies.
+# Runtime requirements retain the target's own declaration.
 [project]
 classifiers = [
 {% for item in scaffold.project.classifiers %}
@@ -34,10 +57,7 @@ classifiers = [
 {% endfor %}
 ]
 dependencies = [
-{% for item in runtime_dependency_overlay %}
-  {{ flext_requirement(item) }},
-{% endfor %}
-{% for item in dependency_profile.runtime if item != dist %}
+{% for item in project_dependencies %}
   {{ flext_requirement(item) }},
 {% endfor %}
 ]
@@ -62,19 +82,14 @@ email = "{{ author_email }}"
 name = "{{ author_name }}"
 
 [dependency-groups]
-codegen = [
-{% for item in dependency_profile.codegen if item != dist %}
-  {{ flext_requirement(item) }},
-{% endfor %}
-]
 dev = [
-{% for item in scaffold.project.dev if item != dist %}
+{% for item in development_dependencies %}
   {{ flext_requirement(item) }},
 {% endfor %}
 ]
 {% if cli_module %}
 [project.scripts]
-{{ dist }} = "{{ package_name }}.cli:main"
+{{ dist }} = "{{ package_name }}.cli:{{ class_stem }}Cli.main"
 {% endif %}
 {% if repository %}
 
@@ -112,12 +127,7 @@ omit = [
 
 [tool.deptry]
 known_first_party = [
-{% for item in tooling_runtime.first_party %}
-  {{ item | tojson }},
-{% endfor %}
-]
-pep621_dev_dependency_groups = [
-{% for item in tooling.tools.deptry.pep621_dev_dependency_groups %}
+{% for item in tooling_runtime.deptry_first_party %}
   {{ item | tojson }},
 {% endfor %}
 ]
@@ -127,6 +137,14 @@ package_name = {{ package_name | tojson }}
 
 [tool.hatch.metadata]
 allow-direct-references = {{ tooling.tools.hatch.allow_direct_references | lower }}
+{% if make_profile == "workspace" and project_declaration_resource %}
+
+[tool.hatch.build.targets.wheel.force-include]
+{{ project_declaration_resource[0] | tojson }} = {{ project_declaration_resource[1] | tojson }}
+
+[tool.hatch.build.targets.sdist.force-include]
+{{ project_declaration_resource[0] | tojson }} = {{ project_declaration_resource[0] | tojson }}
+{% endif %}
 {% if make_profile != "workspace" %}
 {% if hatch_build_hook_path %}
 
@@ -135,26 +153,7 @@ allow-direct-references = {{ tooling.tools.hatch.allow_direct_references | lower
 path = {{ hatch_build_hook_path | tojson }}
 {% endif %}
 
-[tool.hatch.build.targets.wheel]
-{% if packaged_data_excludes %}
-exclude = [
-{% for data_path in packaged_data_excludes %}
-  {{ ("/" ~ data_path) | tojson }},
-{% endfor %}
-]
-{% endif %}
-only-include = [
-  "src/{{ package_name }}",
-{% for package in root_packages %}
-  {{ ("src/" ~ package) | tojson }},
-{% endfor %}
-{% for data_path in packaged_data_paths if data_path not in packaged_data_files %}
-  {{ data_path | tojson }},
-{% endfor %}
-{% for namespace in repository_namespace_packages %}
-  {{ namespace | tojson }},
-{% endfor %}
-]
+{{ hatch_target_declaration("wheel") }}
 
 [tool.hatch.build.targets.wheel.sources]
 {{ ("src/" ~ package_name) | tojson }} = {{ package_name | tojson }}
@@ -167,10 +166,13 @@ only-include = [
 {% for namespace in repository_namespace_packages %}
 {{ namespace | tojson }} = {{ namespace | tojson }}
 {% endfor %}
-{% if packaged_data_files or root_modules %}
+{% if packaged_data_files or root_modules or project_declaration_resource %}
 
 [tool.hatch.build.targets.wheel.force-include]
-{% for data_dir in packaged_data_files %}
+{% if project_declaration_resource %}
+{{ project_declaration_resource[0] | tojson }} = {{ project_declaration_resource[1] | tojson }}
+{% endif %}
+{% for data_dir in packaged_data_files if not project_declaration_resource or data_dir != project_declaration_resource[0] %}
 {{ data_dir | tojson }} = {{ (package_name ~ "/" ~ data_dir) | tojson }}
 {% endfor %}
 {% for module in root_modules %}
@@ -178,30 +180,14 @@ only-include = [
 {% endfor %}
 {% endif %}
 
-[tool.hatch.build.targets.sdist]
-{% if packaged_data_excludes %}
-exclude = [
-{% for data_path in packaged_data_excludes %}
-  {{ ("/" ~ data_path) | tojson }},
-{% endfor %}
-]
-{% endif %}
-only-include = [
-  "src/{{ package_name }}",
-{% for package in root_packages %}
-  {{ ("src/" ~ package) | tojson }},
-{% endfor %}
-{% for data_dir in packaged_data_paths if data_dir not in packaged_data_files %}
-  {{ data_dir | tojson }},
-{% endfor %}
-{% for namespace in repository_namespace_packages %}
-  {{ namespace | tojson }},
-{% endfor %}
-]
-{% if packaged_data_files or root_modules or hatch_build_hook_path %}
+{{ hatch_target_declaration("sdist") }}
+{% if packaged_data_files or root_modules or hatch_build_hook_path or project_declaration_resource %}
 
 [tool.hatch.build.targets.sdist.force-include]
-{% for data_file in packaged_data_files %}
+{% if project_declaration_resource %}
+{{ project_declaration_resource[0] | tojson }} = {{ project_declaration_resource[0] | tojson }}
+{% endif %}
+{% for data_file in packaged_data_files if not project_declaration_resource or data_file != project_declaration_resource[0] %}
 {{ data_file | tojson }} = {{ data_file | tojson }}
 {% endfor %}
 {% for module in root_modules %}
@@ -225,13 +211,6 @@ plugins = [
   {{ item | tojson }},
 {% endfor %}
 ]
-{% if tooling.tools.mypy.disable_error_code %}
-disable_error_code = [
-{% for item in tooling.tools.mypy.disable_error_code %}
-  {{ item | tojson }},
-{% endfor %}
-]
-{% endif %}
 python_version = {{ python_version | tojson }}
 {% for key, value in tooling.tools.mypy.boolean_settings | dictsort %}
 {{ key }} = {{ value | lower }}
@@ -249,30 +228,6 @@ module = [
 ]
 follow_untyped_imports = {{ override.follow_untyped_imports | lower }}
 {% endfor %}
-{% if tooling_runtime.mypy_facade_rebind_modules %}
-
-[[tool.mypy.overrides]]
-module = [
-{% for item in tooling_runtime.mypy_facade_rebind_modules %}
-  {{ item | tojson }},
-{% endfor %}
-]
-disable_error_code = [
-{% for item in tooling.tools.mypy.facade_rebind_error_codes %}
-  {{ item | tojson }},
-{% endfor %}
-]
-{% endif %}
-{% if tooling_runtime.mypy_generated_source_modules %}
-
-[[tool.mypy.overrides]]
-module = [
-{% for item in tooling_runtime.mypy_generated_source_modules %}
-  {{ item | tojson }},
-{% endfor %}
-]
-ignore_errors = true
-{% endif %}
 
 [tool.pydantic-mypy]
 init_forbid_extra = {{ tooling.tools.pydantic_mypy.init_forbid_extra | lower }}
@@ -357,7 +312,6 @@ addopts = [
 {% for item in tooling.tools.pytest.standard_addopts %}
   {{ item | tojson }},
 {% endfor %}
-  "--timeout={{ tooling.tools.pytest.case_timeout_seconds }}",
 ]
 flext_slow_timeout_seconds = "{{ tooling.tools.pytest.slow_timeout_seconds }}"
 asyncio_default_fixture_loop_scope = {{ tooling.tools.pytest.asyncio_default_fixture_loop_scope | tojson }}
@@ -420,18 +374,24 @@ quote-style = {{ tooling.tools.ruff.format.quote_style | tojson }}
 skip-magic-trailing-comma = {{ tooling.tools.ruff.format.skip_magic_trailing_comma | lower }}
 
 [tool.ruff.lint]
+{# Preserve canonical disabled rules alongside elected delegated owners. #}
+ignore = [
+{% for item in (ruff_delegated_rules | list + tooling.tools.ruff.lint.ruling_disabled_rules | list) | unique | sort %}
+  {{ item | tojson }},
+{% endfor %}
+]
 extend-safe-fixes = [
 {% for item in tooling.tools.ruff.lint.extend_safe_fixes | sort %}
   {{ item | tojson }},
 {% endfor %}
 ]
-{# ignore holds only the unscoped operator-authorized exceptions declared at
-   the tooling owner; repositories declare no exception. #}
-ignore = [
-{% for item in tooling.tools.ruff.lint.ignore %}
+{% if tooling.tools.ruff.lint.extend_select %}
+extend-select = [
+{% for item in tooling.tools.ruff.lint.extend_select | sort %}
   {{ item | tojson }},
 {% endfor %}
 ]
+{% endif %}
 select = [
 {% for item in tooling.tools.ruff.lint.select | sort %}
   {{ item | tojson }},
@@ -473,18 +433,6 @@ known-first-party = [
 {% endfor %}
 ]
 split-on-trailing-comma = {{ tooling.tools.ruff.lint.isort.split_on_trailing_comma | lower }}
-
-{# ruff_per_file_ignores holds the scoped operator-authorized exceptions
-   declared at the tooling owner, scoped to this project; repositories declare
-   no exception. #}
-[tool.ruff.lint.per-file-ignores]
-{% for pattern, rules in ruff_per_file_ignores | dictsort %}
-{{ pattern | tojson }} = [
-{% for item in rules | sort %}
-  {{ item | tojson }},
-{% endfor %}
-]
-{% endfor %}
 
 [tool.ruff.lint.pydocstyle]
 convention = {{ tooling.tools.ruff.lint.pydocstyle.convention | tojson }}

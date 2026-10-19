@@ -31,7 +31,33 @@ class TestsFlextInfraExtraPathsSearchPaths:
 
         result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
 
-        tm.that(result, eq=("src", "."))
+        tm.that(result, eq=("src", "tests", "."))
+
+    @staticmethod
+    def test_included_scripts_root_joins_the_search_path(tmp_path: Path) -> None:
+        """A scripts-rooted module tree resolves without a repo-root twin.
+
+        Issue #485: project-includes carried ``scripts/**/*.py*`` while the
+        search path lacked the scripts root, so a consumer whose scripts own
+        their module root (``from lib...`` with ``scripts/lib/``) failed with
+        missing-import. Inclusion and resolution derive from the same declared
+        env-dir set.
+        """
+        (tmp_path / "src").mkdir()
+        scripts = tmp_path / "scripts" / "lib"
+        scripts.mkdir(parents=True)
+        (scripts / "workspace_command.py").write_text(
+            "VALUE = 1\n",
+            encoding="utf-8",
+        )
+
+        manager = TestsFlextInfraExtraPathsSupport.manager(tmp_path)
+        result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
+        includes = manager.pyrefly_project_includes(project_dir=tmp_path, is_root=True)
+
+        tm.that("scripts" in result, eq=True)
+        tm.that(result.index("scripts") < result.index("."), eq=True)
+        tm.that("scripts/**/*.py*" in includes, eq=True)
 
     """Verify productive, existing Pyrefly search roots."""
 
@@ -79,7 +105,7 @@ class TestsFlextInfraExtraPathsSearchPaths:
     def test_pyrefly_search_paths_include_project_root_for_tests_package(
         tmp_path: Path,
     ) -> None:
-        """Include the project root when the tests package is importable."""
+        """Include the tests root and project root when tests are importable."""
         consumer = tmp_path / "flext-infra"
         consumer.mkdir()
         (consumer / ".git").mkdir()
@@ -95,7 +121,7 @@ class TestsFlextInfraExtraPathsSearchPaths:
         manager = TestsFlextInfraExtraPathsSupport.manager(tmp_path)
         result = manager.pyrefly_search_paths(project_dir=consumer, is_root=False)
 
-        tm.that(result, eq=("src", "."))
+        tm.that(result, eq=("src", "tests", "."))
 
     @staticmethod
     def test_pyrefly_search_paths_ignore_non_path_dependencies_at_root(
@@ -150,7 +176,7 @@ class TestsFlextInfraExtraPathsSearchPaths:
         manager = TestsFlextInfraExtraPathsSupport.manager(tmp_path)
         result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
 
-        tm.that(result, eq=("src", "."))
+        tm.that(result, eq=("src", "tests", "."))
 
     @staticmethod
     def test_pyrefly_search_paths_exclude_dependency_dirs_at_root(

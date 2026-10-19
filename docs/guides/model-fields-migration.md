@@ -36,10 +36,12 @@ safety boundary, not implemented bounded selection or structured reporting.
 applying either cascade. Scan evidence publication remains part of the scan contract;
 read-only source mode does not mean an artifact-free invocation.
 
-The same semantic pipeline resolves elected self-facade imports before deferring them
-into function bodies. Module/class execution, decorators, defaults and other eager uses
-remain errors. Import identity comes from matched source and qualified bindings, not
-diagnostic prose or a module-name catalog.
+Authored declaration layers cannot import their own namespace at any scope, including
+function bodies and annotation-only guards. The shared import-law owner identifies
+these declarations from the family catalog. Declaration relocation resolves imports
+to identity-proven external public exports through Rope; dependencies without a lawful
+owner remain typed findings. Generated facades alone compose local declarations through
+lazy packages. Moving an import into a method does not repair its ownership.
 
 Dynamic environment reads require a resolved OS import and a config-owned key, either
 directly or through an unambiguous same-function alias. The destination settings source
@@ -89,3 +91,18 @@ staging cleanup against the real upgrade implementation.
 Rule snapshot changes are projected with `make mod-snapshots`. Run `make mod`,
 `make gen`, and the native validation lifecycle after updating the automation
 dependency. Do not repair the consumer by editing the rewritten call site.
+
+Census consumers pass the canonical `m.Infra.CensusInput` to `infra.census`.
+That composition owns the Rope workspace, authenticated source preview and
+request defaults for both CLI callers and behavioral test fixtures.
+
+Mise reality proofs carry their validated inputs in
+`m.Infra.MiseToolchainProofOptions`, using the shared frozen preset. These inputs
+contain declared models, JSON, paths and collections; they require no arbitrary
+type allowance.
+
+Transaction plans and journals use the existing exact-text frozen contract
+preset instead of combining independent Pydantic presets. Staged source strings
+retain their whitespace and enum identities. Toolchain proof scenarios execute
+the managed native UV binary; version and platform expectations come from its
+declared probe and current lock.

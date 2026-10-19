@@ -10,10 +10,10 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_core import install_lazy_exports
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.deps import _modernizer, phases
+    from flext_infra.deps import _modernizer as _modernizer, phases as phases
     from flext_infra.deps._detection_runners import (
         FlextInfraDependencyDetectionRunnersMixin,
     )
@@ -21,13 +21,10 @@ if TYPE_CHECKING:
         FlextInfraDependencyDetectorRuntimeSteps,
     )
     from flext_infra.deps._extra_paths_sync import FlextInfraExtraPathsSyncMixin
-    from flext_infra.deps._floor_profile_writer import FlextInfraDepsFloorProfileWriter
-    from flext_infra.deps._modernizer.base import FlextInfraPyprojectModernizerBase
-    from flext_infra.deps._modernizer.document import (
+    from flext_infra.deps._modernizer import (
+        FlextInfraPyprojectModernizerBase,
         FlextInfraPyprojectModernizerDocument,
-    )
-    from flext_infra.deps._modernizer.run import FlextInfraPyprojectModernizerRun
-    from flext_infra.deps._modernizer.tooling import (
+        FlextInfraPyprojectModernizerRun,
         FlextInfraPyprojectModernizerTooling,
     )
     from flext_infra.deps._pyrefly_fix_steps import FlextInfraConfigFixerSteps
@@ -41,19 +38,15 @@ if TYPE_CHECKING:
     from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
     from flext_infra.deps.lock_integrity import FlextInfraLockIntegrityVerifier
     from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-    from flext_infra.deps.phases.consolidate_groups import (
+    from flext_infra.deps.phases import (
         FlextInfraConsolidateGroupsPhase,
-    )
-    from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
-    from flext_infra.deps.phases.ensure_pyrefly import (
+        FlextInfraEnsurePackagingPhase,
         FlextInfraEnsurePyreflyConfigPhase,
-    )
-    from flext_infra.deps.phases.ensure_pyright import (
         FlextInfraEnsurePyrightConfigPhase,
+        FlextInfraEnsureRuffConfigPhase,
+        FlextInfraInjectCommentsPhase,
+        FlextInfraToolTablesPhase,
     )
-    from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
-    from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
-    from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
 
 
 __all__: tuple[str, ...] = (
@@ -65,7 +58,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyDetectorRuntime",
     "FlextInfraDependencyDetectorRuntimeSteps",
-    "FlextInfraDepsFloorProfileWriter",
     "FlextInfraEnsurePackagingPhase",
     "FlextInfraEnsurePyreflyConfigPhase",
     "FlextInfraEnsurePyrightConfigPhase",
@@ -97,7 +89,6 @@ install_lazy_exports(
         "FlextInfraDependencyDetectionService": ".detection",
         "FlextInfraDependencyDetectorRuntime": ".detector_runtime",
         "FlextInfraDependencyDetectorRuntimeSteps": "._detector_runtime_steps",
-        "FlextInfraDepsFloorProfileWriter": "._floor_profile_writer",
         "FlextInfraEnsurePackagingPhase": ".phases.ensure_packaging",
         "FlextInfraEnsurePyreflyConfigPhase": ".phases.ensure_pyrefly",
         "FlextInfraEnsurePyrightConfigPhase": ".phases.ensure_pyright",

@@ -1,8 +1,4 @@
-"""Ultra-thin codegen service facade composed through FLEXT.
-
-Owns no business logic itself: it composes the private ``_codegen`` service
-parts (VS Code settings today) so callers reach one canonical codegen surface
-instead of importing scattered generators.
+"""Caller-bound codegen handlers inherited by the public API service.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,11 +6,48 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra.services._codegen import FlextInfraCodegenVscodeMixin
+from flext_infra import p
+from flext_infra.codegen import FlextInfraCodegenConform
 
 
-class FlextInfraCodegen(FlextInfraCodegenVscodeMixin):
-    """Public codegen service facade composed via FLEXT."""
+class FlextInfraCodegenHandlers:
+    """Compose fresh conform invocations from the caller's actual capabilities."""
+
+    def codegen_generate(
+        self: p.Infra.CodegenExecutionContext,
+        request: p.Infra.CodegenGenerateRequest,
+    ) -> p.Result[p.Infra.CodegenResult]:
+        """Generate projections using the caller-bound ports and runtime seeds.
+
+        Exceptions from collaborator binding or generation propagate unchanged.
+
+        Returns:
+            The delegated generation Result, including any reported failure.
+
+        """
+        return FlextInfraCodegenConform.generate_request(
+            request,
+            execution_context=self,
+        )
+
+    def codegen_conform(
+        self: p.Infra.CodegenExecutionContext,
+        request: p.Infra.CodegenConformRequest,
+        initial_workspace: p.Infra.WorkspaceSpec | None = None,
+    ) -> p.Result[p.Infra.CodegenResult]:
+        """Observe or repair projections without retaining request state on the API.
+
+        Exceptions from collaborator binding or conformance propagate unchanged.
+
+        Returns:
+            The delegated observation or repair Result, including reported failures.
+
+        """
+        return FlextInfraCodegenConform.execute_request(
+            request,
+            initial_workspace,
+            execution_context=self,
+        )
 
 
-__all__: list[str] = ["FlextInfraCodegen"]
+__all__: list[str] = ["FlextInfraCodegenHandlers"]

@@ -69,11 +69,19 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
             "--porcelain=v1",
             "-z",
             "--no-renames",
-            "--untracked-files=all",
+            "--untracked-files=no",
             strip_newline_in_stdout=False,
         )
+        # Tracked authority = index plus dirty tracked paths. Porcelain `??`
+        # records are untracked and never enter the inventory; a git-ignored
+        # scope may still carry force-staged tracked files, so check_ignore
+        # must never veto the union.
         scope_paths = {path for path in tracked_output.split("\0") if path}
-        scope_paths.update(record[3:] for record in status_output.split("\0") if record)
+        scope_paths.update(
+            record[3:]
+            for record in status_output.split("\0")
+            if record and not record.startswith("??")
+        )
         return tuple(sorted(scope_paths))
 
     @classmethod

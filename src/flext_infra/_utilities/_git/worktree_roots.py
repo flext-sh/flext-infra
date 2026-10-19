@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
+from tempfile import TemporaryFile
 
 from git import Git, GitCommandError
 
@@ -85,6 +86,8 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
     def git_submodule_declarations(
         cls,
         repository_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[t.VariadicTuple[m.Infra.GitSubmoduleDeclaration]]:
         """Parse the repository's ``.gitmodules`` through ``git config -f``.
 
@@ -98,33 +101,75 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
 
         """
         result = r[t.VariadicTuple[m.Infra.GitSubmoduleDeclaration]]
-        sections = cls._gitmodules_sections(repository_root)
+        sections = cls._gitmodules_sections(
+            repository_root, source_project=source_project
+        )
         if sections.failure:
             return result.from_failure(sections)
         declarations: list[m.Infra.GitSubmoduleDeclaration] = []
         for section, values in sections.value.items():
             raw_path = values.get(c.Infra.GITMODULE_PATH_KEY, "")
             relative = Path(raw_path)
-            if relative.is_absolute() or not relative.parts or ".." in relative.parts:
+            invalid_path = (
+                relative.is_absolute() or not relative.parts or ".." in relative.parts
+            )
+            if invalid_path or any(item.path == relative for item in declarations):
                 return result.fail(
-                    f"invalid Git submodule path in {section}: {raw_path!r}",
+                    f"invalid Git submodule path in {section}: {raw_path!r}"
+                    if invalid_path
+                    else f"duplicate Git submodule path: {raw_path}",
                 )
-            if any(item.path == relative for item in declarations):
-                return result.fail(f"duplicate Git submodule path: {raw_path}")
             flag = values.get(c.Infra.GITMODULE_MANAGED_KEY)
+            managed: bool | None = None
+            if flag is not None:
+                try:
+                    normalized = cls._gitmodules_config(
+                        repository_root,
+                        (
+                            "--type=bool",
+                            "--get",
+                            f"{section}.{c.Infra.GITMODULE_MANAGED_KEY}",
+                        ),
+                        source_project=source_project,
+                    ).strip()
+                except (GitCommandError, OSError) as exc:
+                    return result.fail(
+                        f"invalid Git submodule management declaration: {exc}",
+                        exception=exc,
+                    )
+                if normalized not in {"true", "false"}:
+                    error = ValueError(
+                        "Git returned a noncanonical management boolean",
+                    )
+                    return result.fail(str(error), exception=error)
+                managed = normalized == "true"
+            raw_layer = values.get(c.Infra.GITMODULE_LAYER_KEY)
+            layer: c.Infra.MemberArchitectureLayer | None = None
+            if raw_layer is not None:
+                try:
+                    layer = c.Infra.MemberArchitectureLayer(raw_layer)
+                except ValueError:
+                    return result.fail(
+                        f"invalid Git submodule layer declaration in {section}: "
+                        f"{raw_layer!r}",
+                    )
             declarations.append(
                 m.Infra.GitSubmoduleDeclaration(
                     path=relative,
                     url=values.get(c.Infra.GITMODULE_URL_KEY, ""),
                     branch=values.get(c.Infra.GITMODULE_BRANCH_KEY, ""),
-                    managed=None if flag is None else flag.lower() == "true",
+                    managed=managed,
+                    layer=layer,
                 ),
             )
         return result.ok(tuple(declarations))
 
-    @staticmethod
+    @classmethod
     def _gitmodules_sections(
+        cls,
         repository_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[t.MappingKV[str, t.StrMapping]]:
         """Group every ``submodule.*`` key Git reads from ``.gitmodules``.
 
@@ -134,18 +179,25 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
         """
         result = r[t.MappingKV[str, t.StrMapping]]
         gitmodules = repository_root / c.Infra.GITMODULES
-        if not gitmodules.exists():
+        if not (
+            gitmodules.exists()
+            if source_project is None
+            else source_project.source_query(gitmodules, "exists")
+        ):
             return result.ok({})
-        if not gitmodules.is_file():
+        if not (
+            gitmodules.is_file()
+            if source_project is None
+            else source_project.source_query(gitmodules, "isfile")
+        ):
             return result.fail(
                 f"Git submodule manifest is not a regular file: {gitmodules}",
             )
         try:
-            listing = Git(repository_root).config(
-                "--file",
-                str(gitmodules),
-                "--null",
-                "--list",
+            listing = cls._gitmodules_config(
+                repository_root,
+                ("--null", "--list"),
+                source_project=source_project,
             )
         except (GitCommandError, OSError) as exc:
             return result.fail(
@@ -163,6 +215,33 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
                 return result.fail(f"Git submodule key is declared twice: {key}")
             values[variable] = value.strip()
         return result.ok(sections)
+
+    @staticmethod
+    def _gitmodules_config(
+        repository_root: Path,
+        arguments: t.StrSequence,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> str:
+        """Keep Git's parser while feeding the authenticated original descriptor.
+
+        Returns:
+            Git's parsed output for the requested ``.gitmodules`` arguments.
+
+        """
+        if source_project is None:
+            return Git(repository_root).config(
+                "--file",
+                str(repository_root / c.Infra.GITMODULES),
+                *arguments,
+            )
+        content = source_project.source_text(repository_root / c.Infra.GITMODULES)
+        with TemporaryFile() as source:
+            source.write(content.encode(c.DEFAULT_ENCODING))
+            source.seek(0)
+            return Git(repository_root).config(
+                "--file", "-", *arguments, istream=source
+            )
 
     @classmethod
     def git_submodule_declaration(

@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 
 from flext_infra import c, config, m, p, t
+from flext_infra._config_make_contract import FlextInfraMakeContract
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
@@ -20,6 +21,7 @@ from flext_infra._utilities import (
 
 
 class FlextInfraUtilitiesCodegen(
+    FlextInfraMakeContract,
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesGitignore,
@@ -29,7 +31,11 @@ class FlextInfraUtilitiesCodegen(
     if TYPE_CHECKING:
 
         @staticmethod
-        def project_root(file_path: Path) -> Path | None: ...
+        def project_root(
+            file_path: Path,
+            *,
+            source_project: p.Infra.RopeProject | None = None,
+        ) -> Path | None: ...
 
     @staticmethod
     def envrc_render_spec() -> m.Infra.EnvrcRenderSpec:
@@ -40,6 +46,8 @@ class FlextInfraUtilitiesCodegen(
 
         """
         return m.Infra.EnvrcRenderSpec(
+            toolchain=config.Infra.codegen.toolchain,
+            uv_resolution=config.Infra.codegen.make.uv_resolution,
             environment_path_prepends=(
                 config.Infra.codegen.toolchain.environment_path_prepends
             ),

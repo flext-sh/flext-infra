@@ -1,0 +1,61 @@
+id: result-recovery-native-failure
+snapshots:
+  ? |
+    if result.failure:
+        return recover(layout, result.error or "context")
+  : fixed: |
+      if result.failure:
+          return recover(layout, result, context=result.error or "context")
+    labels:
+    - source: recover(layout, result.error or "context")
+      style: primary
+      start: 30
+      end: 72
+    - source: |-
+        if result.failure:
+            return recover(layout, result.error or "context")
+      style: secondary
+      start: 0
+      end: 72
+  ? |
+    if result.failure:
+        return target.from_failure(
+            self.recover(
+                current.plan.layout,
+                result.error or f"cannot stage {phase}",
+                exception=result.exception,
+                error_code=result.error_code,
+                error_data=result.error_data,
+            ),
+        )
+  : fixed: |
+      if result.failure:
+          return target.from_failure(
+              self.recover(current.plan.layout, result, context=result.error or f"cannot stage {phase}"),
+          )
+    labels:
+    - source: |-
+        self.recover(
+                    current.plan.layout,
+                    result.error or f"cannot stage {phase}",
+                    exception=result.exception,
+                    error_code=result.error_code,
+                    error_data=result.error_data,
+                )
+      style: primary
+      start: 59
+      end: 292
+    - source: |-
+        if result.failure:
+            return target.from_failure(
+                self.recover(
+                    current.plan.layout,
+                    result.error or f"cannot stage {phase}",
+                    exception=result.exception,
+                    error_code=result.error_code,
+                    error_data=result.error_data,
+                ),
+            )
+      style: secondary
+      start: 0
+      end: 299

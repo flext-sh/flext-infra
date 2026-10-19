@@ -9,6 +9,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Protocol, runtime_checkable
+
 from flext_tests import FlextTestsProtocols
 
 from flext_infra import FlextInfraProtocols
@@ -19,6 +22,37 @@ class TestsFlextInfraProtocols(FlextTestsProtocols, FlextInfraProtocols):
 
     class Tests(FlextTestsProtocols.Tests):
         """Tests use inherited flext-tests and production protocols."""
+
+        @runtime_checkable
+        class PytestProfileContext(Protocol):
+            """Declared runner inputs consumed by the real profiling launcher."""
+
+            @property
+            def repository_root(self) -> Path: ...
+
+            @property
+            def target(self) -> Path: ...
+
+            @property
+            def target_file(self) -> Path | None: ...
+
+            @property
+            def reports(self) -> Path: ...
+
+            @property
+            def testmon_db(self) -> Path: ...
+
+            @property
+            def started_at_monotonic(self) -> float: ...
+
+        class NativeConsumer(Protocol):
+            """Run an actual isolated Python consumer with explicit source inputs."""
+
+            def __call__(
+                self, code: str, *arguments: str, cwd: Path | None = None
+            ) -> None:
+                """Assert successful real execution, preserving its causal output."""
+                ...
 
 
 p = TestsFlextInfraProtocols

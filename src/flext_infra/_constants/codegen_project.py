@@ -30,10 +30,14 @@ if TYPE_CHECKING:
 class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     """Manifest + naming constants for project creation (flat in ``c.Infra.*``)."""
 
-    CODEGEN_LOCAL_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.local.yaml"
-    CODEGEN_ORG_OVERRIDES_FILENAME: ClassVar[str] = "codegen-org.yaml"
     CODEGEN_CLI_MODULE_FILENAME: ClassVar[str] = "cli.py"
-
+    GITHUB_WORKFLOWS_RELATIVE_PATH: ClassVar[str] = ".github/workflows"
+    CUSTOM_MAKE_FILENAME: ClassVar[str] = "custom.mk"
+    """Operator-owned Make include rendered beside the generated Makefile."""
+    CODEGEN_CONFIG_DIR: ClassVar[str] = "config"
+    """Directory name for flext-infra config files relative to the package root."""
+    CODEGEN_LOCAL_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.local.yaml"
+    """Local operator override file name, excluded from the tracked baseline."""
     # These enums define the
     # one public conform contract shared by new and existing repositories. The
     # declarative values live in config/codegen.yaml; constants only type the
@@ -101,55 +105,12 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
         OFFLINE = "offline"
 
     @unique
-    class MakeProfile(StrEnum):
-        """Generated Makefile profile for one repository.
-
-        Topology is proven by the repository itself: a checkout that declares
-        ``.gitmodules`` is a workspace, and one that does not is standalone.
-        This mirrors ``MakeProfile``, which the detector returns, so the two
-        vocabularies cannot drift.
-        """
-
-        WORKSPACE = "workspace"
-        STANDALONE = "standalone"
-
-    @unique
-    class RepositoryState(StrEnum):
-        """Lifecycle state used by repository selection."""
-
-        ACTIVE = "active"
-        EXCLUDED = "excluded"
-
-    @unique
     class CheckoutKind(StrEnum):
         """Physical checkout topology for one repository."""
 
         ROOT = "root"
         SUBMODULE = "submodule"
         INDEPENDENT = "independent"
-
-    @unique
-    class CodegenKind(StrEnum):
-        """Code-generation policy applied to one repository."""
-
-        CONFORM = "conform"
-        PYTHON = "python"
-        NONE = "none"
-
-    @unique
-    class ProjectKind(StrEnum):
-        """Governance kind of one repository; decides who may rewrite it.
-
-        Generation applies to ``INTERNAL_FLEXT`` alone. An ``INTERNAL`` project
-        is owned but not built on FLEXT, so FLEXT layout, facade chain, and
-        typing policy do not apply to it. A ``THIRD_PARTY_FORK`` follows its
-        upstream in everything, and standardizing it would destroy the contract
-        the fork exists to track.
-        """
-
-        INTERNAL_FLEXT = "internal_flext"
-        INTERNAL = "internal"
-        THIRD_PARTY_FORK = "third_party_fork"
 
     BEADS_CONFIG_FILENAME: ClassVar[str] = "beads.yaml"
     BEADS_DIRNAME: ClassVar[str] = ".beads"
@@ -213,13 +174,11 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     DOCS_SOURCE_STATE_RACE_MARKER: ClassVar[str] = (
         "docs source state changed during planning"
     )
-    """Emitted by ``docs_verify_sources`` when one snapshotted docs source
-    changes content or physical identity inside the planning window."""
+    """Emitted when a captured docs source changes content or physical identity."""
     DOCS_SOURCE_TOPOLOGY_RACE_MARKER: ClassVar[str] = (
         "docs source topology changed during planning"
     )
-    """Emitted by ``docs_verify_sources`` when the discovered docs source set
-    gains or loses a file inside the planning window."""
+    """Emitted when the captured docs source membership changes."""
     CONFIG_SNAPSHOT_ROOT_RACE_MARKER: ClassVar[str] = (
         "project root changed during config snapshot"
     )
@@ -274,7 +233,6 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     "mise.lock platform suffix of a Linux host without glibc."
     GIT_URL_SUFFIX: ClassVar[str] = ".git"
     "Canonical clone-URL suffix every governed RepositoryRef URL carries."
-    CUSTOM_MAKE_FILENAME: ClassVar[str] = "custom.mk"
     CUSTOM_CI_STEPS_FILENAME: ClassVar[str] = ".github/ci-custom-steps.yml"
     """Project-owned steps injected into generated CI, symmetric to custom.mk.
 
@@ -288,12 +246,10 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     TEMPLATE_TEST_MODULE_SKELETON: ClassVar[str] = "test_module_skeleton.py.j2"
     "Scaffold template for canonical test c/t/p/m/u facades."
     CODEGEN_CONFIG_FILENAME: ClassVar[str] = "codegen.yaml"
-    CODEGEN_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.yaml"
+    INFRA_CONFIG_FILENAME: ClassVar[str] = "infra.yaml"
     CODEGEN_GEN_FILENAME: ClassVar[str] = "codegen.gen.yaml"
     CODEGEN_GEN_SUFFIX: ClassVar[str] = ".gen.yaml"
     "File suffix for generation requirements contract files managed by conform."
-    CODEGEN_CONFIG_DIR: ClassVar[str] = "config"
-    "Directory name for flext-infra config files relative to package root."
 
     # One base catalog serves both profiles;
     # workspace topology is read only from each repository's own .gitmodules.

@@ -82,6 +82,27 @@ class FlextInfraModelsGitWorktreeState:
             m.Field(description="Index blob or gitlink object identifier"),
         ]
 
+    class GitIndexFileState(m.ContractModel):
+        """One exact tracked artifact and its immutable staged content."""
+
+        entry: Annotated[
+            FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry | None,
+            m.Field(description="Stage-zero entry, absent for an untracked file"),
+        ]
+        content: Annotated[
+            bytes | None,
+            m.Field(exclude=True, description="Bytes of the captured index blob"),
+        ]
+
+    class GitIndexRetirementRequest(m.ContractModel):
+        """Remove only the captured entry under Git's native index lock."""
+
+        repo_root: Annotated[Path, m.Field(description="Exact owning repository")]
+        entry: Annotated[
+            FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry,
+            m.Field(description="Required immutable preimage of the index entry"),
+        ]
+
     class GitWorktreeObservedFile(m.ContractModel):
         """The observed worktree layer of one file before a guarded effect.
 
@@ -171,6 +192,10 @@ class FlextInfraModelsGitWorktreeState:
             str,
             m.Field(description="Original HEAD commit object identifier"),
         ]
+        branch: Annotated[
+            str | None,
+            m.Field(description="Original native branch; absent for detached HEAD"),
+        ]
         paths: Annotated[
             t.VariadicTuple[Path],
             m.Field(description="Exact literal ownership scope"),
@@ -207,6 +232,22 @@ class FlextInfraModelsGitWorktreeState:
                     "Reachable commit retaining raw working bytes and snapshot metadata"
                 ),
             ),
+        ]
+
+    class GitLaneOwnershipReceipt(m.ContractModel):
+        """Existing owned Git state retained remotely and integrated before a lane."""
+
+        checkpoint: Annotated[
+            FlextInfraModelsGitWorktreeState.GitWorktreeStateCheckpoint,
+            m.Field(
+                description=(
+                    "Full-repository capture identifying the prior owned branch"
+                ),
+            ),
+        ]
+        publication: Annotated[
+            FlextInfraModelsGitWorktreeState.GitWorktreeCheckpointPublication,
+            m.Field(description="Live independently retained checkpoint publication"),
         ]
 
 

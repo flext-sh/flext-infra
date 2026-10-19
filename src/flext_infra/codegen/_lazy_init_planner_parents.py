@@ -29,6 +29,8 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
 
         def _parent_packages(self, pkg_dir: Path) -> t.StrSequence: ...
 
+        def _provider_package_dir(self, package_name: str) -> Path | None: ...
+
     def _parents_from_constants_module(
         self,
         module_path: Path,
@@ -48,7 +50,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
             ValueError: If parent declaration source unavailable.
 
         """
-        seen = visited if visited is not None else set()
+        seen: set[str] = visited if visited is not None else set()
         seen.add(str(module_path.resolve()))
         resource = self.rope_workspace.resource(module_path)
         if resource is None:
@@ -266,12 +268,15 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         )
         if indexed_dir is not None:
             return self._parent_packages(indexed_dir)
-        package_dir = u.Infra.declared_package_dir(package_name)
+        package_dir = self._provider_package_dir(package_name)
         init_path = None if package_dir is None else package_dir / c.Infra.INIT_PY
-        if init_path is None or not init_path.is_file():
+        if init_path is None or not self.rope_workspace.rope_project.source_query(
+            init_path,
+            "isfile",
+        ):
             return ()
         return u.Infra.absolute_import_sources_source(
-            init_path.read_text(encoding=c.DEFAULT_ENCODING),
+            self.rope_workspace.rope_project.source_text(init_path),
             name=alias_name,
         )
 
@@ -296,10 +301,16 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         indexed_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
             package_name,
         )
-        package_dir = indexed_dir or u.Infra.declared_package_dir(package_name)
+        package_dir = indexed_dir or self._provider_package_dir(package_name)
         declared: set[str] = set()
         if package_dir is not None:
-            for module_path in sorted(package_dir.glob("*.py")):
+            project = self.rope_workspace.rope_project
+            for module_path in project.source_children(package_dir):
+                if module_path.suffix != c.Infra.EXT_PYTHON or not project.source_query(
+                    module_path,
+                    "isfile",
+                ):
+                    continue
                 # The generated initializer of this run is an output, never a
                 # declaration owner. An external package's published
                 # initializer IS its own root namespace: the letters it binds
@@ -309,7 +320,8 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
                     continue
                 declared.update(
                     u.Infra.facade_letter_names_source(
-                        module_path.read_text(encoding=c.DEFAULT_ENCODING),
+                        project.source_text(module_path),
+                        filename=str(module_path),
                     ),
                 )
         names = frozenset(declared)
@@ -333,6 +345,9 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         # Why: project-scoped Rope indexes
         # omit declared parents; u.Infra resolves the name in the declared
         # environment. "" is the typed answer for "not a package here".
-        if u.Infra.declared_package_dir(parts[0]) is not None:
+        if self._provider_package_dir(parts[0]) is not None:
             return parts[0]
         return ""
+
+
+__all__: list[str] = ["FlextInfraCodegenLazyInitPlannerParentsMixin"]

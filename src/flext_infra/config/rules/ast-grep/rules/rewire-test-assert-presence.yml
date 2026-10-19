@@ -1,0 +1,70 @@
+# Membership observations preserve operand order and native containment.
+# Native None guards remain assertions: discarding a matcher's returned value
+# removes the narrowing that Python type checkers provide at an assert.
+id: rewire-test-assert-in
+language: Python
+severity: error
+metadata:
+  context:
+    X:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $X in $C"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        has:
+          kind: comparison_operator
+          regex: "\\bin\\b[^,\\n]*\\bin\\b"
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: tm.that($X in $C, truth=True)
+message: Assert containment through the tm matcher facade.
+---
+id: rewire-test-assert-not-in
+language: Python
+severity: error
+metadata:
+  context:
+    X:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $X not in $C"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        has:
+          kind: comparison_operator
+          regex: "\\bin\\b[^,\\n]*\\bin\\b"
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: tm.that($X not in $C, truth=True)
+message: Assert exclusion through the tm matcher facade.

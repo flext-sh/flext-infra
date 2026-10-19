@@ -14,7 +14,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraCliRouteService, c, config, main
+from flext_infra import c, config, main
+from flext_infra.services import FlextInfraCliRouteService
 from tests import m, t, tm, u
 
 
@@ -35,14 +36,13 @@ class TestsFlextInfraCodegenMain:
         """
         repository = u.Tests.repository_ref(repo.name)
         infra = u.Tests.repository_ref("flext-infra")
-        integration = config.Infra.codegen.branch_policy.integration_branch_preference[
-            0
-        ]
+        integration = config.Infra.codegen.branch_policy.integration_branch
         (repo / "pyproject.toml").write_text(
             f'[project]\nname = "{repository.distribution}"\nversion = "0.1.0"\n'
             'requires-python = "'
             f'{config.Infra.codegen.toolchain.python_required_version}"\n'
             'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+            f'license = "{u.Tests.project_spec(repository.distribution).license}"\n'
             f'dependencies = ["flext-core>=0.1.0", '
             f'"flext-infra @ git+{infra.url}@{integration}"]\n\n'
             f'[project.urls]\nRepository = "{repository.url}"\n',
@@ -251,7 +251,7 @@ class TestsFlextInfraCodegenMain:
             tm.that(" ".join(result.value.stdout.split()), contains=route.help_text)
 
         @staticmethod
-        def _seed_managed_conflict(root: Path) -> Path:
+        def seed_managed_conflict(root: Path) -> Path:
             """Seed a governed checkout whose pyproject drifts from its contract.
 
             Returns:
@@ -267,6 +267,7 @@ class TestsFlextInfraCodegenMain:
                 'requires-python = "'
                 f'{config.Infra.codegen.toolchain.python_required_version}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+                f'license = "{u.Tests.project_spec(distribution).license}"\n'
                 'dependencies = ["flext-cli"]\n'
                 "\n"
                 "[tool.pytest.ini_options]\n"
@@ -285,7 +286,7 @@ class TestsFlextInfraCodegenMain:
         ) -> None:
             """Report a managed conflict without touching live bytes or journals."""
             pyproject = (
-                TestsFlextInfraCodegenMain.TestsMainEntryPoint._seed_managed_conflict(
+                TestsFlextInfraCodegenMain.TestsMainEntryPoint.seed_managed_conflict(
                     infra_git_repo,
                 )
             )
@@ -308,7 +309,7 @@ class TestsFlextInfraCodegenMain:
             """Publish the conformed bytes through the transaction, then hold still."""
             root = infra_git_repo
             pyproject = (
-                TestsFlextInfraCodegenMain.TestsMainEntryPoint._seed_managed_conflict(
+                TestsFlextInfraCodegenMain.TestsMainEntryPoint.seed_managed_conflict(
                     root,
                 )
             )
@@ -333,9 +334,7 @@ class TestsFlextInfraCodegenMain:
             )
             tm.that(
                 ini_options["addopts"],
-                has=(
-                    f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}"
-                ),
+                eq=list(config.Infra.tooling.tools.pytest.standard_addopts),
             )
             tm.that(journal.exists(), eq=False)
             tm.that(transaction.exists(), eq=False)

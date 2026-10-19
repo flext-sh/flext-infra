@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 import tarfile
 import zipfile
 from typing import TYPE_CHECKING
@@ -21,6 +22,24 @@ if TYPE_CHECKING:
 
 FIXTURE_DISTRIBUTION = "flext-packaging-fixture"
 FIXTURE_DISTRIBUTION_DATA_DIR = "config"
+
+
+def _rendered_target_table(root: Path, target: str) -> t.JsonMapping:
+    """Read one rendered hatch build target table of the conformed project.
+
+    Returns:
+        The resulting ``t.JsonMapping``.
+
+    """
+    manifest = (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
+    return u.Tests.toml_table_at(
+        manifest,
+        c.Infra.TOOL,
+        "hatch",
+        "build",
+        "targets",
+        target,
+    )
 
 
 class TestsFlextInfraCodegenPackagedDataWheel:
@@ -129,15 +148,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             The resulting ``t.JsonMapping``.
 
         """
-        manifest = (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
-        return u.Tests.toml_table_at(
-            manifest,
-            c.Infra.TOOL,
-            "hatch",
-            "build",
-            "targets",
-            "wheel",
-        )
+        return _rendered_target_table(root, "wheel")
 
     @staticmethod
     def _wheel_force_include(root: Path) -> t.JsonMapping:
@@ -156,22 +167,13 @@ class TestsFlextInfraCodegenPackagedDataWheel:
 
     @staticmethod
     def _sdist_include(root: Path) -> t.JsonList:
-        """Read the rendered sdist source patterns of the conformed project.
+        """Read the rendered sdist's declared native only-include paths.
 
         Returns:
             The resulting ``t.JsonList``.
 
         """
-        manifest = (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
-        sdist = u.Tests.toml_table_at(
-            manifest,
-            c.Infra.TOOL,
-            "hatch",
-            "build",
-            "targets",
-            "sdist",
-        )
-        return u.Tests.toml_list(sdist["only-include"])
+        return u.Tests.toml_list(_rendered_target_table(root, "sdist")["only-include"])
 
     @staticmethod
     def _sdist_force_include(root: Path) -> t.JsonMapping:
@@ -181,15 +183,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             The resulting ``t.JsonMapping``.
 
         """
-        manifest = (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
-        sdist = u.Tests.toml_table_at(
-            manifest,
-            c.Infra.TOOL,
-            "hatch",
-            "build",
-            "targets",
-            "sdist",
-        )
+        sdist = _rendered_target_table(root, "sdist")
         return (
             u.Tests.toml_mapping(sdist["force-include"])
             if "force-include" in sdist
@@ -565,8 +559,13 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             "scaffold-data",
             role=c.Infra.MakeProfile.STANDALONE,
         )
+        package_name = "declared_scaffold_package"
         project = u.Tests.project_spec(repository.name).model_copy(
-            update={"packaged_data_paths": ("config/workspace.yaml",)},
+            update={
+                "package_name": package_name,
+                "class_stem": u.derive_class_stem(package_name),
+                "packaged_data_paths": ("config/workspace.yaml",),
+            },
         )
         workspace = u.Tests.workspace_spec(repository, project=project)
         request = u.Tests.conform_request(
@@ -581,3 +580,40 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             self._wheel_force_include(root).get("config/workspace.yaml"),
             eq=f"{project.package_name}/config/workspace.yaml",
         )
+        wheel_dir = tmp_path / "scaffold-artifacts"
+        tm.ok(
+            u.Cli.run_checked(
+                ["uv", "build", "--wheel", "--out-dir", str(wheel_dir)],
+                cwd=root,
+            ),
+        )
+        wheel = next(wheel_dir.glob("*.whl"))
+        manifest = root / "config/workspace.yaml"
+        with zipfile.ZipFile(wheel) as archive:
+            tm.that(
+                archive.read(f"{project.package_name}/config/workspace.yaml"),
+                eq=manifest.read_bytes(),
+            )
+        consumer_root = tmp_path / "scaffold-consumer"
+        consumer_root.mkdir()
+        consumer = tm.ok(
+            u.Cli.run_raw(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "import sys\n"
+                        "from pathlib import Path\n"
+                        "from importlib.resources import files\n"
+                        f"sys.path.insert(0, {str(wheel)!r})\n"
+                        f"import {project.package_name} as package\n"
+                        "payload = files(package).joinpath("
+                        "'config', 'workspace.yaml').read_bytes()\n"
+                        f"print(payload == Path({str(manifest)!r}).read_bytes())\n"
+                    ),
+                ],
+                cwd=consumer_root,
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True, msg=consumer.stderr)
+        tm.that(consumer.stdout.strip(), eq="True")

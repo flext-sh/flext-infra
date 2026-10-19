@@ -334,18 +334,39 @@ class TestsFlextInfraScriptDispatchMakefile:
         tm.that(report, has="$(PROFILE_REPORTS_DIR)/pytest.pstats")
         tm.that(report, has="$(PROFILE_REPORTS_DIR)/pytest.pstats.json")
 
+    def test_profile_mod_report_uses_the_selected_project_root(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """The report adapter runs in the selected Makefile's root, not caller CWD."""
+        rendered = self._render_root_makefile(
+            tmp_path,
+            extra_verbs=(),
+            script_dispatch=None,
+        )
+        report = rendered.split("_builtin-profile-mod-report:", 1)[1].split(
+            "\n\n",
+            1,
+        )[0]
+        tm.that(
+            report,
+            has=(
+                '\t@cd "$(PROJECT_ROOT)" || exit $$?; \\\n'
+                "\t\t$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \\\n"
+                '\t\t"$(PROFILE_REPORTS_DIR)/mod.pstats"'
+            ),
+        )
+
     def test_test_verbs_share_the_persistent_testmon_database(
         self,
         tmp_path: Path,
     ) -> None:
-        """The bounded test verb runs on the one persistent testmon database.
+        """Public test verbs share one guarded persistent testmon execution path.
 
         The persistent database is keyed by the declared distribution, so
-        every checkout of a project shares one testmon history. The full verb
-        is the one unbounded runner (canonical-commands test-verb law: local
-        only, without testmon and without any time limit): one ``full`` entry
-        outside PYTEST_BOUNDED, whose runner never hands the database to
-        pytest.
+        every checkout of a project shares one testmon history. Complete
+        validation runs incremental then complete through one unbounded
+        ``full`` entry, also used by the shipped test-full command.
         """
         rendered = self._render_root_makefile(
             tmp_path,
@@ -353,6 +374,31 @@ class TestsFlextInfraScriptDispatchMakefile:
             script_dispatch=None,
         )
         cache = config.Infra.codegen.make.testmon_cache
+        public_verbs = (
+            next(
+                line
+                for line in rendered.splitlines()
+                if line.startswith("PUBLIC_VERBS :=")
+            )
+            .split(":=", 1)[1]
+            .split()
+        )
+        expected_verbs = [
+            verb.name
+            for verb in config.Infra.codegen.make.verbs
+            if c.Infra.MakeProfile.STANDALONE in verb.profiles
+        ]
+        tm.that(public_verbs, eq=expected_verbs)
+        tm.that(public_verbs, has="tests")
+        tm.that(
+            rendered,
+            has=[
+                ".PHONY: $(PUBLIC_VERBS) $(addprefix _builtin-,$(PUBLIC_VERBS))",
+                "_builtin-test: _builtin_test_all\n",
+                "_builtin-tests: _builtin_test_full_all\n",
+                "_builtin-test-full: _builtin_test_full_all\n",
+            ],
+        )
         database_line = next(
             line
             for line in rendered.splitlines()
@@ -379,73 +425,49 @@ class TestsFlextInfraScriptDispatchMakefile:
         tm.that(full.count("-m flext_infra._pytest_entry"), eq=1)
         tm.that(full.rstrip().endswith("-m flext_infra._pytest_entry full"), eq=True)
         tm.that(full, lacks="PYTEST_BOUNDED")
+        tm.that(
+            full,
+            has=[
+                "_builtin_require_environment",
+                'if [ -n "$(strip $(FILE))" ]; then',
+                'export FLEXT_PYTEST_TARGET_FILE="$(FILE)";',
+                f'{cache.database_environment_variable}="$$database"',
+            ],
+        )
 
     # A test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer
     # declares extra_verbs/script_dispatch in its own typed repository input. The
     # generic capability stays covered by the fixture-driven cases below.
-    def test_script_dispatch_adds_scripts_to_lint_and_type_paths(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Opted-in repos scan scripts alongside src and tests."""
-        rendered = self._render_root_makefile(
-            tmp_path,
-            extra_verbs=(
-                m.Infra.MakeVerbSpec(
-                    name="charts",
-                    description="Dispatch charts through the dispatcher.",
-                ),
-                m.Infra.MakeVerbSpec(
-                    name="chart-release",
-                    description="Dispatch chart-release through the dispatcher.",
-                ),
-                m.Infra.MakeVerbSpec(
-                    name="bead",
-                    description="Dispatch bead through the declared script dispatcher.",
-                ),
-            ),
-            script_dispatch=m.Infra.ScriptDispatchSpec(
+    @pytest.mark.parametrize(
+        "script_dispatch",
+        [
+            None,
+            m.Infra.ScriptDispatchSpec(
                 dispatcher="scripts/dispatch.py",
                 roots=("scripts",),
             ),
-        )
-        tm.that(
-            "RUFF_PATHS := $(strip $(foreach d,src tests examples scripts,"
-            "$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))"
-            in rendered,
-            eq=True,
-        )
-        tm.that(
-            "MYPY_PATHS := $(strip $(foreach d,src tests examples scripts,"
-            "$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))"
-            in rendered,
-            eq=True,
-        )
-
-    def test_repo_without_script_dispatch_retains_canonical_lint_and_type_paths(
+        ],
+    )
+    def test_lint_and_type_paths_scan_every_configured_analyzer_dir(
         self,
         tmp_path: Path,
+        script_dispatch: m.Infra.ScriptDispatchSpec | None,
     ) -> None:
-        """A repo without script dispatch keeps canonical paths; scripts excluded."""
+        """Every repo scans the configured analyzer dirs present in its checkout.
+
+        examples/ and scripts/ are first-class code under the same gates as
+        src/, so the scanned set is the tooling SSOT, independent of script
+        dispatch; the Makefile keeps only the directories that exist.
+        """
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(),
-            script_dispatch=None,
+            script_dispatch=script_dispatch,
         )
-        tm.that(
-            "RUFF_PATHS := $(strip $(foreach d,src tests examples,"
-            "$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))"
-            in rendered,
-            eq=True,
-        )
-        tm.that(
-            "MYPY_PATHS := $(strip $(foreach d,src tests examples,"
-            "$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))"
-            in rendered,
-            eq=True,
-        )
-        tm.that("$(PROJECT_ROOT)/scripts" in rendered, eq=False)
+        env_dirs = " ".join(config.Infra.tooling.tools.pyright.path_rules.env_dirs)
+        tm.that(f"for directory in {env_dirs}; do" in rendered, eq=True)
+        tm.that("MYPY_PATHS := $(RUFF_PATHS)" in rendered, eq=True)
 
     def test_every_pytest_verb_declares_the_project_scratch_root(
         self,

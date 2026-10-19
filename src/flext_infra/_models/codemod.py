@@ -8,17 +8,19 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import m
+from flext_cli import m, u
+from typing_extensions import TypeForm
 
-from flext_infra import t
+from flext_infra import c, p, t
+from flext_infra._models import FlextInfraModelsBase
 
 
 class FlextInfraModelsCodemod:
     """Typed contracts for native codemod scans and mutation reports."""
 
-    class AstGrepCapture(m.ContractModel):
+    class AstGrepCapture(FlextInfraModelsBase.FrozenArbitrary):
         """Authenticate an occurrence against native UTF-8 capture coordinates."""
 
         text: Annotated[str, m.Field(description="Exact captured source text")]
@@ -39,14 +41,79 @@ class FlextInfraModelsCodemod:
             ),
         ]
 
-    class CodemodBindingSnapshot(m.ArbitraryTypesModel):
+    class CodemodBindingSnapshot(FlextInfraModelsBase.FrozenArbitrary):
         """Closed descriptor-authenticated sources used by occurrence admission."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         states: Annotated[
             tuple[m.Cli.AtomicFileState, ...],
             m.Field(description="Consumer and resolved Python import-owner inputs"),
+        ]
+
+        @m.field_validator("states")
+        @classmethod
+        def unique_inputs(
+            cls, states: tuple[m.Cli.AtomicFileState, ...]
+        ) -> tuple[m.Cli.AtomicFileState, ...]:
+            """Store each authenticated input once; conflicting identities fail.
+
+            Returns:
+                The resulting ``tuple[m.Cli.AtomicFileState, ...]``.
+
+            Raises:
+                ValueError: If binding source snapshots disagree.
+
+            """
+            indexed: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
+            for state in states:
+                previous = indexed.setdefault(state.path, state)
+                if previous is not state and previous != state:
+                    msg = f"binding source snapshots disagree: {state.path}"
+                    raise ValueError(msg)
+            return tuple(indexed.values())
+
+    class CodemodSourceEpoch(FlextInfraModelsBase.FrozenArbitrary):
+        """One shared authenticated text view for an immutable capture operation."""
+
+        snapshot: FlextInfraModelsCodemod.CodemodBindingSnapshot = m.Field(
+            description="Authenticated binding snapshot defining this source epoch"
+        )
+        sources: MappingProxyType[Path, str] = m.Field(
+            description="Immutable decoded text for every present captured input"
+        )
+        contents: MappingProxyType[Path, bytes] = m.Field(
+            description="Immutable original bytes for every present captured input"
+        )
+
+        @m.model_validator(mode="after")
+        def _validate_sources(self) -> Self:
+            expected = {
+                state.path
+                for state in self.snapshot.states
+                if state.content is not None
+            }
+            if set(self.sources) != expected or set(self.contents) != expected:
+                msg = "source epoch must contain every present captured input"
+                raise ValueError(msg)
+            for state in self.snapshot.states:
+                if state.content is not None and (
+                    self.contents[state.path] != state.content
+                    or self.sources[state.path].encode("utf-8") != state.content
+                ):
+                    msg = f"source epoch differs from authenticated bytes: {state.path}"
+                    raise ValueError(msg)
+            return self
+
+    class CodemodBindingProject(m.ArbitraryTypesModel):
+        """One selected project's lexical roots within a shared input capture."""
+
+        root: Annotated[Path, m.Field(description="Native project resolution root")]
+        source_paths: Annotated[
+            tuple[Path, ...],
+            m.Field(description="Authenticated consumer paths requiring admission"),
+        ]
+        modules: Annotated[
+            t.StrSequence,
+            m.Field(description="Symbol owners elected by this project's findings"),
         ]
 
     class AstGrepDiagnostic(m.FlexibleModel):
@@ -154,10 +221,160 @@ class FlextInfraModelsCodemod:
             m.Field(description="Member-name collision resolution policy"),
         ]
 
-    class ModFixtureDirectories(m.ArbitraryTypesModel):
-        """Validated physical directories selected by one ast-grep owner."""
+    class RopeContractRule(m.ContractModel):
+        """Identity-constrained native Rope restructuring of a Python contract."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            arbitrary_types_allowed=True
+        )
+        source_states: t.VariadicTuple[t.Port[p.Infra.SemanticSourceState]] = m.Field(
+            default=(), exclude=True, description="Original recipe input receipts"
+        )
+
+        id: Annotated[t.NonEmptyStr, m.Field(description="Stable rule identity")]
+        phase: c.Infra.SemanticCutoverPhase = m.Field(
+            default=c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+            strict=False,
+            description="Existing semantic phase owning this rule's execution",
+        )
+        pattern: Annotated[t.NonEmptyStr, m.Field(description="Native Rope pattern")]
+        goal: Annotated[t.NonEmptyStr, m.Field(description="Native Rope replacement")]
+        arguments: Annotated[
+            t.MappingKV[str, str | t.StrSequence],
+            m.Field(
+                description="Native Rope identity constraints or admitted alternatives"
+            ),
+        ]
+        imports: t.MappingKV[str, str] = u.Field(
+            default_factory=u.empty(TypeForm(t.MappingKV[str, str])),
+            description="Destination bindings and their native import declarations",
+        )
+        bindings: t.MappingKV[str, str] = u.Field(
+            default_factory=u.empty(TypeForm(t.MappingKV[str, str])),
+            description="Destination expressions and their required Rope identities",
+        )
+        model_bases: t.VariadicTuple[str] = m.Field(
+            default=(),
+            description="Required model ancestry for every matched declaration",
+        )
+        unshadowed_builtins: t.VariadicTuple[str] = m.Field(
+            default=(),
+            description="Native lexical names required to be interpreter builtins",
+        )
+        repeats: t.NonEmptyStr | None = m.Field(
+            default=None,
+            description=(
+                "Pattern capture the replacement evaluates again; it must hold "
+                "no authored call"
+            ),
+        )
+        readonly_contract: t.NonEmptyStr | None = m.Field(
+            default=None,
+            description="Capture requiring a proven read-only collection origin",
+        )
+        readonly_origins: t.VariadicTuple[str] = m.Field(
+            default=(),
+            description="Native read-only collection identities admitting the capture",
+        )
+        drops: t.VariadicTuple[str] = m.Field(
+            default=(),
+            description="Discarded captures that must be inert native constants",
+        )
+        reorders_annotation: bool = m.Field(
+            default=False,
+            description="Whether the replacement changes annotation evaluation order",
+        )
+        families: t.VariadicTuple[str] = m.Field(
+            default=(),
+            description="Declared facade families admitting the source module",
+        )
+        scope_kinds: t.VariadicTuple[
+            Annotated[c.Infra.RopeScopeKind, m.Field(strict=False)]
+        ] = m.Field(
+            default=(),
+            description="Native Rope lexical scopes admitting a match",
+        )
+        implementation_owner: t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None = m.Field(
+            default=None,
+            description="Native module and primitive whose backend stays native",
+        )
+        receiver_methods: t.VariadicTuple[str] = m.Field(
+            default=(),
+            description="Discarded-call interface required of a factory product",
+        )
+        call_target: t.NonEmptyStr | None = m.Field(
+            default=None,
+            description="Capture admitted as a native callee or required field call",
+        )
+        explicit_arguments: bool = m.Field(
+            default=False,
+            description=(
+                "Require proven call arguments without positional or keyword expansion"
+            ),
+        )
+        required_field: bool = m.Field(
+            default=False,
+            description="Require metadata without a field default or factory",
+        )
+        private_attribute: bool = m.Field(
+            default=False,
+            description="Require an unset native private model attribute",
+        )
+        value_default: t.NonEmptyStr | None = m.Field(
+            default=None,
+            description="Default capture that must not denote a required field",
+        )
+        factory_default: t.NonEmptyStr | None = m.Field(
+            default=None,
+            description="Factory capture that must not denote an absent factory",
+        )
+        missing_keywords: t.VariadicTuple[str] = m.Field(
+            default=(),
+            description="Injected keywords whose presence preserves a composition",
+        )
+        ownership_transfer: t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None = m.Field(
+            default=None,
+            description="Native module/member retired after receiver transfer",
+        )
+
+        @m.model_validator(mode="after")
+        def _validate_call_target(self) -> Self:
+            for capture in (self.value_default, self.factory_default):
+                if capture is not None and f"${{{capture}}}" not in self.pattern:
+                    msg = "native default proof must name a pattern capture"
+                    raise ValueError(msg)
+            if (self.required_field or self.private_attribute) and (
+                self.call_target is None
+                or not self.model_bases
+                or self.scope_kinds != (c.Infra.RopeScopeKind.CLASS,)
+                or (self.required_field and self.private_attribute)
+            ):
+                msg = (
+                    "native field metadata requires one mode, a callee "
+                    "and model class scope"
+                )
+                raise ValueError(msg)
+            if self.missing_keywords and self.call_target is None:
+                msg = "missing-keyword proof requires a call target"
+                raise ValueError(msg)
+            if (
+                self.call_target is not None
+                and f"${{{self.call_target}}}" not in self.pattern
+            ):
+                msg = "call target must name a capture in the native pattern"
+                raise ValueError(msg)
+            return self
+
+    class RopeContractRules(m.ContractModel):
+        """The packaged semantic contract policy, validated once on input."""
+
+        rules: Annotated[
+            t.SequenceOf[FlextInfraModelsCodemod.RopeContractRule],
+            m.Field(description="Ordered, identity-constrained Rope contract rules"),
+        ]
+
+    class ModFixtureDirectories(FlextInfraModelsBase.FrozenArbitrary):
+        """Validated physical directories selected by one ast-grep owner."""
 
         rule_dirs: t.VariadicTuple[Path] = m.Field(
             description="Validated rule directories declared by the ast-grep owner",
@@ -169,10 +386,8 @@ class FlextInfraModelsCodemod:
             description="Validated fixture directories declared by the ast-grep owner",
         )
 
-    class ModRuleBatch(m.ArbitraryTypesModel):
+    class ModRuleBatch(FlextInfraModelsBase.FrozenArbitrary):
         """Validated executable ast-grep documents prepared for one circuit."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         inline_rules: Annotated[
             t.NonEmptyStr,

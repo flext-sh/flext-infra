@@ -9,10 +9,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config
-from tests import tm, u
+from tests import m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from tests import p
 
 
 class TestsFlextInfraRuleCatalogCache:
@@ -51,7 +53,32 @@ class TestsFlextInfraRuleCatalogCache:
         )
         if not directory.is_dir():
             return frozenset()
-        return frozenset(entry.name for entry in directory.iterdir())
+        return frozenset(entry.name for entry in directory.glob("*.json"))
+
+    @staticmethod
+    def _catalog_entries(project: Path, entries: frozenset[str]) -> frozenset[str]:
+        """Select the actual cache records owned by this test's local catalog.
+
+        Args:
+            project: The path to the local project containing the catalog.
+            entries: The set of cache entry filenames to filter.
+
+        Returns:
+            Cache entry filenames owned by the local catalog.
+
+        """
+        directory = u.Infra.external_cache_directory(
+            config.Infra.codegen.make.codemod_rules_cache,
+        )
+        adapter = u.type_adapter(tuple[m.Infra.CodemodRule, ...])
+        return frozenset(
+            name
+            for name in entries
+            if any(
+                rule.resource.is_relative_to(project)
+                for rule in adapter.validate_json((directory / name).read_bytes())
+            )
+        )
 
     def test_a_plan_publishes_one_entry_per_catalog_content(
         self,
@@ -62,11 +89,14 @@ class TestsFlextInfraRuleCatalogCache:
         before = self._entries()
 
         first = tm.ok(u.Infra.codemod_rule_plan(project))
-        published = self._entries() - before
+        published = self._catalog_entries(project, self._entries() - before)
         again = tm.ok(u.Infra.codemod_rule_plan(project))
 
         tm.that(published, empty=False)
-        tm.that(self._entries() - before, eq=published)
+        tm.that(
+            self._catalog_entries(project, self._entries() - before),
+            eq=published,
+        )
         tm.that(
             tuple(rule.digest for rule in again.rules),
             eq=tuple(rule.digest for rule in first.rules),
@@ -87,7 +117,48 @@ class TestsFlextInfraRuleCatalogCache:
         )
         second = tm.ok(u.Infra.codemod_rule_plan(project))
 
-        tm.that(self._entries() - after_first, empty=False)
+        tm.that(
+            self._catalog_entries(project, self._entries() - after_first),
+            empty=False,
+        )
         local = {rule.id: rule.digest for rule in first.rules}
         edited = {rule.id: rule.digest for rule in second.rules}
         tm.that(edited["cache-only"], ne=local["cache-only"])
+
+    def test_a_fresh_consumer_recovers_typed_rules_from_disk(
+        self,
+        tmp_path: Path,
+        native_consumer: p.Tests.NativeConsumer,
+    ) -> None:
+        """Persistent JSON retains the exact public plan across native processes."""
+        project, rule_path = self._project(tmp_path, "native")
+        expected = next(
+            rule
+            for rule in tm.ok(u.Infra.codemod_rule_plan(project)).rules
+            if rule.resource == rule_path
+        )
+        expected_path = tmp_path / "expected-plan.json"
+        tm.ok(
+            u.Cli.atomic_write_text_file(expected_path, expected.model_dump_json()),
+        )
+        native_consumer(
+            """
+from flext_infra import m, u
+
+expected = m.Infra.CodemodRule.model_validate_json(
+    Path(sys.argv[2]).read_text(encoding="utf-8")
+)
+observed = next(
+    rule for rule in u.Infra.codemod_rule_plan(Path(sys.argv[1])).unwrap().rules
+    if rule.resource == expected.resource
+)
+observed_payload = observed.model_dump(mode="json")
+expected_payload = expected.model_dump(mode="json")
+assert observed_payload == expected_payload, [
+    name for name in expected_payload
+    if observed_payload[name] != expected_payload[name]
+]
+""",
+            str(project),
+            str(expected_path),
+        )

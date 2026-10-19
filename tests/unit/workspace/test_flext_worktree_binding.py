@@ -20,15 +20,72 @@ import sysconfig
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraFlextBindingService, c, config
-from tests import m, t, tm, u
+from flext_infra import config
+from flext_infra.workspace import FlextInfraBindingService, FlextInfraWorkspaceDetector
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
-    from flext_cli import p
+    from tests import p
 
 
 class TestsFlextInfraWorktreeBinding:
     """The service resolves which distributions a worktree can supply."""
+
+    @staticmethod
+    def _declare_supplier_packaging(root: Path) -> None:
+        """Make fixture suppliers genuine native package participants."""
+        path = root / c.PYPROJECT_FILENAME
+        document = u.Tests.toml_doc(path.read_text(encoding=c.DEFAULT_ENCODING))
+        build = config.Infra.codegen.scaffold.build
+        document["build-system"] = {
+            "requires": list(build.requirements),
+            "build-backend": build.backend,
+        }
+        tm.ok(u.Cli.atomic_write_text_file(path, u.Cli.toml_dumps(document)))
+
+    @staticmethod
+    def test_local_supplier_opt_in_selects_an_isolated_resolution(
+        tmp_path: Path,
+    ) -> None:
+        """Local configuration elects a dev lock, never another environment."""
+        consumer = TestsFlextInfraWorktreeBinding._consumer(tmp_path)
+        supplier = TestsFlextInfraWorktreeBinding._flext_workspace(tmp_path)
+        default = tm.ok(FlextInfraWorkspaceDetector.resolution_context(consumer))
+        configuration = consumer / "config"
+        configuration.mkdir(exist_ok=True)
+        tm.ok(
+            u.Cli.yaml_dump(
+                configuration / "codegen.local.yaml",
+                {
+                    "Infra": {
+                        "codegen": {
+                            "make": {
+                                "uv_resolution": {
+                                    "editable_supplier_root": supplier.as_posix(),
+                                }
+                            }
+                        }
+                    },
+                },
+            )
+        )
+        inputs = tm.ok(u.Infra.load_codegen_inputs(consumer))
+        selected = tm.ok(FlextInfraWorkspaceDetector.resolution_context(consumer))
+        tm.that(selected.environment_path, eq=default.environment_path)
+        tm.that(
+            selected.lock_path,
+            eq=consumer
+            / inputs.spec.make.uv_resolution.editable_directory
+            / c.Infra.UV_LOCK_FILENAME,
+        )
+        tm.that(selected.lock_path == default.lock_path, eq=False)
+        artifact = next(
+            item
+            for item in inputs.spec.managed_file_specs
+            if item.path
+            == inputs.spec.make.uv_resolution.editable_directory / c.PYPROJECT_FILENAME
+        )
+        tm.that(artifact.tracking, eq="runtime-local")
 
     @staticmethod
     def _consumer(tmp_path: Path) -> Path:
@@ -121,6 +178,9 @@ class TestsFlextInfraWorktreeBinding:
                 database="flext",
                 issue_prefix="flext",
             )
+            TestsFlextInfraWorktreeBinding._declare_supplier_packaging(
+                flext_root / name
+            )
         u.Tests.WorktreeFixture.write_gitmodules(
             flext_root,
             ("flext-core", "flext-cli"),
@@ -134,12 +194,10 @@ class TestsFlextInfraWorktreeBinding:
         """Only declared flext deps present in the worktree are rebound."""
         consumer = self._consumer(tmp_path)
 
-        planned: p.Result[t.VariadicTuple[str]] = (
-            FlextInfraFlextBindingService.plan_targets(
-                consumer_root=consumer,
-                flext_root=self._flext_workspace(tmp_path),
-                python=self._python(consumer),
-            )
+        planned: p.Result[t.VariadicTuple[str]] = FlextInfraBindingService.plan_targets(
+            consumer_root=consumer,
+            flext_root=self._flext_workspace(tmp_path),
+            python=self._python(consumer),
         )
 
         names = tm.ok(planned)
@@ -161,13 +219,14 @@ class TestsFlextInfraWorktreeBinding:
                 issue_prefix=distribution,
             ),
         )
+        self._declare_supplier_packaging(supplier)
         consumer = self._consumer(tmp_path)
         declaration = consumer / c.PYPROJECT_FILENAME
         with declaration.open("a", encoding=c.DEFAULT_ENCODING) as stream:
             stream.write(f'[dependency-groups]\ndev = ["{distribution}"]\n')
         before = declaration.read_bytes()
 
-        planned = FlextInfraFlextBindingService.plan_targets(
+        planned = FlextInfraBindingService.plan_targets(
             consumer_root=consumer,
             flext_root=supplier,
             python=self._python(consumer),
@@ -185,7 +244,7 @@ class TestsFlextInfraWorktreeBinding:
         not_flext = tmp_path / "elsewhere"
         not_flext.mkdir()
 
-        planned = FlextInfraFlextBindingService.plan_targets(
+        planned = FlextInfraBindingService.plan_targets(
             consumer_root=consumer,
             flext_root=not_flext,
             python=self._python(consumer),
@@ -209,7 +268,7 @@ class TestsFlextInfraWorktreeBinding:
         u.Tests.initialize_git_repo(consumer)
         tm.ok(u.Tests.create_python_environment(consumer))
 
-        planned = FlextInfraFlextBindingService.plan_targets(
+        planned = FlextInfraBindingService.plan_targets(
             consumer_root=consumer,
             flext_root=self._flext_workspace(tmp_path),
             python=self._python(consumer),
@@ -221,7 +280,7 @@ class TestsFlextInfraWorktreeBinding:
     def test_binding_rejects_foreign_interpreter(self, tmp_path: Path) -> None:
         """A valid supplier cannot redirect installation to the running agent."""
         consumer = self._consumer(tmp_path)
-        result = FlextInfraFlextBindingService.consumer_marker_environment(
+        result = FlextInfraBindingService.consumer_marker_environment(
             consumer_root=consumer,
             python=Path(sys.executable),
         )
@@ -235,7 +294,7 @@ class TestsFlextInfraWorktreeBinding:
         """Marker selection uses full consumer interpreter facts."""
         consumer = self._consumer(tmp_path)
         facts = tm.ok(
-            FlextInfraFlextBindingService.consumer_marker_environment(
+            FlextInfraBindingService.consumer_marker_environment(
                 consumer_root=consumer,
                 python=self._python(consumer),
             ),

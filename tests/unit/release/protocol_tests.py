@@ -24,15 +24,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-# Why (flext-oftik class, flext-2j4lr): 15 of this module's 21 cases drive real
-# release phases over a real Git repository, and one phase costs ~8-9 s today
-# because pydantic rebuilds every r[T] generic per call (profiled 73% of the
-# phase). That is the slow HARNESS the 60 s arm of OPERATOR LAW flext-38p39
-# declares an exception for -- the per-case ceiling itself is never raised.
-# Declared once for the module, exactly as the three sibling real-harness
-# modules under tests/unit/deps already declare it. The previous per-case
-# expression drifted: two cases fired `Timeout (>10.0s)` while identical-cost
-# siblings carried no marker at all.
+# These scenarios drive real release phases over Git repositories; their
+# integration harness shares the declared slow policy.
 pytestmark = pytest.mark.slow
 
 
@@ -376,6 +369,71 @@ class TestsFlextInfraReleaseProtocol:
         plan = self._planned_release(workspace)
         tm.that(plan.next, eq="0.1.1")
         tm.that(plan.releasable, eq=False)
+
+    def test_repository_declared_integration_branch_governs_the_plan(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A consumer integrating on its own declared line plans against it.
+
+        The workspace policy line is not published here: only the repository's
+        ``repository.integration`` declaration names the base the version guard
+        compares against, exactly as a consumer that integrates on ``dev``.
+        """
+        workspace = self._released_workspace(tmp_path)
+        declared = "integration/declared-line"
+        codegen = workspace / "config" / c.Infra.CODEGEN_CONFIG_FILENAME
+        codegen.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(
+            u.Cli.yaml_dump(
+                codegen,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": {
+                                "integration": {
+                                    "provider": u.Tests.provider().name,
+                                    "branch": declared,
+                                },
+                            },
+                        },
+                    },
+                },
+            ),
+        )
+        tm.ok(cli.run_checked([c.Infra.GIT, "add", "config"], cwd=workspace))
+        tm.ok(
+            cli.run_checked(
+                [c.Infra.GIT, "commit", "-m", "chore: declare integration"],
+                cwd=workspace,
+            ),
+        )
+        published = u.Tests.git_capture(
+            workspace,
+            "for-each-ref",
+            "--format=%(refname)",
+            "refs/remotes/origin",
+        )
+        for reference in published.split():
+            tm.ok(
+                cli.run_checked(
+                    [c.Infra.GIT, "update-ref", "-d", reference],
+                    cwd=workspace,
+                ),
+            )
+        tm.ok(
+            cli.run_checked(
+                [c.Infra.GIT, "update-ref", f"refs/remotes/origin/{declared}", "HEAD"],
+                cwd=workspace,
+            ),
+        )
+        tm.ok(u.Infra.replace_project_version(workspace, "0.1.1"))
+        subject = c.Infra.RELEASE_COMMIT_SUBJECT.format(version="0.1.1")
+        tm.ok(cli.run_checked([c.Infra.GIT, "commit", "-am", subject], cwd=workspace))
+
+        plan = self._planned_release(workspace)
+
+        tm.that(plan.next, eq="0.1.1")
 
     def test_merged_release_commit_awaits_its_tag_from_any_head(
         self,

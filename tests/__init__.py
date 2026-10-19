@@ -10,12 +10,11 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_core import install_lazy_exports
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_tests import api, d, e, h, r, td, tf, tk, tm, x
 
-    from tests import _models, fixtures, integration, refactor, unit
     from tests.base import TestsFlextInfraServiceBase, s
     from tests.constants import TestsFlextInfraConstants, c
     from tests.constants_scan import TestsFlextInfraConstantsScanMixin
@@ -37,6 +36,7 @@ if TYPE_CHECKING:
     )
     from tests.utilities_gates import TestsFlextInfraUtilitiesGatesMixin
     from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
+    from tests.utilities_hermetic_git import TestsFlextInfraUtilitiesHermeticGitMixin
     from tests.utilities_promoted import TestsFlextInfraUtilitiesPromotedMixin
     from tests.utilities_release import TestsFlextInfraUtilitiesReleaseMixin
     from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
@@ -56,6 +56,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraUtilitiesDocsFixtureMixin",
     "TestsFlextInfraUtilitiesGatesMixin",
     "TestsFlextInfraUtilitiesGitMixin",
+    "TestsFlextInfraUtilitiesHermeticGitMixin",
     "TestsFlextInfraUtilitiesProjectFixtureMixin",
     "TestsFlextInfraUtilitiesPromotedMixin",
     "TestsFlextInfraUtilitiesReleaseMixin",
@@ -63,18 +64,14 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraUtilitiesToolingFixtureMixin",
     "TestsFlextInfraUtilitiesWorkspaceEnvMixin",
     "TestsFlextInfraUtilitiesWorkspaceFixtureMixin",
-    "_models",
     "api",
     "c",
     "d",
     "e",
-    "fixtures",
     "h",
-    "integration",
     "m",
     "p",
     "r",
-    "refactor",
     "s",
     "t",
     "td",
@@ -82,7 +79,6 @@ __all__: tuple[str, ...] = (
     "tk",
     "tm",
     "u",
-    "unit",
     "x",
 )
 
@@ -102,6 +98,7 @@ install_lazy_exports(
         "TestsFlextInfraUtilitiesDocsFixtureMixin": ".utilities_fixture_docs",
         "TestsFlextInfraUtilitiesGatesMixin": ".utilities_gates",
         "TestsFlextInfraUtilitiesGitMixin": ".utilities_git",
+        "TestsFlextInfraUtilitiesHermeticGitMixin": ".utilities_hermetic_git",
         "TestsFlextInfraUtilitiesProjectFixtureMixin": ".utilities_fixture_project",
         "TestsFlextInfraUtilitiesPromotedMixin": ".utilities_promoted",
         "TestsFlextInfraUtilitiesReleaseMixin": ".utilities_release",
@@ -109,18 +106,14 @@ install_lazy_exports(
         "TestsFlextInfraUtilitiesToolingFixtureMixin": ".utilities_fixture_tooling",
         "TestsFlextInfraUtilitiesWorkspaceEnvMixin": ".utilities_workspace_env",
         "TestsFlextInfraUtilitiesWorkspaceFixtureMixin": ".utilities_fixture_workspace",
-        "_models": "._models",
         "api": "flext_tests",
         "c": ".constants",
         "d": "flext_tests",
         "e": "flext_tests",
-        "fixtures": ".fixtures",
         "h": "flext_tests",
-        "integration": ".integration",
         "m": ".models",
         "p": ".protocols",
         "r": "flext_tests",
-        "refactor": ".refactor",
         "s": ".base",
         "t": ".typings",
         "td": "flext_tests",
@@ -128,7 +121,6 @@ install_lazy_exports(
         "tk": "flext_tests",
         "tm": "flext_tests",
         "u": ".utilities",
-        "unit": ".unit",
         "x": "flext_tests",
     }),
     public_exports=__all__,

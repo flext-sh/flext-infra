@@ -36,6 +36,16 @@ class FlextInfraCodegenPipeline(
     )
 
     @override
+    def codegen_conform_collaborators(self) -> p.Infra.CodegenConformPorts:
+        """Expose the capabilities bound to this pipeline invocation.
+
+        Returns:
+            The exact supplied conform ports.
+
+        """
+        return self.conform_collaborators
+
+    @override
     def execute(self) -> p.Result[str]:
         """Execute the end-to-end codegen pipeline via DAG runner.
 
@@ -94,7 +104,7 @@ class FlextInfraCodegenPipeline(
     def _run_stage[V](
         self,
         stage_id: str,
-        action: Callable[[], V],
+        action: Callable[[], p.Result[V]],
         emit: Callable[[V], t.JsonMapping],
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run one pipeline stage and preserve the first exception.
@@ -106,11 +116,14 @@ class FlextInfraCodegenPipeline(
             The resulting ``p.Result[m.Cli.PipelineStageResult]``.
 
         """
+        outcome = action()
+        if outcome.failure:
+            return r[m.Cli.PipelineStageResult].from_failure(outcome)
         return r[m.Cli.PipelineStageResult].ok(
             m.Cli.PipelineStageResult(
                 stage_id=stage_id,
                 status=c.Cli.PipelineStageStatus.OK,
-                output=emit(action()),
+                output=emit(outcome.value),
             ),
         )
 
@@ -150,6 +163,7 @@ class FlextInfraCodegenPipeline(
                     "total_skipped": scaffold_skipped,
                 },
                 "auto_fix": {"total_fixed": fixed, "total_skipped": skipped},
+                "lazy_init": {"unmapped_count": self._state.lazy_unmapped_count},
                 "census_after": {
                     "total_violations": after_violations,
                     "total_fixable": after_fixable,
@@ -162,6 +176,7 @@ class FlextInfraCodegenPipeline(
                 f"Scaffold: {scaffold_created} files created",
                 f"Auto-fix: {fixed} violations fixed",
                 f"Census after: {after_violations} violations",
+                f"Lazy-init: {self._state.lazy_unmapped_count} unmapped files",
                 (
                     f"Improvement: {before_violations - after_violations} "
                     f"violations resolved"

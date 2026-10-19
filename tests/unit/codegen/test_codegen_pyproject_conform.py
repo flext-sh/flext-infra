@@ -10,8 +10,8 @@ import sys
 from pathlib import Path
 
 import pytest
-
 from flext_core import e
+
 from flext_infra import c, config, m, p
 from tests import t, tm, u
 
@@ -51,7 +51,13 @@ class TestsFlextInfraCodegenPyprojectConform:
                 'dev = [{include-group = "base"}, "fixture-checker>=4"]\n',
             ),
         )
-        options = u.Infra.PyprojectConformOptions(repository_root=tmp_path)
+        captured = tm.ok(
+            u.Cli.atomic_read_binary_file_state(path, required=True),
+        )
+        options = u.Infra.PyprojectConformOptions(
+            repository_root=tmp_path,
+            member_declarations=(captured,),
+        )
         rendered = tm.ok(
             u.Infra.pyproject_conform(
                 '[project]\nname = "workspace"\ndependencies = []\n',
@@ -127,7 +133,6 @@ class TestsFlextInfraCodegenPyprojectConform:
     @staticmethod
     def _uv_resolution(
         toolchain: p.Infra.ToolchainSpec,
-        exclusions: t.VariadicTuple[m.Infra.UvScopedDependencyExclusionSpec] = (),
     ) -> m.Infra.UvResolutionSpec:
         """Route the toolchain's uv resolver keys the way conform declares them.
 
@@ -138,7 +143,6 @@ class TestsFlextInfraCodegenPyprojectConform:
         return m.Infra.UvResolutionSpec(
             link_mode=toolchain.uv_link_mode,
             constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
-            exclude_dependencies=exclusions,
             environments=tuple(toolchain.uv_environments),
         )
 
@@ -271,6 +275,67 @@ class TestsFlextInfraCodegenPyprojectConform:
             eq="sample.plugin:main",
         )
 
+    @pytest.mark.parametrize("live_readme", [None, "docs/consumer.md"])
+    def test_custom_metadata_preserves_authored_absence(
+        self,
+        live_readme: t.StrippedStr | None,
+    ) -> None:
+        """A scaffold default cannot introduce an authored resource requirement."""
+        preserved = ("readme",)
+        scaffold_readme = config.Infra.codegen.scaffold.project.readme
+        rendered = (
+            '[project]\nname = "sample"\n'
+            f"readme = {tm.ok(u.Cli.json_dumps(scaffold_readme))}\n"
+        )
+        live = '[project]\nname = "sample"\n'
+        if live_readme is not None:
+            live += f"readme = {tm.ok(u.Cli.json_dumps(live_readme))}\n"
+
+        first = tm.ok(
+            u.Infra.overlay_preserved(rendered, live, preserve_project_keys=preserved),
+        )
+        project = u.Tests.toml_table_at(first, "project")
+        tm.that("readme" in project, eq=live_readme is not None)
+        tm.that(project.get("readme"), eq=live_readme)
+        second = tm.ok(
+            u.Infra.overlay_preserved(rendered, first, preserve_project_keys=preserved),
+        )
+        tm.that(second, eq=first)
+
+    @staticmethod
+    def test_new_project_keeps_scaffold_defaults_at_a_fixed_point() -> None:
+        """Initial creation retains defaults without changing the next projection."""
+        preserved = ("readme",)
+        readme = config.Infra.codegen.scaffold.project.readme
+        rendered = (
+            f'[project]\nname = "sample"\nreadme = {tm.ok(u.Cli.json_dumps(readme))}\n'
+        )
+        first = tm.ok(
+            u.Infra.overlay_preserved(rendered, None, preserve_project_keys=preserved),
+        )
+        tm.that(u.Tests.toml_table_at(first, "project")["readme"], eq=readme)
+        second = tm.ok(
+            u.Infra.overlay_preserved(rendered, first, preserve_project_keys=preserved),
+        )
+        tm.that(second, eq=first)
+
+    @staticmethod
+    def test_custom_metadata_outside_the_render_is_not_removed() -> None:
+        """An authored dynamic version is not replaced by a static scaffold value."""
+        preserved = ("version",)
+        rendered = '[project]\nname = "sample"\nversion = "1.2.3"\n'
+        live = '[project]\nname = "sample"\ndynamic = ["version"]\n'
+        first = tm.ok(
+            u.Infra.overlay_preserved(rendered, live, preserve_project_keys=preserved),
+        )
+        project = u.Tests.toml_table_at(first, "project")
+        tm.that("version" in project, eq=False)
+        tm.that(project["dynamic"], eq=["version"])
+        second = tm.ok(
+            u.Infra.overlay_preserved(rendered, first, preserve_project_keys=preserved),
+        )
+        tm.that(second, eq=first)
+
     @pytest.mark.parametrize("invalid_surface", ["rendered", "live"])
     def test_overlay_retains_native_toml_failure_context(
         self,
@@ -387,6 +452,64 @@ class TestsFlextInfraCodegenPyprojectConform:
             eq="custom",
         )
         tm.that(tm.ok(u.Infra.overlay_preserved(rendered, first)), eq=first)
+
+    @pytest.mark.parametrize("declare_optional", [False, True])
+    def test_deptry_dev_groups_follow_declared_optional_groups(
+        self,
+        declare_optional: bool,
+    ) -> None:
+        """PEP 735 groups never create references to absent PEP 621 extras."""
+        policy = config.Infra.tooling.tools.deptry.optional_dependencies_dev_groups
+        optional: t.JsonDict = {
+            group: ["requests"] for group in policy if declare_optional
+        }
+        source = u.Cli.toml_dumps(
+            u.Cli.toml_document_from_mapping({
+                "project": {
+                    "name": "workspace",
+                    "dependencies": [],
+                    "optional-dependencies": optional,
+                },
+                "dependency-groups": {str(c.Infra.DEV): ["pytest"]},
+                "tool": {
+                    "deptry": {
+                        "optional_dependencies_dev_groups": ["absent-fixture-extra"],
+                    },
+                },
+            }),
+        )
+        workspace = self._workspace()
+        resolution = self._uv_resolution(config.Infra.codegen.toolchain)
+        conformed = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=resolution,
+            ),
+        )
+        tm.that(
+            u.Tests.toml_strings_at(
+                conformed,
+                "tool",
+                "deptry",
+                "optional_dependencies_dev_groups",
+            ),
+            eq=tuple(group for group in policy if group in optional),
+        )
+        tm.that(
+            u.Tests.toml_table_at(conformed, "project", "optional-dependencies"),
+            eq=optional,
+        )
+        repeated = tm.ok(
+            u.Infra.pyproject_conform(
+                conformed,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=resolution,
+            ),
+        )
+        tm.that(repeated, eq=conformed)
 
     def test_custom_typing_and_feature_extras_survive_conformance(self) -> None:
         """CUSTOM PEP 621 extras survive projection and dependency normalization."""
@@ -785,17 +908,16 @@ dev = ["rumdl>=0.2.46", "custom-tool>=1"]
         tm.that("rumdl>=0.2.46" not in dev_group, eq=True)
         tm.that("custom-tool>=1" in dev_group, eq=True)
 
-    def test_exclude_dependencies_emit_for_standalone_without_project_key(self) -> None:
-        """Standalone member CI needs scoped excludes without the routing key."""
+    def test_conform_retires_dependency_edge_suppression(self) -> None:
+        """Conformance preserves real declared edges and removes retired suppression."""
         workspace = self._workspace(role=c.Infra.MakeProfile.STANDALONE)
-        exclusion = m.Infra.UvScopedDependencyExclusionSpec(
-            project="flext-infra",
-            package=m.Infra.UvPackageSelectorSpec(name="flext-tests"),
-            dependencies=("flext-infra",),
-        )
-        source = """[project]
-name = "flext-infra"
-dependencies = []
+        dependency = "example-dependency>=1"
+        exclusion = '{ package = {name="example-dependency"}, dependencies=["other"] }'
+        source = f"""[project]
+name = "{workspace.repository.distribution}"
+dependencies = ["{dependency}"]
+[tool.uv]
+exclude-dependencies = [{exclusion}]
 """
         conformed = tm.ok(
             u.Infra.pyproject_conform(
@@ -804,47 +926,52 @@ dependencies = []
                 required_dev_dependencies=self._detached_dev_floors(),
                 uv_resolution=self._uv_resolution(
                     config.Infra.codegen.toolchain,
-                    (exclusion,),
                 ),
             ),
         )
         uv = u.Tests.toml_table_at(conformed, "tool", "uv")
-        excludes = u.Tests.toml_list(uv["exclude-dependencies"])
-        tm.that(
-            excludes,
-            eq=[{"package": {"name": "flext-tests"}, "dependencies": ["flext-infra"]}],
-        )
-        tm.that("project" not in u.Tests.toml_mapping(excludes[0]), eq=True)
+        tm.that("exclude-dependencies" not in uv, eq=True)
+        project = u.Tests.toml_table_at(conformed, "project")
+        tm.that(dependency in u.Tests.toml_strings(project["dependencies"]), eq=True)
 
     @staticmethod
-    def test_workspace_root_routes_only_exclusions_of_local_projects(
+    def test_workspace_root_keeps_dependency_resolution_unsuppressed(
         tmp_path: Path,
     ) -> None:
-        """An exclusion for an absent project would drop its only install edge."""
-        configured = config.Infra.codegen.uv_exclude_dependencies
-        member = configured[0].project
+        """Adding a declared member never manufactures dependency-edge exclusions."""
         rendered = u.Tests.scaffold_text(
             tmp_path / "fixture-project",
             c.PYPROJECT_FILENAME,
-            members=(member,),
+            members=("fixture-member",),
         )
         uv = u.Tests.toml_table_at(rendered, "tool", "uv")
-        local = {"fixture-project", member}
-        tm.that(
-            u.Tests.toml_list(uv["exclude-dependencies"]),
-            eq=[
-                {
-                    key: value
-                    for key, value in item.model_dump(
-                        mode="json",
-                        exclude_none=True,
-                    ).items()
-                    if key != "project"
-                }
-                for item in configured
-                if item.project in local
-            ],
+        tm.that("exclude-dependencies" not in uv, eq=True)
+
+    @staticmethod
+    def test_scaffold_omits_diagnostic_suppression_catalogs(tmp_path: Path) -> None:
+        """The shipped Jinja surface cannot restore retired exemption tables."""
+        rendered = u.Tests.scaffold_text(
+            tmp_path / "no-suppression-project",
+            c.PYPROJECT_FILENAME,
+            what=c.Infra.CodegenConformSurface.PYPROJECT,
         )
+        lint = u.Tests.toml_table_at(rendered, "tool", "ruff", "lint")
+        for key in (
+            "extend-ignore",
+            "per-file-ignores",
+            "extend-per-file-ignores",
+        ):
+            tm.that(lint, lacks=key)
+        tm.that(
+            lint["ignore"], eq=sorted(config.Infra.tooling.tools.ruff.lint.rule_owners)
+        )
+        mypy = u.Tests.toml_table_at(rendered, "tool", "mypy")
+        tm.that(mypy, lacks="disable_error_code")
+        tm.that(mypy, lacks="ignore_errors")
+        for entry in u.Tests.toml_list(mypy.get("overrides", [])):
+            override = u.Tests.toml_mapping(entry)
+            tm.that(override, lacks="disable_error_code")
+            tm.that(override, lacks="ignore_errors")
 
     @staticmethod
     def test_scaffold_mypy_policy_matches_ssot_and_converges(tmp_path: Path) -> None:
@@ -858,10 +985,7 @@ dependencies = []
             tuple(u.Tests.toml_strings(mypy["plugins"])),
             eq=tuple(policy.plugins),
         )
-        tm.that(
-            tuple(u.Tests.toml_strings(mypy["disable_error_code"])),
-            eq=tuple(policy.disable_error_code),
-        )
+        tm.that(mypy, lacks="disable_error_code")
         for key, value in {**policy.boolean_settings, **policy.string_settings}.items():
             tm.that(mypy[key], eq=value)
         tm.that(

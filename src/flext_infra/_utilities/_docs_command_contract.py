@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, config, m
 from flext_infra._utilities import (
     FlextInfraUtilitiesDocs,
-    FlextInfraUtilitiesWorkspaceManifest,
+    FlextInfraUtilitiesProjectManagedArtifacts,
 )
 
 if TYPE_CHECKING:
@@ -223,17 +223,19 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
             ValueError: If ``loaded.failure``.
 
         """
-        loaded = FlextInfraUtilitiesWorkspaceManifest.load_workspace_manifest(
+        loaded = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
             scope.path,
         )
         if loaded.failure:
+            if loaded.exception is not None:
+                raise loaded.exception
             raise ValueError(loaded.error)
         effective_verbs = (
-            *config.Infra.codegen.make.verbs,
+            *loaded.value.spec.make.verbs,
             *(
-                verb
-                for manifest in loaded.value
-                for verb in manifest.repository.extra_verbs
+                loaded.value.spec.repository.extra_verbs
+                if loaded.value.spec.repository
+                else ()
             ),
         )
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []

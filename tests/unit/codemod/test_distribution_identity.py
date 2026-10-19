@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import u
+from tests import c, tm, u
 
 
 class TestsFlextInfraDistributionIdentity:
@@ -37,27 +37,58 @@ class TestsFlextInfraDistributionIdentity:
     def test_repeated_directory_is_one_installation(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test repeated directory is one installation."""
         self.project(tmp_path)
         site = tmp_path / "site"
         self.distribution(site)
-        monkeypatch.syspath_prepend(str(site))
-        monkeypatch.syspath_prepend(str(site))
-        planned = u.Infra.codemod_rule_plan(tmp_path)
+        with tm.scope(python_paths=(str(site), str(site))):
+            planned = u.Infra.codemod_rule_plan(tmp_path)
         assert planned.success, planned.error
 
     def test_distinct_duplicate_installations_are_rejected(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test distinct duplicate installations are rejected."""
         self.project(tmp_path)
+        sites: list[str] = []
         for name in ("first", "second"):
             site = tmp_path / name
             self.distribution(site)
-            monkeypatch.syspath_prepend(str(site))
-        with pytest.raises(ValueError, match="duplicate installed distribution"):
+            sites.append(str(site))
+        with (
+            tm.scope(python_paths=sites),
+            pytest.raises(ValueError, match="duplicate installed distribution"),
+        ):
+            u.Infra.codemod_rule_plan(tmp_path)
+
+    def test_selected_provider_cycle_escapes_without_normalization(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """The installed providers retain the dependency owner's cycle failure."""
+        self.project(tmp_path)
+        site = tmp_path / "site"
+        providers = ("catalog-cycle-first", "catalog-cycle-second")
+        for name, dependency in zip(providers, reversed(providers), strict=True):
+            metadata = site / f"{name.replace('-', '_')}-1.0.dist-info"
+            metadata.mkdir(parents=True)
+            (metadata / "METADATA").write_text(
+                f"Metadata-Version: 2.1\nName: {name}\nVersion: 1.0\n"
+                f"Requires-Dist: {dependency}\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            package = site / name.replace("-", "_")
+            catalogue = package / c.Infra.CODEMOD_CONFIG_RELPATH
+            catalogue.parent.mkdir(parents=True)
+            (package / "__init__.py").write_text("", encoding=c.DEFAULT_ENCODING)
+            catalogue.write_text(
+                f"{c.Infra.CODEMOD_SCOPE_KEY}: {c.Infra.CODEMOD_SCOPE_UNIVERSAL}\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        with (
+            tm.scope(python_paths=(str(site),)),
+            pytest.raises(ValueError, match=r"^cyclic dependency graph:"),
+        ):
             u.Infra.codemod_rule_plan(tmp_path)

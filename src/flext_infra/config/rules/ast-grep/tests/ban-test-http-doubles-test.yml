@@ -1,0 +1,41 @@
+id: ban-test-http-doubles
+valid:
+  # Real transport and real clients are not doubles.
+  - import httpx
+  - |
+    client = httpx.Client(base_url=endpoint)
+    response = client.get("/health")
+  # Process-environment isolation is a sandbox, not a double.
+  - monkeypatch.setenv("FLEXT_ENV", "test")
+  - monkeypatch.chdir(tmp_path)
+  # A temporal value the test owns is not a fabricated clock.
+  - assert record.created_at <= u.now()
+  - |
+    clock = Clock(start=anchor)
+    assert clock.advance(30).elapsed == 30
+  # An imported name that merely contains a homonym word is not a double.
+  - from flext_core import responses_registry
+  - |
+    from app.handlers import vcr_client
+    assert vcr_client.healthy
+invalid:
+  # HTTP recording/replay doubles.
+  - import responses
+  - import requests_mock
+  - from vcr import use_cassette
+  - from aioresponses import aioresponses
+  - from pytest_httpx import HTTPXMock
+  # Time doubles.
+  - from freezegun import freeze_time
+  - from time_machine import travel
+  # The httpx transport stand-in.
+  - |
+    from httpx import MockTransport
+    transport = MockTransport(handler)
+  - transport = httpx.MockTransport(handler)
+  # Library-driven doubles used at call sites.
+  - |
+    @responses.activate
+    def test_call(self) -> None:
+        responses.add(responses.GET, url, json={})
+  - requests_mock.Mocker() as mocker

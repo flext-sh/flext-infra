@@ -1,43 +1,55 @@
-# Local config overrides (per-clone, gitignored)
+# Repository configuration and local overrides
 
 <!-- TOC START -->
 
-- [Contract](#contract)
 - [Mandatory Mypy policy](#mandatory-mypy-policy)
-- [List-typed registries](#list-typed-registries)
-- [Repository-owned Ruff additions](#repository-owned-ruff-additions)
-- [Example](#example)
 - [Local dependency binding](#local-dependency-binding)
-- [Candidate dependency commits](#candidate-dependency-commits)
+- [Generation and recovery](#generation-and-recovery)
 
 <!-- TOC END -->
 
-The flext-infra codegen ships a **public** fleet configuration: everything in
-`config/*.yaml` is tracked, published, and safe for an external adopter. Values that are
-operator-private — consumer organizations, deploy-key contracts, private workspace
-layouts — must never be committed here. They live in one optional, gitignored file:
+Each configuration family has one ordered source contract:
 
+1. Packaged `flext_infra/config/F.yaml` supplies generic library defaults.
+2. The selected repository's `config/F.yaml` supplies its committed deltas.
+3. Its optional, untracked `config/F.local.yaml` supplies local deltas.
+
+The caller supplies the repository root. Ambient working directories, organization
+catalogs, and user-directory overlays do not select consumer configuration.
+`load_codegen_inputs(root)` returns the effective typed codegen policy and exact
+consulted file snapshots. Consumers receive that resolution explicitly.
+
+Mappings merge recursively, lists concatenate, and later scalars replace earlier
+scalars. Unknown fields fail typed validation. Codegen captures current file bytes
+on each load and verifies them before publication. Exact successful YAML content
+may reuse parsing; cached values are isolated and never replace physical snapshots.
+Malformed content retains its original exception.
+
+For example, a consumer may declare its own integration contract:
+
+```yaml
+Infra:
+  codegen:
+    repository:
+      integration:
+        provider: github
+        branch: feature/integration
 ```
-config/codegen-overrides.local.yaml
-```
 
-## Contract
+Private local adjustments belong in `config/codegen.local.yaml`. Generated
+`.vscode/settings.json` is a runtime-local binding: portable editor declarations
+remain in the repository's own codegen delta, while setup projects the interpreter
+for its actual workspace or standalone environment.
 
-- **Merge order**: tracked `config/*.yaml` files first (sorted), then the platform user
-  overlay (`$XDG_CONFIG_HOME/flext-infra/*.yaml`), then `codegen-overrides.local.yaml`
-  **last** — the local file wins every scalar collision.
-- **Merge semantics**: identical to the tracked pipeline — recursive dict merge, lists
-  concatenate, scalars replace. Dict-typed registries (`ci_private_submodules`,
-  `layout.project_overrides`) gain local entries beside the public ones. The fleet
-  supply-chain cooldown is one scalar (`toolchain.dependency_cooldown_days`) honoured by
-  every resolver, never a per-repository map.
-- **Validation**: the merged document passes the same typed models (`extra="forbid"`),
-  so a typo in the local file fails loudly at load time instead of silently diverging.
-- **Read timing**: the file is read once, when the config singleton is first fetched
-  (module import of `flext_infra.config`). Restart any long-running process after
-  editing it.
-- **Never track it**: `.gitignore` blocks `/config/codegen-overrides.local.yaml` by SSOT
-  rule; the guard gate rejects any diff reintroducing private values.
+Workspace composition comes from `.gitmodules`. Documentation URL ownership and
+branches derive from native Git origins, declared submodule branches, and the
+selected repository's integration contract. There is no provider/member/docs
+repository roster to extend when a new member is added.
+
+The shared package contains generic rules. Consumer-specific Sed campaigns and CSV
+inputs belong to that consumer's configuration; they are not shipped as library
+policy. Dependency resolution preserves real graph edges and never emits a
+project exclusion roster to hide incompatible requirements.
 
 ## Mandatory Mypy policy
 
@@ -46,17 +58,17 @@ that same typed configuration. The project's Pydantic 2 contract requires the
 `pydantic.mypy` plugin; missing, empty, or v1 resolved plugin declarations fail validation
 rather than receiving a silent default.
 
-The operator contract globally suspends only `prop-decorator` and `call-arg`. A complete
-policy payload must declare both and cannot add another global suspension. The model
-does not supply configuration-owned values through declaration defaults. Empty local
-lists retain the tracked policy because the YAML loader concatenates lists. Pyright
-call diagnostics and other unsuspended diagnostics remain active.
+Diagnostic suspension catalogs are forbidden. The typed policy rejects the retired
+`disable-error-code` and `facade-rebind-error-codes` fields. Generated modules and
+facade rebindings receive no `ignore_errors` override. All reported native diagnostics
+remain blocking. Overrides that broaden analysis, such as `follow_untyped_imports`,
+retain their declared behavior.
 
 Generic Mypy options cannot replace `plugins`, `disable_error_code`, `python_version`,
 `overrides`, or generated `mypy_path`. Reserved aliases and duplicate declarations
 within or between the boolean and string maps fail validation. A string-valued
-`enable_error_code` may enable unrelated diagnostics, but cannot re-enable any
-suspended code, including within a comma-separated list. Boolean enabling is invalid.
+`enable_error_code` may enable diagnostics without masking any other finding.
+Boolean enabling is invalid.
 Generic keys must be plain option identifiers, not quoted TOML keys or statements.
 Global `ignore_errors = true` is forbidden; an explicit false boolean remains valid.
 Dependency profiles in `config/codegen.yaml` restrict Pydantic to major version 2;
@@ -65,60 +77,63 @@ dependency locks and project manifests are regenerated through `make upg` and
 
 Regenerate consumers through canonical `make gen` after changing the source owner;
 never patch generated pyprojects. Validate the public consumer with the plugin active
-and an unsuspended negative diagnostic, then run the applicable native gates. A source
+and a negative diagnostic, then run the applicable native gates. A source
 inspection, generation receipt, or merged PR alone is not proof of green delivery.
 
-## List-typed registries
+## Native Ruff Policy
 
-`providers` and `make.docs.github_repos` concatenate. A provider name must resolve
-**exactly once** across the merged list, so never re-declare a name the tracked files
-already carry — declare it in one layer only.
+Ruff rule selection and native conventions come from the shared typed tooling owner.
+Neither shared policy nor project-local managed artifacts accepts exemption catalogs,
+free-form ignores, per-file ignores, or informative-only rule maps. The required
+`rule-owners` mapping declares rules enforced by another canonical checking gate.
+The existing gate registry rejects self-owned, unknown, missing, non-repairing, or
+unelected owners before a projection derives Ruff's native ignore from that mapping.
+The owner must participate in the complete default check and the existing repair or
+format contract. `missing-trailing-comma` delegates layout to the native `format`
+gate; it is not a waived rule. Paired lint/format validation checks the final bytes.
+Modernization removes stale exemption tables without narrowing rule selection.
+`unfixable` remains a repair-safety policy: it prevents destructive automatic changes,
+not detection or a failed verdict. Repair completion requires the same native owner's
+read-only verification of the repaired targets.
 
-## Repository-owned Ruff additions
+## Local dependency binding
 
-Shared Ruff policy belongs to the supplier's `Infra.tooling` declaration.
-Exceptions required by one consumer belong to that consumer's tracked
-`config/*.yaml` under `ManagedArtifacts.Ruff.per_file_ignores`. They do not
-belong in the supplier's shared policy or in a generated `pyproject.toml`.
-
-The managed-artifact loader validates each repository's configuration snapshot
-once. The conform renderer and pyproject modernization phase receive that
-resolution explicitly and compose its Ruff additions with shared policy through
-the same utility. Matching patterns retain both declarations' rules; sorting and
-deduplication make the composition deterministic. A project without additions
-receives shared policy unchanged. A pattern declared in two project configuration
-files fails validation rather than choosing a second owner.
-
-Regenerate with `make gen`. Verify that another project does not inherit the
-consumer's additions and that a repeated generation leaves the candidate
-unchanged. Repository-specific additions remain subject to the project's
-authorization and gate requirements.
-
-## Example
+Canonical setup can opt into an external supplier workspace through the consumer's
+untracked `config/codegen.local.yaml`:
 
 ```yaml
 Infra:
   codegen:
-    providers:
-      - name: my-org
-        organization: my-org
-        base_url: https://github.com/my-org
-        branch: main
-  release:
-    publishable_prefixes:
-      - my-repo-
+    make:
+      uv_resolution:
+        editable_supplier_root: /absolute/path/to/workspace
 ```
 
-Every governed standalone repository keeps referencing its provider by name from its own
-`config/workspace.yaml`; the registry entry above is what lets the generator resolve it.
-
-## Local dependency binding
+Configure the physical runtime root, not an attached member. The existing consumer
+environment supplies the authenticated interpreter used for marker selection.
+Run `make gen` to project the isolated editable resolution view, then `make upg`
+to reconcile its development lock, and `make setup` to replay that lock frozen.
+This opt-in never resolves the root or default view locks and does not request
+version upgrades. Hosted setup continues selecting the standalone view. The
+supplier root is explicit; no home directory or package roster is shared policy.
+Only active declared dependencies supplied by that workspace are rebound; supplier
+development groups are not added to the consumer environment. The consumer keeps
+its own physical environment. Removing the opt-in returns setup to its default view.
 
 The explicit `workspace flext-binding` CLI accepts `--repository-root`, `--flext-root`,
 and `--python`. It changes only the provisioned consumer environment; it never edits the
 consumer's dependency declarations. Canonical setup restores the declared resolution.
 Workspace setup installs its declared local editable sources through `uv sync`; it
 does not invoke the external-consumer binding service on itself.
+The workspace root owns local path sources and source-replacement overrides. A
+transitive Git requirement for the same distribution is replaced by that local
+identity, not deleted from the dependency graph. Declared version bounds remain in
+constraints, and requested extras remain on the replacement requirement. Member
+metadata keeps its portable Git provenance and renders identically when detached.
+Conformance removes dependency-edge exclusions; no reverse-edge exclusion catalog
+or project-routing declaration is required. See the official UV
+[override semantics](https://docs.astral.sh/uv/concepts/resolution/#dependency-overrides)
+and [development sources](https://docs.astral.sh/uv/concepts/projects/dependencies/#dependency-sources).
 The interpreter must belong to the consumer's physical environment as determined by the
 workspace topology. A symlinked environment or a foreign interpreter is rejected.
 
@@ -133,93 +148,17 @@ The public service's `plan_targets` method also requires the consumer `python` p
 planning must use the same interpreter as installation. Its in-repository callers use
 that explicit contract, avoiding host-interpreter marker evaluation.
 
-## Candidate dependency commits
+## Generation and recovery
 
-An Infra integration lane can bootstrap declared candidate worktrees with
-`make bootstrap-candidate`. Its handwritten `config/workspace.yaml` lists
-`candidate_bootstrap_targets`, each with a relative `path` and a scoped conform
-surface in `what`, such as `makefile`, `docs-config`, `pyproject`, `mise-config`,
-or `lazy-init`. The planner's typed surface contract owns the selection; bootstrap
-rejects complete generation before planning or publishing. Fixed destination
-sets and dynamically planned initializer paths must remain inside their owning
-worktree.
-The verb uses the current branch-matched Infra generator and validates every target
-as an exact Git worktree root. It plans all declared recovery projections before
-starting one recoverable, multi-root publication, then verifies every target before
-committing. A failed target
-leaves the campaign unpublished. The integration manifest keeps this list empty; a
-candidate campaign adds exact paths only in its worktree lane and removes them before
-landing. An empty list
-fails loud when the verb runs, rather than claiming a completed bootstrap. After
-Makefile bootstrap, run `make setup` and `make gen` in that consumer's worktree.
-The `pyproject` bootstrap regenerates declared tool tables through the existing
-dependency conformance phases before Rope or uv reads the physical document. Project
-metadata, dependency groups, and unowned tables remain live inputs; multiline string
-contents never select a table. Normal generation and all gates still run afterward.
-The same bounded recovery is available through
-`flext-infra codegen conform --root <checkout> --what pyproject --scope self --mode apply`.
-It authenticates the live destination and configuration sources, parses the journal-owned
-staged replacement before publication, and verifies its fixed point. This prerequisite
-phase does not open Rope or invoke the installed TOML formatter. Run `make gen` afterward
-to render the complete templates, derive runtime-evaluated bases with native Rope, and
-format the final projection; bootstrap alone is not complete generation evidence.
-`docs-config` renders only the declared docs policy template when a conflicted
-generated JSON file prevents ordinary generation from parsing it; afterward run
-`make gen` to verify the full projection. Generated targets are never edited
-directly. Regenerate stale initializers with a `lazy-init` target before requesting
-a `pyproject` target whose type-analysis inventory consumes their export routes.
-This uses the existing initializer planner and transaction, with no alternate
-parser for retired generated shapes. `mise-config` restores the declared tool
-manifest; `make upg` resolves its lock and `make setup` installs it. The
-`makefile` surface reads declared member identity from the workspace manifest even when
-a member checkout has been initialized only partially and still lacks its
-`pyproject.toml`; that is the state the new Make setup must repair. All other conform
-surfaces continue to reject that incomplete member.
+Use canonical `make setup`, `make upg`, and `make gen`. Setup installs existing
+locks; upgrade resolves them; generation projects the declared artifacts. Generated
+files are changed through their owning renderer and native conform surface.
 
-The public `codegen conform --what mise-config --scope self` recovery surface
-regenerates only the selected checkout's `.mise.toml` from the canonical toolchain,
-template, and declared project overlay. It snapshots the malformed destination as
-raw bytes rather than parsing it as input. Apply holds the existing file transaction
-lease and validates the journal-owned staged TOML before publication, then verifies
-the live declaration and its fixed point. It installs no tools, changes no lockfile,
-and rejects fleet scopes. Run the read-only `codegen mise-proof` for that checkout
-before invoking a lifecycle command that requires its frozen installed toolchain.
+The publication owner authenticates each file's captured destination and declared
+inputs. A changed dependency rejects its affected file with a causal issue while
+independent valid files retain their published gains. Reports preserve original
+failures and actual accounting. Publication never rolls back the whole campaign
+because an unrelated file changed.
 
-The public `codegen conform --what envrc --scope self --mode apply` recovery
-surface renders only the checkout's `.envrc` from its typed activation context and
-the existing template. It reuses the bootstrap file transaction and fixed-point
-verification, without activating direnv, planning dependency projections, changing
-locks, or touching `.envrc.local`. Use the `makefile` surface separately for a
-conflicted generated Makefile; neither recovery requires full generation to start.
-
-A dedicated integration worktree may stage exact supplier commits in its handwritten
-`config/workspace.yaml` under `candidate_dependencies`. Each entry declares the
-distribution, its canonical HTTPS Git URL, and the full commit OID. This is a tracked,
-reviewable candidate input, separate from the untracked local codegen override above.
-The generator applies a candidate only to that distribution's direct Git requirement;
-other dependencies stay on their declared integration lines. It rejects a URL that
-disagrees with the member manifest or an existing direct requirement, and it cannot
-introduce a Git source where neither declaration exists. An entry without a
-corresponding direct requirement fails instead of being silently ignored. An omitted
-`candidate_dependencies` list leaves normal release projections unchanged.
-
-Candidate selection must include the published dependency closure. A direct pin in one
-project cannot rewrite the metadata of another Git dependency: if `flext-tests` still
-declares `flext-cli` on the integration branch, pinning `flext-cli` to a different
-commit only in `flext-infra` makes `make upg` fail with conflicting Git URLs. Publish
-candidate metadata from the supplier outward: generate and publish the `flext-cli`
-commit first; generate, validate, and publish a `flext-tests` commit that declares that
-exact CLI commit; then declare both immutable commits in the Infra consumer manifest.
-Every dependent repository in a longer chain needs the same treatment before a later
-consumer can resolve it. A candidate entry does not substitute for publishing the
-intermediate repository's own generated metadata.
-
-For each repository in that dependency order, use its dedicated worktree and physical
-external environment. Run its canonical `make setup`, `make gen`, and `make upg`, then
-`make setup` again to install the resolved lock. Run its native gates and repeat
-`make gen` to prove a fixed point before publishing its candidate commit. If the
-currently published Makefile cannot bootstrap that external environment, repair and
-publish its canonical generator owner before this sequence; do not edit the generated
-Makefile or create an internal environment. Remove candidate declarations through the
-same manifest owner before promoting the normal integration line, and confirm `make gen`
-returns the generated pyprojects to branch sources.
+A completed invocation still needs native consumer validation and a repeated
+unchanged generation before its fixed point can be accepted.

@@ -1,0 +1,119 @@
+# Test law: production code is validated by running it, never by parsing it.
+#
+# Building an AST over production source in a test (`ast.parse` over a read
+# `Path(...).read_text()` or over `inspect.getsource(...)` of an imported
+# owner) is white-box validation: it asserts how the owner is spelled at the
+# syntax-tree level, so it fails on every harmless refactor while proving
+# nothing about runtime behavior. It is the structural sibling of the
+# source-text probes ban-test-source-text-assertion owns — same read, deeper
+# inspection — and of the shape probes ban-test-implementation-shape owns.
+#
+# This rule is the single owner of the production-AST law and covers the
+# entry points the validation can take:
+#
+#   * `ast.parse(<production text>)` where the text is a Path read chain or
+#     an `inspect.getsource(...)` call, inline or through a name the module
+#     binds from such a read;
+#   * `ast.walk(...)` / `ast.dump(...)` over an inline
+#     `ast.parse(<production text>)` call.
+#
+# A parse result bound to a name needs no separate probe: the parse itself is
+# the flagged entry point, so walking or dumping that tree is already covered,
+# and parsing a test-owned snippet (`ast.parse("x = 1")`) is fixture
+# construction over test-owned text, not production validation — both stay
+# outside the rule.
+#
+# Detection-only: the replacement asserts the observable behavior through the
+# public facade, which a rewrite cannot author. A violating test is deleted
+# and its behavior re-covered through the public surface.
+id: ban-test-production-ast
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/examples/**/*.py"
+  - "**/conftest.py"
+metadata:
+  ruling: operator-ruling-2026-09-14-public-behavior-tests
+  description: >-
+    A test never builds an AST over production code (ast.parse over a
+    Path read or inspect.getsource, and ast.walk/ast.dump over such a parse);
+    it validates behavior through the public facade.
+utils:
+  source-read-call:
+    any:
+      # `Path(__file__)...read_text()` and the `.read()` spelling: the receiver
+      # chain is rooted at a Path construction.
+      - kind: call
+        regex: "^Path\\([\\s\\S]*\\.(?:read_text|read)\\(\\)$"
+      # `inspect.getsource(x)` and a direct `getsource` import binding.
+      - kind: call
+        regex: "^(?:inspect\\.)?getsource\\("
+  # An identifier is the read text only when the same module binds that exact
+  # name from a source-read call; $V is captured at the top so the operand and
+  # the assignment's left side must unify.
+  bound-source-text:
+    all:
+      - kind: identifier
+      - pattern: $V
+      - inside:
+          kind: module
+          stopBy: end
+          has:
+            stopBy: end
+            kind: assignment
+            all:
+              - has:
+                  field: left
+                  pattern: $V
+              - has:
+                  field: right
+                  matches: source-read-call
+  production-text-value:
+    any:
+      - all:
+          - kind: call
+          - matches: source-read-call
+      - matches: bound-source-text
+  # The parse call whose subject is production text — the AST-validation entry
+  # point, whether it is flagged directly or reached through walk/dump.
+  production-parse-call:
+    all:
+      - kind: call
+      - has:
+          field: function
+          regex: "^ast\\.parse$"
+      - has:
+          kind: argument_list
+          has:
+            nthChild: 1
+            matches: production-text-value
+rule:
+  any:
+    # The entry point itself: parsing production text.
+    - all:
+        - kind: call
+        - has:
+            field: function
+            regex: "^ast\\.parse$"
+        - has:
+            kind: argument_list
+            has:
+              nthChild: 1
+              matches: production-text-value
+    # Walking or dumping an inline production parse.
+    - all:
+        - kind: call
+        - has:
+            field: function
+            regex: "^ast\\.(?:walk|dump)$"
+        - has:
+            kind: argument_list
+            has:
+              nthChild: 1
+              matches: production-parse-call
+message: >-
+  Production-AST validation: the test parses an owner's source (ast.parse over
+  a Path read or inspect.getsource) and inspects the tree instead of running
+  the code. Delete the probe and assert the public facade's observable
+  outcome.

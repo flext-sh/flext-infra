@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config
-from flext_infra._utilities import FlextInfraUtilitiesGit, FlextInfraUtilitiesPyproject
+from flext_infra import config
+from flext_infra._utilities import FlextInfraUtilitiesPyproject
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -76,27 +77,29 @@ class FlextInfraUtilitiesNamespaceConfig:
 
     @staticmethod
     def namespace_scan_dirs(project_root: Path) -> frozenset[str]:
-        """Return configured scan dirs for namespace enforcement.
+        """Return declared and discovered active namespace source directories.
 
-        Priority:
-        1. Explicit ``[tool.flext.namespace] scan_dirs`` in pyproject.toml.
-        2. Git-tracked top-level directories that exist on disk.
-        3. Outside Git, the configured source-scan roots that exist on disk.
+        Explicit declarations retain their schema validation but cannot remove
+        other active Python roots from enforcement.
 
         Returns:
-            Configured scan dirs for namespace enforcement.
+            Declared and discovered namespace source directories.
 
         Raises:
             TypeError: If [tool.flext.namespace] scan_dirs must be a list of non-empty
                 strings in.
-            ValueError: If [tool.flext.namespace] scan_dirs is empty in; or if
-                ``declared.failure``.
+            ValueError: If scan_dirs is empty or Git declarations are invalid.
 
         """
         meta = FlextInfraUtilitiesNamespaceConfig.namespace_meta(project_root)
+        scan_dirs: list[str] = [
+            name
+            for name in config.Infra.source_scan.roots
+            if (project_root / name).is_dir()
+        ]
         if "scan_dirs" in meta:
             configured = meta["scan_dirs"]
-            scan_dirs: list[str] = []
+            scan_dirs = []
             if not isinstance(configured, list):
                 msg = (
                     "[tool.flext.namespace] scan_dirs must be a list of "
@@ -110,38 +113,16 @@ class FlextInfraUtilitiesNamespaceConfig:
                         f"non-empty strings in {project_root}"
                     )
                     raise TypeError(msg)
-                scan_dirs.append(item)
+                scan_dirs.append(item.strip())
             if not scan_dirs:
                 msg = f"[tool.flext.namespace] scan_dirs is empty in {project_root}"
                 raise ValueError(msg)
-            return frozenset(item.strip() for item in scan_dirs)
-        tracked = FlextInfraUtilitiesGit.git_tracked_top_level_dir_names(project_root)
-        if tracked is not None:
-            declared = FlextInfraUtilitiesGit.git_submodule_declarations(project_root)
-            if declared.failure:
-                raise ValueError(declared.error)
-            # A declared submodule is another repository, consumed as an
-            # installed library and never scanned from here.
-            excluded = (
-                c.Infra.COMMON_EXCLUDED_DIRS
-                | {name for name in tracked if name.startswith(".")}
-                | {
-                    item.path.as_posix()
-                    for item in declared.value
-                    if len(item.path.parts) == 1
-                }
-            )
-            dynamic = frozenset(
-                name
-                for name in tracked
-                if name not in excluded and (project_root / name).is_dir()
-            )
-            if dynamic:
-                return dynamic
         return frozenset(
-            name
-            for name in config.Infra.source_scan.roots
-            if (project_root / name).is_dir()
+            FlextInfraUtilitiesProjectDiscovery.analyzer_python_roots(
+                project_root,
+                scan_dirs,
+                workspace_excluded_top_dirs=frozenset(),
+            )
         )
 
     @staticmethod

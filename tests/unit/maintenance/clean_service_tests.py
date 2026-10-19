@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraCleanService, c
+from flext_infra import c
+from flext_infra.maintenance import FlextInfraCleanService
 from tests import tm
 
 if TYPE_CHECKING:

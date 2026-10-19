@@ -65,6 +65,7 @@ class FlextInfraPytestRunnerExecution(
 
         Raises:
             ValueError: If test target has no declared project owner.
+
         """
         testmon_keys = (
             config.Infra.codegen.make.testmon_cache.database_environment_variable,
@@ -80,19 +81,19 @@ class FlextInfraPytestRunnerExecution(
                 msg = "test target has no declared project owner"
                 raise ValueError(msg)
             source_root = target_root
-        inherited_path = u.Cli.process_env().get(
-            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, ""
-        )
-        overrides = {
-            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: os.pathsep.join(
+        overrides: dict[str, str] = {}
+        if not self.ci_context:
+            inherited_path = u.Cli.process_env().get(
+                c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, ""
+            )
+            overrides[c.Infra.ORCHESTRATOR_ENV_PYTHONPATH] = os.pathsep.join(
                 path
                 for path in (
                     str(source_root / c.Infra.DEFAULT_SRC_DIR),
                     inherited_path,
                 )
                 if path
-            ),
-        }
+            )
         if not coverage:
             overrides.update(dict.fromkeys(testmon_keys, str(self.testmon_db)))
         if self.profile_enabled or self.collection_command_prefix:
@@ -331,6 +332,30 @@ class FlextInfraPytestRunnerExecution(
             report_dir / "command.txt",
             f"{shlex.join(command)}\n",
         ).unwrap()
+        capture = u.Infra.git_begin_gate_capture(
+            m.Infra.GateCaptureBeginRequest(
+                repository_root=self.root,
+                gate=c.Infra.VERB_TEST,
+                command=command,
+                intent=m.Infra.GateExecutionIntent(
+                    test_selection=m.Infra.GateTestIntent(
+                        execution_mode=execution_mode,
+                        target=self.target,
+                        target_file=self.target_file,
+                        ci_context=self.ci_context,
+                        slow_phase=self.slow_phase,
+                        unbounded=self.unbounded,
+                        profile_enabled=self.profile_enabled,
+                    ),
+                ),
+                runtime_identity=self.testmon_environment(execution_mode),
+            ),
+            inputs=u.Infra.load_codegen_inputs(self.root).unwrap(),
+        )
+        u.Cli.atomic_write_text_file(
+            report_dir / c.Infra.GATE_CAPTURE_START_FILENAME,
+            capture.model_dump_json(round_trip=True) + "\n",
+        ).unwrap()
         outcome = u.Cli.run_to_file(
             command,
             report_dir / "pytest.log",
@@ -552,6 +577,7 @@ class FlextInfraPytestRunnerExecution(
             accounting.model_dump_json(indent=2) + "\n",
         ).unwrap()
         u.Cli.atomic_write_text_file(report_dir / "summary.txt", summary).unwrap()
+        self._capture_original_suite(report_dir)
         sys.stderr.write(f"Reports: {report_dir}\n")
         if (
             self.target_file is not None
@@ -561,6 +587,60 @@ class FlextInfraPytestRunnerExecution(
             msg = f"empty file phase has rejected evidence: {report_dir}"
             raise RuntimeError(msg)
         return r.ok(final_exit)
+
+    def _capture_original_suite(self, report_dir: Path) -> None:
+        """Bind the already executed suite to its original typed reports.
+
+        Args:
+            report_dir: The directory containing the report files.
+
+        Raises:
+            ValueError: If the original suite checkpoint has no native test selection.
+
+        """
+        start = m.Infra.GateCaptureStart.model_validate_json(
+            u.Cli.files_read_binary(
+                report_dir / c.Infra.GATE_CAPTURE_START_FILENAME,
+            ).unwrap(),
+        )
+        outcome = m.Cli.ProcessOutcome.model_validate_json(
+            u.Cli.files_read_binary(report_dir / "suite-outcome.json").unwrap(),
+        )
+        reports = u.Infra.git_capture_report_bindings(
+            start.repository_root,
+            (
+                (
+                    report_dir / "suite-outcome.json",
+                    c.Infra.GateEvidenceReportKind.PYTEST_PROCESS,
+                ),
+                (
+                    report_dir / "run-accounting.json",
+                    c.Infra.GateEvidenceReportKind.PYTEST_ACCOUNTING,
+                ),
+                (
+                    report_dir / "diagnostics.json",
+                    c.Infra.GateEvidenceReportKind.PYTEST_DIAGNOSTICS,
+                ),
+                (
+                    report_dir / "run-context.json",
+                    c.Infra.GateEvidenceReportKind.PYTEST_CONTEXT,
+                ),
+            ),
+        ).unwrap()
+        selection = start.intent.test_selection
+        if selection is None:
+            msg = "original suite checkpoint has no native test selection"
+            raise ValueError(msg)
+        u.Infra.git_finish_gate_capture(
+            m.Infra.GateCaptureFinishRequest(
+                started=start,
+                process=outcome,
+                reports=reports,
+                report_root=report_dir,
+                runtime_identity=self.testmon_environment(selection.execution_mode),
+            ),
+            inputs=u.Infra.load_codegen_inputs(self.root),
+        ).unwrap()
 
     @staticmethod
     def _external_gate_markers(context: m.Infra.PytestRunContext) -> str:
@@ -670,10 +750,16 @@ class FlextInfraPytestRunnerExecution(
             )
         )
         self._cache_publication = None
+        lease_started = time.monotonic()
+        sys.stderr.write(f"pytest cache lease: acquiring {self.testmon_db}\n")
         with u.Infra.codegen_transaction_lease(
             self.testmon_db,
             wait_seconds=wait_seconds,
         ):
+            sys.stderr.write(
+                "pytest cache lease: acquired "
+                f"after {time.monotonic() - lease_started:.3f}s\n",
+            )
             result = self._execute_testmon_leased(
                 complete=complete,
                 execution_mode=execution_mode,
@@ -767,8 +853,8 @@ class FlextInfraPytestRunnerExecution(
         ).unwrap()
         selection = selection_plan.node_ids
         # A declared file whose inventory was collected still runs: testmon may
-        # select nothing for a file that has in-scope tests, and noselect
-        # executes that file. An empty scope is owns_no_tests and is not this
+        # select nothing for a file that has in-scope tests, and the declared
+        # file selection executes it. An empty scope is owns_no_tests and is not this
         # guard. A suite with no proved inventory stays a failure.
         if (
             not selection
@@ -789,8 +875,8 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=execution_mode,
         )
         outcome = self._run_suite(command, report_dir, execution_mode=execution_mode)
-        # A declared file always executes under noselect, so an empty testmon
-        # selection over a restored cache is never a cache hit for it.
+        # A declared file executes its complete collected inventory, so an empty
+        # incremental suite selection never grants a cache hit to a file request.
         cache_hit = (
             self.target_file is None
             and not complete

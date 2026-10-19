@@ -1,0 +1,122 @@
+id: declare-single-class-export
+snapshots:
+  ? |
+    class Declaration(Parent):
+        class Payload:
+            value: str
+  : fixed: |-
+      class Declaration(Parent):
+          class Payload:
+              value: str
+
+
+
+      __all__: list[str] = ["Declaration"]
+    labels:
+    - source: |
+        class Declaration(Parent):
+            class Payload:
+                value: str
+      style: primary
+      start: 0
+      end: 65
+    - source: |
+        class Declaration(Parent):
+            class Payload:
+                value: str
+      style: secondary
+      start: 0
+      end: 65
+    - source: Declaration
+      style: secondary
+      start: 6
+      end: 17
+    - source: |-
+        class Declaration(Parent):
+            class Payload:
+                value: str
+      style: secondary
+      start: 0
+      end: 64
+  ? |
+    from __future__ import annotations
+    class Declaration:
+        value: str
+  : fixed: |-
+      from __future__ import annotations
+      class Declaration:
+          value: str
+
+
+
+      __all__: list[str] = ["Declaration"]
+    labels:
+    - source: |
+        from __future__ import annotations
+        class Declaration:
+            value: str
+      style: primary
+      start: 0
+      end: 69
+    - source: |
+        from __future__ import annotations
+        class Declaration:
+            value: str
+      style: secondary
+      start: 0
+      end: 69
+    - source: Declaration
+      style: secondary
+      start: 41
+      end: 52
+    - source: |-
+        class Declaration:
+            value: str
+      style: secondary
+      start: 35
+      end: 68
+  ? |
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from dependency import Payload
+    class Declaration:
+        value: Payload
+  : fixed: |-
+      from typing import TYPE_CHECKING
+      if TYPE_CHECKING:
+          from dependency import Payload
+      class Declaration:
+          value: Payload
+
+
+
+      __all__: list[str] = ["Declaration"]
+    labels:
+    - source: |
+        from typing import TYPE_CHECKING
+        if TYPE_CHECKING:
+            from dependency import Payload
+        class Declaration:
+            value: Payload
+      style: primary
+      start: 0
+      end: 124
+    - source: |
+        from typing import TYPE_CHECKING
+        if TYPE_CHECKING:
+            from dependency import Payload
+        class Declaration:
+            value: Payload
+      style: secondary
+      start: 0
+      end: 124
+    - source: Declaration
+      style: secondary
+      start: 92
+      end: 103
+    - source: |-
+        class Declaration:
+            value: Payload
+      style: secondary
+      start: 86
+      end: 123

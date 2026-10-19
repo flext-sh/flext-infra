@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
+from flext_infra.codemod import FlextInfraCodemodSnapshotReconciler
 from tests import c, tm, u
 
 
@@ -19,11 +19,22 @@ class TestsFlextInfraSnapshotDocuments:
 
     @staticmethod
     @pytest.mark.parametrize("empty_stream", [None, "", "# no documents\n"])
+    @pytest.mark.parametrize(
+        ("block_header", "padding", "second_case"),
+        [
+            ("|", "", "second_case\n"),
+            ("|-", "", "second_case"),
+            ("|+", "\n", "second_case\n\n"),
+        ],
+    )
     def test_all_documents_and_repeated_ids_contribute_snapshot_cases(
         tmp_path: Path,
         empty_stream: str | None,
+        block_header: str,
+        padding: str,
+        second_case: str,
     ) -> None:
-        """Snapshots from later documents and repeated IDs remain valid."""
+        """Native YAML block contents survive document and repeated-ID boundaries."""
         rules = tmp_path / "rule-inputs"
         tests = tmp_path / "fixture-inputs"
         snapshots = tests / c.Infra.CODEMOD_SNAPSHOT_DIRNAME
@@ -43,7 +54,8 @@ class TestsFlextInfraSnapshotDocuments:
         (tests / f"cases{c.Infra.CODEMOD_RULE_SUFFIX}").write_text(
             (
                 "id: first-probe\ninvalid: [first_case]\n"
-                "---\nid: second-probe\ninvalid: [second_case]\n"
+                f"---\nid: second-probe\ninvalid:\n  - {block_header}\n"
+                f"    second_case\n{padding}"
                 "---\nid: first-probe\ninvalid: [additional_case]\n"
                 if empty_stream is None
                 else empty_stream
@@ -52,8 +64,14 @@ class TestsFlextInfraSnapshotDocuments:
         )
         for rule_id, cases in (
             ("first-probe", ("first_case", "additional_case")),
-            ("second-probe", ("second_case",)),
+            ("second-probe", (second_case,)),
         ):
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    rules / f"{rule_id}{c.Infra.CODEMOD_RULE_SUFFIX}",
+                    f"id: {rule_id}\nlanguage: Python\nrule:\n  pattern: $VALUE\n",
+                ),
+            )
             tm.ok(
                 u.Cli.yaml_dump(
                     snapshots / f"{rule_id}{c.Infra.CODEMOD_SNAPSHOT_SUFFIX}",
@@ -78,12 +96,12 @@ class TestsFlextInfraSnapshotDocuments:
         if empty_stream is not None:
             with pytest.raises(TypeError, match="empty ast-grep rule-test"):
                 FlextInfraCodemodSnapshotReconciler.stale_snapshots(
-                    tmp_path, frozenset(("first-probe", "second-probe"))
+                    tmp_path,
                 )
             return
         tm.that(
             FlextInfraCodemodSnapshotReconciler.stale_snapshots(
-                tmp_path, frozenset(("first-probe", "second-probe"))
+                tmp_path,
             ),
             empty=True,
         )

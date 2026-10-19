@@ -12,7 +12,7 @@ import re
 import tokenize
 from pathlib import Path
 
-from flext_infra import FlextInfraConfig, c, config, m, t, u
+from flext_infra import c, m, t, u
 
 
 class FlextInfraRenameSources:
@@ -51,6 +51,30 @@ class FlextInfraRenameSources:
         return tuple(sorted(pairs.items()))
 
     @staticmethod
+    def _rooted_symlink(path: Path, roots: t.SequenceOf[Path]) -> bool:
+        """Authorize an in-tree symlink target and mark the link projected.
+
+        Returns:
+            Whether ``path`` is a symlink whose target stays inside the
+            declared scan roots.
+
+        Raises:
+            ValueError: If the symlink target escapes the declared scan roots.
+
+        """
+        if not path.is_symlink():
+            return False
+        destination = path.resolve(strict=True)
+        if not any(
+            destination.is_relative_to(candidate.resolve()) for candidate in roots
+        ):
+            msg = f"rename source escapes declared scan roots: {path}"
+            raise ValueError(msg)
+        # The target is the writable authority; an in-tree link
+        # remains a projection and is never an atomic destination.
+        return True
+
+    @staticmethod
     def inventory(
         roots: t.SequenceOf[Path],
         params: m.Infra.ApplyRenamesInput,
@@ -65,15 +89,21 @@ class FlextInfraRenameSources:
 
         """
         files: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
-        ignored = config.Infra.codegen.source_scan_ignored
-        generated = {item.path for item in config.Infra.codegen.managed_files}
-        templates = u.Infra.codegen_template_sources(config.Infra.codegen)
-        config_dir = FlextInfraConfig.ssot_config_dir()
+        configuration_root = params.repository_root
+        codegen = u.Infra.load_codegen_inputs(configuration_root).unwrap().spec
+        ignored = codegen.source_scan_ignored
+        generated = {item.path for item in codegen.managed_file_specs}
+        templates = u.Infra.codegen_template_sources(codegen)
         drivers = {
             Path(params.csv).resolve(),
             *(
-                (config_dir / campaign.csv).resolve()
-                for campaign in config.Infra.refactor_csv_campaigns.campaigns
+                (configuration_root / c.CONFIG_DIR_NAME / campaign.csv).resolve()
+                for campaign in u.Infra
+                .load_refactor_csv_campaigns(
+                    configuration_root,
+                )
+                .unwrap()
+                .campaigns
             ),
         }
         for root in roots:
@@ -97,16 +127,7 @@ class FlextInfraRenameSources:
                 )
                 if not python and not text:
                     continue
-                if path.is_symlink():
-                    destination = path.resolve(strict=True)
-                    if not any(
-                        destination.is_relative_to(candidate.resolve())
-                        for candidate in roots
-                    ):
-                        msg = f"rename source escapes declared scan roots: {path}"
-                        raise ValueError(msg)
-                    # The target is the writable authority; an in-tree link
-                    # remains a projection and is never an atomic destination.
+                if FlextInfraRenameSources._rooted_symlink(path, roots):
                     continue
                 state = u.Cli.atomic_read_binary_file_state(
                     path,

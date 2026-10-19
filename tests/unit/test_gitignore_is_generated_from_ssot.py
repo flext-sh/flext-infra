@@ -14,9 +14,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import flext_infra
-from flext_infra import c, config
-from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import tm, u
+from flext_infra import config
+from flext_infra.codegen import FlextInfraCodegenConform
+from tests import c, tm, u
 
 
 class TestsFlextInfraGitignoreIsGeneratedFromSsot:

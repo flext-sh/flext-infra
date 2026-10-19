@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from enum import StrEnum, unique
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
@@ -20,6 +21,11 @@ if TYPE_CHECKING:
 
 class FlextInfraConstantsGit:
     """Git-specific constants for the GitPython-backed facet."""
+
+    GIT_COMMIT_OID_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$",
+    )
+    "Full SHA-1 or SHA-256 commit object identity."
 
     GIT_UNBORN_HEAD_ERROR_CODE: ClassVar[str] = "GIT_UNBORN_HEAD"
     "Identity is unavailable because HEAD names a branch that has no ref yet."
@@ -32,7 +38,31 @@ class FlextInfraConstantsGit:
     class GateAttestationSchema(StrEnum):
         """Supported signed gate-attestation schema identities."""
 
-        V1 = "https://flext.sh/attestations/gates/v1"
+        V2 = "https://flext.sh/attestations/gates/v2"
+
+    @unique
+    class GateEvidenceReportKind(StrEnum):
+        """Canonical producer report contracts admitted by the signed owner."""
+
+        RECEIPT = "receipt"
+        CHECK_SARIF = "check_sarif"
+        PYTEST_PROCESS = "pytest_process"
+        PYTEST_ACCOUNTING = "pytest_accounting"
+        PYTEST_DIAGNOSTICS = "pytest_diagnostics"
+        PYTEST_CONTEXT = "pytest_context"
+
+    GATE_CAPTURE_START_FILENAME: ClassVar[str] = "capture-start.json"
+    "Private original invocation and candidate checkpoint."
+    GATE_ORIGINAL_RECEIPT_FILENAME: ClassVar[str] = "original-receipt.json"
+    "Public candidate and original native execution facts."
+    GATE_CAPTURE_RESULT_FILENAME: ClassVar[str] = "capture-result.json"
+    "Local original capture outcome, including causal issue details."
+    GIT_SIGNING_CONFIGURATION_KEYS: ClassVar[t.StrTuple] = (
+        "gpg.format",
+        "user.signingkey",
+        "gpg.ssh.allowedSignersFile",
+    )
+    "Native Git settings inspected by the bounded public signing identity query."
 
     # --- Index entry modes (git mode field, not POSIX st_mode) ---
 

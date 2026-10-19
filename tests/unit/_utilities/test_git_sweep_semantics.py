@@ -59,6 +59,7 @@ class TestsFlextInfraGitSweepSemantics:
 
         Returns:
             Real retained state and its independently verified live publication.
+
         """
         snapshot = tm.ok(
             u.Infra.git_snapshot_worktree_state(

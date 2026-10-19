@@ -1,0 +1,2343 @@
+Infra:
+  codegen:
+    # Generic packaged defaults for deterministic project conformance.
+    version: 1
+    # Universal documentation-audit declarations every repository composes.
+    # Each forbidden term names a retired surface and the canonical owner
+    # that superseded it: per-project change selection is owned by the
+    # `make check` verb itself (the Make verb SSOT); the retired
+    # text-rules filename is superseded by the declarative sed-by-list
+    # catalogue (config/rules/mod/sed.yaml); scripts/hooks is superseded
+    # by promoted `scripts/<verb>/<WHAT>` commands and agentsctl hook
+    # projections. Container/CI home identities are image contracts whose
+    # home is part of the declared runtime, not an operator machine.
+    repository:
+      docs_audit:
+        forbidden_terms:
+        - check_changed_projects
+        - text_rules.yml
+        - scripts/hooks
+        container_home_identities:
+        - runner
+        - vscode
+        - agent
+        - barman
+        - scanner
+        - argocd
+    # Projections no template renders any more; generation removes the
+    # generated copy from every consumer (renamed: install-git-hooks.sh ->
+    # validate-git-hook.sh; flext-law-loop.sh validated the whole workspace
+    # from its root and retired with the root fan-out; the mise bootstrap
+    # pair and its lock publisher/converger retired with mise self-management
+    # — the pinned release is the [tools] entry mise.lock provisions).
+    retired_projections:
+    - .github/scripts/install-git-hooks.sh
+    - .github/scripts/flext-law-loop.sh
+    # The retired mise bootstrap pair and its lock publisher/converger predate
+    # the generated-marker contract (the old templates emitted no banner), so
+    # each declares the literal bytes that prove machine provenance. The
+    # retired mise.version pin file lost its generated banner to a WIP merge
+    # resurrection, so it also declares the rendered pin bytes (the
+    # toolchain.mise_version payload its template wrote) as evidence.
+    - path: bin/mise
+      evidence: "__mise_bootstrap"
+    - path: bin/mise.cmd
+      evidence: "__mise_bootstrap"
+    - path: bin/mise-lock-transaction.py
+      evidence: "Publish a Mise lock with its native sidecars"
+    - path: bin/mise-lock-converge.py
+      evidence: "Hold broken tool releases inside a ``make upg`` Mise lock stage."
+    - path: mise.version
+      evidence: "2026.10.3"
+    # The prettier projections retired with the npm-free toolchain
+    # (ADR-025: rumdl fmt formats markdown from .markdownlint.json). Neither
+    # carried a generated marker, so each declares the rendered bytes that
+    # prove machine provenance.
+    - path: .prettierrc
+      evidence: '"proseWrap"'
+    - path: .prettierignore
+      evidence: "# @flext-ssot: flext-infra/config/tooling.yaml"
+    # Agent configuration never lives in projects (ai-hub store memory
+    # operator-ruling-2026-10-09-no-agent-config-in-projects; only
+    # CLAUDE.md -> AGENTS.md stays). These projections carried no generated
+    # marker, so each declares the rendered bytes that prove provenance.
+    - path: .github/copilot-instructions.md
+      evidence: "# Copilot instructions (pointer)"
+    - path: .github/prompts/flext-aggressive-scale-refactor.prompt.md
+      evidence: "name: flext-aggressive-scale-refactor"
+    - path: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
+      evidence: "name: flext-strict-jsonvalue-session-continuation"
+    # Fresh import probes are independent subprocesses within one validation.
+    fresh_import_workers: 3
+    # Protected-edit lint snapshots run their gate subprocesses in this many
+    # threads per level (paths, then gates per path); mypy keeps its own
+    # resource-limited deadline, so the bound caps concurrent type checkers.
+    lint_snapshot_workers: 4
+    # Independent read-only per-repository work of one fleet run (generation
+    # planning, lazy-init analysis) runs in this many worker processes; every
+    # publication stays serial inside the single generation lease. Measured
+    # with `make profile-gen`: planning is CPU-bound (one core per repository).
+    fleet_workers: 6
+
+    # Per-module scc code-LOC ceiling, enforced by the loc-cap gate. This key
+    # is its only declaration; guidance references the key, never its value.
+    loc_cap:
+      max_lines: 1000
+
+    # SINGLE SSOT for every filesystem mode the codegen pipeline emits. Call
+    # sites read these rows through config.Infra.codegen.modes; octal mode
+    # literals outside the constants and model bounds are defects (the
+    # ban-octal-mode-literal rule flags them).
+    modes:
+      file_default: 420 # 0o644
+      file_private: 384 # 0o600
+      directory_private: 448 # 0o700
+      directory_generated: 493 # 0o755
+
+    toolchain:
+      # The language floor is a minor line. The runtime tool is pinned to the
+      # newest Python patch whose lock resolves on all declared platforms.
+      # Derived as computed fields on ToolchainSpec:
+      #   python_required_version -> >=3.13,<3.14
+      # Every fleet binary is declared `latest`. Only `make upg` resolves the
+      # moving selectors and dependency floors to the newest releases and
+      # writes the committed uv.lock and mise.lock; setup, gen, and fmt install
+      # frozen from those locks.
+      # The selector is major.minor (the schema contract). The exact patch is
+      # mise.lock's instrument: when the newest release loses platform assets,
+      # mise refuses the replacement and the lock stage keeps the current lock
+      # (fix-forward) until the release regains coverage.
+      # The minor line only: the frozen patch is mise.lock's ownership
+      # (the cooldown below keeps the asset-less 20260929
+      # python-build-standalone release out of every resolution, so 3.13.15
+      # stays the resolved patch without a config value the FlextInfraConfig
+      # model forbids).
+      python_version: "3.13"
+      # Supply-chain cooldown (rule security/supply-chain: a rolling cooldown
+      # of at least seven days): ONE value for every resolver — the generated
+      # mise `minimum_release_age` (so `make upg` never selects a release
+      # younger than this, e.g. a Python patch with no precompiled builds yet)
+      # and every dependabot ecosystem entry. Forks and local projects never
+      # enter it: dependabot excludes the requirements a project takes by
+      # direct git reference. uv carries no cooldown key (`exclude-newer` is
+      # banned, rule ethics/conformance-sweep). 10d, not 7d: the asset-less
+      # 20260929 python-build release aged past a 7d window and re-entered
+      # every python resolution, breaking the 3.13 lock-time listing.
+      dependency_cooldown_days: 10
+      uv_link_mode: copy
+      uv_environments: [ "sys_platform == 'linux'", "sys_platform == 'darwin'" ]
+      # Global compatibility exceptions become [tool.uv] constraint-dependencies
+      # in every project, including projects using the dependency transitively.
+      # Keep reasons here; an empty list removes constraints from all projections.
+      # Dependency compatibility is resolved from the declared project graph;
+      # upstream packages own any bounds their public contracts require.
+      # mypy 2.4.0 crashes internally (AssertionError "Must not defer during
+      # final iteration", mypy semanal.py) on the fleet's nested ldif model
+      # inference — held below 2.4.0 until upstream fixes the deferral bug.
+      # Bead trail: flext-0ftd.3 family + flext-mlr2m root parser finding.
+      uv_constraint_dependencies:
+      - mypy<2.4.0
+      # Moving selectors consumed by generated .mise.toml and CI. Only
+      # `make upg` resolves them to the newest release and writes mise.lock;
+      # setup installs exactly what the committed lock pins, and only these
+      # declared tools (never the operator's global Mise registry).
+      # Override these tool entries only. Never edit .mise.toml. Never pin a
+      # SHA. Entry order is the .mise.toml [tools] projection order; form
+      # fixes the rendered shape (scalar | table). The fleet toolchain has no
+      # npm backend (ADR-025): every tool comes from a checksum-locked native
+      # owner, and the toolchain model rejects an `npm:` selector at load.
+      # version_probe is the setup reality proof's data: `binary` is resolved
+      # through `mise which` and must live inside the tool's `mise where`
+      # root; `arguments` run it; `pattern` (a regex whose `{version}` is the
+      # escaped mise.lock version) must match its output. lock_checksum false
+      # declares a tool whose upstream release metadata publishes no checksum
+      # (mise.lock then carries the URL only); every other tool's current
+      # platform lock section must carry one.
+      # Base toolchain: only what this generator's own verbs run (python, the
+      # self-managed mise, uv, direnv, taplo, ast-grep, gitleaks, scc, node for
+      # the pyright wrapper, qlty, jscpd, waza). A project that needs more
+      # (kubectl, helm, kind, kubeconform, go, ...) declares them as additions
+      # in its own config/codegen.yaml under Infra.codegen.toolchain.tools;
+      # the config loader concatenates them onto this base. The library never
+      # lists its consumers' tools (DI).
+      tools:
+      - name: uv
+        version: latest
+        version_probe:
+          binary: uv
+          arguments: [ --version ]
+          pattern: "^uv {version} "
+      # direnv v2.38.1 publishes its Windows builds as direnv.windows-*.exe;
+      # the aqua registry entry (complete_windows_ext: false, unchanged since
+      # v2.37.0) still asks for the old extensionless name, so the default
+      # aqua resolver cannot lock windows-x64. The GitHub release backend
+      # selects assets by OS/arch; bin declares the installed executable name.
+      - name: direnv
+        selector: github:direnv/direnv
+        version: latest
+        form: table
+        bin: direnv
+        version_probe:
+          binary: direnv
+          arguments: [ version ]
+          pattern: "^{version}$"
+      # The aqua registry entry for tamasfe/taplo declares no checksum, so
+      # mise.lock records the release URL only.
+      - name: taplo
+        version: latest
+        lock_checksum: false
+        version_probe:
+          binary: taplo
+          arguments: [ --version ]
+          pattern: "^taplo {version}$"
+      # ast-grep publishes glibc-only native binaries (GitHub release assets
+      # app-{x86_64,aarch64}-unknown-linux-gnu); no channel ships a musl
+      # build, so aqua locks the gnu asset for linux-x64-musl as well.
+      - name: ast-grep
+        selector: aqua:ast-grep/ast-grep
+        version: latest
+        version_probe:
+          binary: ast-grep
+          arguments: [ --version ]
+          pattern: "^ast-grep {version}$"
+      - name: gitleaks
+        version: latest
+        version_probe:
+          binary: gitleaks
+          arguments: [ version ]
+          pattern: "^{version}$"
+      - name: scc
+        selector: aqua:boyter/scc
+        version: latest
+        version_probe:
+          binary: scc
+          arguments: [ --version ]
+          pattern: "^scc version {version}$"
+      # pyright's PyPI wrapper runs node from PATH.
+      - name: node
+        version: latest
+        version_probe:
+          binary: node
+          arguments: [ --version ]
+          pattern: "^v{version}$"
+      # Make, curl and Git remain system-owned. Recursive Make keeps the
+      # physical executable that invoked the generated lifecycle.
+      - name: qlty
+        selector: github:qltysh/qlty
+        version: latest
+        form: table
+        version_probe:
+          binary: qlty
+          arguments: [ --version ]
+          pattern: "^qlty {version} "
+      # Back on `latest` (2026-10-04 re-measurement): the 2026-10-02 hold's
+      # premise is gone — every release v5.2.0 through v5.4.0 now ships the
+      # full 19-asset platform set (verified via the GitHub releases API),
+      # so the cooldown `latest` resolves to installs cleanly and `make upg`
+      # re-records the resolution in mise.lock. Re-pin only on a measured,
+      # dated failure again.
+      - name: jscpd
+        selector: github:kucherenko/jscpd
+        version: latest
+        form: table
+        version_probe:
+          binary: jscpd
+          arguments: [ --version ]
+          pattern: "^jscpd {version}$"
+      # microsoft/waza also publishes azd-extension tags, and GitHub marks
+      # one of them latest; the tool's own releases are the `v` tags.
+      - name: waza
+        selector: github:microsoft/waza
+        version: latest
+        version_prefix: v
+        form: table
+        version_probe:
+          binary: waza
+          arguments: [ --version ]
+          pattern: "^waza version {version}$"
+      # Pins layered over the tools table by the override files.
+      tool_version_pins: {}
+      # False keeps Python resolution and installation on precompiled builds:
+      # compiling from source selected releases ahead of their published
+      # builds and stalled the fleet bootstrap (operator 2026-10-01).
+      python_compile: false
+      # Projection: .mise.toml [settings] lockfile. Mise uses the committed lock
+      # written by `make upg` wherever it pins a tool; no strict locked mode, so
+      # a stale or incomplete lock never blocks install, use, setup or a verb
+      # (operator-ruling-2026-10-09-setup-resilient).
+      mise_lockfile: true
+      # Projection: .mise.toml [settings] lockfile_platforms. The platforms the
+      # CI matrix runs on (ubuntu, macos, windows runners, x64 and arm64);
+      # `make upg` resolves these plus the current host, which mise always adds.
+      mise_lockfile_platforms:
+      - linux-x64
+      - linux-x64-musl
+      - linux-arm64
+      - macos-x64
+      - macos-arm64
+      - windows-x64
+      # mise self-management (F0, operator plan 2026-10-06): mise provisions
+      # itself through the [tools] entry these two values render into every
+      # .mise.toml. `mise install` provisions the pinned release from mise.lock
+      # (single source: this mise_version; no separate pin file exists), and
+      # every later `mise` resolved through the mise-managed shims runs exactly
+      # that release. The host bootstrap mise only needs to read the committed
+      # lockfile format.
+      mise_selector: github:jdx/mise
+      mise_version: "2026.10.3"
+      beads:
+        # Beads ledger projection (.beads/config.yaml, .beads/metadata.yaml).
+        # The bd and gc binaries are host tools; no project .mise.toml
+        # declares them.
+        # The city owns the endpoint; a repository declares only that it
+        # inherits one. Both values are rendered into .beads/config.yaml as
+        # gc.endpoint_origin / gc.endpoint_status.
+        endpoint_origin: inherited_city
+        endpoint_status: verified
+        # Issue types every governed ledger must know, unioned with each
+        # repository's own custom types when the projection is rendered.
+        required_custom_types:
+        - molecule
+        - convoy
+        - message
+        - event
+        - gate
+        - merge-request
+        - agent
+        - role
+        - rig
+        - session
+        - spec
+        - convergence
+        - step
+        # The Gas City runtime mints startup-health-episode beads and writes
+        # the type into every governed ledger's generated `.beads/config.yaml`.
+        # Declaring it here keeps the frozen
+        # projection owned by this SSOT instead of hand-adopted per rig.
+        - startup-health-episode
+        # Ledger scalars rendered into .beads/config.yaml. Change them here.
+        # Per-repo override of Gas City participation is workspace.yaml
+        # `gascity_enabled` (flips dolt.auto-start and omits gc.*). Never edit
+        # the projection `.beads/config.yaml`.
+        dolt_mode: server
+        export_auto: false
+        backup_enabled: false
+        dolt_disable_event_flush: true
+
+    # actions/checkout submodules mode for every generated workflow.
+    # 'false' is the safe default: the workflow GITHUB_TOKEN cannot clone
+    # sibling PRIVATE repositories, so 'recursive' aborts the job at checkout
+    # with "Repository not found" before any code runs. Only projects that
+    # really exercise their subprojects in CI opt in through their own
+    # config/codegen.yaml.
+    checkout_submodules: "false"
+    # CI consumes installed locked providers, never member checkouts.
+    checkout_submodules_overrides: {}
+
+    # Runner packages a distribution's own tests need (Ubuntu apt names),
+    # installed by the generated CI before the gates run. A test that drives
+    # a real external engine keeps running in CI instead of being skipped;
+    # the engine is declared here, once, at the fleet SSOT.
+    ci_system_packages:
+      flext-cli:
+      # tests/test_xlsx_recalc.py: headless LibreOffice recalculation.
+      - libreoffice-calc
+    # Distributions whose CI gates resolve GitHub Packages (private GHCR OCI
+    # dependencies). Least privilege: only these grant the generated ci job
+    # packages: read; every other distribution and job stays contents-only.
+    # Org repositories declare themselves in their own config/codegen.yaml.
+    ci_package_registry_read: []
+    # Per-distribution private composed-project auth for CI. The default
+    # GITHUB_TOKEN cannot clone sibling private repos; projects that need
+    # private submodules declare read-only deploy-key secrets in their own
+    # config/codegen.yaml, which the generated workflow materializes
+    # before `make setup` (which otherwise fails on HTTPS submodule clone).
+    ci_private_submodules: {}
+    ci_private_dependency_auth: {}
+
+    # Actions ride their upstream floating major tag: setup converges on the
+    # newest compatible release, never on an immutability SHA or patch pin.
+    github_actions:
+      checkout:
+        repository: actions/checkout
+        version: v7
+      kind:
+        repository: helm/kind-action
+        version: v1
+      upload-artifact:
+        repository: actions/upload-artifact
+        version: v7
+      cache:
+        repository: actions/cache
+        version: v6
+      configure-pages:
+        repository: actions/configure-pages
+        version: v6
+      upload-pages-artifact:
+        repository: actions/upload-pages-artifact
+        version: v5
+      deploy-pages:
+        repository: actions/deploy-pages
+        version: v5
+      create-github-app-token:
+        repository: actions/create-github-app-token
+        version: v3
+
+    # No provider registry exists: a repository's provider identity is
+    # detected from its own config/workspace.yaml (provider key plus canonical
+    # URL) and from each internal dependency's declared direct Git source.
+    # Nothing here catalogs organizations, and nothing resolves a provider by
+    # matching a Git origin against configured rows.
+    branch_policy:
+      lane_remote: origin
+      lane_pr_limit: 1000
+      lane_governance_file:
+      lane_temporary_roots:
+      - /tmp
+      # Pushes to these branches trigger the generated CI workflow. The renderer
+      # adds the repository's own integration branch to this list; it never
+      # hardcodes a fleet branch name.
+      ci_trigger_branches:
+      - main
+      # The one versioned line this fleet integrates on (SSOT — no fallback
+      # probe list; the model probes exactly this line against live Git).
+      integration_branch: "0.12.0-dev"
+    # SonarCloud automatic analysis (GitHub App) honors only the scope keys of
+    # .sonarcloud.properties: sonar.sources/tests, exclusions/inclusions,
+    # test.exclusions/inclusions, sourceEncoding and cpd.exclusions. Anything
+    # else (python.version, coverage, sonar.issue.ignore.*) is silently
+    # ignored, so issue exclusions are server-side project settings. This
+    # block is the single fleet owner of both.
+    sonarcloud:
+      # Generated, cache, vendored and build output only; never governed source.
+      exclusions:
+      - "**/.venv/**"
+      - "**/__pycache__/**"
+      - "**/*.py[cod]"
+      - "**/build/**"
+      - "**/dist/**"
+      - "**/*.egg-info/**"
+      - "**/.pytest_cache/**"
+      - "**/.reports/**"
+      # Mise v2 dependency sidecars are generated, digest-attested package-manager
+      # inputs. They stay committed for frozen replay but are not project source.
+      - "**/.mise/locks/**"
+      - "**/node_modules/**"
+      - "**/.scannerwork/**"
+      cpd_exclusions:
+      - "tests/**"
+      # Package __init__.py files are AUTO-GENERATED lazy-export projections:
+      # their TYPE_CHECKING import list mirrors the facade module that composes
+      # the same families, so duplication there measures the generator's
+      # contract, never governed source.
+      - "**/__init__.py"
+      # Web API that `make sonarcloud-sync` writes the server-side issue
+      # exclusions through. The project key is derived from
+      # the checkout's origin identity as <organization>_<repository>.
+      api_url: "https://sonarcloud.io"
+      api_timeout_seconds: 30
+      # Applied through each project's SonarCloud settings by
+      # `make sonarcloud-sync` (the file cannot carry them); rendered into the
+      # generated file as documentation only.
+      # The committed lock contract supersedes the former lockfile-ban exclusion.
+      # An empty list resets the setting and requires an empty effective readback.
+      issue_exclusions: []
+    infra_repository:
+      distribution: flext-infra
+      provider: flext-sh
+
+    profiles:
+    - name: workspace
+      environment_scope: root
+      setup_scope: root-and-members
+      execution_scope: root
+      discovery_scope: gitmodules
+    - name: standalone
+      environment_scope: self
+      setup_scope: self
+      execution_scope: self
+      discovery_scope: none
+
+    make:
+      # This campaign accepts complete diagnostic execution while preserving
+      # findings. The receipt never converts the native command status to green.
+      gate_acceptance_policy: complete_execution
+      gate_receipts_directory: .reports/gates
+      common_arguments: [ HELP, OPTIONS ]
+      examples_timeout_seconds: 120
+      # Setup clones absent gitlinks submodule_jobs at a time and gives each
+      # wave of concurrent clones submodule_timeout_seconds.
+      submodule_timeout_seconds: 120
+      submodule_jobs: 8
+      # Ruff is the formatting and autofix rule. Every ruff invocation uses
+      # --preview (tracker memory
+      # operator-ruling-2026-10-09-authority-confirmation-0122, item 1).
+      # Never weaken ruff to keep a file; change the code. [tool.ruff]
+      # preview: true in tooling.yaml is the same policy projected into
+      # pyproject.
+      # Repair and formatting never break on findings (operator rulings
+      # 2026-10-01, lint automation): a tool run ends clean, with findings
+      # under the findings status its tooling config declares, or in error.
+      # Findings stay reported and are enforced by make check; only an error
+      # breaks the verb, with its cause.
+      # lint_fix is the lint gate's apply mode and the ONLY lint repair: make
+      # fmt runs format only (single-pass verb law), so no lint_apply exists.
+      #
+      # lint_fix ALWAYS runs `--preview --fix --unsafe-fix` (tracker memory
+      # operator-ruling-2026-10-09-authority-confirmation-0122, item 4):
+      # unsafe fixes are mandatory in every make fix, in every project and
+      # subproject. MakeRuffSpec fails validation without the flag. Rules
+      # whose fixes would destroy information stay declared unfixable in
+      # tooling.yaml (rule selection, never disabling the unsafe channel).
+      ruff:
+        format_check: [ --preview, --check ]
+        format_apply: [ --preview ]
+        lint_check: [ --preview, --no-fix ]
+        lint_fix: [ --preview, --fix, --unsafe-fixes ]
+      # Gates whose mutating side `make fmt` drives (formatters). Their
+      # read-only side runs in `make check`; `make fix` never repeats them
+      # (single-pass verb law: one operation per tool per verb).
+      # `format` (ruff) applies only through `make fmt`; its read-only
+      # `--check` side runs in `make check` like markdown-format, so format
+      # drift is red at check time. fix never formats.
+      fmt_gates: [ format, markdown-format ]
+      # One filename and the root-relative runner paths; the runner places the
+      # database in platformdirs' external per-worktree cache.
+      testmon_cache:
+        database_filename: .testmondata
+        database_environment_variable: TESTMON_DATAFILE
+        data_home_environment_variable: XDG_CACHE_HOME
+        user_home_environment_variable: HOME
+        home_cache_directory: .cache
+        external_storage_directory: flext/infra/testmon
+        target_directory: tests
+        reports_directory: .reports/tests
+      # Storage law (operator 2026-09-12): every pytest verb declares its
+      # TMPDIR/basetemp under $HOME/tmp/.flext-runtime<absolute checkout>/scratch
+      # — never /tmp and never inside a versioned tree. A workspace member's
+      # parent directory is the superproject checkout, so a scratch "beside the
+      # checkout" landed inside another repository and Git refused every test
+      # fixture repository created there.
+      pytest_scratch:
+        user_home_environment_variable: HOME
+        home_relative_directory: .local/state
+        state_directory_name: .flext-runtime
+        namespace: scratch
+      # Actions-cache policy for the shared testmon database: two-phase
+      # generations, a per-repository byte budget with an ascending quota
+      # ladder, and the refs allowed to publish (never pull requests).
+      testmon_cache_policy:
+        mode: stable
+        save_enabled: true
+        max_bootstrap_generations: 3
+        max_stable_generations: 3
+        per_repo_budget_bytes: 52428800
+        warning_threshold_percent: 80
+        maintenance_threshold_percent: 90
+        block_threshold_percent: 95
+        key_prefix: flext-testmon
+      # The Mypy gate shares one analysis per project name inside one
+      # environment (u.Infra.mypy_cache_directory keys the directory with the
+      # interpreter plus the installed core distribution version). Relocks
+      # retain the directory; Mypy revalidates changed modules by source hash,
+      # so a warm cache never masks a finding, while distinct checkouts whose
+      # environments resolve different installed views never share a cache.
+      # Distinct project names keep their module namespaces in separate
+      # directories.
+      # Parsed codemod rule catalogs (u.Infra.codemod_rule_plan). Each entry is
+      # keyed by the sha256 of the provider, its rule files' paths and text, and
+      # the parser's own source, so a catalog is parsed once and re-parsed only
+      # when a rule or the parser changes.
+      codemod_rules_cache:
+        data_home_environment_variable: XDG_CACHE_HOME
+        user_home_environment_variable: HOME
+        home_cache_directory: .cache
+        external_storage_directory: flext/infra/codemod-rules
+      mypy_cache:
+        cache_environment_variable: MYPY_CACHE_DIR
+        data_home_environment_variable: XDG_CACHE_HOME
+        user_home_environment_variable: HOME
+        home_cache_directory: .cache
+        external_storage_directory: flext/infra/mypy
+      ruff_cache:
+        external_storage_directory: flext/infra/ruff
+      # Public verbs execute their declared operation without mode selectors.
+      uv_resolution:
+        local_directory: .flext/uv/local
+        standalone_directory: .flext/uv/standalone
+        editable_directory: .flext/uv/editable
+        hosted_variable: GITHUB_ACTIONS
+        hosted_value: 'true'
+        virtual_distribution_suffix: '-resolution'
+        member_group_separator: '-'
+      ci:
+        variable: CI
+        value: Y
+        # local_value: check retains the complete active gate set.
+        # Other pre-push verbs use this token to preserve local test behavior;
+        # pre-push check unsets CI so it runs every active check gate.
+        local_value: N
+        # direnv proves the developer's own activation (`direnv exec` needs the
+        # `direnv allow` that setup grants only outside CI), so it is local-only:
+        # under CI=Y the checkout's .envrc is never allowed and the smoke can
+        # only report "blocked".
+        # Gate baseline of the 0.12 line (tracker memory
+        # operator-ruling-2026-10-09-gate-baseline-0122). Every gate
+        # blocks in every context that runs it; there is no informative gate.
+        # local_check_gates is the only declared partition: CI=Y runs
+        # MakeSpec.check_gates_ci, its strict complement (pyrefly included, so
+        # CI is never blind to types); CI=N runs MakeSpec.check_gates_local;
+        # an unset CI (a developer's make check and the pre-push hook) runs
+        # every active gate. The whole-program checkers mypy and pyright, the
+        # project's own codemod rule set and smells never run in CI or at
+        # pre-commit (tracker memory operator-ruling-2026-10-01-precommit-fast-only);
+        # they block at pre-push. Mypy stays bounded by MYPY_MEMORY_LIMIT_MB
+        # and the project-owned tools.mypy.timeout_seconds budget.
+        # direnv proves the developer's own activation, so it is local-only.
+        local_check_gates: [ mypy, pyright, codemod, smells, direnv ]
+        # tooling.tools.pytest.ci-excluded-markers defines the slow-test
+        # exclusion for CI, not local/pre-push runs.
+        # An absent CI uses testmon for incremental developer runs.
+        # Pre-commit uses the CI gate partition and incremental test operation.
+        # The pre-push hook runs every pre_push row below. make setup installs
+        # both hooks locally with prek and installs none under CI=Y.
+      pre_commit: true
+      pre_push: true
+      # Public refactor violations-sweep default; custom sequences use verbs below.
+      violations_sweep_repair_verbs: [ fix, fmt, mod ]
+      workflow:
+      - { verb: setup, contexts: [ local, ci ] }
+      - { verb: gen, contexts: [ local, ci ] }
+      - { verb: audit, contexts: [ local, ci ] }
+      - { verb: fmt, contexts: [ local ] }
+      - { verb: fix, contexts: [ local ] }
+      - { verb: check, contexts: [ local, ci, pre_push, pre_commit ] }
+      # CI also runs the incremental suite with the persistent testmon cache.
+      # The full suite remains a separate local verb that first runs this
+      # incremental phase and then exercises the complete inventory.
+      - { verb: test, contexts: [ local, ci, pre_push, pre_commit ] }
+      # The generation fixed point and the clean tree close every CI run and
+      # every push: a projection that drifts from its source is red.
+      - { verb: verify-clean, contexts: [ local, ci, pre_push ] }
+      # Root mutation verbs own their existing member fanout. Per-repository
+      # consumers run from the invoking root with the member's Makefile.
+      lifecycle_steps:
+      - { verb: help, scope: root, contexts: [ local, ci ] }
+      - { verb: setup, scope: root, contexts: [ local, ci ] }
+      - { verb: gen, scope: root, contexts: [ local, ci ] }
+      - { verb: upg, scope: root, contexts: [ local ] }
+      - { verb: gen, scope: root, contexts: [ local, ci ] }
+      - { verb: gen, scope: root, contexts: [ local, ci ] }
+      - { verb: mod, scope: root, contexts: [ local, ci ] }
+      - { verb: fix, scope: root, contexts: [ local, ci ] }
+      - { verb: fmt, scope: root, contexts: [ local, ci ] }
+      - { verb: check, scope: each, contexts: [ local, ci ] }
+      - { verb: test, scope: each, contexts: [ local, ci ] }
+      - { verb: build, scope: each, contexts: [ local, ci ] }
+      - { verb: examples, scope: each, contexts: [ local, ci ] }
+      - { verb: docs, scope: each, contexts: [ local, ci ] }
+      - { verb: status, scope: each, contexts: [ local, ci ] }
+      - { verb: audit, scope: each, contexts: [ local, ci ] }
+      - { verb: verify-clean, scope: each, contexts: [ local, ci ] }
+      lifecycle_observed_files: [ Makefile, pyproject.toml, uv.lock, mise.lock ]
+      # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
+      # sweep and the root-level directory/file lists.
+      clean:
+        cache_dirs:
+        - __pycache__
+        - .mypy_cache
+        - .pytest_cache
+        - .ruff_cache
+        - .pyrefly_cache
+        - .benchmarks
+        - .hypothesis
+        root_dirs:
+        - build
+        - dist
+        - htmlcov
+        - .reports
+        root_files:
+        - .coverage
+        - flext-infra-codegen-transaction-journal.json.lock
+        trace_globs:
+        - "*.pstats"
+      docs:
+        # `make docs` is a docs-only lifecycle (generate -> fix -> fmt ->
+        # build -> check); it never runs the workspace-wide codegen conform as a
+        # prerequisite. `build` renders the MkDocs site into the reports dir —
+        # the docs workflow's Build site step runs this same lifecycle and its
+        # Upload site artifact consumes `.reports/docs/site`, so a lifecycle
+        # without build makes that step untarable on every consumer. `validate`
+        # is the structural check (blocking when the .md set is incomplete).
+        actions: [ generate, fix, fmt, build, validate, audit ]
+        mutable_actions: [ fix, fmt ]
+        reports_dir: .reports/docs
+        overview_preview_limits:
+          aliases: 11
+          public_symbols: 10
+          facades: 8
+          module_exports: 8
+          keywords: 8
+        cross_project_relative_link_pattern: '^(?:\.\./)+flext-[a-z0-9-]+(?:/|$)'
+        stale_github_organizations:
+        - organization
+      # Private cross-repo doc-link entries (checkouts outside this public
+      # registry) belong in the gitignored config/codegen.local.yaml; the
+      # lookup appends local entries and resolves first match.
+      verbs:
+      - name: help
+        description: Show the complete selector-free public interface.
+      - name: setup
+        description: Install the declared locks, publish local runtime bindings, and provision hooks.
+      - name: pre-commit
+        description: Approve a commit through the CI check partition and incremental tests with the persistent testmon database.
+      - name: upg
+        description: Resolve the newest declared releases, write the uv and mise locks, then prove the upgraded tree still converges; gates stay with make check.
+      - name: upg-sources
+        arguments: [ SOURCE_ROOT, SOURCE_URL_PREFIX, SOURCE_REF_FROM, SOURCE_REF_TO ]
+        description: Migrate an explicitly selected dependency Git reference in the root and its declared member manifests before resolving their locks.
+      - name: validate-lifecycle
+        description: Execute the declared public runtime acceptance steps serially, with root-owned mutation fanout and typed first-failure receipts.
+      # Workspace-only (topology owns applicability): a standalone Makefile
+      # never declares it. Never merges; a rerun continues the same lanes.
+      - name: propagate
+        description: Apply this workspace's flext-infra projections to every declared member and publish one pull-request lane per changed member; lock updates belong exclusively to make upg.
+        profiles: [ workspace ]
+      - name: build
+        description: Build the project distribution artifacts.
+      - name: examples
+        description: Run this repository's explicitly declared public runtime examples module.
+      - name: check
+        description: Check the configured quality gates and projection conformance without writes.
+      - name: census
+        description: Inventory constants, duplicate declarations and placement across every declared first-party project.
+      - name: census-constants
+        description: Apply identity-proven constants consumer rewrites through the workspace census and publish its complete report.
+      - name: smells
+        description: Run the strict code-smell audit as a dedicated gate.
+      - name: test
+        description: Run incremental tests through the persistent testmon cache.
+      - name: tests
+        arguments: [ FILE ]
+        description: Run incremental tests first, then the complete eligible suite using the same persistent testmon database, without a time limit.
+      - name: test-full
+        arguments: [ FILE ]
+        description: Run incremental tests first, then the complete eligible suite using the same persistent testmon database, without a time limit.
+      - name: test-file
+        arguments: [ FILE ]
+        description: Run one declared test file incremental then complete, slow items included, with the same persistent testmon cache (FILE=<repository-relative path>).
+      - name: file-gate
+        arguments: [ FILE ]
+        description: Run configured canonical read-only gates on one literal FILE=<repository-relative path>; invalid selection and missing gate owners fail loud.
+      - name: profile-test
+        arguments: [ FILE ]
+        description: Profile the canonical pytest entry and its collection children on the same persistent testmon database, without the outer bounded-gate wrapper.
+      - name: profile-test-report
+        description: Render the parent pytest profile and the aggregated child profiles from that run.
+      - name: profile-environment
+        description: Profile the canonical environment provenance guard without invoking that guard as a prerequisite.
+      - name: profile-environment-report
+        description: Render the profile retained by the canonical environment provenance guard.
+      - name: profile-lanes
+        description: Profile the complete read-only workspace lane audit and retain its native failure outcome.
+      - name: profile-lanes-report
+        description: Render the retained profile of the complete workspace lane audit.
+      - name: profile-mod
+        description: Profile the canonical mutating codemod lifecycle and retain the profile on failure.
+      - name: profile-mod-report
+        description: Render the canonical codemod profile from the last profiling invocation.
+      - name: profile-mod-rules
+        description: Profile the complete read-only rule diagnostic and retain its native failure outcome.
+      - name: profile-mod-rules-report
+        description: Render the profile of the complete read-only rule diagnostic.
+      - name: fmt
+        description: Apply ruff format --preview and every declared formatter gate. Ruff is the rule; change code, never ruff.
+      - name: fix
+        description: Apply conformance repairs and the configured fixable gates.
+      - name: fix-namespace
+        description: Apply the canonical namespace enforcer to the selected workspace; the same relocation cascade runs as a callback phase of make mod.
+      - name: fix-accessors
+        description: Migrate accessor names owned by the rename catalog's origin package and every resolved consumer; homonyms are skipped with a warning; the same origin-aware rewrite runs as a callback phase of make mod.
+      - name: fix-toolchain
+        description: Reinstall one explicitly selected declared tool from its current lock, then prove the complete native toolchain.
+      - name: audit
+        description: Inspect environment, dependency, and workspace ownership health.
+      - name: status
+        description: Report the resolved runtime and repository state.
+      - name: verify-clean
+        description: Verify managed artifacts and generated documentation against their sources, then reject staged, unstaged, untracked changes and stash entries through the public Git service.
+      - name: docs
+        description: Generate, fix, format, and check documentation.
+      - name: clean
+        description: Remove every declared disposable artifact.
+      - name: bootstrap-candidate
+        description: Bootstrap declared candidate worktrees with this branch-matched generator.
+      - name: release-plan
+        description: Resolve the release decision through the public protocol.
+      - name: release-version
+        description: Materialize the planned version.
+      - name: release-tag
+        description: Tag the verified release commit.
+      - name: release-build
+        description: Build the release receipt and artifacts.
+      - name: publication
+        description: Publish only receipt-attested release artifacts.
+      - name: gen
+        description: Regenerate declared projections with guarded publication per participant, without repairing authored inputs or resolving locks.
+        requires_activation: false
+      - name: gen-footprint
+        description: Inspect the pending generation journal and declared physical effect footprint without leases, recovery, or publication.
+        requires_activation: false
+      - name: initialize
+        description: Bootstrap this target's own declaration and canonical Makefile.
+      - name: project-new
+        arguments: [ NAME, KIND, OUTPUT_ROOT, PROVIDER, REPOSITORY_URL, REPOSITORY_BRANCH, FLEXT_REPOSITORY_URL, FLEXT_REPOSITORY_REF, LICENSE, AUTHOR_NAME, AUTHOR_EMAIL, UPSTREAM, FLEXT_SOURCE, YEAR ]
+        description: Create a new project through the canonical scaffold service using explicitly declared identity inputs.
+        requires_activation: false
+      - name: mod
+        description: Apply the declared structural codemods; committed rule-test snapshots are verified, never rewritten.
+      - name: mod-rules
+        description: Evaluate the declared AST and text rule catalogs across every governed project without rewriting sources; publish occurrence evidence by rule and repository.
+      - name: mod-text
+        description: Apply the declared Sed text rules with exact receipts and guarded publication.
+      - name: mod-text-candidate
+        description: Apply declared Sed text rules to the configured candidate workspace.
+      # The explicit snapshot regeneration: `mod` only verifies
+      # snapshots, so a changed rule output lands as a reviewed commit.
+      - name: mod-snapshots
+        description: Regenerate the owned ast-grep rule-test snapshots from their tests for a reviewed commit.
+      - name: waza
+        description: Validate provider-neutral governance semantics with Waza.
+      - name: duplication
+        description: Run the canonical jscpd duplicate-code gate.
+      - name: sonarcloud-sync
+        description: Write the SSOT SonarCloud issue exclusions to the server-side project settings (requires SONAR_TOKEN).
+      - name: sonarcloud-issues
+        description: Read unresolved new-code SonarCloud issues on the published integration branch (requires SONAR_TOKEN).
+      custom_handler_profile_overrides: {}
+      standalone_check_gates:
+        smells: smells
+      # Every built-in gate outside standalone_check_gates is active in
+      # make check (tracker memory operator-ruling-2026-10-09-gate-baseline-0122);
+      # there is no opt-in gate.
+      custom_handler_policy:
+        filename: custom.mk
+        # Custom behavior is one private whole-verb replacement or one lifecycle
+        # hook. Selector-specific handlers are prohibited because public verbs are
+        # already the complete operation and is their sole mutation input.
+        target_pattern: "^((pre|post)-[a-z][a-z0-9-]*|gen|_custom-[a-z][a-z0-9-]*)$"
+        allow_public_targets: false
+        allow_toolchain_declarations: false
+
+    # SINGLE SSOT for ephemeral/generated
+    # resources. VS Code files.exclude/search.exclude (vscode_exclude),
+    # files.watcherExclude (watch_exclude), and source_scan.ignored_resources
+    # (source_scan_ignore) are DERIVED from this list by CodegenConfigSpec
+    # computed fields. Add a tool cache/build dir here only — never in the
+    # consuming projections. Ordering reproduces the historical derived maps.
+    artifacts:
+    - { name: __pycache__, source_scan_ignore: true, analysis_exclude: true }
+    - { name: __pyrefly_virtual__ }
+    # Governance content (.agents/.claude) and direnv runtime state stay
+    # visible to the editor and watcher; source_scan keeps its dotdir skip.
+    - { name: .agents, source_scan_ignore: true, vscode_exclude: false, watch_exclude: false }
+    - { name: .beads, source_scan_ignore: true }
+    - { name: .benchmarks }
+    # Historical evidence trees (AGENTS.md law: archives are evidence only,
+    # never live authority) are not production input to any analyzer.
+    # Archive-not-delete target for the layout engine; the generated
+    # .gitignore projection must never track archived loose files.
+    - { name: .archive, source_scan_ignore: true }
+    - { name: .bkp }
+    - { name: .cache, source_scan_ignore: true }
+    # Agent worktrees are duplicate repositories, never production input.
+    - { name: .claude, source_scan_ignore: true, vscode_exclude: false, watch_exclude: false }
+    # .direnv keeps the source-scan skip (order-sensitive, after .claude).
+    - { name: .direnv, source_scan_ignore: true, vscode_exclude: false, watch_exclude: false }
+    - { name: .dolt }
+    - { name: .dolt_dropped_databases }
+    - { name: .doltcfg }
+    - { name: .hypothesis }
+    - { name: .git, gitignore: false, source_scan_ignore: true }
+    # Agent tool state (hook-state/hook-status) is machine-local cache, never
+    # production input.
+    - { name: .mimosa, source_scan_ignore: true }
+    - { name: .mypy_cache, source_scan_ignore: true, analysis_exclude: true }
+    - { name: .omo }
+    - { name: .pylance_cache, vscode_exclude: false }
+    - { name: .pytest_cache, source_scan_ignore: true, analysis_exclude: true }
+    - { name: .reports, source_scan_ignore: true, analysis_exclude: true }
+    - { name: .ropeproject }
+    - { name: .ruff_cache, source_scan_ignore: true, analysis_exclude: true }
+    - { name: .scope }
+    - { name: .serena }
+    - { name: .sisyphus }
+    - { name: .state }
+    - { name: .superpowers }
+    - { name: .trash }
+    - { name: .turbo }
+    - { name: .venv, source_scan_ignore: true, analysis_exclude: true }
+    - { name: .venv.* }
+    - { name: "*.egg-info", vscode_exclude: false }
+    # Transient extraction scratch (e.g. legacy _tmp_mdpy_* fenced-block and
+    # docstring sources) must never become tracked candidates even if a gate
+    # regression drops it into the worktree; the markdown-code gate itself
+    # writes only under runner-managed temp roots.
+    - { name: "_tmp_*" }
+    # Editor/patch droppings: never production input, never tracked, whatever
+    # wrote them.
+    - { name: "*.bak" }
+    - { name: "*.orig" }
+    - { name: "*.rej" }
+    - { name: "*.swp" }
+    - { name: build, source_scan_ignore: true, analysis_exclude: true }
+    - { name: dist, source_scan_ignore: true, analysis_exclude: true }
+    - { name: node_modules, source_scan_ignore: true, analysis_exclude: true }
+    # protoc-generated wire-protocol modules ("DO NOT EDIT"): tracked and
+    # imported as a regular package, never first-party code. generated_source
+    # is the one key every analyzer exclusion, scan, and init derives from.
+    - { name: protos, generated_source: true }
+    - { name: site, watch_exclude: false }
+    - { name: target }
+    - { name: .pyrefly_cache, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
+    - { name: .tox, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
+    - { name: dist-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true, analysis_exclude: true }
+    - { name: legado, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
+    - { name: site-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true, analysis_exclude: true }
+    - { name: vendor, gitignore: false, vscode_exclude: false, watch_exclude: false }
+    # npm's lockfile emission: the resolver owns sibling-shared resolved
+    # dependency lines; clone detection never reads it (resolver_owned).
+    - { name: package-lock.json, is_dir: false, vscode_exclude: false, watch_exclude: false, gitignore: false, resolver_owned: true }
+    - { name: venv, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true, analysis_exclude: true }
+    # Gitignore-only entries; they feed no other projection.
+    - { name: .flext-sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
+    - { name: .sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
+    - { name: .planning, vscode_exclude: false, watch_exclude: false }
+    - { name: skill-create-output, vscode_exclude: false, watch_exclude: false }
+    - { name: .debug-journal.md, is_dir: false, vscode_exclude: false, watch_exclude: false }
+    - { name: .mcp.json, is_dir: false, vscode_exclude: false, watch_exclude: false }
+    - { name: CLAUDE.local.md, is_dir: false, vscode_exclude: false, watch_exclude: false }
+    # Declared directory-exclusion registry: the one exclusion SSOT. Names
+    # here are declared topology facts (tool state, archive contracts,
+    # per-scanner deltas); every scanner set derives by composing them with
+    # the artifact analysis_exclude flags and the VCS-derived names
+    # (.git, .worktrees). Add an exclusion by declaring it here — never in
+    # code.
+    exclusions:
+      tool_state:
+      - .agents-sync-home
+      - .test-tmp
+      archive_roots:
+      - incoming
+      - legado
+      docs:
+      - crg-reports
+      - site
+      pyproject_scan:
+      - .claude.disabled
+      - context_test
+      - rope_ws
+      - tmp_flow_test
+      - tests
+      - examples
+      check:
+      - .agents
+      - .archive
+      - .claude
+      - .codex
+      - .cursor
+      - .gemini
+      - .opencode
+      - .beads
+      - .serena
+      - .kilo
+      - .omo
+      - .tmp
+      - .snapshots
+      - .benchmarks
+      - .hypothesis
+      - .vscode
+      - .pyrefly_cache
+      - htmlcov
+      - reports
+      - site
+      - target
+      validation_clone:
+      - .archive
+      - .ropeproject
+      - htmlcov
+      worktree_transaction:
+      - .pyrefly_cache
+      - .cache
+      deps_discovery:
+      - .archive
+      - .claude.disabled
+      - htmlcov
+      - site
+      - vendor
+      parameterized_case_dirs:
+      - api_cases
+      - _cases
+      part_container_dirs:
+      - _parts
+      helper_modules:
+      - _cov.py
+    vscode:
+      # Portable defaults shared by attached and standalone repositories.
+      # The editor owner binds environment tokens to the checkout runtime.
+      additional_settings:
+        python-envs.workspaceSearchPaths:
+        - ./.venv
+        - ./*/.venv
+        terminal.integrated.env.linux:
+          PATH: ${workspaceFolder}/.venv/bin:${env:PATH}
+          VIRTUAL_ENV: ${workspaceFolder}/.venv
+        ruff.interpreter:
+        - ${workspaceFolder}/.venv/bin/python
+        ruff.path:
+        - ${workspaceFolder}/.venv/bin/ruff
+      # Canonical .vscode/settings.json content injected with owner semantics:
+      # scalar/list keys and artifact maps are exact; explicitly declared
+      # non-artifact maps retain project extensions. Recursive "**" venv search
+      # globs are forbidden: they make
+      # the Python Environments locator (pet) walk entire repository trees and
+      # hang interpreter discovery on large monorepos.
+      scalar_settings:
+        files.autoSave: afterDelay
+        python.analysis.autoFormatStrings: true
+        python.analysis.autoImportCompletions: true
+        python.analysis.completeFunctionParens: true
+        python.analysis.diagnosticMode: workspace
+        python.analysis.findRefsInBackgroundThread: false
+        python.analysis.generateWithTypeAnnotation: true
+        python.analysis.gotoOverrideCodeLens: false
+        python.analysis.includeAliasesFromUserFiles: false
+        python.analysis.includeExtraPathSymbolsInSymbolSearch: false
+        python.analysis.includeVenvInWorkspaceSymbols: false
+        # Attached projects share one physical workspace environment. Avoid
+        # virtual workspaces isolating sources from the native Pyright context.
+        python.analysis.useNearestConfiguration: true
+        python.analysis.usePerProjectEnvironments: true
+        python.analysis.userFileIndexingLimit: 2000
+        python.defaultInterpreterPath: ${workspaceFolder}/.venv/bin/python
+        python.languageServer: Pylance
+        python.pyrefly.diagnosticMode: workspace
+        python.pyrefly.disableLanguageServices: true
+        python.pyrefly.disableTypeErrors: false
+        python.pyrefly.syncNotebooks: false
+        python.testing.pytestEnabled: false
+        python.testing.unittestEnabled: false
+        python.terminal.activateEnvInCurrentTerminal: true
+        python.terminal.activateEnvironment: true
+        python.useEnvironmentsExtension: false
+        ruff.configurationPreference: filesystemFirst
+        ruff.format.preview: true
+        ruff.importStrategy: fromEnvironment
+        ruff.lint.preview: true
+        pyrefly.lspPath: ${workspaceFolder}/.venv/bin/pyrefly
+        markdownlint.configFile: .markdownlint.json
+        shellcheck.useWorkspaceRootAsCwd: true
+        shellcheck.useRepositoryRootAsCwd: true
+        git.autoRepositoryDetection: subFolders
+        git.detectSubmodules: true
+        git.detectSubmodulesLimit: 100
+        git.openRepositoryInParentFolders: always
+        git.repositoryScanMaxDepth: 2
+        githubPullRequests.autoRepositoryDetection: true
+        githubPullRequests.ignoreSubmodules: false
+      list_settings:
+        markdownlint.lintWorkspaceGlobs:
+        - "!**/.git/**"
+        - "!**/.planning/**"
+        - "!**/.reports/**"
+        - "!**/.venv/**"
+        - "!**/*.code-search"
+        - "!**/bower_components/**"
+        - "!**/build/**"
+        - "!**/dist/**"
+        - "!**/node_modules/**"
+        - "!**/output/**"
+        - "!**/tmp/**"
+        - "!**/vendor/**"
+        - "**/*.{md,mkd,mdwn,mdown,markdown,markdn,mdtxt,mdtext,workbook}"
+        yaml.disableSchemaDetection:
+        - "**/.github/workflows/*.yml"
+        - "**/.github/workflows/*.yaml"
+        - "**/.gitea/workflows/*.yml"
+        - "**/.gitea/workflows/*.yaml"
+        - "**/.forgejo/workflows/*.yml"
+        - "**/.forgejo/workflows/*.yaml"
+      map_union_settings:
+        "[python]":
+          diffEditor.ignoreTrimWhitespace: true
+          editor.defaultFormatter: charliermarsh.ruff
+          editor.formatOnSave: true
+          editor.codeActionsOnSave.source.organizeImports: explicit
+        # rumdl owns markdown formatting (markdown-format gate: `rumdl fmt`);
+        # the editor extension reads the same generated .markdownlint.json.
+        # Save stays manual: the canonical mutation surface is `make fmt`.
+        "[markdown]":
+          editor.defaultFormatter: rvben.rumdl
+          editor.formatOnSave: false
+      stripped_keys:
+      # Pylance emits settingsNotOverridable diagnostics (severity=warning) when
+      # these keys appear in .vscode/settings.json alongside a [tool.pyright] section
+      # in pyproject.toml. Each key below is owned canonically by [tool.pyright]
+      # in every governed package; the codegen actively strips them from the
+      # settings projection so the file stays green with no warnings.
+      - python.analysis.typeCheckingMode
+      - python.analysis.diagnosticSeverityOverrides
+      # The current Ruff extension always uses its native server.
+      - ruff.nativeServer
+
+      # Declarative project-layout SSOT consumed by
+      # the layout engine (codegen/layout.py) and the layout quality gate. Every
+      # move/archive/gitignore decision derives from this section — the engine
+      # carries zero hardcoded layout knowledge. Every violation fails the check.
+    layout:
+      version: 1
+      # Archive-not-delete root: archived entries land in <archive_root>/<project>/.
+      allow_hidden: true
+      archive_root: .bkp
+      diagrams_target: docs/diagrams
+      docs_target: docs
+      examples_target: examples
+      canonical_root_files:
+      - pyproject.toml
+      - uv.lock
+      - mise.lock
+      - Makefile
+      - base.mk
+      - custom.mk
+      - README.md
+      - LICENSE
+      - CHANGELOG.md
+      - CONTRIBUTING.md
+      - AGENTS.md
+      - CLAUDE.md
+      - GEMINI.md
+      - conftest.py
+      - mkdocs.yml
+      canonical_root_dotfiles:
+      - .gitignore
+      - .gitattributes
+      - .gitmodules
+      - .envrc
+      - .envrc.local
+      - .env.example
+      - .python-version
+      - .pre-commit-config.yaml
+      - .mise.toml
+      - .mcp.json
+      - .waza.yaml
+      - .sonarcloud.properties
+      - sonar-project.properties
+      canonical_root_dirs:
+      - .mise
+      - bin
+      - infra
+      - src
+      - tests
+      - docs
+      - examples
+      - scripts
+      - config
+      - ci
+      - dist
+      - docker
+      - dbt_packages
+      - ast-grep-rules
+      - ast-grep-rule-tests
+      # Per-project-type extra canonical root files; the profile of a project
+      # is resolved by matching its name against profile_project_patterns.
+      profile_extra_root_files:
+        dbt:
+        - dbt_project.yml
+        - packages.yml
+        - profiles.yml
+        - package-lock.yml
+        meltano:
+        - meltano.yml
+        - docker-compose.test.yml
+        - dbt_project.yml
+      profile_project_patterns:
+        dbt:
+        - flext-dbt-*
+        meltano:
+        - flext-meltano
+        - flext-tap-*
+      # Root documentation directories moved under <docs_target>/<name>/.
+      move_docs_dirs:
+      - api-reference
+      - architecture
+      - guides
+      - releases
+      - roadmap
+      - standards
+      - development
+      - improvements
+      - refactor
+      - refactoring
+      - maintenance
+      - integration
+      - adr
+      - diagrams
+      - api
+      - configuration
+      - notebook
+      - getting-started
+      - troubleshooting
+      - testing
+      - overview
+      - docs-finais
+      - authoring
+      - ARCHITECTURE
+      - OPERATIONS
+      - STANDARDS
+      - DEVELOPMENT
+      - API
+      - CODEMAPS
+      - RELEASES
+      - apresentacoes
+      - solutions
+      # Root Markdown documents moved under <docs_target>/.
+      move_docs_files:
+      - index.md
+      - getting-started.md
+      - configuration.md
+      - development.md
+      - architecture.md
+      - api-reference.md
+      - testing.md
+      - troubleshooting.md
+      - quick-start.md
+      - overview.md
+      - integration.md
+      - c4-model.md
+      - TODOS.md
+      - TODO.md
+      - REFACTOR_STATUS.md
+      - DOCUMENTATION_UPDATE_SUMMARY.md
+      - CONTRACT_BUDGET.md
+      - DUPLICATION-DETECTION.md
+      - HOOK_WARNINGS.md
+      - PLUGIN-ARCHITECTURE.md
+      - RULE_MODIFICATION.md
+      - TESTING_WARNING_SYSTEM.md
+      # Sample data files moved under <examples_target>/.
+      move_example_files:
+      - directory.ldif
+      - oid_schema.ldif
+      - config.json.example
+      # Diagram sources moved under <diagrams_target>/.
+      move_diagram_globs:
+      - "*.puml"
+      # Root entries archived into <archive_root>/<project>/ (never deleted).
+      # Names match files or directories; globs use fnmatch semantics.
+      archive_names:
+      - $OUT
+      - max
+      - "=4.0.0"
+      - "=4.0.0,"
+      - nohup.out
+      - poetry.lock
+      - history
+      - history.json
+      - index.md.bak-legacy-docs-layout
+      - dbt_project_migrated.yml
+      - processed_directory.ldif
+      - output.ldif
+      - replace_list.yml
+      - maintenance_config.yaml
+      - rules.json
+      - output
+      - logs
+      - complete_pipeline_results
+      - legado
+      - b-pipeline
+      - debug-pipeline
+      - exec-pipeline
+      - noexec-pipeline
+      - probe
+      - status-pipeline
+      archive_globs:
+      - "*.log"
+      - pytest_*.txt
+      - pyright_errors*.log
+      - test_output.txt
+      # Content submodule trees and agent law dirs are out of product-docs relocate.
+      # .agents is already skipped via allow_hidden (dotdir); data/ is explicit.
+      special_root_dirs:
+      - data
+      # External reference corpora (same class as docs/references/**).
+      reference_root_dirs:
+      - external-docs
+      # Per-project overrides: extra archives (with the matching .gitignore
+      # additions), explicit nested moves, and empty-directory archives.
+      # Project-specific entries live in each project's own
+      # config/codegen.yaml so this file stays an immutable fleet-wide rule
+      # set that never lists its consumers.
+      project_overrides: {}
+
+    managed_files:
+    - path: .github/ci-template/ci.yml
+      owner: codegen
+      policy: full
+    - path: .github/dependabot.yml
+      owner: codegen
+      policy: full
+    - path: .github/scripts/check-beads-policy.sh
+      owner: codegen
+      policy: full
+      mode: 493 # 0o755
+    - path: .github/scripts/check-cqrs-compliance.sh
+      owner: codegen
+      policy: full
+      mode: 493 # 0o755
+    - path: .github/scripts/validate-git-hook.sh
+      owner: codegen
+      policy: full
+      mode: 493 # 0o755
+    - path: tests/fixtures/ci/docker/alpine.Dockerfile
+      owner: codegen
+      policy: full
+    - path: tests/fixtures/ci/docker/arch.Dockerfile
+      owner: codegen
+      policy: full
+    - path: tests/fixtures/ci/docker/debian.Dockerfile
+      owner: codegen
+      policy: full
+    - path: tests/fixtures/ci/docker/fedora.Dockerfile
+      owner: codegen
+      policy: full
+    - path: tests/fixtures/ci/docker/ubuntu.Dockerfile
+      owner: codegen
+      policy: full
+    - path: .github/workflows/ci-matrix.yml
+      owner: codegen
+      policy: full
+    - path: .github/workflows/ci.yml
+      owner: codegen
+      policy: full
+    - path: .github/workflows/docs.yml
+      owner: codegen
+      policy: full
+    - path: .github/workflows/release.yml
+      owner: codegen
+      policy: full
+    - path: .beads/config.yaml
+      owner: codegen
+      policy: full
+    - path: .beads/metadata.json
+      owner: codegen
+      policy: full
+    - path: .envrc
+      owner: codegen
+      policy: full
+    - path: .envrc.local
+      owner: codegen
+      policy: merge
+    # The fleet template owns its rendered sections. A project's
+    # ManagedArtifacts.Gitignore.preserved_blocks declares exact delimiter
+    # pairs for sections written by another generator; codegen retains those
+    # live bytes and rejects incomplete or duplicate delimiters. No external
+    # destination list belongs in this fleet manifest.
+    - path: .gitignore
+      owner: codegen
+      policy: merge
+    - path: .mise.toml
+      owner: codegen
+      policy: full
+    - path: .markdownlint.json
+      owner: codegen
+      policy: full
+    - path: .markdownlintignore
+      owner: codegen
+      policy: full
+    - path: .pre-commit-config.yaml
+      owner: pre-commit
+      policy: full
+    - path: .python-version
+      owner: codegen
+      policy: full
+    # The docs auditor's lexical defaults and repository-specific exact-file
+    # evidence declarations are rendered from the template and typed workspace
+    # manifest, then enforced from this full codegen-owned projection.
+    - path: docs/docs_config.json
+      owner: codegen
+      policy: full
+    # Qlty refuses to scan without a repository configuration. The generated
+    # make smells verb owns this strict, separately scheduled audit fleet-wide.
+    - path: .qlty/qlty.toml
+      owner: codegen
+      policy: full
+    # SonarCloud automatic analysis reads its scope from this file; generated
+    # fleet-wide from the sonarcloud block above.
+    - path: .sonarcloud.properties
+      owner: codegen
+      policy: full
+    - path: .vscode/settings.json
+      owner: vscode
+      policy: merge
+      tracking: runtime-local
+      runtime_binding: true
+    # Release build policies: fully generated fleet-wide bytes. The release
+    # policy phase renders build constraints at build time from
+    # config.Infra.release.build_constraints; no repository copy exists.
+    - path: config/gitleaks-release.toml
+      owner: codegen
+      policy: full
+    - path: Makefile
+      owner: make
+      policy: full
+    # CUSTOM vs MANAGED (humans read comments; this block is the owner):
+    #   conflict_sections = MANAGED tables (template wins on make gen)
+    #   preserve_project_keys = CUSTOM [project] keys (live wins on merge)
+    #   [project] keys the template writes that are not in preserve_project_keys
+    #     (requires-python) are MANAGED; live dependencies stay CUSTOM and
+    #     the profile rows are seeded beside them
+    #   [tool.*] absent from conflict_sections (bandit, …) is CUSTOM
+    - path: pyproject.toml
+      owner: codegen
+      policy: merge
+      conflict_sections:
+      - build-system
+      - dependency-groups
+      - tool.pytest.ini_options
+      - tool.uv
+      - tool.ruff
+      - tool.ruff.lint.isort
+      - tool.mypy
+      - tool.pyright
+      - tool.pyrefly
+      - tool.pytest
+      - tool.coverage
+      - tool.codespell
+      - tool.tomlsort
+      - tool.yamlfix
+      - tool.deptry
+      - tool.hatch
+      - tool.pydantic-mypy
+      - tool.vulture
+      # Written by the conform pipeline from the project SSOT
+      # (_sync_namespace_scope), so a conflict inside it is the owner's
+      # own output and is recoverable. tool.flext.docs is deliberately
+      # absent: the template seeds it with package_name at project creation
+      # only, and afterwards it stays CUSTOM — keys such as site_title are
+      # owned by the live repository and survive every gen.
+      - tool.flext.namespace
+      preserve_project_keys:
+      - name
+      - description
+      - authors
+      - maintainers
+      - scripts
+      - entry-points
+      - classifiers
+      - keywords
+      - license
+      - urls
+      - readme
+      - version
+      - dependencies
+      - optional-dependencies
+      overwrite_project_keys:
+      - requires-python
+
+    scaffold:
+      build:
+        backend: hatchling.build
+        requirements: [ hatchling ]
+      project:
+        readme: README.md
+        # Existing-tree ProjectSpec year. Do not derive from datetime.
+        copyright_year: 2026
+        supported_licenses: [ MIT, Proprietary ]
+        classifiers:
+        - "Development Status :: 4 - Beta"
+        - "Intended Audience :: Developers"
+        - "Operating System :: OS Independent"
+        - "Programming Language :: Python :: 3 :: Only"
+        - "Programming Language :: Python :: 3.13"
+        - "Topic :: Software Development :: Libraries :: Python Modules"
+        - "Typing :: Typed"
+        keywords: [ clean-architecture, flext, integration, typed ]
+        dev:
+        - actionlint-py>=1.7.12.24
+        - deptry
+        # The security gate (flext_infra.gates.bandit) runs unconditionally for
+        # every project owning src/, so the tool it shells out to must be a
+        # declared dev dependency of every generated project.
+        - bandit>=1.9.4
+        # Floors let uv select released tools without a cap or downgrade path.
+        # Every diagnostic from the resolved release remains blocking.
+        - mkdocs
+        - mkdocs-autorefs
+        - mkdocs-exclude>=1.0.2
+        - mkdocs-git-revision-date-localized-plugin>=1.5.4
+        - mkdocs-material>=9.7.7
+        - mkdocs-mermaid2-plugin>=1.2.3
+        - mkdocs-minify-plugin>=0.8.0
+        - mkdocs-redirects>=1.2.3
+        - mkdocs-section-index>=0.3.12
+        - mkdocstrings>=1.0.6
+        - mkdocstrings-python>=2.0.9
+        # uv installs this as a side effect of the editable root install
+        # (hatchling editable-detection backend) but a later sync prunes it,
+        # breaking editable wheel builds (release/wheel tests) after any
+        # re-sync; declared here so every projected project keeps it.
+        - editables>=0.6
+        - mypy>=2.3.1
+        - pymdown-extensions
+        - pyrefly>=1.2.0
+        - pyright>=1.1.411
+        - pytest>=9.1.1
+        - hypothesis
+        - pytest-asyncio
+        - pytest-benchmark
+        - pytest-cov
+        - pytest-markdown-docs
+        - pytest-randomly>=4.1.0
+        - pytest-reportlog
+        - pytest-testmon>=2.2.0
+        - pytest-timeout
+        - pytest-xdist
+        - platformdirs>=4.12.0
+        # types-* stub floors are declared here (cooldown-eligible dates).
+        # Lock-fed raising wrote dated stub versions into the projections;
+        # dated stubs churn weekly, so the SSOT owns the clamp and the
+        # rolling window governs when the date advances.
+        - types-defusedxml>=0.7.0.20260504
+        - types-docker>=7.2.0.20260827
+        - types-grpcio
+        - types-jsonschema>=4.26.0.20260518
+        - types-ldap3>=2.9.13.20260827
+        - msgpack-types
+        - types-protobuf>=7.35.1.20260827
+        - types-psutil>=7.2.2.20260827
+        - types-psycopg2>=2.9.21.20260724
+        - types-pyyaml>=6.0.12.20260815
+        - types-requests>=2.33.0.20260712
+        - types-openpyxl>=3.1.5.20260827
+        - ruff>=0.16.5
+        - rumdl>=0.2.62
+        - vulture>=2.16
+        - yamlfix>=1.19.1
+        # Flask and Werkzeug ship inline typing; their legacy stubs shadow it.
+        retired_dev:
+        - types-flask
+        - types-werkzeug
+        required_flext_dev: [ flext-infra, flext-tests ]
+        # Precedence order: a generated _config.py composes the first base
+        # whose distribution is among the project's runtime requirements or
+        # its declared upstream.
+        config_bases:
+        - distribution: flext-meltano
+          module: flext_meltano
+          class_name: FlextMeltanoConfig
+        - distribution: flext-cli
+          module: flext_cli
+          class_name: FlextCliConfig
+        - distribution: flext-core
+          module: flext_core
+          class_name: FlextConfig
+      ping_example:
+        command_name: ping
+        help_text: Return the configured health response.
+        success_message: pong
+        enabled_default: true
+        reply: pong
+        disabled_reply: disabled
+      # The first section is merged AFTER the artifact-SSOT derived patterns by
+      # the CodegenConfigSpec.gitignore_sections projection (deduplicated, SSOT
+      # wins); declare here only what the SSOT cannot express (file globs,
+      # secrets, editor/OS noise).
+      gitignore_sections:
+      - name: "BLOCK EVERYTHING BY DEFAULT"
+        profiles: [ workspace ]
+        patterns:
+        - "/*"
+        - "/*/"
+        - "!/LICENSE"
+      # NOTE: governed member directories are NOT declared here. They are
+      # derived from the live workspace topology (`config/workspace.yaml`
+      # members) by conform._render_gitignore, so declaring a member in the
+      # manifest is the single source that makes it trackable. A hardcoded
+      # name glob here would be a second, silently-diverging source.
+      - name: "WHITELIST: Workspace Directories"
+        profiles: [ workspace ]
+        patterns:
+        - "!docker/"
+        - "!docs/"
+        - "!examples/"
+        - "!.github/"
+        - "!src/"
+        - "!tests/"
+        - "!typings/"
+        - "!libs/"
+        - "!.vscode/"
+        - "!.claude/"
+        - "!.claude-plugin/"
+        # Provider surfaces are generated governance artifacts owned by the
+        # workspace root, so each provider directory is trackable exactly
+        # like .claude/ and .agents/ above.
+        - "!.codex/"
+        - "!.codex/**"
+        - "!.cursor/"
+        - "!.cursor/**"
+        - "!.gemini/"
+        - "!.gemini/**"
+        - "!.opencode/"
+        - "!.opencode/**"
+        - "!/config/"
+        - "!.claude/CLAUDE.md"
+        - "!.agents/"
+        - "!.agents/**"
+        - ".agents/skills/*/report.json"
+      - name: "Dispatcher-based command surface (Make SSOT)"
+        profiles: [ workspace ]
+        patterns:
+        - "!scripts/"
+        - "scripts/*.py"
+        - "scripts/*.sh"
+        - "scripts/*.md"
+        - "scripts/maintenance/"
+      - name: "TRACK: Beads team config; keep Dolt data, runtime state, and JSONL exports local."
+        profiles: [ workspace, standalone ]
+        patterns:
+        - "!.beads/"
+        - ".beads/*"
+        - "!.beads/config.yaml"
+        # metadata.json is what bd reads to resolve the ledger. Without it
+        # bd warns "no beads configuration found" and silently falls back
+        # to the default database, so beads created from a clean clone land
+        # in a throwaway store. In workspace and standalone
+        # the file holds only facts already declared in the generated
+        # config.yaml (backend/dolt_mode/dolt_database) -- no secret and no
+        # per-machine value -- so it is safe to track. Members keep it
+        # ignored: their embedded-mode file carries a per-machine
+        # project_id UUID.
+        - "!.beads/metadata.json"
+        # The canonical ledger identity (the [project] id). Conform reads
+        # it to render the identity-preserving metadata.json; untracked,
+        # every fresh clone rendered a metadata without the id and failed
+        # the gen check gate against the committed file.
+        - "!.beads/identity.toml"
+      - name: "Python configuration"
+        profiles: [ workspace ]
+        patterns:
+        - "!pyproject.toml"
+        - "!.taplo.toml"
+        - "!pyrefly.toml"
+        - "!poetry.lock"
+        - "!uv.lock"
+        - "!ruff-shared.toml"
+      - name: "mise toolchain pinning"
+        profiles: [ workspace ]
+        patterns:
+        - "!.mise.toml"
+        - "!mise.lock"
+        - "!.mise.lock"
+        - "!.python-version"
+      # Native graphs referenced by mise.lock are required by locked installs.
+      # Local lockfiles and their graphs remain per-machine state.
+      - name: "mise native dependency graphs"
+        profiles: [ workspace, standalone ]
+        patterns:
+        - "!/.mise/"
+        - "/.mise/*"
+        - "!/.mise/locks/"
+        - "!/.mise/locks/**"
+        - "/.mise/locks/*.local/"
+        - "/mise*.local.lock"
+        - "/.mise*.local.lock"
+      - name: "Docker configuration"
+        profiles: [ workspace ]
+        patterns:
+        - "!.dockerignore"
+      - name: "Build and automation"
+        profiles: [ workspace ]
+        patterns:
+        - "!Makefile"
+        - "!Makefile.flext-docker"
+        - "!*.mk"
+        # jscpd detector SSOT consumed by the committed `make duplication`
+        # target; the deny-first root cannot swallow it.
+        - ".jscpd.json"
+      # The generated toolchain config and launcher must reach a clean
+      # CI checkout, so the deny-first root cannot swallow them;
+      # `make gen` owns their content.
+      - name: "Documentation"
+        profiles: [ workspace ]
+        patterns:
+        - "!README.md"
+        - "!AGENTS.md"
+        - "!codex.md"
+        - "!.markdownlint.json"
+        - "!.markdownlintignore"
+        - "!.shellcheckrc"
+      - name: "Git configuration"
+        profiles: [ workspace ]
+        patterns:
+        - "!.gitignore"
+        - "!.gitmodules"
+        - "!.gitattributes"
+      - name: "direnv environment (no secrets — venv activation only)"
+        profiles: [ workspace ]
+        patterns:
+        - "!.envrc"
+        - "!.envrc.local"
+      - name: "Environment templates (NOT .env - keep secrets out!)"
+        profiles: [ workspace ]
+        patterns:
+        - "!.env.test"
+        - "!.env.example"
+        - "!.env.template"
+      - name: "WHITELIST: Contents Inside Allowed Directories"
+        profiles: [ workspace ]
+        patterns:
+        - "!docker/**"
+        - "!docs/**"
+        - "!examples/**"
+        - "!.github/**"
+        - "!src/**"
+        - "!tests/**"
+        - "!typings/**"
+        - "!libs/**"
+        - "!.vscode/**"
+        - "!.claude/**"
+        - "!.claude-plugin/**"
+      # NOTE: member contents are emitted by the same derived section as the
+      # member directories themselves (see the note above), so both come from
+      # the live workspace topology and can never diverge from each other.
+      # `.claude/*` re-blocked the whole directory AFTER the whitelist above
+      # had unblocked it, and in gitignore the last matching rule wins — so
+      # every governed provider artifact (the skill surfaces) became
+      # untrackable. Local session data is named explicitly
+      # instead of re-blocking the directory that the whitelist just opened.
+      - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
+        patterns:
+        - ".claude/local/"
+        - ".claude/history/"
+        - ".claude/todos/"
+        - ".claude/statsig/"
+        - ".claude/projects/"
+        - ".claude/shell-snapshots/"
+        - ".claude/worktrees/"
+        - ".claude/settings.local.json.bak"
+      # Provider surfaces are REAL files, so the ArgoCD symlink hazard that
+      # once justified blocking `.agents/` in non-root checkouts no longer
+      # applies: the catalog owner materializes them via
+      # generate-workspace-config and never as mode-120000 symlinks. Blocking
+      # them made governed projections
+      # untrackable in exactly the repositories that must carry their own
+      # authorization surface.
+      - name: "WHITELIST: Governed agent projections (every repository role)"
+        profiles: [ standalone ]
+        patterns:
+        - "!.agents/"
+        - "!.agents/**"
+      - name: "WHITELIST: Agent skills owned by the workspace root"
+        profiles: [ workspace ]
+        patterns:
+        - "!.agents/skills/"
+        - "!.agents/skills/**"
+      - name: "Skill scan reports (transient, regenerated by skill_validate.py)"
+        patterns:
+        - ".agents/skills/*/report.json"
+      # Why: the Gas City pack runtime writes skill symlinks (`<pack>.<skill>`,
+      # absolute links into its cache) and an ownership manifest into a
+      # registered rig's provider trees whenever it runs. They are runtime
+      # state, never source: tracked, they break every consumer that refuses
+      # symlinks (the release snapshot validator rejected flext-infra's own
+      # build on `.agents/skills/core.gc-agents`). Only Gas City packs project
+      # dotted skill names; governed skills are kebab-case directories.
+      # Why: a provider tree carries two different kinds of thing and only
+      # one of them belongs to the consuming repository. Rules, skills,
+      # Rules, skills, commands and agent definitions are catalog projections
+      # -- the generated bytes are authoritative, customized only through a
+      # config override at their owner, and tracked so a clone reproduces them
+      # exactly. Per-machine configuration is not: hook wiring, governance
+      # manifests and local agent settings reference machine-absolute paths of
+      # whoever last ran the catalog generator, so they reach a checkout
+      # as runtime state and are never recorded in any workspace. Every
+      # machine-written settings/hooks surface and its digest sidecar is
+      # blocked by name. No profiles key: this holds for every role.
+      - name: "Agent hooks and machine-local config (runtime state, never source)"
+        # settings.json projections are portable governance and stay
+        # trackable; settings.local.json and the digest sidecars wire
+        # machine-absolute paths, so they are named here. This block follows
+        # the provider-tree whitelists and the last matching gitignore rule
+        # wins.
+        patterns:
+        - ".github/hooks/"
+        - "*/.hooks.json.agents-governance.json"
+        - ".claude/*.agents-governance.json"
+        - ".gemini/*.agents-governance.json"
+        - ".claude/settings.local.json"
+      # The repository loader merges config/<file>.local.yaml after the
+      # tracked config/<file>.yaml; that layer carries operator-private data.
+      - name: "Private local config layers"
+        patterns:
+        - "/config/*.local.yaml"
+      - name: "Gas City skill projections (runtime state, never source)"
+        patterns:
+        - ".agents/skills/.gc-skill-ownership.json"
+        - ".agents/skills/core.gc-*"
+        - ".agents/skills/gascity.*"
+        - ".agents/skills/gc.*"
+        - ".claude/skills/.gc-skill-ownership.json"
+        - ".claude/skills/core.gc-*"
+        - ".claude/skills/gascity.*"
+        - ".claude/skills/gc.*"
+        - ".codex/skills/.gc-skill-ownership.json"
+        - ".codex/skills/core.gc-*"
+        - ".codex/skills/gascity.*"
+        - ".codex/skills/gc.*"
+      # A registered rig also receives the Gas City runtime
+      # directory (events, gate slots, scripts pinned to the city's absolute
+      # path, per-session settings) and hosts its lane checkouts under
+      # `<rig>/worktrees/<lane>`. Both are per-machine runtime state carrying
+      # machine-absolute paths; tracked copies broke every other checkout.
+      - name: "Gas City rig runtime and lane worktrees (runtime state, never source)"
+        patterns:
+        - ".gc/"
+        - "/worktrees/"
+      # A project-scoped Cursor MCP document carries a socket path resolved on
+      # the machine that generated it, and the hooks runtime keeps mutable
+      # scheduling state under .cursor/hooks/state: both are runtime state,
+      # never source; hook and skill definitions stay versioned above.
+      - name: "Machine-local MCP projection and hooks runtime state (never source)"
+        patterns:
+        - "/.cursor/mcp.json"
+        - "/.cursor/hooks/state/"
+      # None of these are root source. config/build-constraints.txt is
+      # rendered by the release policy phase from
+      # config.Infra.release.build_constraints; repositories never carry it.
+      # *.bak are backup residue (ignore guards against interrupted runs).
+      - name: "RESIDUE: never track backups or repo-local policy copies"
+        profiles: [ workspace, standalone ]
+        patterns:
+        - "*.bak"
+        - "config/build-constraints.txt"
+      - name: "Aider AI data"
+        patterns:
+        - ".aider/"
+        - ".aider.conf.yml"
+        - ".aider.chat.history.md"
+        - "**/.aider/"
+      # `.cursor/` moved to the governed provider whitelist above: it now
+      # carries generated hooks/skills that must be versioned. Only assistants
+      # with no governed surface stay blocked here.
+      - name: "Other AI assistants"
+        patterns:
+        - ".copilot/"
+        - ".codeium/"
+      - name: "Oracle dump files"
+        patterns:
+        - "**/*.dmp"
+        - "**/*.DMP"
+      - name: "Oracle logs"
+        patterns:
+        - "**/*.trc"
+        - "**/*.aud"
+      - name: "Oracle wallet files"
+        patterns:
+        - "**/cwallet.sso"
+        - "**/ewallet.p12"
+        - "**/tnsnames.ora"
+        - "**/sqlnet.ora"
+      - name: "Oracle test/reference data directories"
+        patterns:
+        - "**/oracle_data/"
+        - "**/oracle_dump/"
+        - "**/oracle_export/"
+        - "**/oracle_import/"
+        - "**/expdp_*/"
+        - "**/impdp_*/"
+      - name: "Python artifacts inside allowed directories"
+        patterns:
+        - "**/__pycache__/"
+        - "**/*.pyc"
+        - "**/*.pyo"
+        - "**/*.pyd"
+        - "**/*.so"
+        - "**/*.egg"
+        - "**/*.egg-info/"
+        - "**/dist/"
+        - "**/build/"
+        - "**/.eggs/"
+      - name: "Skill validation temporary reports"
+        patterns:
+        - "baseline.json"
+        - "report.json"
+        - "fix-report.json"
+        - "*.rej"
+      - name: "Python caches inside allowed directories"
+        patterns:
+        - "**/.mypy_cache/"
+        - "**/.ruff_cache/"
+        - "**/.pytest_cache/"
+        - "**/.hypothesis/"
+        - "**/.tox/"
+        - "**/.nox/"
+        - "**/.benchmarks/"
+      - name: "Coverage reports inside allowed directories"
+        patterns:
+        - "**/htmlcov/"
+        - "**/.coverage"
+        - "**/coverage.json"
+        - "**/.coverage.*"
+        - "**/coverage.xml"
+        - "**/*.cover"
+      - name: "Docs verb report artifacts inside docs trees"
+        patterns:
+        - "**/docs/generate-report.md"
+        - "**/docs/generate-summary.json"
+        - "**/docs/fix-report.md"
+        - "**/docs/fix-summary.json"
+        - "**/docs/audit-report.md"
+        - "**/docs/audit-summary.json"
+      - name: "Virtual environments inside allowed directories (should never be committed)"
+        patterns:
+        - "**/.venv"
+        - "**/.venv/"
+        - "**/venv/"
+        - "**/env/"
+        - "**/ENV/"
+        - "**/.virtualenv/"
+      - name: "Native build artifacts inside allowed directories"
+        patterns:
+        - "**/*.exe"
+        - "**/*.exe~"
+        - "**/*.dll"
+        - "**/*.dylib"
+        - "**/*.test"
+        - "**/*.out"
+        # Anchored: only a root-level Go vendor tree is ignorable. Unanchored
+        # `vendor/` also matched a vendored package inside src/ (flext-cli
+        # src/flext_cli/vendor), and hatchling honours .gitignore, so the
+        # published wheel silently shipped without it.
+        - "/vendor/"
+      - name: "Node.js inside allowed directories"
+        patterns:
+        - "**/node_modules/"
+        - "**/npm-debug.log"
+        - "**/yarn-error.log"
+        - "**/.npm/"
+        - "**/.yarn/"
+      - name: "IDE and editor files inside allowed directories"
+        patterns:
+        - "**/.idea/"
+        - "**/*.iml"
+        - "**/.vscode/*.code-workspace"
+        - "**/.vscode/internal.invalid.json"
+        - "**/*.swp"
+        - "**/*.swo"
+        - "**/*~"
+        - "**/.*.sw?"
+      - name: "OS files inside allowed directories"
+        patterns:
+        - "**/.DS_Store"
+        - "**/Thumbs.db"
+        - "**/Desktop.ini"
+      - name: "Temporary and log files inside allowed directories"
+        patterns:
+        - "**/*.log"
+        - "**/*.tmp"
+        - "**/*.temp"
+        - "**/tmp/"
+        - "**/temp/"
+        - "**/.tmp/"
+      - name: "Build and quality tool artifacts inside allowed directories"
+        patterns:
+        - "**/.qlty/*"
+        - "**/.meltano/"
+        - "**/.serena/"
+      - name: "Backup files inside allowed directories"
+        patterns:
+        - "**/*.bak"
+        # A safety cycle that backs a file up more than once appends its own
+        # suffix (`x.bak.1`, `x.bak.20260824`), which `**/*.bak` does not match.
+        # Adopted from the lane PRs that had added it to the generated
+        # .gitignore of sixteen repositories; the pattern belongs here, where
+        # every repository inherits it.
+        - "**/*.bak.*"
+        - "**/*.bkp"
+        - "**/*.bkp?"
+        - "**/*.backup"
+        - "**/*.orig"
+        - "**/*.md.backup"
+        - "**/archived/"
+      - name: "Autofix rejection artifacts (run_skill_autofix.sh rollback output)"
+        patterns:
+        - "**/*.rej-*.bak"
+        - "**/*.rej-*.rej"
+      - name: "Database files inside allowed directories"
+        patterns:
+        - "**/*.db"
+        - "**/*.sqlite"
+        - "**/*.sqlite3"
+      - name: "Compiled files inside allowed directories"
+        patterns:
+        - "**/*.class"
+        - "**/*.o"
+        - "**/*.obj"
+        - "**/*.a"
+      - name: "Archive files inside allowed directories (usually shouldn't be in git)"
+        patterns:
+        - "**/*.zip"
+        - "**/*.tar"
+        - "**/*.tar.gz"
+        - "**/*.tgz"
+        - "**/*.rar"
+        - "**/*.7z"
+      - name: "Environment files with actual secrets"
+        patterns:
+        - ".env"
+        - ".internal.invalid"
+        - ".env.production"
+        - ".env.development"
+        - "**/.env"
+      - name: "Credentials and keys"
+        patterns:
+        - "*.key"
+        - "*.pem"
+        - "*.p12"
+        - "*.pfx"
+        - "credentials.json"
+        - "**/credentials.json"
+        - "secrets.yaml"
+        - "secrets.yml"
+        - "**/.credentials*"
+      - name: "ALLOW: Preserve Empty Directories"
+        patterns:
+        - "!**/.gitkeep"
+      - name: "Ensure these are NEVER committed, even if explicitly added"
+        patterns:
+        - ".milvus/"
+        - ".claude-data/"
+        - ".devcontainer/.host-gitsettings"
+        - ".devcontainer/.env"
+        - ".github/*.rej"
+      - name: "--- codegen conform: tracked owner inputs ---"
+        patterns:
+        - "!base.mk"
+      # This final policy re-ignores .beads/* for every profile, so the
+      # workspace exception for metadata.json is re-stated in a
+      # workspace-scoped section immediately after it (last rule wins).
+      # Members are deliberately NOT covered: their embedded-mode
+      # metadata.json carries a per-machine project_id UUID.
+      - name: "FINAL BEADS TRACKING POLICY"
+        patterns:
+        - "!.beads/"
+        - ".beads/*"
+        - ".beads/.*"
+        - "!.beads/config.yaml"
+        - ".beads/proxieddb/"
+        - ".dolt/"
+        - "*.db"
+        - ".beads-credential-key"
+        - ".worktrees/"
+        - "legado/"
+      - name: "Beads ledger identity (workspace and standalone)"
+        profiles: [ workspace, standalone ]
+        patterns:
+        - "!.beads/metadata.json"
+        # The canonical ledger identity: conform reads it to render the
+        # identity-preserving metadata.json on fresh checkouts. Without
+        # the exception the render loses the project id and the gen
+        # check gate drifts on every clean clone.
+        - "!.beads/identity.toml"
+      - name: "codegen module-standardizer reject artifacts (ADR-005 §9)"
+        patterns:
+        - "*.tpl.rej"
+      - name: "--- codegen conform: generated runtime ignores ---"
+        patterns:
+        - ".direnv/"
+        - ".reports/"
+        - ".venv"
+        - ".venv/"
+        - ".bin/"
+        # Repo-root bin/: no generated entry is tracked any more (mise
+        # self-manages through its own [tools] entry); every bin/ entry is
+        # machine-local. A deny-all allowlist (`/*/`) excludes the bin/
+        # directory itself, and git never descends into an excluded directory.
+        - "!/bin/"
+        - "/bin/*"
+        - ".tools/"
+        - "__pycache__/"
+        - "base.mk"
+        - "!.pre-commit-config.yaml"
+    templates:
+      root: project
+      entries:
+      - source: base/.github/ci-template/ci.yml.j2
+        destination: .github/ci-template/ci.yml
+        profiles: [ workspace ]
+        delegate: render
+      - source: base/.github/dependabot.yml.j2
+        destination: .github/dependabot.yml
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/.github/scripts/check-beads-policy.sh.j2
+        destination: .github/scripts/check-beads-policy.sh
+        profiles: [ workspace ]
+        delegate: render
+      - source: base/.github/scripts/check-cqrs-compliance.sh.j2
+        destination: .github/scripts/check-cqrs-compliance.sh
+        profiles: [ workspace ]
+        delegate: render
+      - source: base/.github/scripts/validate-git-hook.sh.j2
+        destination: .github/scripts/validate-git-hook.sh
+        profiles: [ workspace, standalone ]
+        delegate: render
+      # Multi-environment CI base: reusable ci-matrix workflow + per-distro
+      # clean-machine images validating bootstrap and make verbs everywhere.
+      - source: base/.github/workflows/ci-matrix.yml.j2
+        destination: .github/workflows/ci-matrix.yml
+        # The manual dispatch matrix is projected to EVERY
+        # repository (root and members alike); dispatch-only, never bound
+        # to the integration line.
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/.github/workflows/ci.yml.j2
+        destination: .github/workflows/ci.yml
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/.pre-commit-config.yaml.j2
+        destination: .pre-commit-config.yaml
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/LICENSE.j2
+        destination: LICENSE
+        profiles: [ workspace, standalone ]
+        delegate: render
+      # The release build phase snapshots the
+      # Gitleaks policy before the first artifact build, and renders the
+      # hash-pinned build backend for `uv build --require-hashes` directly
+      # from config.Infra.release.build_constraints (no repository copy).
+      - source: base/config/gitleaks-release.toml.j2
+        destination: config/gitleaks-release.toml
+        profiles: [ workspace, standalone ]
+        delegate: render
+      # Repository-owned audit policy is validated from workspace.yaml,
+      # rendered per project, and parsed into DocsAuditPolicySpec by the auditor.
+      - source: base/docs/docs_config.json.j2
+        destination: docs/docs_config.json
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/gitignore.j2
+        destination: .gitignore
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/python-version.j2
+        destination: .python-version
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/qlty.toml.j2
+        destination: .qlty/qlty.toml
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/sonarcloud.properties.j2
+        destination: .sonarcloud.properties
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/env.example.j2
+        destination: .env.example
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/.mise.toml.j2
+        destination: .mise.toml
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/markdownlint.json.j2
+        destination: .markdownlint.json
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/markdownlintignore.j2
+        destination: .markdownlintignore
+        profiles: [ workspace, standalone ]
+        delegate: render
+      # Ledger routing config: rendered only for repositories that own a
+      # ledger. The workspace root owns a shared ledger when a gitlink's
+      # Every repository renders its own `.beads` configuration; the shared
+      # ledger is reached by the declared city endpoint, never by a link.
+      - source: base/beads-config.yaml.j2
+        destination: .beads/config.yaml
+        requires_beads: true
+        profiles: [ workspace, standalone ]
+        delegate: render
+      # Static repository-local storage, database, and endpoint projection.
+      - source: base/beads-metadata.json.j2
+        destination: .beads/metadata.json
+        requires_beads: true
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/.envrc.j2
+        destination: .envrc
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/.github/workflows/docs.yml.j2
+        destination: .github/workflows/docs.yml
+        # The workflow runs `uv sync`, and this projection installs uv first.
+        # Restricting it to the workspace left members with a stale copy
+        # without the Install uv step, and the job died on "uv: command not found".
+        profiles: [ workspace, standalone ]
+        delegate: render
+      # Release automation is opt-in per distribution. Repositories without an
+      # explicit declaration have this generated workflow retired by conform.
+      - source: base/.github/workflows/release.yml.j2
+        destination: .github/workflows/release.yml
+        profiles: [ workspace, standalone ]
+        delegate: render
+        requires_release_protocol: true
+      - source: base/tests/fixtures/ci/docker/ubuntu.Dockerfile.j2
+        destination: tests/fixtures/ci/docker/ubuntu.Dockerfile
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/tests/fixtures/ci/docker/debian.Dockerfile.j2
+        destination: tests/fixtures/ci/docker/debian.Dockerfile
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/tests/fixtures/ci/docker/fedora.Dockerfile.j2
+        destination: tests/fixtures/ci/docker/fedora.Dockerfile
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/tests/fixtures/ci/docker/alpine.Dockerfile.j2
+        destination: tests/fixtures/ci/docker/alpine.Dockerfile
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/tests/fixtures/ci/docker/arch.Dockerfile.j2
+        destination: tests/fixtures/ci/docker/arch.Dockerfile
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/Makefile.j2
+        destination: Makefile
+        # The generic conform engine is the single Makefile owner for every
+        # profile; every profile renders the same local verb bodies. A
+        # project never owns a verb: customisation lives exclusively in
+        # custom.mk, through pre-/post-verb hooks, and may not redefine one.
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/custom.mk.j2
+        destination: custom.mk
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/pyproject.toml.j2
+        destination: pyproject.toml
+        profiles: [ workspace, standalone ]
+        delegate: render
+      # Workspace composition exterminated (flext-a0cjp, operator ruling
+      # 2026-10-13): .gitmodules is the sole topology SSOT; no workspace.yaml
+      # is published, read, or validated anywhere.
+      # Repository-local Beads identity. conform requires this file to
+      # exist before it can plan, so a scaffolded project that never
+      # rendered it could not be conformed at all.
+      - source: base/config/beads.yaml.j2
+        destination: config/beads.yaml
+        requires_beads: true
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/api.py.j2
+        destination: "src/{package_name}/api.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/cli.py.j2
+        destination: "src/{package_name}/cli.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/__main__.py.j2
+        destination: "src/{package_name}/__main__.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/base.py.j2
+        destination: "src/{package_name}/base.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/models.py.j2
+        destination: "src/{package_name}/models.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/typings.py.j2
+        destination: "src/{package_name}/typings.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/protocols.py.j2
+        destination: "src/{package_name}/protocols.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/constants.py.j2
+        destination: "src/{package_name}/constants.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/utilities.py.j2
+        destination: "src/{package_name}/utilities.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/_config.py.j2
+        destination: "src/{package_name}/_config.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/_settings.py.j2
+        destination: "src/{package_name}/_settings.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/py.typed.j2
+        destination: "src/{package_name}/py.typed"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      # Domain behavior is generated in services, not base.py.
+      - source: base/src/services/ping.py.j2
+        destination: "src/{package_name}/services/ping.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      # Runtime defaults belong to the declaring import-package resource.
+      - source: base/src/config/ns.yaml.j2
+        destination: "src/{package_name}/config/{ns}.yaml"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      # Config/settings declarations live in
+      # the canonical public models/config/settings facets, never parallel parts.
+      - source: base/src/_models/ping.py.j2
+        destination: "src/{package_name}/_models/ping.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/_models/config.py.j2
+        destination: "src/{package_name}/_models/config.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/_models/settings.py.j2
+        destination: "src/{package_name}/_models/settings.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/_constants/config.py.j2
+        destination: "src/{package_name}/_constants/config.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/_constants/settings.py.j2
+        destination: "src/{package_name}/_constants/settings.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/_protocols/config.py.j2
+        destination: "src/{package_name}/_protocols/config.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/_protocols/ping.py.j2
+        destination: "src/{package_name}/_protocols/ping.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/_protocols/settings.py.j2
+        destination: "src/{package_name}/_protocols/settings.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      - source: base/src/_typings/base.py.j2
+        destination: "src/{package_name}/_typings/base.py"
+        profiles: [ workspace, standalone ]
+        delegate: render
+      # New projects receive a real runtime test; subsequent generation preserves
+      # this authored file because only managed_file_specs are reprojected.
+      - source: base/tests/test_api.py.j2
+        destination: tests/test_api.py
+        profiles: [ workspace, standalone ]
+        delegate: render

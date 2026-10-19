@@ -1,0 +1,61 @@
+# String observations may use the matcher without changing their static type.
+# Native isinstance guards remain assertions so downstream uses retain narrowing.
+id: rewire-test-assert-starts
+language: Python
+severity: error
+metadata:
+  context:
+    A:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $A.startswith($P)"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: tm.that($A.startswith($P), truth=True)
+message: Assert the string prefix through the tm matcher facade.
+---
+id: rewire-test-assert-ends
+language: Python
+severity: error
+metadata:
+  context:
+    A:
+      is: emitted-symbol
+      arg: tm flext_tests tm
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $A.endswith($P)"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: tm.that($A.endswith($P), truth=True)
+message: Assert the string suffix through the tm matcher facade.

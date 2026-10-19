@@ -1,0 +1,46 @@
+# Operator ruling 2026-10-08 (operator-ruling-2026-10-08-subprocess-test-imports):
+# only the native implementation of the public process primitive may
+# import subprocess; every other module runs processes through u.Cli.run (or
+# the u.Cli process family). Bandit independently audits the implementation
+# and its consumers without owner exemptions.
+#
+# Detection only: the u.Cli process member that replaces a direct use is
+# chosen per call site.
+id: ban-subprocess-outside-run-owner
+language: Python
+severity: error
+files:
+  - "**/*.py"
+metadata:
+  context:
+    IMPORT:
+      not: implementation-owner
+      arg: flext_cli u.Cli.process_start
+rule:
+  all:
+    - pattern: $IMPORT
+    - any:
+        - all:
+            - kind: import_statement
+            - has:
+                stopBy: end
+                kind: dotted_name
+                regex: "^subprocess(?:\\.|$)"
+        - all:
+            - kind: import_from_statement
+            - has:
+                field: module_name
+                regex: "^subprocess(?:\\.|$)"
+        - all:
+            - kind: call
+              has:
+                field: function
+                regex: "(^|\\.)import_module$|^__import__$"
+            - has:
+                kind: string
+                stopBy: end
+                regex: "^['\\\"]subprocess['\\\"]$"
+message: >-
+  Only the native public process implementation spawns processes:
+  run commands through u.Cli.run, u.Cli.run_raw, u.Cli.run_checked
+  or u.Cli.process_start instead of importing subprocess.

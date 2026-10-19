@@ -302,12 +302,10 @@ class FlextInfraMiseArtifactsVerificationTopology:
                     f"generation entry escapes its project: {entry.path}",
                 )
             staging_paths: list[t.Pair[str, str]] = []
-            if entry.original_backup is not None:
-                staging_paths.append(("backup", entry.original_backup))
             if entry.desired_staging is not None:
                 staging_paths.append(("desired", entry.desired_staging))
-            if entry.rollback_staging is not None:
-                staging_paths.append(("rollback", entry.rollback_staging))
+            if entry.original_staging is not None:
+                staging_paths.append(("original", entry.original_staging))
             if staging_paths and project.transaction_root is None:
                 return r[bool].fail(
                     "generation recovery layout has no transaction root",
@@ -330,7 +328,7 @@ class FlextInfraMiseArtifactsVerificationTopology:
         staging_paths: t.SequenceOf[t.Pair[str, str]],
         transaction_root: Path | None,
     ) -> p.Result[bool]:
-        """Bind one entry's backup, desired, and rollback staging selectors.
+        """Bind one entry's desired staging selector.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -352,20 +350,6 @@ class FlextInfraMiseArtifactsVerificationTopology:
                         f"generation {role} staging escapes "
                         f"transaction root: {entry.path}"
                     ),
-                )
-        if entry.original_backup is not None:
-            backup = files.resolve_transaction(
-                layout,
-                entry.original_backup,
-                purpose="generation recovery backup",
-            )
-            if backup.failure:
-                return r[bool].from_failure(backup)
-            if transaction_root is None or backup.value.parent != (
-                transaction_root / "recovery"
-            ):
-                return r[bool].fail(
-                    f"generation backup escapes its recovery root: {entry.path}",
                 )
         return r[bool].ok(value=True)
 

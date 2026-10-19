@@ -10,19 +10,15 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_core import install_lazy_exports
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.validate import _pytest_runner
+    from flext_infra.validate import _pytest_runner as _pytest_runner
     from flext_infra.validate._pytest_diag_xml import FlextInfraPytestDiagXmlMixin
-    from flext_infra.validate._pytest_runner.base import FlextInfraPytestRunnerBase
-    from flext_infra.validate._pytest_runner.command import (
+    from flext_infra.validate._pytest_runner import (
+        FlextInfraPytestRunnerBase,
         FlextInfraPytestRunnerCommand,
-    )
-    from flext_infra.validate._pytest_runner.execution import (
         FlextInfraPytestRunnerExecution,
-    )
-    from flext_infra.validate._pytest_runner.reports import (
         FlextInfraPytestRunnerReports,
     )
     from flext_infra.validate._skill_rule_runner import FlextInfraSkillRuleRunnerMixin

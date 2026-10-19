@@ -6,56 +6,122 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import cast
 
 from flext_cli import u
 
 from flext_infra import m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeBase
+from flext_infra._utilities.rope_runtime_matching import (
+    FlextInfraUtilitiesRopeRuntimeMatching,
+)
 
 
-class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase):
+class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatching):
     """Load Rope refactor helpers behind protocols."""
 
     @classmethod
-    def patched_ast(cls, source: str) -> ast.AST:
-        """Parse the real SDK patched AST and validate its native result.
+    def reindent_source(cls, source: str, amount: int) -> str:
+        """Move source indentation while retaining every multiline literal value.
+
+        Args:
+            source: The source code whose indentation is to be adjusted.
+            amount: Spaces to add or remove from each line's indentation.
 
         Returns:
-            The SDK AST with source-order information attached.
+            The source code with adjusted indentation.
 
         Raises:
-            TypeError: If the native parser does not return an AST.
+            ValueError: If a source line has less indentation than the removal.
+
         """
-        value = cls.runtime_callable(
-            "rope.refactor.patchedast",
-            "get_patched_ast",
-        )(source, sorted_children=True)
-        if not isinstance(value, ast.AST):
-            msg = "Rope patched AST parser did not return an AST"
-            raise TypeError(msg)
-        return value
+        literals = tuple(
+            (begin, end)
+            for begin, end, _metadata in cls.ignored_regions(source)
+            if source[begin] != "#"
+        )
+        result: list[str] = []
+        offset = 0
+        for line in source.splitlines(keepends=True):
+            inside_literal = any(begin < offset < end for begin, end in literals)
+            if not inside_literal and line.strip():
+                if amount >= 0:
+                    changed = " " * amount + line
+                else:
+                    removable = len(line) - len(line.lstrip(" \t"))
+                    if removable < -amount:
+                        msg = "source indentation is smaller than its native move"
+                        raise ValueError(msg)
+                    changed = line[-amount:]
+            else:
+                changed = line
+            result.append(changed)
+            offset += len(line)
+        return "".join(result)
+
+    @staticmethod
+    def compiled_constant(source: str) -> p.Result[p.AttributeProbe]:
+        """Read a primitive compiler constant without executing authored source.
+
+        Returns:
+            The resulting ``p.Result[p.AttributeProbe]``.
+
+        """
+        code = compile(source, "<native constant>", "eval", dont_inherit=True)
+        if code.co_names or code.co_freevars or len(code.co_consts) != 1:
+            return r[p.AttributeProbe].fail("expression has no sole native constant")
+        value = code.co_consts[0]
+        if (
+            type(value) not in {str, bytes, int, float, complex, bool, type(None)}
+            and value is not Ellipsis
+        ):
+            return r[p.AttributeProbe].fail(
+                "expression has no primitive native constant"
+            )
+        return r[p.AttributeProbe].ok(value)
 
     @classmethod
-    def write_patched_ast(cls, tree: ast.AST) -> str:
-        """Render the real SDK patched AST without replacing its writer.
+    def literal_constant(cls, source: str) -> bool:
+        """Return whether native compilation proves a sole immutable primitive."""
+        return cls.compiled_constant(source).success
+
+    @classmethod
+    def literal_string(cls, source: str) -> str | None:
+        """Decode native string escapes without evaluating source callbacks.
 
         Returns:
-            The source emitted by the native patched-AST writer.
+            The resulting ``str | None``.
 
-        Raises:
-            TypeError: If the native writer does not return source text.
         """
-        value = cls.runtime_callable(
-            "rope.refactor.patchedast",
-            "write_ast",
-        )(tree)
-        if not isinstance(value, str):
-            msg = "Rope patched AST writer did not return source text"
-            raise TypeError(msg)
-        return value
+        observed = cls.compiled_constant(source)
+        if observed.failure:
+            return None
+        value = observed.value
+        return value if type(value) is str else None
+
+    @classmethod
+    def ignored_regions(
+        cls,
+        source: str,
+    ) -> t.VariadicTuple[t.Triple[int, int, t.MappingKV[str, str | None]]]:
+        """Read complete literal and comment ranges from Rope's native lexer.
+
+        Returns:
+            The resulting ``t.VariadicTuple[t.Triple[int, int, t.MappingKV[str, str |
+                None]]]``.
+
+        """
+        adapter: t.ValueAdapter[
+            t.SequenceOf[t.Triple[int, int, t.MappingKV[str, str | None]]]
+        ] = u.type_adapter(
+            Sequence[tuple[int, int, dict[str, str | None]]],
+        )
+        return tuple(
+            adapter.validate_python(
+                cls.runtime_callable("rope.base.simplify", "ignored_regions")(source),
+                strict=True,
+            ),
+        )
 
     @staticmethod
     def change_set_members(
@@ -103,17 +169,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         if not isinstance(lines, p.Infra.RopeSourceLines):
             msg = "Rope SourceLinesAdapter does not satisfy its public contract"
             raise TypeError(msg)
-        regions_adapter: t.ValueAdapter[
-            t.SequenceOf[t.Triple[int, int, t.MappingKV[str, str | None]]]
-        ] = u.type_adapter(
-            Sequence[tuple[int, int, dict[str, str | None]]],
-        )
-        regions = tuple(
-            regions_adapter.validate_python(
-                cls.runtime_callable("rope.base.simplify", "ignored_regions")(source),
-                strict=True,
-            ),
-        )
+        regions = cls.ignored_regions(source)
         start = lines.get_line_start(layout.header_start)
         end = min(lines.get_line_end(layout.header_end) + 1, len(source))
         comments = "".join(
@@ -173,7 +229,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         cls,
         resource: p.Infra.RopeResource,
         source: str,
-        rewrites: t.SequenceOf[m.Infra.SourceRewrite],
+        rewrites: t.SequenceOf[p.Infra.SourceRewrite],
     ) -> p.Infra.RopeChangeContents:
         """Preview checked, disjoint edits through Rope's change machinery.
 
@@ -220,16 +276,45 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         return change
 
     @classmethod
+    def inline_variable_changes(
+        cls,
+        project: p.Infra.RopeProject,
+        resource: p.Infra.RopeResource,
+        offset: int,
+        *,
+        resources: t.SequenceOf[p.Infra.RopeResource],
+        remove: bool = True,
+    ) -> p.Infra.RopeChangeSet:
+        """Plan assigned-name inlining with native occurrence and import handling.
+
+        Returns:
+            The SDK's unapplied content changes, with literal payloads untouched.
+
+        Raises:
+            TypeError: If the installed SDK violates the inlining contract.
+
+        """
+        inline = cls.runtime_callable("rope.refactor.inline", "InlineVariable")(
+            project,
+            resource,
+            offset,
+        )
+        if not isinstance(inline, p.Infra.RopeInlineVariable):
+            message = "Rope InlineVariable does not satisfy its native contract"
+            raise TypeError(message)
+        return inline.get_changes(remove=remove, resources=list(resources), docs=False)
+
+    @classmethod
     def restructure_changes(
         cls,
         rope_project: p.Infra.RopeProject,
-        pattern: str,
-        goal: str,
-        *,
-        arguments: t.MappingKV[str, str],
-        resources: t.SequenceOf[p.Infra.RopeResource],
+        request: m.Infra.RopeRestructureRequest,
     ) -> p.Infra.RopeChangeSet:
         """Plan Rope 1.14 semantic changes without invoking Project.do.
+
+        Args:
+            rope_project: Native Rope project owning the restructured sources.
+            request: Immutable native pattern, admission, and import policies.
 
         Returns:
             The resulting ``p.Infra.RopeChangeSet``.
@@ -239,12 +324,23 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
                 contract.
 
         """
-        factory = cls.runtime_callable("rope.refactor.restructure", "Restructure")
-        restructuring = factory(rope_project, pattern, goal, args=dict(arguments))
+        factory = cls.runtime_callable(
+            "flext_infra._utilities._rope.restructure", "FlextInfraRopeRestructure"
+        )
+        restructuring = factory(
+            rope_project,
+            request,
+        )
         if not isinstance(restructuring, p.Infra.RopeRestructure):
             msg = "rope Restructure does not satisfy its public planning contract"
             raise TypeError(msg)
-        return restructuring.get_changes(resources=list(resources))
+        changes = restructuring.get_changes(resources=list(request.resources))
+        u.Cli.info(
+            "Rope restructuring "
+            f"matched={restructuring.matched_count} "
+            f"admitted={restructuring.admitted_count} pattern={request.pattern}"
+        )
+        return changes
 
     @classmethod
     def create_move(
@@ -265,7 +361,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         cls,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-        offset: int,
+        offset: int | None,
         new_name: str,
         *,
         options: m.Infra.RopeRenameOptions,
@@ -280,11 +376,71 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
             new_name,
             resources=list(options.resources),
             in_hierarchy=options.in_hierarchy,
+            docs=options.docs,
         )
         if not isinstance(changes, p.Infra.RopeChangeSet):
             msg = "rope Rename returned invalid ChangeSet"
             raise TypeError(msg)
         return changes
+
+    @classmethod
+    def rename_all_changes(
+        cls,
+        projects: t.SequenceOf[p.Infra.RopeProject],
+        resource: p.Infra.RopeResource,
+        offset: int | None,
+        new_name: str,
+    ) -> t.VariadicTuple[t.Pair[p.Infra.RopeProject, p.Infra.RopeChangeSet]]:
+        """Preview every elected project before any publication or Project.do.
+
+        Returns:
+            Native per-project changes, including module resource moves.
+
+        Raises:
+            TypeError: If the native multiproject result violates its contract.
+            ValueError: If no producer project was elected.
+
+        """
+        if not projects:
+            msg = "native rename requires a producer project"
+            raise ValueError(msg)
+        factory = cls.runtime_callable("rope.refactor.rename", "Rename")
+        multiproject = cls.runtime_callable(
+            "rope.refactor.multiproject", "MultiProjectRefactoring"
+        )(factory, list(projects[1:]))
+        if not callable(multiproject):
+            msg = "Rope multiproject factory is not callable"
+            raise TypeError(msg)
+        # The native proxy and its collector stay behind typed callable views
+        # so the untyped fork members never leak past this boundary.
+        refactoring = cast("Callable[..., p.AttributeProbe]", multiproject)(
+            projects[0],
+            resource,
+            offset,
+        )
+        get_all_changes = getattr(refactoring, "get_all_changes", None)
+        if not callable(get_all_changes):
+            msg = "Rope multiproject does not expose get_all_changes"
+            raise TypeError(msg)
+        collect = cast(
+            "Callable[..., list[tuple[p.AttributeProbe, p.AttributeProbe]]]",
+            get_all_changes,
+        )
+        result = collect(new_name, in_hierarchy=True)
+        if len(result) != len(projects):
+            msg = "Rope multiproject returned invalid project changes"
+            raise TypeError(msg)
+        changes: list[t.Pair[p.Infra.RopeProject, p.Infra.RopeChangeSet]] = []
+        for project, item in zip(projects, result, strict=True):
+            match item:
+                case (owner, change) if owner is project and isinstance(
+                    change, p.Infra.RopeChangeSet
+                ):
+                    changes.append((project, change))
+                case _:
+                    msg = "Rope multiproject changed its elected project"
+                    raise TypeError(msg)
+        return tuple(changes)
 
     @classmethod
     def create_occurrence_finder(
@@ -313,6 +469,31 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         return finder
 
     @classmethod
+    def lexical_occurrence_finder(
+        cls, project: p.Infra.RopeProject, name: str
+    ) -> p.Infra.RopeOccurrenceFinder:
+        """Find native lexical occurrences without last-binding inference.
+
+        Args:
+            project: The Rope project in which to search for occurrences.
+            name: The name of the variable or function to find occurrences for.
+
+        Returns:
+            The native finder for occurrences of the specified name.
+
+        Raises:
+            TypeError: If the finder violates its native Rope contract.
+
+        """
+        finder = cls.runtime_callable("rope.refactor.occurrences", "Finder")(
+            project, name
+        )
+        if not isinstance(finder, p.Infra.RopeOccurrenceFinder):
+            message = "Rope lexical finder does not satisfy its native contract"
+            raise TypeError(message)
+        return finder
+
+    @classmethod
     def word_primary_range(cls, source: str, offset: int) -> t.Pair[int, int]:
         word_finder = cls._word_finder(source)
         primary_range = getattr(word_finder, "get_primary_range", None)
@@ -326,6 +507,32 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
             case _:
                 msg = "rope Worder returned invalid primary range"
                 raise TypeError(msg)
+
+    @classmethod
+    def word_call_regions(
+        cls, source: str, region: t.Pair[int, int]
+    ) -> t.SequenceOf[t.Pair[int, int]]:
+        """Collect native call facts using one Rope word finder for the region.
+
+        Returns:
+            Distinct called-word regions, with strings and comments ignored.
+
+        Raises:
+            TypeError: When Rope cannot provide its declared word facts.
+
+        """
+        finder = cls._word_finder(source)
+        if not isinstance(finder, p.Infra.RopeWorder):
+            message = "Rope word finder does not satisfy its source fact contract"
+            raise TypeError(message)
+        regions: set[t.Pair[int, int]] = set()
+        offset, limit = region
+        while offset < limit:
+            start, end = finder.get_word_range(offset)
+            if start < end <= limit and finder.is_a_function_being_called(start):
+                regions.add((start, end))
+            offset = max(offset + 1, end)
+        return tuple(sorted(regions))
 
     @classmethod
     def word_is_function_call(cls, source: str, offset: int) -> bool:
@@ -353,13 +560,9 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
 
     @classmethod
     def _word_finder(cls, source: str) -> p.AttributeProbe:
-        worder_module = cls._module("rope.base.worder")
-        worder_factory = getattr(worder_module, "Worder", None)
-        if not callable(worder_factory):
-            msg = "rope Worder factory is not callable"
-            raise TypeError(msg)
-        finder: p.AttributeProbe = worder_factory(source, handle_ignores=True)
-        return finder
+        return cls.runtime_callable("rope.base.worder", "Worder")(
+            source, handle_ignores=True
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeRuntimeRefactors"]

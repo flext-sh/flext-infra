@@ -1,0 +1,18 @@
+id: test-assert-tm-binding-required
+valid:
+  - tm.that(condition, truth=True)
+  - |
+    def consume(value: str | None) -> str:
+        assert value is not None
+        return value.upper()
+  - |
+    def consume(value: str | int) -> str:
+        assert isinstance(value, str)
+        return value.upper()
+  - assert value is None
+  - assert observed == expected, details()
+invalid:
+  - assert condition
+  - |
+    from tests import tm
+    assert left == right

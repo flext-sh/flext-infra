@@ -10,8 +10,9 @@ from flext_cli import m
 
 
 class FlextInfraModelsMiseToolchainBase(m.ContractModel):
-    """Strict immutable base shared by Mise configuration records."""
+    """Immutable coercing preset shared by schema-loaded configuration records."""
 
+    # Rendered payloads are byte contracts; preserve their final newline.
     model_config = m.ConfigDict(
         strict=False,
         frozen=True,

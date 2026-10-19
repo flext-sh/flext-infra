@@ -11,7 +11,7 @@ from pathlib import Path
 
 import flext_infra
 from flext_infra._pytest_clock import FlextInfraPytestClock
-from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
+from flext_infra.validate import FlextInfraPytestRunner
 
 
 class FlextInfraPytestEntry:
@@ -25,8 +25,9 @@ class FlextInfraPytestEntry:
         selects coverage alone; the default is the incremental operation. The
         ``slow`` operation runs the incremental phase over the slow marker
         only, as its own bounded process outside the budgeted clock. The
-        ``file`` and ``file-slow`` run the declared target's regular and slow
-        phases. Both require Make to export the single-file target variable.
+        ``file`` runs the declared target incremental then complete without a
+        deadline, including slow items. ``file-slow`` retains its bounded
+        incremental operation. Both require Make to export the single-file target.
         ``full-slow`` runs the full slow phase without the incremental budget.
 
         Returns:
@@ -58,7 +59,7 @@ class FlextInfraPytestEntry:
         runner = FlextInfraPytestRunner.from_environment(
             started_at_monotonic=FlextInfraPytestClock.started_at_monotonic,
             slow_phase=slow_phase,
-            unbounded=mode in {"full", "full-slow"},
+            unbounded=mode in {"full", "full-slow", "file"},
         )
         if mode in {"file", "file-slow"} and runner.target_file is None:
             msg = (
@@ -68,9 +69,9 @@ class FlextInfraPytestEntry:
             raise ValueError(msg)
         if mode == "coverage":
             status = runner.execute_coverage().unwrap()
-        elif mode in {"full", "full-slow"}:
+        elif mode in {"full", "full-slow", "file"}:
             status = runner.execute_full().unwrap()
-        elif mode in {"", "slow", "file", "file-slow"}:
+        elif mode in {"", "slow", "file-slow"}:
             status = runner.execute().unwrap()
         else:
             msg = f"unsupported pytest operation: {mode}"

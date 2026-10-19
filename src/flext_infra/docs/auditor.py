@@ -11,10 +11,10 @@ from typing import TYPE_CHECKING, Annotated, override
 from flext_infra import m, u
 from flext_infra.docs import (
     FlextInfraDocAuditorChecksMixin,
+    FlextInfraDocAuditorMixin,
     FlextInfraDocAuditorReportMixin,
+    FlextInfraDocServiceBase,
 )
-from flext_infra.docs.auditor_mixin import FlextInfraDocAuditorMixin
-from flext_infra.docs.base import FlextInfraDocServiceBase
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -87,8 +87,7 @@ class FlextInfraDocAuditor(
             The resulting ``m.Infra.DocsPhaseReport``.
 
         """
-        checks = sorted(self.resolve_checks(params.check))
-        issues = self._collect_issues(scope, checks)
+        checks, issues = self._collect_issues(scope, params.check)
         docstring_coverage = (
             u.Infra.docs_public_docstring_coverage(scope)
             if "docstrings" in checks or params.docstring_min is not None

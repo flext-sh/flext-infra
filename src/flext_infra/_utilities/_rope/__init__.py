@@ -10,17 +10,21 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_core import install_lazy_exports
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra._utilities._rope.project import FlextInfraRopeProject
+    from flext_infra._utilities._rope.restructure import FlextInfraRopeRestructure
 
 
-__all__: tuple[str, ...] = ("FlextInfraRopeProject",)
+__all__: tuple[str, ...] = ("FlextInfraRopeProject", "FlextInfraRopeRestructure")
 
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({"FlextInfraRopeProject": ".project"}),
+    MappingProxyType({
+        "FlextInfraRopeProject": ".project",
+        "FlextInfraRopeRestructure": ".restructure",
+    }),
     public_exports=__all__,
 )

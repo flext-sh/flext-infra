@@ -35,10 +35,10 @@
             echo "::error::the {{ private_dependency_auth.app_id_secret }} App produced no installation token — a private git dependency cannot be resolved"
             exit 1
           fi
-          store="$RUNNER_TEMP/flext-private-dependency-credentials"
-          install -m 600 /dev/null "$store"
-          printf 'https://x-access-token:%s@github.com\n' "$PRIVATE_DEPENDENCY_TOKEN" > "$store"
-          printf 'FLEXT_SETUP_CREDENTIAL_STORE=%s\n' "$store" >> "$GITHUB_ENV"
+          store="${RUNNER_TEMP}/flext-private-dependency-credentials"
+          install -m 600 /dev/null "${store}"
+          printf 'https://x-access-token:%s@github.com\n' "${PRIVATE_DEPENDENCY_TOKEN}" > "${store}"
+          printf 'FLEXT_SETUP_CREDENTIAL_STORE=%s\n' "${store}" >> "${GITHUB_ENV}"
           # The store alone is not enough: it only authenticates when
           # FLEXT_SETUP_CREDENTIAL_STORE survives every make and mise hop into
           # the uv sync receipt. The cosmos-main CI evidence (runs

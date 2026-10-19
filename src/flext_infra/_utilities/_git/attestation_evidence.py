@@ -1,0 +1,352 @@
+"""Original gate evidence admission owned by the signed gate attestation.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from flext_cli import u
+
+from flext_infra import c, m, p, r, t
+
+
+class FlextInfraUtilitiesGitAttestationEvidenceMixin:
+    """Admit original receipts and producer reports before a gate is attested."""
+
+    @classmethod
+    def _original_gate_evidence(
+        cls,
+        repo_root: Path,
+        request: m.Infra.GateAttestationCreateRequest,
+    ) -> p.Result[t.Pair[m.Infra.GateCommandEvidence, m.Infra.GateReportEvidence]]:
+        result_type = r[t.Pair[m.Infra.GateCommandEvidence, m.Infra.GateReportEvidence]]
+        path = (
+            request.receipt
+            if request.receipt.is_absolute()
+            else repo_root / request.receipt
+        )
+        if ".." in path.parts or not path.is_relative_to(repo_root):
+            return result_type.fail(
+                "original receipt must remain inside its repository"
+            )
+        original = u.Cli.atomic_read_binary_file_state(path, required=True)
+        if original.failure:
+            return result_type.from_failure(original)
+        content = original.value.content
+        if content is None:
+            return result_type.fail("required original receipt has no captured bytes")
+        try:
+            evidence = m.Infra.GateCommandEvidence.model_validate_json(
+                content,
+            )
+        except ValueError as exc:
+            return result_type.fail(str(exc), exception=exc)
+        return result_type.ok((
+            evidence,
+            m.Infra.GateReportEvidence(
+                path=path.relative_to(repo_root),
+                digest=f"sha256:{u.Cli.sha256_bytes(content)}",
+                kind=c.Infra.GateEvidenceReportKind.RECEIPT,
+            ),
+        ))
+
+    @classmethod
+    def _accepted_gate_evidence(
+        cls,
+        repo_root: Path,
+        evidence: m.Infra.GateExecutionFacts,
+    ) -> p.Result[bool]:
+        process = evidence.process
+        digest_matches = evidence.result_digest == (
+            f"sha256:{u.Cli.sha256_content(process.model_dump_json(round_trip=True))}"
+        )
+        process_incomplete = (
+            process.timed_out
+            or process.forwarded_signal is not None
+            or process.raw_return_code < 0
+            or process.raw_return_code not in {0, 1}
+        )
+        if (
+            not digest_matches
+            or evidence.native_outcome == c.Infra.ToolOutcome.ERROR
+            or process_incomplete
+            or (
+                evidence.native_outcome == c.Infra.ToolOutcome.CLEAN
+                and process.raw_return_code != 0
+            )
+        ):
+            return r[bool].fail(
+                "original gate execution has no complete accepted evidence"
+            )
+        observed = cls._original_report_outcome(repo_root, evidence)
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        if observed.value != evidence.native_outcome:
+            return r[bool].fail(
+                "original native classification differs from its reports"
+            )
+        if (
+            evidence.policy == c.Infra.GateAcceptancePolicy.CLEAN
+            and observed.value != c.Infra.ToolOutcome.CLEAN
+        ):
+            return r[bool].fail(
+                "original reports have findings under clean-quality policy"
+            )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _original_report_outcome(
+        cls,
+        repo_root: Path,
+        evidence: m.Infra.GateExecutionFacts,
+    ) -> p.Result[c.Infra.ToolOutcome]:
+        """Derive completeness from original typed producer reports.
+
+        Returns:
+            The resulting ``p.Result[c.Infra.ToolOutcome]``.
+
+        """
+        result_type = r[c.Infra.ToolOutcome]
+        try:
+            return cls._producer_report_outcome(repo_root, evidence)
+        except ValueError as exc:
+            return result_type.fail(str(exc), exception=exc)
+
+    @classmethod
+    def _producer_report_outcome(
+        cls,
+        repo_root: Path,
+        evidence: m.Infra.GateExecutionFacts,
+    ) -> p.Result[c.Infra.ToolOutcome]:
+        """Dispatch original evidence to its declared producer contract.
+
+        Returns:
+            The producer classification or its first admission failure.
+
+        """
+        result_type = r[c.Infra.ToolOutcome]
+        if evidence.gate == c.Infra.VERB_CHECK:
+            return cls._original_check_outcome(repo_root, evidence)
+        if evidence.gate == c.Infra.VERB_TEST:
+            return cls._original_test_outcome(repo_root, evidence)
+        return result_type.fail(
+            f"original report admission is not wired for stage: {evidence.gate}",
+        )
+
+    @classmethod
+    def _original_check_outcome(
+        cls,
+        repo_root: Path,
+        evidence: m.Infra.GateExecutionFacts,
+    ) -> p.Result[c.Infra.ToolOutcome]:
+        result_type = r[c.Infra.ToolOutcome]
+        if (
+            not evidence.intent.requested_gates
+            or evidence.intent.test_selection is not None
+        ):
+            return result_type.fail("checker proof has unrelated producer intent")
+        source = cls._report_contract_bytes(
+            repo_root,
+            evidence.reports,
+            c.Infra.GateEvidenceReportKind.CHECK_SARIF,
+        )
+        if source.failure:
+            return result_type.from_failure(source)
+        report = m.Infra.SarifReport.model_validate_json(source.value)
+        if (
+            report.properties is None
+            or tuple(report.properties.requested_gates)
+            != evidence.intent.requested_gates
+        ):
+            return result_type.fail(
+                "checker report differs from original requested gates"
+            )
+        return cls._check_report_outcome(report)
+
+    @classmethod
+    def _original_test_outcome(
+        cls,
+        repo_root: Path,
+        evidence: m.Infra.GateExecutionFacts,
+    ) -> p.Result[c.Infra.ToolOutcome]:
+        result_type = r[c.Infra.ToolOutcome]
+        selection = evidence.intent.test_selection
+        if selection is None or evidence.intent.requested_gates:
+            return result_type.fail("test proof has unrelated producer intent")
+        source = cls._report_contract_bytes(
+            repo_root,
+            evidence.reports,
+            c.Infra.GateEvidenceReportKind.PYTEST_CONTEXT,
+        )
+        if source.failure:
+            return result_type.from_failure(source)
+        context = m.Infra.PytestRunContext.model_validate_json(source.value)
+        if context.execution_mode != selection.execution_mode:
+            return result_type.fail("test report differs from original operation")
+        return cls._pytest_report_outcome(
+            repo_root,
+            evidence.reports,
+            evidence.process,
+        )
+
+    @staticmethod
+    def _check_report_outcome(
+        report: m.Infra.SarifReport,
+    ) -> p.Result[c.Infra.ToolOutcome]:
+        summary = report.properties
+        if summary is None or not summary.targets or not summary.results:
+            return r[c.Infra.ToolOutcome].fail(
+                "check report has no completed target inventory"
+            )
+        if (
+            len(summary.targets) != len(summary.results)
+            or tuple(target.name for target in summary.targets)
+            != tuple(result.project for result in summary.results)
+            or not summary.requested_gates
+            or any(
+                set(result.gates) != set(summary.requested_gates)
+                for result in summary.results
+            )
+        ):
+            return r[c.Infra.ToolOutcome].fail(
+                "check report target accounting is incomplete"
+            )
+        executions = tuple(
+            execution
+            for result in summary.results
+            for execution in result.gates.values()
+        )
+        if any(
+            execution.outcome == c.Infra.ToolOutcome.ERROR
+            or any(
+                issue.code == c.Infra.ToolOutcome.ERROR for issue in execution.issues
+            )
+            for execution in executions
+        ):
+            return r[c.Infra.ToolOutcome].fail(
+                "check report contains an operational failure"
+            )
+        return r[c.Infra.ToolOutcome].ok(
+            c.Infra.ToolOutcome.FINDINGS
+            if any(
+                execution.outcome == c.Infra.ToolOutcome.FINDINGS or execution.issues
+                for execution in executions
+            )
+            else c.Infra.ToolOutcome.CLEAN,
+        )
+
+    @classmethod
+    def _pytest_report_outcome(
+        cls,
+        repo_root: Path,
+        reports: t.SequenceOf[m.Infra.GateReportEvidence],
+        expected_process: m.Cli.ProcessOutcome,
+    ) -> p.Result[c.Infra.ToolOutcome]:
+        result_type = r[c.Infra.ToolOutcome]
+        process_source = cls._report_contract_bytes(
+            repo_root,
+            reports,
+            c.Infra.GateEvidenceReportKind.PYTEST_PROCESS,
+        )
+        accounting_source = cls._report_contract_bytes(
+            repo_root,
+            reports,
+            c.Infra.GateEvidenceReportKind.PYTEST_ACCOUNTING,
+        )
+        diagnostics_source = cls._report_contract_bytes(
+            repo_root,
+            reports,
+            c.Infra.GateEvidenceReportKind.PYTEST_DIAGNOSTICS,
+        )
+        for source in (process_source, accounting_source, diagnostics_source):
+            if source.failure:
+                return result_type.from_failure(source)
+        process = m.Cli.ProcessOutcome.model_validate_json(process_source.value)
+        accounting = m.Infra.TestmonRunAccounting.model_validate_json(
+            accounting_source.value
+        )
+        diagnostics = m.Infra.PytestDiagnostics.model_validate_json(
+            diagnostics_source.value
+        )
+        process_valid = (
+            process == expected_process
+            and not process.timed_out
+            and process.forwarded_signal is None
+            and process.raw_return_code in {0, 1}
+        )
+        accounting_valid = (
+            accounting.inventory_count is not None
+            and bool(accounting.executed_count)
+            and accounting.executed_count == accounting.reported_count
+            and accounting.executed_count + accounting.deselected_count
+            == accounting.inventory_count
+        )
+        diagnostics_valid = (
+            len(diagnostics.reported_node_ids) == accounting.reported_count
+            and not diagnostics.error_count
+            and not diagnostics.collection_failed_count
+            and not diagnostics.collection_skipped_count
+            and diagnostics.skipped_count <= len(diagnostics.connectivity_skip_cases)
+        )
+        if not (process_valid and accounting_valid and diagnostics_valid):
+            return result_type.fail(
+                "test reports contain incomplete or operational execution"
+            )
+        return result_type.ok(
+            c.Infra.ToolOutcome.FINDINGS
+            if diagnostics.failed_count
+            or diagnostics.warning_count
+            or diagnostics.skipped_count
+            else c.Infra.ToolOutcome.CLEAN,
+        )
+
+    @classmethod
+    def _report_contract_bytes(
+        cls,
+        repo_root: Path,
+        reports: t.SequenceOf[m.Infra.GateReportEvidence],
+        kind: c.Infra.GateEvidenceReportKind,
+    ) -> p.Result[bytes]:
+        selected = tuple(report for report in reports if report.kind == kind)
+        if len(selected) != 1:
+            return r[bytes].fail(f"one original {kind} report is required")
+        return cls._report_bytes(repo_root, selected[0])
+
+    @staticmethod
+    def _report_bytes(
+        repo_root: Path,
+        report: m.Infra.GateReportEvidence,
+    ) -> p.Result[bytes]:
+        original = u.Cli.atomic_read_binary_file_state(
+            repo_root / report.path, required=True
+        )
+        if original.failure:
+            return r[bytes].from_failure(original)
+        content = original.value.content
+        if content is None:
+            return r[bytes].fail(
+                f"required report has no captured bytes: {report.path}"
+            )
+        if f"sha256:{u.Cli.sha256_bytes(content)}" != report.digest:
+            return r[bytes].fail(
+                f"original report digest does not match: {report.path}"
+            )
+        return r[bytes].ok(content)
+
+    @classmethod
+    def _verified_report_evidence(
+        cls,
+        repo_root: Path,
+        reports: t.SequenceOf[m.Infra.GateReportEvidence],
+    ) -> p.Result[bool]:
+        for report in reports:
+            original = cls._report_bytes(repo_root, report)
+            if original.failure:
+                return r[bool].from_failure(original)
+        return r[bool].ok(value=True)
+
+
+__all__: list[str] = ["FlextInfraUtilitiesGitAttestationEvidenceMixin"]

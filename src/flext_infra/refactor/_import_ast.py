@@ -47,26 +47,79 @@ class FlextInfraImportNormalizationAstMixin:
             key=operator.attrgetter("lineno"),
         )
 
-    @staticmethod
+    @classmethod
     def _enclosing_scope(
+        cls,
         node: ast.AST,
         parents: t.MappingKV[int, ast.AST],
     ) -> ast.AST | None:
-        """Return the function, lambda or class whose body owns one node.
+        """Return the lexical scope that evaluates one node.
+
+        Definition headers and a comprehension's first iterable run in the
+        enclosing scope. Arguments bind in their function; comprehensions
+        bind targets in their own scope.
 
         Returns:
             The innermost enclosing scope, or ``None`` at module level.
 
         """
-        current = parents.get(id(node))
+        child = node
+        current = parents.get(id(child))
         while current is not None:
-            if isinstance(
-                current,
-                ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda | ast.ClassDef,
-            ):
+            if cls._scope_evaluates(node, child, current, parents):
                 return current
+            child = current
             current = parents.get(id(current))
         return None
+
+    @classmethod
+    def _scope_evaluates(
+        cls,
+        node: ast.AST,
+        child: ast.AST,
+        scope: ast.AST,
+        parents: t.MappingKV[int, ast.AST],
+    ) -> bool:
+        """Return whether ``scope`` evaluates ``node`` reached through ``child``.
+
+        Returns:
+            True when ``scope`` is the lexical scope of the node.
+
+        """
+        match scope:
+            case ast.FunctionDef() | ast.AsyncFunctionDef():
+                return isinstance(node, ast.arg) or child in scope.body
+            case ast.Lambda():
+                return isinstance(node, ast.arg) or child is scope.body
+            case ast.ClassDef():
+                return child in scope.body
+            case ast.ListComp() | ast.SetComp() | ast.DictComp() | ast.GeneratorExp():
+                return cls._comprehension_owns_node(node, scope, parents)
+            case _:
+                return False
+
+    @staticmethod
+    def _comprehension_owns_node(
+        node: ast.AST,
+        scope: ast.ListComp | ast.SetComp | ast.DictComp | ast.GeneratorExp,
+        parents: t.MappingKV[int, ast.AST],
+    ) -> bool:
+        """Keep the first iterable outside its comprehension's lexical bindings.
+
+        Returns:
+            Whether the original node reaches this scope without its first iterable.
+
+        """
+        first = scope.generators[0].iter
+        ancestor = node
+        while ancestor is not scope:
+            if ancestor is first:
+                return False
+            parent = parents.get(id(ancestor))
+            if parent is None:
+                return False
+            ancestor = parent
+        return True
 
     @staticmethod
     def _is_type_checking_test(test: ast.expr) -> bool:
@@ -104,8 +157,8 @@ class FlextInfraImportNormalizationAstMixin:
             current = parents.get(id(current))
         return False
 
-    @staticmethod
-    def _annotation_ids(tree: ast.Module) -> frozenset[int]:
+    @classmethod
+    def _annotation_ids(cls, tree: ast.Module) -> frozenset[int]:
         """Return the ids of every node inside a non-evaluated annotation.
 
         Function argument and return annotations and module-level variable
@@ -140,7 +193,53 @@ class FlextInfraImportNormalizationAstMixin:
         for statement in tree.body:
             if isinstance(statement, ast.AnnAssign):
                 ids.update(id(sub) for sub in ast.walk(statement.annotation))
+        # ``ClassVar[...]`` members are excluded from Pydantic/dataclass field
+        # processing, so their class-body annotations are never evaluated at
+        # runtime and must not count as runtime reads of the binding.
+        for node in ast.walk(tree):
+            if isinstance(node, ast.AnnAssign) and cls._is_classvar_annotation(
+                node.annotation
+            ):
+                ids.update(id(sub) for sub in ast.walk(node.annotation))
+        cls._collect_plain_namespace_annotations(tree, ids)
         return frozenset(ids)
+
+    @classmethod
+    def _collect_plain_namespace_annotations(
+        cls,
+        tree: ast.Module,
+        ids: set[int],
+    ) -> None:
+        """Collect annotation ids inside base-less class bodies.
+
+        A class with no bases is a plain namespace holder: under deferred
+        annotations its body annotations are never evaluated by anything
+        (no Pydantic/dataclass machinery resolves them), so annotation-name
+        reads inside it are typing-only. Based classes keep the
+        conservative runtime classification — their annotations may feed
+        model construction.
+
+        """
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and not node.bases:
+                for statement in node.body:
+                    if isinstance(statement, ast.AnnAssign):
+                        ids.update(id(sub) for sub in ast.walk(statement.annotation))
+
+    @staticmethod
+    def _is_classvar_annotation(annotation: ast.expr) -> bool:
+        """Return whether an annotation is a ``ClassVar[...]`` subscription.
+
+        Returns:
+            Whether the annotation is a ``ClassVar[...]`` subscription.
+
+        """
+        if not isinstance(annotation, ast.Subscript):
+            return False
+        value = annotation.value
+        return (isinstance(value, ast.Name) and value.id == "ClassVar") or (
+            isinstance(value, ast.Attribute) and value.attr == "ClassVar"
+        )
 
     @staticmethod
     def _defers_annotations(tree: ast.Module) -> bool:

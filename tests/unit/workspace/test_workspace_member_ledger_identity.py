@@ -18,24 +18,24 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
     """Prove parent and member identities remain in their own coordinates."""
 
     @staticmethod
-    @pytest.mark.parametrize("root_produces_activation", [False, True])
-    @pytest.mark.parametrize("member_produces_activation", [False, True])
-    def test_manifest_load_preserves_each_activation_producer(
+    @pytest.mark.parametrize("root_requires_activation", [False, True])
+    @pytest.mark.parametrize("member_requires_activation", [False, True])
+    def test_manifest_load_preserves_each_activation_requirement(
         tmp_path: Path,
         *,
-        root_produces_activation: bool,
-        member_produces_activation: bool,
+        root_requires_activation: bool,
+        member_requires_activation: bool,
     ) -> None:
         """Load both declared command boundaries without losing typed fields."""
         root_verb = m.Infra.MakeVerbSpec(
             name="fixture-runtime",
-            description="Produce the root activation inputs",
-            produces_activation=root_produces_activation,
+            description="Consume the root runtime",
+            requires_activation=root_requires_activation,
         )
         member_verb = m.Infra.MakeVerbSpec(
             name="fixture-runtime",
-            description="Produce the member activation inputs",
-            produces_activation=member_produces_activation,
+            description="Consume the member runtime",
+            requires_activation=member_requires_activation,
         )
         repository = u.Tests.repository_ref(
             "fixture-workspace",

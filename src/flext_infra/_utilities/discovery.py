@@ -7,11 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableMapping
-from importlib import util as importlib_util
+from importlib.machinery import PathFinder
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import c, r, t
+from flext_infra import c, config, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesNamespaceConfig,
     FlextInfraUtilitiesProjectDiscovery,
@@ -20,8 +20,6 @@ from flext_infra._utilities import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
     from flext_infra import p
 
 
@@ -38,7 +36,11 @@ class FlextInfraUtilitiesDiscovery(
     ] = {}
 
     @staticmethod
-    def _discover_project_root_from_path(file_path: str) -> str:
+    def _discover_project_root_from_path(
+        file_path: str,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> str:
         """Discover the enclosing project root path cached by file path.
 
         Returns:
@@ -47,7 +49,12 @@ class FlextInfraUtilitiesDiscovery(
         """
         resolved = Path(file_path).resolve()
         candidate = (
-            resolved.parent if resolved.suffix == c.Infra.EXT_PYTHON else resolved
+            resolved.parent
+            if resolved.suffix == c.Infra.EXT_PYTHON
+            # A project manifest belongs to the root it declares, never to a
+            # parent discovered by walking above it.
+            or resolved.name == c.PYPROJECT_FILENAME
+            else resolved
         )
         wrapper_root: Path | None = None
         for current in (candidate, *candidate.parents):
@@ -57,7 +64,13 @@ class FlextInfraUtilitiesDiscovery(
             if current.name in c.Infra.ROOT_WRAPPER_SEGMENTS:
                 wrapper_root = current.parent
                 continue
-            if (current / c.Infra.DEFAULT_SRC_DIR).is_dir():
+            if (
+                (current / c.Infra.DEFAULT_SRC_DIR).is_dir()
+                if source_project is None
+                else source_project.source_query(
+                    current / c.Infra.DEFAULT_SRC_DIR, "isdir"
+                )
+            ):
                 relative = candidate.relative_to(current)
                 if (
                     not relative.parts
@@ -143,7 +156,11 @@ class FlextInfraUtilitiesDiscovery(
         ) or file_name.endswith(tuple(c.Infra.NAMESPACE_PYTEST_MODULE_SUFFIXES))
 
     @staticmethod
-    def project_root(file_path: Path) -> Path | None:
+    def project_root(
+        file_path: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> Path | None:
         """Discover the enclosing project root for one file or directory path.
 
         Returns:
@@ -152,6 +169,7 @@ class FlextInfraUtilitiesDiscovery(
         """
         project_root = FlextInfraUtilitiesDiscovery._discover_project_root_from_path(
             str(file_path),
+            source_project=source_project,
         )
         return Path(project_root) if project_root else None
 
@@ -207,179 +225,31 @@ class FlextInfraUtilitiesDiscovery(
         return cls._discover_package_from_path(str(file_path))
 
     @staticmethod
-    def declared_package_dir(package_name: str) -> Path | None:
-        """Return the package directory the active environment declares for a name.
-
-        One rule, no alternative source (R32): a name outside the repository
-        index is read from the environment the checkout declares (an editable
-        workspace member or the pinned distribution — `find_spec`, no import
-        executed). ``None`` is the typed absence: the name is not a package
-        in this environment (absent, or a plain module). A caller that
-        REQUIRES the package — a declared facade parent — raises.
-
-        Returns:
-            The package directory the active environment declares for a name.
-
-        """
-        spec = importlib_util.find_spec(package_name)
-        if spec is None or not spec.submodule_search_locations:
-            return None
-        return Path(next(iter(spec.submodule_search_locations)))
-
-    @classmethod
-    def discover_python_dirs(
-        cls,
-        project_dir: Path,
+    def declared_package_dir(
+        package_name: str,
         *,
-        workspace_excluded_top_dirs: frozenset[str],
-        skip_dirs: frozenset[str] | None = None,
-    ) -> t.StrSequence:
-        """Return top-level directories that contain at least one Python file.
-
-        ``workspace_excluded_top_dirs`` is the caller's validated analysis
-        scope: the service that owns the workspace topology computes it and
-        passes it in, so discovery never reaches back into that service.
+        search_paths: t.StrSequence | None = None,
+    ) -> Path | None:
+        """Elect the physical import path without trusting cached module origins.
 
         Returns:
-            Top-level directories that contain at least one Python file.
+            The unique package directory, or None for an absent name/plain module.
+
+        Raises:
+            ValueError: If the declared package has ambiguous physical origins.
 
         """
-        if not project_dir.is_dir():
-            return list[str]()
-        effective_skip = (
-            skip_dirs if skip_dirs is not None else c.Infra.PYTHON_DISCOVERY_SKIP_DIRS
-        )
-        return [
-            subdir.name
-            for subdir in sorted(project_dir.iterdir())
-            if subdir.is_dir()
-            and not subdir.name.startswith(".")
-            and subdir.name not in effective_skip
-            and subdir.name not in workspace_excluded_top_dirs
-            and any(
-                cls._python_file_belongs_to_project(project_dir, source)
-                for source in cls._walk_python_files(subdir, effective_skip)
-            )
-        ]
-
-    @classmethod
-    def discover_python_targets(
-        cls,
-        project_dir: Path,
-        *,
-        workspace_excluded_top_dirs: frozenset[str],
-    ) -> t.StrSequence:
-        """Return every first-party Python target owned by one project root.
-
-        Directory discovery alone omits standalone modules stored directly at
-        the repository root. Analyzer and codemod gates must use the same
-        complete target inventory so semantic discovery cannot find a file
-        that their safety measurements silently exclude.
-
-        Returns:
-            Every first-party Python target owned by one project root.
-
-        """
-        if not project_dir.is_dir():
-            return list[str]()
-        root_modules = [
-            path.name
-            for path in sorted(project_dir.iterdir())
-            if path.is_file() and path.suffix in {".py", ".pyi"}
-        ]
-        return [
-            *cls.discover_python_dirs(
-                project_dir,
-                workspace_excluded_top_dirs=workspace_excluded_top_dirs,
-            ),
-            *root_modules,
-        ]
-
-    @staticmethod
-    def _walk_python_files(
-        directory: Path,
-        skip_dirs: frozenset[str],
-    ) -> Iterator[Path]:
-        """Yield Python files under ``directory``, pruning skipped directories.
-
-        ``skip_dirs`` names trees that are never first-party source: virtual
-        environments, caches, build output, vendored code. ``Path.rglob`` has no
-        way to prune, so it descends into them and the walk costs whatever those
-        directories happen to contain — in a workspace whose members each own a
-        populated ``.venv`` that is tens of thousands of irrelevant files, and
-        the caller's only signal is a timeout. Pruning applies the same names at
-        every depth instead of only to the top-level entry.
-
-        Yields:
-            Each ``Path``.
-
-        """
-        for parent, child_dirs, file_names in directory.walk():
-            child_dirs[:] = [
-                name
-                for name in child_dirs
-                if name not in skip_dirs and not name.startswith(".")
-            ]
-            for file_name in file_names:
-                if file_name.endswith((c.Infra.EXT_PYTHON, ".pyi")):
-                    yield parent / file_name
-
-    @staticmethod
-    def _python_file_belongs_to_project(project_dir: Path, source: Path) -> bool:
-        """Return whether ``source`` is owned by ``project_dir``'s manifest.
-
-        Returns:
-            Whether ``source`` is owned by ``project_dir``'s manifest.
-
-        """
-        for parent in source.parents:
-            if parent == project_dir:
-                return True
-            if (parent / c.PYPROJECT_FILENAME).is_file():
-                return False
-        return False
-
-    @classmethod
-    def analyzer_python_roots(
-        cls,
-        project_dir: Path,
-        declared: t.StrSequence,
-        *,
-        workspace_excluded_top_dirs: frozenset[str],
-    ) -> t.StrSequence:
-        """Return the Python roots every analyzer surface must agree on.
-
-        Conform, the deps modernizer and the extra-paths sync each described
-        the same concept on their own: some filtered the declared ``env_dirs``
-        by existence, others discovered roots on disk. A project owning a
-        Python directory outside ``env_dirs`` therefore had that root written
-        by one surface and erased by the next, so apply never reached a fixed
-        point and check reported permanent drift. This is the single owner:
-        declared roots keep their configured order, because a pre-write
-        scaffold can only offer those, and discovery appends the remaining
-        roots that actually exist, which is the only set an analyzer accepts.
-
-        A directory owning a ``pyproject.toml`` is a project in its own right,
-        never a root of this one: workspace subprojects are Python directories
-        too, and each is analyzed under its own local configuration.
-
-        Returns:
-            The Python roots every analyzer surface must agree on.
-
-        """
-        discovered = cls.discover_python_dirs(
-            project_dir,
-            workspace_excluded_top_dirs=workspace_excluded_top_dirs,
-        )
-        return (
-            *declared,
-            *(
-                root
-                for root in discovered
-                if root not in declared
-                and not (project_dir / root / c.PYPROJECT_FILENAME).is_file()
-            ),
-        )
+        locations = search_paths
+        components = package_name.split(".")
+        for index in range(len(components)):
+            spec = PathFinder.find_spec(".".join(components[: index + 1]), locations)
+            if spec is None or not spec.submodule_search_locations:
+                return None
+            locations = spec.submodule_search_locations
+        if locations is None or len(locations) != 1:
+            msg = f"declared package has ambiguous physical origins: {package_name}"
+            raise ValueError(msg)
+        return Path(locations[0])
 
     @classmethod
     def rope_repository_root(cls, repository_root: Path) -> Path:
@@ -433,7 +303,11 @@ class FlextInfraUtilitiesDiscovery(
         """
         if not repository_root.exists() or not repository_root.is_dir():
             return r[t.SequenceOf[Path]].ok([])
-        effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
+        effective_skip = (
+            skip_dirs
+            if skip_dirs is not None
+            else frozenset(config.Infra.codegen.deps_discovery_excluded_dirs)
+        )
         # Explicit project paths are a hard write-scope boundary. Without one,
         # discovery is strictly local to the repository supplied by the caller.
         scan_roots = (

@@ -10,7 +10,7 @@ import sys
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -61,7 +61,11 @@ class FlextInfraPyrightGate(FlextInfraGate):
         return self._python_module_command(
             c.Infra.PYRIGHT,
             "--pythonpath",
-            sys.executable,
+            (
+                sys.executable
+                if ctx.runtime_root is None
+                else str(u.Infra.runtime_python(ctx.runtime_root))
+            ),
             *check_dirs,
             *ctx.pyright_args,
             "--outputjson",
@@ -90,7 +94,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
         result: p.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[p.Infra.Issue]]:
         """Grade Pyright's JSON report together with its own summary counts.
 
         Returns:
@@ -123,7 +127,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
                 ),
             )
         report = validated.value
-        diagnostics = tuple(
+        diagnostics: t.SequenceOf[p.Infra.Issue] = tuple(
             m.Infra.Issue(
                 file=diag.file,
                 line=diag.range.start.line + 1 if diag.range is not None else 0,

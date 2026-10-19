@@ -13,13 +13,76 @@ from typing import Annotated, ClassVar
 from flext_cli import m
 
 from flext_infra import c, p, t
-from flext_infra._models import FlextInfraModelsMixins
-from flext_infra._models._codegen.fix import FlextInfraModelsCodegenFixModels
-from flext_infra._models._codegen.lazy_init import FlextInfraModelsCodegenLazyInitModels
+from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsMixins
+from flext_infra._models._codegen import (
+    FlextInfraModelsCodegenFixModels,
+    FlextInfraModelsCodegenLazyInitModels,
+)
 
 
 class FlextInfraModelsRope:
     """Rope operation result models — accessed via m.Infra.Rope.*."""
+
+    class RopeProjectElection(m.FrozenModel, str_strip_whitespace=False):
+        """Exact ordered native import roots and source-selection policy."""
+
+        source_folders: t.StrTuple = m.Field(
+            description="Ordered project-relative importable source folders",
+        )
+        ignored_resources: t.StrTuple = m.Field(
+            description="Source-scan ignore patterns elected by the caller",
+        )
+        extension_modules: t.StrTuple = m.Field(
+            description="Native extension modules elected by the original project",
+        )
+        python_path_folders: t.StrTuple = m.Field(
+            description="Ordered physical native import roots sharing the read owner",
+        )
+
+    class RopeRestructureRequest(FlextInfraModelsBase.FrozenArbitrary):
+        """One complete native restructuring operation and its admitted inputs."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(str_strip_whitespace=False)
+
+        pattern: t.NonEmptyStr = m.Field(description="Native Rope match template")
+        goal: t.NonEmptyStr = m.Field(description="Native Rope replacement template")
+        arguments: t.MappingKV[str, str | t.StrSequence] = m.Field(
+            description="Native wildcard constraints and exact identity alternatives",
+        )
+        resources: t.SequenceOf[p.Infra.RopeResource] = m.Field(
+            description="The complete resource inventory selected for this operation",
+        )
+        imports: t.StrSequence | t.MappingKV[str, str] = m.Field(
+            default=(),
+            description="Native imports, optionally keyed by reusable lexical bindings",
+        )
+        match_filter: t.Infra.RopeMatchFilter | None = m.Field(
+            default=None,
+            description="Domain proof admitting each native source occurrence",
+        )
+
+    class RopeSourceImport(FlextInfraModelsBase.FrozenArbitrary):
+        """One native import declaration and its original logical source region."""
+
+        import_info: Annotated[
+            p.Infra.RopeFromImport,
+            m.Field(exclude=True, description="Native Rope from-import identity"),
+        ]
+        start_line: Annotated[
+            int, m.Field(ge=1, description="Original one-based declaration line")
+        ]
+        start_offset: Annotated[
+            int, m.Field(ge=0, description="Original inclusive source character offset")
+        ]
+        end_offset: Annotated[
+            int, m.Field(ge=0, description="Original exclusive source character offset")
+        ]
+        source: Annotated[
+            str, m.Field(description="Complete Rope logical import statement")
+        ]
+        type_checking_guarded: Annotated[
+            bool, m.Field(description="Import belongs to a TYPE_CHECKING suite")
+        ]
 
     # Callers resolve project
     # selection once; source iteration has one exact, branch-free request shape.
@@ -286,10 +349,8 @@ class FlextInfraModelsRope:
             m.Field(description="Rope-owned source slice for the statement"),
         ] = ""
 
-    class FamilyWrapperFlatten(m.ArbitraryTypesModel):
+    class FamilyWrapperFlatten(FlextInfraModelsBase.FrozenArbitrary):
         """Rope identity of one namespace wrapper flattened into its family owner."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         project: Annotated[
             t.Infra.RopeProject,
@@ -332,10 +393,8 @@ class FlextInfraModelsRope:
             m.Field(description="Symbol kind: class, function, assignment"),
         ]
 
-    class ConsolidatorScannedFile(m.ArbitraryTypesModel):
+    class ConsolidatorScannedFile(FlextInfraModelsBase.FrozenArbitrary):
         """One scanned module whose assignments match canonical constants."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         resource: Annotated[
             t.Infra.RopeResource,
@@ -504,7 +563,7 @@ class FlextInfraModelsRope:
             m.Field(description="Resolved package __init__.py path"),
         ]
         runtime_aliases: Annotated[
-            t.StrSequence,
+            t.VariadicTuple[str],
             m.Field(
                 description="Canonical runtime aliases published by the package root",
             ),
@@ -561,6 +620,12 @@ class FlextInfraModelsRope:
             t.MappingKV[t.Pair[int, str], int],
             m.Field(description="Parameter positions from the module snapshot"),
         ]
+        constant_bindings: Annotated[
+            frozenset[t.Pair[int, str]],
+            m.Field(
+                description="Identity-proven immutable declarations in the snapshot"
+            ),
+        ] = frozenset()
         name: Annotated[str, m.Field(description="Resolved symbol name being recorded")]
         pyname: Annotated[
             t.Infra.RopePyName,

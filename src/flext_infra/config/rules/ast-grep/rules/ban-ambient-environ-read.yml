@@ -1,0 +1,44 @@
+# Ambient process-environment reads bypass the typed config/settings SSOT
+# boundary (rule python--config-settings-ssot). Evidence: X-17
+# (deps/detector_runtime.py read UV_PROJECT_ENVIRONMENT with a default outside
+# the typed boundary). Detection-only: the correct settings.<Ns>.* /
+# config.<Ns>.* field depends on which typed model owns the value in that
+# context, so an automatic rewrite would guess.
+# The config modules are the declared bootstrap boundary (zero-cycle law:
+# config/settings import only stdlib/pydantic), so their own bootstrap
+# environment reads — e.g. the operator config-dir relocation knob — are the
+# typed boundary itself, not a bypass of it.
+# Isolated stdlib invocation metadata belongs to the actual native producer.
+# Native entrypoint identity and original imports prove that boundary;
+# a bootstrap/hook filename or copied documentation grants no role.
+id: ban-ambient-environ-read
+language: python
+severity: error
+files:
+  - "**/*.py"
+metadata:
+  context:
+    ENV:
+      - is: resolved-symbol
+        arg: os environ
+      - not: layer-zero-file
+      - &isolated-execution
+        not: isolated-execution
+        arg: >-
+          ai_hub.services._installed_runtime_parts.release
+          AiHubInstalledRuntimeRelease._install_fast_hook_launcher
+    GETENV:
+      - is: resolved-symbol
+        arg: os getenv
+      - not: layer-zero-file
+      - *isolated-execution
+rule:
+  any:
+    - pattern: $ENV[$KEY]
+    - pattern: $ENV.get($$$ARGS)
+    - pattern: $GETENV($$$ARGS)
+message: >-
+  [ban-ambient-environ-read] Ambient os.environ/os.getenv read outside the
+  typed settings boundary — fix: read the value through config.<Ns>.*
+  / settings.<Ns>.* (owned by settings.py / _settings/) instead of the raw
+  process environment · ref: rule python--config-settings-ssot

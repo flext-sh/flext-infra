@@ -10,11 +10,14 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_core import install_lazy_exports
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra._utilities._git.attestation import (
         FlextInfraUtilitiesGitAttestationMixin,
+    )
+    from flext_infra._utilities._git.attestation_evidence import (
+        FlextInfraUtilitiesGitAttestationEvidenceMixin,
     )
     from flext_infra._utilities._git.lane_hygiene import (
         FlextInfraUtilitiesGitLaneHygieneMixin,
@@ -102,6 +105,7 @@ if TYPE_CHECKING:
 
 
 __all__: tuple[str, ...] = (
+    "FlextInfraUtilitiesGitAttestationEvidenceMixin",
     "FlextInfraUtilitiesGitAttestationMixin",
     "FlextInfraUtilitiesGitLaneHygieneMixin",
     "FlextInfraUtilitiesGitMutationScopeMixin",
@@ -140,6 +144,7 @@ install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
+        "FlextInfraUtilitiesGitAttestationEvidenceMixin": ".attestation_evidence",
         "FlextInfraUtilitiesGitAttestationMixin": ".attestation",
         "FlextInfraUtilitiesGitLaneHygieneMixin": ".lane_hygiene",
         "FlextInfraUtilitiesGitMutationScopeMixin": ".mutation_scope",

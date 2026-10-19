@@ -14,7 +14,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import FlextInfraRuffLintGate, config
+from flext_infra import config
+from flext_infra.check import FlextInfraGateRegistry
+from flext_infra.gates import FlextInfraRuffLintGate
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:
@@ -54,6 +56,12 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
     ) -> None:
         """The rendered Ruff lint table carries the SSOT fix-safety lists."""
         policy = config.Infra.tooling.tools.ruff.lint
+        make = config.Infra.codegen.make
+        delegated = FlextInfraGateRegistry.default().delegated_lint_rules(
+            policy.rule_owners,
+            check_gates=make.check_gates_default,
+            repair_gates=(*make.check_gates_fixable, *make.fmt_gates),
+        )
         pyproject = u.Tests.scaffold_text(
             tmp_path / "fixture-project",
             c.PYPROJECT_FILENAME,
@@ -79,7 +87,7 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
         )
         tm.that(
             list(u.Tests.toml_strings_at(pyproject, "tool", "ruff", "lint", "ignore")),
-            eq=list(policy.ignore),
+            eq=sorted(set(delegated) | set(policy.ruling_disabled_rules)),
         )
         tm.that(
             list(

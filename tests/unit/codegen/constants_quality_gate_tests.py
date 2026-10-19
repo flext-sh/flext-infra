@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import main
+from flext_infra import infra, main
 from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
 from tests import tm, u
 
@@ -80,7 +80,11 @@ class TestsFlextInfraCodegenConstantsQualityGate:
     @staticmethod
     def test_real_workspace_run_returns_report(tmp_path: Path) -> None:
         """Quality gate runs on real empty workspace without errors."""
-        gate = FlextInfraCodegenQualityGate(repository_root=tmp_path)
+        gate = FlextInfraCodegenQualityGate(
+            workspace_factory=infra.rope_workspace,
+            repository_root=tmp_path,
+            source_preview=infra.source_preview(tmp_path),
+        )
         report_result = gate.build_report()
         tm.ok(report_result)
         tm.that(report_result.value, has="verdict")
@@ -107,7 +111,11 @@ class TestsFlextInfraCodegenConstantsQualityGate:
         )
         u.Tests.provision_checkout(project)
         tm.that(u.Tests.run_lazy_init(project), eq=0)
-        gate = FlextInfraCodegenQualityGate(repository_root=project)
+        gate = FlextInfraCodegenQualityGate(
+            workspace_factory=infra.rope_workspace,
+            repository_root=project,
+            source_preview=infra.source_preview(project),
+        )
         report_result = gate.build_report()
         tm.ok(report_result)
         report = report_result.value

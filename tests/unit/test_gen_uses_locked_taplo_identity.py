@@ -14,8 +14,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import flext_infra
-from flext_infra import c, config, p, t
-from tests import tm, u
+from flext_infra import config
+from tests import c, p, t, tm, u
 
 
 class TestsFlextInfraGenUsesLockedTaploIdentity:
