@@ -926,7 +926,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 return r[bool].fail(
                     f"tool.pyright.executionEnvironments[{index}] must be a mapping",
                 )
-            mapping = t.Cli.JSON_MAPPING_ADAPTER.validate_python(environment)
+            mapping = u.json_mapping_adapter().validate_python(environment)
             normalized: t.JsonDict = dict(mapping)
             root = normalized.get("root")
             normalized[c.Infra.EXTRA_PATHS] = ["src"] if root == "src" else [".", "src"]

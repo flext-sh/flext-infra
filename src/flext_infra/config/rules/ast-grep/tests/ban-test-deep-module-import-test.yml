@@ -1,0 +1,18 @@
+id: ban-test-deep-module-import
+valid:
+  - from flext_core import FlextCore, core, config, settings, c, t, p, m, u
+  - from flext_ldif import ldif
+  - from flext_tests import tm
+  - from tests import tm
+  - from collections.abc import Callable
+  - from pydantic import Field
+invalid:
+  - from flext_core.services import FlextServiceRegistry
+  - from flext_core._models.registry import FlextModelsRegistry
+  - from flext_ldif.services import FlextLdifParser as Parser
+  - from flext_tests.pytest_bootstrap import bootstrap
+  - |
+    from flext_infra.codegen import (
+        FlextInfraCodegenConform,
+        FlextInfraCodegenLazyInit,
+    )

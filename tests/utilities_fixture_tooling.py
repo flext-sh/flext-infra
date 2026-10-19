@@ -114,7 +114,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
 
         @staticmethod
         def profile_parent(
-            runner: FlextInfraPytestRunner,
+            runner: p.Tests.PytestProfileContext,
             output: Path,
             *,
             target_file: Path | None = None,
@@ -142,11 +142,13 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                         str(output),
                     ),
                     log,
-                    cwd=runner.root,
+                    cwd=runner.repository_root,
                     options=m.Cli.ProcessOptions(
                         env=u.Cli.process_env(
                             overrides={
-                                c.Infra.PYTEST_ENV_REPOSITORY_ROOT: str(runner.root),
+                                c.Infra.PYTEST_ENV_REPOSITORY_ROOT: str(
+                                    runner.repository_root
+                                ),
                                 c.Infra.PYTEST_ENV_TARGET: str(runner.target),
                                 c.Infra.PYTEST_ENV_TARGET_FILE: str(
                                     target_file

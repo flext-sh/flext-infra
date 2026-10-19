@@ -565,6 +565,7 @@ Infra:
       uv_resolution:
         local_directory: .flext/uv/local
         standalone_directory: .flext/uv/standalone
+        editable_directory: .flext/uv/editable
         hosted_variable: GITHUB_ACTIONS
         hosted_value: 'true'
         virtual_distribution_suffix: '-resolution'

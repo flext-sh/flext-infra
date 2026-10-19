@@ -1,0 +1,12 @@
+id: bind-registration-specialization
+valid:
+  - |
+    from flext_core import p, t
+    value: p.RegisterableService
+  - |
+    from foreign import t
+    value: t.ForeignValue
+invalid:
+  - |
+    from flext_core import t
+    value: t.RegisterableService

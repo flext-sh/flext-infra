@@ -899,6 +899,20 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                     ),
                 ),
             )
+        # Capture absence witnesses before staging creates their missing parents.
+        recorded = FlextInfraMiseArtifactsJournal.append_prepared(
+            session.plan, session.journal, (), sources=sources.value
+        )
+        if recorded.failure:
+            return result_type.from_failure(recorded)
+        persisted = self._write_journal(
+            layout, recorded.value, expected=session.journal_state
+        )
+        if persisted.failure:
+            return result_type.from_failure(persisted)
+        session = session.model_copy(
+            update={"journal": recorded.value, "journal_state": persisted.value},
+        )
         source_states = tuple(source for _phase, source in sources.value)
         return result_type.ok((session, sources.value, source_states))
 

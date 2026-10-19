@@ -1272,30 +1272,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         return r[Path].ok(scope_root)
 
     @staticmethod
-    def lazy_repository_task(root: Path) -> m.Infra.CodegenPhaseOutcome:
-        """Analyze one repository's lazy-init surface in a fleet worker.
-
-        Returns:
-            The repository's lazy-init analysis, or its logical failure as data.
-
-        """
-        analysis = FlextInfraCodegenLazyInit(
-            repository_root=root,
-            project_scope_roots=(root,),
-        ).plan_files()
-        if analysis.failure:
-            return m.Infra.CodegenPhaseOutcome(
-                error=analysis.error or f"lazy-init analysis failed: {root}",
-                exception=analysis.exception,
-            )
-        return m.Infra.CodegenPhaseOutcome(analysis=analysis.value)
-
-    @staticmethod
     def _lazy_phase(
         request: m.Infra.CodegenConformRequest,
         plan: m.Infra.CodegenPlan,
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Plan each selected repository through its own Rope boundary.
+        """Compose selected repositories in one authenticated source epoch.
 
         APPLY captures this analysis before phase publication.
         ADR-014: lazy-init ownership stays inside conform's
@@ -1307,57 +1288,15 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             The resulting ``p.Result[m.Infra.CodegenPhaseAnalysis]``.
 
         """
-        files: list[m.Infra.CodegenFilePlan] = []
-        inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
-        publications: list[m.Infra.LazyInitPlan] = []
-        issues: list[m.Infra.Issue] = []
-        first_exception: BaseException | None = None
         roots = tuple(
             (request.root / repository.path).resolve()
             for repository in plan.repositories
             if repository.kind is c.Infra.ProjectKind.INTERNAL_FLEXT
         )
-        # Each repository analyzes through its own Rope boundary, read-only.
-        # The analysis runs one global in-process loop so the shared workspace
-        # Rope session (and its one structural index) serves every repository:
-        # the forkserver fleet pool cannot inherit the unpicklable Rope
-        # project and would reindex the same workspace tree once per worker.
-        outcomes = tuple(
-            FlextInfraCodegenConformExecute.lazy_repository_task(root) for root in roots
-        )
-        for root, outcome in zip(roots, outcomes, strict=True):
-            if first_exception is None:
-                first_exception = outcome.exception
-            issues.extend(outcome.issues)
-            if outcome.analysis is None:
-                if outcome.error:
-                    issues.append(
-                        m.Infra.Issue(
-                            file=str(root),
-                            line=0,
-                            column=0,
-                            code=c.Infra.ToolOutcome.ERROR.value,
-                            message=outcome.error,
-                        ),
-                    )
-                continue
-            files.extend(outcome.analysis.files)
-            if first_exception is None:
-                first_exception = outcome.analysis.exception
-            issues.extend(outcome.analysis.issues)
-            publications.extend(outcome.analysis.publications)
-            for state in outcome.analysis.inputs:
-                inputs[state.path] = state
-        return r[m.Infra.CodegenPhaseAnalysis].ok(
-            m.Infra.CodegenPhaseAnalysis(
-                phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
-                files=tuple(files),
-                inputs=tuple(inputs[path] for path in sorted(inputs)),
-                publications=tuple(publications),
-                issues=tuple(issues),
-                exception=first_exception,
-            ),
-        )
+        return FlextInfraCodegenLazyInit(
+            repository_root=request.root,
+            project_scope_roots=roots,
+        ).plan_files()
 
     def _prepare_managed_plan(
         self,

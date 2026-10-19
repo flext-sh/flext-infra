@@ -116,6 +116,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 
         Raises:
             ValueError: When the identity does not name an attribute.
+            TypeError: The fetched provider violates its native semantic contract.
 
         """
         attributes = expression.split(".")
@@ -123,9 +124,13 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         if not attributes:
             message = f"Rope identity requires an attribute: {expression}"
             raise ValueError(message)
-        value = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
-            project.get_module(module),
-        )
+        try:
+            value = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                project.get_module(module),
+            )
+        except TypeError as error:
+            error.add_note(f"Rope identity {expression!r} in module {module!r}")
+            raise
         identity = value.get_attribute(attributes[0])
         for attribute in attributes[1:]:
             identity = identity.get_object().get_attribute(attribute)

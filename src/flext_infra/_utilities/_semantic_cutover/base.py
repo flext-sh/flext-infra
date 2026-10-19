@@ -206,7 +206,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
             return aliases
         working = dict(sources)
         working.update((edit.file_path, edit.updated_source) for edit in aliases.value)
-        api = cls._plan_api_aliases(workspace.repository_root, working, selected)
+        api = cls._plan_api_aliases(workspace, working, selected)
         if api.failure:
             return api
         working.update((edit.file_path, edit.updated_source) for edit in api.value)

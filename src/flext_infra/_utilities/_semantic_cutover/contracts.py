@@ -8,16 +8,19 @@ from __future__ import annotations
 
 import ast
 import inspect
-from functools import partial
 from pathlib import Path
 
 from flext_cli import cli, u
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesCodemodProject,
+    FlextInfraUtilitiesPrivateImportAncestry,
+    FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
@@ -31,6 +34,12 @@ from flext_infra._utilities._semantic_cutover import (
 )
 from flext_infra._utilities._semantic_cutover.declaration_retirement import (
     FlextInfraUtilitiesSemanticDeclarationRetirement,
+)
+from flext_infra._utilities._semantic_cutover.family_type_references import (
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
+)
+from flext_infra._utilities._semantic_cutover.private_imports import (
+    FlextInfraUtilitiesSemanticCutoverPrivateImports,
 )
 
 
@@ -58,20 +67,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
     def declared_contract_rules(
         repository_root: t.Infra.RopeSourcePath,
     ) -> t.SequenceOf[p.Infra.RopeContractRule]:
-        """Load typed policy; reject duplicate identities and undeclared families.
-
-        The packaged catalogue holds only universal rules. A governed repository
-        declares rules about its own symbols in the same relative path under its
-        root; that overlay is optional, and its absence declares no rule.
-
-        Returns:
-            Packaged rules, then the repository's own rules, in file order.
-
-        Raises:
-            ValueError: If two rules share an identity or a rule names an
-                undeclared facade family.
-
-        """
+        """Load universal and elected repo rules; reject duplicate IDs/unknown families."""
         packaged = (
             type(config).ssot_config_dir().parent
             / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
@@ -126,15 +122,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
     def _contract_arguments(
         rule: p.Infra.RopeContractRule,
     ) -> t.MappingKV[str, str | t.StrSequence]:
-        """Prove the selected member for an ownership-transfer rule.
-
-        Returns:
-            The native receiver constraints the rule must satisfy.
-
-        Raises:
-            ValueError: The transfer rule lacks its single receiver constraint.
-
-        """
+        """Require a transfer's single native receiver constraint."""
         if rule.ownership_transfer is None:
             return rule.arguments
         if len(rule.arguments) != 1 or not all(
@@ -153,22 +141,39 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[t.Infra.RopeSourcePath, str],
         rules: t.SequenceOf[p.Infra.RopeContractRule],
+        *,
+        captured: p.Infra.CodemodSourceEpoch | None = None,
+        annotation_only: bool = False,
+        class_alias_only: bool = False,
     ) -> p.Result[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
-        """Reuse the native contract loop for an already validated rule domain.
+        """Plan native changes against one authenticated source epoch.
 
-        Args:
-            workspace: Authenticated Rope workspace owning every source.
-            sources: Current source text captured per absolute path.
-            rules: Validated contract rules admitted for this domain.
-
-        Returns:
-            Content plans consumed by the existing semantic publication owner.
-
-        Raises:
-            ValueError: A rule names an undeclared Rope contract family.
-
+        Filters narrow matches without weakening receiver or import proofs.
         """
         items = cls._editable_sources(sources)
+        # Elect receivers without making unrelated generated sources editable.
+        providers: dict[t.Infra.RopeSourcePath, str] = {}
+        for rule in rules:
+            if rule.ownership_transfer is None and captured is None:
+                continue
+            for identity in rule.bindings.values():
+                binding = FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+                    workspace.rope_project, identity
+                )
+                module = binding.get_object().get_module()
+                resource = module.get_resource() if module is not None else None
+                if resource is None:
+                    msg = f"{rule.id}: transfer receiver has no native source"
+                    raise ValueError(msg)
+                path = Path(resource.real_path).resolve()
+                if path in sources:
+                    providers[path] = sources[path]
+        items = tuple(sorted({**dict(items), **providers}.items()))
+        staged_receivers = frozenset(
+            path
+            for path in providers
+            if sources[path].startswith(c.Infra.AUTOGEN_HEADERS)
+        )
         if not items or not rules:
             return r[t.VariadicTuple[p.Infra.SemanticMigrationEdit]].ok(())
         transfers = any(rule.ownership_transfer is not None for rule in rules)
@@ -202,14 +207,16 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         applied: t.MutableMappingKV[
             t.Infra.RopeSourcePath, t.MutableSequenceOf[str]
         ] = {}
-        epoch = cls._contract_epoch(workspace, working, rules)
-        # A snapshot is a pure function of (working, epoch); restructuring only
-        # plans a ChangeSet, so consecutive rules share one graph until a rule
-        # actually changes a source.
+        epoch = (
+            captured
+            if captured is not None
+            else cls._contract_epoch(workspace, sources, rules)
+        )
+        # Every snapshot retains the staged view and the original captured epoch.
         project: p.Infra.RopeProject | None = None
         try:
             project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                workspace.rope_project, working, captured=epoch
+                workspace.rope_project, {**sources, **working}, captured=epoch
             )
             owned_modules = {
                 FlextInfraUtilitiesRopeCore.resolve_pymodule(
@@ -230,7 +237,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
             for rule in rules:
                 if project is None:
                     project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                        workspace.rope_project, working, captured=epoch
+                        workspace.rope_project, {**sources, **working}, captured=epoch
                     )
                 resources = tuple(
                     project.get_resource(
@@ -238,6 +245,50 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                     )
                     for path in working
                 )
+                selected_project = project
+
+                def admit(
+                    module: p.Infra.RopePyModule,
+                    match: p.Infra.RopeContractMatch,
+                ) -> bool:
+                    first, last = match.get_region()
+                    if annotation_only and not any(
+                        begin <= first < last <= end
+                        for begin, end, _line in FlextInfraUtilitiesSemanticFamilyTypeReferences.annotation_regions(
+                            module.source_code, module
+                        )
+                    ):
+                        return False
+                    if class_alias_only:
+                        captured_node = match.get_ast("receiver")
+                        tree = module.get_ast()
+                        if not isinstance(tree, ast.Module):
+                            msg = "class-alias transfer has no native module AST"
+                            raise TypeError(msg)
+                        if (
+                            not any(
+                                isinstance(node, ast.Assign)
+                                and len(node.targets) == 1
+                                and isinstance(node.targets[0], ast.Name)
+                                and node.value is captured_node
+                                for node in ast.walk(tree)
+                            )
+                            or FlextInfraUtilitiesRopeRuntimeModules.scope_at(
+                                module, first
+                            ).get_kind()
+                            != c.Infra.RopeScopeKind.CLASS
+                        ):
+                            return False
+                    return cls._admit_contract_match(
+                        selected_project,
+                        rule,
+                        module,
+                        match,
+                        implementation_owners=implementation_owners,
+                        sources={**epoch.sources, **working},
+                        owned_modules=owned_modules,
+                    )
+
                 changes = FlextInfraUtilitiesRopeRuntimeRefactors.restructure_changes(
                     project,
                     m.Infra.RopeRestructureRequest(
@@ -246,14 +297,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
                         arguments=cls._contract_arguments(rule),
                         resources=resources,
                         imports=rule.imports,
-                        match_filter=partial(
-                            cls._admit_contract_match,
-                            project,
-                            rule,
-                            implementation_owners=implementation_owners,
-                            sources={**epoch.sources, **working},
-                            owned_modules=owned_modules,
-                        ),
+                        match_filter=admit,
                     ),
                 )
                 members = FlextInfraUtilitiesRopeRuntimeRefactors.change_set_members(
@@ -282,11 +326,26 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         finally:
             if project is not None:
                 project.close()
+        retirement_sources = {**sources, **working}
         retired, providers = (
             FlextInfraUtilitiesSemanticDeclarationRetirement.retire_contract_owners(
-                workspace, working, rules, epoch, owned_modules
+                workspace, retirement_sources, rules, epoch, owned_modules
             )
         )
+        working.update((path, retirement_sources[path]) for path in working)
+        if captured is not None and staged_receivers:
+            normalized = cls._normalize_projected_consumers(
+                workspace, retirement_sources, epoch, tuple(working), staged_receivers
+            )
+            items = tuple(
+                sorted(
+                    {
+                        **dict(items),
+                        **{path: sources[path] for path in normalized},
+                    }.items()
+                )
+            )
+            working.update((path, retirement_sources[path]) for path in normalized)
         for path, original in items:
             if working[path] != original or path in providers:
                 applied.setdefault(path, []).append(
@@ -312,17 +371,162 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         )
 
     @staticmethod
+    def _normalize_projected_consumers(
+        workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MutableMappingKV[Path, str],
+        epoch: p.Infra.CodemodSourceEpoch,
+        consumers: t.SequenceOf[Path],
+        receivers: frozenset[Path],
+    ) -> tuple[Path, ...]:
+        """Reuse facade election and import cutover inside the captured source epoch."""
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        imports = FlextInfraUtilitiesPrivateImportFacades
+        project = runtime.snapshot_project(
+            workspace.rope_project, sources, captured=epoch
+        )
+        changed: list[Path] = []
+        try:
+            layout = FlextInfraUtilitiesCodegenNamespace.layout(
+                workspace.repository_root, rope_project=project
+            )
+            if layout is None:
+                msg = "projected consumers have no elected project layout"
+                raise ValueError(msg)
+            facade = FlextInfraUtilitiesCodegenFacades.facade_module_path(
+                layout.package_dir, "p", project=project, sources=sources
+            )
+            rendered = FlextInfraUtilitiesCodegenFacades.render_utility_facade(
+                layout.package_dir, family="p", project=project, sources=sources
+            )
+            if facade is None or rendered is None:
+                msg = "projected receivers have no canonical public protocol facade"
+                raise ValueError(msg)
+            if sources[facade] != rendered:
+                sources[facade] = rendered
+                changed.append(facade)
+            project.close()
+            project = runtime.snapshot_project(
+                workspace.rope_project, sources, captured=epoch
+            )
+            modules = imports.source_modules(sources, ())
+            facades = imports.discover(modules)
+            bindings, _exports = imports.declared_exports(modules)
+            bases = FlextInfraUtilitiesPrivateImportAncestry.class_bases(modules)
+            family = (
+                layout.package_dir
+                / FlextInfraUtilitiesCodegenNamespace.facade_families()["p"].directory
+            )
+            root = Path(project.root.real_path)
+            resolve = FlextInfraUtilitiesRopeCore.resolve_pymodule
+            for path in consumers:
+                if path == facade or path.is_relative_to(family):
+                    continue
+                module_resource = project.get_resource(
+                    path.relative_to(root).as_posix()
+                )
+                module = resolve(project, module_resource)
+                specs: list[t.Infra.PrivateImportSpec] = []
+                native_imports = (
+                    FlextInfraUtilitiesSemanticDeclarationRelocation.native_import_infos
+                )
+                references = FlextInfraUtilitiesSemanticFamilyTypeReferences
+                for information in native_imports(project, module):
+                    if not isinstance(information, p.Infra.RopeFromImport):
+                        continue
+                    for name, alias in information.names_and_aliases:
+                        local = alias or name
+                        binding = runtime.expression_name(module.get_scope(), local)
+                        if binding is None:
+                            msg = f"consumer import has no native binding: {local} in {path}"
+                            raise ValueError(msg)
+                        owner = binding.get_object().get_module()
+                        resource = owner.get_resource() if owner is not None else None
+                        if (
+                            owner is None
+                            or resource is None
+                            or Path(resource.real_path) not in receivers
+                        ):
+                            continue
+                        qualified = (
+                            f"{owner.get_name()}.{binding.get_object().get_name()}"
+                        )
+                        reference = imports.public_reference(
+                            owners=facades.get(layout.package_name, ()),
+                            package=layout.package_name,
+                            qualified=qualified,
+                            bindings=bindings,
+                            class_bases=bases,
+                        )
+                        if reference is None or reference.partition(".")[0] != "p":
+                            msg = f"projected receiver has no unique public protocol export: {qualified}"
+                            raise ValueError(msg)
+                        primaries = [
+                            (sources[path][begin:end], runtime.scope_at(module, begin))
+                            for begin, end in references.reference_regions(
+                                sources[path]
+                            )
+                        ]
+                        primaries.extend(
+                            (value[begin:end], lexical)
+                            for value, lexical, _line in references.scoped_quoted_type_references(
+                                sources[path], project, module
+                            )
+                            for begin, end in references.reference_regions(value)
+                        )
+                        for primary, lexical in primaries:
+                            root, separator, tail = primary.partition(".")
+                            if root != local or not runtime.same_name(
+                                binding, runtime.expression_name(lexical, root)
+                            ):
+                                continue
+                            public = runtime.qualified_name(
+                                project,
+                                reference + (f".{tail}" if separator else ""),
+                                module_name=layout.package_name,
+                            )
+                            if not runtime.same_name(
+                                public, runtime.expression_name(lexical, primary)
+                            ):
+                                msg = f"public receiver changes native identity: {primary} in {path}"
+                                raise ValueError(msg)
+                        imported_module = FlextInfraUtilitiesRopeAnalysis.resolve_import_module(
+                            current_package=FlextInfraUtilitiesRopeAnalysis.package_name_for_module(
+                                module.get_name(), module_resource
+                            ),
+                            module_name=information.module_name,
+                            level=information.level,
+                        )
+                        specs.append((
+                            imported_module,
+                            name,
+                            f"{imported_module}.{name}",
+                            layout.package_name,
+                            reference,
+                        ))
+                if specs:
+                    updated, _operations = (
+                        FlextInfraUtilitiesSemanticCutoverPrivateImports._rewrite_private_imports(
+                            path,
+                            sources[path],
+                            file_specs=specs,
+                            direct_specs={},
+                            facades=facades,
+                        )
+                    )
+                    if updated != sources[path]:
+                        sources[path] = updated
+                        changed.append(path)
+            return tuple(changed)
+        finally:
+            project.close()
+
+    @staticmethod
     def _contract_epoch(
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[t.Infra.RopeSourcePath, str],
         rules: t.SequenceOf[p.Infra.RopeContractRule],
     ) -> p.Infra.CodemodSourceEpoch:
-        """Capture the edited sources and every identity the rules constrain.
-
-        Returns:
-            The immutable source epoch shared by every rule of this plan.
-
-        """
+        """Capture the sources and every identity the rules constrain."""
         prefix = c.Infra.ROPE_NAME_CONSTRAINT_PREFIX
         return FlextInfraUtilitiesCodemodProject.identity_source_epoch(
             Path(workspace.rope_project.root.real_path),
@@ -361,16 +565,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         sources: t.MappingKV[t.Infra.RopeSourcePath, str],
         owned_modules: t.MappingKV[str, t.Infra.RopeSourcePath] | None = None,
     ) -> bool:
-        """Prove native receivers, evaluation safety and destination bindings.
-
-        Returns:
-            Whether the original occurrence belongs to the declared contract domain.
-
-        Raises:
-            ValueError: A declared capture cannot disappear or repeat safely,
-                or the destination identity is not established.
-
-        """
+        """Prove native receivers, evaluation safety and destination bindings."""
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         resource = module.get_resource()
@@ -525,15 +720,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         rule: p.Infra.RopeContractRule,
         module: p.Infra.RopePyModule,
     ) -> bool:
-        """Elect a facade family from the module's native qualified identity.
-
-        Returns:
-            Whether the declared family admits this physical source module.
-
-        Raises:
-            ValueError: A family-constrained match has no physical source.
-
-        """
+        """Elect a physical source's family from its native qualified identity."""
         if module.get_resource() is None:
             message = f"{rule.id}: family-constrained match has no source resource"
             raise ValueError(message)
@@ -556,12 +743,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         rule: p.Infra.RopeContractRule,
         scope: p.Infra.RopeScope,
     ) -> bool:
-        """Require every declared builtin to retain its native lexical binding.
-
-        Returns:
-            Whether all declared builtin names are unshadowed.
-
-        """
+        """Require every builtin to retain its native lexical binding."""
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         return all(
             (lexical := runtime.lexical_scope(scope, name)) is not None
@@ -577,11 +759,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         match: p.Infra.RopeContractMatch,
         methods: t.StrSequence,
     ) -> bool:
-        """Preserve configured, escaping and rebound native factory products.
-
-        Only discarded calls on the declared compatible receiver interface
-        establish this proof. The factory expression itself is never inlined.
-        """
+        """Admit discarded compatible receivers; never inline factory evaluation."""
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         tree = module.get_ast()
@@ -793,15 +971,7 @@ class FlextInfraUtilitiesSemanticContracts(FlextInfraUtilitiesSemanticCutoverEdi
         scope: p.Infra.RopeScope,
         offset: int,
     ) -> bool:
-        """Prove each destination and its preceding unconditional import.
-
-        Returns:
-            True when every existing destination retains its declared identity.
-
-        Raises:
-            ValueError: A destination is shadowed or its import does not precede it.
-
-        """
+        """Prove each destination and its preceding unconditional import."""
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         for expression, expected in rule.bindings.items():
             identity = runtime.qualified_name(project, expected)

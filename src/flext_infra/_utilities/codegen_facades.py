@@ -700,6 +700,87 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             tuple(cls._base_name(base) for base in namespace.bases),
             ancestors,
         )
+        if namespace is not facade and any(
+            class_name in reachable
+            and c.Infra.PROTOCOL_BASE
+            not in cls._reachable_bases((class_name,), ancestors)
+            for _module, class_name, _members in owners
+        ):
+            wrapper = MetadataWrapper(parse_module(source))
+            positions = wrapper.resolve(PositionProvider)
+            for node, span in positions.items():
+                if (
+                    not isinstance(node, ClassDef)
+                    or span.start.line != namespace.lineno
+                ):
+                    continue
+                replacement = node.with_changes(
+                    bases=tuple(
+                        base
+                        for base in node.bases
+                        if wrapper.module.code_for_node(base.value)
+                        != c.Infra.PROTOCOL_BASE
+                    ),
+                    decorators=tuple(
+                        decorator
+                        for decorator in node.decorators
+                        if wrapper.module.code_for_node(decorator.decorator)
+                        != "runtime_checkable"
+                    ),
+                )
+                updated = wrapper.module.deep_replace(node, replacement)
+                if not isinstance(updated, Module):
+                    message = (
+                        "protocol namespace projection did not preserve the module"
+                    )
+                    raise ValueError(message)
+                source = updated.code
+                break
+            context = CodemodContext()
+            for name in (c.Infra.PROTOCOL_BASE, "runtime_checkable"):
+                RemoveImportsVisitor.remove_unused_import(context, "typing", name)
+            source = (
+                RemoveImportsVisitor(context)
+                .transform_module(parse_module(source))
+                .code
+            )
+            facade, namespace = cls._facade_classes(
+                ast.parse(source, filename=str(facade_path)),
+                facade_path,
+            )
+        inherited_protocols = {
+            (class_name, member)
+            for _module, class_name, members in owners
+            if class_name in reachable
+            for member in members
+        }
+        shadows = [
+            member
+            for member in namespace.body
+            if isinstance(member, ast.AnnAssign)
+            and isinstance(member.target, ast.Name)
+            and isinstance(member.annotation, ast.Subscript)
+            and isinstance(member.annotation.value, ast.Name)
+            and member.annotation.value.id == "type"
+            and isinstance(member.value, ast.Attribute)
+            and isinstance(member.value.value, ast.Name)
+            and member.target.id == member.value.attr
+            and (member.value.value.id, member.value.attr) in inherited_protocols
+            and ast.dump(member.annotation.slice) == ast.dump(member.value)
+        ]
+        if shadows:
+            lines = source.splitlines(keepends=True)
+            for member in reversed(shadows):
+                lines[member.lineno - 1 : member.end_lineno] = (
+                    [f"{' ' * member.col_offset}pass\n"]
+                    if len(shadows) == len(namespace.body) and member is shadows[0]
+                    else []
+                )
+            source = "".join(lines)
+            facade, namespace = cls._facade_classes(
+                ast.parse(source, filename=str(facade_path)),
+                facade_path,
+            )
         additions: list[t.Pair[str, str]] = []
         declared = {
             member.name

@@ -461,6 +461,9 @@ class FlextInfraProtocolsBase(Protocol):
         def class_stem(self) -> str: ...
 
         @property
+        def upstream(self) -> str: ...
+
+        @property
         def namespace(self) -> str: ...
 
     @runtime_checkable

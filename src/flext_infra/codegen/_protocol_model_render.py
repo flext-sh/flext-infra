@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from collections import defaultdict
 from pathlib import Path
 from textwrap import dedent, indent
 
-from flext_infra import c, config, m, p, t, u
+from flext_infra import c, config, p, t, u
 from flext_infra.codegen import FlextInfraCodegenProtocolModelAnnotations
 
 
@@ -19,9 +20,9 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
 
     def render_member_modules(
         self,
-        models: t.MappingKV[str, t.ModelClass[m.BaseModel]],
+        models: t.MappingKV[str, p.Infra.RopePyName],
         protocol_directory: Path,
-        aliases: t.MappingKV[str, t.StrSequence],
+        aliases: t.MappingKV[str, str],
     ) -> t.MappingKV[Path, str]:
         """Render source-bound declarations and their composing owner modules.
 
@@ -41,7 +42,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
                 msg = f"model declaration has no native scope: {name}"
                 raise ValueError(msg)
             body = self._render_protocol(name.rpartition(".")[2], model, scope)
-            grouped[name.rpartition(".")[0]].append((model.__module__, body))
+            grouped[name.rpartition(".")[0]].append((self.identity(declaration), body))
         modules: t.MutableMappingKV[Path, str] = {}
         for namespace, bodies in grouped.items():
             parts: list[tuple[str, str]] = []
@@ -51,7 +52,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             for _owner, body in bodies:
                 header = self._module_header(self.project, self.imports)
                 if chunk and (
-                    header.count("\n") + chunk.count("\n") + body.count("\n") + 1
+                    header.count("\n") + chunk.count("\n") + body.count("\n") + 4
                     > config.Infra.codegen.loc_cap.max_lines
                 ):
                     self._append_part(
@@ -59,7 +60,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
                     )
                     chunk = ""
                 if (
-                    header.count("\n") + body.count("\n") + 1
+                    header.count("\n") + body.count("\n") + 4
                     > config.Infra.codegen.loc_cap.max_lines
                 ):
                     msg = (
@@ -84,9 +85,8 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             )
             bases = ", ".join(owner for _module, owner in parts)
             alias_lines = [
-                f"    type {name.rpartition('.')[2]} = "
-                + " | ".join(f"_public.p.{route}" for route in routes)
-                for name, routes in aliases.items()
+                f"    type {name.rpartition('.')[2]} = {annotation}"
+                for name, annotation in aliases.items()
                 if name.rpartition(".")[0] == namespace
             ]
             modules[protocol_directory / f"{stem}.py"] = (
@@ -96,12 +96,16 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
                 + "\n".join(alias_lines)
                 + f'\n\n__all__: list[str] = ["{aggregate}"]\n'
             )
+        for path, content in modules.items():
+            if len(content.splitlines()) > config.Infra.codegen.loc_cap.max_lines:
+                msg = f"protocol module exceeds configured LOC cap: {path}"
+                raise ValueError(msg)
         return modules
 
     def _render_protocol(
         self,
         name: str,
-        model: t.ModelClass[m.BaseModel],
+        model: p.Infra.RopePyName,
         scope: p.Infra.RopeScope,
     ) -> str:
         """Preserve field mutability and the model's authored method signatures.
@@ -119,15 +123,70 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         if not u.Infra.source_module(module):
             msg = f"model declaration has no source module: {name}"
             raise ValueError(msg)
-        statements = u.Infra.logical_statements(module.source_code)
-        annotation_regions = u.Infra.annotation_regions(module.source_code, module)
-        for method in scope.get_scopes():
+        methods: dict[str, list[p.Infra.RopeScope]] = {}
+        for ancestor in reversed(self.source_lineage(model)):
+            owner = ancestor.get_module()
+            lexical = ancestor.get_scope()
+            resource = owner.get_resource() if owner is not None else None
+            if (
+                resource is None
+                or lexical is None
+                or not Path(resource.real_path).is_relative_to(
+                    self.workspace.repository_root
+                )
+            ):
+                continue
+            declared: dict[str, list[p.Infra.RopeScope]] = {}
+            for method in lexical.get_scopes():
+                if method.get_kind() == c.Infra.RopeScopeKind.FUNCTION:
+                    declared.setdefault(method.pyobject.get_name(), []).append(method)
+            methods.update(declared)
+        for method in (item for group in methods.values() for item in group):
             method_name = method.pyobject.get_name()
             if (
                 method.get_kind() != c.Infra.RopeScopeKind.FUNCTION
                 or method_name.startswith(("_", "model_"))
             ):
                 continue
+            definition = method.pyobject
+            if not isinstance(definition, p.Infra.RopeSourceDefinition):
+                msg = f"public method has no authenticated declaration: {method_name}"
+                raise TypeError(msg)
+            node = definition.get_ast()
+            if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                msg = f"public method has no native callable AST: {method_name}"
+                raise TypeError(msg)
+            module = definition.get_module()
+            lexical = method.parent
+            if not u.Infra.source_module(module) or lexical is None:
+                msg = f"method has no authenticated lexical module: {method_name}"
+                raise TypeError(msg)
+            statements = u.Infra.logical_statements(module.source_code)
+            annotation_regions = u.Infra.annotation_regions(module.source_code, module)
+            arguments = (
+                *node.args.posonlyargs,
+                *node.args.args,
+                *node.args.kwonlyargs,
+                *((node.args.vararg,) if node.args.vararg is not None else ()),
+                *((node.args.kwarg,) if node.args.kwarg is not None else ()),
+            )
+            positional = (*node.args.posonlyargs, *node.args.args)
+            receiver = (
+                positional[0]
+                if positional
+                and not any(
+                    self.is_type(decorator, lexical, "builtins", "staticmethod")
+                    for decorator in node.decorator_list
+                )
+                else None
+            )
+            if node.returns is None or any(
+                argument.annotation is None
+                and not (argument is receiver and argument.arg in {"self", "cls"})
+                for argument in arguments
+            ):
+                msg = f"public method {name}.{method_name} has an untyped signature"
+                raise TypeError(msg)
             statement = next(
                 item for item in statements if item.line == method.get_start()
             )
@@ -144,7 +203,16 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
                 if statement.start_offset <= begin < stop <= header_end:
                     signature = (
                         signature[: begin - statement.start_offset]
-                        + self.source(module.source_code[begin:stop], scope)
+                        + self.source(
+                            module.source_code[begin:stop],
+                            method,
+                            {
+                                parameter.name: ast.Name(
+                                    id=parameter.name, ctx=ast.Load()
+                                )
+                                for parameter in node.type_params
+                            },
+                        )
                         + signature[stop - statement.start_offset :]
                     )
             signature = dedent(signature)
@@ -152,27 +220,25 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             if "->" not in signature:
                 msg = f"public method {name}.{method_name} lacks a return annotation"
                 raise TypeError(msg)
-            descriptor = vars(model).get(method_name)
-            if type(descriptor) is property:
-                setter = any(
-                    item.text.strip() == f"@{method_name}.setter"
-                    for item in statements
-                    if method.get_region()[0] <= item.start_offset
-                    and item.line < method.get_start()
-                )
-                lines.append(
-                    f"    @{method_name}.setter" if setter else "    @property"
-                )
-            elif type(descriptor) in {classmethod, staticmethod}:
-                lines.append(f"    @{type(descriptor).__name__}")
-            self.record_imports(signature, scope)
+            for decorator in node.decorator_list:
+                if any(
+                    self.is_type(decorator, lexical, "builtins", descriptor)
+                    for descriptor in ("property", "classmethod", "staticmethod")
+                ) or (
+                    isinstance(decorator, ast.Attribute) and decorator.attr == "setter"
+                ):
+                    lines.append(f"    @{ast.unparse(decorator)}")
+                else:
+                    msg = f"public method decorator has no structural proof: {name}.{method_name}"
+                    raise TypeError(msg)
+            self.record_imports(signature, method)
             lines.append(indent(f"{signature}: ...", "    "))
         if not lines:
             lines.append("    pass")
         return (
             "\n".join((
                 "@runtime_checkable",
-                f"class {name}(Protocol):",
+                f"class {name}(p.Model, Protocol):",
                 '    """Structural contract generated from a validated model."""',
                 "",
                 *lines,
@@ -181,15 +247,13 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         )
 
     def _field_lines(
-        self, model: t.ModelClass[m.BaseModel], scope: p.Infra.RopeScope
+        self, model: p.Infra.RopePyName, scope: p.Infra.RopeScope
     ) -> list[str]:
         lines: list[str] = []
-        for field_name, field in model.model_fields.items():
-            if field.annotation is None:
-                msg = f"field {field_name!r} has no annotation"
-                raise TypeError(msg)
-            rendered = self.render(field.annotation, scope)
-            if model.model_config.get("frozen", False) is True or field.frozen is True:
+        fields, frozen = self.source_fields(model)
+        for field_name, (annotation, lexical, field_frozen) in fields.items():
+            rendered = self.source(ast.unparse(annotation), lexical)
+            if frozen or field_frozen:
                 lines.extend((
                     "    @property",
                     f"    def {field_name}(self) -> {rendered}: ...",
@@ -197,6 +261,155 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             else:
                 lines.append(f"    {field_name}: {rendered}")
         return lines
+
+    def source_lineage(
+        self, binding: p.Infra.RopePyName
+    ) -> tuple[p.Infra.RopePyObject, ...]:
+        """Reuse the canonical C3 merger over authenticated native class owners."""
+        owners: dict[str, p.Infra.RopePyObject] = {}
+
+        def lineage(
+            value: p.Infra.RopePyObject, visiting: frozenset[str]
+        ) -> tuple[str, ...]:
+            identity = self.identity(value)
+            if identity in visiting:
+                msg = f"cyclic native model ancestry: {identity}"
+                raise ValueError(msg)
+            owners[identity] = value
+            object_type = u.Infra.qualified_name(
+                self.workspace.rope_project, "object", module_name="builtins"
+            ).get_object()
+            bases = tuple(
+                base for base in u.Infra.direct_bases(value) if base != object_type
+            )
+            return (
+                identity,
+                *u.Infra.merge_class_lineages(
+                    (
+                        *(lineage(base, visiting | {identity}) for base in bases),
+                        tuple(self.identity(base) for base in bases),
+                    ),
+                    message=f"inconsistent native model ancestry: {identity}",
+                ),
+            )
+
+        return tuple(
+            owners[identity] for identity in lineage(binding.get_object(), frozenset())
+        )
+
+    def source_fields(
+        self, binding: p.Infra.RopePyName
+    ) -> tuple[dict[str, tuple[ast.expr, p.Infra.RopeScope, bool]], bool]:
+        """Project native inherited fields in the canonical C3 source order."""
+        fields: dict[str, tuple[ast.expr, p.Infra.RopeScope, bool]] = {}
+        frozen = False
+        for owner in reversed(self.source_lineage(binding)):
+            identity = self.identity(owner)
+            if not isinstance(owner, p.Infra.RopeSourceDefinition):
+                continue
+            node, lexical = owner.get_ast(), owner.get_scope()
+            if not isinstance(node, ast.ClassDef) or lexical is None:
+                msg = f"model ancestor has no native class declaration: {identity}"
+                raise TypeError(msg)
+            keyword_policy: bool | None = None
+            for keyword in node.keywords:
+                if keyword.arg is None:
+                    msg = f"model keyword configuration has no native closed proof: {identity}"
+                    raise TypeError(msg)
+                if keyword.arg == "frozen":
+                    if not isinstance(keyword.value, ast.Constant) or not isinstance(
+                        keyword.value.value, bool
+                    ):
+                        msg = f"model keyword frozen policy has no native boolean proof: {identity}"
+                        raise TypeError(msg)
+                    keyword_policy = keyword.value.value
+            for statement in node.body:
+                if not isinstance(statement, ast.Assign | ast.AnnAssign):
+                    continue
+                targets = (
+                    statement.targets
+                    if isinstance(statement, ast.Assign)
+                    else [statement.target]
+                )
+                if any(
+                    isinstance(target, ast.Name) and target.id == "model_config"
+                    for target in targets
+                ):
+                    value = statement.value
+                    if not isinstance(value, ast.Call | ast.Dict):
+                        msg = f"model configuration has no native literal proof: {identity}"
+                        raise TypeError(msg)
+                    if isinstance(value, ast.Call) and not (
+                        self.is_type(value.func, lexical, "pydantic", "ConfigDict")
+                        or self.is_type(value.func, lexical, "builtins", "dict")
+                    ):
+                        msg = f"model configuration has no canonical source owner: {identity}"
+                        raise TypeError(msg)
+                    options = (
+                        [(item.arg, item.value) for item in value.keywords]
+                        if isinstance(value, ast.Call)
+                        else [
+                            (key.value if isinstance(key, ast.Constant) else None, item)
+                            for key, item in zip(value.keys, value.values, strict=True)
+                        ]
+                    )
+                    for key, option in options:
+                        if key is None:
+                            msg = f"expanded model configuration has no native closed proof: {identity}"
+                            raise TypeError(msg)
+                        if key == "frozen":
+                            if not isinstance(option, ast.Constant) or not isinstance(
+                                option.value, bool
+                            ):
+                                msg = f"model frozen policy has no native boolean proof: {identity}"
+                                raise TypeError(msg)
+                            frozen = option.value
+                    continue
+                if not isinstance(statement, ast.AnnAssign) or not isinstance(
+                    statement.target, ast.Name
+                ):
+                    continue
+                name = statement.target.id
+                if name.startswith("_"):
+                    continue
+                annotation = statement.annotation
+                if isinstance(annotation, ast.Subscript) and self.is_type(
+                    annotation.value, lexical, "typing", "ClassVar"
+                ):
+                    fields.pop(name, None)
+                    continue
+                field_frozen = False
+                if isinstance(annotation, ast.Subscript) and self.is_type(
+                    annotation.value, lexical, "typing", "Final"
+                ):
+                    if statement.value is not None:
+                        fields.pop(name, None)
+                        continue
+                    field_frozen = True
+                    annotation = annotation.slice
+                metadata = [statement.value] if statement.value is not None else []
+                if (
+                    isinstance(annotation, ast.Subscript)
+                    and self.is_type(annotation.value, lexical, "typing", "Annotated")
+                    and isinstance(annotation.slice, ast.Tuple)
+                ):
+                    metadata = [*annotation.slice.elts[1:], *metadata]
+                for value in metadata:
+                    if isinstance(value, ast.Call) and self.is_type(
+                        value.func, lexical, "pydantic", "Field"
+                    ):
+                        for option in value.keywords:
+                            if option.arg == "frozen":
+                                if not isinstance(
+                                    option.value, ast.Constant
+                                ) or not isinstance(option.value.value, bool):
+                                    msg = f"field frozen policy has no native boolean proof: {identity}.{name}"
+                                    raise TypeError(msg)
+                                field_frozen = option.value.value
+                fields[name] = annotation, lexical, field_frozen
+            if keyword_policy is not None:
+                frozen = keyword_policy
+        return fields, frozen
 
     def _append_part(
         self,
@@ -215,8 +428,8 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
         )
         parts.append((module, owner))
 
-    @staticmethod
     def _module_header(
+        self,
         project: p.Infra.ProjectSpec,
         imports: t.MappingKV[str, str],
     ) -> str:
@@ -226,10 +439,12 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             The resulting ``str``.
 
         """
+        upstream = project.upstream
         return (
             "# AUTO-GENERATED FILE — Regenerate with: make gen\n"
             "from __future__ import annotations\n\n"
             "from typing import Protocol, runtime_checkable\n"
+            f"from {upstream} import p\n"
             f"import {project.package_name} as _public\n"
             + "\n".join(sorted(imports.values()))
             + "\n\n"

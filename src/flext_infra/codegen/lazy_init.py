@@ -112,10 +112,11 @@ class FlextInfraCodegenLazyInit(
     def plan_files(
         self,
         *,
-        evidence_root: Path | None = None,
         source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Return one complete immutable lazy-init analysis receipt.
+
+        Planning is read-only; conform owns effects and aggregate evidence.
 
         Returns:
             One complete immutable lazy-init analysis receipt.
@@ -130,43 +131,14 @@ class FlextInfraCodegenLazyInit(
             return r[m.Infra.CodegenPhaseAnalysis].fail(
                 f"lazy-init workspace is not a directory: {self.repository_root}",
             )
-        resolved_repository_root = self.repository_root.resolve()
-        for scope_root in self.project_scope_roots or ():
-            resolved_scope_root = scope_root.resolve()
-            if not (
-                resolved_scope_root.is_dir()
-                if source_project is None
-                else source_project.source_query(resolved_scope_root, "isdir")
-            ) or not (resolved_scope_root.is_relative_to(resolved_repository_root)):
-                return r[m.Infra.CodegenPhaseAnalysis].fail(
-                    "lazy-init repository scope is missing or outside "
-                    f"{resolved_repository_root}: {scope_root}",
-                )
         started_at = perf_counter()
         u.Cli.info(
             f"lazy-init: planning read-only artifacts for {self.repository_root}",
-        )
-        report_root = (
-            resolved_repository_root if evidence_root is None else evidence_root
         )
         planned = self._plan_in_workspace(source_project=source_project)
         if planned.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
         analysis = planned.value
-        # An embedded producer leaves evidence publication to its enclosing owner.
-        if source_project is None or evidence_root is not None:
-            evidence = u.Infra.publish_refactor_report_evidence(
-                report_root,
-                analysis,
-                relative_path=c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH,
-            )
-            if evidence.failure:
-                if analysis.exception is not None:
-                    return r[m.Infra.CodegenPhaseAnalysis].fail(
-                        f"{analysis.exception}\n{evidence.error}",
-                        exception=analysis.exception,
-                    )
-                return r[m.Infra.CodegenPhaseAnalysis].from_failure(evidence)
         changed = tuple(
             plan
             for plan in analysis.files
@@ -184,20 +156,13 @@ class FlextInfraCodegenLazyInit(
         *,
         source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Plan once against a stable snapshot and expose the first failure.
+        """Capture one original epoch, retaining isolated native artifact consumers.
 
-        Returns:
-            The resulting ``p.Result[m.Infra.CodegenPhaseAnalysis]``.
-
-        """
-        return self._plan_attempt(source_project=source_project)
-
-    def _plan_attempt(
-        self,
-        *,
-        source_project: p.Infra.RopeProject | None = None,
-    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Compose explicitly selected repositories without widening their indexes.
+        Selected roots have canonical physical-path order. The enclosing
+        transaction owns aggregate evidence publication after verified effects;
+        planning has no filesystem effects. File plans, publications and issues
+        retain physical attribution, with manifests after ordered root plans.
+        Neither indexes nor semantic caches are shared.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenPhaseAnalysis]``.
@@ -208,13 +173,69 @@ class FlextInfraCodegenLazyInit(
             if self.project_scope_roots is None
             else tuple(sorted({root.resolve() for root in self.project_scope_roots}))
         )
+        if not roots:
+            return r[m.Infra.CodegenPhaseAnalysis].ok(
+                m.Infra.CodegenPhaseAnalysis(
+                    phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
+                    files=(),
+                    inputs=(),
+                ),
+            )
+        import_roots = (
+            ()
+            if source_project is not None
+            else tuple(
+                sorted({
+                    imported
+                    for root in roots
+                    if root.is_relative_to(self.repository_root.resolve())
+                    and root.is_dir()
+                    for imported in u.Infra.import_project_roots(root)
+                })
+            )
+        )
+        planned: p.Result[m.Infra.CodegenPhaseAnalysis] | None = None
+        project: p.Infra.RopeProject | None = None
+        try:
+            with self._source_binding(
+                self.repository_root.resolve(), source_project, import_roots
+            ) as binding:
+                project = binding
+                planned = self._plan_attempt(roots, source_project=binding)
+                if source_project is not None:
+                    binding.verify_source_states()
+                return planned
+        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+            if (
+                planned is None
+                or planned.failure
+                or project is None
+                or project.source_epoch_failure is not exc
+            ):
+                raise
+            return r[m.Infra.CodegenPhaseAnalysis].ok(
+                self.classify_source_conflict(planned.value, project, exc),
+            )
+
+    def _plan_attempt(
+        self,
+        roots: t.VariadicTuple[Path],
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Compose explicitly selected repositories without widening their indexes.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenPhaseAnalysis]``.
+
+        """
         composed_analyses = self._composed_repository_analyses(
             roots, source_project=source_project
         )
         if composed_analyses.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(composed_analyses)
-        analyses, inputs, target_roots = composed_analyses.value
-        if self.target_module and not target_roots:
+        analyses, _inputs, target_roots = composed_analyses.value
+        if self.target_module and not target_roots and not analyses:
             return r[m.Infra.CodegenPhaseAnalysis].fail(
                 f"lazy-init target module not found: {self.target_module}",
             )
@@ -239,13 +260,29 @@ class FlextInfraCodegenLazyInit(
                     exception=original,
                 )
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(manifests)
+        composed += manifests.value
+        directories, topology = u.Cli.atomic_merge_directory_query_receipts(
+            tuple(item for file in composed for item in file.source_directories),
+            tuple(item for file in composed for item in file.source_query_topology),
+        )
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
-                files=composed + manifests.value,
-                inputs=tuple(inputs[path] for path in sorted(inputs)),
+                files=composed,
+                inputs=m.Infra.CodemodBindingSnapshot(
+                    states=tuple(
+                        state for file in composed for state in file.source_states
+                    ),
+                ).states,
+                source_directories=directories,
+                source_query_topology=topology,
                 publications=tuple(
                     plan for analysis in analyses for plan in analysis.publications
+                ),
+                failed_targets=tuple(
+                    target
+                    for analysis in analyses
+                    for target in analysis.failed_targets
                 ),
                 issues=tuple(
                     issue for analysis in analyses for issue in analysis.issues
@@ -265,46 +302,41 @@ class FlextInfraCodegenLazyInit(
     @contextmanager
     def _source_binding(
         root: Path,
-        consumer_root: Path,
         source_project: p.Infra.RopeProject | None,
         project_roots: t.VariadicTuple[Path],
     ) -> Generator[p.Infra.RopeProject]:
-        """Bind consumers before indexing without replacing an injected epoch.
+        """Bind the shared original authority without replacing an injected epoch.
 
         Yields:
-            The bound source consumer.
+            The shared source authority, not a warmed semantic consumer.
 
         Raises:
             ValueError: When the injected authority does not cover the
-                consumer root.
+                invocation root.
 
         """
         if source_project is None:
             root = Path(
                 commonpath((str(root), *(str(project) for project in project_roots)))
             )
-            with (
-                u.Infra.facade_source_project(
-                    root,
-                    project_roots=project_roots,
-                ) as binding,
-                binding[0].source_consumer(consumer_root=consumer_root) as consumer,
-            ):
-                yield consumer
+            with u.Infra.facade_source_project(
+                root,
+                project_roots=project_roots,
+            ) as binding:
+                yield binding[0]
             return
-        if not source_project.authenticated_sources or not consumer_root.is_relative_to(
+        if not source_project.authenticated_sources or not root.is_relative_to(
             Path(source_project.root.real_path)
         ):
             msg = "lazy-init consumer is outside its authenticated original authority"
             raise ValueError(msg)
-        with source_project.source_consumer(consumer_root=consumer_root) as consumer:
-            yield consumer
+        yield source_project
 
     def _composed_repository_analyses(
         self,
         roots: t.VariadicTuple[Path],
         *,
-        source_project: p.Infra.RopeProject | None = None,
+        source_project: p.Infra.RopeProject,
     ) -> p.Result[
         t.Triple[
             list[m.Infra.CodegenPhaseAnalysis],
@@ -323,69 +355,142 @@ class FlextInfraCodegenLazyInit(
                 outside a source-epoch conflict.
 
         """
-        result_type = r[
-            t.Triple[
-                list[m.Infra.CodegenPhaseAnalysis],
-                t.MappingKV[Path, m.Cli.AtomicFileState],
-                int,
-            ]
-        ]
         analyses: list[m.Infra.CodegenPhaseAnalysis] = []
         inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
-        target_roots = 0
-        for root in roots:
-            import_roots = u.Infra.import_project_roots(root)
-            analyzed: p.Result[m.Infra.CodegenPhaseAnalysis | None] | None = None
-            project: p.Infra.RopeProject | None = None
-            try:
+        candidates: t.MutableMappingKV[
+            Path, t.Pair[t.VariadicTuple[Path], p.Infra.RopeSourceConsumption]
+        ] = {}
+        consumption: p.Infra.RopeSourceConsumption | None = None
+        if self.target_module:
+            for root in roots:
+                if (
+                    not root.is_relative_to(self.repository_root.resolve())
+                    or not root.is_dir()
+                ):
+                    continue
                 with (
-                    self._source_binding(
-                        import_roots[0],
-                        root,
-                        source_project,
-                        tuple(import_roots),
-                    ) as binding,
+                    source_project.source_consumption() as consumption,
+                    source_project.source_consumer(consumer_root=root) as binding,
                     FlextInfraRopeWorkspace.open_workspace(
                         root,
                         rope_repository_root=Path(binding.root.real_path),
                         source_project=binding,
                     ) as rope,
                 ):
-                    project = binding
-                    analyzed = self._authenticated_root_analysis(
-                        rope,
-                        root,
-                        target_seen=bool(target_roots),
-                        analyses=analyses,
+                    candidates[root] = (
+                        self._target_package_dirs(rope.workspace_index, root),
+                        consumption,
                     )
-            except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
-                partial = (
-                    analyzed.value
-                    if analyzed is not None and analyzed.success
-                    else None
+        target_roots = sum(len(paths) for paths, _ in candidates.values())
+        for root in roots:
+            analyzed: p.Result[m.Infra.CodegenPhaseAnalysis | None] | None = None
+            consumption = None
+            if (
+                not root.is_relative_to(self.repository_root.resolve())
+                or not root.is_dir()
+            ):
+                analyzed = r[m.Infra.CodegenPhaseAnalysis | None].fail(
+                    "lazy-init repository scope is missing or outside "
+                    f"{self.repository_root.resolve()}: {root}",
                 )
-                if (
-                    partial is None
-                    or project is None
-                    or project.source_epoch_failure is not exc
-                ):
-                    raise
-                analyzed = r[m.Infra.CodegenPhaseAnalysis | None].ok(
-                    self.classify_source_conflict(partial, project, exc),
+            else:
+                try:
+                    with (
+                        source_project.source_consumption() as consumption,
+                        source_project.source_consumer(consumer_root=root) as binding,
+                        FlextInfraRopeWorkspace.open_workspace(
+                            root,
+                            rope_repository_root=Path(binding.root.real_path),
+                            source_project=binding,
+                        ) as rope,
+                    ):
+                        if root in candidates:
+                            binding.replay_source_consumption(
+                                candidates[root][1].receipt(),
+                            )
+                        analyzed = self._authenticated_root_analysis(
+                            rope,
+                            root,
+                            analyses=analyses,
+                        )
+                except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+                    partial = (
+                        analyzed.value
+                        if analyzed is not None and analyzed.success
+                        else None
+                    )
+                    if (
+                        partial is None
+                        or source_project.source_epoch_failure is not exc
+                    ):
+                        raise
+                    analyzed = r[m.Infra.CodegenPhaseAnalysis | None].ok(
+                        self.classify_source_conflict(partial, source_project, exc),
+                    )
+            if analyzed.failure:
+                receipt = consumption.receipt() if consumption is not None else None
+                analysis = m.Infra.CodegenPhaseAnalysis(
+                    phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
+                    files=(),
+                    inputs=receipt.inputs if receipt is not None else (),
+                    source_directories=(
+                        receipt.source_directories if receipt is not None else ()
+                    ),
+                    source_query_topology=(
+                        receipt.source_query_topology if receipt is not None else ()
+                    ),
+                    failed_targets=((root, receipt),) if receipt is not None else (),
+                    issues=(
+                        m.Infra.Issue(
+                            file=str(root),
+                            line=0,
+                            column=0,
+                            code=c.Infra.ToolOutcome.ERROR.value,
+                            message=analyzed.error
+                            or f"lazy-init analysis failed: {root}",
+                        ),
+                    ),
+                    exception=analyzed.exception,
                 )
-            analysis = analyzed.value
-            if analysis is None:
-                continue
-            target_roots += 1
+            else:
+                analysis = analyzed.value
+                if analysis is None:
+                    continue
+            if (
+                target_roots > 1
+                and root in candidates
+                and candidates[root][0]
+                and consumption is not None
+            ):
+                analysis = analysis.model_copy(
+                    update={
+                        "files": (),
+                        "publications": (),
+                        "failed_targets": ((root, consumption.receipt()),),
+                        "issues": (
+                            *analysis.issues,
+                            m.Infra.Issue(
+                                file=str(root),
+                                line=0,
+                                column=0,
+                                code=c.Infra.ToolOutcome.ERROR.value,
+                                message=(
+                                    "lazy-init target module is ambiguous: "
+                                    f"{self.target_module}"
+                                ),
+                            ),
+                        ),
+                    }
+                )
             analyses.append(analysis)
             inputs = self._merged_input_states(inputs, analysis, analyses)
-        if source_project is not None:
-            analyses, inputs = self._replayed_source_verification(
-                analyses,
-                inputs,
-                source_project,
-            )
-        return result_type.ok((analyses, inputs, target_roots))
+        return r[
+            t.Triple[
+                list[m.Infra.CodegenPhaseAnalysis],
+                t.MappingKV[Path, m.Cli.AtomicFileState],
+                int,
+            ]
+        ].ok((analyses, inputs, target_roots))
 
     @staticmethod
     def _first_recorded_exception(
@@ -407,7 +512,6 @@ class FlextInfraCodegenLazyInit(
         rope: FlextInfraRopeWorkspace,
         root: Path,
         *,
-        target_seen: bool,
         analyses: t.SequenceOf[m.Infra.CodegenPhaseAnalysis],
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis | None]:
         """Plan one repository against its authenticated source authority.
@@ -424,10 +528,6 @@ class FlextInfraCodegenLazyInit(
             targets = self._target_package_dirs(rope.workspace_index, root)
             if not targets:
                 return result_type.ok(None)
-            if target_seen:
-                return result_type.fail(
-                    f"lazy-init target module is ambiguous: {self.target_module}",
-                )
         planned = self._plan_open_workspace(rope)
         if planned.failure:
             original = self._first_recorded_exception(analyses)
@@ -461,49 +561,6 @@ class FlextInfraCodegenLazyInit(
                 raise original from exc
             raise
         return {state.path: state for state in merged}
-
-    def _replayed_source_verification(
-        self,
-        analyses: list[m.Infra.CodegenPhaseAnalysis],
-        inputs: t.MappingKV[Path, m.Cli.AtomicFileState],
-        source_project: p.Infra.RopeProject,
-    ) -> t.Pair[
-        list[m.Infra.CodegenPhaseAnalysis],
-        t.MutableMappingKV[Path, m.Cli.AtomicFileState],
-    ]:
-        """Re-verify every consumed source state against the injected authority.
-
-        An epoch conflict reclassifies the composed analyses into one scoped
-        receipt; any other failure propagates unchanged.
-
-        Returns:
-            The effective analyses and input states after verification.
-
-        Raises:
-            OSError: When verification fails outside the recorded source-epoch
-                conflict.
-
-        """
-        try:
-            source_project.verify_source_states()
-        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
-            if source_project.source_epoch_failure is not exc:
-                raise
-            combined = m.Infra.CodegenPhaseAnalysis(
-                phase=c.Infra.CodegenStagedFilePhase.LAZY_INIT,
-                files=tuple(file for analysis in analyses for file in analysis.files),
-                publications=tuple(
-                    plan for analysis in analyses for plan in analysis.publications
-                ),
-                inputs=tuple(inputs.values()),
-                issues=tuple(
-                    issue for analysis in analyses for issue in analysis.issues
-                ),
-                exception=self._first_recorded_exception(analyses),
-            )
-            classified = self.classify_source_conflict(combined, source_project, exc)
-            return [classified], {state.path: state for state in classified.inputs}
-        return analyses, dict(inputs)
 
     def _target_package_dirs(
         self,
@@ -544,7 +601,7 @@ class FlextInfraCodegenLazyInit(
         """
         self._source_project = rope.rope_project
         workspace_index = rope.workspace_index
-        resolved_repository_root = self.repository_root.resolve()
+        resolved_repository_root = rope.repository_root.resolve()
         candidate_entries = tuple(
             workspace_index.packages_by_dir[str(package_dir)]
             for package_dir in workspace_index.package_dirs
@@ -577,6 +634,7 @@ class FlextInfraCodegenLazyInit(
         target = self._resolved_target_package_dir(
             workspace_index,
             indexed_package_dirs,
+            resolved_repository_root,
         )
         if target.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(target)
@@ -605,6 +663,7 @@ class FlextInfraCodegenLazyInit(
         self,
         workspace_index: m.Infra.RopeWorkspaceIndex,
         indexed_package_dirs: t.VariadicTuple[Path],
+        repository_root: Path,
     ) -> p.Result[t.Pair[Path | None, bool]]:
         """Resolve the single target package dir when a target module is set.
 
@@ -618,7 +677,7 @@ class FlextInfraCodegenLazyInit(
             return result_type.ok((None, False))
         sorted_target_dirs = self._target_package_dirs(
             workspace_index,
-            self.repository_root.resolve(),
+            repository_root,
         )
         if not sorted_target_dirs:
             return result_type.fail(

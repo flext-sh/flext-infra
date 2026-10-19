@@ -10,7 +10,7 @@ rule:
   inside:
     kind: class_definition
     stopBy: end
-fix: ""
+# Detection only: handlers must be relocated by the semantic make mod planner.
 message: |
   api.py must be a pure MRO facade — no local method definitions allowed.
   Move handlers to services/*.py and compose via MRO.

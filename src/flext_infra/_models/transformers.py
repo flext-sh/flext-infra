@@ -11,7 +11,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import m
+from flext_cli import m, u
+from typing_extensions import TypeForm
 
 from flext_infra import p, t
 from flext_infra._models import FlextInfraModelsBase
@@ -197,6 +198,14 @@ class FlextInfraModelsTransformers:
             frozenset[str],
             m.Field(description="Module-level names the file already binds"),
         ]
+        preserved_reads: Annotated[
+            frozenset[t.Pair[int, int]],
+            m.Field(description="Eager upstream reads before a local alias rebind"),
+        ] = frozenset()
+        upstream_aliases: Annotated[
+            t.StrMapping,
+            m.Field(description="Proven upstream identities preceding local aliases"),
+        ] = m.Field(default_factory=u.empty(TypeForm(t.StrMapping)))
 
     class PrivateImportRewritePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Binding-proven import rewrites planned for one private-import file."""

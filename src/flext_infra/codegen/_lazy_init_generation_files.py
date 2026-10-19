@@ -271,11 +271,32 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             raise cause
         scopes = (*analysis.files, *analysis.publications)
         states = m.Infra.CodemodBindingSnapshot(
-            states=tuple(state for scope in scopes for state in scope.source_states)
+            states=(
+                *(state for scope in scopes for state in scope.source_states),
+                *(
+                    state
+                    for _, receipt in analysis.failed_targets
+                    for state in receipt.inputs
+                ),
+            ),
         ).states
         directories, topology = u.Cli.atomic_merge_directory_query_receipts(
-            tuple(item for scope in scopes for item in scope.source_directories),
-            tuple(item for scope in scopes for item in scope.source_query_topology),
+            (
+                *(item for scope in scopes for item in scope.source_directories),
+                *(
+                    item
+                    for _, receipt in analysis.failed_targets
+                    for item in receipt.source_directories
+                ),
+            ),
+            (
+                *(item for scope in scopes for item in scope.source_query_topology),
+                *(
+                    item
+                    for _, receipt in analysis.failed_targets
+                    for item in receipt.source_query_topology
+                ),
+            ),
         )
         failed_states = tuple(
             original
@@ -302,7 +323,15 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         if not (failed_states or failed_directories or failed_topology):
             raise cause
         accepted: list[m.Infra.CodegenFilePlan] = []
-        affected: set[Path] = set()
+        affected = {
+            target
+            for target, receipt in analysis.failed_targets
+            if cls._verify_original_sources(
+                receipt.inputs,
+                receipt.source_directories,
+                receipt.source_query_topology,
+            ).failure
+        }
         for file in analysis.files:
             if cls._verify_original_sources(
                 file.source_states,
@@ -346,7 +375,9 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 "inputs": retained_states,
                 "source_directories": retained_directories,
                 "source_query_topology": retained_topology,
-                "exception": cause,
+                "exception": (
+                    analysis.exception if analysis.exception is not None else cause
+                ),
                 "issues": (
                     *analysis.issues,
                     *(

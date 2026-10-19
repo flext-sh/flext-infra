@@ -68,18 +68,14 @@ class FlextInfraModelsCodegenPipelineModels:
             m.Field(description="Apply the complete candidate campaign"),
         ] = True
 
-    class CodegenPhaseAnalysis(
+    class CodegenSourceReceipt(
         FlextInfraModelsBase.FrozenArbitrary, strict=True, validate_default=True
     ):
-        """Immutable planner receipt reused for publication verification."""
+        """Original native consumption evidence, independent of publication effects."""
 
         phase: Annotated[
             c.Infra.CodegenStagedFilePhase,
             m.Field(description="Generation phase that produced this receipt"),
-        ]
-        files: Annotated[
-            t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan],
-            m.Field(description="Ordered desired publication states"),
         ]
         inputs: Annotated[
             t.VariadicTuple[m.Cli.AtomicFileState],
@@ -93,6 +89,20 @@ class FlextInfraModelsCodegenPipelineModels:
                 default=(),
                 description="Physical ancestry of queried source directories",
             )
+        )
+
+    class CodegenPhaseAnalysis(CodegenSourceReceipt):
+        """Immutable planner receipt reused for publication verification."""
+
+        files: Annotated[
+            t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan],
+            m.Field(description="Ordered desired publication states"),
+        ]
+        failed_targets: t.VariadicTuple[t.Pair[Path, CodegenSourceReceipt]] = m.Field(
+            default=(),
+            description=(
+                "Rejected physical targets and their original consumption receipts"
+            ),
         )
         generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
             default=(), description="Authenticated producer resource membership"

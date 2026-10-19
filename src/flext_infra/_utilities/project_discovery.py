@@ -463,45 +463,40 @@ class FlextInfraUtilitiesProjectDiscovery(
         workspace_excluded_top_dirs: frozenset[str],
         source_project: p.Infra.RopeProject | None = None,
     ) -> t.SequenceOf[Path]:
-        """Expand canonical targets without crossing project or artifact boundaries.
+        """Enumerate sources once without crossing project or artifact boundaries.
 
         Returns:
             Sorted absolute Python source and stub paths.
 
         """
         project_dir = project_dir.resolve()
+        if not (
+            project_dir.is_dir()
+            if source_project is None
+            else source_project.source_query(project_dir, "isdir")
+        ):
+            return ()
         skip_dirs = frozenset(config.Infra.codegen.analysis_excluded_dirs) | frozenset(
             config.Infra.codegen.source_scan_ignored
         )
         nonparticipants = cls.repository_nonparticipant_paths(
             project_dir, source_project=source_project
         )
+        excluded_paths = frozenset(
+            project_dir / relative
+            for relative in (*workspace_excluded_top_dirs, *nonparticipants)
+        )
         return tuple(
             sorted({
                 path.resolve()
-                for target in cls.discover_python_targets(
+                for path in cls._walk_python_files(
                     project_dir,
-                    workspace_excluded_top_dirs=workspace_excluded_top_dirs,
+                    skip_dirs,
+                    excluded_paths=excluded_paths,
                     source_project=source_project,
                 )
-                for candidate in (project_dir / target,)
-                for path in (
-                    cls._walk_python_files(
-                        candidate, skip_dirs, source_project=source_project
-                    )
-                    if (
-                        candidate.is_dir()
-                        if source_project is None
-                        else source_project.source_query(candidate, "isdir")
-                    )
-                    else (candidate,)
-                )
-                if cls._python_file_belongs_to_project(
-                    project_dir, path, source_project=source_project
-                )
-                and not cls._is_nonparticipant(path, project_dir, nonparticipants)
-                and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
-                    project_dir, path.resolve()
+                if not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                    project_dir, path
                 )
             })
         )
@@ -511,6 +506,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         directory: Path,
         skip_dirs: frozenset[str],
         *,
+        excluded_paths: frozenset[Path] = frozenset(),
         source_project: p.Infra.RopeProject | None = None,
     ) -> Iterator[Path]:
         """Yield sources while pruning hidden, ignored, and nested repository trees.
@@ -535,6 +531,7 @@ class FlextInfraUtilitiesProjectDiscovery(
                 for name in child_dirs
                 if name not in skip_dirs
                 and not name.startswith(".")
+                and parent / name not in excluded_paths
                 and (
                     not (parent / name).is_symlink() if source_project is None else True
                 )
@@ -557,9 +554,11 @@ class FlextInfraUtilitiesProjectDiscovery(
                 if (
                     not file_name.startswith(".")
                     and file_name not in skip_dirs
+                    and parent / file_name not in excluded_paths
                     and Path(file_name).suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
                     and (
-                        not (parent / file_name).is_symlink()
+                        (parent / file_name).is_file()
+                        and not (parent / file_name).is_symlink()
                         if source_project is None
                         else source_project.source_query(parent / file_name, "isfile")
                     )

@@ -26,6 +26,152 @@ class TestsFlextInfraMakefileBootstrapSoundness:
     """Public Make preserves physical ownership and native tool configuration."""
 
     @staticmethod
+    @pytest.mark.parametrize("scenario", ["hosted", "missing-seed"])
+    def test_editable_upgrade_preflight_preserves_hooks_and_locks(
+        tmp_path: Path, scenario: str
+    ) -> None:
+        """A selected dev supplier never changes hosted provisioning policy."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.STANDALONE,
+            bootstrap=True,
+        )
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / "codegen.local.yaml",
+                {
+                    "Infra": {
+                        "codegen": {
+                            "make": {
+                                "uv_resolution": {
+                                    "editable_supplier_root": (
+                                        tmp_path / "supplier"
+                                    ).as_posix(),
+                                }
+                            }
+                        }
+                    },
+                },
+            )
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / c.Infra.MAKEFILE_FILENAME,
+                u.Tests.conform_makefile_text(root, workspace),
+            )
+        )
+        marker = root / "pre-upg-ran"
+        (root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
+            f".PHONY: pre-upg\npre-upg:\n\t@touch {quote(str(marker))}\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        policy = tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.uv_resolution
+        paths = (
+            root / c.Infra.UV_LOCK_FILENAME,
+            root / c.Infra.MISE_LOCK_FILENAME,
+            *(
+                root / directory / c.Infra.UV_LOCK_FILENAME
+                for directory in (
+                    policy.local_directory,
+                    policy.standalone_directory,
+                    policy.editable_directory,
+                )
+            ),
+        )
+        before = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in paths
+        )
+        process = tm.ok(
+            u.Tests.run_isolated_make(
+                ["upg"],
+                cwd=root,
+                env={
+                    policy.hosted_variable: policy.hosted_value
+                    if scenario == "hosted"
+                    else ""
+                },
+            )
+        )
+        tm.that(process.outcome.raw_return_code, eq=2)
+        tm.that(
+            process.stderr,
+            has=(
+                "Editable supplier reconciliation is local only"
+                if scenario == "hosted"
+                else "default local lock seed are missing"
+            ),
+        )
+        tm.that(marker.exists(), eq=False)
+        tm.that((root / c.Infra.ENVIRONMENT_DIRECTORY).exists(), eq=False)
+        tm.that(
+            tuple(tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in paths),
+            eq=before,
+        )
+
+    @staticmethod
+    def test_member_local_supplier_cannot_upgrade_the_workspace_defaults(
+        tmp_path: Path,
+    ) -> None:
+        """A member-local opt-in fails instead of delegating an unrelated upgrade."""
+        root, member, _, _ = (
+            TestsFlextInfraMakefileBootstrapSoundness._reader_workspace_checkout(
+                tmp_path,
+                associated=True,
+            )
+        )
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
+        tm.ok(
+            u.Cli.yaml_dump(
+                member / "config" / "codegen.local.yaml",
+                {
+                    "Infra": {
+                        "codegen": {
+                            "make": {
+                                "uv_resolution": {
+                                    "editable_supplier_root": (
+                                        tmp_path / "supplier"
+                                    ).as_posix(),
+                                }
+                            }
+                        }
+                    },
+                },
+            )
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                member / c.Infra.MAKEFILE_FILENAME,
+                u.Tests.conform_makefile_text(member, workspace),
+            )
+        )
+        policy = config.Infra.codegen.make.uv_resolution
+        paths = tuple(
+            root / directory / c.Infra.UV_LOCK_FILENAME
+            for directory in (
+                Path(),
+                policy.local_directory,
+                policy.standalone_directory,
+            )
+        )
+        before = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in paths
+        )
+        process = tm.ok(
+            u.Tests.run_isolated_make(
+                ["upg"],
+                cwd=member,
+                env={policy.hosted_variable: ""},
+            )
+        )
+        tm.that(process.outcome.raw_return_code, eq=2)
+        tm.that(process.stderr, has="physical runtime root, not an attached member")
+        tm.that(
+            tuple(tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in paths),
+            eq=before,
+        )
+
+    @staticmethod
     def _reader_workspace_checkout(
         tmp_path: Path,
         *,

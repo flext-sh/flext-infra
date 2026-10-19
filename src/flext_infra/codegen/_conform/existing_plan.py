@@ -14,12 +14,18 @@ from pathlib import Path
 from typing import Literal
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenLazyInit
+from flext_infra.codegen import (
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenProtocolModels,
+)
 from flext_infra.codegen._conform import FlextInfraCodegenConformArtifactRender
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.services._codegen import FlextInfraCodegenVscodeMixin
-from flext_infra.workspace import FlextInfraWorkspaceEnvironmentContracts
+from flext_infra.workspace import (
+    FlextInfraRopeWorkspace,
+    FlextInfraWorkspaceEnvironmentContracts,
+)
 
 
 class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRender):
@@ -197,10 +203,19 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         lazy_result = self._existing_lazy_sources(root)
         if lazy_result.failure:
             return result_type.from_failure(lazy_result)
+        if contract.custom:
+            lazy_result = self._existing_protocol_sources(
+                root, identity[0], lazy_result.value
+            )
+            if lazy_result.failure:
+                return result_type.from_failure(lazy_result)
         cohort = (
             tuple(lazy_result.value[0])
             if self.state.provider_plans is None
-            else self.state.provider_plans
+            else (
+                *(plan for plan in self.state.provider_plans if plan.project != root),
+                *lazy_result.value[0],
+            )
         )
         with u.Infra.facade_source_project(
             root, source_states=lazy_result.value[1], declared_files=cohort
@@ -258,6 +273,156 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 completed.value,
                 binding[1](),
             )
+
+    def _existing_protocol_sources(
+        self,
+        root: Path,
+        project: p.Infra.ProjectSpec,
+        initial: t.Pair[
+            t.SequenceOf[m.Infra.CodegenFilePlan],
+            t.VariadicTuple[m.Cli.AtomicFileState],
+        ],
+    ) -> p.Result[
+        t.Pair[
+            t.SequenceOf[m.Infra.CodegenFilePlan],
+            t.VariadicTuple[m.Cli.AtomicFileState],
+        ]
+    ]:
+        """Project model contracts and exports inside the original source epoch.
+
+        Returns:
+            Authenticated protocol and initializer plans, without publishing files.
+
+        """
+        result_type = r[
+            t.Pair[
+                t.SequenceOf[m.Infra.CodegenFilePlan],
+                t.VariadicTuple[m.Cli.AtomicFileState],
+            ]
+        ]
+        with u.Infra.facade_source_project(
+            root, source_states=initial[1], declared_files=tuple(initial[0])
+        ) as binding:
+            with FlextInfraRopeWorkspace.open_workspace(
+                root,
+                rope_repository_root=Path(binding[0].root.real_path),
+                source_project=binding[0],
+            ) as workspace:
+                rendered = FlextInfraCodegenProtocolModels.render_modules(
+                    project, workspace
+                )
+            if rendered.failure:
+                return result_type.from_failure(rendered)
+            states, directories, topology = binding[1]()
+            protocols: list[m.Infra.CodegenFilePlan] = []
+            for path, content in rendered.value[0].items():
+                planned = self.file_plan(
+                    root, path.as_posix(), content, source_states=states
+                )
+                if planned.failure:
+                    return result_type.from_failure(planned)
+                protocols.append(
+                    planned.value.model_copy(
+                        update={
+                            "source_directories": directories,
+                            "source_query_topology": topology,
+                        }
+                    )
+                )
+            for path, content in binding[2].items():
+                if (
+                    path not in {root / path for path in rendered.value[0]}
+                    and path.parent.name == u.Infra.facade_families()["p"].directory
+                    and path.name.startswith("generated_models")
+                    and content.startswith(c.Infra.AUTOGEN_HEADERS)
+                ):
+                    retired = self._absent_file_plan(root, path)
+                    if retired.failure:
+                        return result_type.from_failure(retired)
+                    protocols.append(
+                        retired.value.model_copy(
+                            update={
+                                "source_states": (
+                                    *retired.value.source_states,
+                                    *states,
+                                ),
+                                "source_directories": directories,
+                                "source_query_topology": topology,
+                            }
+                        )
+                    )
+        if not protocols:
+            return result_type.ok(initial)
+        with u.Infra.facade_source_project(
+            root,
+            source_states=initial[1],
+            declared_files=(*initial[0], *protocols),
+        ) as binding:
+            with FlextInfraRopeWorkspace.open_workspace(
+                root,
+                rope_repository_root=Path(binding[0].root.real_path),
+                source_project=binding[0],
+            ) as workspace:
+                # Resolve all staged receivers before taking the closed epoch.
+                tuple(workspace.modules())
+                transfer_sources = dict(binding[2])
+                captured = u.Infra.codemod_source_epoch(
+                    m.Infra.CodemodBindingSnapshot(states=binding[1]()[0])
+                )
+                transfers = FlextInfraCodegenProtocolModels.plan_transfers(
+                    project, workspace, transfer_sources, captured, rendered.value[1]
+                )
+            if transfers.failure:
+                return result_type.from_failure(transfers)
+            transfer_states, transfer_directories, transfer_topology = binding[1]()
+            for edit in transfers.value:
+                planned = (
+                    self._absent_file_plan(root, edit.file_path)
+                    if edit.retire_file
+                    else self.file_plan(
+                        root,
+                        edit.file_path.relative_to(root).as_posix(),
+                        edit.updated_source,
+                        source_states=transfer_states,
+                    )
+                )
+                if planned.failure:
+                    return result_type.from_failure(planned)
+                protocols = [plan for plan in protocols if plan.path != edit.file_path]
+                protocols.append(
+                    planned.value.model_copy(
+                        update={
+                            "source_states": transfer_states,
+                            "source_directories": transfer_directories,
+                            "source_query_topology": transfer_topology,
+                        }
+                    )
+                )
+        with u.Infra.facade_source_project(
+            root,
+            source_states=initial[1],
+            declared_files=(*initial[0], *protocols),
+        ) as binding:
+            refreshed = FlextInfraCodegenLazyInit(
+                repository_root=root, project_scope_roots=(root,)
+            ).plan_files(source_project=binding[0])
+            if refreshed.failure:
+                return result_type.from_failure(refreshed)
+            self.state.planning_issues.extend(refreshed.value.issues)
+            if self.state.planning_exception is None:
+                self.state.planning_exception = refreshed.value.exception
+            sources = FlextInfraCodegenPreconditions.unique_states((
+                *initial[1],
+                *(state for plan in protocols for state in plan.source_states),
+                *(
+                    state
+                    for plan in refreshed.value.files
+                    for state in plan.source_states
+                ),
+            ))
+            if sources.failure:
+                return result_type.from_failure(sources)
+            return result_type.ok(((*protocols, *refreshed.value.files), sources.value))
 
     def _existing_lazy_sources(
         self,
@@ -420,9 +585,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         barrels = tuple(
             item
             for item in initializers
-            if item.path.name == c.Infra.INIT_PY
-            and (
-                item.path.parent in packages
+            if (
+                item.path.name != c.Infra.INIT_PY
+                or item.path.parent in packages
                 or any(item.path.is_relative_to(family) for family in families)
             )
         )
@@ -1665,7 +1830,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 )
                 return result_type.fail(str(error), exception=error)
             values = u.Cli.json_walk_path(projection.values, ("Infra", "codegen"))
-            validated = u.validate_value(t.Cli.JSON_MAPPING_ADAPTER, values)
+            validated = u.validate_value(u.json_mapping_adapter(), values)
             if validated.failure:
                 return result_type.from_failure(validated)
             planned = cls._codegen_declaration_plan(

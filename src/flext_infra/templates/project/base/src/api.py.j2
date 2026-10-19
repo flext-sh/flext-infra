@@ -17,6 +17,6 @@ class {{ class_stem }}({{ class_stem }}Ping):
     """Public {{ class_stem }} facade composed through cooperative FLEXT."""
 
 
-{{ alias }} = {{ class_stem }}.fetch_global()
+{{ alias }}: {{ class_stem }} = {{ class_stem }}.fetch_global()
 
 __all__: list[str] = ["{{ class_stem }}", "{{ alias }}"]

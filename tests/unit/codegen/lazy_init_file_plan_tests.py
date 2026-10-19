@@ -28,8 +28,11 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
     """Prove lazy-init describes effects without owning publication."""
 
     @staticmethod
+    @pytest.mark.parametrize("injected", [False, True])
     def test_unconsumed_authored_test_module_does_not_enter_publication_inputs(
         tmp_path: Path,
+        *,
+        injected: bool,
     ) -> None:
         """Capturing an unused module must not turn it into a shared read dependency."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -52,11 +55,22 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         retained: list[m.Infra.CodegenPhaseAnalysis] = []
 
         def publish(scope_root: Path) -> p.Result[tuple[Path, ...]]:
-            with u.Infra.facade_source_project(root, project_roots=(root,)) as binding:
+            with ExitStack() as contexts:
+                binding = (
+                    contexts.enter_context(
+                        u.Infra.facade_source_project(root, project_roots=(root,)),
+                    )[0]
+                    if injected
+                    else None
+                )
                 analysis = tm.ok(
                     u.Tests.create_lazy_init_service(root).plan_files(
-                        source_project=binding[0]
+                        source_project=binding,
                     )
+                )
+                tm.that(
+                    (root / c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH).exists(),
+                    eq=False,
                 )
                 tm.that(conftest in {state.path for state in analysis.inputs}, eq=False)
                 tm.that(
@@ -71,7 +85,8 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                     "# Unconsumed source edit\n__all__ = []\n",
                     encoding=c.DEFAULT_ENCODING,
                 )
-            tm.that(binding[0].source_epoch_failure, eq=None)
+            if binding is not None:
+                tm.that(binding.source_epoch_failure, eq=None)
             retained.append(analysis)
             return owner.publish_file_phase_locked(
                 scope_root,
@@ -85,6 +100,58 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             file for file in retained[0].files if file.path == package / c.Infra.INIT_PY
         )
         tm.that(production.path.read_bytes(), eq=production.desired_content)
+
+    @staticmethod
+    def test_cached_native_absence_queries_keep_original_scoped_witness(
+        tmp_path: Path,
+    ) -> None:
+        """A warmed negative predicate must retain its original proof in each scope."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        absent = package / "missing.py"
+        unrelated = package / "unrelated.py"
+        with ExitStack() as contexts:
+            binding = contexts.enter_context(
+                u.Infra.facade_source_project(root, project_roots=(root,)),
+            )
+            with binding[0].source_capture():
+                tm.that(binding[0].source_query(absent, "isfile"), eq=False)
+            with binding[0].source_consumption() as first:
+                tm.that(binding[0].source_query(absent, "isfile"), eq=False)
+            with binding[0].source_consumption() as second:
+                tm.that(binding[0].source_query(unrelated, "isfile"), eq=False)
+                tm.that(binding[0].source_query(absent, "isfile"), eq=False)
+            tm.that(
+                {
+                    query
+                    for inventory in first.receipt().source_directories
+                    if inventory.root.path == package
+                    for query in inventory.queries
+                },
+                eq={(absent.name, "isfile")},
+            )
+            tm.that(
+                {
+                    query
+                    for inventory in second.receipt().source_directories
+                    if inventory.root.path == package
+                    for query in inventory.queries
+                },
+                eq={(absent.name, "isfile"), (unrelated.name, "isfile")},
+            )
+            with binding[0].source_consumption():
+                binding[0].replay_source_consumption(first.receipt())
+                binding[0].replay_source_consumption(second.receipt())
+            tm.that(
+                any(
+                    inventory.root.path == package
+                    and (absent.name, "isfile") in inventory.queries
+                    for inventory in binding[0].consumed_source_directories()
+                ),
+                eq=True,
+            )
+            absent.write_text("VALUE = 'born'\n", encoding=c.DEFAULT_ENCODING)
+            with pytest.raises(ValueError, match=escape(str(absent))):
+                contexts.close()
 
     @staticmethod
     @pytest.mark.parametrize("exported", [False, True])
@@ -200,17 +267,38 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         )
         provider = provider_package / "provider.py"
         provider.write_text(
-            "class Published: pass\n__all__ = ['Published']\n",
+            "class ProviderConstants: VALUE = 'original'\n"
+            "c = ProviderConstants\n__all__ = ['ProviderConstants', 'c']\n",
             encoding=c.DEFAULT_ENCODING,
         )
         source = package / "service.py"
         source.write_text(
-            f"from {provider_package.name}.provider import Published\n"
-            "__all__ = ['Published']\n"
-            if change == "transitive"
-            else "class Published: pass\n__all__ = ['Published']\n",
+            "class Published: pass\n__all__ = ['Published']\n",
             encoding=c.DEFAULT_ENCODING,
         )
+        if change == "transitive":
+            (provider_package / c.Infra.INIT_PY).write_text(
+                "from .provider import c\n__all__ = ['c']\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            (package / c.Infra.CONSTANTS_PY).write_text(
+                "from upstream_provider import c as upstream_c\n"
+                f"class {u.derive_class_stem(package.name.replace('_', '-'))}"
+                "Constants(upstream_c): pass\n"
+                f"c = {u.derive_class_stem(package.name.replace('_', '-'))}Constants\n"
+                "__all__ = ['c']\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            tm.that(
+                u.Tests.run_lazy_init_probe(
+                    f"from {package.name}.constants import c\n"
+                    "from upstream_provider import c as upstream_c\n"
+                    "print(c.__mro__[1] is upstream_c)\n",
+                    python_paths=(str(package.parent), str(provider_package.parent)),
+                    cwd=root,
+                ),
+                eq=["True"],
+            )
         negative = package / "hidden.py"
         negative.write_text("__all__ = []\n", encoding=c.DEFAULT_ENCODING)
         absent = package / f"{c.Infra.DUNDER_VERSION}{c.Infra.EXT_PYTHON}"
@@ -337,19 +425,9 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.that(retained.disposition, eq="retained")
         tm.that(set(retained.exports), eq={"Payload", "VALUE", "load"})
         tm.that(initializer in {file.path for file in analysis.files}, eq=False)
-        report = m.Infra.CodegenPhaseAnalysis.model_validate_json(
-            (root / c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH).read_text(
-                encoding=c.DEFAULT_ENCODING,
-            ),
-        )
         tm.that(
-            any(
-                plan.context.init_path == initializer
-                and plan.ownership == "authored"
-                and plan.disposition == "retained"
-                for plan in report.publications
-            ),
-            eq=True,
+            (root / c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH).exists(),
+            eq=False,
         )
         workspace = u.Tests.standalone_workspace(root, root.name)
         request = m.Infra.CodegenConformRequest(
@@ -562,10 +640,10 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.ok(infra.codegen_conform(request, workspace))
 
     @staticmethod
-    def test_scope_outside_workspace_is_a_causal_plan_failure(
+    def test_scope_outside_workspace_is_a_scoped_plan_issue(
         tmp_path: Path,
     ) -> None:
-        """A selected repository outside the workspace fails instead of widening."""
+        """An invalid target is attributed without widening publication authority."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path / "workspace",
         )
@@ -584,9 +662,285 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             project_scope_roots=(foreign_root,),
         ).plan_files()
 
-        tm.that(result.failure, eq=True)
-        tm.that(result.error, contains="lazy-init repository scope is missing")
+        analysis = tm.ok(result)
+        tm.that(analysis.files, eq=())
+        tm.that(tuple(issue.file for issue in analysis.issues), eq=(str(foreign_root),))
+        tm.that(
+            analysis.issues[0].message,
+            contains="lazy-init repository scope is missing",
+        )
         tm.that(init_path.read_bytes(), eq=before)
+
+    @staticmethod
+    @pytest.mark.parametrize("injected", [False, True])
+    def test_multi_root_epoch_elects_same_named_packages_by_physical_owner(
+        tmp_path: Path,
+        *,
+        injected: bool,
+    ) -> None:
+        """A shared read epoch never elects a sibling's same-named module."""
+        roots: list[Path] = []
+        packages: list[Path] = []
+        for name in ("FirstPublished", "SecondPublished"):
+            root, package = u.Tests.create_lazy_init_workspace(
+                tmp_path,
+                project_name=name.lower(),
+                package_name="shared_package",
+            )
+            (package / "service.py").write_text(
+                f"class {name}: pass\n__all__ = [{name!r}]\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            roots.append(root)
+            packages.append(package)
+        service = FlextInfraCodegenLazyInit(
+            repository_root=tmp_path,
+            project_scope_roots=tuple(reversed(roots)),
+        )
+        with ExitStack() as contexts:
+            source: p.Infra.RopeProject | None = None
+            if injected:
+                source = contexts.enter_context(
+                    u.Infra.facade_source_project(tmp_path, project_roots=tuple(roots)),
+                )[0]
+            analysis = tm.ok(service.plan_files(source_project=source))
+        tm.that(analysis.issues, eq=())
+        tm.that(analysis.exception, eq=None)
+        for index, name in enumerate(("FirstPublished", "SecondPublished")):
+            plan = next(
+                file
+                for file in analysis.files
+                if file.path == packages[index] / c.Infra.INIT_PY
+            )
+            tm.that(plan.project, eq=roots[index])
+            tm.that(u.Tests.codegen_file_text(plan), contains=name)
+            source_paths = {state.path for state in plan.source_states}
+            tm.that(packages[index] / "service.py" in source_paths, eq=True)
+            tm.that(packages[1 - index] / "service.py" in source_paths, eq=False)
+        repeated = tm.ok(service.plan_files())
+        tm.that(
+            tuple((file.path, file.desired_content) for file in analysis.files),
+            eq=tuple((file.path, file.desired_content) for file in repeated.files),
+        )
+        service.target_module = "shared_package"
+        repeated = tm.ok(service.plan_files())
+        tm.that(repeated.files, eq=())
+        tm.that(repeated.publications, eq=())
+        tm.that(
+            all(
+                "target module is ambiguous" in issue.message
+                for issue in repeated.issues
+            ),
+            eq=True,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("failed_first", [False, True])
+    def test_target_ambiguity_survives_candidate_planning_failure(
+        tmp_path: Path,
+        *,
+        failed_first: bool,
+    ) -> None:
+        """Authorization counts physical candidates, not successful analyses."""
+        roots: list[Path] = []
+        for index, name in enumerate(("a-candidate", "z-candidate")):
+            root, package = u.Tests.create_lazy_init_workspace(
+                tmp_path,
+                project_name=name,
+                package_name="shared_package",
+            )
+            roots.append(root)
+            for module in (
+                ("first", "second") if (index == 0) == failed_first else ("first",)
+            ):
+                (package / f"{module}.py").write_text(
+                    "class Shared: pass\n__all__ = ['Shared']\n",
+                    encoding=c.DEFAULT_ENCODING,
+                )
+        analysis = tm.ok(
+            FlextInfraCodegenLazyInit(
+                repository_root=tmp_path,
+                project_scope_roots=tuple(reversed(roots)),
+                target_module="shared_package",
+            ).plan_files(),
+        )
+        tm.that(analysis.files, eq=())
+        tm.that(analysis.publications, eq=())
+        tm.that(
+            {
+                issue.file
+                for issue in analysis.issues
+                if "target module is ambiguous" in issue.message
+            },
+            eq={str(root) for root in roots},
+        )
+        tm.that(
+            any("collision(s)" in issue.message for issue in analysis.issues),
+            eq=True,
+        )
+        tm.that({target for target, _ in analysis.failed_targets}, eq=set(roots))
+
+    @staticmethod
+    def test_failed_target_epoch_conflict_keeps_healthy_publication(
+        tmp_path: Path,
+    ) -> None:
+        """Keep failed-target evidence separate from healthy publication dependencies."""
+        failed_root, failed_package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="a-failed",
+            package_name="failed_package",
+        )
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="z-healthy",
+            package_name="healthy_package",
+        )
+        for provider in (failed_package / "first.py", failed_package / "second.py"):
+            provider.write_text(
+                "class Shared: pass\n__all__ = ['Shared']\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        (package / "service.py").write_text(
+            "class Published: pass\n__all__ = ['Published']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with ExitStack() as contexts:
+            binding = contexts.enter_context(
+                u.Infra.facade_source_project(
+                    tmp_path,
+                    project_roots=(failed_root, root),
+                ),
+            )
+            analysis = tm.ok(
+                FlextInfraCodegenLazyInit(
+                    repository_root=tmp_path,
+                    project_scope_roots=(root, failed_root),
+                ).plan_files(source_project=binding[0]),
+            )
+            receipt = analysis.failed_targets[0][1]
+            if isinstance(receipt, m.Infra.CodegenPhaseAnalysis):
+                with binding[0].source_consumption():
+                    binding[0].replay_source_consumption(receipt)
+            else:
+                pytest.fail(
+                    "failed-target evidence replaced the original native receipt"
+                )
+            plan = next(
+                file
+                for file in analysis.files
+                if file.path == package / c.Infra.INIT_PY
+            )
+            tm.that(provider in {state.path for state in receipt.inputs}, eq=True)
+            tm.that(provider in {state.path for state in plan.source_states}, eq=False)
+            provider.write_text(
+                "class Shared: pass\n__all__ = ['Shared']\n# Changed failed target\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            with pytest.raises(ValueError, match=escape(str(provider))) as caught:
+                contexts.close()
+        analysis = FlextInfraCodegenLazyInit.classify_source_conflict(
+            analysis,
+            binding[0],
+            caught.value,
+        )
+        tm.that(analysis.exception is caught.value, eq=True)
+        tm.that(
+            any("collision(s)" in issue.message for issue in analysis.issues),
+            eq=True,
+        )
+        tm.that(
+            any(
+                issue.file == str(failed_root) and issue.message == str(caught.value)
+                for issue in analysis.issues
+            ),
+            eq=True,
+        )
+        owner = transaction.FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=tmp_path),
+        )
+        roots = owner.capability_roots(
+            c.Infra.CodegenStagedFilePhase.LAZY_INIT.value,
+            (root,),
+        )
+        outcome = owner.run_files_locked(
+            roots,
+            lambda scope_root: owner.publish_file_phase_locked(
+                scope_root,
+                roots,
+                analysis,
+                m.Infra.CodegenPhasePublicationPolicy(directories=()),
+            ),
+        )
+        tm.that(outcome.failure, eq=True)
+        tm.that(outcome.exception is caught.value, eq=True)
+        tm.that(plan.path.read_bytes(), eq=plan.desired_content)
+        tm.ok(
+            u.Infra.publish_refactor_report_evidence(
+                tmp_path,
+                analysis,
+                relative_path=c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH,
+            ),
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("invalid", ["missing", "outside", "ambiguous"])
+    def test_multi_root_issue_retains_independent_guarded_publication(
+        tmp_path: Path,
+        invalid: str,
+    ) -> None:
+        """Keep healthy effects and aggregate evidence despite invalid targets."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path / "workspace")
+        (package / "service.py").write_text(
+            "class Published: pass\n__all__ = ['Published']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        invalid_root = root.parent / invalid
+        if invalid == "outside":
+            invalid_root = tmp_path / invalid
+            invalid_root.mkdir()
+        elif invalid == "ambiguous":
+            invalid_root, invalid_package = u.Tests.create_lazy_init_workspace(
+                root.parent,
+                project_name=invalid,
+            )
+            for module in ("first", "second"):
+                (invalid_package / f"{module}.py").write_text(
+                    "class Shared: pass\n__all__ = ['Shared']\n",
+                    encoding=c.DEFAULT_ENCODING,
+                )
+        analysis = tm.ok(
+            FlextInfraCodegenLazyInit(
+                repository_root=root.parent,
+                project_scope_roots=(invalid_root, root),
+            ).plan_files(),
+        )
+        tm.that(tuple(issue.file for issue in analysis.issues), eq=(str(invalid_root),))
+        tm.that({file.project for file in analysis.files}, eq={root})
+        tm.that(
+            (root.parent / c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH).exists(),
+            eq=False,
+        )
+        owner = transaction.FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root.parent),
+        )
+        roots = owner.capability_roots(
+            c.Infra.CodegenStagedFilePhase.LAZY_INIT.value,
+            (root,),
+        )
+        outcome = owner.run_files_locked(
+            roots,
+            lambda scope_root: owner.publish_file_phase_locked(
+                scope_root,
+                roots,
+                analysis,
+                m.Infra.CodegenPhasePublicationPolicy(directories=()),
+            ),
+        )
+        tm.that(outcome.failure, eq=True)
+        plan = next(
+            file for file in analysis.files if file.path == package / c.Infra.INIT_PY
+        )
+        tm.that(plan.path.read_bytes(), eq=plan.desired_content)
 
     @staticmethod
     def test_plan_files_binds_init_and_sidecar_effects_without_writing(

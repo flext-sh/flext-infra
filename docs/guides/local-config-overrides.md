@@ -98,6 +98,28 @@ read-only verification of the repaired targets.
 
 ## Local dependency binding
 
+Canonical setup can opt into an external supplier workspace through the consumer's
+untracked `config/codegen.local.yaml`:
+
+```yaml
+Infra:
+  codegen:
+    make:
+      uv_resolution:
+        editable_supplier_root: /absolute/path/to/workspace
+```
+
+Configure the physical runtime root, not an attached member. The existing consumer
+environment supplies the authenticated interpreter used for marker selection.
+Run `make gen` to project the isolated editable resolution view, then `make upg`
+to reconcile its development lock, and `make setup` to replay that lock frozen.
+This opt-in never resolves the root or default view locks and does not request
+version upgrades. Hosted setup continues selecting the standalone view. The
+supplier root is explicit; no home directory or package roster is shared policy.
+Only active declared dependencies supplied by that workspace are rebound; supplier
+development groups are not added to the consumer environment. The consumer keeps
+its own physical environment. Removing the opt-in returns setup to its default view.
+
 The explicit `workspace flext-binding` CLI accepts `--repository-root`, `--flext-root`,
 and `--python`. It changes only the provisioned consumer environment; it never edits the
 consumer's dependency declarations. Canonical setup restores the declared resolution.

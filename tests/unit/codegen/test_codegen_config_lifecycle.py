@@ -18,6 +18,7 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate
+from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 from tests import c, m, tm, u
 from tests.unit.codegen import test_codegen_ci_matrix
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
@@ -487,6 +488,22 @@ print(
     ) -> None:
         """Read the native Git artifact and reject bytes outside its wheel RECORD."""
         root = installed_artifact_consumer
+        repository = tm.ok(
+            u.Infra.configured_repository_ref(
+                codegen=config.Infra.codegen,
+                repository_root=root,
+            ),
+        )
+        state = tm.ok(
+            FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
+                root,
+                repository,
+            ),
+        )
+        tm.that(
+            state.path.is_relative_to(u.Infra.runtime_environment_dir(root)),
+            eq=True,
+        )
         script = """
 import sys
 from pathlib import Path
@@ -586,3 +603,10 @@ print("installed Git declaration: complete groups, extras and RECORD authenticat
             msg=output.stdout + output.stderr,
         )
         tm.that(output.stdout, has="installed Git declaration: complete groups")
+        tm.fail(
+            FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
+                root,
+                repository,
+            ),
+            has="RECORD",
+        )

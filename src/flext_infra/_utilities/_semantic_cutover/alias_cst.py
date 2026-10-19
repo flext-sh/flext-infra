@@ -12,9 +12,12 @@ import libcst as cst
 from libcst.metadata import (
     MetadataWrapper,
     ParentNodeProvider,
+    PositionProvider,
     QualifiedName,
     QualifiedNameProvider,
     QualifiedNameSource,
+    Scope,
+    ScopeProvider,
 )
 
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
@@ -29,7 +32,12 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
     class _AliasTransformer(cst.CSTTransformer):
         """Rewrite qualified alias reads and retire retired local bindings."""
 
-        METADATA_DEPENDENCIES = (ParentNodeProvider, QualifiedNameProvider)
+        METADATA_DEPENDENCIES = (
+            ParentNodeProvider,
+            PositionProvider,
+            QualifiedNameProvider,
+            ScopeProvider,
+        )
 
         def __init__(self, plan: m.Infra.CompatibilityAliasRewritePlan) -> None:
             self.plan = plan
@@ -80,6 +88,22 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
 
             """
             names = self._qualified_names(node)
+            if isinstance(node, cst.Name) and node.value in self.plan.upstream_aliases:
+                position = self.get_metadata(PositionProvider, node).start
+                if (position.line, position.column) in self.plan.preserved_reads:
+                    return None
+                names = frozenset(
+                    name
+                    for name in names
+                    if not (
+                        name.source is QualifiedNameSource.IMPORT
+                        and name.name == self.plan.upstream_aliases[node.value]
+                    )
+                )
+                if not names:
+                    return self._checked_target(
+                        node, self.plan.local_aliases[node.value]
+                    )
             matched = [
                 name
                 for name in names
@@ -102,7 +126,39 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
                     f"{sorted(name.name for name in names)}"
                 )
                 raise ValueError(msg)
-            return targets.pop()
+            return self._checked_target(node, targets.pop())
+
+        def _checked_target(self, node: cst.Name | cst.Attribute, target: str) -> str:
+            """Refuse a rename that would capture a different lexical destination."""
+            if isinstance(node, cst.Attribute):
+                return target
+            scope = self.get_metadata(ScopeProvider, node, None)
+            if not isinstance(scope, Scope):
+                message = "alias reference has no lexical scope"
+                raise ValueError(message)
+            expected = {
+                f"{alias.rpartition('.')[0]}.{target}"
+                for alias, destination in self.plan.qualified_aliases.items()
+                if destination == target and "." in alias
+            }
+            for assignment in scope[target]:
+                names = assignment.get_qualified_names_for(target)
+                if names and all(
+                    (
+                        name.source is QualifiedNameSource.IMPORT
+                        and name.name in expected
+                    )
+                    or (
+                        name.source is QualifiedNameSource.LOCAL
+                        and name.name == target
+                        and target in self.plan.local_aliases.values()
+                    )
+                    for name in names
+                ):
+                    continue
+                message = f"alias destination is shadowed: {target}"
+                raise ValueError(message)
+            return target
 
         def _require_module_access(self, node: cst.Name | cst.Attribute) -> None:
             """Refuse opaque escapes of modules whose alias exports are retiring.

@@ -39,7 +39,7 @@ class FlextInfraConfigFixerSteps:
         search_raw = pyrefly.get(c.Infra.SEARCH_PATH)
         if not isinstance(search_raw, list):
             return r[t.StrSequence].ok(())
-        validated = u.validate_value(t.Cli.JSON_LIST_ADAPTER, list(search_raw))
+        validated = u.validate_value(u.json_list_adapter(), list(search_raw))
         if validated.failure:
             return r[t.StrSequence].fail_op("validate-search-path", validated.error)
         current_search = [
@@ -69,7 +69,7 @@ class FlextInfraConfigFixerSteps:
         includes_raw = pyrefly.get(c.Infra.PROJECT_INCLUDES)
         if not isinstance(includes_raw, list):
             return r[t.StrSequence].ok(())
-        validated = u.validate_value(t.Cli.JSON_LIST_ADAPTER, list(includes_raw))
+        validated = u.validate_value(u.json_list_adapter(), list(includes_raw))
         if validated.failure:
             return r[t.StrSequence].fail_op(
                 "validate-project-includes",
@@ -139,7 +139,7 @@ class FlextInfraConfigFixerSteps:
             new_configs.append(conf_out)
         if len(new_configs) != len(configs):
             pyrefly[c.Infra.SUB_CONFIG] = list(
-                t.Cli.JSON_LIST_ADAPTER.validate_python(new_configs),
+                u.json_list_adapter().validate_python(new_configs),
             )
         return r[tuple[t.StrSequence, bool]].ok((fixes, removed_ignore))
 
@@ -156,7 +156,7 @@ class FlextInfraConfigFixerSteps:
         current_excludes: t.StrSequence = []
         excludes = pyrefly.get(c.Infra.PROJECT_EXCLUDES)
         if isinstance(excludes, list):
-            validated = u.validate_value(t.Cli.JSON_LIST_ADAPTER, list(excludes))
+            validated = u.validate_value(u.json_list_adapter(), list(excludes))
             if validated.failure:
                 return r[t.StrSequence].fail_op(
                     "validate-project-excludes",

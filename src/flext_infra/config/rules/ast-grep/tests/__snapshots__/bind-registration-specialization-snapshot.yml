@@ -1,0 +1,27 @@
+id: bind-registration-specialization
+snapshots:
+  ? |
+    from flext_core import t
+    value: t.RegisterableService
+  : fixed: |
+      from flext_core import p, t
+      value: t.RegisterableService
+    labels:
+    - source: from flext_core import t
+      style: primary
+      start: 0
+      end: 24
+    - source: t.RegisterableService
+      style: secondary
+      start: 32
+      end: 53
+    - source: |
+        from flext_core import t
+        value: t.RegisterableService
+      style: secondary
+      start: 0
+      end: 54
+    - source: t
+      style: secondary
+      start: 23
+      end: 24

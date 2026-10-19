@@ -112,7 +112,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
             finally:
                 snapshot.close()
 
-        tm.that(modules, has=dependency.resolve())
+        tm.that(tuple(modules), has=dependency.resolve())
         tm.that(graph[modules[entry.resolve()]], has=modules[dependency.resolve()])
 
     def test_legado_is_outside_the_scanned_import_graph(
@@ -249,24 +249,39 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
             project / ".historical" / "retired.py",
             project / "arbitrary" / ".hidden" / "retired.py",
             *(
-                project / "arbitrary" / name / "ignored.py"
-                for name in config.Infra.codegen.source_scan_ignored
+                project / f"ignored-case-{index}" / name / "ignored.py"
+                for index, name in enumerate(config.Infra.codegen.source_scan_ignored)
             ),
         )
         for path in outsiders:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("value = 2\n", encoding="utf-8")
 
-        targets = u.Infra.ast_grep_scan_targets(
-            project,
-            refactor_config=m.Infra.RefactorConfigSpec(project_scan_dirs=("src",)),
-        )
-        target_paths = {project / target for target in targets}
+        target_paths = {
+            project / target
+            for target in u.Infra.ast_grep_scan_targets(
+                project,
+                refactor_config=m.Infra.RefactorConfigSpec(project_scan_dirs=("src",)),
+            )
+        }
         discovered = set(
             u.Infra.discover_python_files(
                 project, workspace_excluded_top_dirs=frozenset()
             )
         )
+        with u.Infra.facade_source_project(project, project_roots=(project,)) as (
+            source_project,
+            _,
+            _,
+        ):
+            authenticated = set(
+                u.Infra.discover_python_files(
+                    project,
+                    workspace_excluded_top_dirs=frozenset(),
+                    source_project=source_project,
+                )
+            )
+        tm.that(authenticated, eq=discovered)
         iterated = set(
             tm.ok(
                 u.Infra.iter_python_files(
@@ -276,12 +291,10 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         )
         inventory = FlextInfraCodemodSemanticApply.source_inventory(
             project,
-            m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence](
-                files=frozenset(), entries=()
-            ),
+            m.Infra.ModOccurrenceReport(files=frozenset(), entries=()),
         )
 
-        tm.that(set(live_paths) <= target_paths, eq=True)
+        tm.that(set(live_paths) - target_paths, empty=True)
         tm.that(target_paths, has=stub)
         tm.that(target_paths, has=root_stub)
         tm.that(target_paths, eq=discovered)
@@ -300,6 +313,61 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
             tm.that(u.Infra.namespace_scan_dirs(project), has=target)
         with pytest.raises(ValueError, match="outside governed inventory"):
             u.Infra.ast_grep_scan_targets(project, source_files=(outsiders[0],))
+
+    @staticmethod
+    def test_source_exclusions_remain_relative_to_the_selected_project(
+        tmp_path: Path,
+    ) -> None:
+        """Excluding a top-level target does not hide an equally named nested tier."""
+        project = u.Tests.mk_project(
+            tmp_path,
+            "relative-inventory",
+            pyproject='[project]\nname = "relative-inventory"\nversion = "0.1.0"\n',
+        ).resolve()
+        excluded = "excluded-tier"
+        hidden = project / excluded / "hidden.py"
+        nested = project / "arbitrary" / excluded / "live.pyi"
+        standalone = project / "root.py"
+        for source in (hidden, nested, standalone):
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_text("value: int\n", encoding=c.DEFAULT_ENCODING)
+        with u.Infra.facade_source_project(project, project_roots=(project,)) as (
+            source_project,
+            _,
+            _,
+        ):
+            for reader in (None, source_project):
+                discovered = u.Infra.discover_python_files(
+                    project,
+                    workspace_excluded_top_dirs=frozenset({excluded}),
+                    source_project=reader,
+                )
+                tm.that(discovered, eq=tuple(sorted((nested, standalone))))
+
+    @staticmethod
+    @pytest.mark.skipif(os.name != "posix", reason="Requires POSIX named pipes")
+    def test_special_files_do_not_enter_the_source_inventory(tmp_path: Path) -> None:
+        """A Python suffix cannot turn a FIFO into a regular source file."""
+        project = u.Tests.mk_project(
+            tmp_path,
+            "regular-inventory",
+            pyproject='[project]\nname = "regular-inventory"\nversion = "0.1.0"\n',
+        ).resolve()
+        regular = project / "regular.py"
+        regular.write_text("value: int\n", encoding=c.DEFAULT_ENCODING)
+        os.mkfifo(project / "worker.py")
+        with u.Infra.facade_source_project(project, project_roots=(project,)) as (
+            source_project,
+            _,
+            _,
+        ):
+            for reader in (None, source_project):
+                discovered = u.Infra.discover_python_files(
+                    project,
+                    workspace_excluded_top_dirs=frozenset(),
+                    source_project=reader,
+                )
+                tm.that(discovered, eq=(regular,))
 
     @staticmethod
     def test_unreadable_source_subtree_preserves_native_failure(tmp_path: Path) -> None:
@@ -326,19 +394,25 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
                 u.Infra.discover_python_files(
                     project, workspace_excluded_top_dirs=frozenset()
                 )
-            tm.that(discovery_error.value.filename, eq=str(blocked))
+            tm.that(
+                Path(str(discovery_error.value.filename)).is_relative_to(blocked),
+                eq=True,
+            )
             tm.that(discovery_error.value.errno, eq=errno.EACCES)
             result = u.Infra.iter_python_files(
                 m.Infra.SourceScanRequest(project_roots=(project,))
             )
             tm.that(result.failure, eq=True)
             exception = result.exception
-            assert isinstance(exception, PermissionError)
-            tm.that(exception.filename, eq=str(blocked))
+            if not isinstance(exception, PermissionError):
+                pytest.fail(
+                    "Source enumeration must retain its original PermissionError"
+                )
+            tm.that(exception.filename, eq=discovery_error.value.filename)
             tm.that(exception.errno, eq=errno.EACCES)
-            with pytest.raises(RuntimeError) as unwrap_error:
+            with pytest.raises(PermissionError) as unwrap_error:
                 result.unwrap()
-            tm.that(unwrap_error.value.__cause__ is exception, eq=True)
+            tm.that(unwrap_error.value is exception, eq=True)
         finally:
             blocked.chmod(original_mode)
 

@@ -88,7 +88,7 @@ class FlextInfraUtilitiesPyproject:
             entry
             if isinstance(entry, str)
             else dict(
-                t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                u.json_mapping_adapter().validate_python(
                     entry.model_dump(mode="json", by_alias=True),
                 ),
             )

@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, infra
-from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.codegen import FlextInfraCodegenLazyInit
 from tests import c, m, r, t, tm, u
 
 
@@ -35,6 +35,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         width = config.Infra.tooling.tools.ruff.line_length
         owner = "Owner" + "X" * ((width + length_delta) // 2)
         family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        self._write(package / family.directory / c.Infra.INIT_PY, "")
         prefix = f"from {package.name}.{family.directory}.owner_ import ("
         module = "owner_" + "x" * max(0, width - len(prefix))
         self._write(
@@ -158,6 +159,12 @@ class TestsFlextInfraUtilityFacadeProjection:
         """Create one fixture source through the canonical atomic writer."""
         path.parent.mkdir(parents=True, exist_ok=True)
         tm.ok(u.Cli.atomic_write_text_file(path, source))
+        root = next(
+            (parent for parent in path.parents if (parent / ".git").exists()),
+            None,
+        )
+        if root is not None:
+            u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
 
     @pytest.mark.parametrize("scope", ["single", "independent", "collision"])
     def test_future_exposure_uses_planned_owners_and_original_receipts(
@@ -229,47 +236,68 @@ class TestsFlextInfraUtilityFacadeProjection:
             )
             for path, source in desired.items()
         )
-        service = FlextInfraCodegenConform(repository_root=tmp_path)
-        if scope == "collision":
-            rejected = r[m.Infra.CodegenPhaseAnalysis].create_from_callable(
-                lambda: service.plan_future_exposure(
-                    source_states=originals,
-                    layouts=tuple(layouts),
-                    declared_files=plans,
-                ).unwrap(),
-            )
-            tm.fail(rejected, has="Owner")
-            tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
-            return
-        analysis = tm.ok(
-            service.plan_future_exposure(
-                source_states=originals,
-                layouts=tuple(layouts),
-                declared_files=plans,
-            ),
+        facade_plans = []
+        with u.Infra.facade_source_project(
+            tmp_path,
+            source_states=originals,
+            declared_files=plans,
+            project_roots=tuple(roots),
+        ) as binding:
+            for layout in layouts:
+                package = layout.package_dir
+                if scope == "collision":
+                    rejected = r[str | None].create_from_callable(
+                        lambda: u.Infra.render_utility_facade(
+                            package, project=binding[0], sources=binding[2]
+                        ),
+                    )
+                    tm.fail(rejected, has="Owner")
+                    tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
+                    return
+                facade = package / c.Infra.UTILITIES_PY
+                rendered = tm.not_none(
+                    u.Infra.render_utility_facade(
+                        package, project=binding[0], sources=binding[2]
+                    ),
+                )
+                facade_plans.append(
+                    m.Infra.CodegenFilePlan(
+                        project=layout.project_root,
+                        path=facade,
+                        before=by_path[facade],
+                        desired_content=rendered.encode(c.DEFAULT_ENCODING),
+                        desired_mode=tm.not_none(by_path[facade].mode),
+                    ),
+                )
+        service = FlextInfraCodegenLazyInit(
+            repository_root=tmp_path, project_scope_roots=tuple(roots)
         )
+        with u.Infra.facade_source_project(
+            tmp_path,
+            source_states=originals,
+            declared_files=(*plans, *facade_plans),
+            project_roots=tuple(roots),
+        ) as binding:
+            analysis = tm.ok(service.plan_files(source_project=binding[0]))
+        combined = {
+            plan.path: plan for plan in (*plans, *facade_plans, *analysis.files)
+        }
+        analysis = analysis.model_copy(update={"files": tuple(combined.values())})
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
         for plan in plans:
             projected = next(file for file in analysis.files if file.path == plan.path)
             tm.that(projected.before, eq=plan.before)
             tm.that(projected.desired_content, eq=plan.desired_content)
-        repeated = tm.ok(
-            service.plan_future_exposure(
-                source_states=analysis.inputs,
-                layouts=tuple(layouts),
-                declared_files=analysis.files,
-            ),
-        )
-        tm.that(
-            tuple(
-                (file.path, file.desired_content, file.desired_mode)
-                for file in repeated.files
-            ),
-            eq=tuple(
-                (file.path, file.desired_content, file.desired_mode)
-                for file in analysis.files
-            ),
-        )
+        with u.Infra.facade_source_project(
+            tmp_path,
+            source_states=originals,
+            declared_files=analysis.files,
+            project_roots=tuple(roots),
+        ) as binding:
+            repeated = tm.ok(service.plan_files(source_project=binding[0]))
+        for file in repeated.files:
+            tm.that(file.desired_content, eq=combined[file.path].desired_content)
+            tm.that(file.desired_mode, eq=combined[file.path].desired_mode)
         candidate = tmp_path / "candidate"
         for state in originals:
             if state.content is not None:
@@ -302,11 +330,13 @@ class TestsFlextInfraUtilityFacadeProjection:
         changed = next(iter(desired))
         self._write(changed, desired[changed])
         with pytest.raises(ValueError, match="atomic source changed"):
-            service.plan_future_exposure(
+            with u.Infra.facade_source_project(
+                tmp_path,
                 source_states=originals,
-                layouts=tuple(layouts),
                 declared_files=plans,
-            )
+                project_roots=tuple(roots),
+            ):
+                pass
 
     def test_moved_service_retires_its_utility_composition(
         self,
@@ -467,8 +497,25 @@ class TestsFlextInfraUtilityFacadeProjection:
                 )
             tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
         tm.that(projections[0], eq=projections[1])
-        tm.that(projections[0], has="class Domain(ClientOwner):")
         tm.that("DepartedOwner" in projections[0], eq=False)
+        self._write(facade, projections[0])
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        output = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name} import u\n"
+                        "assert u.Domain.marker == 'current'\n"
+                        "assert not hasattr(u.Domain, 'DepartedOwner')\n"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
 
     @pytest.mark.parametrize(
         "ownership",
@@ -1895,11 +1942,13 @@ class TestsFlextInfraUtilityFacadeProjection:
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
 
     @pytest.mark.parametrize("multiline", [False, True])
+    @pytest.mark.parametrize("shadow", [False, True])
     def test_protocol_owner_precedes_terminal_protocol_base(
         self,
         tmp_path: Path,
         *,
         multiline: bool,
+        shadow: bool,
     ) -> None:
         """Both source forms import and expose the real structural protocol."""
         root, package = u.Tests.create_lazy_init_workspace(
@@ -1928,17 +1977,35 @@ class TestsFlextInfraUtilityFacadeProjection:
             "__all__ = ['PayloadOwner']\n",
         )
         facade = package / "protocols.py"
+        bases = "PayloadOwner, p" if shadow else "p"
         header = (
-            "    class Sample(\n        p,\n        Protocol,\n    ):\n"
+            f"    class Sample(\n        {bases},\n        Protocol,\n    ):\n"
             if multiline
-            else "    class Sample(p, Protocol):\n"
+            else f"    class Sample({bases}, Protocol):\n"
+        )
+        owner_import = (
+            "from flext_sample._protocols import PayloadOwner\n" if shadow else ""
+        )
+        body = (
+            (
+                "        Payload: type[PayloadOwner.Payload] = (\n"
+                "            PayloadOwner.Payload\n"
+                "        )\n"
+                if multiline
+                else "        Payload: type[PayloadOwner.Payload] = PayloadOwner.Payload\n"
+            )
+            if shadow
+            else "        pass\n"
         )
         self._write(
             facade,
             "from typing import Protocol\n\nfrom upstream import p\n\n"
-            "class FlextSampleProtocols(p):\n"
+            + owner_import
+            + "\n"
+            + "class FlextSampleProtocols(p):\n"
             + header
-            + "        pass\n\np = FlextSampleProtocols\n\n"
+            + body
+            + "\np = FlextSampleProtocols\n\n"
             + '__all__ = ["FlextSampleProtocols", "p"]\n',
         )
 
@@ -1959,10 +2026,12 @@ class TestsFlextInfraUtilityFacadeProjection:
                     "-c",
                     (
                         "from flext_sample import p\n"
+                        "from typing import get_type_hints\n"
                         "from flext_sample._protocols import PayloadOwner\n"
                         "class Value:\n    value = 'payload'\n"
                         "class Missing:\n    pass\n"
                         "assert p.Sample.Payload is PayloadOwner.Payload\n"
+                        "assert 'Payload' not in get_type_hints(p.Sample)\n"
                         "assert isinstance(Value(), p.Sample.Payload)\n"
                         "assert not isinstance(Missing(), p.Sample.Payload)\n"
                         "print('protocol-proven')\n"

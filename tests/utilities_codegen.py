@@ -17,11 +17,17 @@ from flext_infra.codegen import (
     FlextInfraCodegenConsolidator,
     FlextInfraCodegenLazyInit,
 )
-from tests import c, m, p, t, tm
-from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
-from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
-from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
-from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
+from tests import (
+    TestsFlextInfraUtilitiesGitMixin,
+    TestsFlextInfraUtilitiesProjectFixtureMixin,
+    TestsFlextInfraUtilitiesTomlMixin,
+    TestsFlextInfraUtilitiesToolingFixtureMixin,
+    c,
+    m,
+    p,
+    t,
+    tm,
+)
 
 
 class TestsFlextInfraUtilitiesCodegenMixin:
@@ -117,8 +123,11 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         return tm.ok(
             FlextInfraCodegenConform(
                 repository_root=root,
-                request=request,
-                initial_workspace=workspace,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    request=request,
+                    initial_workspace=workspace,
+                ),
             ).plan(request),
         )
 
@@ -498,6 +507,20 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                 )
             if result.failure:
                 return r[bool].from_failure(result)
+        for project in sorted({plan.project for plan in changed}):
+            if (project / ".git").exists():
+                TestsFlextInfraUtilitiesGitMixin.git_bootstrap(
+                    project,
+                    (
+                        "add",
+                        "--",
+                        *(
+                            str(plan.path.relative_to(project))
+                            for plan in changed
+                            if plan.project == project
+                        ),
+                    ),
+                )
         return r[bool].ok(value=True)
 
     @staticmethod

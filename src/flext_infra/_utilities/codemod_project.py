@@ -434,6 +434,7 @@ class FlextInfraUtilitiesCodemodProject(
         predicates = {
             c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
             c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
+            c.Infra.CodemodContextPredicate.GENERIC_SPECIALIZATION,
             c.Infra.CodemodContextPredicate.SAME_BINDING,
             c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
             c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
@@ -588,6 +589,7 @@ class FlextInfraUtilitiesCodemodProject(
                 c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL,
                 c.Infra.CodemodContextPredicate.EMITTED_SYMBOL,
                 c.Infra.CodemodContextPredicate.SAME_BINDING,
+                c.Infra.CodemodContextPredicate.GENERIC_SPECIALIZATION,
                 c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE,
                 c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT,
             }:
@@ -1364,6 +1366,7 @@ class FlextInfraUtilitiesCodemodProject(
                 )
             case (
                 c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL
+                | c.Infra.CodemodContextPredicate.GENERIC_SPECIALIZATION
                 | c.Infra.CodemodContextPredicate.SAME_BINDING
                 | c.Infra.CodemodContextPredicate.EXECUTABLE_OCCURRENCE
                 | c.Infra.CodemodContextPredicate.UNREFERENCED_IMPORT
@@ -1451,7 +1454,7 @@ class FlextInfraUtilitiesCodemodProject(
             case c.Infra.CodemodContextPredicate.RUNTIME_PACKAGE:
                 return module in facts.runtime_modules
             case c.Infra.CodemodContextPredicate.FACADE_PACKAGE:
-                return module in facts.runtime_modules and bool(
+                return (module == own or module in facts.runtime_modules) and bool(
                     cls._codemod_runtime_aliases(root, module, own),
                 )
             case c.Infra.CodemodContextPredicate.RUNTIME_ALIAS:
@@ -1818,10 +1821,13 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
-        owner = cls._layer_rank(
-            order,
-            frozenset(condition.arg) if condition.arg else cls._path_layers(file_path),
-        )
+        if condition.arg:
+            owner = cls._layer_rank(order, frozenset(condition.arg))
+        else:
+            namespace = FlextInfraUtilitiesImportLaw.import_namespace(root, file_path)
+            if namespace is None:
+                return False
+            owner = FlextInfraUtilitiesImportLaw.module_import_layer(namespace[1])
         if owner is None:
             return False
         if imported in order:
@@ -1831,7 +1837,10 @@ class FlextInfraUtilitiesCodemodProject(
         else:
             target = cls._own_module_path(root, file_path, imported)
             if target is None:
-                return False
+                if "." not in imported:
+                    return False
+                target_rank = FlextInfraUtilitiesImportLaw.module_import_layer(imported)
+                return target_rank > owner
             target_layers = cls._path_layers(target)
         target_rank = cls._layer_rank(order, target_layers)
         return target_rank is not None and target_rank > owner

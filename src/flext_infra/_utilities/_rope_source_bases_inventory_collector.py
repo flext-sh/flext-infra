@@ -193,7 +193,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         """Classify targets before publishing one captured value reference."""
         targets = node.targets if isinstance(node, ast.Assign) else [node.target]
         if (
-            spec.allow_conditional
+            (spec.allow_conditional or isinstance(node.value, ast.Call))
             and targets
             and all(isinstance(target, ast.Tuple | ast.List) for target in targets)
             and all(
@@ -204,7 +204,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
                 for part in ast.walk(target)
             )
         ):
-            # Unpacking a provider iterable binds its elements, not the iterable's
+            # Unpacking a computed iterable binds its elements, not the iterable's
             # class identity. Never retain an earlier class under those names.
             for target in targets:
                 for part in ast.walk(target):

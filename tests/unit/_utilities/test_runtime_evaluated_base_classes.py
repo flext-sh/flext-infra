@@ -407,7 +407,7 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             + "from typing import TYPE_CHECKING\n"
             + "from flext_core.lazy import install_lazy_exports\n"
             + "if TYPE_CHECKING:\n    from .models import m\n"
-            + "install_lazy_exports(__name__, __file__, "
+            + "__getattr__, __dir__ = install_lazy_exports(__name__, globals(), "
             'MappingProxyType({"m": ".models"}), public_exports=("m",))\n'
             + 'raise RuntimeError("This package must not be imported")\n',
             encoding="utf-8",
@@ -433,6 +433,33 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             ),
         )
         tm.that("generated_contract" in sys.modules, eq=False)
+
+    @pytest.mark.parametrize(
+        ("target", "values"),
+        [
+            ("Alias, other", "None, None"),
+            ("Alias, (other, *rest)", "None, (None, None)"),
+        ],
+    )
+    def test_computed_unpacking_cannot_preserve_a_shadowed_class_base(
+        self,
+        tmp_path: Path,
+        target: str,
+        values: str,
+    ) -> None:
+        """Opaque iterable elements cannot inherit an earlier class identity."""
+        source = u.Tests.runtime_root_import() + (
+            "class Alias(RuntimeRoot): pass\n"
+            f"def values(): return {values}\n"
+            f"{target} = values()\n"
+            "class Consumer(Alias): pass\n"
+        )
+        with pytest.raises(ValueError, match="Non-class binding used as a base"):
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path,
+                {tmp_path / "src" / "unpacked_contract" / "models.py": source},
+                u.Tests.runtime_evaluated_roots(),
+            )
 
     @pytest.mark.parametrize("qualified", [False, True])
     def test_generated_lazy_member_keeps_the_export_binding(

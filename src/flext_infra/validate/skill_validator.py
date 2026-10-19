@@ -164,7 +164,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
         rules_list_obj = rules.get(c.Infra.RK_RULES, [])
         if not isinstance(rules_list_obj, list):
             return r[t.JsonList].fail("rules must be a list")
-        return r[t.JsonList].ok(t.Cli.JSON_LIST_ADAPTER.validate_python(rules_list_obj))
+        return r[t.JsonList].ok(u.json_list_adapter().validate_python(rules_list_obj))
 
     def _evaluate_rules(
         self,

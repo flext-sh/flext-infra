@@ -269,6 +269,7 @@ class FlextInfraConstantsRefactor:
         PROTOCOL_DECLARATION = "protocol-declaration"
         RESOLVED_SYMBOL = "resolved-symbol"
         EMITTED_SYMBOL = "emitted-symbol"
+        GENERIC_SPECIALIZATION = "generic-specialization"
         SAME_BINDING = "same-binding"
         EXECUTABLE_OCCURRENCE = "executable-occurrence"
         UNREFERENCED_IMPORT = "unreferenced-import"

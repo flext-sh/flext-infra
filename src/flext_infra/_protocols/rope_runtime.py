@@ -295,8 +295,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_name(self) -> str: ...
 
-        def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
-
         def get_doc(self) -> str | None: ...
 
         def get_attributes(
@@ -660,6 +658,11 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     @runtime_checkable
     class RopeDefaultWildcard(RopeWildcard[str], Protocol):
         """Native default wildcard consuming Rope's string constraint grammar."""
+
+    class RopeChangeComputer(Protocol):
+        """Native source computation consumed by the restructuring planner."""
+
+        def get_changed(self) -> str | None: ...
 
     @runtime_checkable
     class RopeRestructure(Protocol):

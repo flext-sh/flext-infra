@@ -346,6 +346,7 @@ class TestsFlextInfraRopeRuntimePymodule:
                 ("plain", "VALUE"),
                 ("pkg", "VALUE"),
                 ("builtins", "len"),
+                ("os", "getenv"),
             ):
                 native = project.get_module(name)
                 admitted = u.Infra.require_semantic_module(native)
