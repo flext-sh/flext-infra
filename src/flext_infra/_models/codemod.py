@@ -255,11 +255,11 @@ class FlextInfraModelsCodemod:
                 description="Native Rope identity constraints or admitted alternatives"
             ),
         ]
-        imports: t.MappingKV[str, str] = u.Field(
+        imports: t.MappingKV[str, str] = m.Field(
             default_factory=u.empty(TypeForm(t.MappingKV[str, str])),
             description="Destination bindings and their native import declarations",
         )
-        bindings: t.MappingKV[str, str] = u.Field(
+        bindings: t.MappingKV[str, str] = m.Field(
             default_factory=u.empty(TypeForm(t.MappingKV[str, str])),
             description="Destination expressions and their required Rope identities",
         )

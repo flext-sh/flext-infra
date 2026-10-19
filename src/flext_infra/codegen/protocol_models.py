@@ -413,6 +413,21 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
             return r[bool].fail(
                 f"referenced protocol p.{name} resolves to no declared model"
             )
+        if u.Infra.assigned_name(manual) and len(manual.assignments) == 1:
+            assignment = manual.assignments[0].ast_node
+            module, _line = u.Infra.definition_location(manual)
+            if isinstance(
+                assignment, ast.Name | ast.Attribute
+            ) and u.Infra.source_module(module):
+                scope = u.Infra.scope_at(
+                    module, u.Infra.source_offset(module.source_code, assignment)
+                )
+                declared = u.Infra.resolve_symbol(scope, assignment)
+                if declared is None:
+                    return r[bool].fail(
+                        f"authored port alias has no source binding: {name}"
+                    )
+                manual = declared
         definition = manual.get_object()
         owner = definition.get_module()
         if not isinstance(definition, p.Infra.RopeSourceDefinition) or not (

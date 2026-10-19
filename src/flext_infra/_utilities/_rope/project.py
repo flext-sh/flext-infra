@@ -1825,4 +1825,5 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             core = cast("p.Infra.RopeProject", self).get_pycore()
             core.observer.timekeeper = self.SnapshotChangeIndicator(self.fscommands)
 
+
 __all__: list[str] = ["FlextInfraRopeProject"]

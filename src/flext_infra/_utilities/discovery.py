@@ -50,7 +50,7 @@ class FlextInfraUtilitiesDiscovery(
         resolved = Path(file_path).resolve()
         candidate = (
             resolved.parent
-            if resolved.suffix == c.Infra.EXT_PYTHON
+            if resolved.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
             # A project manifest belongs to the root it declares, never to a
             # parent discovered by walking above it.
             or resolved.name == c.PYPROJECT_FILENAME

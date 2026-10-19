@@ -105,8 +105,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 else:
                     module_name, _class_name, line = ancestor.rsplit(":", 2)
                     declared = self._project.get_module(module_name)
-                    scope = declared.get_scope().get_inner_scope_for_line(int(line))
-                    if scope.get_start() != int(line):
+                    module_scope = declared.get_scope()
+                    if module_scope is None or (
+                        scope := module_scope.get_inner_scope_for_line(int(line))
+                    ).get_start() != int(line):
                         msg = (
                             "native class scope does not identify source owner: "
                             f"{ancestor}"

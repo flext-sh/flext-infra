@@ -8,11 +8,26 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import tm, u
+import pytest
+
+from tests import c, tm, u
 
 
 class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
     """Edge-case tests for project discovery."""
+
+    @staticmethod
+    @pytest.mark.parametrize("suffix", [c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB])
+    def test_source_files_discover_their_authenticated_project_root(
+        tmp_path: Path, suffix: str
+    ) -> None:
+        """A source or stub file is never queried as an enclosing directory."""
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "package"
+        package.mkdir(parents=True)
+        source = package / f"module{suffix}"
+        source.write_text("", encoding=c.DEFAULT_ENCODING)
+        with u.Infra.facade_source_project(tmp_path) as (project, _, _):
+            tm.that(u.Infra.project_root(source, source_project=project), eq=tmp_path)
 
     @staticmethod
     def test_standalone_never_discovers_undeclared_child_projects(
