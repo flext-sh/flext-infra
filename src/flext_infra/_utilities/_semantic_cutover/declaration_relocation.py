@@ -514,43 +514,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         root: Path,
         sources: t.MappingKV[Path, str],
     ) -> p.Infra.RopePyName | None:
-        provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
-            project.get_module(module_name)
+        return FlextInfraUtilitiesImportLaw.resolve_declared_binding(
+            project, module_name, alias_name, root, sources
         )
-        visited: set[str] = set()
-        while True:
-            provider_resource = provider.get_resource()
-            if provider_resource is None:
-                break
-            provider_name = provider.get_name()
-            if provider_name in visited:
-                msg = f"declaration-relocation: cyclic lazy export {provider_name}"
-                raise ValueError(msg)
-            visited.add(provider_name)
-            provider_path, provider_file = (
-                FlextInfraUtilitiesSemanticDeclarationRelocation._provider_file(
-                    provider_resource,
-                )
-            )
-            source = (
-                sources[provider_path]
-                if provider_path.is_relative_to(root) and provider_path in sources
-                else provider_file.read()
-            )
-            aliases = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
-                provider_name,
-                provider_path,
-                source,
-                project=project,
-                pymodule=provider,
-            )
-            route = aliases.get(alias_name)
-            if route is None:
-                break
-            provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
-                project.get_module(route)
-            )
-        return provider.get_attributes().get(alias_name)
 
     @classmethod
     def _next_payload(

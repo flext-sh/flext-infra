@@ -9,8 +9,6 @@ from __future__ import annotations
 import venv
 from pathlib import Path
 
-from flext_cli import cli as cli_facade
-
 from flext_infra import config, u
 from tests import c, m, t, tm
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
@@ -63,7 +61,7 @@ class TestsFlextInfraUtilitiesGitMixin:
         arguments = (
             ("switch", branch) if local_exists else ("switch", "--create", branch)
         )
-        tm.ok(cli_facade.run_checked([c.Infra.GIT, *arguments], cwd=repo_root))
+        tm.ok(u.Cli.run_checked([c.Infra.GIT, *arguments], cwd=repo_root))
         return branch
 
     @staticmethod
@@ -73,7 +71,7 @@ class TestsFlextInfraUtilitiesGitMixin:
         current = tm.ok(
             u.Infra.git_current_branch(m.Infra.GitRepoRequest(repo_root=repo_root)),
         ).text
-        run = cli_facade.run_checked
+        run = u.Cli.run_checked
         tm.ok(run([c.Infra.GIT, "switch", "--create", branch], cwd=repo_root))
         change = repo_root / "CHANGES.md"
         with change.open("a", encoding="utf-8") as handle:
@@ -172,7 +170,7 @@ class TestsFlextInfraUtilitiesGitMixin:
             The repository-local Git variables a fixture must not inherit.
 
         """
-        declared = cli_facade.capture([c.Infra.GIT, "rev-parse", "--local-env-vars"])
+        declared = u.Cli.capture([c.Infra.GIT, "rev-parse", "--local-env-vars"])
         tm.ok(declared)
         return tuple(declared.value.split())
 
@@ -195,7 +193,7 @@ class TestsFlextInfraUtilitiesGitMixin:
         permitting the file transport for a local bare origin.
         """
         tm.ok(
-            cli_facade.run_checked(
+            u.Cli.run_checked(
                 [c.Infra.GIT, *command],
                 cwd=repo_root,
                 options=m.Cli.ProcessOptions(

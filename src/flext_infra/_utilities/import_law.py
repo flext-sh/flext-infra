@@ -17,6 +17,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesRopeSourceBasesAliases,
+    FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 
 if TYPE_CHECKING:
@@ -30,6 +33,8 @@ class FlextInfraUtilitiesImportLaw:
     def model_utility_target(
         project: p.Infra.RopeProject,
         qualified: str,
+        *,
+        binding: p.Infra.RopePyName | None = None,
     ) -> t.Triple[str, str, str] | None:
         """Prove a model helper's native static identity and lazy publication.
 
@@ -41,8 +46,36 @@ class FlextInfraUtilitiesImportLaw:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        binding = runtime.qualified_name(project, qualified)
-        if binding.get_object().get_kind() not in {"function", "method", "classmethod"}:
+        if binding is None:
+            receiver, _, member = qualified.rpartition(".")
+            resolver = FlextInfraUtilitiesRopeSourceBasesRuntime._RuntimeBaseResolver(
+                project, {}, (), None
+            )
+            identity = resolver._resolve(resolver._root_reference(receiver))
+            for ancestor in resolver._linearize(identity):
+                if ancestor in resolver._external:
+                    binding = resolver._external[ancestor].get_attributes().get(member)
+                else:
+                    module_name, _class_name, line = ancestor.rsplit(":", 2)
+                    declared = project.get_module(module_name).get_module()
+                    declared_scope = declared.get_scope().get_inner_scope_for_line(
+                        int(line)
+                    )
+                    if declared_scope.get_start() != int(line):
+                        msg = f"native class scope does not identify source owner: {ancestor}"
+                        raise ValueError(msg)
+                    binding = declared_scope.get_defined_names().get(member)
+                if binding is not None:
+                    break
+            if binding is None:
+                msg = f"model utility has no declared binding: {qualified}"
+                raise ValueError(msg)
+        if binding.get_object().get_kind() not in {
+            "function",
+            "method",
+            "staticmethod",
+            "classmethod",
+        }:
             return None
         holder, line = binding.get_definition_location()
         if holder is None or line is None:
@@ -79,8 +112,13 @@ class FlextInfraUtilitiesImportLaw:
             msg = f"model utility requires facade dispatch: {qualified}"
             raise ValueError(msg)
         public_module = holder.get_name().rpartition(".")[0]
-        exported = runtime.qualified_name(
-            project, f"{owner.name}.{method.name}", module_name=public_module
+        exported_owner = FlextInfraUtilitiesImportLaw.resolve_declared_binding(
+            project, public_module, owner.name, Path(project.root.real_path), {}
+        )
+        exported = (
+            exported_owner.get_object().get_attributes().get(method.name)
+            if exported_owner is not None
+            else None
         )
         if not runtime.same_name(binding, exported):
             msg = f"model utility owner is not lazy-published: {qualified}"
@@ -163,7 +201,10 @@ class FlextInfraUtilitiesImportLaw:
                 namespace
                 / FlextInfraUtilitiesCodegenNamespace.facade_families()["u"].directory
             )
-            if own_utility and cls.model_utility_target(project, identity) is None:
+            if (
+                own_utility
+                and cls.model_utility_target(project, identity, binding=binding) is None
+            ):
                 message = (
                     f"model utility destination is not a static method: {identity}"
                 )
@@ -530,6 +571,54 @@ class FlextInfraUtilitiesImportLaw:
                     visited.add(current)
                     pending.extend(import_graph.get(current, ()))
         return frozenset(dependencies)
+
+    @staticmethod
+    def resolve_declared_binding(
+        project: p.Infra.RopeProject,
+        module_name: str,
+        alias_name: str,
+        root: Path,
+        sources: t.MappingKV[Path, str],
+    ) -> p.Infra.RopePyName | None:
+        """Follow the existing native lazy routes without losing tuple aliases."""
+        provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+            project.get_module(module_name)
+        )
+        visited: set[t.Pair[str, str]] = set()
+        while True:
+            resource = provider.get_resource()
+            if resource is None:
+                break
+            if resource.is_folder():
+                resource = project.get_resource(f"{resource.path}/{c.Infra.INIT_PY}")
+            identity = provider.get_name(), alias_name
+            if identity in visited:
+                msg = f"cyclic lazy export {identity}"
+                raise ValueError(msg)
+            visited.add(identity)
+            path = Path(resource.real_path).resolve()
+            source = (
+                sources[path]
+                if path.is_relative_to(root) and path in sources
+                else (
+                    FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                        resource, path
+                    ).read()
+                )
+            )
+            route = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
+                provider.get_name(), path, source, project=project, pymodule=provider
+            ).get(alias_name)
+            if route is None:
+                break
+            if len(route.attributes) != 1:
+                msg = f"declaration export is not a named binding: {identity}"
+                raise ValueError(msg)
+            alias_name = route.attributes[0]
+            provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                project.get_module(route.target)
+            )
+        return provider.get_attributes().get(alias_name)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesImportLaw"]

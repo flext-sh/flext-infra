@@ -272,6 +272,10 @@ class FlextInfraModelsCodemod:
             default=None,
             description="Capture requiring a proven read-only collection origin",
         )
+        deferred_contract: t.NonEmptyStr | None = m.Field(
+            default=None,
+            description="Capture resolved by a canonical typed factory after declaration",
+        )
         readonly_origins: t.VariadicTuple[str] = m.Field(
             default=(),
             description="Native read-only collection identities admitting the capture",

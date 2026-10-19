@@ -46,7 +46,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
                 msg = f"model declaration has no native scope: {name}"
                 raise ValueError(msg)
             self.dependencies.clear()
-            self._render_protocol(name.rpartition(".")[2], model, scope)
+            self.render_protocol(name.rpartition(".")[2], model, scope)
             graph[name] = self.dependencies.intersection(models)
         components = {
             min(component): tuple(sorted(component))
@@ -171,11 +171,11 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
                 msg = f"model has no native source scope: {name}"
                 raise ValueError(msg)
             bodies.append(
-                self._render_protocol(name.rpartition(".")[2], models[name], scope)
+                self.render_protocol(name.rpartition(".")[2], models[name], scope)
             )
         return "".join(bodies)
 
-    def _render_protocol(
+    def render_protocol(
         self,
         name: str,
         model: p.Infra.RopePyName,

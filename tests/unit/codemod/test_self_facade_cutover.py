@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import os
 import sys
 from typing import TYPE_CHECKING
@@ -121,6 +122,27 @@ class TestsFlextInfraSelfFacadeCutover:
         )
         consumer.write_text(source, encoding="utf-8")
         with infra.rope_workspace(root) as rope:
+            if not mutable:
+                native_module = rope.rope_project.get_module(module)
+                native_scope = next(
+                    scope
+                    for scope in native_module.get_scope().get_scopes()
+                    if scope.pyobject.get_name() == "Consumer"
+                )
+                origin = u.Infra.annotation_origin(
+                    rope.rope_project,
+                    ast.parse("Bag[str]", mode="eval").body,
+                    native_scope,
+                )
+                expected = u.Infra.qualified_name(
+                    rope.rope_project, "collections.abc.Sequence"
+                )
+                if not u.Infra.same_name(origin, expected):
+                    msg = (
+                        f"Native alias origin {origin.get_definition_location() if origin else None}; "
+                        f"expected {expected.get_definition_location()}"
+                    )
+                    raise AssertionError(msg)
             edits = tm.ok(
                 u.Infra.plan_semantic_cutover(
                     c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,

@@ -7,21 +7,32 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Callable
 from itertools import chain
 from pathlib import Path
+from typing import Annotated, override
 
 from flext_infra import FlextInfraServiceBase, c, m, p, r, t, u
 from flext_infra.codegen import FlextInfraCodegenProtocolModelRender
 
 
-class FlextInfraCodegenProtocolModels(FlextInfraServiceBase):
+class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResult]):
     """Select source model identities and publish through ordinary conformance."""
 
-    def execute(self) -> p.Result[p.Infra.CodegenResult]:
-        """Execute the canonical planner, transaction and publication owner."""
-        from flext_infra import FlextInfra
+    conform: Annotated[
+        Callable[[p.Infra.CodegenConformRequest], p.Result[p.Infra.CodegenResult]],
+        m.Field(exclude=True, description="Caller-bound native conformance handler."),
+    ]
 
-        return FlextInfra(repository_root=self.repository_root).codegen_conform(
+    @override
+    def execute(self) -> p.Result[p.Infra.CodegenResult]:
+        """Execute the caller's canonical planner and publication owner.
+
+        Returns:
+            The unchanged conformance result from the bound public API.
+
+        """
+        return self.conform(
             m.Infra.CodegenConformRequest(
                 root=self.repository_root,
                 scope=c.Infra.CodegenConformScope.SELF,
@@ -37,7 +48,12 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase):
     def render_modules(
         cls, project: p.Infra.ProjectSpec, workspace: p.Infra.RopeWorkspaceDsl
     ) -> p.Result[t.Pair[t.MappingKV[Path, str], t.MappingKV[str, str]]]:
-        """Select native Pydantic descendants and close their source annotations."""
+        """Select native Pydantic descendants and close their source annotations.
+
+        Returns:
+            Generated sources and their authenticated model identities.
+
+        """
         result_type = r[t.Pair[t.MappingKV[Path, str], t.MappingKV[str, str]]]
         if not workspace.rope_project.authenticated_sources:
             return result_type.fail(
@@ -46,124 +62,44 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase):
         package_dir, facades = cls._facade_inventory(project, workspace)
         if package_dir is None or not {"m", "p"}.issubset(facades):
             return result_type.ok(({}, {}))
-        base = u.Infra.qualified_name(
-            workspace.rope_project, "BaseModel", module_name="pydantic"
-        ).get_object()
-        inventory: dict[str, p.Infra.RopePyName] = {}
-        pending = [("", facades["m"])]
-        visited: set[str] = set()
-        while pending:
-            prefix, namespace = pending.pop()
-            value = namespace.get_object()
-            if not u.Infra.py_class(value):
-                continue
-            identity = FlextInfraCodegenProtocolModelRender.identity(value)
-            if identity in visited:
-                continue
-            visited.add(identity)
-            for name, binding in sorted(value.get_attributes().items()):
-                if name.startswith("_"):
-                    continue
-                route = f"{prefix}{name}"
-                child = binding.get_object()
-                if base in u.Infra.class_ancestry(child):
-                    existing = inventory.get(route)
-                    if existing is not None and not u.Infra.same_name(
-                        existing, binding
-                    ):
-                        return result_type.fail(
-                            f"model facade route has competing native identities: {route}"
-                        )
-                    inventory[route] = binding
-                elif u.Infra.py_class(child):
-                    pending.append((f"{route}.", binding))
-        renderer = FlextInfraCodegenProtocolModelRender(project, workspace, inventory)
+        inventory = cls._model_inventory(workspace, facades["m"])
+        if inventory.failure:
+            return result_type.from_failure(inventory)
+        renderer = FlextInfraCodegenProtocolModelRender(
+            project, workspace, inventory.value
+        )
         directory = (
             package_dir / u.Infra.facade_families()["p"].directory
         ).relative_to(workspace.repository_root)
-        models: dict[str, p.Infra.RopePyName] = {}
-        aliases: dict[str, str] = {}
+        selected = cls._select_models(renderer, facades, package_dir, directory)
+        if selected.failure:
+            return result_type.from_failure(selected)
+        models, aliases = selected.value
+        closed = cls._close_models(renderer, models, facades["p"], package_dir)
+        if closed.failure:
+            return result_type.from_failure(closed)
+        return result_type.ok((
+            renderer.render_member_modules(models, directory, aliases),
+            {
+                route: renderer.identity(binding.get_object())
+                for route, binding in models.items()
+            },
+        ))
 
-        def external_port(route: str) -> bool:
-            binding = cls._member(facades["p"], route)
-            owner = binding.get_object().get_module() if binding is not None else None
-            resource = owner.get_resource() if owner is not None else None
-            return resource is not None and not Path(resource.real_path).is_relative_to(
-                package_dir
-            )
+    @classmethod
+    def _close_models(
+        cls,
+        renderer: p.Infra.CodegenProtocolModelRenderer,
+        models: t.MutableMappingKV[str, p.Infra.RopePyName],
+        facade: p.Infra.RopePyName,
+        package: Path,
+    ) -> p.Result[bool]:
+        """Close model dependencies before choosing generated receiver names.
 
-        for name in sorted(cls._referenced_names(workspace, facades["p"], directory)):
-            if external_port(name):
-                continue
-            manual = cls._member(facades["p"], name)
-            candidate = cls._member(facades["m"], name)
-            if candidate is None:
-                if manual is not None:
-                    definition = manual.get_object()
-                    owner = definition.get_module()
-                    if isinstance(
-                        definition, p.Infra.RopeSourceDefinition
-                    ) and u.Infra.source_module(owner):
-                        node = definition.get_ast()
-                        if (
-                            isinstance(node, ast.ClassDef)
-                            and node.end_lineno is not None
-                        ):
-                            for begin, end, line in u.Infra.annotation_regions(
-                                owner.source_code, owner
-                            ):
-                                if node.lineno <= line <= node.end_lineno:
-                                    renderer.source(
-                                        owner.source_code[begin:end],
-                                        u.Infra.scope_at(owner, begin),
-                                    )
-                    continue
-                return result_type.fail(
-                    f"referenced protocol p.{name} resolves to no declared model"
-                )
-            if name in inventory:
-                models[name] = inventory[name]
-                continue
-            alias = renderer.alias_definition(candidate)
-            if alias is None:
-                declaration = candidate.get_object()
-                identity = (
-                    renderer.identity(declaration)
-                    if u.Infra.py_class(declaration)
-                    else type(declaration).__qualname__
-                )
-                ancestors = tuple(
-                    ancestor.get_name()
-                    for ancestor in u.Infra.class_ancestry(declaration)
-                )
-                return result_type.fail(
-                    f"referenced protocol p.{name} is not a model declaration: "
-                    f"m.{name} resolved to {identity}; native ancestry={ancestors!r}"
-                )
-            node, scope = alias
-            if node.type_params:
-                return result_type.fail(
-                    f"protocol union requires an explicit specialization: {name}"
-                )
-            before = set(renderer.dependencies)
-            renderer.dependencies.clear()
-            aliases[name] = renderer.source(ast.unparse(node.value), scope)
-            routes = tuple(sorted(renderer.dependencies))
-            renderer.dependencies.update(before)
-            if not routes:
-                return result_type.fail(
-                    f"protocol alias has no source model dependencies: {name}"
-                )
-            models.update(
-                (route, inventory[route])
-                for route in routes
-                if not external_port(route)
-            )
-        models.update(
-            (route, inventory[route])
-            for route in renderer.dependencies
-            if not external_port(route)
-        )
+        Returns:
+            Success only when every generated member has one native model identity.
+
+        """
         renderer.imports.clear()
         # The same source renderer validates annotations and discovers every model
         # dependency, including specialized aliases and authored method signatures.
@@ -173,31 +109,260 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase):
                 binding = models[name]
                 scope = binding.get_object().get_scope()
                 if scope is None:
-                    return result_type.fail(
+                    return r[bool].fail(
                         f"model has no authenticated declaration scope: {name}"
                     )
-                renderer._render_protocol(name.rpartition(".")[2], binding, scope)
+                renderer.render_protocol(name.rpartition(".")[2], binding, scope)
                 visited_models.add(name)
             models.update(
-                (route, inventory[route])
+                (route, renderer.declarations[route])
                 for route in renderer.dependencies
-                if not external_port(route)
+                if not cls._external_port(facade, route, package)
             )
-        members: dict[str, p.Infra.RopePyName] = {}
+        members: t.MutableMappingKV[str, p.Infra.RopePyName] = {}
         for route, binding in models.items():
             member = route.rpartition(".")[2]
             previous = members.setdefault(member, binding)
             if not u.Infra.same_name(previous, binding):
-                return result_type.fail(
+                return r[bool].fail(
                     f"competing generated protocol member identities: {member}"
                 )
-        return result_type.ok((
-            renderer.render_member_modules(models, directory, aliases),
-            {
-                route: renderer.identity(binding.get_object())
-                for route, binding in models.items()
-            },
-        ))
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _model_inventory(
+        workspace: p.Infra.RopeWorkspaceDsl, facade: p.Infra.RopePyName
+    ) -> p.Result[t.MappingKV[str, p.Infra.RopePyName]]:
+        """Visit every public route while rejecting native ancestry cycles.
+
+        Returns:
+            Model bindings indexed by their public facade routes.
+
+        """
+        result_type = r[t.MappingKV[str, p.Infra.RopePyName]]
+        base = u.Infra.qualified_name(
+            workspace.rope_project, "BaseModel", module_name="pydantic"
+        ).get_object()
+        inventory: t.MutableMappingKV[str, p.Infra.RopePyName] = {}
+        pending: list[
+            t.Triple[str, p.Infra.RopePyName, t.VariadicTuple[p.Infra.RopePyObject]]
+        ] = [("", facade, ())]
+        while pending:
+            prefix, namespace, ancestors = pending.pop()
+            value = namespace.get_object()
+            if not u.Infra.py_class(value) or value in ancestors:
+                continue
+            ancestry = (*ancestors, value)
+            for name in sorted(value.get_attributes()):
+                if name.startswith("_"):
+                    continue
+                route = f"{prefix}{name}"
+                binding = FlextInfraCodegenProtocolModelRender.member(namespace, name)
+                if binding is None:
+                    return result_type.fail(
+                        f"model facade route has no native binding: {route}"
+                    )
+                child = binding.get_object()
+                admitted = FlextInfraCodegenProtocolModels._admit_model(
+                    inventory, route, binding, base
+                )
+                if admitted.failure:
+                    return result_type.from_failure(admitted)
+                # Models may also expose nested models through several public routes.
+                if u.Infra.py_class(child):
+                    pending.append((f"{route}.", binding, ancestry))
+        return result_type.ok(inventory)
+
+    @staticmethod
+    def _admit_model(
+        inventory: t.MutableMappingKV[str, p.Infra.RopePyName],
+        route: str,
+        binding: p.Infra.RopePyName,
+        base: p.Infra.RopePyObject,
+    ) -> p.Result[bool]:
+        if base not in u.Infra.class_ancestry(binding.get_object()):
+            return r[bool].ok(value=False)
+        existing = inventory.get(route)
+        if existing is not None and not u.Infra.same_name(existing, binding):
+            return r[bool].fail(
+                f"model facade route has competing native identities: {route}"
+            )
+        inventory[route] = binding
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _select_models(
+        cls,
+        renderer: p.Infra.CodegenProtocolModelRenderer,
+        facades: t.MappingKV[str, p.Infra.RopePyName],
+        package: Path,
+        directory: Path,
+    ) -> p.Result[
+        t.Pair[t.MutableMappingKV[str, p.Infra.RopePyName], t.MappingKV[str, str]]
+    ]:
+        """Select consumed models and aliases without weakening authored ports.
+
+        Returns:
+            Selected model bindings and expanded alias annotations.
+
+        """
+        result_type = r[
+            t.Pair[t.MutableMappingKV[str, p.Infra.RopePyName], t.MappingKV[str, str]]
+        ]
+        models: t.MutableMappingKV[str, p.Infra.RopePyName] = {}
+        aliases: t.MutableMappingKV[str, str] = {}
+        for name in sorted(
+            cls._referenced_names(renderer.workspace, facades["p"], directory)
+        ):
+            if cls._external_port(facades["p"], name, package):
+                continue
+            candidate = FlextInfraCodegenProtocolModelRender.member(facades["m"], name)
+            if candidate is None:
+                manual = cls._manual_dependencies(
+                    renderer,
+                    FlextInfraCodegenProtocolModelRender.member(facades["p"], name),
+                    name,
+                )
+                if manual.failure:
+                    return result_type.from_failure(manual)
+            elif name in renderer.declarations:
+                models[name] = renderer.declarations[name]
+            else:
+                alias = cls._model_alias(renderer, candidate, name)
+                if alias.failure:
+                    return result_type.from_failure(alias)
+                aliases[name] = alias.value
+        models.update(
+            (route, renderer.declarations[route])
+            for route in renderer.dependencies
+            if not cls._external_port(facades["p"], route, package)
+        )
+        return result_type.ok((models, aliases))
+
+    @staticmethod
+    def _manual_dependencies(
+        renderer: p.Infra.CodegenProtocolModelRenderer,
+        manual: p.Infra.RopePyName | None,
+        name: str,
+    ) -> p.Result[bool]:
+        """Resolve annotations inside an authored port's original lexical scope.
+
+        Returns:
+            Success after preserving the authored contract's dependencies.
+
+        """
+        if manual is None:
+            return r[bool].fail(
+                f"referenced protocol p.{name} resolves to no declared model"
+            )
+        definition = manual.get_object()
+        owner = definition.get_module()
+        if not isinstance(definition, p.Infra.RopeSourceDefinition) or not (
+            u.Infra.source_module(owner)
+        ):
+            return r[bool].fail(
+                f"authored port has no native source declaration: {name}"
+            )
+        node = definition.get_ast()
+        if not isinstance(node, ast.ClassDef):
+            return r[bool].fail(
+                f"authored port has no native class declaration: {name}"
+            )
+        annotations = (
+            child.annotation
+            for child in ast.walk(node)
+            if isinstance(child, ast.arg | ast.AnnAssign)
+            and child.annotation is not None
+        )
+        returns = (
+            child.returns
+            for child in ast.walk(node)
+            if isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef)
+            and child.returns is not None
+        )
+        bases = (
+            base
+            for child in ast.walk(node)
+            if isinstance(child, ast.ClassDef)
+            for base in child.bases
+        )
+        for annotation in chain(annotations, returns, bases):
+            offset = u.Infra.source_offset(owner.source_code, annotation)
+            renderer.source(ast.unparse(annotation), u.Infra.scope_at(owner, offset))
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _model_alias(
+        cls,
+        renderer: p.Infra.CodegenProtocolModelRenderer,
+        candidate: p.Infra.RopePyName,
+        name: str,
+    ) -> p.Result[str]:
+        """Expand a declared alias and retain its exact model dependencies.
+
+        Returns:
+            The specialized structural annotation, or a typed declaration failure.
+
+        """
+        alias = renderer.alias_definition(candidate)
+        if alias is None:
+            return r[str].fail(cls._unmodeled_error(candidate, name))
+        node, scope = alias
+        if node.type_params:
+            return r[str].fail(
+                f"protocol union requires an explicit specialization: {name}"
+            )
+        before = set(renderer.dependencies)
+        renderer.dependencies.clear()
+        annotation = renderer.source(ast.unparse(node.value), scope)
+        routes = tuple(renderer.dependencies)
+        renderer.dependencies.update(before)
+        if not routes:
+            return r[str].fail(
+                f"protocol alias has no source model dependencies: {name}"
+            )
+        return r[str].ok(annotation)
+
+    @staticmethod
+    def _unmodeled_error(candidate: p.Infra.RopePyName, name: str) -> str:
+        """Describe native declaration provenance without spelling-based admission.
+
+        Returns:
+            The rejected declaration's source-kind and native ancestry.
+
+        """
+        declaration = candidate.get_object()
+        module, line = u.Infra.definition_location(candidate)
+        origin = (module.get_name() if module is not None else None, line)
+        ancestors = tuple(
+            (
+                type(ancestor).__qualname__,
+                ancestor.get_name() if u.Infra.abstract_class(ancestor) else None,
+            )
+            for ancestor in u.Infra.class_ancestry(declaration)
+        )
+        return (
+            f"referenced protocol p.{name} is not a model declaration: "
+            f"m.{name} resolved to {type(declaration).__qualname__} "
+            f"at {origin!r}; native ancestry={ancestors!r}"
+        )
+
+    @classmethod
+    def _external_port(
+        cls, facade: p.Infra.RopePyName, route: str, package: Path
+    ) -> bool:
+        """Identify inherited contracts through the actual declaring resource.
+
+        Returns:
+            Whether the port is declared outside this package.
+
+        """
+        binding = FlextInfraCodegenProtocolModelRender.member(facade, route)
+        owner = binding.get_object().get_module() if binding is not None else None
+        resource = owner.get_resource() if owner is not None else None
+        return resource is not None and not Path(resource.real_path).is_relative_to(
+            package
+        )
 
     @classmethod
     def plan_transfers(
@@ -208,12 +373,42 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase):
         captured: p.Infra.CodemodSourceEpoch,
         model_identities: t.MappingKV[str, str],
     ) -> p.Result[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
-        """Derive native ownership transfers to the staged generated receivers."""
+        """Derive native ownership transfers to the staged generated receivers.
+
+        Returns:
+            Source edits preserving original declarations and native identities.
+
+        """
         package, facades = cls._facade_inventory(project, workspace)
         if package is None or "p" not in facades:
             return r[t.VariadicTuple[p.Infra.SemanticMigrationEdit]].ok(())
-        rules: list[m.Infra.RopeContractRule] = []
-        annotation_rules: list[m.Infra.RopeContractRule] = []
+        rules, annotation_rules = cls._projection_rules(
+            workspace, package, facades, model_identities
+        )
+        transferred = u.Infra.plan_contract_rules(
+            workspace, sources, rules, captured=captured
+        )
+        if transferred.failure:
+            return transferred
+        return cls._rewrite_annotations(
+            workspace, sources, annotation_rules, captured, transferred.value
+        )
+
+    @staticmethod
+    def _generated_receivers(
+        workspace: p.Infra.RopeWorkspaceDsl, package: Path
+    ) -> t.SequenceOf[t.Quad[str, str, str, str]]:
+        """Resolve staged declarations through their native receiver bindings.
+
+        Returns:
+            Module, wrapper, member and exact native receiver identity.
+
+        Raises:
+            ValueError: A staged receiver has no physical or semantic binding.
+            TypeError: A staged receiver has no native module AST.
+
+        """
+        receivers: list[t.Quad[str, str, str, str]] = []
         for entry in workspace.modules():
             if (
                 entry.file_path.parent
@@ -231,117 +426,199 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase):
             if not isinstance(tree, ast.Module):
                 msg = "staged receiver has no native module AST"
                 raise TypeError(msg)
-            for wrapper in tree.body:
-                if not isinstance(wrapper, ast.ClassDef):
-                    continue
-                for declaration in wrapper.body:
-                    if not isinstance(declaration, ast.ClassDef):
-                        continue
-                    generated = u.Infra.expression_name(
-                        module.get_scope(), f"{wrapper.name}.{declaration.name}"
-                    )
-                    if generated is None:
-                        msg = "generated protocol has no staged native binding"
-                        raise ValueError(msg)
-                    # The composing owner identifies the public namespace from the
-                    # model's published native route, not the generated file name.
-                    receiver_identity = FlextInfraCodegenProtocolModelRender.identity(
+            declarations = (
+                (wrapper.name, declaration.name)
+                for wrapper in tree.body
+                if isinstance(wrapper, ast.ClassDef)
+                for declaration in wrapper.body
+                if isinstance(declaration, ast.ClassDef)
+            )
+            for wrapper, declaration in declarations:
+                generated = u.Infra.expression_name(
+                    module.get_scope(), f"{wrapper}.{declaration}"
+                )
+                if generated is None:
+                    msg = "generated protocol has no staged native binding"
+                    raise ValueError(msg)
+                receivers.append((
+                    entry.module_name,
+                    wrapper,
+                    declaration,
+                    FlextInfraCodegenProtocolModelRender.identity(
                         generated.get_object()
+                    ),
+                ))
+        return receivers
+
+    @classmethod
+    def _projection_rules(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        package: Path,
+        facades: t.MappingKV[str, p.Infra.RopePyName],
+        model_identities: t.MappingKV[str, str],
+    ) -> t.Pair[list[p.Infra.RopeContractRule], list[p.Infra.RopeContractRule]]:
+        """Bind model routes to their staged receivers before source rewrites.
+
+        Returns:
+            Authored ownership transfers and model annotation rewrites.
+
+        Raises:
+            ValueError: A model's native identity changed during staging.
+
+        """
+        rules: list[p.Infra.RopeContractRule] = []
+        annotation_rules: list[p.Infra.RopeContractRule] = []
+        for target in cls._generated_receivers(workspace, package):
+            for route, model_identity in model_identities.items():
+                if route.rpartition(".")[2] != target[2]:
+                    continue
+                model = FlextInfraCodegenProtocolModelRender.member(facades["m"], route)
+                if model is None or (
+                    FlextInfraCodegenProtocolModelRender.identity(model.get_object())
+                    != model_identity
+                ):
+                    msg = f"staged model identity changed during projection: {route}"
+                    raise ValueError(msg)
+                receiver = f"_projected_model_{len(annotation_rules)}"
+                annotation_rules.append(
+                    cls._annotation_rule(target, model_identity, len(annotation_rules))
+                )
+                previous = FlextInfraCodegenProtocolModelRender.member(
+                    facades["p"], route
+                )
+                if previous is not None:
+                    transfer = cls._authored_transfer(
+                        (previous, model, receiver), route, package, target, len(rules)
                     )
-                    for route, model_identity in model_identities.items():
-                        if route.rpartition(".")[2] != declaration.name:
-                            continue
-                        previous = cls._member(facades["p"], route)
-                        model = cls._member(facades["m"], route)
-                        if (
-                            model is None
-                            or FlextInfraCodegenProtocolModelRender.identity(
-                                model.get_object()
-                            )
-                            != model_identity
-                        ):
-                            msg = f"staged model identity changed during projection: {route}"
-                            raise ValueError(msg)
-                        receiver = f"_projected_model_{len(annotation_rules)}"
-                        goal = f"{receiver}.{declaration.name}"
-                        annotation_rules.append(
-                            m.Infra.RopeContractRule(
-                                id=f"project-model-annotation-{len(annotation_rules)}",
-                                pattern=f"${receiver}",
-                                goal=goal,
-                                arguments={"receiver": f"name={model_identity}"},
-                                imports={
-                                    receiver: f"from {entry.module_name} import {wrapper.name} as {receiver}"
-                                },
-                                bindings={goal: receiver_identity},
-                                families=("p",),
-                            )
-                        )
-                        if previous is None:
-                            continue
-                        if u.Infra.same_name(previous, model):
-                            # A leaked concrete-model alias is not a protocol
-                            # declaration and must never retire the schema owner.
-                            continue
-                        owner = previous.get_object().get_module()
-                        owned_resource = (
-                            owner.get_resource() if owner is not None else None
-                        )
-                        if owned_resource is None or not Path(
-                            owned_resource.real_path
-                        ).is_relative_to(
-                            package / u.Infra.facade_families()["p"].directory
-                        ):
-                            continue
-                        if owned_resource.read().startswith(c.Infra.AUTOGEN_HEADERS):
-                            continue
-                        protocol_base = u.Infra.qualified_name(
-                            workspace.rope_project, "Protocol", module_name="typing"
-                        ).get_object()
-                        if protocol_base not in u.Infra.class_ancestry(
-                            previous.get_object()
-                        ):
-                            msg = f"authored projection has no native protocol ancestry: {route}"
-                            raise ValueError(msg)
-                        unexpected = {
-                            name
-                            for name in previous.get_object().get_attributes()
-                            if not name.startswith("_")
-                            and name not in model.get_object().get_attributes()
-                        }
-                        if unexpected:
-                            msg = f"operational port cannot be retired as model data: {route}: {sorted(unexpected)}"
-                            raise ValueError(msg)
-                        identity = FlextInfraCodegenProtocolModelRender.identity(
-                            previous.get_object()
-                        )
-                        module_name = owner.get_name()
-                        expression = identity.removeprefix(f"{module_name}.")
-                        goal = f"_projected_{len(rules)}.{declaration.name}"
-                        rules.append(
-                            m.Infra.RopeContractRule(
-                                id=f"project-model-port-{len(rules)}",
-                                pattern=f"${receiver}",
-                                goal=goal,
-                                arguments={"receiver": f"name={identity}"},
-                                imports={
-                                    goal.partition(".")[
-                                        0
-                                    ]: f"from {entry.module_name} import {wrapper.name} as {goal.partition('.')[0]}"
-                                },
-                                bindings={goal: receiver_identity},
-                                ownership_transfer=(module_name, expression),
-                            )
-                        )
-        transferred = u.Infra.plan_contract_rules(
-            workspace, sources, rules, captured=captured
+                    if transfer is not None:
+                        rules.append(transfer)
+        return rules, annotation_rules
+
+    @staticmethod
+    def _annotation_rule(
+        target: t.Quad[str, str, str, str], identity: str, index: int
+    ) -> p.Infra.RopeContractRule:
+        """Describe a model annotation rewrite with exact native receiver binding.
+
+        Returns:
+            The declaration-driven annotation rule.
+
+        """
+        module, wrapper, member, receiver_identity = target
+        receiver = f"_projected_model_{index}"
+        goal = f"{receiver}.{member}"
+        return m.Infra.RopeContractRule(
+            id=f"project-model-annotation-{index}",
+            pattern=f"${receiver}",
+            goal=goal,
+            arguments={"receiver": f"name={identity}"},
+            imports={receiver: f"from {module} import {wrapper} as {receiver}"},
+            bindings={goal: receiver_identity},
+            families=("p",),
         )
-        if transferred.failure:
-            return transferred
+
+    @classmethod
+    def _authored_transfer(
+        cls,
+        bindings: t.Triple[p.Infra.RopePyName, p.Infra.RopePyName, str],
+        route: str,
+        package: Path,
+        target: t.Quad[str, str, str, str],
+        index: int,
+    ) -> p.Infra.RopeContractRule | None:
+        """Retire only an authenticated local structural model projection.
+
+        Returns:
+            The ownership transfer, or no transfer for an externally owned binding.
+
+        """
+        previous, model, receiver = bindings
+        owner = cls._authored_owner(previous, model, route, package)
+        if owner is None:
+            return None
+        identity = FlextInfraCodegenProtocolModelRender.identity(previous.get_object())
+        alias = f"_projected_{index}"
+        goal = f"{alias}.{target[2]}"
+        return m.Infra.RopeContractRule(
+            id=f"project-model-port-{index}",
+            pattern=f"${receiver}",
+            goal=goal,
+            arguments={"receiver": f"name={identity}"},
+            imports={alias: f"from {target[0]} import {target[1]} as {alias}"},
+            bindings={goal: target[3]},
+            ownership_transfer=(
+                owner.get_name(),
+                identity.removeprefix(f"{owner.get_name()}."),
+            ),
+        )
+
+    @staticmethod
+    def _authored_owner(
+        previous: p.Infra.RopePyName,
+        model: p.Infra.RopePyName,
+        route: str,
+        package: Path,
+    ) -> p.Infra.RopeParsedModule | None:
+        """Prove a local projection contains only its model's structural contract.
+
+        Returns:
+            The authored owner, or no local ownership transfer.
+
+        Raises:
+            ValueError: A local declaration is not a pure structural model port.
+
+        """
+        if u.Infra.same_name(previous, model):
+            return None
+        owner = previous.get_object().get_module()
+        if not u.Infra.source_module(owner):
+            return None
+        resource = owner.get_resource()
+        if resource is None or not Path(resource.real_path).is_relative_to(
+            package / u.Infra.facade_families()["p"].directory
+        ):
+            return None
+        if owner.source_code.startswith(c.Infra.AUTOGEN_HEADERS):
+            return None
+        protocol_base = u.Infra.qualified_name(
+            owner.pycore.project, "Protocol", module_name="typing"
+        ).get_object()
+        if protocol_base not in u.Infra.class_ancestry(previous.get_object()):
+            msg = f"authored projection has no native protocol ancestry: {route}"
+            raise ValueError(msg)
+        unexpected = {
+            name
+            for name in previous.get_object().get_attributes()
+            if not name.startswith("_")
+            and name not in model.get_object().get_attributes()
+        }
+        if unexpected:
+            msg = (
+                f"operational port cannot be retired as model data: {route}: "
+                f"{sorted(unexpected)}"
+            )
+            raise ValueError(msg)
+        return owner
+
+    @staticmethod
+    def _rewrite_annotations(
+        workspace: p.Infra.RopeWorkspaceDsl,
+        sources: t.MappingKV[Path, str],
+        annotation_rules: t.SequenceOf[p.Infra.RopeContractRule],
+        captured: p.Infra.CodemodSourceEpoch,
+        transferred: t.VariadicTuple[p.Infra.SemanticMigrationEdit],
+    ) -> p.Result[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
+        """Compose ownership, class-alias and annotation edits without losing evidence.
+
+        Returns:
+            One cumulative source edit per destination with original evidence intact.
+
+        """
         updated = dict(sources)
-        for edit in transferred.value:
+        for edit in transferred:
             updated[edit.file_path] = edit.updated_source
-        changed = {edit.file_path: edit for edit in transferred.value}
+        changed = {edit.file_path: edit for edit in transferred}
         for aliases_only in (True, False):
             rewritten = u.Infra.plan_contract_rules(
                 workspace,
@@ -375,8 +652,8 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase):
     @staticmethod
     def _facade_inventory(
         project: p.Infra.ProjectSpec, workspace: p.Infra.RopeWorkspaceDsl
-    ) -> tuple[Path | None, dict[str, p.Infra.RopePyName]]:
-        facades: dict[str, p.Infra.RopePyName] = {}
+    ) -> t.Pair[Path | None, t.MappingKV[str, p.Infra.RopePyName]]:
+        facades: t.MutableMappingKV[str, p.Infra.RopePyName] = {}
         package_dir: Path | None = None
         for entry in workspace.modules():
             if entry.package_name != project.package_name:
@@ -398,15 +675,6 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase):
                 ).get_attribute(owner[1])
                 package_dir = entry.package_dir
         return package_dir, facades
-
-    @staticmethod
-    def _member(binding: p.Infra.RopePyName, name: str) -> p.Infra.RopePyName | None:
-        for component in name.split("."):
-            child = binding.get_object().get_attributes().get(component)
-            if child is None:
-                return None
-            binding = child
-        return binding
 
     @classmethod
     def _referenced_names(

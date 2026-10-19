@@ -85,6 +85,9 @@ class FlextInfraProtocolsRope(Protocol):
         def readonly_contract(self) -> str | None: ...
 
         @property
+        def deferred_contract(self) -> str | None: ...
+
+        @property
         def readonly_origins(self) -> t.StrSequence: ...
 
         @property

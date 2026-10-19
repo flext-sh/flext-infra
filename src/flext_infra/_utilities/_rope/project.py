@@ -22,7 +22,7 @@ from os import PathLike
 from os.path import normpath, realpath
 from pathlib import Path
 from types import MappingProxyType
-from typing import Literal, Protocol, Self, cast, override
+from typing import Literal, Protocol, Self, cast, overload, override
 
 from flext_cli import u
 from rope.base.exceptions import ResourceNotFoundError
@@ -371,7 +371,7 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
     def get_relative_module(
         self,
         name: str,
-        folder: Folder | p.Infra.RopeRoot | None,
+        folder: Folder | p.Infra.RopeRoot,
         level: int,
     ) -> t.Infra.RopeNativeParsedModule:
         """Resolve a relative import from its native declaring resource.
@@ -409,13 +409,13 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
     def find_relative_module(
         self,
         modname: str,
-        folder: Folder | p.Infra.RopeRoot | None,
+        folder: Folder | p.Infra.RopeRoot,
         level: int,
     ) -> File | Folder | None:
         """Delegate relative resource election to its native SDK owner.
 
         Returns:
-            The elected native resource, or no resource without relative context.
+            The elected native resource, or no matching module in the folder.
 
         Raises:
             TypeError: The elected resource is not a native file or folder.
@@ -451,11 +451,19 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
         return found
 
     @staticmethod
+    @overload
+    def _native_folder(folder: Folder | p.Infra.RopeRoot) -> Folder: ...
+
+    @staticmethod
+    @overload
+    def _native_folder(folder: None) -> None: ...
+
+    @staticmethod
     def _native_folder(folder: Folder | p.Infra.RopeRoot | None) -> Folder | None:
         """Validate the native folder once at the SDK adapter boundary.
 
         Returns:
-            The supplied native folder or absent relative context.
+            The supplied native folder or absent absolute-lookup context.
 
         Raises:
             TypeError: The supplied folder is not native.

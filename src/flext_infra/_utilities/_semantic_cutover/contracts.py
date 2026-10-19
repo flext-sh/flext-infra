@@ -719,6 +719,29 @@ class FlextInfraUtilitiesSemanticContracts(
                 )
             ):
                 return False
+        if rule.deferred_contract is not None:
+            captured = match.get_ast(rule.deferred_contract)
+            tree = module.get_ast()
+            if not isinstance(tree, ast.AST):
+                message = "native deferred contract module has no Python syntax tree"
+                raise TypeError(message)
+            annotation = next(
+                (
+                    node.annotation
+                    for node in ast.walk(tree)
+                    if isinstance(node, ast.AnnAssign)
+                    and any(part is captured for part in ast.walk(node.annotation))
+                ),
+                None,
+            )
+            if annotation is None:
+                message = (
+                    f"{rule.id}: deferred contract has no complete field annotation"
+                )
+                raise ValueError(message)
+            cls._require_deferred_contract(
+                project, rule, module, scope, annotation, match, sources
+            )
         for capture in rule.drops:
             if not isinstance(match.get_ast(capture), ast.Constant):
                 message = (
@@ -765,10 +788,390 @@ class FlextInfraUtilitiesSemanticContracts(
             match.get_region()[0],
         )
 
+    @classmethod
+    def _require_deferred_contract(
+        cls,
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        module: p.Infra.RopePyModule,
+        scope: p.Infra.RopeScope,
+        annotation: ast.expr,
+        match: p.Infra.RopeContractMatch,
+        sources: t.MappingKV[t.Infra.RopeSourcePath, str],
+    ) -> None:
+        """Prove native closure identities without evaluating or unquoting types."""
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        references = FlextInfraUtilitiesSemanticFamilyTypeReferences
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        field = match.get_ast("field")
+        field_binding = (
+            runtime.resolve_symbol(scope, field)
+            if isinstance(field, ast.expr)
+            else None
+        )
+        message = (
+            f"{rule.id}: deferred contract has no proven native resolution "
+            f"in {module.get_name()}:{scope.get_start()}; "
+            "fix the declaring source with its actual resolved contract"
+        )
+        if field_binding is None:
+            raise ValueError(message)
+        pending = [(annotation, scope, frozenset[str]())]
+        metadata: list[tuple[ast.expr, p.Infra.RopeScope]] = []
+        visited: set[tuple[str, int]] = set()
+        builtin_module = project.get_module("builtins")
+        if not isinstance(builtin_module, p.Infra.RopeSemanticModule):
+            message = "native builtins module has no semantic module contract"
+            raise TypeError(message)
+        builtin_names = builtin_module.get_attributes()
+        intrinsic_types = tuple(
+            runtime.qualified_name(project, identity)
+            for identity in (
+                *rule.readonly_origins,
+                "typing.Annotated",
+                "typing.Literal",
+            )
+        )
+        unknown = FlextInfraUtilitiesRopeRuntimeTypes.runtime_callable(
+            "rope.base.pyobjects", "get_unknown"
+        )()
+        while pending:
+            expression, lexical, parameters = pending.pop()
+            closure: p.Infra.RopeScope | None = lexical
+            while (
+                closure is not None
+                and closure.get_kind() == c.Infra.RopeScopeKind.CLASS
+            ):
+                closure = closure.parent
+            if closure is None:
+                raise ValueError(message)
+            holder = lexical.pyobject.get_module()
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(holder):
+                raise ValueError(message)
+            source = ast.unparse(expression)
+            tree = ast.parse(source, mode="eval")
+            identifiers = {
+                ast.unparse(node)
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Name | ast.Attribute)
+            }
+            protected = references.expression_payload_ranges(source, project, lexical)
+            metadata_calls: set[ast.Call] = set()
+            metadata_regions: list[tuple[int, int]] = []
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Subscript) or not isinstance(
+                    node.slice, ast.Tuple
+                ):
+                    continue
+                binding = runtime.resolve_symbol(lexical, node.value)
+                if binding is None or not runtime.same_name(
+                    binding, runtime.qualified_name(project, "typing.Annotated")
+                ):
+                    continue
+                for item in node.slice.elts[1:]:
+                    metadata.append((item, lexical))
+                    text = ast.get_source_segment(source, item)
+                    if text is None:
+                        failure = f"{message}; metadata has no source region"
+                        raise ValueError(failure)
+                    begin = runtime.source_offset(source, item)
+                    metadata_regions.append((begin, begin + len(text)))
+                    metadata_calls.update(
+                        child for child in ast.walk(item) if isinstance(child, ast.Call)
+                    )
+            for begin, end, _metadata in refactors.ignored_regions(source):
+                if references.string_constant(
+                    source[begin:end]
+                ) is not None and not any(
+                    first <= begin and end <= last for first, last in protected
+                ):
+                    failure = f"{message}; quoted type identity is unresolved"
+                    raise ValueError(failure)
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                if node not in metadata_calls:
+                    failure = f"{message}; authored evaluation cannot repeat"
+                    raise ValueError(failure)
+            for begin, end in references.reference_regions(source):
+                primary = source[begin:end]
+                if primary not in identifiers:
+                    continue
+                if primary.partition(".")[0] in parameters:
+                    continue
+                original = runtime.expression_name(lexical, primary)
+                actual = runtime.expression_name(closure, primary)
+                alias = (
+                    runtime.annotation_alias_definition(original)
+                    if original is not None
+                    else None
+                )
+                if (
+                    original is None
+                    or actual is None
+                    or (actual.get_object() == unknown and alias is None)
+                    or not runtime.same_name(original, actual)
+                ):
+                    failure = f"{message}; unresolved closure identity: {primary}"
+                    raise ValueError(failure)
+                if any(
+                    first <= begin and end <= last for first, last in metadata_regions
+                ):
+                    # Metadata shares the closure identity check, but has its own
+                    # SDK-constructor and authored-value stability proof below.
+                    continue
+                builtin = builtin_names.get(primary)
+                if builtin is not None and runtime.same_name(builtin, actual):
+                    continue
+                intrinsic = any(
+                    runtime.same_name(expected, actual) for expected in intrinsic_types
+                )
+                if intrinsic or alias is not None:
+                    # SDK re-exports and native type aliases are not authored
+                    # assignment values. Their caller's binding must still reach.
+                    stable = all(
+                        FlextInfraUtilitiesCodemodProject._single_reaching_binding(
+                            holder, closure, candidate, len(holder.source_code)
+                        )
+                        for candidate in dict.fromkeys((
+                            primary.partition(".")[0],
+                            primary,
+                        ))
+                    )
+                else:
+                    stable = FlextInfraUtilitiesCodemodProject._stable_binding_chain(
+                        (project, holder, closure),
+                        primary,
+                        len(holder.source_code),
+                        sources,
+                    )
+                if not stable:
+                    failure = f"{message}; unstable closure binding: {primary}"
+                    raise ValueError(failure)
+                if alias is None:
+                    continue
+                declaration, owner_scope = alias
+                owner = owner_scope.pyobject.get_module()
+                if owner is None:
+                    raise ValueError(message)
+                key = (owner.get_name(), declaration.lineno)
+                if key not in visited:
+                    visited.add(key)
+                    type_parameters: set[str] = set()
+                    for parameter in declaration.type_params:
+                        if not isinstance(
+                            parameter, ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple
+                        ):
+                            failure = "native alias has an unknown type parameter"
+                            raise TypeError(failure)
+                        type_parameters.add(parameter.name)
+                    pending.append((
+                        declaration.value,
+                        owner_scope,
+                        frozenset(type_parameters),
+                    ))
+        if metadata:
+            cls._require_idempotent_metadata(
+                project, tuple(metadata), field_binding, message, sources
+            )
+
+    @staticmethod
+    def _require_idempotent_metadata(
+        project: p.Infra.RopeProject,
+        metadata: t.VariadicTuple[t.Pair[ast.expr, p.Infra.RopeScope]],
+        field: p.Infra.RopePyName,
+        message: str,
+        sources: t.MappingKV[t.Infra.RopeSourcePath, str],
+    ) -> None:
+        """Require declarative metadata, not merely a stable binding to a callback."""
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        failure = f"{message}; additional validation effects are not proven idempotent"
+        # The SDK owns the declarative constraint constructors, not a local name list.
+        lookup = runtime.qualified_name(
+            project, "pydantic.fields.FieldInfo.metadata_lookup"
+        )
+        owner, line = runtime.definition_location(lookup)
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(owner):
+            raise ValueError(failure)
+        owner_tree = owner.get_ast()
+        if not isinstance(owner_tree, ast.AST):
+            message = "native metadata owner has no Python syntax tree"
+            raise TypeError(message)
+        table = next(
+            (
+                node
+                for node in ast.walk(owner_tree)
+                if isinstance(node, ast.AnnAssign)
+                and node.lineno == line
+                and isinstance(node.value, ast.Dict)
+            ),
+            None,
+        )
+        if table is None or not isinstance(table.value, ast.Dict):
+            raise ValueError(failure)
+        table_scope = runtime.scope_at(
+            owner, runtime.source_offset(owner.source_code, table)
+        )
+        constructors: list[tuple[p.Infra.RopePyName, bool]] = [(field, False)]
+        dataclass = runtime.qualified_name(project, "dataclasses.dataclass")
+        for value in table.value.values:
+            if not isinstance(value, ast.Name | ast.Attribute):
+                continue
+            binding = runtime.resolve_symbol(table_scope, value)
+            if binding is None:
+                raise ValueError(failure)
+            origin, location = runtime.definition_location(binding)
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(origin):
+                raise ValueError(failure)
+            origin_tree = origin.get_ast()
+            if not isinstance(origin_tree, ast.AST):
+                message = "native metadata constructor has no Python syntax tree"
+                raise TypeError(message)
+            constructor_declaration = next(
+                (
+                    node
+                    for node in ast.walk(origin_tree)
+                    if isinstance(node, ast.ClassDef) and node.lineno == location
+                ),
+                None,
+            )
+            if constructor_declaration is None:
+                raise ValueError(failure)
+            lexical = runtime.scope_at(
+                origin,
+                runtime.source_offset(origin.source_code, constructor_declaration),
+            )
+            frozen = any(
+                isinstance(decorator, ast.Call)
+                and (factory := runtime.resolve_symbol(lexical, decorator.func))
+                is not None
+                and runtime.same_name(dataclass, factory)
+                and any(
+                    keyword.arg == "frozen"
+                    and isinstance(keyword.value, ast.Constant)
+                    and keyword.value.value is True
+                    for keyword in decorator.keywords
+                )
+                for decorator in constructor_declaration.decorator_list
+            )
+            constructors.append((binding, frozen))
+        pending = [
+            (node, lexical, False, frozenset[tuple[str, int]]())
+            for node, lexical in metadata
+        ]
+        while pending:
+            node, lexical, bound, visiting = pending.pop()
+            if isinstance(node, ast.Constant):
+                continue
+            children: list[ast.expr]
+            if isinstance(node, ast.Tuple | ast.List | ast.Set):
+                if bound and not isinstance(node, ast.Tuple):
+                    raise ValueError(failure)
+                children = list(node.elts)
+            elif isinstance(node, ast.Dict):
+                if bound or any(key is None for key in node.keys):
+                    raise ValueError(failure)
+                children = [key for key in node.keys if key is not None] + node.values
+            elif isinstance(node, ast.UnaryOp) and isinstance(
+                node.op, ast.UAdd | ast.USub
+            ):
+                children = [node.operand]
+            elif isinstance(node, ast.Call):
+                actual = runtime.resolve_symbol(lexical, node.func)
+                # A stable mutable metadata instance can acquire a different schema.
+                if actual is None or not any(
+                    runtime.same_name(actual, constructor) and (not bound or frozen)
+                    for constructor, frozen in constructors
+                ):
+                    raise ValueError(failure)
+                holder = lexical.pyobject.get_module()
+                callee = ast.unparse(node.func)
+                if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(
+                    holder
+                ) or not (
+                    all(
+                        FlextInfraUtilitiesCodemodProject._single_reaching_binding(
+                            holder, lexical, candidate, len(holder.source_code)
+                        )
+                        for candidate in dict.fromkeys((
+                            callee.partition(".")[0],
+                            callee,
+                        ))
+                    )
+                ):
+                    raise ValueError(failure)
+                children = list(node.args) + [item.value for item in node.keywords]
+            elif isinstance(node, ast.Name | ast.Attribute):
+                binding = runtime.resolve_symbol(lexical, node)
+                if binding is None:
+                    raise ValueError(failure)
+                module = lexical.pyobject.get_module()
+                if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(
+                    module
+                ) or not (
+                    FlextInfraUtilitiesCodemodProject._stable_binding_chain(
+                        (project, module, lexical),
+                        ast.unparse(node),
+                        len(module.source_code),
+                        sources,
+                    )
+                ):
+                    raise ValueError(failure)
+                holder, location = runtime.definition_location(binding)
+                if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(holder):
+                    raise ValueError(failure)
+                if location is None:
+                    raise ValueError(failure)
+                key = (holder.get_name(), location)
+                if key in visiting:
+                    raise ValueError(failure)
+                bound_name = (
+                    binding.imported_name
+                    if isinstance(binding, p.Infra.RopeImportedName)
+                    else ast.unparse(node).rpartition(".")[-1]
+                )
+                holder_tree = holder.get_ast()
+                if not isinstance(holder_tree, ast.AST):
+                    message = "native metadata binding has no Python syntax tree"
+                    raise TypeError(message)
+                value_declaration = next(
+                    (
+                        item
+                        for item in ast.walk(holder_tree)
+                        if isinstance(item, ast.Assign | ast.AnnAssign)
+                        and item.lineno == location
+                        and item.value is not None
+                        and any(
+                            isinstance(target, ast.Name) and target.id == bound_name
+                            for target in (
+                                item.targets
+                                if isinstance(item, ast.Assign)
+                                else (item.target,)
+                            )
+                        )
+                    ),
+                    None,
+                )
+                if value_declaration is None or value_declaration.value is None:
+                    raise ValueError(failure)
+                pending.append((
+                    value_declaration.value,
+                    runtime.scope_at(
+                        holder,
+                        runtime.source_offset(holder.source_code, value_declaration),
+                    ),
+                    True,
+                    visiting | {key},
+                ))
+                continue
+            else:
+                raise ValueError(failure)
+            pending.extend((child, lexical, False, visiting) for child in children)
+
     @staticmethod
     def _admitted_repeated_contract(
         scope: p.Infra.RopeScope,
-        contract: p.Infra.RopeAstNode | None,
+        contract: p.AttributeProbe | None,
     ) -> bool:
         """Keep annotation-only references to classes still under construction lazy."""
         if not isinstance(contract, ast.AST):

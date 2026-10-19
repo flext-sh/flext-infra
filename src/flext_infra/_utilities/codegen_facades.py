@@ -61,7 +61,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     tuple[m.Cli.AtomicDirectoryChainPlan, ...],
                 ],
             ],
-            dict[Path, str],
+            MutableMapping[Path, str],
         ]
     ]:
         """Share one authenticated native source graph across a planning pass.
@@ -191,7 +191,8 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                         extension_modules=tuple(
                             sorted(
                                 u.type_adapter(set[str]).validate_python(
-                                    live.get_pycore().extension_modules, strict=True
+                                    live.get_pycore().extension_modules,
+                                    strict=True,
                                 )
                             )
                         ),
@@ -222,11 +223,31 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
 
             completed = False
             try:
-                yield project, consumed, sources
+                yield (
+                    FlextInfraUtilitiesCodegenFacades._require_source_project(project),
+                    consumed,
+                    sources,
+                )
                 completed = True
             finally:
                 if completed:
                     project.verify_source_states()
+
+    @staticmethod
+    def _require_source_project(value: p.AttributeProbe) -> p.Infra.RopeProject:
+        """Admit the native project at its actual dynamic SDK boundary.
+
+        Returns:
+            The original project exposing authenticated source capabilities.
+
+        Raises:
+            TypeError: If the SDK project does not expose the required capabilities.
+
+        """
+        if not isinstance(value, p.Infra.RopeProject):
+            message = "facade source project has no native Rope capabilities"
+            raise TypeError(message)
+        return value
 
     @staticmethod
     def _facade_declared_sources(
@@ -680,14 +701,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         Returns:
             The projected source with its existing namespace bindings preserved.
 
-        Raises:
-            ValueError: If a consumer requires competing provider declarations.
-
         """
-        facade, namespace = cls._facade_classes(
-            ast.parse(source, filename=str(facade_path)),
-            facade_path,
-        )
         owners, _ = cls._facade_protocol_owners(
             pkg_dir
             / FlextInfraUtilitiesCodegenNamespace.facade_families()[
@@ -697,6 +711,75 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             project=binding[0],
         )
         project = binding[0]
+        facade, namespace, scope, typing_objects, base_objects, markers = (
+            cls._protocol_namespace_context(project, source, facade_path)
+        )
+        if any(
+            owner is not typing_objects[0]
+            and typing_objects[0] not in owner.get_superclasses()
+            for owner in base_objects
+        ):
+            source = cls._strip_protocol_namespace_markers(
+                source, namespace, base_objects, typing_objects, scope
+            )
+            facade, namespace = cls._facade_classes(
+                ast.parse(source, filename=str(facade_path)),
+                facade_path,
+                ignored_bases=markers,
+            )
+        source = cls._remove_protocol_namespace_shadows(
+            source, namespace, scope, typing_objects, base_objects
+        )
+        facade, namespace = cls._facade_classes(
+            ast.parse(source, filename=str(facade_path)),
+            facade_path,
+            ignored_bases=markers,
+        )
+        additions = cls._select_protocol_owner_bases(
+            facade_path,
+            (facade, namespace),
+            owners=owners,
+            inherited=cls._protocol_ancestor_objects(base_objects),
+            binding=binding,
+        )
+        if not additions:
+            return source
+        source = cls._insert_protocol_imports(source, additions, package=pkg_dir.name)
+        _, namespace = cls._facade_classes(
+            ast.parse(source, filename=str(facade_path)),
+            facade_path,
+            ignored_bases=markers,
+        )
+        return cls._render_protocol_facade(
+            pkg_dir,
+            facade_path,
+            cls._insert_bases(source, namespace, additions),
+            binding=binding,
+        )
+
+    @classmethod
+    def _protocol_namespace_context(
+        cls,
+        project: p.Infra.RopeProject,
+        source: str,
+        facade_path: Path,
+    ) -> tuple[
+        ast.ClassDef,
+        ast.ClassDef,
+        p.Infra.RopeScope,
+        t.Pair[p.Infra.RopePyObject, p.Infra.RopePyObject],
+        tuple[p.Infra.RopePyObject, ...],
+        frozenset[str],
+    ]:
+        """Resolve namespace roles and native typing identities before rewriting.
+
+        Returns:
+            The facade, namespace, lexical scope, typing identities, bases and markers.
+
+        Raises:
+            ValueError: If an authored namespace base cannot be resolved.
+
+        """
         module = FlextInfraUtilitiesRopeRuntime.build_string_module(
             project,
             source,
@@ -705,19 +788,28 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ),
         )
         scope = module.get_scope()
+        typing_objects = cls._protocol_typing_objects(project)
+        # An interface marker shared by nested contracts is not a namespace owner.
+        markers = frozenset(
+            ast.unparse(base)
+            for node in ast.parse(source, filename=str(facade_path)).body
+            if isinstance(node, ast.ClassDef)
+            for base in node.bases
+            if (resolved := FlextInfraUtilitiesRopeRuntime.resolve_symbol(scope, base))
+            is not None
+            and resolved.get_object() is typing_objects[0]
+        )
+        facade, namespace = cls._facade_classes(
+            ast.parse(source, filename=str(facade_path)),
+            facade_path,
+            ignored_bases=markers,
+        )
         if namespace is not facade:
             scope = next(
                 child
                 for child in scope.get_scopes()
                 if child.get_start() == facade.lineno
             )
-        protocol_module = FlextInfraUtilitiesRopeRuntime.build_string_module(
-            project, "from typing import Protocol, runtime_checkable\n"
-        )
-        protocol = protocol_module.get_scope().get_name("Protocol").get_object()
-        runtime_checkable = (
-            protocol_module.get_scope().get_name("runtime_checkable").get_object()
-        )
         base_objects: list[p.Infra.RopePyObject] = []
         for base in namespace.bases:
             resolved = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
@@ -727,6 +819,34 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 message = f"Unresolved protocol facade base: {ast.unparse(base)}"
                 raise ValueError(message)
             base_objects.append(resolved.get_object())
+        return facade, namespace, scope, typing_objects, tuple(base_objects), markers
+
+    @staticmethod
+    def _protocol_typing_objects(
+        project: p.Infra.RopeProject,
+    ) -> t.Pair[p.Infra.RopePyObject, p.Infra.RopePyObject]:
+        """Resolve the native typing identities.
+
+        Returns:
+            Protocol and runtime_checkable from the native semantic graph.
+
+        """
+        module = FlextInfraUtilitiesRopeRuntime.build_string_module(
+            project, "from typing import Protocol, runtime_checkable\n"
+        )
+        names = module.get_scope().get_names()
+        return names["Protocol"].get_object(), names["runtime_checkable"].get_object()
+
+    @staticmethod
+    def _protocol_ancestor_objects(
+        base_objects: tuple[p.Infra.RopePyObject, ...],
+    ) -> list[p.Infra.RopePyObject]:
+        """Collect inherited owners without admitting a same-named declaration.
+
+        Returns:
+            The exact transitive superclass identities of the namespace bases.
+
+        """
         inherited: list[p.Infra.RopePyObject] = []
         pending = list(base_objects)
         while pending:
@@ -734,63 +854,81 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             if owner not in inherited:
                 inherited.append(owner)
                 pending.extend(owner.get_superclasses())
-        plain_owner = any(
-            owner is not protocol and protocol not in owner.get_superclasses()
-            for owner in base_objects
-        )
-        if namespace is not facade and plain_owner:
-            protocol_decorators = {
-                ast.unparse(decorator)
-                for decorator in namespace.decorator_list
-                if (
-                    resolved := FlextInfraUtilitiesRopeRuntime.resolve_symbol(
-                        scope, decorator
-                    )
+        return inherited
+
+    @staticmethod
+    def _strip_protocol_namespace_markers(
+        source: str,
+        namespace: ast.ClassDef,
+        base_objects: tuple[p.Infra.RopePyObject, ...],
+        typing_objects: t.Pair[p.Infra.RopePyObject, p.Infra.RopePyObject],
+        scope: p.Infra.RopeScope,
+    ) -> str:
+        """Remove interface markers only from the selected plain namespace.
+
+        Returns:
+            The namespace source without invalid protocol markers or decorators.
+
+        Raises:
+            TypeError: If the concrete rewrite does not preserve the source module.
+
+        """
+        protocol_decorators = {
+            ast.unparse(decorator)
+            for decorator in namespace.decorator_list
+            if (
+                resolved := FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                    scope, decorator
                 )
-                is not None
-                and resolved.get_object() is runtime_checkable
-            }
-            wrapper = MetadataWrapper(parse_module(source))
-            positions = wrapper.resolve(PositionProvider)
-            for node, span in positions.items():
-                if (
-                    not isinstance(node, ClassDef)
-                    or span.start.line != namespace.lineno
-                ):
-                    continue
-                replacement = node.with_changes(
-                    bases=tuple(
-                        base
-                        for base in node.bases
-                        if base_objects[node.bases.index(base)] is not protocol
-                    ),
-                    decorators=tuple(
-                        decorator
-                        for decorator in node.decorators
-                        if wrapper.module.code_for_node(decorator.decorator)
-                        not in protocol_decorators
-                    ),
-                )
-                updated = wrapper.module.deep_replace(node, replacement)
-                if not isinstance(updated, Module):
-                    message = (
-                        "protocol namespace projection did not preserve the module"
-                    )
-                    raise ValueError(message)
-                source = updated.code
-                break
-            context = CodemodContext()
-            for name in (c.Infra.PROTOCOL_BASE, "runtime_checkable"):
-                RemoveImportsVisitor.remove_unused_import(context, "typing", name)
-            source = (
-                RemoveImportsVisitor(context)
-                .transform_module(parse_module(source))
-                .code
             )
-            facade, namespace = cls._facade_classes(
-                ast.parse(source, filename=str(facade_path)),
-                facade_path,
+            is not None
+            and resolved.get_object() is typing_objects[1]
+        }
+        wrapper = MetadataWrapper(parse_module(source))
+        for node, span in wrapper.resolve(PositionProvider).items():
+            if not isinstance(node, ClassDef) or span.start.line != namespace.lineno:
+                continue
+            replacement = node.with_changes(
+                bases=tuple(
+                    base
+                    for base in node.bases
+                    if base_objects[node.bases.index(base)] is not typing_objects[0]
+                ),
+                decorators=tuple(
+                    decorator
+                    for decorator in node.decorators
+                    if wrapper.module.code_for_node(decorator.decorator)
+                    not in protocol_decorators
+                ),
             )
+            updated = wrapper.module.deep_replace(node, replacement)
+            if not isinstance(updated, Module):
+                message = "protocol namespace projection did not preserve the module"
+                raise TypeError(message)
+            source = updated.code
+            break
+        context = CodemodContext()
+        for name in (c.Infra.PROTOCOL_BASE, "runtime_checkable"):
+            RemoveImportsVisitor.remove_unused_import(context, "typing", name)
+        return RemoveImportsVisitor(context).transform_module(parse_module(source)).code
+
+    @staticmethod
+    def _remove_protocol_namespace_shadows(
+        source: str,
+        namespace: ast.ClassDef,
+        scope: p.Infra.RopeScope,
+        typing_objects: t.Pair[p.Infra.RopePyObject, p.Infra.RopePyObject],
+        base_objects: tuple[p.Infra.RopePyObject, ...],
+    ) -> str:
+        """Remove inherited contract shadows only after proving exact identities.
+
+        Returns:
+            The source without redundant inherited contract assignments.
+
+        Raises:
+            ValueError: If an authored contract assignment is unresolved or ambiguous.
+
+        """
         shadows: list[ast.AnnAssign] = []
         for member in namespace.body:
             if not (
@@ -811,7 +949,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 raise ValueError(message)
             target = value.get_object()
             if (
-                protocol in target.get_superclasses()
+                typing_objects[0] in target.get_superclasses()
                 and target is not annotated.get_object()
             ):
                 message = (
@@ -830,12 +968,12 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             if (
                 target is inherited_member
                 and target is annotated.get_object()
-                and protocol in target.get_superclasses()
+                and typing_objects[0] in target.get_superclasses()
             ):
                 shadows.append(member)
             elif (
                 inherited_member is not None
-                and protocol in target.get_superclasses()
+                and typing_objects[0] in target.get_superclasses()
                 and any(
                     target is attribute.get_object()
                     for owner in base_objects
@@ -856,11 +994,16 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     else []
                 )
             source = "".join(lines)
-            facade, namespace = cls._facade_classes(
-                ast.parse(source, filename=str(facade_path)),
-                facade_path,
-            )
-        additions: list[t.Pair[str, str]] = []
+        return source
+
+    @staticmethod
+    def _declared_namespace_members(namespace: ast.ClassDef) -> set[str]:
+        """Inventory declarations that must not be replaced by provider imports.
+
+        Returns:
+            The public and private names already declared in the namespace body.
+
+        """
         declared = {
             member.name
             for member in namespace.body
@@ -880,6 +1023,31 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             )
             if isinstance(target, ast.Name)
         )
+        return declared
+
+    @classmethod
+    def _select_protocol_owner_bases(
+        cls,
+        facade_path: Path,
+        facades: t.Pair[ast.ClassDef, ast.ClassDef],
+        *,
+        owners: t.VariadicTuple[t.Triple[str, str, frozenset[str]]],
+        inherited: list[p.Infra.RopePyObject],
+        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
+    ) -> list[t.Pair[str, str]]:
+        """Select unique missing owners from admitted native semantic modules.
+
+        Returns:
+            The unique provider modules and class names required by consumers.
+
+        Raises:
+            ValueError: If multiple providers own a missing namespace member.
+
+        """
+        facade, namespace = facades
+        pkg_dir = facade_path.parent
+        additions: list[t.Pair[str, str]] = []
+        declared = cls._declared_namespace_members(namespace)
         for method in sorted(
             cls._required_protocol_members(
                 pkg_dir,
@@ -897,8 +1065,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 if method in methods
             )
             if not candidates or any(
-                project
-                .get_module(f"{pkg_dir.name}._protocols.{module}")
+                FlextInfraUtilitiesRopeRuntime
+                .require_semantic_module(
+                    binding[0].get_module(f"{pkg_dir.name}._protocols.{module}")
+                )
                 .get_attributes()[class_name]
                 .get_object()
                 in inherited
@@ -913,23 +1083,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 )
                 raise ValueError(message)
             additions.append(candidates[0])
-        if not additions:
-            return source
-        source = cls._insert_protocol_imports(
-            source,
-            additions,
-            package=pkg_dir.name,
-        )
-        _, namespace = cls._facade_classes(
-            ast.parse(source, filename=str(facade_path)),
-            facade_path,
-        )
-        return cls._render_protocol_facade(
-            pkg_dir,
-            facade_path,
-            cls._insert_bases(source, namespace, additions),
-            binding=binding,
-        )
+        return additions
 
     @classmethod
     def _render_declared_facade(
@@ -1665,6 +1819,8 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
     def _facade_classes(
         tree: ast.Module,
         path: Path,
+        *,
+        ignored_bases: frozenset[str] = frozenset(),
     ) -> t.Pair[ast.ClassDef, ast.ClassDef]:
         """Resolve one facade and its single declared utility namespace.
 
@@ -1680,10 +1836,20 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             message = f"expected one utility facade class in {path}"
             raise ValueError(message)
         nested = tuple(
-            node for node in facades[0].body if isinstance(node, ast.ClassDef)
+            node
+            for node in facades[0].body
+            if isinstance(node, ast.ClassDef)
+            and not (
+                node.bases
+                and all(ast.unparse(base) in ignored_bases for base in node.bases)
+            )
         )
         if len(nested) > 1:
-            ancestors = {ast.unparse(base) for base in facades[0].bases}
+            ancestors = {
+                ast.unparse(base)
+                for base in facades[0].bases
+                if ast.unparse(base) not in ignored_bases
+            }
             namespaces = tuple(
                 node
                 for node in nested

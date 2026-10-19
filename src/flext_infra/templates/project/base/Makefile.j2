@@ -1368,7 +1368,7 @@ _builtin_require_examples:
 		exit 2; \
 	fi
 {% else %}
-	@printf '%s\n' 'ERROR: examples: declare repository.examples_module in config/workspace.yaml' >&2; exit 2
+	@printf '%s\n' 'ERROR: examples: declare repository.examples_module in config/codegen.yaml' >&2; exit 2
 {% endif %}
 
 _builtin-examples: _builtin_require_environment

@@ -59,19 +59,51 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         cls,
         binding: p.Infra.RopePyName,
     ) -> tuple[ast.TypeAlias, p.Infra.RopeScope] | None:
-        """Locate a PEP 695 alias without evaluating its deferred value."""
-        module, line = cls.definition_location(binding)
+        """Locate one native alias identity without evaluating its deferred value.
+
+        Returns:
+            The unique declaration and lexical scope, or None without native proof.
+
+        Raises:
+            TypeError: If the native module does not expose a Python syntax tree.
+
+        """
+        imported: set[int] = set()
+        while isinstance(binding, p.Infra.RopeImportedName):
+            if id(binding) in imported:
+                return None
+            imported.add(id(binding))
+            supplier = (
+                binding.imported_module
+                .get_object()
+                .get_attributes()
+                .get(binding.imported_name)
+            )
+            if supplier is None:
+                return None
+            binding = supplier
         if (
-            not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module)
-            or line is None
+            not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
+            or binding.assignments
         ):
             return None
-        for node in ast.walk(module.get_ast()):
-            if isinstance(node, ast.TypeAlias) and node.lineno == line:
-                return node, cls.scope_at(
-                    module, cls.source_offset(module.source_code, node)
-                )
-        return None
+        module, _line = cls.definition_location(binding)
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+            return None
+        tree = module.get_ast()
+        if not isinstance(tree, ast.AST):
+            message = "native alias module has no Python syntax tree"
+            raise TypeError(message)
+        declarations: list[tuple[ast.TypeAlias, p.Infra.RopeScope]] = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.TypeAlias):
+                continue
+            lexical = cls.scope_at(module, cls.source_offset(module.source_code, node))
+            # TypeAlias bindings intentionally have no inferred assignment or
+            # line in Rope. Only the source token's exact identity proves them.
+            if cls.resolve_symbol(lexical, node.name) is binding:
+                declarations.append((node, lexical))
+        return declarations[0] if len(declarations) == 1 else None
 
     @classmethod
     def annotation_origin(

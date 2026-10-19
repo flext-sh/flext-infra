@@ -711,6 +711,17 @@ with their existing editable policy. Authored native workspace declarations and
 custom sources are preserved rather than erased by a generic FLEXT rewrite.
 Regenerate the owner with `make gen` and update its locks with `make upg` when
 the declared composition changes.
+
+Resolver-wide source election is explicit policy in
+`Infra.codegen.toolchain.uv_override_dependencies`, not inferred from an installed
+SDK or a direct requirement. The strict library, project and local config layers
+append their declarations in that order. Rendering elects the last global override
+for each normalized distribution and marker, preserving other marker variants and
+native scoped tables. An editable supplier cannot replace the resolution root's
+global policy for a distribution. The same elected policy reaches package metadata
+and every native resolution view; no repository-specific resolver branch is needed.
+Unconfigured conflicting direct and transitive sources remain native UV failures.
+
 Runtime requirements are calculated from the target's import use through the native
 dependency analysis. Generation consumes the target's authenticated PEP 621
 projection; neither a project-name catalog nor an upstream dependency profile may

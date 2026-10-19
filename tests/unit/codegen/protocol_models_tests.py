@@ -120,15 +120,25 @@ p = DemoMemberProtocols
 MANUAL_PORTS = '''\
 """Hand-declared ports; the generator never regenerates these."""
 
+from __future__ import annotations
+
 from typing import Protocol
 
 
 class ManualPort(Protocol):
     """A hand-owned structural port."""
 
+    class Record(Protocol):
+        """A same-owner nested structural entity."""
+
+        @property
+        def value(self) -> str: ...
+
     def bind(self) -> bool:
         """Bind the port."""
         ...
+
+    def selected(self) -> ManualPort.Record: ...
 '''
 
 CONSUMER = '''\
@@ -401,10 +411,12 @@ def _probe(
     u.Tests.run_lazy_init_probe(
         "from pathlib import Path\n"
         "from flext_tests import tm\n"
+        "from flext_infra import FlextInfra\n"
         "from flext_infra.codegen import FlextInfraCodegenProtocolModels\n"
         f"root = Path({str(root)!r})\n"
         "service = FlextInfraCodegenProtocolModels(\n"
-        "    repository_root=root, apply_changes=True)\n" + script,
+        "    repository_root=root, apply_changes=True,\n"
+        "    conform=FlextInfra(repository_root=root).codegen_conform)\n" + script,
         runtime_root=root,
         cwd=root,
     )
@@ -440,6 +452,22 @@ def test_apply_generates_runtime_checkable_contracts(
         "assert not again.written_files\n"
         "assert again.publication_receipt is not None and again.publication_receipt.completed\n"
         "assert again.publication_receipt.written_files\n",
+    )
+
+
+def test_refactor_cli_registers_and_projects_contracts(
+    member_root: t.DirectoryPath,
+) -> None:
+    """CLI input remains data while API wiring supplies required conformance."""
+    _probe(
+        member_root,
+        "from flext_infra import main\n"
+        "assert main(['refactor', 'mod', '--help']) == 0\n"
+        "assert main(['refactor', 'protocol-models', '--help']) == 0\n"
+        "arguments = ['refactor', 'protocol-models', '--repository-root', str(root)]\n"
+        "assert main([*arguments, '--apply']) == 0\n"
+        "assert main([*arguments, '--check']) == 0\n"
+        "assert main([*arguments, '--apply', '--dry-run']) == 0\n",
     )
 
 
@@ -646,6 +674,98 @@ def test_mutable_fields_and_frozen_fields_retain_public_contract(
 
 
 @pytest.mark.parametrize(
+    ("namespace", "base"),
+    [("Commerce", "m.BaseModel"), ("Shipping", "m.FrozenModel")],
+)
+def test_model_namespaces_preserve_nested_contracts(
+    member_root: t.DirectoryPath, namespace: str, base: str
+) -> None:
+    """Model ancestry does not hide inherited nested models or their aliases."""
+    package = member_root / "src" / MEMBER
+    original_namespace = '''    class DemoMember:
+        """The member's public model namespace."""
+
+        Order = Order
+        Shipment = Shipment
+        Inventory = Inventory
+        Payload = Payload
+'''
+    source = (
+        MODELS
+        .replace(
+            "class DemoMemberModels(m):",
+            "class Root(m.FrozenModel):\n"
+            '    """A strongly typed nested payload."""\n'
+            '    root: tuple[str, ...] = m.Field(default=(), description="Payload.")\n\n\n'
+            "class NamespaceParts:\n"
+            '    """Inherited model declarations."""\n'
+            "    Root: ClassVar[type[Root]] = Root\n"
+            "    AliasRoot: ClassVar[type[Root]] = Root\n\n\n"
+            "class DemoMemberModels(m):",
+        )
+        .replace(
+            "from flext_core import m, t",
+            "from typing import ClassVar\n\nfrom flext_core import m, t",
+        )
+        .replace(
+            original_namespace,
+            f"    class {namespace}(NamespaceParts, {base}):\n"
+            '        """A model that also exposes nested model declarations."""\n',
+        )
+    )
+    (package / "models.py").write_text(source, encoding=c.DEFAULT_ENCODING)
+    (package / "protocols.py").write_text(
+        PROTOCOLS.replace("class DemoMember:", f"class {namespace}:"),
+        encoding=c.DEFAULT_ENCODING,
+    )
+    (package / "consumer.py").write_text(
+        "from demo_member import p\n"
+        f"def payload(value: p.{namespace}.Root) -> p.{namespace}.AliasRoot: ...\n",
+        encoding=c.DEFAULT_ENCODING,
+    )
+    _probe(
+        member_root,
+        consumer="from demo_member import m, p\n"
+        f"models, ports = m.{namespace}, p.{namespace}\n"
+        "assert models.Root is models.AliasRoot\n"
+        "value = models.Root(root=('source', 'identity'))\n"
+        "for contract in (ports.Root, ports.AliasRoot):\n"
+        "    assert isinstance(value, contract)\n"
+        "    assert get_type_hints(contract.root.fget)['return'] == tuple[str, ...]\n"
+        "    assert contract.__module__.startswith('demo_member._protocols.generated')\n"
+        "assert callable(ports.ManualPort.bind)\n"
+        "assert (get_type_hints(ports.ManualPort.selected)['return']\n"
+        "        is ports.ManualPort.Record)\n",
+    )
+    (package / "models.py").write_text(
+        source.replace(
+            "\nm = DemoMemberModels",
+            f"\n    Mirror = {namespace}\n\nm = DemoMemberModels",
+        ),
+        encoding=c.DEFAULT_ENCODING,
+    )
+    (package / "consumer.py").write_text(
+        "from demo_member import p\n"
+        f"def payload(value: p.{namespace}.Root) -> p.Mirror.Root: ...\n",
+        encoding=c.DEFAULT_ENCODING,
+    )
+    _probe(
+        member_root,
+        "from flext_infra import u\n"
+        "from flext_infra.workspace import FlextInfraRopeWorkspace, FlextInfraWorkspaceDetector\n"
+        "project = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root)).project\n"
+        "with u.Infra.facade_source_project(root) as binding:\n"
+        "    with FlextInfraRopeWorkspace.open_workspace(root,\n"
+        "            rope_repository_root=Path(binding[0].root.real_path),\n"
+        "            source_project=binding[0]) as workspace:\n"
+        "        modules, identities = tm.ok(service.render_modules(project, workspace))\n"
+        f"assert identities[{namespace + '.Root'!r}] == identities['Mirror.Root']\n"
+        "assert modules\n",
+        consumer="",
+    )
+
+
+@pytest.mark.parametrize(
     ("field_name", "expected"),
     [(name, expected) for name, _annotation, _default, expected in ALIAS_CASES],
 )
@@ -677,7 +797,7 @@ def test_apply_is_idempotent(member_root: t.DirectoryPath) -> None:
         "assert {path: path.read_bytes() "
         'for path in generated.glob("generated*.py")} == before\n'
         "tm.ok(FlextInfraCodegenProtocolModels(\n"
-        "    repository_root=root, apply_changes=False).execute())\n",
+        "    repository_root=root, apply_changes=False, conform=service.conform).execute())\n",
     )
 
 
@@ -699,7 +819,7 @@ def test_check_only_reports_drift(member_root: t.DirectoryPath) -> None:
     _probe(
         member_root,
         "result = FlextInfraCodegenProtocolModels(\n"
-        "    repository_root=root, apply_changes=False).execute()\n"
+        "    repository_root=root, apply_changes=False, conform=service.conform).execute()\n"
         'assert result.failure and "drifted" in result.error\n',
         consumer="",
     )

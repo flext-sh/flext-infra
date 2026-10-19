@@ -358,7 +358,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def find_relative_module(
             self,
             modname: str,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot,
             level: int,
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
 
@@ -494,7 +494,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def get_relative_module(
             self,
             name: str,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot,
             level: int,
         ) -> FlextInfraTypesRopeNative.RopeNativeParsedModule: ...
 

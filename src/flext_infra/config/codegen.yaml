@@ -137,6 +137,12 @@ Infra:
       # Bead trail: flext-0ftd.3 family + flext-mlr2m root parser finding.
       uv_constraint_dependencies:
       - mypy<2.4.0
+      # Explicit resolver-wide SDK source election. Repository/local declarations
+      # of the same normalized name and marker take precedence at rendering.
+      # The fork release repairs region coverage for try/else/finally matching;
+      # stale transitive metadata must not select the earlier broken source.
+      uv_override_dependencies:
+      - rope @ git+https://github.com/marlon-costa-dc/rope.git@1.15.0%2Bdc.4
       # Moving selectors consumed by generated .mise.toml and CI. Only
       # `make upg` resolves them to the newest release and writes mise.lock;
       # setup installs exactly what the committed lock pins, and only these
