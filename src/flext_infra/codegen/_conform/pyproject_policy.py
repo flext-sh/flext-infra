@@ -51,7 +51,9 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         suppliers: list[m.Infra.UvResolutionProject] = []
         supplier_root = inputs.spec.make.uv_resolution.editable_supplier_root
         if supplier_root is not None:
-            requirements = u.Infra.document_requirement_lines(projects.value[0].document)
+            requirements = u.Infra.document_requirement_lines(
+                projects.value[0].document
+            )
             if requirements.failure:
                 return result_type.from_failure(requirements)
             collected = self._collected_supplier_projects(

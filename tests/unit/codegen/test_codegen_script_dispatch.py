@@ -361,14 +361,12 @@ class TestsFlextInfraScriptDispatchMakefile:
         self,
         tmp_path: Path,
     ) -> None:
-        """The bounded test verb runs on the one persistent testmon database.
+        """Public test verbs share one guarded persistent testmon execution path.
 
         The persistent database is keyed by the declared distribution, so
-        every checkout of a project shares one testmon history. The full verb
-        is the one unbounded runner (canonical-commands test-verb law: local
-        only, without testmon and without any time limit): one ``full`` entry
-        outside PYTEST_BOUNDED, whose runner never hands the database to
-        pytest.
+        every checkout of a project shares one testmon history. Complete
+        validation runs incremental then complete through one unbounded
+        ``full`` entry, also used by the shipped test-full command.
         """
         rendered = self._render_root_makefile(
             tmp_path,
@@ -376,6 +374,31 @@ class TestsFlextInfraScriptDispatchMakefile:
             script_dispatch=None,
         )
         cache = config.Infra.codegen.make.testmon_cache
+        public_verbs = (
+            next(
+                line
+                for line in rendered.splitlines()
+                if line.startswith("PUBLIC_VERBS :=")
+            )
+            .split(":=", 1)[1]
+            .split()
+        )
+        expected_verbs = [
+            verb.name
+            for verb in config.Infra.codegen.make.verbs
+            if c.Infra.MakeProfile.STANDALONE in verb.profiles
+        ]
+        tm.that(public_verbs, eq=expected_verbs)
+        tm.that(public_verbs, has="tests")
+        tm.that(
+            rendered,
+            has=[
+                ".PHONY: $(PUBLIC_VERBS) $(addprefix _builtin-,$(PUBLIC_VERBS))",
+                "_builtin-test: _builtin_test_all\n",
+                "_builtin-tests: _builtin_test_full_all\n",
+                "_builtin-test-full: _builtin_test_full_all\n",
+            ],
+        )
         database_line = next(
             line
             for line in rendered.splitlines()
@@ -402,6 +425,15 @@ class TestsFlextInfraScriptDispatchMakefile:
         tm.that(full.count("-m flext_infra._pytest_entry"), eq=1)
         tm.that(full.rstrip().endswith("-m flext_infra._pytest_entry full"), eq=True)
         tm.that(full, lacks="PYTEST_BOUNDED")
+        tm.that(
+            full,
+            has=[
+                "_builtin_require_environment",
+                'if [ -n "$(strip $(FILE))" ]; then',
+                'export FLEXT_PYTEST_TARGET_FILE="$(FILE)";',
+                f'{cache.database_environment_variable}="$$database"',
+            ],
+        )
 
     # A test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer

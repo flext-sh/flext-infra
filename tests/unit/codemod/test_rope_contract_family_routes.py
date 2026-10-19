@@ -138,12 +138,14 @@ class TestsRopeContractFamilyRoutes:
             u.Cli.run((
                 sys.executable,
                 "-c",
-                f"import sys\nsys.path.insert(0, {str(package.parent)!r})\n"
-                f"from {namespace} import u\n"
-                "if u.registered != {'ready': None} or u.emit([None]) != [None]:\n"
-                "    raise RuntimeError('native JSON contract changed')\n"
-                "if u.marker != 'richer':\n"
-                "    raise RuntimeError('composed facade was replaced')\n",
+                (
+                    f"import sys\nsys.path.insert(0, {str(package.parent)!r})\n"
+                    f"from {namespace} import u\n"
+                    "if u.registered != {'ready': None} or u.emit([None]) != [None]:\n"
+                    "    raise RuntimeError('native JSON contract changed')\n"
+                    "if u.marker != 'richer':\n"
+                    "    raise RuntimeError('composed facade was replaced')\n"
+                ),
             ))
         )
         tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True)

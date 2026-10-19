@@ -1943,12 +1943,16 @@ class TestsFlextInfraUtilityFacadeProjection:
 
     @pytest.mark.parametrize("multiline", [False, True])
     @pytest.mark.parametrize("shadow", [False, True])
+    @pytest.mark.parametrize("organizer_protocol", [False, True])
+    @pytest.mark.parametrize("import_alias", [False, True])
     def test_protocol_owner_precedes_terminal_protocol_base(
         self,
         tmp_path: Path,
         *,
         multiline: bool,
         shadow: bool,
+        organizer_protocol: bool,
+        import_alias: bool,
     ) -> None:
         """Both source forms import and expose the real structural protocol."""
         root, package = u.Tests.create_lazy_init_workspace(
@@ -1971,28 +1975,37 @@ class TestsFlextInfraUtilityFacadeProjection:
         self._write(
             package / "_protocols" / "payload.py",
             "from typing import Protocol, runtime_checkable\n\n"
-            "class PayloadOwner(Protocol):\n"
+            f"class PayloadOwner{'(Protocol)' if organizer_protocol else ''}:\n"
             "    @runtime_checkable\n"
             "    class Payload(Protocol):\n        value: str\n"
             "__all__ = ['PayloadOwner']\n",
         )
+        self._write(
+            package / "other.py",
+            "from typing import Protocol\n"
+            "class PayloadOwner:\n"
+            "    class Payload(Protocol):\n        other: int\n",
+        )
         facade = package / "protocols.py"
-        bases = "PayloadOwner, p" if shadow else "p"
+        owner_name = "ImportedOwner" if import_alias else "PayloadOwner"
+        bases = f"{owner_name}, p" if shadow else "p"
         header = (
             f"    class Sample(\n        {bases},\n        Protocol,\n    ):\n"
             if multiline
             else f"    class Sample({bases}, Protocol):\n"
         )
         owner_import = (
-            "from flext_sample._protocols import PayloadOwner\n" if shadow else ""
+            f"from flext_sample._protocols import PayloadOwner as {owner_name}\n"
+            if shadow
+            else ""
         )
         body = (
             (
-                "        Payload: type[PayloadOwner.Payload] = (\n"
-                "            PayloadOwner.Payload\n"
+                f"        Payload: type[{owner_name}.Payload] = (\n"
+                f"            {owner_name}.Payload\n"
                 "        )\n"
                 if multiline
-                else "        Payload: type[PayloadOwner.Payload] = PayloadOwner.Payload\n"
+                else f"        Payload: type[{owner_name}.Payload] = {owner_name}.Payload\n"
             )
             if shadow
             else "        pass\n"
@@ -2000,11 +2013,13 @@ class TestsFlextInfraUtilityFacadeProjection:
         self._write(
             facade,
             "from typing import Protocol\n\nfrom upstream import p\n\n"
+            "from flext_sample.other import PayloadOwner as OtherOwner\n"
             + owner_import
             + "\n"
             + "class FlextSampleProtocols(p):\n"
             + header
             + body
+            + "        Unrelated: type[OtherOwner.Payload] = OtherOwner.Payload\n"
             + "\np = FlextSampleProtocols\n\n"
             + '__all__ = ["FlextSampleProtocols", "p"]\n',
         )
@@ -2028,9 +2043,13 @@ class TestsFlextInfraUtilityFacadeProjection:
                         "from flext_sample import p\n"
                         "from typing import get_type_hints\n"
                         "from flext_sample._protocols import PayloadOwner\n"
+                        "from flext_sample.other import PayloadOwner as OtherOwner\n"
                         "class Value:\n    value = 'payload'\n"
                         "class Missing:\n    pass\n"
                         "assert p.Sample.Payload is PayloadOwner.Payload\n"
+                        "assert p.Sample.Unrelated is OtherOwner.Payload\n"
+                        "assert get_type_hints(p.Sample)['Unrelated'] == type[OtherOwner.Payload]\n"
+                        "assert PayloadOwner in p.Sample.__mro__\n"
                         "assert 'Payload' not in get_type_hints(p.Sample)\n"
                         "assert isinstance(Value(), p.Sample.Payload)\n"
                         "assert not isinstance(Missing(), p.Sample.Payload)\n"
@@ -2043,6 +2062,41 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
         tm.that(output.stdout.strip(), eq="protocol-proven")
+
+    @pytest.mark.parametrize(
+        ("published", "actual"),
+        [("AclAllow", "AclTarget"), ("RegistryBound", "ServerReference")],
+    )
+    def test_protocol_projection_rejects_unproven_renamed_contract(
+        self, tmp_path: Path, published: str, actual: str
+    ) -> None:
+        """A renamed inherited entity is not evidence of a contract alias."""
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="flext-sample", package_name="flext_sample"
+        )
+        self._write(package / "__init__.py", "")
+        self._write(
+            package / "_protocols" / "payload.py",
+            "from typing import Protocol\n"
+            "class PayloadOwner:\n"
+            f"    class {actual}(Protocol):\n        value: str\n"
+            "__all__ = ['PayloadOwner']\n",
+        )
+        facade = package / "protocols.py"
+        self._write(
+            facade,
+            "from flext_sample._protocols import PayloadOwner\n"
+            "class FlextSampleProtocols:\n"
+            "    class Sample(PayloadOwner):\n"
+            f"        {published}: type[PayloadOwner.{actual}] = PayloadOwner.{actual}\n"
+            "p = FlextSampleProtocols\n"
+            "__all__ = ['FlextSampleProtocols', 'p']\n",
+        )
+        service = u.Tests.create_lazy_init_service(root)
+        service.target_module = f"{package.name}._protocols"
+        tm.ok(u.Tests.materialize_lazy_init(service))
+        with pytest.raises(ValueError, match="ambiguous protocol class attribute"):
+            u.Infra.render_utility_facade(package, family="p")
 
     @staticmethod
     def test_codegen_models_are_usable_through_the_composed_facade() -> None:

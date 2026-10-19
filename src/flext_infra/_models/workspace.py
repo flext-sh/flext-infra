@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
@@ -165,9 +166,7 @@ class FlextInfraModelsWorkspace:
         evidence: t.MutableSequenceOf[
             FlextInfraModelsWorkspace.NativeBindingEvidence
         ] = m.Field(
-            default_factory=lambda: list[
-                FlextInfraModelsWorkspace.NativeBindingEvidence
-            ](),
+            default_factory=list,
             validate_default=True,
             description="Ordered native binding and executable observations",
         )
@@ -821,15 +820,10 @@ class FlextInfraModelsWorkspace:
                 alias="optional-dependencies",
                 description="Resolved edges by extra; absent when no extras exist",
             ),
-        ] = u.Field(
-            default_factory=lambda: u.empty(
-                TypeForm(
-                    t.MappingKV[
-                        str,
-                        t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency],
-                    ]
-                )
-            )(),
+        ] = m.Field(
+            default_factory=lambda: MappingProxyType[
+                str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]
+            ]({}),
             validate_default=True,
         )
         dev_dependencies: Annotated[
@@ -840,15 +834,10 @@ class FlextInfraModelsWorkspace:
                 alias="dev-dependencies",
                 description="Resolved edges by development group; absent means none",
             ),
-        ] = u.Field(
-            default_factory=lambda: u.empty(
-                TypeForm(
-                    t.MappingKV[
-                        str,
-                        t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency],
-                    ]
-                )
-            )(),
+        ] = m.Field(
+            default_factory=lambda: MappingProxyType[
+                str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]
+            ]({}),
             validate_default=True,
         )
         resolution_markers: Annotated[

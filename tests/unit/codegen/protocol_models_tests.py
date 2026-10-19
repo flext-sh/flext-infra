@@ -172,15 +172,19 @@ def _provision_member(parent: t.DirectoryPath) -> t.DirectoryPath:
     supplier_root = tm.not_none(source_context.runtime).runtime_root
     supplier_modules = ("flext_core", "flext_cli", "flext_infra")
     supplier_states = tuple(
-        tm.ok(u.Cli.atomic_read_binary_file_state(
-            Path(tm.not_none(tm.not_none(find_spec(module)).origin)), required=True
-        ))
+        tm.ok(
+            u.Cli.atomic_read_binary_file_state(
+                Path(tm.not_none(tm.not_none(find_spec(module)).origin)), required=True
+            )
+        )
         for module in supplier_modules
     )
     for source in supplier_states:
         tm.that(source.path.is_relative_to(supplier_root), eq=True)
     supplier_identities = tuple(
-        tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=source.path.parent)))
+        tm.ok(
+            u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=source.path.parent))
+        )
         for source in supplier_states
     )
     rope_distribution = distribution("rope")
@@ -219,26 +223,38 @@ def _provision_member(parent: t.DirectoryPath) -> t.DirectoryPath:
     u.Tests.copy_tracked_mise_seeds(root)
     local_path = root / c.CONFIG_DIR_NAME / "codegen.local.yaml"
     supplier_declaration = {
-        "Infra": {"codegen": {"make": {"uv_resolution": {
-            "editable_supplier_root": supplier_root.as_posix(),
-        }}}},
+        "Infra": {
+            "codegen": {
+                "make": {
+                    "uv_resolution": {
+                        "editable_supplier_root": supplier_root.as_posix(),
+                    }
+                }
+            }
+        },
     }
     if local_path.exists():
         local = tm.ok(u.Cli.yaml_roundtrip_load_map(local_path))
         u.Cli.yaml_overlay_preserving_order(local, supplier_declaration)
-        tm.ok(u.Cli.atomic_write_text_file(
-            local_path, tm.ok(u.Cli.yaml_roundtrip_dump_text(local))
-        ))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                local_path, tm.ok(u.Cli.yaml_roundtrip_dump_text(local))
+            )
+        )
     else:
         tm.ok(u.Cli.yaml_dump(local_path, supplier_declaration))
     tm.that(
-        tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.uv_resolution.editable_supplier_root,
+        tm.ok(
+            u.Infra.load_codegen_inputs(root)
+        ).spec.make.uv_resolution.editable_supplier_root,
         eq=supplier_root,
     )
     u.Tests.run_lazy_init(root)
     proposed = {package / "epoch_probe.py": "EPOCH = 'proposed'\n"}
     with u.Infra.facade_source_project(root, planned_sources=proposed) as binding:
-        with pytest.raises(ValueError, match="native lazy alias membership differs") as mismatch:
+        with pytest.raises(
+            ValueError, match="native lazy alias membership differs"
+        ) as mismatch:
             u.Infra.runtime_evaluated_base_classes(
                 root, {}, (), source_project=binding[0]
             )
@@ -259,13 +275,13 @@ def _provision_member(parent: t.DirectoryPath) -> t.DirectoryPath:
         external_dependency_paths=workspace.external_dependency_paths,
         integration=workspace.integration,
     )
-    tm.ok(u.Cli.yaml_dump(
-        root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME,
-        manifest.model_dump(mode="json", exclude_none=True),
-    ))
-    request = u.Tests.conform_request(
-        root, what=c.Infra.CodegenConformSurface.MAKEFILE
+    tm.ok(
+        u.Cli.yaml_dump(
+            root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME,
+            manifest.model_dump(mode="json", exclude_none=True),
+        )
     )
+    request = u.Tests.conform_request(root, what=c.Infra.CodegenConformSurface.MAKEFILE)
     conform = FlextInfraCodegenConform(
         repository_root=root,
         state=m.Infra.CodegenConformState(
@@ -278,15 +294,22 @@ def _provision_member(parent: t.DirectoryPath) -> t.DirectoryPath:
         raise plan.exception
     tm.that(plan.issues, empty=True, msg=str(plan.issues))
     tm.ok(u.Tests.materialize_codegen_plans(planned.map(lambda result: result.files)))
-    tm.ok(u.Tests.materialize_codegen_plans(
-        conform.native_resolution_plans(
-            root, workspace, tm.ok(u.Infra.load_codegen_inputs(root)), plan.files,
-            rendered_by=conform.rendered_by_stamp(),
-        ).map(tuple)
-    ))
-    tm.ok(infra.sync_environment_files(
-        m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=root, apply=True)
-    ))
+    tm.ok(
+        u.Tests.materialize_codegen_plans(
+            conform.native_resolution_plans(
+                root,
+                workspace,
+                tm.ok(u.Infra.load_codegen_inputs(root)),
+                plan.files,
+                rendered_by=conform.rendered_by_stamp(),
+            ).map(tuple)
+        )
+    )
+    tm.ok(
+        infra.sync_environment_files(
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=root, apply=True)
+        )
+    )
     resolution = tm.ok(FlextInfraWorkspaceDetector.resolution_context(root))
     policy = tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.uv_resolution
     tm.that(
@@ -335,7 +358,7 @@ def _provision_member(parent: t.DirectoryPath) -> t.DirectoryPath:
         "    assert tm.ok(u.Cli.atomic_read_binary_file_state(expected.path, required=True)) == expected\n"
         "    current = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=expected.path.parent)))\n"
         "    assert (str(current.repo_root), current.head_oid) == identity\n"
-        "    print(f'fixture supplier module={module} source={elected.origin}; head={current.head_oid}; dirty={current.dirty}')\n"
+        f"    print(f'fixture supplier module={module} source={elected.origin}; head={current.head_oid}; dirty={current.dirty}')\n"
         "rope = distribution('rope')\n"
         f"assert rope.metadata['Name'] == {rope_distribution.metadata['Name']!r}\n"
         "observed_rope = m.Infra.DirectUrlReceipt.model_validate_json(tm.not_none(rope.read_text('direct_url.json')))\n"
@@ -420,7 +443,7 @@ def test_apply_generates_runtime_checkable_contracts(
     )
 
 
-@pytest.mark.parametrize("change", (None, "content", "membership"))
+@pytest.mark.parametrize("change", [None, "content", "membership"])
 def test_projected_outputs_keep_original_transaction_inputs(
     member_root: t.DirectoryPath, change: str | None
 ) -> None:
@@ -497,7 +520,7 @@ def test_transitive_model_dependency_is_a_structural_contract(
     )
 
 
-@pytest.mark.parametrize("owned_parent", (True, False))
+@pytest.mark.parametrize("owned_parent", [True, False])
 def test_missing_parent_epoch_requires_a_journal_owned_transition(
     member_root: t.DirectoryPath, owned_parent: bool
 ) -> None:
@@ -557,7 +580,7 @@ def test_missing_parent_epoch_requires_a_journal_owned_transition(
     )
 
 
-@pytest.mark.parametrize("change", (None, "content", "identity"))
+@pytest.mark.parametrize("change", [None, "content", "identity"])
 def test_candidate_inputs_advance_only_through_native_publication(
     member_root: t.DirectoryPath, change: str | None
 ) -> None:

@@ -140,7 +140,9 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 return r[bool].fail(
                     f"editable supplier identity mismatch: {supplier.directory}"
                 )
-            tool = u.json_mapping_adapter().validate_python(payload.get(c.Infra.TOOL, {}))
+            tool = u.json_mapping_adapter().validate_python(
+                payload.get(c.Infra.TOOL, {})
+            )
             project_uv = u.json_mapping_adapter().validate_python(tool.get("uv", {}))
             state.constraints.extend(
                 constraint
@@ -158,7 +160,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 if entry not in state.retained_overrides
                 and (
                     not isinstance(entry, str)
-                    or FlextInfraUtilitiesDependencies.dep_name(entry) not in supplied_names
+                    or FlextInfraUtilitiesDependencies.dep_name(entry)
+                    not in supplied_names
                 )
             )
             # Replace source provenance only; preserve bounds, extras and markers.

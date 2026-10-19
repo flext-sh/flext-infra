@@ -297,6 +297,7 @@ class FlextInfraMiseArtifactsVerification(
 
         Returns:
             Verified current-parent inputs without changing original receipts.
+
         """
         result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
         durable = cls.states_current((session.journal_state,))
@@ -329,6 +330,7 @@ class FlextInfraMiseArtifactsVerification(
 
         Returns:
             Current-epoch inputs, or the first unowned transition.
+
         """
         result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
         outputs = cls.publication_outputs_current(publications)

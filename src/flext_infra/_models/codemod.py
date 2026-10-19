@@ -335,18 +335,17 @@ class FlextInfraModelsCodemod:
                 if capture is not None and f"${{{capture}}}" not in self.pattern:
                     msg = "native default proof must name a pattern capture"
                     raise ValueError(msg)
-            if self.required_field or self.private_attribute:
-                if (
-                    self.call_target is None
-                    or not self.model_bases
-                    or self.scope_kinds != (c.Infra.RopeScopeKind.CLASS,)
-                    or (self.required_field and self.private_attribute)
-                ):
-                    msg = (
-                        "native field metadata requires one mode, a callee "
-                        "and model class scope"
-                    )
-                    raise ValueError(msg)
+            if (self.required_field or self.private_attribute) and (
+                self.call_target is None
+                or not self.model_bases
+                or self.scope_kinds != (c.Infra.RopeScopeKind.CLASS,)
+                or (self.required_field and self.private_attribute)
+            ):
+                msg = (
+                    "native field metadata requires one mode, a callee "
+                    "and model class scope"
+                )
+                raise ValueError(msg)
             if self.missing_keywords and self.call_target is None:
                 msg = "missing-keyword proof requires a call target"
                 raise ValueError(msg)

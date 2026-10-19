@@ -41,24 +41,40 @@ class FlextInfraModelsDepsToolConfigProjectMise:
     class MiseRoleDeclaration(m.ContractModel):
         """An immutable consumer role, separate from fleet and host selectors."""
 
-        role: Annotated[str, m.Field(pattern=r"^[a-z][a-z0-9_-]*$", description="Consumer role owning these exact tool declarations")]
+        role: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[a-z][a-z0-9_-]*$",
+                description="Consumer role owning these exact tool declarations",
+            ),
+        ]
         source_inputs: Annotated[
-            tuple[m.Cli.AtomicFileReceipt, ...], m.Field(min_length=1, description="Authenticated inputs consumed by the role producer")
+            tuple[m.Cli.AtomicFileReceipt, ...],
+            m.Field(
+                min_length=1,
+                description="Authenticated inputs consumed by the role producer",
+            ),
         ]
         tools: Annotated[
             tuple[FlextInfraModelsMiseToolchain.MiseToolEntry, ...],
-            m.Field(min_length=1, description="Exact native tools and unchanged version/integrity probes"),
+            m.Field(
+                min_length=1,
+                description="Exact native tools and unchanged version/integrity probes",
+            ),
         ]
 
         @m.model_validator(mode="after")
         def _exact_native_role(self) -> Self:
             names = tuple(entry.name for entry in self.tools)
             if len(set(names)) != len(names):
-                raise ValueError("role tools must have unique native names")
+                msg = "role tools must have unique native names"
+                raise ValueError(msg)
             for entry in self.tools:
                 if (
                     not re.fullmatch(r"[a-z][a-z0-9_-]*", entry.name)
-                    or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?", entry.version)
+                    or not re.fullmatch(
+                        r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?", entry.version
+                    )
                     or entry.selector not in {None, entry.name}
                     or not entry.lock_checksum
                     or entry.http is not None
@@ -68,31 +84,75 @@ class FlextInfraModelsDepsToolConfigProjectMise:
                     or entry.install_env
                     or entry.version_prefix is not None
                 ):
-                    raise ValueError(f"role requires an exact checksummed native tool: {entry.name}")
+                    msg = (
+                        f"role requires an exact checksummed native tool: {entry.name}"
+                    )
+                    raise ValueError(msg)
             return self
 
     class MiseRoleRequest(m.ContractModel):
         """Pinned declaration/reader inputs and an explicitly isolated target."""
 
-        declaration: Annotated[m.Cli.AtomicFileReceipt, m.Field(description="Authenticated typed role declaration bytes")]
-        reader: Annotated[m.Cli.AtomicFileReceipt, m.Field(description="Captured physical native Mise reader")]
-        reader_manifest: Annotated[m.Cli.AtomicFileReceipt, m.Field(description="Reader owner's self-management declaration")]
-        reader_lock: Annotated[m.Cli.AtomicFileReceipt, m.Field(description="Reader owner's checksum-locked self identity")]
-        scope_root: Annotated[Path, m.Field(description="Explicit physical root owning isolated installation state")]
-        target_root: Annotated[Path, m.Field(description="New role directory strictly contained by the owned scope")]
+        declaration: Annotated[
+            m.Cli.AtomicFileReceipt,
+            m.Field(description="Authenticated typed role declaration bytes"),
+        ]
+        reader: Annotated[
+            m.Cli.AtomicFileReceipt,
+            m.Field(description="Captured physical native Mise reader"),
+        ]
+        reader_manifest: Annotated[
+            m.Cli.AtomicFileReceipt,
+            m.Field(description="Reader owner's self-management declaration"),
+        ]
+        reader_lock: Annotated[
+            m.Cli.AtomicFileReceipt,
+            m.Field(description="Reader owner's checksum-locked self identity"),
+        ]
+        scope_root: Annotated[
+            Path,
+            m.Field(
+                description="Explicit physical root owning isolated installation state"
+            ),
+        ]
+        target_root: Annotated[
+            Path,
+            m.Field(
+                description="New role directory strictly contained by the owned scope"
+            ),
+        ]
 
     class MiseRolePlan(m.ContractModel):
         """Native projection and lock authenticated before installation."""
 
-        request: Annotated[FlextInfraModelsDepsToolConfigProjectMise.MiseRoleRequest, m.Field(description="Accepted reader, source and target authority")]
-        manifest: Annotated[m.Cli.AtomicFileReceipt, m.Field(description="Authenticated role-local native Mise projection")]
-        lock: Annotated[m.Cli.AtomicFileReceipt, m.Field(description="Authenticated exact version and platform checksum lock")]
+        request: Annotated[
+            FlextInfraModelsDepsToolConfigProjectMise.MiseRoleRequest,
+            m.Field(description="Accepted reader, source and target authority"),
+        ]
+        manifest: Annotated[
+            m.Cli.AtomicFileReceipt,
+            m.Field(description="Authenticated role-local native Mise projection"),
+        ]
+        lock: Annotated[
+            m.Cli.AtomicFileReceipt,
+            m.Field(
+                description="Authenticated exact version and platform checksum lock"
+            ),
+        ]
 
     class MiseRoleInstallation(m.ContractModel):
         """Exact installed binaries bound to the source and locked projection."""
 
-        plan: Annotated[FlextInfraModelsDepsToolConfigProjectMise.MiseRolePlan, m.Field(description="Unchanged declaration and locked projection used for acquisition")]
-        executables: Annotated[t.MappingKV[str, m.Cli.AtomicFileReceipt], m.Field(description="Proven physical binaries with exact content digests")]
+        plan: Annotated[
+            FlextInfraModelsDepsToolConfigProjectMise.MiseRolePlan,
+            m.Field(
+                description="Unchanged declaration and locked projection used for acquisition"
+            ),
+        ]
+        executables: Annotated[
+            t.MappingKV[str, m.Cli.AtomicFileReceipt],
+            m.Field(description="Proven physical binaries with exact content digests"),
+        ]
 
 
 __all__: list[str] = ["FlextInfraModelsDepsToolConfigProjectMise"]

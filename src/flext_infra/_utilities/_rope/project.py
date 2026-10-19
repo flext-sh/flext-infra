@@ -143,12 +143,18 @@ class _RopeProjectSourceAccessMixin:
     def source_query(
         self, path: Path, predicate: Literal["exists", "isfile", "isdir"]
     ) -> bool:
-        """Elect a direct path through the original native query owner.
+        """Query the declared snapshot or the authenticated physical read owner.
 
         Returns:
-            Whether the original native query holds for the path.
+            Whether the owning source inventory's predicate holds for the path.
 
         """
+        if isinstance(self.fscommands, FlextInfraRopeProject.SnapshotFiles):
+            return {
+                "exists": self.fscommands.exists,
+                "isfile": self.fscommands.isfile,
+                "isdir": self.fscommands.isdir,
+            }[predicate](str(path))
         return self._authenticated_reads.query(str(path), predicate)
 
     def source_children(

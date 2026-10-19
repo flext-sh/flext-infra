@@ -41,7 +41,7 @@ class FlextInfraConfigModelsTemplates:
             t.JsonMapping,
             m.Field(description="Portable project-owned extension declarations"),
         ] = m.Field(
-            default_factory=lambda: flext_core.u.empty(TypeForm(t.JsonMapping))(),
+            default_factory=flext_core.u.empty(TypeForm(t.JsonMapping)),
             validate_default=True,
         )
 

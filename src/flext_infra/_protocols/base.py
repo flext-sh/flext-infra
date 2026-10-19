@@ -1405,7 +1405,6 @@ class FlextInfraProtocolsBase(Protocol):
         analysis_output: Path | None
         impact_map_output: Path | None
 
-
     @runtime_checkable
     class MiseRoleRequest(Protocol):
         """Authenticated native role inputs and the isolated installation scope."""

@@ -115,7 +115,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         lines: t.MutableSequenceOf[str],
         module_exports: frozenset[str],
     ) -> None:
-        """Emit one TYPE_CHECKING import from its absolute owner."""
+        """Emit one TYPE_CHECKING import from its resolved owner."""
         parts: t.MutableSequenceOf[str] = []
         for export_name, attr_name in sorted(
             items,
@@ -182,6 +182,14 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             name for items in collapsed.values() for name, attr in items if not attr
         )
         merged_groups = cls._merge_root_alias_groups(collapsed)
+        if local_package_root:
+            prefix = f"{local_package_root}."
+            merged_groups = {
+                (
+                    f".{mod.removeprefix(prefix)}" if mod.startswith(prefix) else mod
+                ): items
+                for mod, items in merged_groups.items()
+            }
         # With include_flext_types=False the collapsed groups are the only
         # content the block would carry; a package whose references collapsed
         # away (its re-exported children moved elsewhere) must render no

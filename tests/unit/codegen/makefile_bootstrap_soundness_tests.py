@@ -26,7 +26,95 @@ class TestsFlextInfraMakefileBootstrapSoundness:
     """Public Make preserves physical ownership and native tool configuration."""
 
     @staticmethod
-    @pytest.mark.parametrize("scenario", ["hosted", "missing-seed"])
+    @pytest.mark.parametrize("profile", list(c.Infra.MakeProfile))
+    @pytest.mark.parametrize("supplier", [False, True])
+    def test_install_recipe_survives_template_conditionals(
+        tmp_path: Path,
+        profile: c.Infra.MakeProfile,
+        *,
+        supplier: bool,
+    ) -> None:
+        """Public help parses both branches without truncating provisioning."""
+        root, _ = u.Tests.render_make_environment(tmp_path, profile)
+        if supplier:
+            tm.ok(
+                u.Cli.yaml_dump(
+                    root / "config" / "codegen.local.yaml",
+                    {
+                        "Infra": {
+                            "codegen": {
+                                "make": {
+                                    "uv_resolution": {
+                                        "editable_supplier_root": (
+                                            tmp_path / "supplier"
+                                        ).as_posix(),
+                                    }
+                                }
+                            }
+                        }
+                    },
+                )
+            )
+        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
+        policy = inputs.spec.make.uv_resolution
+        tm.that(policy.editable_supplier_root is not None, eq=supplier)
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        rendered = u.Tests.conform_makefile_text(root, workspace)
+        tm.ok(u.Cli.atomic_write_text_file(root / c.Infra.MAKEFILE_FILENAME, rendered))
+        (root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
+            "$(info install-runtime-recipe=$(value INSTALL_RUNTIME_RECIPE))\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        process = tm.ok(
+            u.Tests.run_isolated_make(
+                ["help", "OPTIONS=Y"],
+                cwd=root,
+                env={
+                    policy.hosted_variable: "",
+                    inputs.spec.make.ci.variable: inputs.spec.make.ci.local_value,
+                },
+            )
+        )
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
+        recipe = next(
+            line
+            for line in process.stdout.splitlines()
+            if line.startswith("install-runtime-recipe=")
+        )
+        sync = '$$credential_env $(UV) sync --project "$(UV_PROJECT)"'
+        tm.that(recipe, has=sync)
+        tm.that(
+            recipe,
+            has='$(UV_SYNC_FLAGS) --frozen --link-mode "$(UV_LINK_MODE)"',
+        )
+        tm.that(recipe.index("config ls --json") < recipe.index(sync), eq=True)
+        tm.that("$(UV) lock --check" in recipe, eq=supplier)
+        if supplier:
+            tm.that(recipe.index("$(UV) lock --check") < recipe.index(sync), eq=True)
+        for verb in ("fmt", "fix"):
+            body = rendered.split(
+                f"_builtin_{verb}_all: _builtin_require_environment\n", 1
+            )[1].split("\n\n", 1)[0]
+            for gates in (
+                inputs.spec.make.check_gates_default,
+                inputs.spec.make.check_gates_ci,
+                inputs.spec.make.check_gates_local,
+            ):
+                tm.that(body, has=f'gates="{",".join(gates)}"')
+            capture = body.index('capture-gate --repository-root "$(PROJECT_ROOT)"')
+            conform = body.index(
+                'codegen conform --root "$(PROJECT_ROOT)" --scope self --mode check'
+            )
+            tm.that(body.index("--apply") < capture < conform, eq=True)
+            tm.that(body[capture:conform], has='--gates "$$gates"')
+            tm.that(body[capture:], lacks="--apply")
+
+    @staticmethod
+    @pytest.mark.parametrize("scenario", ["hosted", "missing-manifest"])
     def test_editable_upgrade_preflight_preserves_hooks_and_locks(
         tmp_path: Path, scenario: str
     ) -> None:
@@ -99,7 +187,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             has=(
                 "Editable supplier reconciliation is local only"
                 if scenario == "hosted"
-                else "default local lock seed are missing"
+                else "Editable resolution manifest is missing"
             ),
         )
         tm.that(marker.exists(), eq=False)

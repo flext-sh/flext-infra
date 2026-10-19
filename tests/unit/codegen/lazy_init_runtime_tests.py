@@ -97,6 +97,7 @@ class TestsFlextInfraLazyInitRuntime:
             what=c.Infra.CodegenConformSurface.LAZY_INIT,
             scope=c.Infra.CodegenConformScope.SELF,
         )
+        tm.ok(u.Tests.create_python_environment(repository))
 
         tm.ok(infra.codegen_generate(request))
 
@@ -372,6 +373,12 @@ class TestsFlextInfraLazyInitRuntime:
         for path, content in sources.items():
             path.parent.mkdir(parents=True, exist_ok=True)
             tm.ok(u.Cli.atomic_write_text_file(path, content))
+        u.Tests.git_run(
+            repository,
+            "add",
+            "--",
+            *(str(path.relative_to(repository)) for path in sources),
+        )
         if ownership == "module-only":
             with pytest.raises(ValueError, match="Module used as a class base"):
                 u.Infra.render_utility_facade(package, family="m")

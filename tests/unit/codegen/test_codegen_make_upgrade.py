@@ -13,12 +13,81 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, r
+from flext_infra import config, infra, r, settings
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraCodegenMakeUpgrade:
     """Prove only ``upg`` resolves locks and setup preserves native lock inputs."""
+
+    @staticmethod
+    def test_editable_cold_setup_requires_its_own_lock(tmp_path: Path) -> None:
+        """An elected supplier never lets frozen setup seed another view's lock."""
+        credential = t.SecretStr(settings.env_required("GITHUB_TOKEN"))
+        source = tm.ok(infra.project_context(Path.cwd()))
+        root, _ = u.Tests.render_make_environment(
+            tmp_path, c.Infra.MakeProfile.STANDALONE, bootstrap=True
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / "codegen.local.yaml",
+                {
+                    "Infra": {
+                        "codegen": {
+                            "make": {
+                                "uv_resolution": {
+                                    "editable_supplier_root": tm.not_none(
+                                        source.runtime
+                                    ).runtime_root.as_posix(),
+                                },
+                            },
+                        },
+                    },
+                },
+            )
+        )
+        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / c.Infra.MAKEFILE_FILENAME,
+                u.Tests.conform_makefile_text(root, workspace),
+            )
+        )
+        policy = inputs.spec.make.uv_resolution
+        paths = (
+            root / c.PYPROJECT_FILENAME,
+            root / c.Infra.UV_LOCK_FILENAME,
+            root / c.Infra.MISE_LOCK_FILENAME,
+            *(
+                root / directory / name
+                for directory in (
+                    policy.local_directory,
+                    policy.standalone_directory,
+                    policy.editable_directory,
+                )
+                for name in (c.PYPROJECT_FILENAME, c.Infra.UV_LOCK_FILENAME)
+            ),
+        )
+        before = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in paths
+        )
+        process = tm.ok(
+            u.Tests.run_isolated_make(
+                ["setup"], cwd=root, private_env={"GITHUB_TOKEN": credential}
+            )
+        )
+        tm.that(process.outcome.raw_return_code, eq=2)
+        tm.that(
+            process.stderr,
+            has=f"ERROR[setup] uv.lock is missing: {root / policy.editable_directory}",
+        )
+        tm.that((root / c.Infra.ENVIRONMENT_DIRECTORY).exists(), eq=False)
+        tm.that(
+            tuple(tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in paths),
+            eq=before,
+        )
 
     @staticmethod
     def test_help_parses_before_runtime_provisioning(

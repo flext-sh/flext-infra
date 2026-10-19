@@ -151,16 +151,14 @@ class FlextInfraModelsCore:
 
         eligible: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownOrigin] = (
             m.Field(
-                default_factory=lambda: list[
-                    FlextInfraModelsCore.PytestMarkdownOrigin
-                ](),
+                default_factory=list,
                 validate_default=True,
                 description="Independently parsed origins",
             )
         )
         collected: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem] = (
             m.Field(
-                default_factory=lambda: list[FlextInfraModelsCore.PytestMarkdownItem](),
+                default_factory=list,
                 validate_default=True,
                 description="Observed pre-selection items",
             )
@@ -516,13 +514,13 @@ class FlextInfraModelsCore:
         markdown_attempts: t.MutableSequenceOf[
             FlextInfraModelsCore.PytestMarkdownAttempt
         ] = m.Field(
-            default_factory=lambda: list[FlextInfraModelsCore.PytestMarkdownAttempt](),
+            default_factory=list,
             validate_default=True,
             description="Call-phase attempt observations",
         )
         markdown_items: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem] = (
             m.Field(
-                default_factory=lambda: list[FlextInfraModelsCore.PytestMarkdownItem](),
+                default_factory=list,
                 validate_default=True,
                 description="Call-phase origin observations",
             )
