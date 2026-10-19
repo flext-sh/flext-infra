@@ -164,12 +164,14 @@ class TestsFlextInfraCProfileReport:
                 limit=1,
             ).execute(),
         )
-        full, focused = output.read_text(encoding=c.DEFAULT_ENCODING).split(
+        full, source_report = output.read_text(encoding=c.DEFAULT_ENCODING).split(
             "Repository source functions:\n",
         )
+        focused, callers = source_report.split("Repository source callers:\n")
         tm.that(full, lacks=str(owned))
         tm.that(focused, has=str(owned))
         tm.that(focused, lacks=str(driver))
+        tm.that(callers, has=str(owned))
 
     @staticmethod
     @pytest.mark.parametrize("absolute_profile", [False, True])

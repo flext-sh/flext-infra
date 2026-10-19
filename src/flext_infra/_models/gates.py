@@ -19,6 +19,7 @@ from flext_infra._models import (
     FlextInfraModelsDeps,
     FlextInfraModelsDuplication,
 )
+from flext_infra._models.validate import FlextInfraModelsCore
 from flext_infra._protocols import FlextInfraProtocolsDeps
 
 
@@ -212,6 +213,10 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             t.VariadicTuple[Path],
             m.Field(description="Complete sealed source-plan inventory for admission"),
         ] = ()
+        candidate_runtime_report: Annotated[
+            FlextInfraModelsCore.ValidationReport | None,
+            m.Field(description="Census observed by the authenticated sealed runtime"),
+        ] = None
 
         @m.model_validator(mode="after")
         def dependency_provenance_selection(self) -> Self:

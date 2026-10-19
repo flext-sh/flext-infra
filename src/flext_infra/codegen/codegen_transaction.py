@@ -290,27 +290,29 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         runtime_root: Path | None,
         *,
         project_root: Path | None = None,
-    ) -> p.Result[bool]:
+    ) -> p.Result[m.Infra.ValidationReport]:
         """Import sealed runtime modules before any candidate check callback.
 
         Returns:
-            Actual native consumer success or its first causal failure.
+            The sealed runtime report or its first causal failure.
 
         """
         if runtime_root is None:
-            return r[bool].ok(value=True)
+            return r[m.Infra.ValidationReport].fail(
+                "candidate runtime owner is required"
+            )
         elected = FlextInfraCodegenTransaction._sealed_runtime_layouts(
             plan, project_root
         )
         if elected.failure:
-            return r[bool].from_failure(elected)
+            return r[m.Infra.ValidationReport].from_failure(elected)
         layouts = elected.value
         sealed = FlextInfraCodegenTransaction._sealed_runtime_environment(
             plan,
             runtime_root,
         )
         if sealed.failure:
-            return r[bool].from_failure(sealed)
+            return r[m.Infra.ValidationReport].from_failure(sealed)
         environment, identity = sealed.value
         interpreter = u.Infra.runtime_python(plan.workspace, runtime_root=runtime_root)
         bindings = tuple(
@@ -376,7 +378,17 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             "    spec.loader.exec_module(sys.modules[spec.name])\n"
             f"for name in {modules!r}:\n"
             "    importlib.import_module(name)\n"
-            "origins = {name: Path(source) / name for name, source in bindings}\n"
+            "from flext_infra import m\n"
+            "from flext_infra.validate import FlextInfraRuntimeCensusValidator\n"
+            + (
+                "validator = FlextInfraRuntimeCensusValidator.for_project("
+                f"Path({str(view_root / project_root.relative_to(plan.workspace))!r})).unwrap()\n"
+                "report = validator.build_report().unwrap()\n"
+                if project_root is not None
+                else "report = m.Infra.ValidationReport(passed=True, "
+                "violations=(), summary='sealed runtime imports authenticated')\n"
+            )
+            + "origins = {name: Path(source) / name for name, source in bindings}\n"
             "for name, module in tuple(sys.modules.items()):\n"
             "    namespace = name.split('.')[0]\n"
             f"    if namespace not in {tuple(plan.workspace_packages)!r}:\n"
@@ -394,6 +406,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             "after = environment.stat()\n"
             "if environment.is_symlink() or (after.st_dev, after.st_ino) != expected:\n"
             "    raise RuntimeError('candidate physical runtime identity changed')\n"
+            "print(report.model_dump_json())\n"
         )
         output = u.Cli.run_raw(
             [str(interpreter), "-I", "-B", "-W", "error", "-"],
@@ -405,13 +418,15 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             ),
         )
         if output.failure:
-            return r[bool].from_failure(output)
+            return r[m.Infra.ValidationReport].from_failure(output)
         if not u.Cli.process_succeeded(output.value.outcome) or output.value.stderr:
-            return r[bool].fail(
+            return r[m.Infra.ValidationReport].fail(
                 f"candidate runtime consumer failed: {output.value.outcome}:\n"
                 f"{output.value.stdout}{output.value.stderr}",
             )
-        return r[bool].ok(value=True)
+        return r[m.Infra.ValidationReport].ok(
+            m.Infra.ValidationReport.model_validate_json(output.value.stdout)
+        )
 
     @staticmethod
     def _source_preview_current(

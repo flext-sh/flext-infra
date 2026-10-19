@@ -388,6 +388,7 @@ def _install_member_runtime(
 
 def _verify_member_runtime(root: t.DirectoryPath, supplier_receipt: str) -> None:
     """Compare the installed runtime against the supplier source identities."""
+    package = root / c.Infra.DEFAULT_SRC_DIR / MEMBER
     environment = u.Infra.runtime_environment_dir(root)
     u.Tests.run_lazy_init_probe(
         "import sys\n"
@@ -396,14 +397,20 @@ def _verify_member_runtime(root: t.DirectoryPath, supplier_receipt: str) -> None
         "from importlib.metadata import distribution\n"
         "from flext_infra import m, u\n"
         "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance\n"
+        "from flext_infra.workspace import FlextInfraWorkspaceDetector\n"
         "from flext_tests import tm\n"
         f"root = Path({str(root)!r})\n"
         f"assert Path(sys.prefix).resolve() == Path({str(environment)!r}).resolve()\n"
         f"package = find_spec({MEMBER!r})\n"
         "assert package is not None and package.origin is not None\n"
-        "assert Path(package.origin).resolve().is_relative_to(Path(sys.prefix).resolve())\n"
+        "assert Path(package.origin).resolve() == "
+        f"Path({str(package / c.Infra.INIT_PY)!r}).resolve()\n"
+        "repository = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root)).repository\n"
+        "installed = distribution(repository.distribution)\n"
+        "receipt = m.Infra.DirectUrlReceipt.model_validate_json("
+        "tm.not_none(installed.read_text('direct_url.json')))\n"
         "assert tm.ok(FlextInfraWorkspaceEnvironmentProvenance."
-        "validate_locked(root)) > 0\n"
+        "validate_editable_installation(repository, root, installed, receipt))\n"
         + supplier_receipt
         + "for module, encoded, identity in "
         "zip(modules, states, identities, strict=True):\n"

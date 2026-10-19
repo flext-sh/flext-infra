@@ -10,6 +10,8 @@ import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra import FlextInfraConfig, c, r
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenStaging
@@ -189,23 +191,25 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         tm.that(metadata.read_text(encoding=c.DEFAULT_ENCODING), eq=before_metadata)
         tm.that(emitted.decode(c.DEFAULT_ENCODING), has='{"answer": 42}')
         tm.that("import os" in emitted.decode(c.DEFAULT_ENCODING), eq=False)
+        receipt = tm.not_none(prepared[0].prepared_sources)
+        if not isinstance(receipt, m.Infra.StageSourcePlan):
+            pytest.fail("Preparation did not return the canonical source receipt")
+        tm.that(all(plan.prepared_sources is receipt for plan in prepared), eq=True)
+        tm.that(bool(receipt.source_query_topology), eq=True)
+        tm.that(bool(receipt.source_directories), eq=True)
+        tm.that(
+            dict(receipt.prepared_hashes),
+            eq={
+                plan.path: u.Cli.sha256_bytes(tm.not_none(plan.desired_content))
+                for plan in prepared
+            },
+        )
         repeated = tm.ok(FlextInfraCodegenStaging.prepare_python_plans(root, prepared))
         tm.that(
             tuple(plan.desired_content for plan in repeated),
             eq=tuple(plan.desired_content for plan in prepared),
         )
-
-        stage = tm.ok(
-            FlextInfraStagedPackage.plan_sources(
-                root,
-                {
-                    plan.path: tm.not_none(plan.desired_content).decode(
-                        c.DEFAULT_ENCODING
-                    )
-                    for plan in prepared
-                },
-            )
-        )
+        tm.that(all(plan.prepared_sources is receipt for plan in repeated), eq=True)
 
         def configured_check(view: Path) -> p.Result[bool]:
             tm.that(
@@ -219,7 +223,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
                 tm.that(execution.result.passed, eq=True, msg=execution.raw_output)
             return r[bool].ok(value=True)
 
-        tm.ok(FlextInfraStagedPackage.consume_sources(stage, configured_check))
+        tm.ok(FlextInfraStagedPackage.consume_sources(receipt, configured_check))
 
     @staticmethod
     def test_unrepairable_python_output_is_rejected_without_publication(
@@ -358,13 +362,15 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         first, second = (by_path[path] for path in destinations)
         tm.that(b"import os" in tm.not_none(first.desired_content), eq=False)
         tm.that(b"import os" in tm.not_none(second.desired_content), eq=True)
-        tm.that(
-            metadata_paths[1] in {state.path for state in first.source_states}, eq=False
-        )
-        tm.that(
-            metadata_paths[0] in {state.path for state in second.source_states},
-            eq=False,
-        )
+        for local, foreign_metadata in (
+            (first, metadata_paths[1]),
+            (second, metadata_paths[0]),
+        ):
+            receipt = tm.not_none(local.prepared_sources)
+            tm.that(foreign_metadata in receipt.updates, eq=False)
+            for source in local.source_states:
+                if source.path == foreign_metadata:
+                    tm.that(source.content, eq=foreign_metadata.read_bytes())
         tm.that(
             tuple(plan.dependency_group for plan in prepared),
             eq=tuple(plan.dependency_group for plan in plans),

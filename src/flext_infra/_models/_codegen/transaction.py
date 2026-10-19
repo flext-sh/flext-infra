@@ -67,6 +67,12 @@ class FlextInfraModelsCodegenTransactionModels:
         declared_files: t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan] = (
             m.Field(default=(), description="Authenticated candidate file declarations")
         )
+        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
+            default=(), description="Original native source election receipts"
+        )
+        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
+            m.Field(default=(), description="Original native source query ancestry")
+        )
 
     class StagePackagePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Pinned package/dependency inputs and the declared public facade contract."""
@@ -94,6 +100,7 @@ class FlextInfraModelsCodegenTransactionModels:
     class StageSourcePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Pinned project closure and desired bytes for effect-free validation."""
 
+        version: Literal[1] = m.Field(default=1, description="Source receipt version")
         workspace: Path = m.Field(description="Canonical source workspace root")
         workspaces: t.VariadicTuple[Path] = m.Field(
             default=(),
@@ -104,6 +111,18 @@ class FlextInfraModelsCodegenTransactionModels:
         )
         inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
             description="Exact source and configuration observations"
+        )
+        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
+            default=(), description="Native directory elections of this source epoch"
+        )
+        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
+            m.Field(default=(), description="Native root and source query identities")
+        )
+        prepared_hashes: t.VariadicTuple[t.Pair[Path, str | None]] = m.Field(
+            default=(), description="Exact prepared update digests; None retires a file"
+        )
+        directory_publications: t.VariadicTuple[m.Cli.AtomicDirectoryState] = m.Field(
+            default=(), description="Journal-proven own directory births for admission"
         )
         updates: t.MappingKV[Path, str | None] = m.Field(
             description=(

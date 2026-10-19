@@ -6,7 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
+import io
+import os
+import re
+from cProfile import Profile
 from pathlib import Path
+from pstats import Stats
 
 import pytest
 
@@ -15,6 +21,76 @@ from tests import c, tm, u
 
 class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
     """Edge-case tests for project discovery."""
+
+    @staticmethod
+    def test_authenticated_publication_reuses_syntax_and_records_each_consumption(
+        tmp_path: Path,
+    ) -> None:
+        """An unchanged declaration parses once without losing its source receipt."""
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "package"
+        nested = package / "nested"
+        nested.mkdir(parents=True)
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+            "[project]\nname = 'package'\nversion = '1.0.0'\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        for directory in (package, nested):
+            (directory / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
+        source = nested / "component.py"
+        source.write_text(
+            "class Component:\n    pass\n\n__all__ = ['Component']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with u.Infra.facade_source_project(tmp_path) as (project, _, _):
+            original = u.Infra.publication_policy(source, rope_project=project)
+            repeated = original
+            with project.source_consumption() as consumption, Profile() as profile:
+                for _ in range(3):
+                    repeated = u.Infra.publication_policy(source, rope_project=project)
+            tm.that(repeated == original, eq=True)
+            tm.that(
+                any(state.path == source for state in consumption.receipt().inputs),
+                eq=True,
+            )
+        output = io.StringIO()
+        parser = f"{ast.__file__}:{ast.parse.__code__.co_firstlineno}(parse)"
+        Stats(profile, stream=output).print_stats(re.escape(parser))
+        tm.that(output.getvalue(), lacks=parser)
+
+    @staticmethod
+    def test_publication_exports_follow_content_with_an_unchanged_timestamp(
+        tmp_path: Path,
+    ) -> None:
+        """A fresh authenticated epoch never reuses another source's exports."""
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "package"
+        package.mkdir(parents=True)
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+            "[project]\nname = 'package'\nversion = '1.0.0'\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (package / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
+        source = package / "component.py"
+        source.write_text("__all__ = []\n", encoding=c.DEFAULT_ENCODING)
+        original_time = source.stat()
+        with u.Infra.facade_source_project(tmp_path) as (project, _, _):
+            tm.that(
+                u.Infra.publication_policy(
+                    source, rope_project=project
+                ).allow_main_export,
+                eq=False,
+            )
+        source.write_text(
+            "def main():\n    pass\n\n__all__ = ['main']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        os.utime(source, ns=(original_time.st_atime_ns, original_time.st_mtime_ns))
+        with u.Infra.facade_source_project(tmp_path) as (project, _, _):
+            tm.that(
+                u.Infra.publication_policy(
+                    source, rope_project=project
+                ).allow_main_export,
+                eq=True,
+            )
 
     @staticmethod
     @pytest.mark.parametrize("suffix", [c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB])

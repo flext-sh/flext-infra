@@ -873,14 +873,16 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
     ) -> set[str]:
         found: set[str] = set()
         for entry in workspace.modules():
-            if entry.file_path.is_relative_to(workspace.repository_root / directory):
-                continue
             resource = workspace.resource(entry.file_path)
             if resource is None:
                 msg = f"indexed module unavailable: {entry.file_path}"
                 raise ValueError(msg)
             module = u.Infra.resolve_pymodule(workspace.rope_project, resource)
             source = module.source_code
+            if entry.file_path.is_relative_to(
+                workspace.repository_root / directory
+            ) and source.startswith(c.Infra.AUTOGEN_HEADERS):
+                continue
             primaries = (
                 (source[begin:end], u.Infra.scope_at(module, begin))
                 for begin, end in u.Infra.reference_regions(source)

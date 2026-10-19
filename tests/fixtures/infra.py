@@ -326,8 +326,11 @@ def _provision_consumer_template(
     )
     conform = FlextInfraCodegenConform(
         repository_root=root,
-        initial_workspace=workspace,
-        request=conform_request,
+        state=m.Infra.CodegenConformState(
+            repository_root=root,
+            initial_workspace=workspace,
+            request=conform_request,
+        ),
     )
     planned = conform.plan(conform_request)
     plan = tm.ok(planned)

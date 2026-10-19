@@ -68,6 +68,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         *,
         inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
         workspaces: t.VariadicTuple[Path] = (),
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.StageSourcePlan]:
         """Prepare composed sources before sealing their publication identity.
 
@@ -78,13 +79,29 @@ class FlextInfraUtilitiesProtectedEditLinting:
         planned = codegen.FlextInfraStagedPackage.plan_sources(
             repository_root,
             updates,
-            options=m.Infra.StageSourceOptions(inputs=inputs, workspaces=workspaces),
+            options=m.Infra.StageSourceOptions(
+                inputs=inputs,
+                workspaces=workspaces,
+                declared_files=declared_files,
+                source_directories=tuple(
+                    item for file in declared_files for item in file.source_directories
+                ),
+                source_query_topology=tuple(
+                    item
+                    for file in declared_files
+                    for item in file.source_query_topology
+                ),
+            ),
         )
         if planned.failure:
             return r[m.Infra.StageSourcePlan].from_failure(planned)
         return codegen.FlextInfraStagedPackage.prepare_sources(
             planned.value, cls._repair_staged_sources
-        ).map(lambda prepared: planned.value.model_copy(update={"updates": prepared}))
+        ).flat_map(
+            lambda prepared: codegen.FlextInfraStagedPackage.seal_sources(
+                planned.value, prepared
+            )
+        )
 
     @classmethod
     def _repair_staged_sources(

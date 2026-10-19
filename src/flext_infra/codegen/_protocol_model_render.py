@@ -623,11 +623,32 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
             TypeError: If configuration lacks native literal or owner proof.
 
         """
+        if isinstance(value, ast.Name | ast.Attribute):
+            binding = u.Infra.resolve_symbol(lexical, value)
+            if binding is not None and u.Infra.assigned_name(binding):
+                module, _line = u.Infra.definition_location(binding)
+                if len(binding.assignments) == 1 and u.Infra.source_module(module):
+                    declaration = binding.assignments[0].ast_node
+                    if not isinstance(declaration, ast.expr):
+                        msg = (
+                            f"model configuration has no source expression: {identity}"
+                        )
+                        raise TypeError(msg)
+                    return self._model_config_policy(
+                        declaration,
+                        u.Infra.scope_at(
+                            module,
+                            u.Infra.source_offset(module.source_code, declaration),
+                        ),
+                        identity,
+                        frozen=frozen,
+                    )
         if not isinstance(value, ast.Call | ast.Dict):
             msg = f"model configuration has no native literal proof: {identity}"
             raise TypeError(msg)
         if isinstance(value, ast.Call) and not (
             self.is_type(value.func, lexical, "pydantic", "ConfigDict")
+            or self.is_type(value.func, lexical, self.project.upstream, "m.ConfigDict")
             or self.is_type(value.func, lexical, "builtins", "dict")
         ):
             msg = f"model configuration has no canonical source owner: {identity}"

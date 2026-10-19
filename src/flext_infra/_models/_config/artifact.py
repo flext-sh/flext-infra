@@ -12,7 +12,7 @@ from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import (
     FlextInfraModelsCheck,
     FlextInfraModelsDepsToolConfig,
@@ -1198,6 +1198,13 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
     class CodegenFilePlan(FlextInfraConfigModelsContract.ConfigContract):
         """Exact before state and desired state for one managed file."""
 
+        model_config = m.ConfigDict(arbitrary_types_allowed=True)
+
+        prepared_sources: p.Infra.StageSourceReceipt | None = m.Field(
+            default=None,
+            exclude=True,
+            description="Closed source evidence returned by candidate preparation",
+        )
         dependency_group: Annotated[
             t.NonEmptyStr | None,
             m.Field(description="Invocation-local dependent publication group"),

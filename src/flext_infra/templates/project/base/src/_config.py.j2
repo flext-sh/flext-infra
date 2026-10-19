@@ -47,7 +47,7 @@ from {{ package_name }}._models.config import (
     ]
 
 
-config: {{ class_stem }}Config = {{ class_stem }}Config.fetch_global()
+config = {{ class_stem }}Config.fetch_global()
 """Pre-instantiated frozen config singleton — ``from {{ package_name }} import config``."""
 
 __all__: list[str] = ["{{ class_stem }}Config", "config"]

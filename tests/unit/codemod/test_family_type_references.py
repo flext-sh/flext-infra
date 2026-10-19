@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import infra
-from tests import c, tm, u
+from tests import c, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -156,14 +157,19 @@ class TestsFlextInfraFamilyTypeReferences:
             for preserved in (
                 'choice: Choice["Part.Domain.Item"]',
                 'unrelated: "Other.Domain.Item"',
-                'TEXT = "Part.Domain.Item"',
                 '    local: "Part.Domain.Item"',
             ):
                 tm.that(proposed[consumer], has=preserved)
+            tm.that(
+                TestsFlextInfraFamilyTypeReferences._string_assignments(
+                    proposed[consumer]
+                ),
+                eq=TestsFlextInfraFamilyTypeReferences._string_assignments(references),
+            )
             for rewritten in (
                 "Container['Part.DomainItem']",
                 "class Generic[T: 'Part.DomainItem' = 'Part.DomainItem']:",
-                "LABEL = 'é'; item: 'Public.DomainItem'",
+                "item: 'Public.DomainItem'",
                 "items: list['Part.DomainItem']",
                 "meta: Meta['Part.DomainItem', \"Part.Domain.Item\"]",
                 "type Items = list['Part.DomainItem']",
@@ -183,3 +189,18 @@ class TestsFlextInfraFamilyTypeReferences:
             tm.that(remaining, empty=True)
         tm.that(path.read_text(encoding="utf-8"), eq=source)
         tm.that(consumer.read_text(encoding="utf-8"), eq=references)
+
+    @staticmethod
+    def _string_assignments(source: str) -> t.StrMapping:
+        """Read string payloads independently of assignment annotations or layout."""
+        return {
+            target.id: node.value.value
+            for node in ast.walk(ast.parse(source))
+            if isinstance(node, (ast.Assign, ast.AnnAssign))
+            and isinstance(node.value, ast.Constant)
+            and isinstance(node.value.value, str)
+            for target in (
+                node.targets if isinstance(node, ast.Assign) else (node.target,)
+            )
+            if isinstance(target, ast.Name)
+        }

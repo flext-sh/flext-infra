@@ -382,10 +382,10 @@ class TestsFlextInfraCodegenConformPublicSurface:
 
     @staticmethod
     def test_complete_fleet_receipt_covers_the_observed_root_subset(
-        infra_git_repo: Path,
+        installed_artifact_consumer: Path,
     ) -> None:
         """Complete ALL publication proves SELF without re-planning or effects."""
-        root = infra_git_repo
+        root = installed_artifact_consumer
         workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
         declared = u.Tests.conform_request(
             root,
@@ -405,8 +405,11 @@ class TestsFlextInfraCodegenConformPublicSurface:
         repeated = tm.ok(
             FlextInfraCodegenConform(
                 repository_root=root,
-                request=request,
-                initial_workspace=workspace,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    request=request,
+                    initial_workspace=workspace,
+                ),
             ).plan(request),
         )
         policy = tm.ok(u.Infra.load_codegen_inputs(root)).spec
@@ -592,6 +595,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
             relative_path=member.path.as_posix(),
         )
         u.Tests.copy_tracked_mise_seeds(root)
+        u.Tests.provision_runtime_environment(root)
         return root, workspace
 
     @staticmethod

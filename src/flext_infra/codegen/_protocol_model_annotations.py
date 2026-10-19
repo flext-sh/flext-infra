@@ -119,7 +119,7 @@ class FlextInfraCodegenProtocolModelAnnotations:
         """
         return ast.unparse(
             self._expression(
-                ast.parse(annotation.strip(), mode="eval").body,
+                ast.parse(f"({annotation})", mode="eval").body,
                 scope,
                 parameters if parameters is not None else {},
                 (),
@@ -197,6 +197,18 @@ class FlextInfraCodegenProtocolModelAnnotations:
         if isinstance(node, ast.Subscript):
             return self._subscript(node, scope, parameters, visiting)
         if binding is None:
+            # A future public port must have both a native facade and model owner.
+            root, separator, route = ast.unparse(primary).partition(".")
+            declaration = self.declarations.get(route)
+            if (
+                separator
+                and declaration is not None
+                and u.Infra.same_name(
+                    self.protocol_facade, u.Infra.expression_name(scope, root)
+                )
+            ):
+                self.dependencies.add(route)
+                return self._model_reference(route, declaration)
             msg = (
                 f"annotation has no authenticated native identity: {ast.unparse(node)}"
             )

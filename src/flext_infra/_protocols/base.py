@@ -136,6 +136,50 @@ class FlextInfraProtocolsBase(Protocol):
         def desired_content(self) -> bytes | None: ...
 
     @runtime_checkable
+    class StageSourceReceipt(Protocol):
+        """Closed prepared-source evidence carried without a model dependency cycle."""
+
+        @property
+        def version(self) -> Literal[1]: ...
+
+        @property
+        def workspace(self) -> Path: ...
+
+        @property
+        def workspaces(self) -> t.VariadicTuple[Path]: ...
+
+        @property
+        def roots(self) -> t.VariadicTuple[Path]: ...
+
+        @property
+        def inputs(self) -> t.VariadicTuple[m.Cli.AtomicFileState]: ...
+
+        @property
+        def source_directories(
+            self,
+        ) -> t.VariadicTuple[m.Cli.AtomicDirectoryInventory]: ...
+
+        @property
+        def source_query_topology(
+            self,
+        ) -> t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan]: ...
+
+        @property
+        def updates(self) -> t.MappingKV[Path, str | None]: ...
+
+        @property
+        def modes(self) -> t.MappingKV[Path, int]: ...
+
+        @property
+        def prepared_hashes(self) -> t.VariadicTuple[t.Pair[Path, str | None]]: ...
+
+        @property
+        def layouts(self) -> t.VariadicTuple[m.Infra.RopeProjectLayout]: ...
+
+        @property
+        def workspace_packages(self) -> t.VariadicTuple[str]: ...
+
+    @runtime_checkable
     class CodegenPlanOutcome(Protocol):
         """Public plan membership, separate from the internal publication schema."""
 

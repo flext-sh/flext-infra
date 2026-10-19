@@ -1359,33 +1359,39 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
 
         def receipt_directories(self) -> tuple[m.Cli.AtomicDirectoryInventory, ...]:
             """Return this epoch's inventories plus imported planning receipts."""
-            return (
-                *self.directories(),
-                *self._imported_directories.values(),
-                *(
-                    witness
-                    for key in sorted(self._consumed_queries)
-                    if isinstance(
-                        witness := self._query_witnesses[key],
-                        m.Cli.AtomicDirectoryInventory,
-                    )
+            return u.Cli.atomic_merge_directory_query_receipts(
+                (
+                    *self.directories(),
+                    *self._imported_directories.values(),
+                    *(
+                        witness
+                        for key in sorted(self._consumed_queries)
+                        if isinstance(
+                            witness := self._query_witnesses[key],
+                            m.Cli.AtomicDirectoryInventory,
+                        )
+                    ),
                 ),
-            )
+                (),
+            )[0]
 
         def receipt_topology(self) -> tuple[m.Cli.AtomicDirectoryChainPlan, ...]:
             """Return this epoch's witnesses plus imported planning receipts."""
-            return (
-                *self.topology(),
-                *self._imported_topology.values(),
-                *(
-                    witness
-                    for key in sorted(self._consumed_queries)
-                    if isinstance(
-                        witness := self._query_witnesses[key],
-                        m.Cli.AtomicDirectoryChainPlan,
-                    )
+            return u.Cli.atomic_merge_directory_query_receipts(
+                (),
+                (
+                    *self.topology(),
+                    *self._imported_topology.values(),
+                    *(
+                        witness
+                        for key in sorted(self._consumed_queries)
+                        if isinstance(
+                            witness := self._query_witnesses[key],
+                            m.Cli.AtomicDirectoryChainPlan,
+                        )
+                    ),
                 ),
-            )
+            )[1]
 
         def children(
             self, path: str, *, follow_aliases: bool = True
