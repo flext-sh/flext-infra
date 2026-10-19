@@ -22,6 +22,75 @@ class TestsFlextInfraLazyInitRuntime:
 
     @staticmethod
     @pytest.mark.parametrize(
+        ("declarations", "mapping_argument"),
+        [
+            ("", 'MappingProxyType({"Exported": (".provider", "Declared")})'),
+            (
+                '_LAZY_IMPORTS = MappingProxyType({"Exported": (".provider", "Declared")})\n',
+                "_LAZY_IMPORTS",
+            ),
+            (
+                '_PROVIDERS = {"Exported": (".provider", "Declared")}\n'
+                "_LAZY_IMPORTS = MappingProxyType(_PROVIDERS)\n",
+                "aliases=_LAZY_IMPORTS",
+            ),
+        ],
+    )
+    def test_native_alias_inventory_matches_the_runtime_initializer(
+        tmp_path: Path, declarations: str, mapping_argument: str
+    ) -> None:
+        """Named and inline maps preserve their actual exported attribute."""
+        repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = (
+            "from types import MappingProxyType\n"
+            "from flext_core import install_lazy_exports\n"
+            + declarations
+            + '__all__ = ("Exported",)\n'
+            + "__getattr__ = install_lazy_exports(\n"
+            + f"    __name__, globals(), {mapping_argument}, public_exports=__all__\n"
+            + ")[0]\n"
+        )
+        initializer = package / c.Infra.INIT_PY
+        tm.ok(u.Cli.atomic_write_text_file(initializer, source))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / "provider.py",
+                'class Declared:\n    marker = True\n__all__ = ("Declared",)\n',
+            )
+        )
+        with infra.rope_workspace(repository) as workspace:
+            module = workspace.rope_project.get_module(package.name)
+            bindings = u.Infra.lazy_export_bindings(
+                package.name,
+                initializer,
+                source,
+                project=workspace.rope_project,
+                pymodule=module,
+            )
+            tm.that(bindings["Exported"].target, eq=f"{package.name}.provider")
+            tm.that(bindings["Exported"].attributes, eq=("Declared",))
+        result = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    f"from {package.name} import Exported\n"
+                    f"from {package.name}.provider import Declared\n"
+                    "assert Exported is Declared\n"
+                    "assert Exported.marker is True\n",
+                ),
+                cwd=repository,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(package.parent),
+                    }
+                ),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+
+    @staticmethod
+    @pytest.mark.parametrize(
         ("source", "expected"),
         [
             ("class Root:\n    __all__ = ('Root',)\n", ("Root",)),
