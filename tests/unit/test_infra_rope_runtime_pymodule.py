@@ -129,8 +129,9 @@ class TestsFlextInfraRopeRuntimePymodule:
                 .get_name(),
                 eq="PublishedContract",
             )
-            tm.that(project.find_relative_module("owner", None, 1), none=True)
-            with pytest.raises(u.Infra.rope_module_not_found_error_types()):
+            with pytest.raises(AttributeError):
+                project.find_relative_module("owner", None, 1)
+            with pytest.raises(AttributeError):
                 project.get_relative_module("owner", None, 1)
 
     @staticmethod

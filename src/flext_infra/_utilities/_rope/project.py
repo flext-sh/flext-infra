@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
+import sys
 from collections.abc import Generator, Mapping
 from contextlib import AbstractContextManager, closing, contextmanager, nullcontext
 from errno import ENOENT
@@ -32,7 +33,7 @@ from rope.base.resourceobserver import ChangeIndicator
 from rope.base.resources import File, Folder, Resource
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities.rope_runtime_module_queries import (
+from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeModuleQueries,
 )
 
@@ -287,6 +288,17 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             prefs: Project preferences overriding config file preferences.
 
         """
+        if "extension_modules" not in prefs:
+            prefs["extension_modules"] = tuple(
+                sorted(
+                    name
+                    for name, module in tuple(sys.modules.items())
+                    if module is not None
+                    and name.partition(".")[0] in sys.stdlib_module_names
+                    and module.__spec__ is not None
+                    and module.__spec__.origin in {"built-in", "frozen"}
+                )
+            )
         super().__init__(
             projectroot,
             fscommands=fscommands,
@@ -400,9 +412,10 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
         """Delegate relative resource election to its native SDK owner.
 
         Returns:
-            The elected native resource, or no resource without relative context.
+            The elected native resource, or no matching resource.
 
         Raises:
+            AttributeError: The native SDK receives no relative folder context.
             TypeError: The elected resource is not a native file or folder.
 
         """

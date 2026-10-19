@@ -24,6 +24,12 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     """Rope object contracts used instead of importing untyped Rope classes."""
 
     @runtime_checkable
+    class RopeChangeComputer(Protocol):
+        """Native restructuring result consumed through its source operation."""
+
+        def get_changed(self) -> str | None: ...
+
+    @runtime_checkable
     class RopeProjectElection(Protocol):
         """Readonly native import roots and source-selection policy."""
 
@@ -294,8 +300,6 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> FlextInfraProtocolsRopeRuntime.RopePyName: ...
 
         def get_name(self) -> str: ...
-
-        def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
 
         def get_doc(self) -> str | None: ...
 

@@ -13,10 +13,6 @@ from flext_infra.__version__ import __version__
 from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.codegen._conform import FlextInfraCodegenConformContextRender
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
-from flext_infra.workspace import (
-    FlextInfraWorkspaceDetector,
-    FlextInfraWorkspaceEnvironmentProvenance,
-)
 
 
 class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRender):
@@ -294,21 +290,20 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             ),
         )
 
-    @classmethod
+    @staticmethod
     def _member_declaration_states(
-        cls,
         repository_root: Path,
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
     ) -> p.Result[
         t.Pair[
             t.VariadicTuple[m.Cli.AtomicFileState],
             t.VariadicTuple[m.Cli.AtomicFileState],
         ]
     ]:
-        """Collect workspace member declarations for pyproject conforming.
+        """Capture source declarations before provisioning the workspace.
 
         Args:
-            repository_root: The repository root holding the lock file.
+            repository_root: The repository root owning the member checkouts.
             workspace: The workspace declaration electing packaged members.
 
         Returns:
@@ -331,30 +326,23 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if not members:
             return result_type.ok(((), ()))
 
-        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
-        if context.failure:
-            return result_type.from_failure(context)
-        locked = u.Cli.atomic_read_binary_file_state(
-            context.value.lock_path,
-            required=False,
-        )
-        if locked.failure:
-            return result_type.from_failure(locked)
-        source_states: list[m.Cli.AtomicFileState] = [locked.value]
         declarations: list[m.Cli.AtomicFileState] = []
         for member in members:
-            declaration = (
-                FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
-                    repository_root,
-                    member,
-                    lock_state=locked.value,
-                )
+            declaration = u.Cli.atomic_read_binary_file_state(
+                repository_root / member.path / c.PYPROJECT_FILENAME,
+                required=True,
             )
             if declaration.failure:
                 return result_type.from_failure(declaration)
+            validated = u.Infra.member_declaration_requirements(
+                declaration.value,
+                member.distribution,
+            )
+            if validated.failure:
+                return result_type.from_failure(validated)
             declarations.append(declaration.value)
-            source_states.append(declaration.value)
-        return result_type.ok((tuple(source_states), tuple(declarations)))
+        captured = tuple(declarations)
+        return result_type.ok((captured, captured))
 
     @classmethod
     def rendered_by_stamp(cls) -> str:

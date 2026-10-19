@@ -566,7 +566,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         self,
         tmp_path: Path,
     ) -> None:
-        """Local topology renders Makefiles without a global repository registry."""
+        """Local sources render bootstrap inputs without installed member packages."""
         root = self._repository(
             "acme-platform",
             path=".",
@@ -626,8 +626,6 @@ class TestsFlextInfraCodegenCatalogExtensions:
             ),
         )
         declared_gitmodules = gitmodules.read_bytes()
-        # Topology rendering must not require the fixture member to be installed
-        # for the unrelated Pyproject provenance surface selected by ALL.
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
             u.Tests.conform_request(
                 repository_root,
@@ -676,4 +674,25 @@ class TestsFlextInfraCodegenCatalogExtensions:
         # .gitmodules is externally owned: conform plans no file for it and
         # leaves the declared topology bytes untouched.
         tm.that(tuple(file.path for file in plan.files), lacks=gitmodules.resolve())
+        tm.that(gitmodules.read_bytes(), eq=declared_gitmodules)
+        provisioning = tm.ok(
+            FlextInfraCodegenConform(initial_workspace=workspace).plan(
+                u.Tests.conform_request(
+                    repository_root,
+                    what=c.Infra.CodegenConformSurface.PYPROJECT,
+                    scope=c.Infra.CodegenConformScope.ALL,
+                    mode=c.Infra.CodegenConformMode.CHECK,
+                ),
+            ),
+        )
+        tm.that(provisioning.issues, eq=())
+        tm.that(provisioning.exception, eq=None)
+        for directory in (
+            config.Infra.codegen.make.uv_resolution.local_directory,
+            config.Infra.codegen.make.uv_resolution.standalone_directory,
+        ):
+            tm.that(
+                tuple(file.path for file in provisioning.files),
+                has=(repository_root / directory / c.PYPROJECT_FILENAME).resolve(),
+            )
         tm.that(gitmodules.read_bytes(), eq=declared_gitmodules)

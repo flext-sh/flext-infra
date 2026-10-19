@@ -25,9 +25,10 @@ Infra:
     branch_policy:
       integration_branch: 0.12.0-dev
     toolchain:
-      # The promoted integration line owns dependency resolution; make upg
-      # records its exact commits for frozen replay.
+      # Consume the same current FLEXT fixes as the authorized recovery motor;
+      # make upg records their exact commits for frozen replay.
       uv_override_dependencies:
-        - "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev"
-        - "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev"
-        - "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev"
+        - "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@upload-20261007"
+        - "flext-core @ git+https://github.com/flext-sh/flext-core.git@upload-20261007"
+        - "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@upload-20261007"
+        - "rope @ git+https://github.com/marlon-costa-dc/rope.git@1.15.0%2Bdc.3"
