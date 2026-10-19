@@ -56,3 +56,6 @@ class FlextInfraConfigModelsRender(FlextInfraConfigModelsSonarcloud):
                 ),
             ),
         ] = ()
+
+
+__all__: list[str] = ["FlextInfraConfigModelsRender"]

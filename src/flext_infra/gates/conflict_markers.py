@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import c, m, t, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates import FlextInfraGate
 
 
 class FlextInfraConflictMarkersGate(FlextInfraGate):
@@ -34,6 +34,7 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
 
         Raises:
             ValueError: If the project has no Git inventory or no source files.
+
         """
         _ = ctx
         paths = u.Infra.git_tracked_scope_paths(project_dir)
@@ -55,6 +56,7 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
 
         Returns:
             The scan receipt for the selected files.
+
         """
         return (
             self._check_paths(files, project_dir)
@@ -75,6 +77,7 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
         Raises:
             FileNotFoundError: If a required source snapshot contains no bytes.
             ValueError: If a selected source lies outside this project.
+
         """
         started = time.monotonic()
         issues: list[m.Infra.Issue] = []

@@ -9,7 +9,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING
+
+import pytest
 
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 from tests import c, tm, u
@@ -45,91 +48,82 @@ def _validate_class_names(
 class TestsFlextInfraCodegenScaffolderNaming:
     """Test suite for scaffolder generated code validity and naming conventions."""
 
-    class TestsGeneratedFilesAreValidPython:
-        """Generated source and test modules compile as Python."""
+    class TestsGeneratedTopologyContracts:
+        """Generated topology modules compile and follow the naming contract."""
 
-        def test_generated_src_modules_parse_successfully(self, tmp_path: Path) -> None:
-            """Compile every generated source facade module."""
-            project = u.Tests.create_scaffolder_test_project(
-                tmp_path=tmp_path,
-                with_all_modules=False,
-            )
-            scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
-            _ = scaffolder.run(
-                projects=[u.Tests.create_project_info(project, name=project.name)]
-            )
-            pkg = project / "src" / "test_project"
-            _validate_modules_parse(pkg, tuple(row[0] for row in c.Infra.SRC_MODULES))
-
-        def test_generated_tests_modules_parse_successfully(
+        @pytest.mark.parametrize(
+            ("with_all_modules", "validate"),
+            [
+                pytest.param(
+                    False,
+                    lambda target: _validate_modules_parse(
+                        target,
+                        tuple(row[0] for row in c.Infra.SRC_MODULES),
+                    ),
+                    id="src-parses",
+                ),
+                pytest.param(
+                    True,
+                    lambda target: _validate_modules_parse(
+                        target,
+                        tuple(row[0] for row in c.Infra.TESTS_MODULES),
+                    ),
+                    id="tests-parses",
+                ),
+                pytest.param(
+                    False,
+                    lambda target: _validate_class_names(
+                        target,
+                        {
+                            "constants.py": "TestProjectConstants",
+                            "typings.py": "TestProjectTypes",
+                            "protocols.py": "TestProjectProtocols",
+                            "models.py": "TestProjectModels",
+                            "utilities.py": "TestProjectUtilities",
+                        },
+                    ),
+                    id="src-class-names",
+                ),
+                pytest.param(
+                    True,
+                    lambda target: _validate_class_names(
+                        target,
+                        {
+                            "constants.py": "TestsTestProjectConstants",
+                            "typings.py": "TestsTestProjectTypes",
+                            "protocols.py": "TestsTestProjectProtocols",
+                            "models.py": "TestsTestProjectModels",
+                            "utilities.py": "TestsTestProjectUtilities",
+                        },
+                    ),
+                    id="tests-class-names",
+                ),
+            ],
+        )
+        def test_generated_topology_satisfies_declared_contract(
             self,
             tmp_path: Path,
+            *,
+            with_all_modules: bool,
+            validate: Callable[[Path], None],
         ) -> None:
-            """Compile every generated test facade module."""
+            """Scaffold one topology and prove its declared module contract."""
             project = u.Tests.create_scaffolder_test_project(
                 tmp_path=tmp_path,
-                with_all_modules=True,
+                with_all_modules=with_all_modules,
             )
-            tests_dir = project / "tests"
-            tests_dir.mkdir()
+            target = (
+                project / "tests"
+                if with_all_modules
+                else project / "src" / "test_project"
+            )
+            if with_all_modules:
+                target.mkdir()
             scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
             _ = scaffolder.run(
                 projects=[u.Tests.create_project_info(project, name=project.name)]
             )
-            _validate_modules_parse(
-                tests_dir, tuple(row[0] for row in c.Infra.TESTS_MODULES)
-            )
-
-    class TestsGeneratedClassNamingConvention:
-        """Generated class names follow the canonical prefix and suffix contract."""
-
-        def test_src_class_names_use_prefix_suffix(self, tmp_path: Path) -> None:
-            """Use the project prefix on generated source facade classes."""
-            project = u.Tests.create_scaffolder_test_project(
-                tmp_path=tmp_path,
-                with_all_modules=False,
-            )
-            scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
-            _ = scaffolder.run(
-                projects=[u.Tests.create_project_info(project, name=project.name)]
-            )
-            pkg = project / "src" / "test_project"
-            _validate_class_names(
-                pkg,
-                {
-                    "constants.py": "TestProjectConstants",
-                    "typings.py": "TestProjectTypes",
-                    "protocols.py": "TestProjectProtocols",
-                    "models.py": "TestProjectModels",
-                    "utilities.py": "TestProjectUtilities",
-                },
-            )
-
-        def test_tests_class_names_use_tests_prefix_suffix(
-            self,
-            tmp_path: Path,
-        ) -> None:
-            """Use the Tests prefix on generated test facade classes."""
-            project = u.Tests.create_scaffolder_test_project(
-                tmp_path=tmp_path,
-                with_all_modules=True,
-            )
-            tests_dir = project / "tests"
-            tests_dir.mkdir()
-            scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
-            _ = scaffolder.run(
-                projects=[u.Tests.create_project_info(project, name=project.name)]
-            )
-            _validate_class_names(
-                tests_dir,
-                {
-                    "constants.py": "TestsTestProjectConstants",
-                    "typings.py": "TestsTestProjectTypes",
-                    "protocols.py": "TestsTestProjectProtocols",
-                    "models.py": "TestsTestProjectModels",
-                    "utilities.py": "TestsTestProjectUtilities",
-                },
-            )
+            validate(target)
 
         @staticmethod
         def test_no_prefix_returns_empty_result(tmp_path: Path) -> None:

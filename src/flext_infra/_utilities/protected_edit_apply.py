@@ -266,6 +266,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
 
         Raises:
             ValueError: If the protected source has no authenticated bytes or mode.
+
         """
         before_state = u.Cli.atomic_read_binary_file_state(
             py_file, required=True

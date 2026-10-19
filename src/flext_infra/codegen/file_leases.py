@@ -70,11 +70,18 @@ class FlextInfraCodegenFileLeases:
 
     def __init__(
         self,
-        participant_policy: m.Infra.CodegenParticipantPolicy | None = None,
+        participant_policy: p.Infra.CodegenParticipantPolicy | None = None,
     ) -> None:
         """Start without borrowed destination capabilities."""
         self._file_leases: MutableMapping[Path, m.Infra.CodegenFileParticipant] = {}
-        self._participant_policy = participant_policy
+        self._participant_policy = (
+            None
+            if participant_policy is None
+            else m.Infra.CodegenParticipantPolicy.model_validate(
+                participant_policy,
+                from_attributes=True,
+            )
+        )
 
     def _authorize_roots(
         self,
@@ -85,6 +92,7 @@ class FlextInfraCodegenFileLeases:
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
         policy = self._participant_policy
         if policy is None:

@@ -1,0 +1,66 @@
+id: declare-single-class-export
+valid:
+  - |
+    class First:
+        pass
+    class Second:
+        pass
+  - |
+    class Declaration:
+        pass
+    __all__ = ["Declaration"]
+  - |
+    class Declaration:
+        pass
+    facade = Declaration
+  - |
+    class Declaration:
+        pass
+    def main():
+        return Declaration()
+  - |
+    type Payload = str
+    class Declaration:
+        pass
+  - |
+    class Declaration:
+        pass
+    @decorator
+    def main():
+        return Declaration()
+  - |
+    class Declaration:
+        pass
+    if enabled:
+        facade = Declaration
+  - |
+    class Declaration:
+        pass
+    if TYPE_CHECKING:
+        def main():
+            return Declaration()
+  - |
+    class Declaration:
+        pass
+    publish(Declaration)
+  - |
+    class Declaration:
+        pass
+    @decorator
+    class Other:
+        pass
+invalid:
+  - |
+    from __future__ import annotations
+    class Declaration:
+        value: str
+  - |
+    class Declaration(Parent):
+        class Payload:
+            value: str
+  - |
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from dependency import Payload
+    class Declaration:
+        value: Payload

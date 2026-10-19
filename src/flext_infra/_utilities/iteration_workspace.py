@@ -16,10 +16,7 @@ from pathlib import Path
 from flext_cli import u as cli_u
 
 from flext_infra import c, config, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesGitScopeMixin,
-    FlextInfraUtilitiesIterationDirectory,
-)
+from flext_infra._utilities import FlextInfraUtilitiesIterationDirectory
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
 
@@ -40,6 +37,7 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
 
         Raises:
             ValueError: If bootstrap report requires one elected scalar field.
+
         """
         report = m.Infra.WorkspaceOperationReport(
             root=Path(),
@@ -84,6 +82,7 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
 
         Returns:
             Original returned paths, or the first causal failure after reporting.
+
         """
         resolved = root.expanduser().resolve()
         discovered = FlextInfraUtilitiesProjectDiscovery.repository_operation_targets(
@@ -244,8 +243,17 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
         if workers <= 1:
             return tuple(task(payload) for payload in payloads)
         context = multiprocessing.get_context("forkserver")
+        started = time.monotonic()
         with ProcessPoolExecutor(max_workers=workers, mp_context=context) as pool:
-            return tuple(pool.map(task, payloads))
+            results = tuple(pool.map(task, payloads))
+            mapped = time.monotonic()
+        finished = time.monotonic()
+        cli_u.Cli.info(
+            f"stage=fleet-map payloads={len(payloads)} workers={workers} "
+            f"map_elapsed={mapped - started:.3f}s "
+            f"shutdown_elapsed={finished - mapped:.3f}s",
+        )
+        return results
 
     @classmethod
     def iter_python_files(
@@ -283,39 +291,18 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
 
     @classmethod
     def _project_python_files(cls, project_root: Path) -> t.SequenceOf[Path]:
-        """Return configured Python sources with one Git inventory per project.
+        """Return every active Python source owned by this project.
 
         Returns:
-            Configured Python sources with one Git inventory per project.
+            Python sources from the canonical discovery inventory.
 
         """
-        source_roots = tuple(
-            path
-            for directory_name in config.Infra.source_scan.roots
-            if (path := (project_root / directory_name).resolve()).is_dir()
-        )
-        tracked_files = FlextInfraUtilitiesGitScopeMixin.git_tracked_scope_paths(
-            project_root,
-        )
-        if tracked_files is None:
-            return tuple(
-                file_path
-                for source_root in source_roots
-                for file_path in (
-                    FlextInfraUtilitiesIterationDirectory.iter_directory_python_files
-                )(
-                    source_root,
-                )
-            )
-        ignored = frozenset(config.Infra.codegen.source_scan_ignored)
         return tuple(
             file_path
-            for file_path in tracked_files
-            if file_path.suffixes == [c.Infra.EXT_PYTHON]
-            and any(
-                file_path.is_relative_to(source_root) for source_root in source_roots
+            for file_path in FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+                project_root, workspace_excluded_top_dirs=frozenset()
             )
-            and not ignored.intersection(file_path.relative_to(project_root).parts)
+            if file_path.suffixes == [c.Infra.EXT_PYTHON]
         )
 
 

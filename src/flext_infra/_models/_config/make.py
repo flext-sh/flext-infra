@@ -7,12 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import lru_cache
 from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
 from flext_cli import m, t
 
+from flext_infra import c
 from flext_infra._config_make_contract import FlextInfraMakeContract
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models._config.external_cache import (
@@ -21,6 +23,44 @@ from flext_infra._models._config.external_cache import (
 from flext_infra._models._config.make_clean import FlextInfraConfigModelsMakeClean
 from flext_infra._models._config.make_docs import FlextInfraConfigModelsMakeDocs
 from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
+
+
+@lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
+def _effective_custom_handler_policies(
+    base: FlextInfraConfigModelsMake.CustomHandlerPolicy,
+    overrides: tuple[tuple[str, FlextInfraConfigModelsMake.CustomHandlerPolicy], ...],
+) -> Mapping[str, FlextInfraConfigModelsMake.CustomHandlerPolicy]:
+    """Derive the effective per-profile policy from frozen policy inputs.
+
+    Pure function of frozen models, memoized per distinct ``(base,
+    overrides)`` pair: the returned mapping is shared read-only instead of
+    re-copying a fresh map on every access and every serialization.
+
+    Args:
+        base: The strictest base policy every profile falls back to.
+        overrides: Sorted ``(profile, relaxed policy)`` declaration pairs.
+
+    Returns:
+        The resulting ``Mapping[str,
+            FlextInfraConfigModelsMake.CustomHandlerPolicy]``.
+
+    """
+    # Keys are normalised to the profile's string value: MakeProfile is a
+    # StrEnum, so a raw YAML key and its enum subproject must land on the SAME
+    # entry. Mixing both would make a lookup silently miss and fall back to
+    # the strict base policy. The plain dict serializes through the computed
+    # field; the read-only ``Mapping`` contract keeps callers from mutating it.
+    return {
+        str(profile): (
+            base.model_copy(update=override.model_dump(exclude_none=True))
+            if (override := dict(overrides).get(str(profile)))
+            else base
+        )
+        for profile in (
+            *dict(overrides),
+            *FlextInfraConfigVocabulary.MakeProfile,
+        )
+    }
 
 
 class FlextInfraConfigModelsMake(
@@ -43,6 +83,82 @@ class FlextInfraConfigModelsMake(
                 description="User home variable for the XDG default",
             ),
         ] = FlextInfraConfigVocabulary.MypyCacheEnvironment.USER_HOME.value
+
+    class MakeUvResolutionSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Native resolver views independent of the physical environment and gates."""
+
+        local_directory: Annotated[
+            Path,
+            m.Field(description="Runtime-root-relative local resolution directory"),
+        ]
+        standalone_directory: Annotated[
+            Path,
+            m.Field(description="Runtime-root-relative hosted resolution directory"),
+        ]
+        editable_directory: Annotated[
+            Path,
+            m.Field(
+                description="Runtime-root-relative opt-in supplier resolution directory"
+            ),
+        ]
+        editable_supplier_root: Annotated[
+            Path | None,
+            m.Field(
+                description="Explicit external workspace supplying local editable dependencies"
+            ),
+        ] = None
+        hosted_variable: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Actual hosted runner environment key"),
+        ]
+        hosted_value: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Value identifying the actual hosted runner"),
+        ]
+        virtual_distribution_suffix: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Suffix of the generated virtual distribution name"),
+        ]
+        member_group_separator: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Separator between member and native group names"),
+        ]
+
+        @m.model_validator(mode="after")
+        def _validate_directories(self) -> Self:
+            """Keep both resolver views distinct and inside their physical owner.
+
+            Returns:
+                The resulting ``Self``.
+
+            Raises:
+                ValueError: If a UV resolution directory is not a nonempty
+                    relative path or the two views share a directory.
+
+            """
+            directories = (
+                self.local_directory,
+                self.standalone_directory,
+                self.editable_directory,
+            )
+            for directory in directories:
+                if (
+                    directory.is_absolute()
+                    or ".." in directory.parts
+                    or not directory.parts
+                ):
+                    msg = "UV resolution directories must be nonempty relative paths"
+                    raise ValueError(msg)
+            if len(set(directories)) != len(directories):
+                msg = "UV resolution views must use distinct directories"
+                raise ValueError(msg)
+            if (
+                self.editable_supplier_root is not None
+                and not self.editable_supplier_root.is_absolute()
+            ):
+                msg = "editable supplier root must be an absolute path"
+                raise ValueError(msg)
+            return self
 
     class MakeCiSpec(FlextInfraConfigModelsContract.ConfigContract):
         """The only permitted environment delta between local and CI execution."""
@@ -78,8 +194,9 @@ class FlextInfraConfigModelsMake(
 
             Raises:
                 ValueError: If make.ci.local_check_gates contains unknown gates.
+
             """
-            allowed = set(FlextInfraConfigVocabulary.CANONICAL_GATE_IDS)
+            allowed = set(c.Infra.CANONICAL_GATE_IDS)
             unknown = sorted(set(self.local_check_gates) - allowed)
             if unknown:
                 msg = (
@@ -101,15 +218,15 @@ class FlextInfraConfigModelsMake(
             t.NonEmptyStr,
             m.Field(description="Operator-facing help text"),
         ]
-        produces_activation: Annotated[
+        requires_activation: Annotated[
             bool,
             m.Field(
                 description=(
-                    "Run the producer in the provisioned physical environment, "
-                    "then activate its generated environment before post hooks"
+                    "Activate the declared environment before consuming it; "
+                    "generation uses its provisioned physical runtime directly"
                 ),
             ),
-        ] = False
+        ] = True
         profiles: Annotated[
             t.VariadicTuple[FlextInfraConfigVocabulary.MakeProfile],
             m.Field(
@@ -120,6 +237,21 @@ class FlextInfraConfigModelsMake(
                 ),
             ),
         ] = tuple(FlextInfraConfigVocabulary.MakeProfile)
+
+    class MakeLifecycleStepSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """One public command in the declared runtime acceptance sequence."""
+
+        verb: Annotated[t.NonEmptyStr, m.Field(description="Declared public Make verb")]
+        scope: Annotated[
+            Literal["root", "each"],
+            m.Field(description="Run once at the root or in every eligible repository"),
+        ]
+        contexts: Annotated[
+            t.VariadicTuple[Literal["local", "ci"]],
+            m.Field(
+                min_length=1, description="Contexts where this acceptance step applies"
+            ),
+        ]
 
     class MakeWorkflowStepSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One canonical workflow step."""
@@ -196,7 +328,7 @@ class FlextInfraConfigModelsMake(
         block_threshold_percent: Annotated[
             int,
             m.Field(ge=0, le=100, description="Quota-ladder block stage"),
-        ]
+        ] = 95
         key_prefix: Annotated[
             t.NonEmptyStr,
             m.Field(description="Actions cache key namespace"),
@@ -212,6 +344,7 @@ class FlextInfraConfigModelsMake(
             Raises:
                 ValueError: If testmon cache quota ladder must ascend warning <
                     maintenance < block <= 100.
+
             """
             full_scale = 100
             if not (
@@ -263,6 +396,7 @@ class FlextInfraConfigModelsMake(
 
             Raises:
                 ValueError: If mypy cache.
+
             """
             for name, actual, expected in (
                 (
@@ -341,10 +475,10 @@ class FlextInfraConfigModelsMake(
                 ValueError: If make.ruff.lint_fix lacks the mandatory flag.
 
             """
-            if FlextInfraConfigVocabulary.RUFF_UNSAFE_FIXES_FLAG not in self.lint_fix:
+            if c.Infra.RUFF_UNSAFE_FIXES_FLAG not in self.lint_fix:
                 msg = (
                     "make.ruff.lint_fix must carry "
-                    f"{FlextInfraConfigVocabulary.RUFF_UNSAFE_FIXES_FLAG} (operator"
+                    f"{c.Infra.RUFF_UNSAFE_FIXES_FLAG} (operator"
                     " law 2026-10-05: the unsafe repair channel is mandatory"
                     " and never disabled again)"
                 )
@@ -353,6 +487,78 @@ class FlextInfraConfigModelsMake(
 
     class MakeSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Complete generated Makefile public and extension contract."""
+
+        class TestmonCachePolicySpec(FlextInfraConfigModelsContract.ConfigContract):
+            """Declarative Actions-cache policy for the shared testmon database.
+
+            Implements the preserved #1001 delta (bead flext-j0u23): two-phase
+            generations with per-mode caps, a per-repository byte budget with a
+            three-stage quota ladder and a cache-key namespace. Event identity
+            determines publication eligibility; branch names are not policy.
+            """
+
+            mode: Annotated[
+                Literal["bootstrap", "stable"],
+                m.Field(description="Cache phase: bootstrap seeds, stable saves"),
+            ] = "stable"
+            save_enabled: Annotated[
+                bool,
+                m.Field(description="Master switch for cache publishes"),
+            ] = False
+            max_bootstrap_generations: Annotated[
+                int,
+                m.Field(gt=0, description="Retention cap for bootstrap generations"),
+            ] = 3
+            max_stable_generations: Annotated[
+                int,
+                m.Field(gt=0, description="Retention cap for stable generations"),
+            ] = 3
+            per_repo_budget_bytes: Annotated[
+                int,
+                m.Field(gt=0, description="Per-repository byte budget"),
+            ] = 52_428_800
+            warning_threshold_percent: Annotated[
+                int,
+                m.Field(ge=0, le=100, description="Quota-ladder warning stage"),
+            ] = 80
+            maintenance_threshold_percent: Annotated[
+                int,
+                m.Field(ge=0, le=100, description="Quota-ladder maintenance stage"),
+            ] = 90
+            block_threshold_percent: Annotated[
+                int,
+                m.Field(ge=0, le=100, description="Quota-ladder block stage"),
+            ] = 95
+            key_prefix: Annotated[
+                t.NonEmptyStr,
+                m.Field(description="Actions cache key namespace"),
+            ] = "flext-testmon"
+
+            @m.model_validator(mode="after")
+            def require_ascending_quota_ladder(self) -> Self:
+                """Keep the quota ladder strictly ascending within the percent scale.
+
+                Returns:
+                    The resulting ``Self``.
+
+                Raises:
+                    ValueError: If testmon cache quota ladder must ascend warning <
+                        maintenance < block <= 100.
+
+                """
+                full_scale = 100
+                if not (
+                    self.warning_threshold_percent
+                    < self.maintenance_threshold_percent
+                    < self.block_threshold_percent
+                    <= full_scale
+                ):
+                    msg = (
+                        "testmon cache quota ladder must ascend"
+                        " warning < maintenance < block <= 100"
+                    )
+                    raise ValueError(msg)
+                return self
 
         class TestmonCacheSpec(
             FlextInfraExternalCacheDirectorySpec[
@@ -561,9 +767,25 @@ class FlextInfraConfigModelsMake(
             t.VariadicTuple[FlextInfraConfigModelsMake.MakeWorkflowStepSpec],
             m.Field(min_length=1, description="Ordered canonical validation workflow"),
         ]
+        lifecycle_steps: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsMake.MakeLifecycleStepSpec],
+            m.Field(
+                min_length=1, description="Ordered public runtime acceptance steps"
+            ),
+        ]
+        lifecycle_observed_files: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1, description="Relative files observed around each step"
+            ),
+        ]
         ci: Annotated[
             FlextInfraConfigModelsMake.MakeCiSpec,
             m.Field(description="Config-owned CI-only environment delta"),
+        ]
+        uv_resolution: Annotated[
+            FlextInfraConfigModelsMake.MakeUvResolutionSpec,
+            m.Field(description="Native resolver view selection and naming policy"),
         ]
         testmon_cache: Annotated[
             TestmonCacheSpec,
@@ -652,7 +874,7 @@ class FlextInfraConfigModelsMake(
                     "references, agents, census and waza ended up outside the "
                     "gate matrix in consuming repositories. Each id must have a "
                     "`_custom_check_<id>` handler in the project's "
-                    f"{FlextInfraConfigVocabulary.CUSTOM_MAKE_FILENAME}."
+                    f"{c.Infra.CUSTOM_MAKE_FILENAME}."
                 ),
             ),
         ] = ()
@@ -681,7 +903,7 @@ class FlextInfraConfigModelsMake(
             if len(set(self.project_check_gates)) != len(self.project_check_gates):
                 msg = "make project_check_gates must be unique"
                 raise ValueError(msg)
-            builtin = set(FlextInfraConfigVocabulary.CANONICAL_GATE_IDS)
+            builtin = set(c.Infra.CANONICAL_GATE_IDS)
             shadowed = sorted(set(self.project_check_gates) & builtin)
             if shadowed:
                 msg = (
@@ -756,7 +978,7 @@ class FlextInfraConfigModelsMake(
             # mandatory canonical verb, so the inverted check rejected every
             # valid configuration and `flext_infra.config` could not be built at
             # all. The serialized set no longer exists; the guard has no object.
-            self._validate_workflow(declared)
+            self._validate_workflow(declared, admissible)
             self._validate_docs_verb(declared)
             return self
 
@@ -806,25 +1028,17 @@ class FlextInfraConfigModelsMake(
                 msg = "make standalone_check_gates must route each gate once"
                 raise ValueError(msg)
 
-        def _validate_workflow(self, declared: set[str]) -> None:
+        def _validate_workflow(self, declared: set[str], admissible: set[str]) -> None:
             """Validate the workflow verbs against the declared public verbs.
 
-            Why (hq-36xk, flext-lq86m): the guard that lived here read
-            ``if "setup" in serialized`` and protected ``make setup`` from being
-            placed in the serialized mutation set, so it could never require
-            the managed validation environment it is supposed to CREATE.
-            3e5fbc747 exterminated the serialize-make lifecycle and deleted
-            ``self.serialization``, but rebound this condition to ``declared``
-            instead of removing it with the concept it guarded. ``setup`` is a
-            mandatory canonical verb, so the inverted check rejected every
-            valid configuration and ``flext_infra.config`` could not be built
-            at all. The serialized set no longer exists; the guard has no
-            object.
+            CI provisions first and verifies a clean tree last. Configured phases
+            may surround the ordered audit, integrity, and test milestones.
 
             Raises:
                 ValueError: If make workflow verbs must be unique; or if make
                     workflow verbs are not declared public verbs; or if make
-                    workflow verbs must exist in every profile; or if make pre-commit
+                    workflow verbs must be selector-free in every profile; or if CI
+                    approval boundaries or milestone order are invalid; or if pre-commit
                     must be declared in every profile.
 
             """
@@ -839,38 +1053,47 @@ class FlextInfraConfigModelsMake(
                     f"{', '.join(sorted(unknown_workflow))}"
                 )
                 raise ValueError(msg)
-            # Every profile renders the workflow, so a workflow verb must exist
-            # in every profile's Makefile.
+            unknown_lifecycle = {step.verb for step in self.lifecycle_steps} - declared
+            if unknown_lifecycle:
+                msg = (
+                    "make lifecycle verbs are not declared public verbs: "
+                    f"{', '.join(sorted(unknown_lifecycle))}"
+                )
+                raise ValueError(msg)
+            for path in self.lifecycle_observed_files:
+                if Path(path).is_absolute() or ".." in Path(path).parts:
+                    msg = f"make lifecycle observed file escapes its repository: {path}"
+                    raise ValueError(msg)
+            # Every consumer invokes workflow verbs without selectors in every profile.
             partial_workflow = sorted(
                 verb.name
                 for verb in self.verbs
                 if verb.name in {*workflow_verbs, "pre-commit"}
-                and set(verb.profiles) != set(FlextInfraConfigVocabulary.MakeProfile)
+                and verb.name not in admissible
             )
             if partial_workflow:
                 msg = (
-                    "make workflow verbs must exist in every profile: "
+                    "make workflow verbs must be selector-free in every profile: "
                     f"{', '.join(partial_workflow)}"
                 )
                 raise ValueError(msg)
-            approval = tuple(
-                step.verb for step in self.workflow if "ci" in step.contexts
+            approval = self.approval_verbs
+            milestones = (
+                "audit",
+                c.Infra.VERB_CHECK,
+                c.Infra.VERB_TEST,
             )
-            if approval != ("setup", "audit", "check", "test", "verify-clean"):
+            if (
+                approval[:1] != ("setup",)
+                or approval[-1:] != ("verify-clean",)
+                or tuple(verb for verb in approval if verb in milestones) != milestones
+            ):
                 msg = "CI requires the setup/audit/check/test/verify-clean workflow"
                 raise ValueError(msg)
             hook = tuple(
                 step.verb for step in self.workflow if "pre_commit" in step.contexts
             )
-            if hook != tuple(
-                verb
-                for verb in approval
-                if verb
-                in {
-                    FlextInfraConfigVocabulary.VERB_CHECK,
-                    FlextInfraConfigVocabulary.VERB_TEST,
-                }
-            ):
+            if hook != milestones[1:]:
                 msg = "the pre-commit hook requires the CI check and test workflow"
                 raise ValueError(msg)
             if "pre-commit" not in declared:
@@ -887,7 +1110,7 @@ class FlextInfraConfigModelsMake(
 
             """
             unknown_fmt_gates = set(self.fmt_gates) - set(
-                FlextInfraConfigVocabulary.SARIF_TOOL_INFO,
+                c.Infra.SARIF_TOOL_INFO,
             )
             if unknown_fmt_gates:
                 msg = (
@@ -924,9 +1147,10 @@ class FlextInfraConfigModelsMake(
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return (
-                *FlextInfraConfigVocabulary.CANONICAL_GATE_IDS,
+                *c.Infra.CANONICAL_GATE_IDS,
                 *self.project_check_gates,
             )
 
@@ -946,6 +1170,7 @@ class FlextInfraConfigModelsMake(
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             return self.check_gates_default
 
@@ -956,6 +1181,7 @@ class FlextInfraConfigModelsMake(
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
             local = frozenset(self.ci.local_check_gates)
             return tuple(gate for gate in self.check_gates_default if gate not in local)
@@ -971,8 +1197,20 @@ class FlextInfraConfigModelsMake(
 
             Returns:
                 The resulting ``t.VariadicTuple[str]``.
+
             """
-            return FlextInfraConfigVocabulary.CANONICAL_FIXABLE_GATE_IDS
+            return c.Infra.CANONICAL_FIXABLE_GATE_IDS
+
+        @m.computed_field
+        @property
+        def check_gates_file(self) -> t.VariadicTuple[str]:
+            """Gates whose checker accepts one declared file.
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
+            return c.Infra.CANONICAL_FILE_GATE_IDS
 
         @m.computed_field
         @property
@@ -990,24 +1228,17 @@ class FlextInfraConfigModelsMake(
             Returns:
                 The resulting ``Mapping[str,
                     FlextInfraConfigModelsMake.CustomHandlerPolicy]``.
+
             """
             base = self.custom_handler_policy
             overrides = self.custom_handler_profile_overrides
-            # Keys are normalised to the profile's string value: MakeProfile is a
-            # StrEnum, so a raw YAML key and its enum subproject must land on the SAME
-            # entry. Mixing both would make a lookup silently miss and fall back to
-            # the strict base policy.
-            return {
-                str(profile): (
-                    base.model_copy(update=override.model_dump(exclude_none=True))
-                    if (override := overrides.get(str(profile)))
-                    else base
-                )
-                for profile in (
-                    *overrides,
-                    *FlextInfraConfigVocabulary.MakeProfile,
-                )
-            }
+            # The derivation is a pure function of frozen models, so it is
+            # memoized once per distinct (base, overrides) pair instead of
+            # re-copying a fresh map on every access and every serialization.
+            return _effective_custom_handler_policies(
+                base,
+                tuple(sorted(overrides.items())),
+            )
 
     class CustomHandlerPolicy(FlextInfraConfigModelsContract.ConfigContract):
         """Strict schema for the only handwritten Make extension file."""
@@ -1041,3 +1272,6 @@ class FlextInfraConfigModelsMake(
             default=None,
             description="Permit toolchain declarations",
         )
+
+
+__all__: list[str] = ["FlextInfraConfigModelsMake"]

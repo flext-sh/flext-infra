@@ -31,7 +31,11 @@ class FlextInfraUtilitiesCodegen(
     if TYPE_CHECKING:
 
         @staticmethod
-        def project_root(file_path: Path) -> Path | None: ...
+        def project_root(
+            file_path: Path,
+            *,
+            source_project: p.Infra.RopeProject | None = None,
+        ) -> Path | None: ...
 
     @staticmethod
     def envrc_render_spec() -> m.Infra.EnvrcRenderSpec:
@@ -42,6 +46,8 @@ class FlextInfraUtilitiesCodegen(
 
         """
         return m.Infra.EnvrcRenderSpec(
+            toolchain=config.Infra.codegen.toolchain,
+            uv_resolution=config.Infra.codegen.make.uv_resolution,
             environment_path_prepends=(
                 config.Infra.codegen.toolchain.environment_path_prepends
             ),

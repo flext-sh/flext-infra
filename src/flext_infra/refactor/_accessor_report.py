@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, m, r, settings, t, u
 from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 from flext_infra.refactor import FlextInfraAccessorOriginResolver
 from flext_infra.transformers import FlextInfraSemanticPublication
@@ -23,6 +23,7 @@ class FlextInfraAccessorMigrationReportMixin:
     """Compose a complete accessor candidate before any shared-source write."""
 
     if TYPE_CHECKING:
+        _AUTOMATED_RULES: ClassVar[t.VariadicTuple[m.Infra.AccessorMigrationRule]]
 
         def _apply_automated_rewrites(
             self,
@@ -32,15 +33,6 @@ class FlextInfraAccessorMigrationReportMixin:
             *,
             resolver: FlextInfraAccessorOriginResolver,
         ) -> t.Pair[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]: ...
-
-        def _collect_manual_warnings(
-            self,
-            rope_project: t.Infra.RopeProject,
-            py_file: Path,
-            source: str,
-            *,
-            resolver: FlextInfraAccessorOriginResolver,
-        ) -> t.SequenceOf[m.Infra.AccessorMigrationChange]: ...
 
     @staticmethod
     def _accumulate_lint_totals(
@@ -68,6 +60,7 @@ class FlextInfraAccessorMigrationReportMixin:
 
         Returns:
             Existing typed publication plans and unvalidated per-file evidence.
+
         """
         result_type = r[
             t.Pair[
@@ -109,8 +102,8 @@ class FlextInfraAccessorMigrationReportMixin:
             )
             automated = tuple(change for change in changes if change.automated)
             warnings = (
-                *self._collect_manual_warnings(
-                    rope_project, py_file, source, resolver=resolver
+                *resolver.collect_manual_warnings(
+                    rope_project, py_file, source, rules=self._AUTOMATED_RULES
                 ),
                 *(change for change in changes if not change.automated),
             )
@@ -154,6 +147,7 @@ class FlextInfraAccessorMigrationReportMixin:
 
         Returns:
             Measured per-file evidence or the original protected failure.
+
         """
         result_type = r[t.SequenceOf[m.Infra.AccessorMigrationFile]]
         planned = self._plan_files(rope_project, py_files, params=params, inputs=inputs)
@@ -198,6 +192,7 @@ class FlextInfraAccessorMigrationReportMixin:
 
         Returns:
             Per-file reports retaining explicit not-executed empty snapshots.
+
         """
         before, after = evidence
         tools = tuple(u.Infra.selected_lint_tool_names(gates))
@@ -231,6 +226,7 @@ class FlextInfraAccessorMigrationReportMixin:
 
         Returns:
             Original/candidate lint evidence, or a pre-publication rejection.
+
         """
         paths = tuple(
             state.path
@@ -238,7 +234,16 @@ class FlextInfraAccessorMigrationReportMixin:
             if state.content is not None
             and state.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
         )
-        before = u.Infra.lint_snapshots(paths, plan.workspace, gates=gates)
+        scopes = plan.workspaces or (plan.workspace,)
+        before = {
+            path: snapshot
+            for root in scopes
+            for path, snapshot in u.Infra.lint_snapshots(
+                tuple(path for path in paths if path.is_relative_to(root)),
+                root,
+                gates=gates,
+            ).items()
+        }
 
         def validate(
             view_root: Path,
@@ -246,11 +251,23 @@ class FlextInfraAccessorMigrationReportMixin:
         ) -> t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]]:
             staged_paths = {
                 path: candidates.get(path, view_root / path.relative_to(plan.workspace))
-                for path in paths
+                for path in dict.fromkeys((*paths, *plan.updates))
+                if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+                and (path not in plan.updates or plan.updates[path] is not None)
             }
-            snapshots = u.Infra.lint_snapshots(
-                tuple(staged_paths.values()), view_root, gates=gates
-            )
+            snapshots = {
+                path: snapshot
+                for root in scopes
+                for path, snapshot in u.Infra.lint_snapshots(
+                    tuple(
+                        candidate
+                        for path, candidate in staged_paths.items()
+                        if path.is_relative_to(root)
+                    ),
+                    view_root / root.relative_to(plan.workspace),
+                    gates=gates,
+                ).items()
+            }
             return {
                 path: snapshots[candidate] for path, candidate in staged_paths.items()
             }
@@ -260,7 +277,12 @@ class FlextInfraAccessorMigrationReportMixin:
             plan.updates,
             validate,
             inputs=plan.inputs,
-            runtime_root=plan.workspace,
+            runtime_root=u.Infra.runtime_environment_dir(
+                scopes[0],
+                runtime_root=type(settings).fetch_global().Infra.runtime_root,
+            ).parent,
+            workspaces=plan.workspaces,
+            modes=plan.modes,
         )
         if previewed.failure:
             return r[
@@ -271,15 +293,15 @@ class FlextInfraAccessorMigrationReportMixin:
             ].from_failure(previewed)
         execution_errors = tuple(
             f"{path}: {error}"
-            for path in paths
-            for snapshot in (before[path], previewed.value[path])
+            for path in set(before) | set(previewed.value)
+            for snapshot in (before.get(path, {}), previewed.value.get(path, {}))
             for error in u.Infra.lint_execution_errors(snapshot)
         )
         errors = execution_errors + tuple(
             f"{path}: {tool}: {line}"
-            for path in paths
+            for path in previewed.value
             for tool, lines in u.Infra.lint_new_errors(
-                before[path], previewed.value[path]
+                before.get(path, {}), previewed.value[path]
             ).items()
             for line in lines
         )

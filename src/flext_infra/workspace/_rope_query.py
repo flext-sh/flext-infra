@@ -58,6 +58,20 @@ class FlextInfraRopeQueryMixin:
         def close(self) -> None: ...
 
         @property
+        def source_index_receipt(self) -> m.Infra.CodegenPhaseAnalysis: ...
+
+        @classmethod
+        def open_workspace(
+            cls,
+            repository_root: Path,
+            *,
+            rope_repository_root: Path | None = None,
+            source_project: t.Infra.RopeProject | None = None,
+            workspace_index: m.Infra.RopeWorkspaceIndex | None = None,
+            index_receipt: m.Infra.CodegenPhaseAnalysis | None = None,
+        ) -> Self: ...
+
+        @property
         def project_roots(self) -> t.VariadicTuple[Path]: ...
 
         @property
@@ -111,13 +125,21 @@ class FlextInfraRopeQueryMixin:
         )
         _import_dependents_index: MutableMapping[str, t.VariadicTuple[Path]] | None
 
-        def semantic(self, file_path: Path) -> m.Infra.ModuleSemanticState:
-            """Return one module's semantic state."""
-            ...
-
         def _resource_for(self, file_path: Path) -> t.Infra.RopeFile:
             """Require a resource inside the active Rope workspace."""
             ...
+
+    def semantic(self, file_path: Path) -> p.Infra.ModuleSemanticState:
+        """Resolve a module's semantic state through the native Rope query owner.
+
+        Returns:
+            The semantic state of the bound module resource.
+
+        """
+        return u.Infra.resolve_module_semantic_state(
+            self.rope_project,
+            self._resource_for(file_path),
+        )
 
     def resource(self, file_path: Path) -> t.Infra.RopeFile | None:
         """Return one cached Rope resource for the requested file path.

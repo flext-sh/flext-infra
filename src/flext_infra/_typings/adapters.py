@@ -18,7 +18,7 @@ class FlextInfraTypesAdapters:
 
     # This alias removes the constants-to-typings cycle.
     INFRA_MAPPING_ADAPTER: ClassVar[m.TypeAdapter[t.JsonMapping]] = (
-        t.Cli.JSON_MAPPING_ADAPTER
+        u.json_mapping_adapter()
     )
     "Validates t.MappingKV[str, InfraValue] - the most common infra adapter."
 
@@ -37,27 +37,24 @@ class FlextInfraTypesAdapters:
     ] = u.type_adapter(Mapping[str, t.Scalar | Path])
     "Validates flat scalar/path mappings (no nested containers)."
 
-    INFRA_SEQ_ADAPTER: ClassVar[m.TypeAdapter[t.JsonList]] = t.Cli.JSON_LIST_ADAPTER
+    INFRA_SEQ_ADAPTER: ClassVar[m.TypeAdapter[t.JsonList]] = u.json_list_adapter()
     "Validates t.SequenceOf[InfraValue]."
-
-    CONTAINER_DICT_SEQ_ADAPTER: ClassVar[m.TypeAdapter[t.SequenceOf[t.JsonMapping]]] = (
-        u.type_adapter(Sequence[Mapping[str, t.JsonValue]])
-    )
-    "Validates t.SequenceOf[ContainerDict]."
 
     STR_SEQ_ADAPTER: ClassVar[m.TypeAdapter[t.StrSequence]] = u.type_adapter(
         Sequence[str],
     )
     "Validates t.StrSequence."
 
+    NON_EMPTY_STR_SEQ_ADAPTER: ClassVar[
+        m.TypeAdapter[t.VariadicTuple[t.NonEmptyStr]]
+    ] = u.type_adapter(tuple[t.NonEmptyStr, ...])
+    "Validates t.VariadicTuple[t.NonEmptyStr] at typed render boundaries."
+
     STR_ADAPTER: ClassVar[m.TypeAdapter[str]] = u.type_adapter(str)
     "Validates one string at boundaries whose upstream stubs expose Any."
 
     BOOL_ADAPTER: ClassVar[m.TypeAdapter[bool]] = u.type_adapter(bool)
     "Validates one boolean at boundaries whose upstream stubs expose Any."
-
-    PATH_ADAPTER: ClassVar[m.TypeAdapter[Path]] = u.type_adapter(Path)
-    "Validates one filesystem path at boundaries whose upstream stubs expose Any."
 
 
 __all__: list[str] = ["FlextInfraTypesAdapters"]

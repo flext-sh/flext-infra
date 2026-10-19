@@ -1,0 +1,22 @@
+id: specialize-registration-algebra
+valid:
+  - |
+    from flext_core import p, t
+    value: p.RegisterableService
+  - |
+    from flext_core import p, t
+    value: t.RegisterableService[p.Model]
+  - |
+    from foreign import p, custom
+    value: custom.RegisterableService
+invalid:
+  - |
+    from flext_core import p, t
+    value: t.RegisterableService
+  - |
+    from flext_core import p, t
+    values: t.ServiceMap
+  - |
+    from flext_core import p, t
+    def guard(value: t.GuardInput) -> bool:
+        return isinstance(value, str)

@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import c, m, p, r, s, t, u
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.refactor.census import FlextInfraRefactorCensus
+from flext_infra.codegen import FlextInfraCodegenLazyInit
+from flext_infra.refactor import FlextInfraRefactorCensus
 
 
 class FlextInfraCodegenQualityGate(s[bool]):
@@ -459,7 +459,11 @@ class FlextInfraCodegenQualityGate(s[bool]):
         if duplicate_groups:
             lines.extend(["", "Duplicate Groups:"])
         for group in duplicate_groups:
-            parsed_group = m.Infra.DuplicateGroup.model_validate(group)
+            # The report carries JSON-mode payloads; JSON re-enters the strict
+            # model through its JSON validator, where arrays are sequences.
+            parsed_group = m.Infra.DuplicateGroup.model_validate_json(
+                t.Infra.INFRA_MAPPING_ADAPTER.dump_json(group),
+            )
             projects = sorted({
                 definition.project for definition in parsed_group.definitions
             })

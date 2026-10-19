@@ -10,10 +10,13 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_cli import u
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
-from flext_infra import c, config, r, t
+from flext_infra import c, config, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesRepository,
 )
 from flext_infra._utilities._pyproject._requirements_provenance import (
@@ -28,6 +31,119 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesPyprojectRequirements:
     """Render internal requirements for the active workspace topology."""
+
+    @staticmethod
+    def dependency_group_entries(
+        value: t.JsonPayload,
+    ) -> t.VariadicTuple[str | m.Infra.DependencyGroupInclude]:
+        """Parse the shared native entry grammar without expanding inclusions.
+
+        Returns:
+            The resulting ``t.VariadicTuple[str | m.Infra.DependencyGroupInclude]``.
+
+        """
+        return m.Infra.DependencyGroupEntries.model_validate(value).root
+
+    @classmethod
+    def read_dependency_group(
+        cls,
+        container: t.Cli.TomlTable,
+        name: str,
+    ) -> t.VariadicTuple[str | m.Infra.DependencyGroupInclude]:
+        """Read an absent or native array without permissive string extraction.
+
+        Returns:
+            The resulting ``t.VariadicTuple[str | m.Infra.DependencyGroupInclude]``.
+
+        """
+        value = u.Cli.toml_value(
+            container,
+            FlextInfraUtilitiesPyproject.dependency_group_name(container, name),
+        )
+        return (
+            ()
+            if value is None
+            else cls.dependency_group_entries(u.Cli.toml_unwrap_item(value))
+        )
+
+    @classmethod
+    def merge_dependency_group_entries(
+        cls,
+        generated: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+        custom: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+    ) -> t.VariadicTuple[str | m.Infra.DependencyGroupInclude]:
+        """Lead generated floors and retire authored pins of one identity.
+
+        SSOT floors win over existing same-name pins: the first occurrence per
+        extras/marker/origin identity is kept, so authored entries replaced by
+        a leading floor are dropped. Authored direct sources and include groups
+        carry a different identity and always survive.
+
+        Returns:
+            The resulting ``t.VariadicTuple[str | m.Infra.DependencyGroupInclude]``.
+
+        """
+        active = frozenset(
+            cls.active_development_requirements(
+                tuple(entry for entry in custom if isinstance(entry, str)),
+            ),
+        )
+        authored = tuple(
+            entry for entry in custom if not isinstance(entry, str) or entry in active
+        )
+        requirements = {
+            Requirement(entry) for entry in authored if isinstance(entry, str)
+        }
+        inclusions = {
+            canonicalize_name(entry.include_group)
+            for entry in authored
+            if not isinstance(entry, str)
+        }
+        additions: list[str | m.Infra.DependencyGroupInclude] = []
+        seen: set[tuple[t.Pair[str, str], t.Pair[str | None, str | None]],] = set()
+        replaced: set[tuple[t.Pair[str, str], t.Pair[str | None, str | None]],] = set()
+        for entry in generated:
+            if isinstance(entry, str):
+                identity = cls._development_requirement_identity(entry)
+                if identity in seen:
+                    continue
+                seen.add(identity)
+                parsed = Requirement(entry)
+                if parsed in requirements:
+                    continue
+                requirements.add(parsed)
+                replaced.add(identity)
+            else:
+                included = canonicalize_name(entry.include_group)
+                if included in inclusions:
+                    continue
+                inclusions.add(included)
+            additions.append(entry)
+        return (
+            *additions,
+            *(
+                entry
+                for entry in authored
+                if not isinstance(entry, str)
+                or cls._development_requirement_identity(entry) not in replaced
+            ),
+        )
+
+    @staticmethod
+    def _development_requirement_identity(
+        requirement: str,
+    ) -> t.Pair[t.Pair[str, str], t.Pair[str | None, str | None]]:
+        """Scope floor replacement to the same extras, marker and origin.
+
+        Returns:
+            The resulting ``t.Pair[t.Pair[str, str], t.Pair[str | None, str | None]]``.
+
+        """
+        parsed = Requirement(requirement)
+        return (
+            (canonicalize_name(parsed.name), ",".join(sorted(parsed.extras))),
+            (str(parsed.marker) if parsed.marker is not None else None, parsed.url),
+        )
 
     @staticmethod
     def requirement_group_fields(
@@ -51,7 +167,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             section = u.Cli.toml_table_child(parent, section_name)
             if section is None:
                 continue
-            group_names = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            group_names = u.json_mapping_adapter().validate_python(
                 u.Cli.toml_unwrap_item(section),
             )
             for group_name in group_names:
@@ -85,14 +201,57 @@ class FlextInfraUtilitiesPyprojectRequirements:
         )
         if normalized.failure:
             return normalized
-        for section, group_name in cls.requirement_group_fields(document, project):
-            group_result = cls._normalize_requirement_field(
+        optional = u.Cli.toml_table_child(project, c.Infra.OPTIONAL_DEPENDENCIES)
+        if optional is not None:
+            for group_name in u.json_mapping_adapter().validate_python(
+                u.Cli.toml_unwrap_item(optional),
+            ):
+                group_result = cls._normalize_requirement_field(
+                    optional,
+                    group_name,
+                    provenance=provenance,
+                )
+                if group_result.failure:
+                    return group_result
+        return cls._normalize_dependency_groups(document, provenance=provenance)
+
+    @classmethod
+    def _normalize_dependency_groups(
+        cls,
+        document: t.Cli.TomlDocument,
+        *,
+        provenance: FlextInfraUtilitiesPyprojectRequirementsProvenance,
+    ) -> p.Result[bool]:
+        """Normalize PEP 508 strings in place around native inclusion entries.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        section = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
+        if section is None:
+            return r[bool].ok(value=True)
+        parsed = u.validate_value(
+            m.Infra.DependencyGroupDeclarations,
+            {"dependency-groups": u.Cli.toml_unwrap_item(section)},
+        )
+        if parsed.failure:
+            return r[bool].from_failure(parsed)
+        for group_name, entries in parsed.value.dependency_groups.items():
+            values: list[str | m.Infra.DependencyGroupInclude] = []
+            for entry in entries:
+                if not isinstance(entry, str):
+                    values.append(entry)
+                    continue
+                normalized = cls._canonical_requirement(entry, provenance=provenance)
+                if normalized.failure:
+                    return r[bool].from_failure(normalized)
+                values.append(normalized.value)
+            u.Cli.toml_sync_value(
                 section,
                 group_name,
-                provenance=provenance,
+                FlextInfraUtilitiesPyproject.dependency_group_wire(values),
             )
-            if group_result.failure:
-                return group_result
         return r[bool].ok(value=True)
 
     @classmethod
@@ -419,7 +578,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         # The inline Git source is the sole provenance for each independent
         # project lock, including the orchestration repository.
         inline = f"{head} @ git+{url}@{declared_ref}"
-        return r[str].ok(f"{inline}; {marker_text}" if has_marker else inline)
+        return r[str].ok(f"{inline} ; {marker_text}" if has_marker else inline)
 
     @staticmethod
     def active_development_requirements(requirements: t.StrSequence) -> t.StrSequence:
@@ -447,14 +606,45 @@ class FlextInfraUtilitiesPyprojectRequirements:
         )
 
     @classmethod
+    def _normalized_live_group_entries(
+        cls,
+        groups: t.Cli.TomlTable,
+        dev_name: str,
+        *,
+        provenance: FlextInfraUtilitiesPyprojectRequirementsProvenance,
+    ) -> p.Result[list[str | m.Infra.DependencyGroupInclude]]:
+        """Normalize the live development group's entries in declared order.
+
+        Returns:
+            The resulting ``p.Result[list[str | m.Infra.DependencyGroupInclude]]``.
+
+        """
+        live_dev: list[str | m.Infra.DependencyGroupInclude] = []
+        for entry in cls.read_dependency_group(groups, dev_name):
+            if not isinstance(entry, str):
+                live_dev.append(entry)
+                continue
+            normalized = cls._canonical_requirement(entry, provenance=provenance)
+            if normalized.failure:
+                return r[list[str | m.Infra.DependencyGroupInclude]].from_failure(
+                    normalized
+                )
+            live_dev.append(normalized.value)
+        return r[list[str | m.Infra.DependencyGroupInclude]].ok(live_dev)
+
+    @classmethod
     def _sync_dependency_groups(
         cls,
         document: t.Cli.TomlDocument,
         *,
         project_name: str,
         required_dev_dependencies: t.StrSequence,
-    ) -> None:
-        """Migrate development groups while applying explicit retirement policy.
+        provenance: FlextInfraUtilitiesPyprojectRequirementsProvenance,
+    ) -> p.Result[bool]:
+        """Sync development groups while applying explicit retirement policy.
+
+        Returns:
+            Normalized generated floors and preserved authored variants.
 
         Raises:
             ValueError: Retirement conflicts with required development dependencies.
@@ -465,14 +655,10 @@ class FlextInfraUtilitiesPyprojectRequirements:
         ):
             msg = "Canonical development requirements include retired distributions"
             raise ValueError(msg)
-        project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
         groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
-        optional = u.Cli.toml_table_child(project, c.Infra.OPTIONAL_DEPENDENCIES)
-        optional_dev: t.StrSequence = ()
-        if optional is not None:
-            optional_dev = u.Cli.toml_as_string_list(
-                u.Cli.toml_value(optional, str(c.Infra.DEV)),
-            )
+        dev_name = FlextInfraUtilitiesPyproject.dependency_group_name(
+            groups, str(c.Infra.DEV)
+        )
         # SSOT required floors win over existing same-name pins: dedupe_specs
         # keeps the first occurrence, so toolchain floors must lead the merge.
         # Otherwise stale member pins override the declared fleet floor. One
@@ -480,52 +666,66 @@ class FlextInfraUtilitiesPyprojectRequirements:
         # source and no version to enforce, so a live requirement that declares
         # its own direct source is the authority for that dependency and the
         # floor yields to it.
-        live_dev = u.Cli.toml_as_string_list(u.Cli.toml_value(groups, str(c.Infra.DEV)))
-        sourced_live_names = {
-            name
-            for requirement in live_dev
-            if (name := FlextInfraUtilitiesDependencies.dep_name(requirement))
-            and cls._declares_direct_source(requirement)
-        }
-        required_dev = tuple(
+        live = cls._normalized_live_group_entries(
+            groups,
+            dev_name,
+            provenance=provenance,
+        )
+        if live.failure:
+            return r[bool].from_failure(live)
+        live_dev = live.value
+        sourced_live = tuple(
             requirement
-            for requirement in required_dev_dependencies
-            if FlextInfraUtilitiesDependencies.dep_name(requirement) != project_name
-            and not cls._floor_yields_to_declared_source(
-                requirement,
-                sourced_live_names,
-            )
+            for requirement in live_dev
+            if isinstance(requirement, str) and cls._declares_direct_source(requirement)
         )
-        dev = [
-            *required_dev,
-            *cls.active_development_requirements((*live_dev, *optional_dev)),
-        ]
-        if dev:
-            u.Cli.toml_sync_string_list(
+        required_dev: list[str] = []
+        for requirement in required_dev_dependencies:
+            if FlextInfraUtilitiesDependencies.dep_name(requirement) == project_name:
+                continue
+            normalized = cls._canonical_requirement(requirement, provenance=provenance)
+            if normalized.failure:
+                return r[bool].from_failure(normalized)
+            if (
+                cls._floor_yields_to_declared_source(
+                    requirement,
+                    sourced_live,
+                )
+                and normalized.value not in live_dev
+            ):
+                continue
+            required_dev.append(normalized.value)
+        dev = cls.merge_dependency_group_entries(
+            required_dev,
+            live_dev,
+        )
+        if dev or u.Cli.toml_value(groups, dev_name) is not None:
+            u.Cli.toml_sync_value(
                 groups,
-                str(c.Infra.DEV),
-                FlextInfraUtilitiesDependencies.dedupe_specs(tuple(dev)),
+                dev_name,
+                FlextInfraUtilitiesPyproject.dependency_group_wire(dev),
             )
         else:
-            u.Cli.toml_remove_key_if_present(groups, str(c.Infra.DEV))
+            u.Cli.toml_remove_key_if_present(groups, dev_name)
 
-        codegen = cls.active_development_requirements(
-            u.Cli.toml_as_string_list(u.Cli.toml_value(groups, "codegen")),
+        codegen_name = FlextInfraUtilitiesPyproject.dependency_group_name(
+            groups,
+            str(c.Infra.DependencyGroup.CODEGEN),
         )
-        if codegen:
-            u.Cli.toml_sync_string_list(
+        codegen = cls.merge_dependency_group_entries(
+            (),
+            cls.read_dependency_group(groups, codegen_name),
+        )
+        if codegen or u.Cli.toml_value(groups, codegen_name) is not None:
+            u.Cli.toml_sync_value(
                 groups,
-                "codegen",
-                FlextInfraUtilitiesDependencies.dedupe_specs(tuple(codegen)),
+                codegen_name,
+                FlextInfraUtilitiesPyproject.dependency_group_wire(codegen),
             )
         else:
-            u.Cli.toml_remove_key_if_present(groups, "codegen")
+            u.Cli.toml_remove_key_if_present(groups, codegen_name)
         cls._remove_workspace_dependency_group(document)
-
-        if optional is not None:
-            u.Cli.toml_remove_key_if_present(optional, str(c.Infra.DEV))
-            if not tuple(optional):
-                u.Cli.toml_remove_key_if_present(project, c.Infra.OPTIONAL_DEPENDENCIES)
+        return r[bool].ok(value=True)
 
     @staticmethod
     def _declares_direct_source(requirement: str) -> bool:
@@ -537,10 +737,11 @@ class FlextInfraUtilitiesPyprojectRequirements:
         """
         return "@" in requirement.partition(";")[0]
 
-    @staticmethod
+    @classmethod
     def _floor_yields_to_declared_source(
+        cls,
         requirement: str,
-        sourced_live_names: frozenset[str] | set[str],
+        sourced_live: t.StrSequence,
     ) -> bool:
         """Whether a bare internal floor name must yield to a declared source.
 
@@ -548,14 +749,20 @@ class FlextInfraUtilitiesPyprojectRequirements:
             The resulting ``bool``.
 
         """
-        name = FlextInfraUtilitiesDependencies.dep_name(requirement)
-        return (
-            name is not None
-            and name.startswith("flext-")
-            and not FlextInfraUtilitiesPyprojectRequirements._declares_direct_source(
-                requirement,
-            )
-            and name in sourced_live_names
+        parsed = Requirement(requirement)
+        identity = cls._development_requirement_identity(requirement)
+        if (
+            not canonicalize_name(parsed.name).startswith("flext-")
+            or parsed.url is not None
+            or parsed.specifier
+        ):
+            return False
+        return any(
+            identity[0] == candidate[0]
+            and identity[1][0] == candidate[1][0]
+            and candidate[1][1] is not None
+            for source in sourced_live
+            for candidate in (cls._development_requirement_identity(source),)
         )
 
     @staticmethod
@@ -629,8 +836,15 @@ class FlextInfraUtilitiesPyprojectRequirements:
                     raw_values.extend(u.Cli.toml_as_string_list(value))
         groups = payload.get(c.Infra.DEPENDENCY_GROUPS)
         if isinstance(groups, Mapping):
-            for group in groups.values():
-                raw_values.extend(u.Cli.toml_as_string_list(group))
+            declared = m.Infra.DependencyGroupDeclarations.model_validate(
+                {"dependency-groups": groups},
+            )
+            raw_values.extend(
+                entry
+                for group in declared.dependency_groups.values()
+                for entry in group
+                if isinstance(entry, str)
+            )
         return tuple(raw_values)
 
     @staticmethod

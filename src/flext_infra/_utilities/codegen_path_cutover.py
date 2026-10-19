@@ -49,7 +49,9 @@ class FlextInfraUtilitiesCodegenPathCutover:
             msg = "transaction path implementation has ambiguous governed ownership"
             raise ValueError(msg)
         owner_path = owners[0]
-        owner_resource = project.get_module(owner_module).get_resource()
+        owner_resource = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
+            project.get_module(owner_module)
+        ).get_resource()
         if owner_resource is None:
             msg = "Rope could not resolve the transaction path implementation owner"
             raise ValueError(msg)
@@ -159,10 +161,12 @@ class FlextInfraUtilitiesCodegenPathCutover:
         for pattern, goal in transformations:
             changes = FlextInfraUtilitiesRopeRuntimeRefactors.restructure_changes(
                 project,
-                pattern,
-                goal,
-                arguments={"files": owner},
-                resources=resources,
+                m.Infra.RopeRestructureRequest(
+                    pattern=pattern,
+                    goal=goal,
+                    arguments={"files": owner},
+                    resources=resources,
+                ),
             )
             edits = cls._content_edits(changes, sources, selected)
             if edits:

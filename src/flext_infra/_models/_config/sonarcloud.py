@@ -37,3 +37,6 @@ class FlextInfraConfigModelsSonarcloud:
             t.NonEmptyStr,
             m.Field(description="Operator justification and bead"),
         ]
+
+
+__all__: list[str] = ["FlextInfraConfigModelsSonarcloud"]

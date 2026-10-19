@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from flext_infra import config
 from tests import c, m, tm, u
 
 
@@ -57,7 +58,7 @@ class TestsFlextInfraPytestCollectionManifest:
                     "-p",
                     "pytest_reportlog.plugin",
                     "-p",
-                    "flext_tests.enforcement_plugin",
+                    config.Infra.tooling.tools.pytest.enforcement_plugin,
                     "-p",
                     "flext_infra._pytest_collection",
                     *(

@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, r
+from flext_infra import r
+from flext_infra.codegen import FlextInfraMisePublication
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.codegen import FlextInfraMisePublication
 from tests import m, tm, u
@@ -190,36 +191,6 @@ class TestsFlextInfraDocsGeneratorGuides:
             plan.desired_content or b"",
             has=b"`<workspace-root>/docs/guides/operator.md`",
         )
-
-    @staticmethod
-    def test_legacy_generated_guide_header_is_adopted_by_current_owner(
-        tmp_path: Path,
-    ) -> None:
-        """Adopt only the historical generator marker, never unmarked custom text."""
-        workspace, generator = u.Tests.docs_workspace_generator(
-            tmp_path,
-            project_names=("flext-a",),
-            selected_projects=["flext-a"],
-        )
-        source = workspace / "docs/guides/operator.md"
-        source.write_text("# Operator\n\nCurrent.\n", encoding="utf-8")
-        destination = workspace / "flext-a/docs/guides/operator.md"
-        destination.parent.mkdir(parents=True)
-        destination.write_text(
-            "<!-- AUTO-GENERATED FILE — regenerate through `make gen`"
-            " from the workspace root. -->\n"
-            "<!-- Source of truth: `docs/guides/operator.md`;"
-            " adjust that source, never this projection. -->\n\n"
-            "# flext-a - Operator\n\n> Project profile: `flext-a`\n\nPrevious.\n",
-            encoding="utf-8",
-        )
-
-        plan = next(
-            item
-            for item in u.Tests.plan_docs_bundle(generator)
-            if item.path == destination
-        )
-
         tm.that(plan.desired_content or b"", has=b"Current.")
 
     @staticmethod

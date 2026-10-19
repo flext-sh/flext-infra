@@ -17,7 +17,7 @@ from doctest import DocTestParser
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, u
+from flext_infra import c, config, u
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -107,7 +107,10 @@ class FlextInfraMarkdownCodeSources:
         parser = DocTestParser()
         for py_path in u.Infra.iter_matching_files(project_dir, includes=["*.py"]):
             relative_parts = py_path.relative_to(project_dir).parts
-            if any(part in c.Infra.CHECK_EXCLUDED_DIRS for part in relative_parts):
+            if any(
+                part in config.Infra.codegen.check_excluded_dirs
+                for part in relative_parts
+            ):
                 continue
             if ".github" in relative_parts and any(
                 part in c.Infra.GITHUB_AGENT_PROJECTION_DIRS for part in relative_parts

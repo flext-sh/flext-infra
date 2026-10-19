@@ -8,16 +8,15 @@ from __future__ import annotations
 
 from flext_cli import u
 
-from flext_infra import c, p, r, t
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesManagedConflicts,
+    FlextInfraUtilitiesPyproject,
 )
 from flext_infra._utilities._pyproject.requirements import (
     FlextInfraUtilitiesPyprojectRequirements,
 )
-
-_MEMBER_DEV_PROVENANCE = "flext: derived member environment"
 
 
 class FlextInfraUtilitiesPyprojectOverlay:
@@ -25,7 +24,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
 
     @staticmethod
     def _validated_requirement_lists(
-        project: t.MutableJsonMapping,
+        project: t.JsonMapping,
         live_project: t.JsonMapping,
         key: str,
     ) -> p.Result[t.Pair[t.StrSequence, t.StrSequence]]:
@@ -99,95 +98,77 @@ class FlextInfraUtilitiesPyprojectOverlay:
     def _overlay_project_surface(
         cls,
         merged: t.MutableJsonMapping,
-        live_payload: t.JsonMapping,
+        live_payload: t.JsonMapping | None,
         project_keys: t.StrSequence,
     ) -> p.Result[t.JsonDict]:
         """Overlay every declared CUSTOM project key onto the merged document.
+
+        Existing metadata owns omitted CUSTOM keys as well as provided values;
+        only a new project receives those scaffold defaults.
 
         Returns:
             The resulting ``p.Result[t.JsonDict]``.
 
         """
-        project = dict(u.Cli.toml_mapping_child(merged, c.Infra.PROJECT) or {})
-        live_project = u.Cli.toml_mapping_child(live_payload, c.Infra.PROJECT) or {}
-        for key in project_keys:
-            if key not in live_project:
-                continue
-            if key == c.Infra.DEPENDENCIES:
-                validated = cls._validated_requirement_lists(
-                    project,
-                    live_project,
-                    key,
-                )
-                if validated.failure:
-                    return r[t.JsonDict].from_failure(validated)
-                required, custom = validated.value
-                project[key] = cls._merged_requirements(required, custom)
-            else:
-                project[key] = live_project[key]
-        return r[t.JsonDict].ok(project)
-
-    @staticmethod
-    def custom_dev_additions(
-        live_payload: t.JsonMapping,
-        live: str | None,
-        *,
-        group: str = str(c.Infra.DEV),
-    ) -> p.Result[t.StrSequence]:
-        """Remove only entries carrying this generator's explicit provenance.
-
-        Returns:
-            The resulting ``p.Result[t.StrSequence]``.
-        """
-        groups = u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
-        values = u.validate_value(
-            t.Infra.STR_SEQ_ADAPTER,
-            groups.get(group, ()),
+        rendered_project = u.Cli.toml_mapping_child(merged, c.Infra.PROJECT) or {}
+        live_project = (
+            u.Cli.toml_mapping_child(live_payload, c.Infra.PROJECT)
+            if live_payload is not None
+            else None
         )
-        if values.failure:
-            return r[t.StrSequence].from_failure(values)
-        if not values.value or live is None:
-            return (
-                r[t.StrSequence].ok(())
-                if not values.value
-                else r[t.StrSequence].fail("dev provenance requires its parsed source")
+        if live_project is None:
+            return r[t.JsonDict].ok(dict(rendered_project))
+        project = dict(live_project)
+        project.update(
+            (key, value)
+            for key, value in rendered_project.items()
+            if key not in project_keys
+        )
+        if c.Infra.DEPENDENCIES in project_keys:
+            validated = cls._validated_requirement_lists(
+                rendered_project,
+                live_project,
+                c.Infra.DEPENDENCIES,
             )
-        document = u.Cli.toml_parse_text(live)
-        if document is None:
-            return r[t.StrSequence].fail("dev provenance source is invalid TOML")
-        group_table = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
-        if group_table is None:
-            return r[t.StrSequence].fail("dev provenance dependency groups are missing")
-        comments = u.Cli.toml_array_item_comments(group_table, group)
-        if len(comments) != len(values.value):
-            return r[t.StrSequence].fail("dev provenance occurrence counts differ")
-        return r[t.StrSequence].ok(
-            tuple(
-                value
-                for value, comment in zip(values.value, comments, strict=True)
-                if comment.removeprefix("#").strip() != _MEMBER_DEV_PROVENANCE
-            ),
-        )
+            if validated.failure:
+                return r[t.JsonDict].from_failure(validated)
+            required, custom = validated.value
+            project[c.Infra.DEPENDENCIES] = cls._merged_requirements(required, custom)
+        return r[t.JsonDict].ok(project)
 
     @staticmethod
     def sync_member_dev_provenance(
         document: t.Cli.TomlDocument,
         *,
-        custom: t.StrSequence,
+        custom: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
         group: str = str(c.Infra.DEV),
     ) -> None:
         """Tag generated additions in the existing dev group, not another registry."""
         groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
-        values = u.Cli.toml_as_string_list(u.Cli.toml_value(groups, group))
+        group = FlextInfraUtilitiesPyproject.dependency_group_name(
+            groups,
+            group,
+        )
+        values = FlextInfraUtilitiesPyprojectRequirements.read_dependency_group(
+            groups,
+            group,
+        )
         if not values:
-            u.Cli.toml_remove_key_if_present(groups, group)
             return
         custom_values = frozenset(custom)
         generated = u.Cli.toml_array(()).multiline(multiline=False)
         for value in values:
             generated.add_line(
-                value,
-                comment=None if value in custom_values else _MEMBER_DEV_PROVENANCE,
+                (
+                    value
+                    if isinstance(value, str)
+                    else value.model_dump(mode="json", by_alias=True)
+                ),
+                comment=(
+                    None
+                    if not isinstance(value, str) or value in custom_values
+                    else c.Infra.MEMBER_DEV_PROVENANCE
+                ),
             )
         generated.add_line(indent="")
         groups[group] = generated
@@ -202,10 +183,33 @@ class FlextInfraUtilitiesPyprojectOverlay:
 
         Returns:
             The resulting ``p.Result[bool]``.
+
         """
-        groups = dict(u.Cli.toml_mapping_child(merged, c.Infra.DEPENDENCY_GROUPS) or {})
+        rendered_groups = dict(
+            u.Cli.toml_mapping_child(merged, c.Infra.DEPENDENCY_GROUPS) or {},
+        )
+        live_groups = (
+            u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
+        )
+        groups = dict(rendered_groups)
+        for name, entries in live_groups.items():
+            authored_name = FlextInfraUtilitiesPyproject.dependency_group_name(
+                tuple(live_groups),
+                name,
+            )
+            previous = FlextInfraUtilitiesPyproject.dependency_group_name(
+                tuple(groups),
+                authored_name,
+            )
+            if previous != authored_name:
+                groups.pop(previous, None)
+            groups[authored_name] = entries
         for group in (str(c.Infra.DEV), c.Infra.DependencyGroup.CODEGEN):
-            custom = FlextInfraUtilitiesPyprojectOverlay.custom_dev_additions(
+            selected = FlextInfraUtilitiesPyproject.dependency_group_name(
+                tuple(groups),
+                str(group),
+            )
+            custom = FlextInfraUtilitiesPyproject.custom_dev_additions(
                 live_payload,
                 live,
                 group=group,
@@ -214,20 +218,34 @@ class FlextInfraUtilitiesPyprojectOverlay:
                 return r[bool].from_failure(custom)
             if group == c.Infra.DependencyGroup.CODEGEN:
                 required = u.validate_value(
-                    t.Infra.STR_SEQ_ADAPTER,
-                    groups.get(group, ()),
+                    m.Infra.DependencyGroupEntries,
+                    rendered_groups.get(
+                        FlextInfraUtilitiesPyproject.dependency_group_name(
+                            tuple(rendered_groups),
+                            str(group),
+                        ),
+                        (),
+                    ),
                     strict=True,
                 )
                 if required.failure:
                     return r[bool].from_failure(required)
-                groups[group] = (
-                    FlextInfraUtilitiesPyprojectOverlay._merged_requirements(
-                        required.value,
+                groups[selected] = FlextInfraUtilitiesPyproject.dependency_group_wire(
+                    FlextInfraUtilitiesPyprojectRequirements.merge_dependency_group_entries(
+                        required.value.root,
                         custom.value,
-                    )
+                    ),
                 )
             else:
-                groups[group] = list(custom.value)
+                groups[selected] = FlextInfraUtilitiesPyproject.dependency_group_wire(
+                    custom.value,
+                )
+        validated = u.validate_value(
+            m.Infra.DependencyGroupDeclarations,
+            {"dependency-groups": groups},
+        )
+        if validated.failure:
+            return r[bool].from_failure(validated)
         merged[c.Infra.DEPENDENCY_GROUPS] = groups
         return r[bool].ok(value=True)
 
@@ -299,7 +317,11 @@ class FlextInfraUtilitiesPyprojectOverlay:
                 exception=live_payload.exception,
             )
         merged = dict(rendered_payload.value)
-        project = cls._overlay_project_surface(merged, live_payload.value, project_keys)
+        project = cls._overlay_project_surface(
+            merged,
+            live_payload.value if live is not None else None,
+            project_keys,
+        )
         if project.failure:
             return r[str].from_failure(project)
         merged[c.Infra.PROJECT] = project.value

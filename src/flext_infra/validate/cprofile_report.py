@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import io
+import os
 import pstats
 import re
 from pathlib import Path
@@ -166,13 +167,21 @@ class FlextInfraCProfileReport(s[bool]):
 
     def _render_profiles(self, stream: io.StringIO) -> None:
         """Render every cProfile artifact into the shared stream."""
-        root_prefix = re.escape(str(self.repository_root.resolve()) + "/")
+        root = self.repository_root.resolve()
+        root_prefix = re.escape(str(root) + os.sep)
+        source_prefixes = tuple(
+            re.escape(str(root / name) + os.sep)
+            for name in config.Infra.source_scan.roots
+        )
+        root_module = root_prefix + rf"[^{re.escape(os.sep)}]+\.py:"
+        source_filter = "^(?:" + "|".join((*source_prefixes, root_module)) + ")"
         for profile in self._run_profiles():
             stream.write(f"Profile: {profile}\n")
-            stream.write(f"Project scope: {self.repository_root.resolve()}\n")
+            stream.write(f"Project scope: {root}\n")
             stats = pstats.Stats(str(profile), stream=stream)
-            stats.sort_stats(self.sort).print_stats(root_prefix, self.limit)
-            stats.strip_dirs().sort_stats(self.sort).print_stats(self.limit)
+            stats.sort_stats(self.sort).print_stats(self.limit)
+            stream.write("Repository source functions:\n")
+            stats.print_stats(source_filter, self.limit)
 
 
 __all__: list[str] = ["FlextInfraCProfileReport"]

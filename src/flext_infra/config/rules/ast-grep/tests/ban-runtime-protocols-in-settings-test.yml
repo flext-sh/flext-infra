@@ -3,7 +3,12 @@ valid:
   - |
     if TYPE_CHECKING:
         from pkg import p
-  - from pkg import m
+  - |
+    if TYPE_CHECKING:
+        from pkg.protocols import Protocols
 invalid:
   - from pkg import p
-  - from pkg import m, p
+  - from pkg import p as protocols
+  - from flext_core import p
+  - from pkg.protocols import Protocols
+  - import pkg._protocols.base

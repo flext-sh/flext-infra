@@ -187,8 +187,11 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
-    def test_ci_workflow_requires_the_closing_clean_tree() -> None:
-        """CI approval without the closing verify-clean row is refused."""
+    @pytest.mark.parametrize(
+        "verb", ["setup", "audit", "check", "test", "verify-clean"]
+    )
+    def test_ci_workflow_requires_the_closing_clean_tree(verb: str) -> None:
+        """Removing any mandatory CI milestone is refused."""
         payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
         payload["workflow"] = [
             {
@@ -196,12 +199,109 @@ class TestsFlextInfraCodegenMakeCheckPartition:
                 "contexts": tuple(
                     context for context in row["contexts"] if context != "ci"
                 )
-                if row["verb"] == "verify-clean"
+                if row["verb"] == verb
                 else row["contexts"],
             }
             for row in payload["workflow"]
         ]
         with pytest.raises(e.PydanticValidationError, match="verify-clean workflow"):
+            m.Infra.MakeSpec.model_validate(payload)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("first", "second"),
+        [
+            ("setup", "audit"),
+            ("audit", "check"),
+            ("check", "test"),
+            ("test", "verify-clean"),
+        ],
+    )
+    def test_ci_workflow_rejects_reordered_milestones(first: str, second: str) -> None:
+        """Provisioning, approval order, and closing clean boundary are mandatory."""
+        payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
+        rows = list(payload["workflow"])
+        positions = [
+            next(i for i, row in enumerate(rows) if row["verb"] == verb)
+            for verb in (first, second)
+        ]
+        rows[positions[0]], rows[positions[1]] = rows[positions[1]], rows[positions[0]]
+        payload["workflow"] = rows
+        with pytest.raises(e.PydanticValidationError, match="verify-clean workflow"):
+            m.Infra.MakeSpec.model_validate(payload)
+
+    @staticmethod
+    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
+    @pytest.mark.parametrize("before", ["audit", "check", "test", "verify-clean"])
+    def test_ci_workflow_renders_additional_admissible_phases(
+        profile: c.Infra.MakeProfile,
+        before: str,
+    ) -> None:
+        """The public renderer consumes arbitrary valid phases from the typed owner."""
+        make = config.Infra.codegen.make
+        payload = make.model_dump(exclude_computed_fields=True)
+        phase = m.Infra.MakeVerbSpec(
+            name="fixture-ci-phase",
+            description="Additional configured CI phase",
+        )
+        payload["verbs"] = (*payload["verbs"], phase.model_dump())
+        rows = list(payload["workflow"])
+        rows.insert(
+            next(i for i, row in enumerate(rows) if row["verb"] == before),
+            m.Infra.MakeWorkflowStepSpec(
+                verb=phase.name,
+                contexts=("local", "ci"),
+            ).model_dump(),
+        )
+        payload["workflow"] = rows
+        active = m.Infra.MakeSpec.model_validate(payload)
+        spec = u.CodegenTestSupport.Ci.workflow_spec(
+            dist="workflow-consumer",
+            make_profile=profile,
+            repository_branch="integration/workflow-consumer",
+            ci_trigger_branches=(),
+        ).model_copy(update={"make": active})
+        steps = u.CodegenTestSupport.Ci.ci_job_steps(
+            tm.ok(
+                u.Cli.template_render(
+                    TestsFlextInfraCiIntegrationBranchTriggers.ci_template,
+                    spec,
+                )
+            )
+        )
+        tm.that(
+            tuple(
+                step["run"]
+                for step in steps
+                if str(step.get("id", "")).startswith("approval-")
+            ),
+            eq=tuple(
+                f"{active.ci.variable}={active.ci.value} make {verb}"
+                for verb in active.approval_verbs
+            ),
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("restriction", ["arguments", "profiles"])
+    def test_ci_workflow_requires_selector_free_all_profile_verbs(
+        restriction: str,
+    ) -> None:
+        """A declared workflow operation must be callable by every consumer."""
+        payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
+        payload["verbs"] = [
+            {
+                **row,
+                restriction: ("fixture-selector",)
+                if restriction == "arguments"
+                else tuple(c.Infra.MakeProfile)[:-1],
+            }
+            if row["name"] == c.Infra.VERB_CHECK
+            else row
+            for row in payload["verbs"]
+        ]
+        with pytest.raises(
+            e.PydanticValidationError, match="selector-free in every profile"
+        ):
             m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod

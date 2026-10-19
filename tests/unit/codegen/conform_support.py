@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from difflib import unified_diff
+from fnmatch import fnmatchcase
 from pathlib import Path
 
 from flext_infra import config, infra
@@ -77,6 +78,18 @@ class TestsFlextInfraConformSupport:
             The versionable project tree independently of Git test fixtures.
 
         """
+        ignored_directories = tuple(
+            artifact.name
+            for artifact in config.Infra.codegen.artifacts
+            if artifact.gitignore and not artifact.generated_source and artifact.is_dir
+        )
+        ignored_files = tuple(
+            artifact.name
+            for artifact in config.Infra.codegen.artifacts
+            if artifact.gitignore
+            and not artifact.generated_source
+            and not artifact.is_dir
+        )
         return tuple(
             sorted(
                 (path.relative_to(root).as_posix(), path.read_bytes())
@@ -86,6 +99,14 @@ class TestsFlextInfraConformSupport:
                 and ".infra-baseline" not in path.relative_to(root).parts
                 and c.Infra.TRANSACTION_STATE_DIRNAME
                 not in path.relative_to(root).parts
+                and not any(
+                    fnmatchcase(part, pattern)
+                    for part in path.relative_to(root).parts[:-1]
+                    for pattern in ignored_directories
+                )
+                and not any(
+                    fnmatchcase(path.name, pattern) for pattern in ignored_files
+                )
             ),
         )
 
@@ -133,6 +154,7 @@ class TestsFlextInfraConformSupport:
                 f"requires-python = "
                 f'"{config.Infra.codegen.toolchain.python_required_version}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+                f'license = "{u.Tests.project_spec(dist).license}"\n'
                 'dependencies = ["flext-cli"]\n',
             ),
         )
@@ -142,10 +164,9 @@ class TestsFlextInfraConformSupport:
         tests_init = root / "tests" / "__init__.py"
         tests_init.parent.mkdir(parents=True, exist_ok=True)
         tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
-        # The seed publishes its own config and Mise sources on first apply;
-        # only the committed Taplo pin must precede it so TOML formatting
-        # authenticates the locked release instead of resolving a selector.
-        u.Tests.seed_locked_taplo(root)
+        # Native formatting authenticates the committed declaration and its lock
+        # together before conform can render a replacement declaration.
+        u.Tests.copy_tracked_mise_seeds(root)
 
     @staticmethod
     def self_check_conform_service(

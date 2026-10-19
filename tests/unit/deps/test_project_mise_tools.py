@@ -46,8 +46,8 @@ class TestsFlextInfraProjectMiseTools:
         )
 
         tools = u.Tests.toml_table_at(tm.ok(composed), "tools")
-        assert tools["github:example/tool"] == "1.2.3"
-        assert tools["python"] == python_version
+        tm.that(tools["github:example/tool"] == "1.2.3", truth=True)
+        tm.that(tools["python"] == python_version, truth=True)
 
     def test_version_string_shorthand_is_not_a_declaration(
         self,

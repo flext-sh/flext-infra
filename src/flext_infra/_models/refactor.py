@@ -25,7 +25,8 @@ from flext_infra._models import (
     FlextInfraModelsScan,
     FlextInfraModelsTransformers,
 )
-from flext_infra._models._codegen.transaction import (
+from flext_infra._models._codegen import (
+    FlextInfraModelsCodegenJournalModels,
     FlextInfraModelsCodegenTransactionModels,
 )
 
@@ -108,6 +109,14 @@ class FlextInfraModelsRefactor(
             bool,
             m.Field(description="Whether the rename includes inherited declarations"),
         ] = False
+        docs: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Include native identity-visible string and comment occurrences"
+                ),
+            ),
+        ] = False
 
     class SemanticRenameDecision(m.ImmutableValueModel):
         """Domain-selected name for an observed introducing declaration."""
@@ -135,7 +144,7 @@ class FlextInfraModelsRefactor(
         """Explicit domain naming intent, resolved by the actual object inventory."""
 
         qualified_name: t.NonEmptyStr = m.Field(
-            description="Introducing callable identity"
+            description="Introducing class, callable, or module identity"
         )
         replacement_name: t.NonEmptyStr = m.Field(description="Canonical domain name")
         reason: t.NonEmptyStr = m.Field(description="Semantic justification")
@@ -147,9 +156,11 @@ class FlextInfraModelsRefactor(
         """JSON input carrying explicit decisions, not a lexical naming policy."""
 
         decisions: t.VariadicTuple[FlextInfraModelsRefactor.SemanticRenameSelection] = (
-            m.Field(
-                min_length=1, description="Explicit domain names for inventoried owners"
-            )
+            m.Field(description="Explicit domain names for inventoried owners")
+        )
+        consumer_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Explicit external consumer checkout roots for this run",
         )
 
     class SemanticRenamePlan(m.ImmutableValueModel):
@@ -157,7 +168,8 @@ class FlextInfraModelsRefactor(
 
         decisions: t.VariadicTuple[FlextInfraModelsRefactor.SemanticRenameDecision] = (
             m.Field(
-                description="Resolved declarations and their domain naming decisions"
+                min_length=1,
+                description="Resolved declarations and their domain naming decisions",
             )
         )
         edits: t.VariadicTuple[FlextInfraModelsTransformers.SemanticMigrationEdit] = (
@@ -166,11 +178,52 @@ class FlextInfraModelsRefactor(
         candidate: FlextInfraModelsCodegenTransactionModels.StageSourcePlan = m.Field(
             description="Authenticated complete source and runtime candidate closure"
         )
+        consumer_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="External scopes elected before producer publication",
+        )
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            default=(), description="Original physical binding and consumption epoch"
+        )
+        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
+            default=(),
+            description="Original native directory-election receipts",
+        )
+        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
+            m.Field(
+                default=(),
+                description="Original native path-election topology receipts",
+            )
+        )
+        moves: t.VariadicTuple[t.Pair[Path, Path]] = m.Field(
+            default=(), description="Native module source and destination effects"
+        )
+
+    class RuleDeltaOptions(FlextInfraModelsBase.FrozenArbitrary):
+        """Optional scope and authentication inputs for one rule delta comparison."""
+
+        inventory: t.VariadicTuple[t.Pair[str, str]] = m.Field(
+            default=(),
+            description="Declared repository and rule pairs included in the delta.",
+        )
+        repository_root: Path | None = m.Field(
+            default=None,
+            description="Root resolving text finding paths into the topology.",
+        )
+        projects: t.SequenceOf[Path] = m.Field(
+            default=(),
+            description="Declared project topology owning text findings.",
+        )
+        publication_chain: (
+            t.VariadicTuple[FlextInfraModelsCodegenJournalModels.CodegenStagedFile]
+            | None
+        ) = m.Field(
+            default=None,
+            description="Authenticated staged publication receipts.",
+        )
 
     class ViolationsTotals(m.ContractModel):
         """One mod scan's violation totals as the sweep compares them."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         findings: Annotated[
             int,
@@ -294,30 +347,6 @@ class FlextInfraModelsRefactor(
         def has_violations(self) -> bool:
             """Whether any project carries a violation."""
             return any(project.has_violations for project in self.projects)
-
-    class ViolationsSweepRequest(m.ContractModel):
-        """Public sweep controls; focus never narrows regression observation."""
-
-        rules: Annotated[
-            str | None,
-            m.Field(
-                description="Comma-separated rule focus; full catalog stays observed"
-            ),
-        ] = None
-        audit_rules: Annotated[
-            bool,
-            m.Field(
-                alias="audit-rules",
-                description="Read-only native rule audit for every governed repository",
-            ),
-        ] = False
-        repair_verbs: Annotated[
-            str | None,
-            m.Field(
-                alias="repair-verbs",
-                description="Ordered Make verbs; default from canonical Make policy",
-            ),
-        ] = None
 
     class ViolationsSweepSources(m.ContractModel):
         """Authenticated inventory shared by full scans and audit observations."""
@@ -739,10 +768,8 @@ class FlextInfraModelsRefactor(
             m.Field(description="Decorator names applied to this method"),
         ] = m.Field(default_factory=tuple)
 
-    class ProjectClassification(m.ArbitraryTypesModel):
+    class ProjectClassification(FlextInfraModelsBase.FrozenArbitrary):
         """Result of classifying a project by kind and family chains."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         project_kind: Annotated[
             t.NonEmptyStr,
@@ -811,6 +838,10 @@ class FlextInfraModelsRefactor(
             Path | None,
             m.Field(description="Authenticated semantic rename artifact to consume"),
         ] = None
+        consumer_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Explicit external consumer checkout roots for this run",
+        )
 
     class SemanticRenamePlanCommand(m.ContractModel):
         """Produce an inventory-derived rename artifact without applying changes."""
@@ -834,13 +865,6 @@ class FlextInfraModelsRefactor(
             bool,
             m.Field(description="Atomically rename owned declarations and references"),
         ] = False
-        repository_root: Annotated[
-            Path | None,
-            m.Field(
-                default=None,
-                description="Explicit configuration owner, distinct from scan roots",
-            ),
-        ]
 
         csv: Annotated[
             t.NonEmptyStr,
@@ -886,10 +910,8 @@ class FlextInfraModelsRefactor(
             ),
         ] = ()
 
-    class ApplyRenamesReport(m.ArbitraryTypesModel):
+    class ApplyRenamesReport(FlextInfraModelsBase.FrozenArbitrary):
         """Summary of one CSV-driven rename pass."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         label: Annotated[t.NonEmptyStr, m.Field(description="Rename-list label")]
         files_scanned: Annotated[
@@ -912,10 +934,8 @@ class FlextInfraModelsRefactor(
 
     # -- Namespace Enforcer Models ---------------------------------------------
 
-    class ParsedPythonModule(m.ArbitraryTypesModel):
+    class ParsedPythonModule(FlextInfraModelsBase.FrozenArbitrary):
         """Result of parsing a Python source file into AST."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         source: Annotated[str, m.Field(description="Raw source text")]
         tree: Annotated[
@@ -923,10 +943,8 @@ class FlextInfraModelsRefactor(
             m.Field(description="Parsed PyObject module representation"),
         ]
 
-    class ImportLawScope(m.ArbitraryTypesModel):
+    class ImportLawScope(FlextInfraModelsBase.FrozenArbitrary):
         """Immutable facts one import-law pass decides a module's imports on."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         project_root: Annotated[Path, m.Field(description="Governed project root")]
         file_path: Annotated[Path, m.Field(description="Normalized module path")]
@@ -978,10 +996,8 @@ class FlextInfraModelsRefactor(
             """
             return self.namespace_dir.name
 
-    class ImportLawPass(m.ArbitraryTypesModel):
+    class ImportLawPass(FlextInfraModelsBase.FrozenArbitrary):
         """One parsed module and the facts one import-law pass reads from it."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         scope: Annotated[
             FlextInfraModelsRefactor.ImportLawScope,

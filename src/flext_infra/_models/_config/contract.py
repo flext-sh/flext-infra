@@ -14,22 +14,14 @@ from flext_cli import m
 
 from flext_infra import c, t
 from flext_infra._models.mise_toolchain import FlextInfraModelsMiseToolchain
+from flext_infra._models.mise_toolchain_base import FlextInfraModelsMiseToolchainBase
 
 
 class FlextInfraConfigModelsContract(FlextInfraModelsMiseToolchain):
     """Shared config contract base and inherited toolchain declarations."""
 
-    class ConfigContract(m.ContractModel):
+    class ConfigContract(FlextInfraModelsMiseToolchainBase):
         """Public declarative base for schema-loaded codegen records."""
-
-        # Rendered file payloads are
-        # byte contracts; Pydantic must never trim their final newline.
-        model_config = m.ConfigDict(
-            strict=False,
-            frozen=True,
-            extra="forbid",
-            str_strip_whitespace=False,
-        )
 
     class DocsAuditOverridesSpec(ConfigContract):
         """Repository-specific exceptions and stale-symbol declarations."""
@@ -41,6 +33,26 @@ class FlextInfraConfigModelsContract(FlextInfraModelsMiseToolchain):
         stale_symbol_exempt_paths: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Exact generated API paths retaining live symbols"),
+        ] = ()
+        forbidden_terms: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Literal retired-surface names forbidden in current "
+                    "documentation, each superseded by a declared canonical "
+                    "owner"
+                ),
+            ),
+        ] = ()
+        container_home_identities: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Container/CI identities whose /home|/Users home is part "
+                    "of the declared image contract, never an operator "
+                    "machine path"
+                ),
+            ),
         ] = ()
         historical_evidence_files: Annotated[
             t.VariadicTuple[Path],
@@ -77,13 +89,12 @@ class FlextInfraConfigModelsContract(FlextInfraModelsMiseToolchain):
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Regexes recognizing unfinished document markers"),
         ] = ()
-        forbidden_terms: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(description="Literal terms forbidden in current documentation"),
-        ] = ()
 
         @m.model_validator(mode="after")
         def _validate_patterns(self) -> Self:
             for pattern in self.placeholder_patterns:
                 re.compile(pattern)
             return self
+
+
+__all__: list[str] = ["FlextInfraConfigModelsContract"]

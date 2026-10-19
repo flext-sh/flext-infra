@@ -1,0 +1,13 @@
+id: bind-direct-registration-specialization
+valid:
+  - |
+    from flext_core import p
+    from flext_core._typings import FlextTypesServices
+    value: p.GuardInput
+  - |
+    from flext_core._typings import FlextTypesServices
+    value: FlextTypesServices.GuardInput[str]
+invalid:
+  - |
+    from flext_core._typings import FlextTypesServices
+    value: FlextTypesServices.GuardInput

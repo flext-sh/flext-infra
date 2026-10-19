@@ -18,12 +18,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
+from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.gates.duplication import FlextInfraDuplicationGate
 from flext_infra.refactor._census_objects import FlextInfraRefactorCensusObjectsMixin
 from flext_infra.transformers import FlextInfraSemanticPublication
@@ -55,12 +55,145 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         *,
         apply: bool,
     ) -> p.Result[m.Infra.DuplicateCureOutcome]:
-        """Cure the trivial duplicate groups and plan every other duplicate.
+        """Plan every duplicate and publish only a complete trivial candidate.
 
         Returns:
             The resulting ``p.Result[m.Infra.DuplicateCureOutcome]``.
 
         """
+        states = tuple(
+            u.Cli.atomic_read_binary_file_state(
+                resource.real_path, required=True
+            ).unwrap()
+            for resource in rope_workspace.rope_project.get_python_files()
+        )
+        planned = cls.plan_census(
+            root,
+            rope_workspace,
+            groups,
+            sources={
+                state.path: state.content.decode(c.DEFAULT_ENCODING)
+                for state in states
+                if state.content is not None
+            },
+            source_states=states,
+        )
+        if planned.failure:
+            return r[m.Infra.DuplicateCureOutcome].from_failure(planned)
+        outcome, deletions = planned.value
+        if not apply or not outcome.edits or outcome.plans:
+            return r[m.Infra.DuplicateCureOutcome].ok(outcome)
+        published = cls._publish(
+            root,
+            rope_project=rope_workspace.rope_project,
+            working={edit.file_path: edit.updated_source for edit in outcome.edits},
+            edits=outcome.edits,
+            deletions=deletions,
+        )
+        if published.failure:
+            return r[m.Infra.DuplicateCureOutcome].from_failure(published)
+        return r[m.Infra.DuplicateCureOutcome].ok(outcome)
+
+    @classmethod
+    def plan_census(
+        cls,
+        root: Path,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        groups: t.SequenceOf[m.Infra.DuplicateGroup],
+        *,
+        sources: t.MappingKV[Path, str],
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+    ) -> p.Result[
+        t.Pair[m.Infra.DuplicateCureOutcome, t.VariadicTuple[m.Infra.DuplicateDeletion]]
+    ]:
+        """Retain every native cure effect and manual diagnostic without publishing.
+
+        Returns:
+            The retained cure outcome with its deletions, or the first failure.
+
+        """
+        captured = FlextInfraCodegenPreconditions.unique_states((
+            *source_states,
+            *(state for plan in declared_files for state in plan.source_states),
+        ))
+        if captured.failure:
+            return r[
+                t.Pair[
+                    m.Infra.DuplicateCureOutcome,
+                    t.VariadicTuple[m.Infra.DuplicateDeletion],
+                ]
+            ].from_failure(captured)
+        source_states = captured.value
+        snapshot = u.Infra.snapshot_project(
+            rope_workspace.rope_project,
+            sources,
+            captured=u.Infra.codemod_source_epoch(
+                m.Infra.CodemodBindingSnapshot(
+                    states=tuple(
+                        state
+                        for state in source_states
+                        if state.path in sources
+                        or state.path.suffix
+                        in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
+                    )
+                )
+            ),
+            declared_files=tuple(
+                plan.model_copy(
+                    update={
+                        "desired_content": sources[plan.path].encode(
+                            c.DEFAULT_ENCODING
+                        ),
+                    }
+                )
+                for plan in declared_files
+                if plan.path in sources
+                and (
+                    isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
+                    or plan.before.content is None
+                )
+            ),
+        )
+        with type(rope_workspace).open_workspace(
+            root,
+            rope_repository_root=Path(snapshot.root.real_path),
+            source_project=snapshot,
+            workspace_index=rope_workspace.workspace_index,
+            index_receipt=rope_workspace.source_index_receipt,
+        ) as planning_workspace:
+            return cls._plan_census_sources(
+                root, planning_workspace, groups, sources=sources
+            )
+
+    @classmethod
+    def _plan_census_sources(
+        cls,
+        root: Path,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        groups: t.SequenceOf[m.Infra.DuplicateGroup],
+        *,
+        sources: t.MappingKV[Path, str],
+    ) -> p.Result[
+        t.Pair[m.Infra.DuplicateCureOutcome, t.VariadicTuple[m.Infra.DuplicateDeletion]]
+    ]:
+        """Elect cures and every residual diagnostic on one frozen native workspace.
+
+        Returns:
+            The elected cure outcome with its deletions, or the first failure.
+
+        """
+        for path, source in sources.items():
+            if rope_workspace.source(path) != source:
+                return r[
+                    t.Pair[
+                        m.Infra.DuplicateCureOutcome,
+                        t.VariadicTuple[m.Infra.DuplicateDeletion],
+                    ]
+                ].fail(
+                    f"duplicate planning workspace differs from its "
+                    f"working view: {path}"
+                )
         layers = cls._project_layers(root)
         working: MutableMapping[Path, str] = {}
         edits: list[m.Infra.SemanticMigrationEdit] = []
@@ -68,6 +201,19 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         deletions: list[m.Infra.DuplicateDeletion] = []
         bindings = 0
         for group in groups:
+            if any(
+                not Path(item.file_path).resolve().is_relative_to(root)
+                for item in group.definitions
+            ):
+                return r[
+                    t.Pair[
+                        m.Infra.DuplicateCureOutcome,
+                        t.VariadicTuple[m.Infra.DuplicateDeletion],
+                    ]
+                ].fail(
+                    f"duplicate declaration is outside its selected "
+                    f"target: {group.name}"
+                )
             planned = cls._plan_group(
                 rope_workspace,
                 group,
@@ -77,6 +223,17 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             if isinstance(planned, m.Infra.DuplicateCurePlan):
                 plans.append(planned)
                 continue
+            for edit in planned.edits:
+                if sources.get(edit.file_path) != edit.original_source:
+                    return r[
+                        t.Pair[
+                            m.Infra.DuplicateCureOutcome,
+                            t.VariadicTuple[m.Infra.DuplicateDeletion],
+                        ]
+                    ].fail(
+                        f"duplicate effect is outside its immutable "
+                        f"working view: {edit.file_path}"
+                    )
             edits.extend(planned.edits)
             cls._collect_working(working, planned.edits)
             deletions.extend(
@@ -90,20 +247,11 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             )
             bindings += sum(len(copy.consumer_files) for copy in planned.copies)
         plans.extend(cls._jscpd_plans(root, layers=layers))
-        if not apply or not edits:
-            return r[m.Infra.DuplicateCureOutcome].ok(
-                m.Infra.DuplicateCureOutcome(plans=tuple(plans)),
-            )
-        published = cls._publish(
-            root,
-            working=working,
-            rope_workspace=rope_workspace,
-            edits=tuple(edits),
-            deletions=tuple(deletions),
-        )
-        if published.failure:
-            return r[m.Infra.DuplicateCureOutcome].from_failure(published)
-        return r[m.Infra.DuplicateCureOutcome].ok(
+        return r[
+            t.Pair[
+                m.Infra.DuplicateCureOutcome, t.VariadicTuple[m.Infra.DuplicateDeletion]
+            ]
+        ].ok((
             m.Infra.DuplicateCureOutcome(
                 edits=tuple(edits),
                 plans=tuple(plans),
@@ -111,7 +259,8 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                 copies_removed=len(deletions),
                 bindings_rewired=bindings,
             ),
-        )
+            tuple(deletions),
+        ))
 
     # -------------------------------------------------------------- planning
 
@@ -130,7 +279,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             A ``m.Infra.DuplicateGroupCure`` for the trivial tier or a typed plan.
 
         """
-        definitions = cls._definitions(group, layers=layers)
+        definitions = cls._definitions(rope_workspace, group, layers=layers)
         blocker = cls._trivial_blocker(rope_workspace, group, definitions)
         if blocker is not None:
             return cls._group_plan(group, definitions, blocker)
@@ -184,7 +333,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         if len({definition.body for definition in definitions}) != 1:
             return "definition bodies are not byte-identical"
         for definition in definitions:
-            blocker = cls._definition_blocker(definition)
+            blocker = cls._definition_blocker(rope_workspace, definition)
             if blocker is not None:
                 return blocker
         star = cls._star_importers(rope_workspace, group)
@@ -193,7 +342,11 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         return None
 
     @classmethod
-    def _definition_blocker(cls, definition: m.Infra.DuplicateDefinition) -> str | None:
+    def _definition_blocker(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        definition: m.Infra.DuplicateDefinition,
+    ) -> str | None:
         """Return why one definition is outside the trivial contract.
 
         Returns:
@@ -226,7 +379,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                 ),
             ),
             (
-                not cls._statement_is_pure(definition.statement),
+                not cls._statement_is_pure(workspace.rope_project, definition),
                 (
                     "a definition references a free name or an impure call, "
                     "so byte identity is not value identity"
@@ -238,6 +391,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
     @classmethod
     def _definitions(
         cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
         group: m.Infra.DuplicateGroup,
         *,
         layers: t.MappingKV[Path, int],
@@ -251,8 +405,8 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         definitions: list[m.Infra.DuplicateDefinition] = []
         for item in group.definitions:
             path = Path(item.file_path).resolve()
-            source = path.read_text(encoding=c.DEFAULT_ENCODING)
-            statement = cls._definition_statement(source, item)
+            source = workspace.source(path)
+            statement = cls._definition_statement(workspace.rope_project, source, item)
             definitions.append(
                 m.Infra.DuplicateDefinition(
                     item=item,
@@ -278,59 +432,90 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
 
     @staticmethod
     def _definition_statement(
+        project: p.Infra.RopeProject,
         source: str,
         item: m.Infra.Object,
-    ) -> ast.stmt | None:
+    ) -> m.Infra.LogicalStatement | None:
         """Return the module-level statement that defines one inventory object.
 
         Returns:
-            The resulting ``ast.stmt | None``.
+            The Rope declaration region, or ``None`` for a nonlocal binding.
 
         """
-        try:
-            tree = ast.parse(source)
-        except SyntaxError:
+        module = u.Infra.build_string_module(project, source)
+        scope = module.get_scope()
+        binding = scope.get_defined_names().get(item.name)
+        if binding is None:
             return None
-        for statement in tree.body:
-            if not statement.lineno <= item.line <= (statement.end_lineno or 0):
+        owner, line = binding.get_definition_location()
+        if owner is not module or line != item.line:
+            return None
+        statements = u.Infra.logical_statements(source)
+        statement = next(
+            (
+                row
+                for row in statements
+                if row.line == line
+                and row.enclosing_kind == c.Infra.RopeScopeKind.MODULE
+            ),
+            None,
+        )
+        if statement is None:
+            return None
+        for child in scope.get_scopes():
+            if child.pyobject is not binding.get_object():
                 continue
-            if isinstance(statement, (ast.Assign, ast.AnnAssign)):
-                targets = (
-                    statement.targets
-                    if isinstance(statement, ast.Assign)
-                    else (statement.target,)
-                )
-                if any(
-                    isinstance(target, ast.Name) and target.id == item.name
-                    for target in targets
-                ):
-                    return statement
-                continue
-            if (
-                isinstance(
-                    statement,
-                    (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef),
-                )
-                and statement.name == item.name
-            ):
-                return statement
-        return None
+            start, _stop = child.get_region()
+            end_line = child.get_end()
+            end = sum(len(text) for text in source.splitlines(keepends=True)[:end_line])
+            return statement.model_copy(
+                update={
+                    "line": source.count("\n", 0, start) + 1,
+                    "end_line": end_line,
+                    "start_offset": start,
+                    "end_offset": end,
+                    "text": source[start:end],
+                },
+            )
+        return statement
 
     @staticmethod
-    def _statement_body(statement: ast.stmt | None, source: str) -> str:
+    def _statement_body(statement: m.Infra.LogicalStatement | None, source: str) -> str:
         """Return the exact source text of one definition statement.
 
         Returns:
             The resulting ``str``.
 
         """
-        if statement is None or statement.end_lineno is None:
+        if statement is None:
             return ""
-        lines = source.splitlines(keepends=True)
-        return "".join(lines[statement.lineno - 1 : statement.end_lineno])
+        return source[statement.start_offset : statement.end_offset]
+
+    @staticmethod
+    def _binding_is_unifiable(
+        module: p.Infra.RopePyModule, definition: m.Infra.DuplicateDefinition
+    ) -> bool:
+        """Return whether the definition name resolves to one module binding.
+
+        Returns:
+            Whether the module scope exposes the definition name exactly once
+            so purity analysis can reason about a single binding.
+
+        """
+        module_scope = module.get_scope()
+        binding = module_scope.get_defined_names().get(definition.item.name)
+        return not (
+            binding is None
+            or (
+                isinstance(binding, p.Infra.RopeAssignedName)
+                and len(binding.assignments) != 1
+            )
+        )
 
     @classmethod
-    def _statement_is_pure(cls, statement: ast.stmt | None) -> bool:
+    def _statement_is_pure(
+        cls, project: p.Infra.RopeProject, definition: m.Infra.DuplicateDefinition
+    ) -> bool:
         """Return whether the statement is byte-identity-safe to unify.
 
         Every loaded name must be a builtin and every call must invoke one of
@@ -343,18 +528,44 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             Whether the statement is a pure module-level definition.
 
         """
+        statement = definition.statement
         if statement is None:
             return False
-        for node in ast.walk(statement):
-            if (
-                isinstance(node, ast.Name)
-                and isinstance(node.ctx, ast.Load)
-                and node.id not in c.Infra.DUPLICATE_BUILTIN_NAMES
-            ):
-                return False
-            if isinstance(node, ast.Call) and not (
-                isinstance(node.func, ast.Name)
-                and node.func.id in c.Infra.DUPLICATE_PURE_CONSTRUCTORS
+        module = u.Infra.build_string_module(project, definition.source)
+        if not cls._binding_is_unifiable(module, definition):
+            return False
+        targets = frozenset(
+            row.start_offset + len(row.text) - len(row.text.lstrip())
+            for row in u.Infra.logical_statements(definition.source)
+            if row.category
+            in {c.Infra.StatementCategory.ASSIGN, c.Infra.StatementCategory.ANN_ASSIGN}
+            and statement.start_offset <= row.start_offset < statement.end_offset
+            and u.Infra.target_name(row)
+        )
+        builtins = u.Infra.require_semantic_module(
+            project.get_module("builtins")
+        ).get_attributes()
+        for start, stop in u.Infra.semantic_regions(
+            module,
+            "${duplicate_expression}",
+            arguments={},
+            start=statement.start_offset,
+            end=statement.end_offset,
+        ):
+            expression = definition.source[start:stop]
+            if expression.isidentifier() and start not in targets:
+                scope = u.Infra.scope_at(module, start)
+                actual = u.Infra.expression_name(scope, expression)
+                expected = builtins.get(expression)
+                if expected is None or not u.Infra.same_name(expected, actual):
+                    return False
+                if (
+                    u.Infra.word_is_function_call(definition.source, start)
+                    and expression not in c.Infra.DUPLICATE_PURE_CONSTRUCTORS
+                ):
+                    return False
+            elif "." in expression and u.Infra.word_is_function_call(
+                definition.source, stop - 1
             ):
                 return False
         return True
@@ -375,20 +586,19 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             item.module_name for item in group.definitions if item.module_name
         }
         importers: list[str] = []
-        for entry in rope_workspace.modules():
-            path = entry.file_path
-            if not path.is_file():
-                continue
-            try:
-                tree = ast.parse(path.read_text(encoding=c.DEFAULT_ENCODING))
-            except SyntaxError:
-                continue
-            for node in ast.walk(tree):
-                star = (
-                    isinstance(node, ast.ImportFrom)
-                    and not node.level
-                    and node.module in copy_modules
-                    and any(alias.name == "*" for alias in node.names)
+        for resource in rope_workspace.rope_project.get_python_files():
+            path = Path(resource.real_path).resolve()
+            imports = u.Infra.resolve_module_imports(
+                rope_workspace.rope_project, resource
+            )
+            for statement in u.Infra.import_statements(imports):
+                star = u.Infra.import_statement_module_name(
+                    statement
+                ) in copy_modules and any(
+                    name == "*"
+                    for name, _alias in u.Infra.import_statement_names_and_aliases(
+                        statement
+                    )
                 )
                 if star:
                     importers.append(path.as_posix())
@@ -422,9 +632,13 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                 if path == definition.path:
                     in_module_uses += 1
                     continue
-                if cls._is_generated(path):
+                generated = rope_workspace.source(path).startswith(
+                    c.Infra.AUTOGEN_HEADERS
+                )
+                if generated or c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(path.name):
                     return f"a consumer is generated: {path}"
                 if not cls._consumer_is_rebindable(
+                    rope_workspace,
                     path,
                     line,
                     name=definition.item.name,
@@ -502,6 +716,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
     @classmethod
     def _consumer_is_rebindable(
         cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
         path: Path,
         line: int,
         *,
@@ -521,44 +736,40 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             Whether the consumer occurrence rebinds as an import.
 
         """
-        try:
-            tree = ast.parse(path.read_text(encoding=c.DEFAULT_ENCODING))
-        except SyntaxError:
+        resource = workspace.resource(path)
+        if resource is None:
             return False
+        resource = u.Infra.require_file_resource(resource, path)
+        imports = u.Infra.resolve_module_imports(workspace.rope_project, resource)
         imported = False
-        for node in ast.walk(tree):
-            if not (
-                isinstance(node, ast.ImportFrom)
-                and not node.level
-                and node.module == module
+        for statement in u.Infra.import_statements(imports):
+            if u.Infra.import_statement_module_name(statement) != module:
+                continue
+            if not any(
+                original == name
+                for original, _alias in u.Infra.import_statement_names_and_aliases(
+                    statement
+                )
             ):
                 continue
-            if not any(name in {alias.name, alias.asname} for alias in node.names):
-                continue
             imported = True
-            if node.lineno <= line <= (node.end_lineno or node.lineno):
+            if statement.start_line <= line < statement.end_line:
                 return True
         if not imported:
             return False
+        pymodule = u.Infra.resolve_pymodule(workspace.rope_project, resource)
+        lines = pymodule.source_code.splitlines(keepends=True)
+        start = sum(len(text) for text in lines[: line - 1])
+        end = start + len(lines[line - 1])
         return any(
-            isinstance(node, ast.Name) and node.id == name and node.lineno == line
-            for node in ast.walk(tree)
-        )
-
-    @staticmethod
-    def _is_generated(path: Path) -> bool:
-        """Return whether one path is a generated module or export sidecar.
-
-        Returns:
-            Whether the path is generated surface the engine never rewrites.
-
-        """
-        if c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(path.name):
-            return True
-        if not path.is_file():
-            return False
-        return path.read_text(encoding=c.DEFAULT_ENCODING).startswith(
-            c.Infra.AUTOGEN_HEADERS,
+            pymodule.source_code[first:last].isidentifier()
+            for first, last in u.Infra.semantic_regions(
+                pymodule,
+                "${duplicate_consumer}",
+                arguments={"duplicate_consumer": f"name={module}.{name}"},
+                start=start,
+                end=end,
+            )
         )
 
     # ----------------------------------------------------------------- edits
@@ -624,11 +835,15 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             )
             if rebound is None:
                 return f"in-module owner import did not plan: {copy_file}"
-            updated = cls._remove_statement(rebound, copy.definition)
+            updated = cls._remove_statement(
+                rope_workspace.rope_project, resource, rebound, copy.definition
+            )
             if updated is None:
                 return f"copy statement vanished while planning: {copy_file}"
         else:
-            updated = cls._remove_statement(original, copy.definition)
+            updated = cls._remove_statement(
+                rope_workspace.rope_project, resource, original, copy.definition
+            )
             if updated is None:
                 return f"copy statement did not match while planning: {copy_file}"
         detail = (
@@ -688,6 +903,8 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
     @classmethod
     def _remove_statement(
         cls,
+        project: p.Infra.RopeProject,
+        resource: p.Infra.RopeResource,
         source: str,
         definition: m.Infra.DuplicateDefinition,
     ) -> str | None:
@@ -698,16 +915,37 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             matches the planned definition.
 
         """
-        statement = cls._definition_statement(source, definition.item)
+        if not definition.body or source.count(definition.body) != 1:
+            return None
+        start = source.index(definition.body)
+        declaration_line = (
+            source.count("\n", 0, start)
+            + 1
+            + definition.item.line
+            - (
+                definition.statement.line
+                if definition.statement is not None
+                else definition.item.line
+            )
+        )
+        item = definition.item.model_copy(update={"line": declaration_line})
+        statement = cls._definition_statement(project, source, item)
         if statement is None or cls._statement_body(statement, source) != (
             definition.body
         ):
             return None
-        without = u.Infra.apply_line_ranges(
+        change = u.Infra.content_change(
+            resource,
             source,
-            ((statement.lineno, statement.end_lineno or statement.lineno),),
+            (
+                m.Infra.SourceRewrite(
+                    start=statement.start_offset,
+                    end=statement.end_offset,
+                    text="",
+                ),
+            ),
         )
-        return u.Infra.normalize_top_level_spacing(without)
+        return u.Infra.normalize_top_level_spacing(change.new_contents)
 
     @staticmethod
     def _collect_working(
@@ -734,8 +972,8 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         cls,
         root: Path,
         *,
+        rope_project: p.Infra.RopeProject,
         working: t.MappingKV[Path, str],
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
         edits: t.SequenceOf[m.Infra.SemanticMigrationEdit],
         deletions: t.SequenceOf[m.Infra.DuplicateDeletion],
     ) -> p.Result[bool]:
@@ -782,22 +1020,40 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                 ),
             )
 
-        def verify() -> p.Result[bool]:
-            """Prove the published bytes, then run the joint gates.
+        def verify(candidate_root: Path) -> p.Result[bool]:
+            """Prove the complete candidate, then run its joint consumer gates.
 
             Returns:
                 The resulting ``p.Result[bool]``.
 
             """
-            rope_workspace.refresh()
-            residue = cls._published_residue(edits, deletions)
+            residue = cls._published_residue(
+                rope_project,
+                tuple(
+                    edit.model_copy(
+                        update={
+                            "file_path": candidate_root
+                            / edit.file_path.relative_to(root)
+                        }
+                    )
+                    for edit in edits
+                ),
+                tuple(
+                    deletion.model_copy(
+                        update={
+                            "path": candidate_root / deletion.path.relative_to(root)
+                        }
+                    )
+                    for deletion in deletions
+                ),
+            )
             if residue is not None:
                 return r[bool].fail(residue)
             return FlextInfraWorkspaceChecker(
-                repository_root=root,
+                repository_root=candidate_root,
             ).execute_payload(
                 m.Infra.RunCommand(
-                    repository_root=root,
+                    repository_root=candidate_root,
                     projects=cls._publication_projects(root, semantic_plans),
                     gates=(c.Infra.LINT, c.Infra.PYREFLY, c.Infra.FRESH_IMPORT),
                 ),
@@ -806,9 +1062,21 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         return FlextInfraSemanticPublication.publish_semantic_file_plans(
             semantic_plans,
             repository_root=root,
-            validator=verify,
-            projection_roots=tuple(sorted(u.Infra.governed_project_roots(root))),
-        ).map(_published_true)
+            options=m.Infra.SemanticPublicationOptions(
+                validator=verify,
+                projection_roots=tuple(sorted(u.Infra.governed_project_roots(root))),
+            ),
+        ).map(cls._published_true)
+
+    @staticmethod
+    def _published_true(_paths: t.VariadicTuple[Path]) -> bool:
+        """Collapse one published-path tuple to the boolean success the caller owns.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
+        return True
 
     @staticmethod
     def _publication_projects(
@@ -831,6 +1099,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
     @classmethod
     def _published_residue(
         cls,
+        project: p.Infra.RopeProject,
         edits: t.SequenceOf[m.Infra.SemanticMigrationEdit],
         deletions: t.SequenceOf[m.Infra.DuplicateDeletion],
     ) -> str | None:
@@ -843,14 +1112,9 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         """
         for deletion in deletions:
             published = Path(deletion.path).read_text(encoding=c.DEFAULT_ENCODING)
-            probe = m.Infra.Object(
-                name=deletion.name,
-                kind="constant",
-                file_path=str(deletion.path),
-                line=deletion.line,
-                project=deletion.project,
-            )
-            if cls._definition_statement(published, probe) is not None:
+            module = u.Infra.build_string_module(project, published)
+            scope = module.get_scope()
+            if deletion.name in scope.get_defined_names():
                 return f"published source still defines the copy: {deletion.path}"
         for edit in edits:
             published = Path(edit.file_path).read_text(encoding=c.DEFAULT_ENCODING)
@@ -1017,7 +1281,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         if mirror in seen:
             return None
         seen.add(mirror)
-        if not FlextInfraDuplicationGate.is_semantic_clone(duplicate, first, second):
+        if not FlextInfraDuplicationGate.semantic_clone(duplicate, first, second):
             return None
         owner_side, other_side = sorted(sides, key=cls._side_layer_key(layers))
         return cls._clone_plan(report_duplicate.lines, owner_side, other_side)
@@ -1138,16 +1402,6 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         if not containing:
             return len(layers)
         return max(containing, key=lambda item: len(item[0].parts))[1]
-
-
-def _published_true(_paths: t.VariadicTuple[Path]) -> bool:
-    """Collapse one published-path tuple to the boolean success the caller owns.
-
-    Returns:
-        The resulting ``bool``.
-
-    """
-    return True
 
 
 __all__: list[str] = ["FlextInfraCodemodDuplicateApply"]

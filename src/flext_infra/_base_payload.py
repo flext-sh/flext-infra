@@ -6,29 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from flext_infra import t
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from flext_infra import p, t
 
 
 class FlextInfraCommandPayloadMixin:
     """Private FLEXT payload builder for shared command services."""
 
-    if TYPE_CHECKING:
-        repository_root: Path
-        apply_changes: bool
-        check_only: bool
-        dry_run: bool
-
-        output_format: str
-        project_filter: str | None
-        report_path: Path | None
-        output_dir: Path | None
-
-    def command_payload(self) -> t.JsonMapping:
+    def command_payload(self: p.Infra.CommandPayloadContext) -> t.JsonMapping:
         """Return the normalized shared command payload once.
 
         Returns:

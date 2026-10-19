@@ -36,12 +36,6 @@ class FlextInfraConstantsSharedInfra:
         USAGE = 2
         INFRA = 3
 
-    EXEMPT_FILENAMES: ClassVar[frozenset[str]] = frozenset({
-        "__init__.py",
-        "conftest.py",
-        "__main__.py",
-    })
-    EXEMPT_PREFIXES: ClassVar[frozenset[str]] = frozenset({"test_", "_"})
     FACADE_MODULE_DEPTH: ClassVar[int] = 3
     "Relative path part count for root facade modules (src/<pkg>/<file>.py)."
     FACADE_MINIMUM_BASES: ClassVar[int] = 2
@@ -87,6 +81,7 @@ class FlextInfraConstantsSharedInfra:
     MAKEFILE_FILENAME: ClassVar[str] = "Makefile"
     GITMODULES: ClassVar[str] = ".gitmodules"
     GITMODULE_MANAGED_KEY: ClassVar[str] = "flext-managed"
+    GITMODULE_LAYER_KEY: ClassVar[str] = "flext-layer"
     "``.gitmodules`` key whose non-``true`` value opts a member out of governance."
     GITMODULE_SECTION_PREFIX: ClassVar[str] = "submodule."
     GITMODULE_PATH_KEY: ClassVar[str] = "path"
@@ -188,6 +183,42 @@ class FlextInfraConstantsSharedInfra:
 
     # --- Path constants (was: class Paths) ---
     DEFAULT_SRC_DIR: ClassVar[str] = "src"
+
+    # --- Fresh-process import probe templates ---
+    FRESH_IMPORT_PRELUDE: ClassVar[str] = (
+        "import importlib, sys\n"
+        "from importlib.metadata import EntryPoint\n"
+        "from pathlib import Path\n"
+    )
+    FRESH_IMPORT_EXPORT_IMPORT_CODE: ClassVar[str] = (
+        "module = importlib.import_module({package!r})\n"
+    )
+    # The origin gate runs between the import and the name resolution: a
+    # module loaded from outside this checkout must fail with the origin
+    # error naming the foreign path, never with a phantom-attribute error
+    # raised while resolving a stale export name.
+    FRESH_IMPORT_EXPORT_RESOLVE_CODE: ClassVar[str] = (
+        "for name in (*{exports!r}, *getattr(module, '__all__', ())):\n"
+        "    getattr(module, name)\n"
+    )
+    # Synthetic concat keeps the placeholder out of one plain literal: the
+    # marker is template text substituted at render time, never an f-string.
+    FRESH_IMPORT_ORIGINS_PLACEHOLDER: ClassVar[str] = "{" + "origins!r}"
+    # The origin gate runs inside the same probe namespace as the export
+    # resolution, so its loop names must never rebind the probed ``module``.
+    FRESH_IMPORT_ORIGIN_CODE: ClassVar[str] = (
+        "from flext_infra.workspace.environment_provenance import "
+        "FlextInfraWorkspaceEnvironmentProvenance as native_origins\n"
+        "for loaded_name in tuple(sys.modules):\n"
+        "    for package, directory in {origins!r}:\n"
+        "        if loaded_name == package or loaded_name.startswith(package + '.'):\n"
+        "            origin = native_origins.module_source(loaded_name).unwrap()\n"
+        "            if not origin.resolve().is_relative_to(Path(directory)):\n"
+        "                raise ImportError(\n"
+        "                    f'{loaded_name}: origin {origin!r} '\n"
+        "                    f'is outside {directory}'\n"
+        "                )\n"
+    )
 
 
 __all__: list[str] = ["FlextInfraConstantsSharedInfra"]

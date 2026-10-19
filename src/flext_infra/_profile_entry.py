@@ -9,9 +9,9 @@ from __future__ import annotations
 import cProfile
 import signal
 import sys
+import traceback
 from pathlib import Path
 
-from flext_infra import main
 from flext_infra._pytest_clock import FlextInfraPytestClock
 
 
@@ -24,18 +24,38 @@ class FlextInfraProfileEntry:
 
         Returns:
             The canonical CLI exit status.
+
         """
         output = Path(sys.argv[1])
         profiler = cProfile.Profile()
         previous = signal.getsignal(signal.SIGTERM)
+        status: int | None = None
 
         FlextInfraPytestClock.register_signal_checkpoint(profiler, output)
         try:
-            return profiler.runcall(main, sys.argv[2:])
+            status = profiler.runcall(main, sys.argv[2:])
+            return status
         finally:
             signal.signal(signal.SIGTERM, previous)
-            FlextInfraPytestClock.publish_profile(profiler, output)
+            primary = sys.exception() if status is None else None
+            try:
+                FlextInfraPytestClock.publish_profile(profiler, output)
+                profiler.print_stats(sort="cumtime")
+            except BaseException as publication_failure:
+                if primary is not None:
+                    primary.add_note(
+                        "profile publication failed:\n"
+                        + "".join(
+                            traceback.format_exception(publication_failure, chain=False)
+                        )
+                    )
+                elif status:
+                    traceback.print_exception(publication_failure)
+                else:
+                    raise
 
 
 if __name__ == "__main__":
+    from flext_infra import main
+
     raise SystemExit(FlextInfraProfileEntry.run())

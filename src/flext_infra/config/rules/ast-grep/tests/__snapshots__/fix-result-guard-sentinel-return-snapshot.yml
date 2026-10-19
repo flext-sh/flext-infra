@@ -61,12 +61,12 @@ snapshots:
     def run_guard(validation_result: p.Result[bool]) -> p.Result[bool]:
         if validation_result.failure:
             return False
-        return r[bool].ok(True)
+        return r[bool].ok(value=True)
   : fixed: |
       def run_guard(validation_result: p.Result[bool]) -> p.Result[bool]:
           if validation_result.failure:
               return r[bool].from_failure(validation_result)
-          return r[bool].ok(True)
+          return r[bool].ok(value=True)
     labels:
     - source: return False
       style: primary
@@ -98,7 +98,7 @@ snapshots:
         def run_guard(validation_result: p.Result[bool]) -> p.Result[bool]:
             if validation_result.failure:
                 return False
-            return r[bool].ok(True)
+            return r[bool].ok(value=True)
       style: secondary
       start: 0
-      end: 150
+      end: 156

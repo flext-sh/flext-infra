@@ -9,16 +9,20 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
+from flext_core import FlextRuntime
+
 from flext_infra import c, config, m, r, t, u
-from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from flext_infra.deps.phases.consolidate_groups import FlextInfraConsolidateGroupsPhase
-from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
-from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
-from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
-from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
-from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
-from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
-from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
+from flext_infra.deps import FlextInfraExtraPathsManager
+from flext_infra.deps.phases import (
+    FlextInfraConsolidateGroupsPhase,
+    FlextInfraEnsurePackagingPhase,
+    FlextInfraEnsurePyreflyConfigPhase,
+    FlextInfraEnsurePyrightConfigPhase,
+    FlextInfraEnsureRuffConfigPhase,
+    FlextInfraInjectCommentsPhase,
+    FlextInfraToolTablesPhase,
+)
+from flext_infra.refactor import FlextInfraProjectClassifier
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -83,7 +87,7 @@ class FlextInfraPyprojectModernizerDocument:
         document = u.Cli.toml_parse_text(recovered.value)
         if document is None:
             return result_type.fail(f"invalid TOML: {path}")
-        payload_source = u.normalize_to_json_value(document.unwrap())
+        payload_source = FlextRuntime.normalize_to_json_value(document.unwrap())
         validated: p.Result[t.MutableJsonMapping] = u.validate_value(
             t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER,
             payload_source,
@@ -173,8 +177,6 @@ class FlextInfraPyprojectModernizerDocument:
         table_key: str,
     ) -> None:
         """Reorder a table child or every table in an array child."""
-        if table_key == "per-file-ignores":
-            return
         table = u.Cli.toml_table_child(container, table_key)
         if table is not None:
             cls._reorder_table(table)
@@ -239,24 +241,62 @@ class FlextInfraPyprojectModernizerDocument:
             if not migrated.value:
                 state.rendered = state.original_rendered
                 return r[t.StrSequence].ok(())
-            return self._render_document_state(
+            rendered = self._render_document_state(
                 state,
                 migrated.value,
-                dry_run=dry_run,
                 skip_comments=True,
                 format_source=False,
                 preserve_layout=True,
             )
-        return self._render_document_state(
-            state,
-            self._apply_document_phases(
+        else:
+            manifests = u.Infra.load_workspace_manifest(state.pyproject_path.parent)
+            if manifests.failure:
+                return r[t.StrSequence].from_failure(manifests)
+            manifest = manifests.value[0] if manifests.value else None
+            project = manifest.project if manifest is not None else None
+            topology = m.Infra.PyprojectDeclaredTopology.model_validate({
+                **(
+                    project.model_dump(
+                        include=set(m.Infra.PyprojectDeclaredTopology.model_fields),
+                    )
+                    if project is not None
+                    else {}
+                ),
+                "project_declaration_resource": (
+                    FlextInfraEnsurePackagingPhase.declaration_resource(
+                        package_name=(
+                            project.package_name
+                            if project is not None
+                            else u.Infra.package_name_from_payload(
+                                state.pyproject_path.parent,
+                                state.payload,
+                                u.Infra.docs_meta_from_payload(state.payload),
+                            )
+                        ),
+                        package=manifest.repository.package,
+                    )
+                    if manifest is not None
+                    else None
+                ),
+            })
+            rendered = self._render_document_state(
                 state,
-                canonical_dev=canonical_dev,
-                topology=m.Infra.PyprojectDeclaredTopology(),
-            ),
-            dry_run=dry_run,
-            skip_comments=skip_comments,
-        )
+                self._apply_document_phases(
+                    state,
+                    canonical_dev=canonical_dev,
+                    topology=topology,
+                ),
+                skip_comments=skip_comments,
+            )
+        if rendered.failure:
+            return rendered
+        if state.rendered == state.original_rendered.rstrip() + "\n":
+            return r[t.StrSequence].ok(())
+        if not dry_run:
+            u.write_file(
+                state.pyproject_path, state.rendered, encoding=c.DEFAULT_ENCODING
+            )
+        return rendered
 
     def _apply_document_phases(
         self,
@@ -303,7 +343,11 @@ class FlextInfraPyprojectModernizerDocument:
         changes: t.MutableSequenceOf[str] = [
             *self._normalize_build_payload(payload),
             *FlextInfraConsolidateGroupsPhase().apply_payload(payload, canonical_dev),
-            *FlextInfraToolTablesPhase(tooling).apply_payload(payload, path=path),
+            *FlextInfraToolTablesPhase(tooling).apply_payload(
+                payload,
+                path=path,
+                repository_namespace_packages=topology.repository_namespace_packages,
+            ),
             # Pyrefly derives its include globs from the canonical Pyright
             # roots, so resolve Pyright first and converge in one pass.
             *FlextInfraEnsurePyrightConfigPhase(tooling).apply_payload(
@@ -327,7 +371,6 @@ class FlextInfraPyprojectModernizerDocument:
             ),
             *FlextInfraEnsureRuffConfigPhase(
                 tooling,
-                managed_artifacts.artifacts.Ruff,
             ).apply_payload(
                 payload,
                 path=path,
@@ -355,14 +398,20 @@ class FlextInfraPyprojectModernizerDocument:
         state: m.Infra.PyprojectDocumentState,
         changes: t.StrSequence,
         *,
-        dry_run: bool,
         skip_comments: bool,
         format_source: bool = True,
         preserve_layout: bool = False,
     ) -> p.Result[t.StrSequence]:
-        """Order, annotate, and format one payload; write unless ``dry_run``.
+        """Order, annotate, and format one payload without writing to disk.
 
         A formatter failure is the result's failure, never a reported change.
+
+        Args:
+            state: The parsed document state to render.
+            changes: The already-accumulated change entries to extend.
+            skip_comments: Keep the inject-comments phase out of the render.
+            format_source: Run the canonical TOML formatter.
+            preserve_layout: Synchronize values through the original TOML tree.
 
         Returns:
             The resulting ``p.Result[t.StrSequence]``.
@@ -397,10 +446,6 @@ class FlextInfraPyprojectModernizerDocument:
                 return r[t.StrSequence].from_failure(formatted)
             rendered = formatted.value
         state.rendered = rendered.rstrip() + "\n"
-        if state.rendered == state.original_rendered.rstrip() + "\n":
-            return r[t.StrSequence].ok(())
-        if not dry_run:
-            u.write_file(path, state.rendered, encoding=c.DEFAULT_ENCODING)
         return r[t.StrSequence].ok((*changes, *comment_changes))
 
     @classmethod

@@ -71,18 +71,6 @@ class FlextInfraModelsMixins:
         ] = None
         verbose: Annotated[bool, m.Field(description="Verbose output")] = False
 
-        @property
-        def project_names(self) -> t.StrSequence | None:
-            """Normalized project names from repeated selectors."""
-            names = tuple(
-                item.strip()
-                for value in (self.projects or ())
-                for group in (value or "").split(",")
-                for item in group.split()
-                if item.strip()
-            )
-            return names or None
-
     class ReadMixin(ScopeMixin):
         """Read-only commands — report file + output directory only.
 
@@ -99,21 +87,6 @@ class FlextInfraModelsMixins:
             str | None,
             m.Field(description="Output directory for reports"),
         ] = None
-
-        @property
-        def report_path(self) -> Path | None:
-            """Resolved report path when provided."""
-            if self.report is None:
-                return None
-            return Path(self.report).resolve()
-
-        @property
-        def output_dir_path(self) -> Path | None:
-            """Resolved output directory when provided."""
-            if self.output_dir is None:
-                return None
-            # The validated field is a string; resolve it at the Path boundary.
-            return Path(self.output_dir).resolve()
 
     class WriteMixin(ScopeMixin):
         """Canonical write contract — apply/dry-run + safety gates.
@@ -169,6 +142,7 @@ class FlextInfraModelsMixins:
 
             Returns:
                 The resulting ``bool``.
+
             """
             return not self.apply
 
@@ -222,11 +196,6 @@ class FlextInfraModelsMixins:
 
     # ═══════════════════ VIOLATION/DETAIL MIXINS ═══════════════════
 
-    class ViolationDetailMixin(m.BaseModel):
-        """Shared violation detail field."""
-
-        detail: Annotated[str, m.Field(description="Violation detail")] = ""
-
     class ErrorDetailMixin(m.BaseModel):
         """Shared error detail field."""
 
@@ -260,9 +229,7 @@ class FlextInfraModelsMixins:
     class ProjectNamesListMixin(m.BaseModel):
         """Shared concrete project-name collection."""
 
-        project_names: Annotated[t.StrSequence, m.Field(default_factory=tuple)] = (
-            m.Field(default_factory=tuple)
-        )
+        project_names: t.StrSequence = m.Field(default_factory=tuple)
 
 
 __all__: list[str] = ["FlextInfraModelsMixins"]

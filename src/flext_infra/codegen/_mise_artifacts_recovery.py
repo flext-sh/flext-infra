@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, r, u
+from flext_infra import m, r, t, u
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournal,
@@ -30,52 +30,119 @@ class FlextInfraMiseRecovery:
         journal: m.Infra.CodegenTransactionJournal,
         journal_state: m.Cli.AtomicFileState,
     ) -> p.Result[bool]:
-        """Clean authenticated staging without restoring any destination.
+        """Retire interrupted proposals or compensate explicitly rejected groups.
+
+        Unselected prepared proposals preserve current destinations as new cleanup
+        inputs. Retirement neither approves the interrupted group nor authorizes its
+        pending publications.
 
         Returns:
             The cleanup outcome, preserving its original failure.
+
         """
         topology = FlextInfraMiseArtifactsVerification.journal_topology(layout, journal)
         if topology.failure:
             return topology
-        authorized = FlextInfraMiseArtifactsState.validate_transaction_roots(
+        current = FlextInfraMiseArtifactsVerification.states_current((journal_state,))
+        if current.failure:
+            return current
+        preserved: t.VariadicTuple[m.Cli.AtomicFileState] = ()
+        if journal.state == "prepared" and not any(
+            entry.recover_group for entry in journal.entries
+        ):
+            observed = FlextInfraMiseRecovery.retirement_inputs(layout, journal)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            preserved = observed.value
+        retained = FlextInfraMiseArtifactsVerification.states_current((
+            *preserved,
+            journal_state,
+        ))
+        if retained.failure:
+            return retained
+        authorized = FlextInfraMiseArtifactsState.reconcile_pending_directories(
             layout, journal
         )
         if authorized.failure:
             return authorized
-        if journal.state == "prepared":
-            grouped = tuple(
-                entry for entry in journal.entries if entry.dependency_group is not None
+        settled = FlextInfraMiseRecovery._recover_selected_groups(
+            layout, journal, journal_state
+        )
+        return settled.flat_map(
+            lambda current: FlextInfraMiseArtifactsJournal.cleanup(
+                layout, *current, preserved_states=preserved
             )
-            selected = {
-                entry.dependency_group for entry in grouped if entry.recover_group
+        )
+
+    @staticmethod
+    def _recover_selected_groups(
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+        journal_state: m.Cli.AtomicFileState,
+    ) -> p.Result[t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
+        """Preserve the durable compensation decision for explicitly failed groups.
+
+        Returns:
+            The settled journal and its exact current receipt.
+
+        """
+        result_type = r[
+            t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
+        ]
+        selected = {
+            entry.dependency_group for entry in journal.entries if entry.recover_group
+        }
+        if journal.state != "prepared" or not selected:
+            return result_type.ok((journal, journal_state))
+        journal = journal.model_copy(
+            update={
+                "entries": tuple(
+                    entry.model_copy(update={"recover_group": True})
+                    if entry.dependency_group in selected
+                    else entry
+                    for entry in journal.entries
+                ),
             }
-            recovering = tuple(
-                entry
-                for entry in grouped
-                if not selected or entry.dependency_group in selected
+        )
+        persisted = FlextInfraMiseArtifactsJournal.write(
+            layout, journal, expected=journal_state
+        )
+        if persisted.failure:
+            return result_type.from_failure(persisted)
+        return FlextInfraMiseRecovery.restore_groups(layout, journal).map(
+            lambda _: (journal, persisted.value)
+        )
+
+    @staticmethod
+    def retirement_inputs(
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        """Capture current physical destinations before retiring a proposal.
+
+        These are current cleanup inputs, never publication or completion receipts.
+        Earlier authored changes are preserved; every captured state is revalidated
+        before cleanup and before the journal is retired.
+
+        Returns:
+            The complete observed destination states, or the first unsafe input.
+
+        """
+        result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
+        captured: list[m.Cli.AtomicFileState] = []
+        for entry in journal.entries:
+            path = FlextInfraMiseArtifactsFiles.resolve_transaction(
+                layout, entry.path, purpose="interrupted proposal retirement"
             )
-            if recovering:
-                journal = journal.model_copy(
-                    update={
-                        "entries": tuple(
-                            entry.model_copy(update={"recover_group": True})
-                            if entry in recovering
-                            else entry
-                            for entry in journal.entries
-                        ),
-                    }
-                )
-                persisted = FlextInfraMiseArtifactsJournal.write(
-                    layout, journal, expected=journal_state
-                )
-                if persisted.failure:
-                    return r[bool].from_failure(persisted)
-                journal_state = persisted.value
-                recovered = FlextInfraMiseRecovery.restore_groups(layout, journal)
-                if recovered.failure:
-                    return recovered
-        return FlextInfraMiseArtifactsJournal.cleanup(layout, journal, journal_state)
+            if path.failure:
+                return result_type.from_failure(path)
+            observed = FlextInfraMiseArtifactsFiles.read_state(
+                path.value, required=False
+            )
+            if observed.failure:
+                return result_type.from_failure(observed)
+            captured.append(observed.value)
+        return result_type.ok(tuple(captured))
 
     @staticmethod
     def restore_groups(
@@ -86,6 +153,7 @@ class FlextInfraMiseRecovery:
 
         Returns:
             Whether every selected effect was safely recovered.
+
         """
         for entry in reversed(journal.entries):
             if entry.dependency_group is None or not entry.recover_group:
@@ -107,6 +175,7 @@ class FlextInfraMiseRecovery:
 
         Returns:
             Whether this authenticated destination required compensation.
+
         """
         path = FlextInfraMiseArtifactsFiles.resolve_transaction(
             layout, entry.path, purpose="dependent-group recovery"
@@ -185,6 +254,7 @@ class FlextInfraMiseRecovery:
 
         Returns:
             Whether the journal-owned preimage was consumed.
+
         """
         if entry.original_staging is None or entry.original_content_hex is None:
             return r[bool].fail(f"group preimage missing: {entry.path}")
@@ -263,6 +333,7 @@ class FlextInfraMiseRecovery:
 
         Returns:
             The authenticated physical preimage snapshot.
+
         """
         backup = FlextInfraMiseArtifactsFiles.read_state(path, required=True)
         if backup.failure:

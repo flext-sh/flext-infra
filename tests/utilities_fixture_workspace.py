@@ -8,14 +8,15 @@ from __future__ import annotations
 
 import dataclasses
 import os
+import runpy
 import shutil
 from collections.abc import Mapping
 from pathlib import Path
 
 from flext_infra import config, infra, u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_infra.worktree import FlextInfraWorktreeService
-from tests import c, m, t, tm
+from tests import c, m, p, t, tm
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
@@ -24,6 +25,40 @@ from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
 
 class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
     """Typed workspace and project-layout fixture helpers."""
+
+    @staticmethod
+    def prove_contract_migration(
+        consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        source: str,
+        *,
+        expect_change: bool = True,
+    ) -> None:
+        """Prove public runtime equivalence, atomic planning and convergence."""
+        workspace, path = consumer
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        edits = tm.ok(
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=workspace,
+                sources={path: source},
+            ),
+        )
+        tm.that(len(edits), eq=int(expect_change))
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        updated = edits[0].updated_source if edits else source
+        path.write_text(updated, encoding=c.DEFAULT_ENCODING)
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+        tm.that(
+            tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                    rope_workspace=workspace,
+                    sources={path: updated},
+                ),
+            ),
+            empty=True,
+        )
 
     @dataclasses.dataclass(frozen=True)
     class BeadsIdentity:
@@ -319,6 +354,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             f'name = "{name}"\n'
             f'authors = [{{name = "{project_spec.author_name}", '
             f'email = "{project_spec.author_email}"}}]\n'
+            f'license = "{project_spec.license}"\n'
             'version = "0.1.0"\n'
             f'requires-python = "{python_required}"\n'
             f'dependencies = ["{upstream_source}"]\n'
@@ -408,10 +444,12 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         project = tmp_path / name
         project.mkdir()
         (project / "Makefile").touch()
+        spec = TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(name)
         (project / "pyproject.toml").write_text(
             (
                 f"[project]\nname='{name}'\nversion='0.1.0'\n"
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+                f'license = "{spec.license}"\n'
                 "dependencies=['flext-core>=0.1.0']\n"
             ),
             encoding="utf-8",
@@ -846,15 +884,20 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             # A governed project always declares its description: the derived
             # render identity reads it and rejects an empty one, exactly as it
             # does for a real checkout.
-            # Why: conform's existing-checkout ProjectSpec now derives authors and
-            # upstream from live PEP 621 metadata (no fabricated spec) — every
-            # governed fixture must declare both.
+            # Why: conform's existing-checkout ProjectSpec derives authors, the
+            # license and upstream from live PEP 621 metadata (no fabricated
+            # spec) — every governed fixture must declare all three.
             python_required = config.Infra.codegen.toolchain.python_required_version
+            spec = TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(
+                distribution,
+            )
             pyproject.write_text(
-                f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
+                f'[project]\nname = "{distribution}"\n'
+                f'version = "{config.Infra.initial_project_version}"\n'
                 f'description = "{distribution} governed fixture"\n'
                 f'requires-python = "{python_required}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+                f'license = "{spec.license}"\n'
                 f'dependencies = ["flext-core @ {internal_source}"]\n'
                 f'[project.urls]\nRepository = "{repository_url}"\n{tooling}',
                 encoding="utf-8",
@@ -941,14 +984,22 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         ) -> None:
             """Declare and commit ``member`` as a real gitlink of ``parent``."""
             _ = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
-            (parent / c.Infra.GITMODULES).write_text(
-                f'[submodule "{distribution}"]\n'
-                f"\tpath = {relative_path}\n"
-                f"\turl = {cls.governed_repository_url(distribution)}\n"
-                "\tbranch = "
-                f"{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}\n",
-                encoding="utf-8",
-            )
+            for key, value in (
+                ("path", relative_path),
+                ("url", cls.governed_repository_url(distribution)),
+                (
+                    "branch",
+                    TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch(),
+                ),
+            ):
+                _ = TestsFlextInfraUtilitiesGitMixin.git_run(
+                    parent,
+                    "config",
+                    "--file",
+                    c.Infra.GITMODULES,
+                    f"submodule.{distribution}.{key}",
+                    value,
+                )
             # A workspace parent declares its own role as workspace: the
             # manifest must agree with the topology the detector observes.
             TestsFlextInfraUtilitiesProjectFixtureMixin.write_workspace_manifest(

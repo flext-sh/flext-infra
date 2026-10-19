@@ -144,6 +144,7 @@ class TestsFlextInfraRootArtifactOwnership:
                     'version = "0.1.0"\n'
                     f'authors = [{{name = "{project.author_name}", '
                     f'email = "{project.author_email}"}}]\n'
+                    f'license = "{project.license}"\n'
                     'requires-python = "'
                     f'{config.Infra.codegen.toolchain.python_required_version}"\n'
                     f'dependencies = ["{u.Tests.flext_source(project.upstream)}"]\n'
@@ -175,6 +176,9 @@ class TestsFlextInfraRootArtifactOwnership:
 
         first = infra.codegen_conform(request)
         result = tm.ok(first)
+        tm.that(result.plan is not None, eq=True)
+        if result.plan is None:
+            pytest.fail("conform did not return its actual plan")
         governed = tuple(file for file in result.plan.files if file.policy is not None)
         tm.that(
             {file.path: file.policy for file in governed},
@@ -210,6 +214,7 @@ class TestsFlextInfraRootArtifactOwnership:
                     'requires-python = "'
                     f'{config.Infra.codegen.toolchain.python_required_version}"\n'
                     'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+                    f'license = "{u.Tests.project_spec(dist).license}"\n'
                     'dependencies = ["flext-core>=0.1.0"]\n',
                 ),
             )

@@ -11,31 +11,26 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
+
 from flext_infra.__version__ import __version__
 
 if TYPE_CHECKING:
     from flext_cli import d, e, h, r, x
 
     from flext_infra import (
-        _constants,
-        _models,
-        _promoted,
-        _protocols,
-        _typings,
-        _utilities,
-        check,
-        codegen,
-        codemod,
-        deps,
-        docs,
-        gates,
-        maintenance,
-        refactor,
-        release,
-        services,
-        transformers,
-        validate,
-        workspace,
+        check as check,
+        codegen as codegen,
+        codemod as codemod,
+        deps as deps,
+        docs as docs,
+        gates as gates,
+        maintenance as maintenance,
+        refactor as refactor,
+        release as release,
+        services as services,
+        transformers as transformers,
+        validate as validate,
+        workspace as workspace,
     )
     from flext_infra.__version__ import (
         FlextInfraVersion,
@@ -52,7 +47,9 @@ if TYPE_CHECKING:
     from flext_infra._config import FlextInfraConfig, config
     from flext_infra._conform_wiring import FlextInfraConformWiring
     from flext_infra._preview_wiring import FlextInfraPreviewWiring
+    from flext_infra._pytest_clock import FlextInfraPytestClock
     from flext_infra._pytest_collection import FlextInfraPytestCollection
+    from flext_infra._pytest_profile_child import FlextInfraPytestProfileChild
     from flext_infra._settings import FlextInfraSettings, settings
     from flext_infra.api import FlextInfra, infra
     from flext_infra.base import FlextInfraServiceBase, s
@@ -86,8 +83,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraPromoted",
     "FlextInfraProtocols",
     "FlextInfraProtocolsBase",
+    "FlextInfraPytestClock",
     "FlextInfraPytestCollection",
     "FlextInfraPytestProfile",
+    "FlextInfraPytestProfileChild",
     "FlextInfraServiceBase",
     "FlextInfraSettings",
     "FlextInfraTypes",
@@ -102,12 +101,6 @@ __all__: tuple[str, ...] = (
     "__url__",
     "__version__",
     "__version_info__",
-    "_constants",
-    "_models",
-    "_promoted",
-    "_protocols",
-    "_typings",
-    "_utilities",
     "c",
     "check",
     "codegen",
@@ -157,8 +150,10 @@ install_lazy_exports(
         "FlextInfraPromoted": ".promoted",
         "FlextInfraProtocols": ".protocols",
         "FlextInfraProtocolsBase": ".protocols",
+        "FlextInfraPytestClock": "._pytest_clock",
         "FlextInfraPytestCollection": "._pytest_collection",
         "FlextInfraPytestProfile": ".pytest_profile",
+        "FlextInfraPytestProfileChild": "._pytest_profile_child",
         "FlextInfraServiceBase": ".base",
         "FlextInfraSettings": "._settings",
         "FlextInfraTypes": ".typings",
@@ -172,12 +167,6 @@ install_lazy_exports(
         "__title__": ".__version__",
         "__url__": ".__version__",
         "__version_info__": ".__version__",
-        "_constants": "._constants",
-        "_models": "._models",
-        "_promoted": "._promoted",
-        "_protocols": "._protocols",
-        "_typings": "._typings",
-        "_utilities": "._utilities",
         "c": ".constants",
         "check": ".check",
         "codegen": ".codegen",

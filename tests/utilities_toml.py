@@ -9,8 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import config, r, u
-from tests import c, m, p, t, tm
+from flext_infra import config, u
+from tests import c, m, p, r, t, tm
 
 
 class TestsFlextInfraUtilitiesTomlMixin:
@@ -198,7 +198,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
             TypeError: If normalized TOML document is not a mapping.
 
         """
-        normalized: t.JsonValue = u.normalize_to_json_value(doc.unwrap())
+        normalized = u.Cli.normalize_json_value(doc.unwrap())
         tm.that(normalized, is_=Mapping)
         if not isinstance(normalized, Mapping):
             msg = "normalized TOML document is not a mapping"
@@ -217,7 +217,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
             TypeError: If normalized TOML value is not a mapping.
 
         """
-        normalized: t.JsonValue = u.normalize_to_json_value(value)
+        normalized = u.Cli.normalize_json_value(value)
         tm.that(normalized, is_=Mapping)
         if not isinstance(normalized, Mapping):
             msg = "normalized TOML value is not a mapping"
@@ -236,7 +236,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
             TypeError: If normalized TOML value is not a list.
 
         """
-        normalized: t.JsonValue = u.normalize_to_json_value(value)
+        normalized = u.Cli.normalize_json_value(value)
         tm.that(normalized, is_=list)
         if not isinstance(normalized, list):
             msg = "normalized TOML value is not a list"
@@ -256,7 +256,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
             TypeError: If normalized TOML strings are not a list.
 
         """
-        normalized: t.JsonValue = u.normalize_to_json_value(value)
+        normalized = u.Cli.normalize_json_value(value)
         tm.that(normalized, is_=list)
         if not isinstance(normalized, list):
             msg = "normalized TOML strings are not a list"

@@ -6,17 +6,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import operator
 from collections.abc import MutableMapping
+from contextlib import ExitStack
 from functools import lru_cache
 from pathlib import Path
 
-from flext_infra import c, config, m, t
+from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenFacades,
+    FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesIterationWorkspace,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
 )
 from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
@@ -38,7 +40,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
 
         """
         ignored = frozenset[str](config.Infra.codegen.source_scan_ignored)
-        return frozenset[str]((*c.Infra.ITERATION_EXCLUDED_PARTS, *ignored))
+        return frozenset[str]((*config.Infra.codegen.analysis_excluded_dirs, *ignored))
 
     @classmethod
     def package_name_for_dir(cls, package_dir: Path, *, project_root: Path) -> str:
@@ -113,114 +115,13 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         return f"{package_name}.{file_path.stem}" if package_name else ""
 
     @classmethod
-    def facade_rebind_module(
-        cls,
-        file_path: Path,
-        source: str,
-        *,
-        project_root: Path,
-    ) -> str:
-        """Return the module of one source written in the facade-rebind form.
-
-        The form imports the parent letter, subclasses it and rebinds the
-        letter to the subclass (``from flext_core import u`` /
-        ``class FlextCliUtilities(u)`` / ``u = FlextCliUtilities``). Mypy
-        rejects that rebind, so the checker configuration the operator
-        authorized for it applies to exactly these modules
-        (operator-ruling-2026-10-01-facade-rebind-mypy-scope).
-
-        Returns:
-            The module name, or the empty string when the source is not in
-            that form or names no module.
-
-        """
-        tree = ast.parse(source)
-        imported = {
-            alias.asname or alias.name
-            for node in tree.body
-            if isinstance(node, ast.ImportFrom)
-            for alias in node.names
-        }
-
-        def _base_names(node: ast.ClassDef) -> set[str]:
-            """Resolve direct base names, seeing through ``Generic[T]`` subscripts.
-
-            The canonical facade-rebind form subclasses the imported letter
-            through a PEP 695 generic class, so the base reaches the AST as
-            ``ast.Subscript(value=Name(letter))`` and a plain ``ast.Name``
-            walk misses it.
-
-            Returns:
-                The resulting ``set[str]``.
-            """
-            names = set[str]()
-            for base in node.bases:
-                candidate = base.value if isinstance(base, ast.Subscript) else base
-                if isinstance(candidate, ast.Name):
-                    names.add(candidate.id)
-            return names
-
-        bases_by_class = {
-            node.name: _base_names(node)
-            for node in tree.body
-            if isinstance(node, ast.ClassDef)
-        }
-        rebinds = any(
-            isinstance(node, ast.Assign)
-            and isinstance(node.value, ast.Name)
-            and any(
-                isinstance(target, ast.Name)
-                and target.id in imported
-                and target.id in bases_by_class.get(node.value.id, set())
-                for target in node.targets
-            )
-            for node in tree.body
-        )
-        if not rebinds:
-            return ""
-        return cls.module_name_for_file(file_path, project_root=project_root)
-
-    @classmethod
-    def facade_rebind_modules(
-        cls,
-        project_root: Path,
-        planned_sources: t.MappingKV[Path, str],
-    ) -> t.StrTuple:
-        """Return the modules of a project written in the facade-rebind form.
-
-        ``planned_sources`` maps each Python file the active plan publishes to
-        its planned content: a scaffold renders the facades its own
-        configuration must cover, so the planned bytes, not the tree before
-        publication, decide those files. Every other source is read from disk.
-
-        Returns:
-            The modules written in the canonical facade-rebind form.
-
-        """
-        root = project_root.resolve()
-        return tuple(
-            sorted({
-                module
-                for file_path, source in cls._project_sources(
-                    root,
-                    planned_sources,
-                ).items()
-                if (
-                    module := cls.facade_rebind_module(
-                        file_path,
-                        source,
-                        project_root=root,
-                    )
-                )
-            }),
-        )
-
-    @classmethod
     def runtime_evaluated_base_classes(
         cls,
         project_root: Path,
         planned_sources: t.MappingKV[Path, str],
         roots: t.StrSequence,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> t.StrTuple:
         """Return the class bases whose subclasses evaluate annotations at runtime.
 
@@ -234,76 +135,44 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
 
         """
         root = project_root.resolve()
-        sources = {
-            cls.module_name_for_file(path, project_root=root): (path, source)
-            for path, source in cls._project_sources(root, planned_sources).items()
-            if cls.module_name_for_file(path, project_root=root)
-        }
-        if not sources:
-            # No captured declaration (e.g. a scaffold planned before its
-            # sources exist): nothing derives beyond the declared roots, so no
-            # Rope project is opened and no workspace tree is walked.
-            return tuple(sorted(roots))
-        # Generated package inits are projections excluded from the class
-        # inventory, yet their install_lazy_exports maps own the namespace
-        # aliases (m, p, t and siblings) that facade-qualified bases resolve
-        # through. Read those maps from disk so resolution can rewrite
-        # ``<pkg>.<alias>`` targets to their provider modules.
-        extra_module_aliases: t.StrDict = {}
-        owned = {path for path, _ in sources.values()}
-        for init_path in sorted(root.rglob("__init__.py")):
-            resolved = init_path.resolve()
-            if resolved in owned or not init_path.is_file():
-                continue
-            init_module = cls.module_name_for_file(init_path, project_root=root)
-            if not init_module:
-                continue
-            for (
-                alias,
-                absolute,
-            ) in FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
-                init_module,
-                init_path,
-                init_path.read_text(encoding=c.DEFAULT_ENCODING),
-            ).items():
-                extra_module_aliases.setdefault(
-                    f"{init_module}.{alias}",
-                    absolute,
+        with ExitStack() as stack:
+            if source_project is None:
+                source_project, _, captured = stack.enter_context(
+                    FlextInfraUtilitiesCodegenFacades.facade_source_project(
+                        root,
+                        planned_sources=planned_sources,
+                    )
                 )
-        # The analysis root opens with the whole declared workspace's member
-        # source roots on the resolution path: member sources legitimately
-        # import sibling fleet packages (tests fixtures import flext_tests,
-        # src modules import flext_core), and a member-only rope path raises
-        # ModuleNotFoundError for every cross-member base resolution.
-        # An unpublished project root (planned bytes only) is never created:
-        # Rope parses from its nearest existing ancestor, which is always one
-        # of the project roots so planned sources need no folder on disk.
-        parse_root = next(path for path in (root, *root.parents) if path.is_dir())
-        workspace_root = next(
-            (
-                parent
-                for parent in (parse_root, *parse_root.parents)
-                if (parent / "src").is_dir() and (parent / "flext-core").is_dir()
-            ),
-            parse_root,
-        )
-        project_roots = [
-            parse_root,
-            *(
-                member
-                for member in sorted(workspace_root.iterdir())
-                if member.is_dir() and (member / "src").is_dir()
-            ),
-        ]
-        with (
-            FlextInfraUtilitiesRopeCore.open_project(
-                workspace_root,
-                project_roots=project_roots,
-            ) as project,
-            project.frozen_layout(),
-        ):
+            else:
+                captured = cls._project_sources(
+                    root, planned_sources, source_project=source_project
+                )
+            sources = {
+                cls.module_name_for_file(path, project_root=root): (path, source)
+                for path, source in captured.items()
+                if cls.module_name_for_file(path, project_root=root)
+            }
+            if not sources:
+                return tuple(sorted(roots))
+            # The original or proposed initializer owns each public alias.
+            extra_module_aliases: t.StrDict = {}
+            for init_module, (init_path, init_source) in sorted(sources.items()):
+                if init_path.name != c.Infra.INIT_PY:
+                    continue
+                for (
+                    alias,
+                    absolute,
+                ) in FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
+                    init_module,
+                    init_path,
+                    init_source,
+                ).items():
+                    extra_module_aliases.setdefault(
+                        f"{init_module}.{alias}",
+                        absolute,
+                    )
             return FlextInfraUtilitiesRopeSourceBasesRuntime.runtime_bases(
-                project,
+                source_project,
                 sources,
                 roots,
                 extra_module_aliases=extra_module_aliases,
@@ -313,29 +182,48 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
     def _project_sources(
         root: Path,
         planned_sources: t.MappingKV[Path, str],
+        *,
+        source_project: p.Infra.RopeProject,
     ) -> t.MappingKV[Path, str]:
-        """Read the project's Python sources, the planned bytes overriding disk.
+        """Read elected sources through the native graph before applying plans.
 
         Returns:
             Each source by resolved path.
 
         """
-        sources: MutableMapping[Path, str] = {}
-        if root.is_dir():
-            files = FlextInfraUtilitiesIterationWorkspace.iter_python_files(
+        planned = {path.resolve(): source for path, source in planned_sources.items()}
+        files = (
+            FlextInfraUtilitiesIterationWorkspace.iter_python_files(
                 m.Infra.SourceScanRequest(project_roots=(root,)),
             ).unwrap()
-            for file_path in files:
-                source = file_path.read_text(
-                    encoding=c.DEFAULT_ENCODING,
-                )
-                sources[file_path.resolve()] = source
-        for file_path, source in planned_sources.items():
-            sources[file_path.resolve()] = source
+            if root.is_dir()
+            else ()
+        )
+        native_root = Path(source_project.root.real_path)
+        sources: dict[Path, str] = {}
+        for file_path in dict.fromkeys((*files, *planned)):
+            path = file_path.resolve()
+            if not path.is_relative_to(
+                root
+            ) or FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                root, path
+            ):
+                continue
+            resource = source_project.get_resource(
+                path.relative_to(native_root).as_posix()
+            )
+            source = FlextInfraUtilitiesRopeRuntime.require_file_resource(
+                resource, path
+            ).read()
+            sources[path] = planned.get(path, source)
         return sources
 
     @staticmethod
-    def _is_generated_init_stub(file_path: Path) -> bool:
+    def _is_generated_init_stub(
+        file_path: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> bool:
         """Return whether ``file_path`` is a codegen-owned package stub.
 
         Returns:
@@ -344,12 +232,22 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         """
         if file_path.name != c.Infra.INIT_PYI:
             return False
-        return file_path.read_text(encoding=c.DEFAULT_ENCODING).startswith(
+        source = (
+            file_path.read_text(encoding=c.DEFAULT_ENCODING)
+            if source_project is None
+            else source_project.source_text(file_path)
+        )
+        return source.startswith(
             c.Infra.AUTOGEN_HEADERS,
         )
 
     @classmethod
-    def _governed_roots(cls, repository_root: Path) -> frozenset[Path]:
+    def _governed_roots(
+        cls,
+        repository_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> frozenset[Path]:
         """Return every declared governed project root, resolved.
 
         The authority is the same election the Rope opener uses
@@ -364,6 +262,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         return frozenset(
             FlextInfraUtilitiesProjectDiscovery.discover_rope_project_roots(
                 repository_root,
+                source_project=source_project,
             ),
         )
 
@@ -373,6 +272,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         directory: Path,
         repository_root: Path,
         governed_roots: frozenset[Path],
+        source_project: p.Infra.RopeProject | None = None,
     ) -> bool:
         """Memoize Git boundaries by directory for one workspace index.
 
@@ -385,12 +285,17 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         ):
             return False
         return (
-            ((directory / ".git").exists() or (directory / ".git").is_symlink())
+            (
+                ((directory / ".git").exists() or (directory / ".git").is_symlink())
+                if source_project is None
+                else source_project.source_query(directory / ".git", "exists")
+            )
             and directory not in governed_roots
         ) or FlextInfraUtilitiesRopeAnalysisWorkspace._foreign_directory(
             directory.parent,
             repository_root,
             governed_roots,
+            source_project,
         )
 
     @classmethod
@@ -400,6 +305,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         repository_root: Path,
         *,
         governed_roots: frozenset[Path],
+        source_project: p.Infra.RopeProject | None = None,
     ) -> bool:
         """Exclude foreign nested Git checkouts, never declared governed members.
 
@@ -414,7 +320,9 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             The resulting ``bool``.
 
         """
-        return cls._foreign_directory(path.parent, repository_root, governed_roots)
+        return cls._foreign_directory(
+            path.parent, repository_root, governed_roots, source_project
+        )
 
     @classmethod
     def _is_pruned_walk_dir(
@@ -483,7 +391,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         return stub_paths
 
     @classmethod
-    def _python_and_stub_file_paths(
+    def python_and_stub_file_paths(
         cls,
         rope_project: t.Infra.RopeProject,
         resolved_root: Path,
@@ -494,12 +402,18 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             Python and stub sources in the canonical declared source scope.
 
         """
-        rope_root = Path(rope_project.address).resolve()
-        governed_roots = cls._governed_roots(resolved_root)
+        rope_root = Path(rope_project.root.real_path).resolve()
+        source_project = rope_project if rope_project.authenticated_sources else None
+        governed_roots = cls._governed_roots(
+            resolved_root, source_project=source_project
+        )
         source_paths = (
             (resolved_root / relative).resolve()
             for relative in (
-                FlextInfraUtilitiesProjectDiscovery.ast_grep_scan_targets(resolved_root)
+                FlextInfraUtilitiesProjectDiscovery.ast_grep_scan_targets(
+                    resolved_root,
+                    source_project=source_project,
+                )
             )
         )
         return tuple(
@@ -515,6 +429,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                         path,
                         resolved_root,
                         governed_roots=governed_roots,
+                        source_project=source_project,
                     )
                 },
                 key=Path.as_posix,
@@ -550,11 +465,16 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         # every derived structure (index, lazy maps, generated facades) is
         # byte-identical across environments regardless of fs enumeration.
         for file_path in sorted(
-            cls._python_and_stub_file_paths(rope_project, resolved_root),
+            cls.python_and_stub_file_paths(rope_project, resolved_root),
             key=str,
         ):
             resolved_file_path = file_path.resolve()
-            if cls._is_generated_init_stub(resolved_file_path):
+            if cls._is_generated_init_stub(
+                resolved_file_path,
+                source_project=rope_project
+                if rope_project.authenticated_sources
+                else None,
+            ):
                 continue
             if not resolved_file_path.is_relative_to(resolved_root):
                 continue
@@ -575,6 +495,9 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             project_root = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
                 resolved_root,
                 resolved_file_path,
+                source_project=rope_project
+                if rope_project.authenticated_sources
+                else None,
             )
             module_name = (
                 cls.module_name_for_file(resolved_file_path, project_root=project_root)

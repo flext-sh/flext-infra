@@ -35,6 +35,7 @@ class FlextInfraAccessorOriginResolver:
 
         Raises:
             ValueError: If the specified module is unknown.
+
         """
         self._rope_project = rope_project
         self._root = Path(rope_project.root.real_path)
@@ -78,11 +79,6 @@ class FlextInfraAccessorOriginResolver:
         module = u.Infra.module_name_for_file(path, project_root=project_root)
         return module.split(".", 1)[0] == origin
 
-    @property
-    def rope_project(self) -> p.Infra.RopeProject:
-        """The one project whose original bindings this resolver authenticates."""
-        return self._rope_project
-
     def module(self, py_file: Path) -> p.Infra.RopePyModule:
         """Return the original module snapshot or fail on an unknown source.
 
@@ -91,6 +87,7 @@ class FlextInfraAccessorOriginResolver:
 
         Raises:
             ValueError: If the source is absent from the project inventory.
+
         """
         key = str(py_file)
         if key not in self._pymodules:
@@ -114,6 +111,7 @@ class FlextInfraAccessorOriginResolver:
         Raises:
             ValueError: If ancestry is cyclic, inconsistent or unresolved.
             TypeError: If the defining module has no syntax tree.
+
         """
         key = id(owner)
         if key in self._lineages:
@@ -126,7 +124,7 @@ class FlextInfraAccessorOriginResolver:
         scope = owner.get_scope() if u.Infra.py_class(owner) else None
         if scope is not None:
             module = owner.get_module()
-            if module is None:
+            if not u.Infra.source_module(module):
                 msg = f"accessor class has no defining module: {owner.get_name()}"
                 raise ValueError(msg)
             tree = module.get_ast()
@@ -183,23 +181,92 @@ class FlextInfraAccessorOriginResolver:
         self._lineages[key] = lineage
         return lineage
 
+    @staticmethod
+    def _scope_binding(
+        current: p.Infra.RopeScope,
+        child: p.Infra.RopeScope,
+        name: str,
+        py_file: Path,
+    ) -> p.Infra.RopePyName | None:
+        """Resolve the function binding admitted from one semantic scope.
+
+        Args:
+            current: The enclosing semantic scope holding the binding.
+            child: The child scope being inventoried.
+            name: The declared child scope name.
+            py_file: The inventoried source file path.
+
+        Returns:
+            The admitted function binding, or ``None`` for a non-function
+            scope declared outside this source file.
+
+        Raises:
+            ValueError: If the accessor declaration has no binding.
+
+        """
+        if child.get_kind() != "Function":
+            return None
+        binding = current.get_names().get(name)
+        if binding is None:
+            msg = f"accessor declaration has no binding: {py_file}:{name}"
+            raise ValueError(msg)
+        definition = binding.get_definition_location()
+        resource = definition[0].get_resource() if definition[0] is not None else None
+        if (
+            resource is None
+            or resource.real_path != str(py_file)
+            or definition[1] != child.get_start()
+        ):
+            return None
+        return binding
+
+    def _admitted_introducer(
+        self,
+        binding: p.Infra.RopePyName,
+        name: str,
+        owner: p.Infra.RopePyObject,
+    ) -> bool:
+        """Whether one method binding introduces a forbidden accessor identity.
+
+        Args:
+            binding: The admitted function binding being judged.
+            name: The declared binding name.
+            owner: The owning class object of the method binding.
+
+        Returns:
+            Whether the binding renames or prefixes a forbidden accessor
+            introduced by this owner.
+
+        """
+        if name.startswith("_"):
+            return False
+        if name not in c.ENFORCEMENT_ACCESSOR_RENAMES and not name.startswith(
+            tuple(self._policy.forbidden_prefixes)
+        ):
+            return False
+        if not u.Infra.py_function(binding.get_object()):
+            return False
+        return any(
+            u.Infra.same_name(binding, declaration)
+            for declaration in self._introducing_bindings(owner, name)
+        )
+
     def _index(self, py_file: Path) -> None:
         """Inventory direct functions and methods from semantic scopes once.
 
         Raises:
             ValueError: If a source, declaration or project owner is unresolved.
+
         """
         if str(py_file) in self._bindings:
             return
         scope = self.module(py_file).get_scope()
-        if scope is None:
-            msg = f"accessor module has no declaration scope: {py_file}"
-            raise ValueError(msg)
         project_root = u.Infra.nearest_project_root(self._root, py_file)
         if project_root is None:
             msg = f"accessor source has no project owner: {py_file}"
             raise ValueError(msg)
         metadata = u.Infra.read_project_metadata_result(project_root).unwrap()
+        module_name = u.Infra.module_name_for_file(py_file, project_root=project_root)
         bindings: dict[str, list[p.Infra.RopePyName]] = {}
         introduced: list[m.Infra.Object] = []
         pending: list[tuple[p.Infra.RopeScope, tuple[str, ...]]] = [(scope, ())]
@@ -209,39 +276,15 @@ class FlextInfraAccessorOriginResolver:
             for child in current.get_scopes():
                 name = child.pyobject.get_name()
                 pending.append((child, (*chain, name)))
-                if child.get_kind() != "Function":
-                    continue
-                binding = current.get_names().get(name)
+                binding = self._scope_binding(current, child, name, py_file)
                 if binding is None:
-                    msg = f"accessor declaration has no binding: {py_file}:{name}"
-                    raise ValueError(msg)
-                definition = binding.get_definition_location()
-                resource = (
-                    definition[0].get_resource() if definition[0] is not None else None
-                )
-                if (
-                    resource is None
-                    or resource.real_path != str(py_file)
-                    or definition[1] != child.get_start()
-                ):
                     continue
                 bindings.setdefault(name, []).append(binding)
                 self._names[id(binding)] = name
                 if owner is None:
                     continue
                 self._owners[id(binding)] = owner
-                if (
-                    not name.startswith("_")
-                    and (
-                        name in c.ENFORCEMENT_ACCESSOR_RENAMES
-                        or name.startswith(tuple(self._policy.forbidden_prefixes))
-                    )
-                    and u.Infra.py_function(binding.get_object())
-                    and any(
-                        u.Infra.same_name(binding, declaration)
-                        for declaration in self._introducing_bindings(owner, name)
-                    )
-                ):
+                if self._admitted_introducer(binding, name, owner):
                     introduced.append(
                         m.Infra.Object(
                             file_path=str(py_file),
@@ -249,9 +292,7 @@ class FlextInfraAccessorOriginResolver:
                             project=metadata.project.name,
                             name=name,
                             kind="method",
-                            module_name=u.Infra.module_name_for_file(
-                                py_file, project_root=project_root
-                            ),
+                            module_name=module_name,
                             scope_path=".".join((*chain, name)),
                             class_path=".".join(chain),
                         )
@@ -259,24 +300,74 @@ class FlextInfraAccessorOriginResolver:
         self._bindings[str(py_file)] = bindings
         self._introduced[str(py_file)] = tuple(introduced)
 
-    def introduced_methods(self, py_file: Path) -> tuple[m.Infra.Object, ...]:
-        """Return actual class introducers, including names outside the rename catalog.
+    def collect_manual_warnings(
+        self,
+        rope_project: t.Infra.RopeProject,
+        py_file: Path,
+        source: str,
+        *,
+        rules: t.SequenceOf[m.Infra.AccessorMigrationRule],
+    ) -> tuple[m.Infra.AccessorMigrationChange, ...]:
+        """Authenticate the snapshot and report selected introducing accessors.
 
         Returns:
-            Existing canonical object records for selected direct introductions.
+            Manual review findings from the resolver's captured prefix policy.
+
+        Raises:
+            ValueError: If the source/project differs from the original Rope snapshot.
+
         """
+        if (
+            rope_project is not self._rope_project
+            or source != self.module(py_file).source_code
+        ):
+            msg = f"accessor discovery source differs from Rope snapshot: {py_file}"
+            raise ValueError(msg)
         self._index(py_file)
-        return tuple(
-            item
-            for item in self._introduced[str(py_file)]
-            if self._declaration_selected(py_file, item)
-        )
+        warnings: list[m.Infra.AccessorMigrationChange] = []
+        for declaration in self._introduced[str(py_file)]:
+            if not self._declaration_selected(py_file, declaration):
+                continue
+            name = declaration.name
+            prefix = next(
+                (
+                    prefix
+                    for prefix in self._policy.forbidden_prefixes
+                    if name.startswith(prefix)
+                ),
+                None,
+            )
+            if prefix is None or name.startswith("_"):
+                continue
+            rule = next((rule for rule in rules if rule.source_name == name), None)
+            if rule is not None and self.within_origin(
+                str(py_file), origin=rule.origin
+            ):
+                continue
+            warnings.append(
+                m.Infra.AccessorMigrationChange(
+                    file=str(py_file),
+                    line=declaration.line,
+                    original_name=name,
+                    replacement_name="",
+                    automated=False,
+                    reason=(
+                        "Owned introducing method "
+                        f"{declaration.module_name}.{declaration.scope_path} "
+                        "violates no_accessor_methods; "
+                        f"{self._policy.forbidden_prefixes[prefix]}; "
+                        "an explicit domain rename decision is required."
+                    ),
+                ),
+            )
+        return tuple(warnings)
 
     def _declaration_selected(self, path: Path, item: m.Infra.Object) -> bool:
         """Select declaring identities while retaining all their consumers.
 
         Returns:
             Whether the declaration belongs to the selected module/facade scope.
+
         """
         if self._target_module is not None and not (
             item.module_name == self._target_module
@@ -296,6 +387,7 @@ class FlextInfraAccessorOriginResolver:
 
         Returns:
             Whether this binding is eligible under the ownership selectors.
+
         """
         holder, _line = binding.get_definition_location()
         resource = holder.get_resource() if holder is not None else None
@@ -331,6 +423,7 @@ class FlextInfraAccessorOriginResolver:
 
         Returns:
             Bindings whose classes introduce the name rather than override it.
+
         """
         introduced: list[p.Infra.RopePyName] = []
         for base in self.class_lineage(owner):
@@ -353,6 +446,7 @@ class FlextInfraAccessorOriginResolver:
 
         Returns:
             The introducing source path, or None for an ambiguous/native contract.
+
         """
         owner = self._owners.get(id(binding))
         if owner is None:
@@ -407,6 +501,7 @@ class FlextInfraAccessorOriginResolver:
 
         Raises:
             ValueError: If a selected facade/domain or its source is unknown.
+
         """
         alias, *domains = selector.split(".")
         if not alias or any(not part for part in domains):
@@ -437,6 +532,192 @@ class FlextInfraAccessorOriginResolver:
             msg = f"accessor namespace selected no published facade: {selector}"
             raise ValueError(msg)
         return tuple(selected)
+
+    def receiver_attributes(
+        self,
+        py_file: Path,
+        source: str,
+        receiver: ast.expr,
+    ) -> t.MappingKV[str, p.Infra.RopePyName]:
+        """Resolve actual receiver members without evaluating consumer code.
+
+        Returns:
+            The receiver's semantically resolved member definitions.
+
+        Raises:
+            ValueError: If the receiver has no established semantic identity.
+
+        """
+        attributes = self._receiver_object(py_file, source, receiver).get_attributes()
+        if not attributes:
+            msg = f"Unknown accessor receiver members: {py_file}:{receiver.lineno}"
+            raise ValueError(msg)
+        return attributes
+
+    def _receiver_object(
+        self, py_file: Path, source: str, receiver: ast.expr
+    ) -> p.Infra.RopePyObject:
+        """Resolve the exact receiver object through its lexical Rope binding.
+
+        Returns:
+            The actual receiver object, without executing consumer code.
+
+        Raises:
+            ValueError: If its resource or binding is unavailable.
+
+        """
+        resource = u.Infra.resolve_resource_from_path(self._rope_project, py_file)
+        if resource is None:
+            msg = f"Accessor source has no Rope resource: {py_file}"
+            raise ValueError(msg)
+        pymodule = u.Infra.resolve_pymodule(self._rope_project, resource)
+        offset = u.Infra.source_offset(source, receiver)
+        scope = u.Infra.scope_at(pymodule, offset)
+        binding = u.Infra.resolve_symbol(scope, receiver)
+        if binding is None:
+            msg = f"Unresolved accessor receiver: {py_file}:{receiver.lineno}"
+            raise ValueError(msg)
+        return binding.get_object()
+
+    def receiver_inherits(
+        self,
+        py_file: Path,
+        source: str,
+        receiver: ast.expr,
+        declaring_class: str,
+    ) -> bool:
+        """Prove receiver lineage by native class and declaration object identity.
+
+        Returns:
+            Whether the configured declaration occurs in the actual lineage.
+
+        Raises:
+            ValueError: If receiver class identity or acyclic lineage is unproven.
+
+        """
+        target = self._receiver_object(py_file, source, receiver)
+        if u.Infra.instance_object(target):
+            target = target.get_type()
+        if not u.Infra.abstract_class(target):
+            msg = f"Unknown accessor receiver class: {py_file}:{receiver.lineno}"
+            raise ValueError(msg)
+        pending = [(target, frozenset[int]())]
+        while pending:
+            candidate, ancestors = pending.pop()
+            if id(candidate) in ancestors:
+                msg = f"Cyclic accessor receiver lineage: {py_file}:{receiver.lineno}"
+                raise ValueError(msg)
+            if self._matches_declaration(candidate, declaring_class):
+                return True
+            pending.extend(
+                (base, ancestors | {id(candidate)})
+                for base in candidate.get_superclasses()
+            )
+        return False
+
+    @staticmethod
+    def _matches_declaration(
+        candidate: p.Infra.RopePyObject, declaring_class: str
+    ) -> bool:
+        """Compare a native class against its exact qualified declaration binding.
+
+        Returns:
+            Whether resolving that declaration produces the same native object.
+
+        """
+        module = candidate.get_module()
+        if module is None:
+            return False
+        prefix = f"{module.get_name()}."
+        if not declaring_class.startswith(prefix):
+            return False
+        names = declaring_class.removeprefix(prefix).split(".")
+        binding = module.get_attributes().get(names[0])
+        if binding is None:
+            return False
+        declared = binding.get_object()
+        for name in names[1:]:
+            binding = declared.get_attributes().get(name)
+            if binding is None:
+                return False
+            declared = binding.get_object()
+        return declared is candidate
+
+    @staticmethod
+    def declaring_class(binding: p.Infra.RopePyName) -> str | None:
+        """Find the exact lexical class owning a Rope member definition.
+
+        Returns:
+            Its qualified declaration path, or None for a non-class binding.
+
+        Raises:
+            TypeError: If the defining module has no native Python module AST.
+
+        """
+        module, line = binding.get_definition_location()
+        if module is None or line is None:
+            return None
+        tree = module.get_ast()
+        if not isinstance(tree, ast.Module):
+            msg = "Accessor definition module has no Python module AST"
+            raise TypeError(msg)
+        classes: t.MutableSequenceOf[ast.ClassDef] = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ClassDef)
+            and node.lineno <= line <= (node.end_lineno or node.lineno)
+        ]
+        if not classes:
+            return None
+        ordered = sorted(classes, key=lambda node: node.lineno)
+        return ".".join((module.get_name(), *(node.name for node in ordered)))
+
+    def require_normalizer_binding(
+        self,
+        py_file: Path,
+        source: str,
+        tree: ast.Module,
+        node: ast.Attribute,
+        *,
+        rule: m.Infra.AccessorMigrationRule,
+    ) -> None:
+        """Reject aliases that would capture the introduced public facade.
+
+        Raises:
+            ValueError: If the selected facade is conflicting or locally shadowed.
+
+        """
+        prefix = rule.replacement_name.split(".", maxsplit=1)[0]
+        resource = u.Infra.resolve_resource_from_path(self._rope_project, py_file)
+        if resource is None:
+            msg = f"Accessor source has no Rope resource: {py_file}"
+            raise ValueError(msg)
+        pymodule = u.Infra.resolve_pymodule(self._rope_project, resource)
+        scope = u.Infra.scope_at(pymodule, u.Infra.source_offset(source, node))
+        existing = u.Infra.resolve_symbol(
+            scope,
+            ast.Name(id=prefix, ctx=ast.Load()),
+        )
+        if existing is None:
+            return
+        runtime_import = any(
+            isinstance(statement, ast.ImportFrom)
+            and statement.level == 0
+            and statement.module == rule.origin
+            and any(
+                alias.name == prefix and alias.asname is None
+                for alias in statement.names
+            )
+            for statement in tree.body
+        )
+        module_binding = pymodule.get_attributes().get(prefix)
+        if (
+            not runtime_import
+            or module_binding is None
+            or not u.Infra.same_name(module_binding, existing)
+        ):
+            msg = f"Captured accessor normalizer facade: {py_file}:{node.lineno}"
+            raise ValueError(msg)
 
 
 __all__: list[str] = ["FlextInfraAccessorOriginResolver"]

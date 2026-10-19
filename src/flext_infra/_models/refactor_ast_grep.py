@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
 
@@ -18,26 +18,8 @@ from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsCodemod
 class FlextInfraModelsRefactorGrep:
     """Mixin containing migration/reporting contracts for refactor orchestration."""
 
-    class CodemodImportResources(m.ArbitraryTypesModel):
-        """One frozen-layout invocation's native module elections."""
-
-        modules: Annotated[
-            t.MutableMappingKV[
-                t.Triple[str, str | None, int],
-                t.Infra.RopeResource | None,
-            ],
-            m.Field(
-                default_factory=dict,
-                description=(
-                    "Elected native module resources keyed by invocation identity"
-                ),
-            ),
-        ]
-
-    class CodemodContextCondition(m.ArbitraryTypesModel):
+    class CodemodContextCondition(FlextInfraModelsBase.FrozenArbitrary):
         """One project-context condition over a captured metavariable."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         variable: Annotated[
             t.NonEmptyStr,
@@ -80,24 +62,33 @@ class FlextInfraModelsRefactorGrep:
             ),
         ] = ()
 
-    class CodemodEnsureImport(m.ArbitraryTypesModel):
-        """One module import a rule's applied rewrites require in the file."""
+        @m.model_validator(mode="after")
+        def _validate_native_owner_reference(self) -> Self:
+            """Require one qualified primitive, never a module waiver table.
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+            Returns:
+                The validated model instance.
 
-        module: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Dotted module path the name must be bound from"),
-        ]
-        name: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Top-level name the applied rewrite references"),
-        ]
+            Raises:
+                ValueError: If the native predicate lacks its module/producer pair.
 
-    class CodemodRule(m.ArbitraryTypesModel):
+            """
+            if self.predicate in {
+                c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER,
+                c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION,
+            } and (
+                len(self.arg) != c.Infra.PAIRED_CONTEXT_PREDICATE_ARG_COUNT
+                or any(
+                    not all(part.isidentifier() for part in value.split("."))
+                    for value in self.arg
+                )
+            ):
+                msg = f"{self.predicate} requires one module and native producer"
+                raise ValueError(msg)
+            return self
+
+    class CodemodRule(FlextInfraModelsBase.FrozenArbitrary):
         """One validated ast-grep rule document from a composed provider."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         id: Annotated[t.NonEmptyStr, m.Field(description="Canonical ast-grep rule ID")]
         digest: Annotated[
@@ -168,20 +159,9 @@ class FlextInfraModelsRefactorGrep:
                 ),
             ),
         ] = ()
-        ensure_imports: Annotated[
-            t.VariadicTuple[FlextInfraModelsRefactorGrep.CodemodEnsureImport],
-            m.Field(
-                description=(
-                    "Module imports every applied rewrite of this rule requires "
-                    "in the rewritten file; empty when the fix is self-contained"
-                ),
-            ),
-        ] = ()
 
-    class CodemodRuleset(m.ArbitraryTypesModel):
+    class CodemodRuleset(FlextInfraModelsBase.FrozenArbitrary):
         """One provider config and its elected, conflict-free rule IDs."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         provider: Annotated[
             t.NonEmptyStr,
@@ -200,10 +180,8 @@ class FlextInfraModelsRefactorGrep:
             m.Field(description="Elected rule IDs that declare an automated fix"),
         ]
 
-    class CodemodRulePlan(m.ArbitraryTypesModel):
+    class CodemodRulePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Topologically composed dependency rules followed by the local delta."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         provider_order: Annotated[
             t.StrSequence,
@@ -274,10 +252,8 @@ class FlextInfraModelsRefactorGrep:
             m.Field(description="Import packages of the runtime dependency closure"),
         ]
 
-    class CodemodAdmission(m.ArbitraryTypesModel):
+    class CodemodAdmission(FlextInfraModelsBase.FrozenArbitrary):
         """One finding's admission inputs against its rule's project context."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         root: Annotated[
             Path,
@@ -302,7 +278,9 @@ class FlextInfraModelsRefactorGrep:
         snapshot: Annotated[
             FlextInfraModelsCodemod.CodemodBindingSnapshot | None,
             m.Field(
-                description="Precomputed binding snapshot; absent builds one on demand",
+                description=(
+                    "Captured binding snapshot, required for binding predicates"
+                ),
             ),
         ] = None
 
@@ -337,7 +315,7 @@ class FlextInfraModelsRefactorGrep:
         )
 
     class AccessorMigrationRule(m.ContractModel):
-        """Declarative symbol-rename rule for accessor migration."""
+        """Declarative origin-bound accessor transformation."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
@@ -357,11 +335,39 @@ class FlextInfraModelsRefactorGrep:
             str,
             m.Field(description="Canonical API origin this rewrite is tied to"),
         ] = ""
+        operation: Annotated[
+            Literal["rename", "normalize-field"],
+            m.Field(description="Transformation applied to proven owned references"),
+        ] = "rename"
+        declaring_class: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Qualified class that declares the accessor and field"),
+        ] = None
+        field: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Backing field passed to the public normalizer"),
+        ] = None
 
-    class AccessorMigrationChange(m.ArbitraryTypesModel):
+        @m.model_validator(mode="after")
+        def _require_expression_owner(self) -> Self:
+            """Reject expression rules without complete declaration identity.
+
+            Returns:
+                The complete typed migration rule.
+
+            Raises:
+                ValueError: If a field-normalization rule lacks its owner or field.
+
+            """
+            if self.operation == "normalize-field" and (
+                self.declaring_class is None or self.field is None
+            ):
+                msg = "Field normalization requires declaring_class and field"
+                raise ValueError(msg)
+            return self
+
+    class AccessorMigrationChange(FlextInfraModelsBase.FrozenArbitrary):
         """Single automated rename or manual warning emitted by accessor migration."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
         line: Annotated[

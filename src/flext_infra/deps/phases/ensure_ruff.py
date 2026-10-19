@@ -8,10 +8,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, t, u
-from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_core import FlextRuntime
+
+from flext_infra import c, config, m, t, u
+from flext_infra.check.gate_registry import FlextInfraGateRegistry
+from flext_infra.deps import FlextInfraExtraPathsManager
+from flext_infra.deps.phases import FlextInfraToolTablesPhase
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraEnsureRuffConfigPhase:
@@ -20,14 +23,9 @@ class FlextInfraEnsureRuffConfigPhase:
     def __init__(
         self,
         tool_config: m.Infra.ToolConfigDocument,
-        project_ruff: m.Infra.ProjectRuffConfig,
     ) -> None:
-        """Bind shared policy and the current project's validated additions."""
+        """Bind the shared native policy without repository exemption overlays."""
         self._tool_config = tool_config
-        self._per_file_ignores = u.Infra.compose_ruff_per_file_ignores(
-            tool_config,
-            project_ruff,
-        )
 
     @staticmethod
     def _workspace_exclusion_globs(project_dir: Path) -> t.StrSequence:
@@ -57,7 +55,7 @@ class FlextInfraEnsureRuffConfigPhase:
 
         Deliberately a DIFFERENT authority from
         ``FlextInfraToolTablesPhase.excluded_roots`` (the manifest
-        non-participant set used by the per-file-ignores projection): this
+        non-participant set): this
         set drives the namespace-packages projection and follows the
         workspace detector's analysis-exclusion paths (gitmodules-driven).
         Like the manifest authority it is order-independent: a repository
@@ -93,6 +91,14 @@ class FlextInfraEnsureRuffConfigPhase:
 
         """
         ruff_cfg = self._tool_config.tools.ruff
+        delegated_rules = FlextInfraGateRegistry.default().delegated_lint_rules(
+            ruff_cfg.lint.rule_owners,
+            check_gates=config.Infra.codegen.make.check_gates_default,
+            repair_gates=(
+                *config.Infra.codegen.make.check_gates_fixable,
+                *config.Infra.codegen.make.fmt_gates,
+            ),
+        )
         workspace_exclusions = (
             self._workspace_exclusion_globs(path.parent)
             if facts.analysis_exclusions is None
@@ -102,13 +108,11 @@ class FlextInfraEnsureRuffConfigPhase:
             ("combine-as-imports", ruff_cfg.lint.isort.combine_as_imports),
             ("force-single-line", ruff_cfg.lint.isort.force_single_line),
             ("split-on-trailing-comma", ruff_cfg.lint.isort.split_on_trailing_comma),
-        ]
-        detected_packages = sorted(facts.first_party)
-        if detected_packages:
-            isort_values.append((
+            (
                 c.Infra.KNOWN_FIRST_PARTY_HYPHEN,
-                u.normalize_to_json_value(detected_packages),
-            ))
+                FlextRuntime.normalize_to_json_value(sorted(facts.first_party)),
+            ),
+        ]
         # Dev/tooling source roots are config-declared, but a repository that
         # retired a tree (e.g. scripts/) must not keep analyzer entries naming
         # it: ruff fails hard on src roots whose directories do not exist, and
@@ -188,30 +192,42 @@ class FlextInfraEnsureRuffConfigPhase:
                     operations=(
                         toml.SetOp(
                             key="select",
-                            value=u.normalize_to_json_value(
+                            value=FlextRuntime.normalize_to_json_value(
                                 sorted(ruff_cfg.lint.select),
+                            ),
+                        ),
+                        toml.SetOp(
+                            key="extend-select",
+                            value=FlextRuntime.normalize_to_json_value(
+                                list(ruff_cfg.lint.extend_select),
                             ),
                         ),
                         # make fix never deletes information: the fix-safety
                         # policy comes from the same SSOT the template renders.
                         toml.SetOp(
                             key="unfixable",
-                            value=u.normalize_to_json_value(
+                            value=FlextRuntime.normalize_to_json_value(
                                 sorted(ruff_cfg.lint.unfixable),
                             ),
                         ),
                         toml.SetOp(
                             key="extend-safe-fixes",
-                            value=u.normalize_to_json_value(
+                            value=FlextRuntime.normalize_to_json_value(
                                 sorted(ruff_cfg.lint.extend_safe_fixes),
                             ),
                         ),
-                        # Only the unscoped operator-authorized exceptions of
-                        # the tooling owner, the same SSOT the template renders.
                         toml.SetOp(
                             key="ignore",
-                            value=u.normalize_to_json_value(list(ruff_cfg.lint.ignore)),
+                            value=FlextRuntime.normalize_to_json_value(
+                                sorted({
+                                    *delegated_rules,
+                                    *ruff_cfg.lint.ruling_disabled_rules,
+                                }),
+                            ),
                         ),
+                        toml.RemoveOp(key="extend-ignore"),
+                        toml.RemoveOp(key="per-file-ignores"),
+                        toml.RemoveOp(key="extend-per-file-ignores"),
                     ),
                 ),
                 toml.PhaseConfig(
@@ -243,7 +259,7 @@ class FlextInfraEnsureRuffConfigPhase:
                     operations=(
                         toml.SetOp(
                             key="allow-dunder-method-names",
-                            value=u.normalize_to_json_value(
+                            value=FlextRuntime.normalize_to_json_value(
                                 sorted(ruff_cfg.lint.pylint.allow_dunder_method_names),
                             ),
                         ),
@@ -271,7 +287,9 @@ class FlextInfraEnsureRuffConfigPhase:
                     operations=tuple(
                         toml.SetOp(
                             key=name,
-                            value=u.normalize_to_json_value({"msg": message}),
+                            value=FlextRuntime.normalize_to_json_value({
+                                "msg": message
+                            }),
                         )
                         for name, message in ruff_cfg.lint.banned_api.items()
                     ),
@@ -282,24 +300,6 @@ class FlextInfraEnsureRuffConfigPhase:
                     table_path=(c.Infra.LINT_SECTION, c.Infra.ISORT),
                     operations=tuple(
                         toml.SetOp(key=key, value=value) for key, value in isort_values
-                    ),
-                ),
-                toml.PhaseConfig(
-                    name="ruff",
-                    root_path=(),
-                    table_path=(c.Infra.LINT_SECTION, "per-file-ignores"),
-                    operations=(
-                        *(
-                            toml.SetOp(
-                                key=pattern,
-                                value=u.normalize_to_json_value(sorted(rules)),
-                            )
-                            for pattern, rules in facts.per_file_ignores.items()
-                        ),
-                        *(
-                            toml.RemoveOp(key=pattern)
-                            for pattern in facts.stale_patterns
-                        ),
                     ),
                 ),
             ),
@@ -322,11 +322,6 @@ class FlextInfraEnsureRuffConfigPhase:
             The resulting ``t.StrSequence``.
 
         """
-        effective_ignores = self._per_file_ignores
-        current_ignores = u.Cli.toml_mapping_path(
-            payload,
-            (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores"),
-        )
         changes = list(
             u.Infra.apply_toml_phases(
                 payload,
@@ -336,12 +331,6 @@ class FlextInfraEnsureRuffConfigPhase:
                         first_party=FlextInfraToolTablesPhase.first_party_namespaces(
                             path=path.parent,
                         ),
-                        stale_patterns=[
-                            pattern
-                            for pattern in current_ignores or ()
-                            if pattern not in effective_ignores
-                        ],
-                        per_file_ignores=effective_ignores,
                         analysis_exclusions=analysis_exclusions,
                         generated_python_roots=generated_python_roots,
                     ),

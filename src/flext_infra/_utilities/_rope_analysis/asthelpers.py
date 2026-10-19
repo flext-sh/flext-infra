@@ -115,7 +115,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return names
 
     @staticmethod
-    def parse_string_module(source: str) -> t.Infra.RopePyModule:
+    def parse_string_module(source: str) -> t.Infra.RopeSourceModule:
         """Parse ``source`` to a rope ``PyModule`` via a shared parsing project.
 
         Uses rope's ``libutils.get_string_module`` so callers don't need to
@@ -123,11 +123,11 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         escape — the function never returns ``None``.
 
         Returns:
-            The resulting ``t.Infra.RopePyModule``.
+            The resulting ``t.Infra.RopeSourceModule``.
 
         """
         rope_project = FlextInfraUtilitiesRopeAnalysisAstHelpers._shared_parse_project()
-        result: t.Infra.RopePyModule = (
+        result: t.Infra.RopeSourceModule = (
             FlextInfraUtilitiesRopeRuntime.build_string_module(rope_project, source)
         )
         return result
@@ -215,10 +215,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         """
         if not isinstance(root, ast.AST):
             return []
-        return [
-            FlextInfraUtilitiesRopeAnalysisAstHelpers.ensure_ast_node(node)
-            for node in ast.walk(root)
-        ]
+        return tuple(ast.walk(root))
 
     @staticmethod
     def ast_parent_map(
@@ -423,3 +420,6 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
                 subscript_value,
             )
         return ""
+
+
+__all__: list[str] = ["FlextInfraUtilitiesRopeAnalysisAstHelpers"]

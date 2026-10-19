@@ -1,4 +1,4 @@
-"""Fleet verbs: one mutating Make verb carried to every governed member at once.
+"""Fleet verbs: one mutating Make verb carried through runtime dependency waves.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,25 +6,26 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import time
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Annotated, override
 
 from flext_core import t
-from flext_infra import c, config, m, p, r, s, u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
+from flext_infra import c, m, p, r, s, u
+from flext_infra.workspace import (
+    FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceEnvironmentProvenance,
+    FlextInfraWorkspaceLifecycle,
+)
 
 
 class FlextInfraWorkspaceFleetVerbs(s[m.Infra.LifecycleReport]):
-    """Run one mutating verb in every governed member, concurrently.
+    """Run one mutating verb serially in dependency-first member order.
 
-    Each member runs its own public Make verb in its own repository, so the
-    verb rewrites only that member and behaves exactly as a member-local run.
-    The members are independent git roots: they run in
-    ``Infra.codegen.fleet_workers`` concurrent processes, each captured in
-    its own receipt, and the report keeps declared order. The first failed
-    member in declared order fails the run with its captured output.
+    Each member's selected Makefile runs from the containing workspace root.
+    The runtime graph owns dependency waves and lexical ties within each wave.
+    A failed invocation stops subsequent members; the report retains the
+    complete planned scope, including invocations not reached after a failure.
     """
 
     verb: Annotated[
@@ -58,29 +59,93 @@ class FlextInfraWorkspaceFleetVerbs(s[m.Infra.LifecycleReport]):
             return r[m.Infra.LifecycleReport].fail(
                 f"fleet verbs require a workspace root: {root}",
             )
-        selected_members = self._selected_members(workspace)
+        selected_members = self._selected_members(workspace, root)
         if selected_members.failure:
             return r[m.Infra.LifecycleReport].from_failure(selected_members)
-        scope = tuple(root / member.path for member in selected_members.value)
         # The service contract stores enum values; str() reads either form.
         verb = str(self.verb)
-        output_dir = root / c.Infra.FLEET_REPORT_RELATIVE_PATH.with_suffix("")
-        pending = tuple(
-            m.Infra.LifecycleReceipt(
-                command=(c.Infra.MAKE, verb),
-                cwd=cwd,
-                output_file=output_dir / f"{cwd.name}-{verb}.log",
-            )
-            for cwd in scope
+        pending = self._pending_receipts(root, selected_members.value, verb)
+        if pending.failure:
+            return r[m.Infra.LifecycleReport].from_failure(pending)
+        return self._published_report(
+            root,
+            selected_members.value,
+            pending.value,
+            verb,
         )
-        workers = max(1, min(config.Infra.codegen.fleet_workers, len(pending)))
-        u.Cli.info(f"[fleet {verb}] {len(pending)} members, {workers} workers")
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            receipts = tuple(pool.map(self._run_member, pending))
+
+    @staticmethod
+    def _pending_receipts(
+        root: Path,
+        members: t.SequenceOf[m.Infra.RepositoryRef],
+        verb: str,
+    ) -> p.Result[t.SequenceOf[m.Infra.LifecycleReceipt]]:
+        """Build one serial receipt per selected member on its own Makefile.
+
+        Returns:
+            The pending receipts, or the failure naming the missing Makefile.
+
+        """
+        result_type = r[t.SequenceOf[m.Infra.LifecycleReceipt]]
+        for member in members:
+            makefile = root / member.path / c.Infra.MAKEFILE_FILENAME
+            if not makefile.is_file():
+                return result_type.fail(
+                    f"fleet member Makefile is missing: {makefile}",
+                )
+        output_dir = root / c.Infra.FLEET_REPORT_RELATIVE_PATH.with_suffix("")
+        return result_type.ok(
+            tuple(
+                m.Infra.LifecycleReceipt(
+                    command=(
+                        c.Infra.MAKE,
+                        "-f",
+                        (member.path / c.Infra.MAKEFILE_FILENAME).as_posix(),
+                        verb,
+                    ),
+                    cwd=root,
+                    repository_root=root / member.path,
+                    output_file=output_dir / f"{member.distribution}-{verb}.log",
+                )
+                for member in members
+            ),
+        )
+
+    @staticmethod
+    def _published_report(
+        root: Path,
+        members: t.SequenceOf[m.Infra.RepositoryRef],
+        pending: t.SequenceOf[m.Infra.LifecycleReceipt],
+        verb: str,
+    ) -> p.Result[m.Infra.LifecycleReport]:
+        """Run the pending receipts serially and publish the report evidence.
+
+        Returns:
+            The published lifecycle report, or the first member failure with
+            its captured output.
+
+        """
+        result_type = r[m.Infra.LifecycleReport]
+        scope = tuple(root / member.path for member in members)
+        u.Cli.info(f"[fleet {verb}] {len(pending)} members, serial dependency order")
+        receipts = list(pending)
+        original: p.Result[p.Cli.ProcessOutcome] | None = None
+        attempted = 0
+        for index, receipt in enumerate(pending):
+            receipts[index], original = FlextInfraWorkspaceLifecycle.run_receipt(
+                receipt,
+                (),
+            )
+            attempted += 1
+            if original.failure:
+                break
+        u.Cli.info(
+            f"[fleet {verb}] attempted={attempted} declared={len(pending)}",
+        )
         report = m.Infra.LifecycleReport(
             workspace_root=root,
             scope=scope,
-            receipts=receipts,
+            receipts=tuple(receipts),
         )
         published = u.Infra.publish_refactor_report_evidence(
             root,
@@ -88,98 +153,56 @@ class FlextInfraWorkspaceFleetVerbs(s[m.Infra.LifecycleReport]):
             relative_path=c.Infra.FLEET_REPORT_RELATIVE_PATH,
         )
         if published.failure:
-            return r[m.Infra.LifecycleReport].from_failure(published)
-        failed = next(
-            (receipt for receipt in receipts if receipt.error is not None),
-            None,
-        )
-        if failed is not None:
-            return r[m.Infra.LifecycleReport].fail(
-                f"{failed.error}\n{self._captured(failed.output_file)}",
-            )
-        return r[m.Infra.LifecycleReport].ok(report)
-
-    @staticmethod
-    def _run_member(receipt: m.Infra.LifecycleReceipt) -> m.Infra.LifecycleReceipt:
-        """Run one member's verb into its receipt file and report its status.
-
-        Returns:
-            The receipt with the observed exit and the failure, if any.
-
-        """
-        started = time.monotonic()
-        run = u.Cli.run_to_file(
-            receipt.command,
-            receipt.output_file,
-            cwd=receipt.cwd,
-            options=m.Cli.ProcessOptions(
-                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
-            ),
-        )
-        elapsed = time.monotonic() - started
-        if run.failure:
-            u.Cli.status(
-                receipt.command[-1], receipt.cwd.name, result=False, elapsed=elapsed
-            )
-            return receipt.model_copy(update={"error": run.error})
-        succeeded = u.Cli.process_succeeded(run.value)
-        u.Cli.status(
-            receipt.command[-1], receipt.cwd.name, result=succeeded, elapsed=elapsed
-        )
-        error = (
-            None
-            if succeeded
-            else (
-                f"failed ({run.value.raw_return_code}): "
-                f"{' '.join(receipt.command)} in {receipt.cwd}; "
-                f"timed_out={run.value.timed_out}, "
-                f"forwarded_signal={run.value.forwarded_signal}; "
-                f"output={receipt.output_file}"
-            )
-        )
-        return receipt.model_copy(
-            update={
-                "outcome": m.Cli.ProcessOutcome.model_validate(
-                    run.value,
-                    from_attributes=True,
-                ),
-                "error": error,
-            },
-        )
-
-    @staticmethod
-    def _captured(output_file: Path) -> str:
-        """Return a failed member's captured output for the causal failure.
-
-        Returns:
-            The captured combined output, or the read failure itself.
-
-        """
-        read = u.Cli.files_read_text(output_file)
-        return read.value if read.success else str(read.error)
+            if original is not None and original.failure:
+                u.Cli.error(f"receipt publication failed: {published.error}")
+                if original.exception is not None:
+                    original.exception.add_note(
+                        f"receipt publication failed: {published.error}",
+                    )
+                return result_type.from_failure(original)
+            return result_type.from_failure(published)
+        if original is not None and original.failure:
+            return result_type.from_failure(original)
+        return result_type.ok(report)
 
     def _selected_members(
         self,
         workspace: m.Infra.WorkspaceSpec,
+        root: Path,
     ) -> p.Result[t.SequenceOf[m.Infra.RepositoryRef]]:
         """Apply the member filter to the declared mutable members.
 
         Returns:
-            The selected members in declared order, or the failure naming
+            The selected members in dependency order, or the failure naming
             every undeclared requested member.
+
         """
         declared = tuple(u.Infra.mutable_flext_members(workspace))
-        if not self.members:
-            return r[t.SequenceOf[m.Infra.RepositoryRef]].ok(declared)
-        selected = frozenset(self.members)
-        unknown = sorted(selected - {member.name for member in declared})
-        if unknown:
+        if not declared:
             return r[t.SequenceOf[m.Infra.RepositoryRef]].fail(
-                "fleet verbs: undeclared member name(s): " + ", ".join(unknown),
+                "fleet verbs require declared mutable members",
             )
-        return r[t.SequenceOf[m.Infra.RepositoryRef]].ok(
-            tuple(member for member in declared if member.name in selected),
+        requested = frozenset(self.members) if self.members else None
+        if requested is not None:
+            unknown = sorted(requested - {member.name for member in declared})
+            if unknown:
+                return r[t.SequenceOf[m.Infra.RepositoryRef]].fail(
+                    "fleet verbs: undeclared member name(s): " + ", ".join(unknown),
+                )
+        authenticated = FlextInfraWorkspaceEnvironmentProvenance.editable_members(root)
+        if authenticated.failure:
+            return r[t.SequenceOf[m.Infra.RepositoryRef]].from_failure(authenticated)
+        eligible = tuple(
+            member
+            for member in authenticated.value
+            if requested is None or member.name in requested
         )
+        by_distribution = {member.distribution: member for member in eligible}
+        ordered = tuple(
+            by_distribution[name]
+            for name in u.Infra.workspace_dependency_order(root, eligible)
+        )
+        return r[t.SequenceOf[m.Infra.RepositoryRef]].ok(ordered)
 
 
 __all__: list[str] = ["FlextInfraWorkspaceFleetVerbs"]

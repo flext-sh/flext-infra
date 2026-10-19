@@ -13,8 +13,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import collections.abc
-
 from flext_cli import FlextCliTypes
 
 from flext_infra._typings import (
@@ -22,6 +20,7 @@ from flext_infra._typings import (
     FlextInfraTypesBase,
     FlextInfraTypesRope,
 )
+from flext_infra._typings.collections import FlextInfraTypesCollections
 
 
 class FlextInfraTypes(FlextCliTypes):
@@ -33,7 +32,7 @@ class FlextInfraTypes(FlextCliTypes):
     transparently from ``FlextTypes`` via FLEXT.
     """
 
-    type Container[T] = collections.abc.Container[T]
+    Container = FlextInfraTypesCollections.Container
 
     class Infra(FlextInfraTypesAdapters, FlextInfraTypesRope, FlextInfraTypesBase):
         """Infrastructure-domain type aliases.

@@ -16,9 +16,9 @@
 
 # ENFORCE-001: every symbol lives inside the module's facade class. A module
 # body holds that one class, its alias binding, __all__ and imports; a
-# function other than the executable `main` entry point, a value binding that
+# function including an executable `main` entry point, a value binding that
 # is not an alias of a name, and any further class are loose objects.
-# Typing declarations are ban-manual-typing-alias-outside-typings's. The one
+# Typing location is also ban-manual-typing-alias-outside-typings's. The one
 # admitted value binding is the facade's self-typed singleton: the
 # class-nesting cutover itself keeps it at module level (it reads the owner
 # while the owner is being defined), and the pattern owner publishes it as
@@ -26,26 +26,13 @@
 id: ban-loose-module-object
 language: python
 severity: error
+# Generator law p.11 binds every module and p.4 makes every non-src root
+# folder an internal namespace tier. The governed inventory owns scope; tests,
+# scripts, examples, vendored sources and special modules share this contract.
 files:
-  - "src/**/*.py"
-  - "**/src/**/*.py"
+  - "**/*.py"
 ignores:
-  - "**/tests/**"
   - "**/__init__.py"
-  - "**/__main__.py"
-  - "**/__version__.py"
-  - "**/conftest.py"
-  # pytest11 entry-point modules live under the same contract as conftest.py:
-  # pytest imports hook functions (pytest_configure, pytest_addoption, ...) by
-  # module attribute name, so the hooks must stay module-level and the
-  # facade-nesting the rule mandates is impossible there.
-  - "**/conftest_plugin.py"
-  - "**/enforcement_plugin.py"
-  - "**/settings.py"
-  - "**/_settings.py"
-  - "**/typings.py"
-  - "**/_typings.py"
-  - "**/_exports.py"
 rule:
   any:
     - all:
@@ -53,10 +40,6 @@ rule:
         - has:
             field: name
             pattern: $NAME
-        - not:
-            has:
-              field: name
-              regex: "^main$"
         - any:
             - inside:
                 kind: module
@@ -119,17 +102,29 @@ rule:
                   pattern: $_
                   not:
                     kind: identifier
-              - not:
-                  has:
-                    field: type
-                    regex: "^(?:[A-Za-z_][A-Za-z0-9_]*\\.)*TypeAlias$"
-              - not:
-                  has:
-                    field: right
-                    kind: call
-                    has:
-                      field: function
-                      regex: "^(?:[A-Za-z_][A-Za-z0-9_]*\\.)*(?:TypeVar|ParamSpec|TypeVarTuple|NewType)$"
+    - all:
+        - kind: type_alias_statement
+        - inside:
+            kind: module
+        - has:
+            field: left
+            has:
+              kind: identifier
+              pattern: $NAME
+              stopBy: end
+    - all:
+        - kind: expression_statement
+        - inside:
+            kind: module
+        - has:
+            kind: assignment
+            all:
+              - has:
+                  field: left
+                  pattern: $NAME
+              - has:
+                  field: type
+                  regex: "^(?:[A-Za-z_][A-Za-z0-9_]*\\.)*TypeAlias$"
     - all:
         - kind: class_definition
         - has:
@@ -173,8 +168,8 @@ rule:
                 regex: "(?:^|\\.)main$"
 message: >-
   Loose object at module level: nest `$NAME` inside the module's single facade
-  class (only that class, its alias, __all__, imports and a `main` entry
-  point live at module level).
+  class (only that class, its canonical published bindings, __all__ and imports
+  live at module level; executable entry points call the owning class).
 ---
 # ENFORCE-002: a runtime alias is imported from the package root, never from
 # one of its modules (`from pkg.models import m` binds the module's own
@@ -339,9 +334,13 @@ message: >-
   re-exports `$NAME`; import it from there.
 ---
 # ENFORCE-099: a consumer imports another facade package through its public
-# root only: a module path below the root is the owner's layout. Runtime
-# aliases are ENFORCE-002's and private paths ban-private-import's; a root
-# import of a name the root does not declare in __all__ is the type
+# root or its public family compose modules: a module path below the root is
+# the owner's layout, with the family-shape exemption the compose-module
+# predicate proves — the canonical public compose leaf
+# (constants/models/protocols/typings/utilities, bead flext-6e72w) is the
+# sanctioned static surface every consumer imports the composed classes from.
+# Runtime aliases are ENFORCE-002's and private paths ban-private-import's; a
+# root import of a name the root does not declare in __all__ is the type
 # checkers' private-import-usage finding. The one sanctioned literal is the
 # lazy defining module below: every generated consumer initializer imports
 # the lazy helpers from it (contract #1362 — the root bootstrap no longer

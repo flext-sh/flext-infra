@@ -123,6 +123,8 @@ class TestsFlextInfraLazyInitCleanup:
 
         result = u.Tests.plan_lazy_init(repository_root)
 
-        tm.that(result.failure, eq=True)
+        analysis = tm.ok(result)
+        tm.that(analysis.files, eq=())
+        tm.that(bool(analysis.issues), eq=True)
         tm.that(obsolete_module.is_file(), eq=True)
         tm.that(unexpected.is_file(), eq=True)

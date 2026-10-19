@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen._conform.plan import FlextInfraCodegenConformPlan
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
@@ -82,7 +82,7 @@ class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
             is not c.Infra.CodegenConformMode.APPLY
         ):
             return result_type.ok(((None, None), False))
-        scaffolding = self.initial_workspace
+        scaffolding = self.state.initial_workspace
         workspace = scaffolding
         if workspace is None:
             workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(

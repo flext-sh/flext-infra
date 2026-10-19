@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, m, r, t
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -20,22 +20,34 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
     """Describe stale generated sidecars without publishing any effect."""
 
     if TYPE_CHECKING:
+        source_project: p.Infra.RopeProject
 
         @staticmethod
         def _is_generated(content: bytes | None) -> bool: ...
 
-    @staticmethod
-    def _optional_state(path: Path) -> p.Result[m.Cli.AtomicFileState]:
+    def _optional_state(self, path: Path) -> p.Result[m.Cli.AtomicFileState]:
         """Read one optional physical file state through the atomic owner.
 
         Returns:
             The resulting ``p.Result[m.Cli.AtomicFileState]``.
 
         """
-        return u.Cli.atomic_read_binary_file_state(path, required=False)
+        return r[m.Cli.AtomicFileState].ok(
+            self.source_project.source_state(path, required=False)
+        )
 
-    @staticmethod
-    def _path_flags(path: Path) -> p.Result[t.Quad[bool, bool, bool, bool]]:
+    def _selected_content(self, path: Path) -> bytes | None:
+        """Keep selected ownership decisions distinct from original before images.
+
+        Returns:
+            The selected file content, or ``None`` when the path is not a file.
+
+        """
+        if not self.source_project.source_query(path, "isfile"):
+            return None
+        return self.source_project.source_bytes(path)
+
+    def _path_flags(self, path: Path) -> p.Result[t.Quad[bool, bool, bool, bool]]:
         """Read one path classification while preserving filesystem failures.
 
         Returns:
@@ -43,7 +55,10 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
 
         """
         try:
-            flags = (path.is_symlink(), path.is_file(), path.exists(), path.is_dir())
+            exists = self.source_project.source_query(path, "exists")
+            file = self.source_project.source_query(path, "isfile")
+            directory = self.source_project.source_query(path, "isdir")
+            flags = (exists and not file and not directory, file, exists, directory)
         except OSError as exc:
             return r[tuple[bool, bool, bool, bool]].fail_op(
                 f"classify lazy-init support path {path}",
@@ -51,8 +66,8 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
             )
         return r[tuple[bool, bool, bool, bool]].ok(flags)
 
-    @staticmethod
     def _glob_paths(
+        self,
         directory: Path,
         pattern: str,
         *,
@@ -63,12 +78,52 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         Returns:
             Deterministic glob results with their causal I/O failure.
 
+        Raises:
+            ValueError: If the cleanup pattern escapes its source directory.
+
         """
         try:
-            paths = tuple(sorted(directory.glob(pattern)))
+            parts = Path(pattern).parts
+            if not parts or Path(pattern).is_absolute() or ".." in parts:
+                msg = (
+                    f"lazy-init cleanup pattern escapes its source directory: {pattern}"
+                )
+                raise ValueError(msg)
+            paths = self._collect_glob_matches(directory, pattern, parts)
         except OSError as exc:
             return r[t.VariadicTuple[Path]].fail_op(operation, exc)
-        return r[t.VariadicTuple[Path]].ok(paths)
+        return r[t.VariadicTuple[Path]].ok(tuple(sorted(paths)))
+
+    def _collect_glob_matches(
+        self,
+        directory: Path,
+        pattern: str,
+        parts: tuple[str, ...],
+    ) -> list[Path]:
+        """Walk the source tree collecting every path matching the pattern.
+
+        Args:
+            directory: Root source directory of the bounded traversal.
+            pattern: Glob pattern every collected path must match.
+            parts: Pre-validated parts of the pattern guiding traversal depth.
+
+        Returns:
+            The matched paths in traversal order.
+
+        """
+        paths: list[Path] = []
+        pending = [directory]
+        with self.source_project.source_selection():
+            while pending:
+                parent = pending.pop()
+                for child in self.source_project.source_children(parent):
+                    if child.relative_to(directory).full_match(pattern):
+                        paths.append(child)
+                    if len(parts) > 1 and self.source_project.source_query(
+                        child, "isdir"
+                    ):
+                        pending.append(child)
+        return paths
 
     def _cleanup_generated_support_file_states(
         self,
@@ -124,7 +179,12 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
             collected = self._obsolete_support_path_states(path, stale_paths)
             if collected.failure:
                 return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(collected)
-        return u.Infra.required_file_states(stale_paths)
+        return r[tuple[m.Cli.AtomicFileState, ...]].ok(
+            tuple(
+                self.source_project.source_state(path, required=False)
+                for path in sorted(set(stale_paths))
+            )
+        )
 
     def _obsolete_support_path_states(
         self,
@@ -228,7 +288,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
             state = self._optional_state(path)
             if state.failure:
                 return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(state)
-            if self._is_generated(state.value.content):
+            if self._is_generated(self._selected_content(path)):
                 states.append(state.value)
         return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(states))
 
@@ -247,7 +307,9 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         if state.failure:
             return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(state)
         return r[tuple[m.Cli.AtomicFileState, ...]].ok(
-            (state.value,) if self._is_generated(state.value.content) else (),
+            (state.value,)
+            if self._is_generated(self._selected_content(stub_path))
+            else (),
         )
 
     def _generated_export_sidecar_states(
@@ -275,7 +337,12 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         )
         if constants_check.failure:
             return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(constants_check)
-        return u.Infra.required_file_states(stale_paths)
+        return r[tuple[m.Cli.AtomicFileState, ...]].ok(
+            tuple(
+                self.source_project.source_state(path, required=False)
+                for path in sorted(stale_paths)
+            )
+        )
 
     def _sidecar_directory_states(
         self,
@@ -391,7 +458,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         init_state = self._optional_state(constants_init)
         if init_state.failure:
             return result_type.from_failure(init_state)
-        if self._is_generated(init_state.value.content):
+        if self._is_generated(self._selected_content(constants_init)):
             stale_paths.add(constants_init)
         return result_type.ok(value=True)
 

@@ -33,14 +33,14 @@ class TestsFlextInfraPytestTargetFile:
             (True, True, "collection"),
         ],
     )
-    def test_public_make_runs_each_requested_test_once(
+    def test_public_make_runs_requested_file_incremental_then_complete(
         provisioned_infra_checkout: t.Pair[str, Path],
         *,
         budgeted: bool,
         slow: bool,
         failure: str,
     ) -> None:
-        """Native Make preserves the requested file, failures and empty ownership."""
+        """Native Make runs both unbounded file phases and preserves causal failure."""
         _, root = provisioned_infra_checkout
         generated = tm.ok(u.Tests.run_isolated_make(["gen"], cwd=root))
         tm.that(
@@ -83,11 +83,14 @@ class TestsFlextInfraPytestTargetFile:
             proof.read_text().splitlines() if proof.exists() else []
         )
         tm.that(
-            all(observed.count(item) <= expected.count(item) for item in observed),
+            all(
+                observed.count(item) <= (1 if failure else 2) * expected.count(item)
+                for item in observed
+            ),
             eq=True,
         )
         if expected and not failure:
-            tm.that(sorted(observed), eq=sorted(expected))
+            tm.that(sorted(observed), eq=sorted(expected * 2))
         receipts = [
             m.Infra.PytestRunContext.model_validate_json(path.read_text())
             for path in sorted(
@@ -95,16 +98,20 @@ class TestsFlextInfraPytestTargetFile:
                 key=lambda path: path.stat().st_mtime_ns,
             )
         ]
-        tm.that(len(receipts), eq=1)
+        modes = [c.Infra.PytestExecutionMode.INCREMENTAL]
+        if not failure:
+            modes.append(c.Infra.PytestExecutionMode.FULL)
+        tm.that([receipt.execution_mode for receipt in receipts], eq=modes)
         tm.that(len({receipt.testmon_db for receipt in receipts}), eq=1)
-        tm.that(receipts[0].execution_mode, eq=c.Infra.PytestExecutionMode.INCREMENTAL)
-        tm.that(receipts[0].deadline_monotonic is not None, eq=True)
+        tm.that(
+            all(receipt.deadline_monotonic is None for receipt in receipts), eq=True
+        )
         if expected and not failure:
             TestsFlextInfraPytestTargetFile._assert_rerun_executes_again(
                 root,
                 relative,
                 proof,
-                expected,
+                expected * 2,
             )
 
     @staticmethod

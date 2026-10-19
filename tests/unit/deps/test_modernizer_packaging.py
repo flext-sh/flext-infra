@@ -6,15 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from pathlib import Path
+from typing import Literal
 
 import pytest
 
 from flext_infra import c, main
-from tests import t, tm, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from flext_infra.deps import FlextInfraPyprojectModernizer
+from tests import m, t, tm, u
 
 
 class TestsFlextInfraDepsModernizerPackaging:
@@ -160,8 +159,8 @@ class TestsFlextInfraDepsModernizerPackaging:
         }
         module_path = f"{c.Infra.DEFAULT_SRC_DIR}/{root_module}.py"
         tm.that(
-            set(u.Tests.toml_list(wheel["include"])),
-            eq={f"/{path}/**" for path in package_paths},
+            set(u.Tests.toml_list(wheel["only-include"])),
+            eq=package_paths,
         )
         tm.that(
             u.Tests.toml_mapping(wheel["force-include"]),
@@ -172,12 +171,20 @@ class TestsFlextInfraDepsModernizerPackaging:
             u.Tests.toml_mapping(wheel["force-include"])[module_path],
             eq=f"{root_module}.py",
         )
-        included = set(u.Tests.toml_list(sdist["include"]))
-        tm.that({f"/{path}/**" for path in package_paths} <= included, eq=True)
+        included = set(u.Tests.toml_list(sdist["only-include"]))
+        tm.that(package_paths <= included, eq=True)
         tm.that(u.Tests.toml_mapping(sdist["force-include"]), has=module_path)
         tm.that(
             u.Tests.toml_mapping(sdist["force-include"])[module_path],
             eq=module_path,
+        )
+        tm.that(
+            u.Tests.toml_mapping(wheel["force-include"])[c.PYPROJECT_FILENAME],
+            eq=f"{primary_package}/{c.PYPROJECT_FILENAME}",
+        )
+        tm.that(
+            u.Tests.toml_mapping(sdist["force-include"])[c.PYPROJECT_FILENAME],
+            eq=c.PYPROJECT_FILENAME,
         )
 
         manifest_path = infra_git_repo / c.PYPROJECT_FILENAME
@@ -213,6 +220,84 @@ class TestsFlextInfraDepsModernizerPackaging:
             c.Infra.CodegenConformMode.CHECK.value,
         ])
         tm.that(fixed_point, eq=0)
+
+    @pytest.mark.slow
+    def test_modernizer_preserves_declared_packaging_surfaces(
+        self,
+        infra_git_repo: Path,
+    ) -> None:
+        """Template and modernization agree on packages, namespaces and hooks."""
+        self._prepare_project(
+            infra_git_repo,
+            materialize_module=True,
+            materialize_package=True,
+        )
+        manifest = tm.ok(u.Infra.load_workspace_manifest(infra_git_repo))[0]
+        project = tm.not_none(manifest.project)
+        namespace = f"{project.package_name}_assets"
+        hook = Path("build_tools") / f"{project.package_name}_build.py"
+        tm.ok(u.Cli.ensure_dir(infra_git_repo / namespace))
+        tm.ok(u.Cli.ensure_dir((infra_git_repo / hook).parent))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                infra_git_repo / hook, '"""Declared project build hook."""\n'
+            )
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                u.Infra.workspace_manifest_path(infra_git_repo),
+                manifest.model_copy(
+                    update={
+                        "project": m.Infra.ProjectSpec.model_validate({
+                            **project.model_dump(),
+                            "hatch_build_hook_path": hook,
+                            "repository_namespace_packages": (namespace,),
+                        })
+                    }
+                ).model_dump(mode="json"),
+            )
+        )
+        tm.that(self._conform_self(infra_git_repo), eq=0)
+        generated = (infra_git_repo / c.PYPROJECT_FILENAME).read_text(
+            encoding=c.DEFAULT_ENCODING
+        )
+        tm.that(
+            FlextInfraPyprojectModernizer(
+                repository_root=infra_git_repo,
+                apply_changes=True,
+                skip_check=True,
+            ).run(),
+            eq=0,
+        )
+        source = (infra_git_repo / c.PYPROJECT_FILENAME).read_text(
+            encoding=c.DEFAULT_ENCODING,
+        )
+        for target in ("wheel", "sdist"):
+            expected = u.Tests.toml_table_at(
+                generated, "tool", "hatch", "build", "targets", target
+            )
+            observed = u.Tests.toml_table_at(
+                source, "tool", "hatch", "build", "targets", target
+            )
+            tm.that(observed["force-include"], eq=expected["force-include"])
+            tm.that(
+                set(u.Tests.toml_strings(observed["only-include"])),
+                eq=set(u.Tests.toml_strings(expected["only-include"])),
+            )
+        tm.that(
+            u.Tests.toml_table_at(
+                source, "tool", "hatch", "build", "targets", "wheel", "sources"
+            ),
+            eq=u.Tests.toml_table_at(
+                generated, "tool", "hatch", "build", "targets", "wheel", "sources"
+            ),
+        )
+        tm.that(
+            u.Tests.toml_table_at(
+                source, "tool", "hatch", "build", "targets", "sdist", "force-include"
+            )[hook.as_posix()],
+            eq=hook.as_posix(),
+        )
 
     @pytest.mark.slow
     @pytest.mark.parametrize("missing_kind", ["module", "package"])

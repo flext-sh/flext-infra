@@ -1,0 +1,851 @@
+"""Native declaration retirement elected by project-owned contract rules.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+import ast
+from pathlib import Path
+
+from flext_infra import c, m, p, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
+)
+from flext_infra._utilities._rope_analysis import (
+    FlextInfraUtilitiesRopeAnalysisAstHelpers,
+    FlextInfraUtilitiesRopeAnalysisExports,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticDeclarationRelocation,
+    FlextInfraUtilitiesSemanticFamilyTypeReferences,
+    FlextInfraUtilitiesSemanticNestingTypes,
+)
+from flext_infra._utilities.rope_module_patch import FlextInfraUtilitiesRopeModulePatch
+
+
+class FlextInfraUtilitiesSemanticDeclarationRetirement(
+    FlextInfraUtilitiesSemanticDeclarationRelocation,
+):
+    """Complete the existing contract planner through the native relocation owner."""
+
+    @staticmethod
+    def contract_transfer_binding(
+        project: p.Infra.RopeProject,
+        identity: t.Pair[str, str],
+        owned_modules: t.MappingKV[str, t.Infra.RopeSourcePath],
+    ) -> p.Infra.RopePyName | None:
+        """Resolve only an original owned resource, never an installed SDK fallback.
+
+        Returns:
+            The owned native binding, or ``None`` when the provider or any
+            expression part is not an owned original.
+
+        """
+        provider, expression = identity
+        path = owned_modules.get(provider)
+        if path is None:
+            return None
+        resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            project.get_resource(
+                path.relative_to(Path(project.root.real_path)).as_posix()
+            ),
+            path,
+        )
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
+        return FlextInfraUtilitiesRopeRuntimeModules.expression_name(
+            module.get_scope(), expression
+        )
+
+    @classmethod
+    def retire_contract_owners(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        proposed: t.MutableMappingKV[t.Infra.RopeSourcePath, str],
+        rules: t.SequenceOf[p.Infra.RopeContractRule],
+        epoch: p.Infra.CodemodSourceEpoch,
+        owned_modules: t.MappingKV[str, t.Infra.RopeSourcePath],
+    ) -> t.Pair[t.Infra.RopeImplementationPaths, t.Infra.RopeImplementationPaths]:
+        """Retire elected declarations only after native receiver completeness.
+
+        Returns:
+            The retired wrapper paths and the transfer destination paths. An
+            external library owner, missing receiver or unproven transfer
+            raises ``TypeError`` or ``ValueError``.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        retired: t.Infra.RopeMutablePaths = set()
+        destinations: t.Infra.RopeMutablePaths = set()
+        for rule in rules:
+            if rule.ownership_transfer is None:
+                continue
+            owner = cls.contract_rule_root(workspace.repository_root, rule)
+            project = runtime.snapshot_project(
+                workspace.rope_project, proposed, captured=epoch
+            )
+            try:
+                path, destination = cls._retire_contract_rule(
+                    project,
+                    rule,
+                    owner,
+                    proposed,
+                    owned_modules,
+                    destinations=tuple(
+                        runtime.qualified_name(project, identity)
+                        for transfer in rules
+                        if transfer.ownership_transfer is not None
+                        for identity in transfer.bindings.values()
+                    ),
+                )
+                if path is not None:
+                    retired.add(path)
+                if destination is not None:
+                    destinations.add(destination)
+            finally:
+                project.close()
+        return frozenset(retired), frozenset(destinations)
+
+    @classmethod
+    def _retire_contract_rule(
+        cls,
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        owner: Path,
+        proposed: t.MutableMappingKV[t.Infra.RopeSourcePath, str],
+        owned_modules: t.MappingKV[str, t.Infra.RopeSourcePath],
+        *,
+        destinations: t.SequenceOf[p.Infra.RopePyName],
+    ) -> t.Pair[t.Infra.RopeSourcePath | None, t.Infra.RopeSourcePath | None]:
+        """Retire one elected ownership transfer after receiver completeness.
+
+        Returns:
+            The retired wrapper path, when the wrapper emptied, and the
+            transfer destination path.
+
+        Raises:
+            TypeError: If an elected declaration owner is an external library
+                rather than a governed source module.
+            ValueError: If the transfer has no single destination, no native
+                receiver, leaves the project scope or cannot be proven.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        if rule.ownership_transfer is None:
+            return None, None
+        binding = cls.contract_transfer_binding(
+            project, rule.ownership_transfer, owned_modules
+        )
+        if binding is None:
+            return None, None
+        if len(rule.bindings) != 1:
+            message = f"{rule.id}: ownership transfer requires one destination"
+            raise ValueError(message)
+        elected = next(iter(rule.bindings.values()))
+        destination = runtime.qualified_name(project, elected)
+        destinations_path: t.Infra.RopeSourcePath | None = None
+        for selected in (binding, destination):
+            value = selected.get_object()
+            provider = value.get_module()
+            if not isinstance(provider, p.Infra.RopeSourceModule):
+                message = f"{rule.id}: an external library declaration cannot retire"
+                raise TypeError(message)
+            resource = provider.get_resource()
+            if resource is None:
+                message = f"{rule.id}: ownership requires a native source resource"
+                raise ValueError(message)
+            path = Path(resource.real_path).resolve()
+            if path not in proposed or not path.is_relative_to(owner):
+                message = (
+                    f"{rule.id}: ownership transfer is outside its project: {path}"
+                )
+                raise ValueError(message)
+            if selected is destination:
+                destinations_path = path
+        retired_path, removed = cls._retire_contract_declaration(
+            project, binding, destination, proposed, destinations=destinations
+        )
+        return (retired_path if removed else None), destinations_path
+
+    @classmethod
+    def _authenticated_retirement_owner(
+        cls,
+        binding: p.Infra.RopePyName,
+        proposed: t.MappingKV[t.Infra.RopeSourcePath, str],
+    ) -> t.Pair[p.Infra.RopePyModule, t.Pair[t.Infra.RopeSourcePath, str]]:
+        """Authenticate the native class or function owner of the binding.
+
+        Returns:
+            The defining module and the governed ``(path, source)`` it owns.
+
+        Raises:
+            TypeError: If the binding has no native class or function scope.
+            ValueError: If the scope, module or governed source is missing.
+
+        """
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        value = binding.get_object()
+        if not (types.py_function(value) or types.py_class(value)):
+            message = "ownership transfer requires a native class or function"
+            raise TypeError(message)
+        scope, module = value.get_scope(), value.get_module()
+        if scope is None or not isinstance(module, p.Infra.RopePyModule):
+            message = "ownership transfer has no native definition scope"
+            raise TypeError(message)
+        resource = module.get_resource()
+        if resource is None:
+            message = "ownership transfer has no native definition resource"
+            raise ValueError(message)
+        path = Path(resource.real_path).resolve()
+        return module, (path, proposed[path])
+
+    @classmethod
+    def _retiring_declaration_span(
+        cls,
+        module: p.Infra.RopePyModule,
+        definition: p.Infra.RopeSourceDefinition,
+        path: t.Infra.RopeSourcePath,
+    ) -> t.Pair[p.Infra.RopePyName | None, p.Infra.RopeAstNode]:
+        """Resolve the retiring declaration and its provably empty wrappers.
+
+        Returns:
+            The optional lexical container and the cached native definition node.
+
+        Raises:
+            ValueError: If no native declaration matches the scope, the
+                retiring wrapper cannot be proven or the declaration has no
+                native end span.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        parents = FlextInfraUtilitiesRopeAnalysisAstHelpers.ast_parent_map(
+            module.get_ast()
+        )
+        target = definition.get_ast()
+        if not isinstance(
+            target, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
+        ):
+            msg = "retirement requires a native source definition"
+            raise TypeError(msg)
+        container: p.Infra.RopePyName | None = None
+        parent = parents.get(id(target))
+        while (
+            isinstance(parent, ast.ClassDef)
+            and not (
+                parent.bases
+                or parent.keywords
+                or parent.decorator_list
+                or parent.type_params
+            )
+            and all(
+                item is target
+                or isinstance(item, ast.Pass)
+                or (
+                    isinstance(item, ast.Expr)
+                    and isinstance(item.value, ast.Constant)
+                    and isinstance(item.value.value, str)
+                )
+                for item in parent.body
+            )
+        ):
+            parent_scope = runtime.scope_at(
+                module,
+                runtime.source_offset(module.source_code, parent),
+                declaration_line=parent.lineno,
+            )
+            container = runtime.expression_name(parent_scope, parent.name)
+            if container is None:
+                message = f"unproven retiring lexical container: {path}:{parent.name}"
+                raise ValueError(message)
+            target, parent = parent, parents.get(id(parent))
+        if target.end_lineno is None:
+            message = f"retiring declaration has no native end span: {path}"
+            raise ValueError(message)
+        return container, target
+
+    @classmethod
+    def _verify_transfer_compatibility(
+        cls,
+        binding: p.Infra.RopePyName,
+        destination: p.Infra.RopePyName,
+    ) -> None:
+        """Reject transfers that change the native callable or callback shape.
+
+        Raises:
+            ValueError: If the callable signature, native kind or callback
+                signature changes across the transfer.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        value = binding.get_object()
+        if types.py_function(value):
+            if cls._native_contract_signature(
+                binding
+            ) != cls._native_contract_signature(destination):
+                message = "ownership transfer changes the native callable signature"
+                raise ValueError(message)
+            return
+        destination_value = destination.get_object()
+        if not types.py_class(destination_value):
+            message = "ownership transfer changes a class into a different native kind"
+            raise ValueError(message)
+        previous = value.get_attributes().get("__call__")
+        current = destination_value.get_attributes().get("__call__")
+        if previous is not None and (
+            current is None
+            or (
+                not runtime.same_name(previous, current)
+                and cls._native_contract_signature(previous)
+                != cls._native_contract_signature(current)
+            )
+        ):
+            message = "ownership transfer changes the native callback signature"
+            raise ValueError(message)
+
+    @classmethod
+    def _drop_changed_orphaned_imports(
+        cls,
+        project: p.Infra.RopeProject,
+        proposed: t.MutableMappingKV[t.Infra.RopeSourcePath, str],
+    ) -> None:
+        """Remove newly orphaned imports from every changed governed module."""
+        for changed, after in tuple(proposed.items()):
+            resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                project.get_resource(
+                    changed.relative_to(Path(project.root.real_path)).as_posix()
+                ),
+                changed,
+            )
+            before_module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                project, resource
+            )
+            if after != before_module.source_code:
+                proposed[changed] = cls._remove_orphaned_imports(
+                    project,
+                    resource,
+                    before_module.source_code,
+                    after,
+                )
+
+    @classmethod
+    def _prove_retired_module_emptiness(
+        cls,
+        module: p.Infra.RopePyModule,
+        container: p.Infra.RopePyName | None,
+    ) -> bool:
+        """Prove the retired wrapper keeps no live module behavior.
+
+        Returns:
+            Whether the retired module body became provably empty.
+
+        Raises:
+            ValueError: If a retiring wrapper still carries live behavior.
+
+        """
+        tree = module.get_ast()
+        if not isinstance(tree, ast.Module):
+            msg = "retirement requires the proposed native module AST"
+            raise TypeError(msg)
+        empty = all(
+            (isinstance(item, ast.ImportFrom) and item.module == "__future__")
+            or (
+                isinstance(item, ast.Expr)
+                and isinstance(item.value, ast.Constant)
+                and isinstance(item.value.value, str)
+            )
+            or (
+                isinstance(item, ast.Assign | ast.AnnAssign)
+                and isinstance(item.value, ast.List | ast.Tuple)
+                and not item.value.elts
+                and len(
+                    targets := item.targets
+                    if isinstance(item, ast.Assign)
+                    else (item.target,)
+                )
+                == 1
+                and isinstance(targets[0], ast.Name)
+                and targets[0].id == "__all__"
+            )
+            for item in tree.body
+        )
+        if container is not None and not empty:
+            message = f"retiring wrapper has live module behavior: {module.get_name()}"
+            raise ValueError(message)
+        return empty
+
+    @classmethod
+    def _retire_contract_declaration(
+        cls,
+        project: p.Infra.RopeProject,
+        binding: p.Infra.RopePyName,
+        destination: p.Infra.RopePyName,
+        proposed: t.MutableMappingKV[t.Infra.RopeSourcePath, str],
+        *,
+        destinations: t.SequenceOf[p.Infra.RopePyName],
+    ) -> t.Pair[t.Infra.RopeSourcePath, bool]:
+        """Remove only the native declaration and provably empty lexical owners.
+
+        Returns:
+            The retiring module path and whether its body became provably
+            empty.
+
+        """
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        module, (path, source) = cls._authenticated_retirement_owner(binding, proposed)
+        definition = binding.get_object()
+        if not isinstance(definition, p.Infra.RopeSourceDefinition):
+            msg = "retiring declaration has no native source AST"
+            raise TypeError(msg)
+        container, target = cls._retiring_declaration_span(module, definition, path)
+        if (
+            not isinstance(
+                target, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
+            )
+            or target.end_lineno is None
+        ):
+            msg = "retiring declaration has no complete native span"
+            raise TypeError(msg)
+        cls._prove_contract_retirement(
+            project,
+            proposed,
+            binding=binding,
+            destinations=destinations,
+            container=container,
+            owner_path=path,
+            first_line=target.lineno,
+            last_line=target.end_lineno,
+        )
+        cls._verify_transfer_compatibility(binding, destination)
+        if container is not None:
+            cls._retire_contract_bases(project, proposed, container)
+            source = proposed[path]
+        lines = cls._source_lines(source)
+        first_line = min(
+            (item.lineno for item in target.decorator_list), default=target.lineno
+        )
+        edits = [
+            m.Infra.SourceRewrite(
+                start=lines.get_line_start(first_line),
+                end=lines.get_line_end(target.end_lineno)
+                + int(source[lines.get_line_end(target.end_lineno) :].startswith("\n")),
+                text="",
+            )
+        ]
+        resource = module.get_resource()
+        if resource is None:
+            msg = f"retiring declaration has no native resource: {path}"
+            raise ValueError(msg)
+        source = refactors.content_change(
+            resource=resource, source=source, rewrites=edits
+        ).new_contents
+        if (
+            container is not None
+            and FlextInfraUtilitiesRopeModulePatch.runtime_alias_bindings(
+                source, alias="__all__"
+            )
+        ):
+            source = FlextInfraUtilitiesRopeModulePatch._rewrite_all_declaration(
+                source,
+                names=[
+                    name
+                    for name in FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+                        source
+                    )
+                    if name != target.name
+                ],
+            )
+        proposed[path] = source
+        cls._drop_changed_orphaned_imports(project, proposed)
+        empty = cls._prove_retired_module_emptiness(
+            FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+                project,
+                proposed[path],
+                resource=module.get_resource(),
+            ),
+            container,
+        )
+        if empty:
+            proposed[path] = ""
+        return path, empty
+
+    @staticmethod
+    def _contract_signature(node: p.Infra.RopeAstNode) -> t.Infra.RopeCallableSignature:
+        """Compare calling conventions, not migrated declaration annotations.
+
+        Returns:
+            The structural callable signature tuple.
+
+        Raises:
+            TypeError: If the node is not a function definition.
+            ValueError: If a callable default expression is unproven.
+
+        """
+        if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            message = "native signature proof requires a function definition"
+            raise TypeError(message)
+        args = node.args
+        if any(
+            item is not None and not isinstance(item, ast.Constant)
+            for item in (*args.defaults, *args.kw_defaults)
+        ):
+            message = "ownership transfer has an unproven callable default expression"
+            raise ValueError(message)
+        return (
+            tuple(item.arg for item in args.posonlyargs),
+            tuple(item.arg for item in args.args),
+            args.vararg.arg if args.vararg is not None else None,
+            tuple(item.arg for item in args.kwonlyargs),
+            args.kwarg.arg if args.kwarg is not None else None,
+            tuple(ast.dump(item) for item in args.defaults),
+            tuple(
+                ast.dump(item) if item is not None else None
+                for item in args.kw_defaults
+            ),
+            isinstance(node, ast.AsyncFunctionDef),
+        )
+
+    @classmethod
+    def _native_contract_signature(
+        cls, binding: p.Infra.RopePyName
+    ) -> t.Pair[t.Infra.RopeCallableSignature, str]:
+        """Include native binding kind without executing the authored callable.
+
+        Returns:
+            The structural signature paired with the native binding kind.
+
+        Raises:
+            TypeError: If the binding has no native source scope.
+            ValueError: If the binding is not a native callable.
+
+        """
+        value = binding.get_object()
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_function(value):
+            message = (
+                "ownership transfer changes a callable into a different native kind"
+            )
+            raise ValueError(message)
+        if not isinstance(value, p.Infra.RopeSourceDefinition):
+            message = "ownership callable has no native source AST"
+            raise TypeError(message)
+        return cls._contract_signature(value.get_ast()), value.get_kind()
+
+    @classmethod
+    def _require_governed_inventory(
+        cls,
+        project: p.Infra.RopeProject,
+        observed: t.MappingKV[t.Infra.RopeSourcePath, str],
+    ) -> None:
+        """Require every workspace Python file in the governed inventory.
+
+        Raises:
+            ValueError: If a non-generated workspace source is missing from
+                the governed inventory.
+
+        """
+        for resource in project.get_python_files():
+            path = Path(resource.real_path).resolve()
+            if path not in observed:
+                source = resource.read()
+                if not source.startswith(c.Infra.AUTOGEN_HEADERS):
+                    message = (
+                        "ownership transfer requires complete governed inventory: "
+                        f"{path}"
+                    )
+                    raise ValueError(message)
+                # Generated exports are regenerated in the same publication group.
+
+    @classmethod
+    def _prove_contract_retirement(
+        cls,
+        project: p.Infra.RopeProject,
+        sources: t.MappingKV[t.Infra.RopeSourcePath, str],
+        *,
+        binding: p.Infra.RopePyName,
+        destinations: t.SequenceOf[p.Infra.RopePyName],
+        container: p.Infra.RopePyName | None,
+        owner_path: t.Infra.RopeSourcePath,
+        first_line: int,
+        last_line: int,
+    ) -> None:
+        """Prove all governed uses without evaluating opaque receiver expressions."""
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        member, owner_module = (
+            binding.get_object().get_name(),
+            binding.get_object().get_module(),
+        )
+        cls._require_governed_inventory(project, sources)
+        reflectors = tuple(
+            runtime.qualified_name(project, name, module_name="builtins")
+            for name in ("getattr", "hasattr", "setattr", "delattr")
+        )
+        for path, source in sources.items():
+            if source.startswith(c.Infra.AUTOGEN_HEADERS):
+                continue
+            resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                project.get_resource(
+                    path.relative_to(Path(project.root.real_path)).as_posix()
+                ),
+                path,
+            )
+            module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
+            tree = module.get_ast()
+            if not isinstance(tree, ast.Module):
+                msg = "retirement proof requires the native module AST"
+                raise TypeError(msg)
+            parents = FlextInfraUtilitiesRopeAnalysisAstHelpers.ast_parent_map(tree)
+
+            def covers(line: int) -> bool:
+                return path == owner_path and first_line <= line <= last_line
+
+            def resolves(node: p.Infra.RopeAstNode) -> p.Infra.RopePyName | None:
+                scope = runtime.scope_at(module, runtime.source_offset(source, node))
+                return runtime.resolve_symbol(scope, node)
+
+            def whole_owner(actual: p.Infra.RopePyName | None) -> bool:
+                return (
+                    container is not None
+                    and actual is not None
+                    and (
+                        runtime.same_name(container, actual)
+                        or actual.get_object() == owner_module
+                    )
+                )
+
+            def carries(expression: p.Infra.RopeAstNode) -> bool:
+                if not isinstance(expression, ast.AST):
+                    msg = "native carrier proof requires an AST expression"
+                    raise TypeError(msg)
+                return any(
+                    actual is not None
+                    and (
+                        whole_owner(actual)
+                        or runtime.same_name(
+                            binding, actual.get_object().get_attributes().get(member)
+                        )
+                    )
+                    for part in ast.walk(expression)
+                    if isinstance(part, ast.Name | ast.Attribute)
+                    for actual in (resolves(part),)
+                )
+
+            for (
+                name
+            ) in FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+                source
+            ):
+                exported = module.get_attributes().get(name)
+                if path != owner_path and (
+                    runtime.same_name(binding, exported)
+                    or (
+                        container is not None and runtime.same_name(container, exported)
+                    )
+                ):
+                    msg = f"ownership transfer has an exported old alias: {path}:{name}"
+                    raise ValueError(msg)
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Name | ast.Attribute | ast.Call) or covers(
+                    node.lineno
+                ):
+                    continue
+                if isinstance(node, ast.Name | ast.Attribute):
+                    actual = resolves(node)
+                    parent = parents.get(id(node))
+                    base = isinstance(parent, ast.ClassDef) and node in parent.bases
+                    ancestor = parents.get(id(parent))
+                    module_base = (
+                        isinstance(parent, ast.Attribute)
+                        and container is not None
+                        and runtime.same_name(container, resolves(parent))
+                        and isinstance(ancestor, ast.ClassDef)
+                        and parent in ancestor.bases
+                    )
+                    if runtime.same_name(binding, actual) or (
+                        container is not None
+                        and runtime.same_name(container, actual)
+                        and not base
+                    ):
+                        msg = f"ownership transfer has surviving native usage: {path}:{node.lineno}"
+                        raise ValueError(msg)
+                    if (
+                        actual is not None
+                        and whole_owner(actual)
+                        and actual.get_object() == owner_module
+                        and not module_base
+                    ):
+                        msg = f"ownership transfer has surviving module usage: {path}:{node.lineno}"
+                        raise ValueError(msg)
+                    if (
+                        isinstance(node, ast.Attribute)
+                        and node.attr in {"__dict__", "__getattribute__"}
+                        and carries(node.value)
+                    ):
+                        msg = f"ownership transfer has dynamic owner access: {path}:{node.lineno}"
+                        raise ValueError(msg)
+                if isinstance(node, ast.Call):
+                    callee = resolves(node.func)
+                    if any(
+                        runtime.same_name(target, callee) for target in destinations
+                    ):
+                        continue
+                    arguments = (*node.args, *(item.value for item in node.keywords))
+                    if not any(carries(argument) for argument in arguments):
+                        continue
+                    if (
+                        any(runtime.same_name(item, callee) for item in reflectors)
+                        and len(node.args) > 1
+                    ):
+                        selector = node.args[1]
+                        if (
+                            isinstance(selector, ast.Constant)
+                            and isinstance(selector.value, str)
+                            and selector.value != member
+                            and all(
+                                not carries(argument) or resolves(argument) is not None
+                                for argument in arguments
+                            )
+                            and not any(
+                                whole_owner(resolves(argument))
+                                for argument in arguments
+                            )
+                        ):
+                            continue
+                    msg = f"ownership transfer has marker/dynamic owner usage: {path}:{node.lineno}"
+                    raise ValueError(msg)
+            if path != owner_path:
+                for name, imported in module.get_scope().get_defined_names().items():
+                    if not (
+                        runtime.same_name(binding, imported) or whole_owner(imported)
+                    ):
+                        continue
+                    if not any(
+                        container is not None
+                        and runtime.same_name(container, resolves(base))
+                        and any(
+                            isinstance(part, ast.Name) and part.id == name
+                            for part in ast.walk(base)
+                        )
+                        for declaration in ast.walk(tree)
+                        if isinstance(declaration, ast.ClassDef)
+                        for base in declaration.bases
+                    ):
+                        msg = f"ownership transfer has a surviving imported alias: {path}:{name}"
+                        raise ValueError(msg)
+
+            def quoted(scope: p.Infra.RopeScope, expression: str) -> str | None:
+                if not covers(scope.get_start()):
+                    actual = runtime.expression_name(scope, expression)
+                    if runtime.same_name(binding, actual) or (
+                        container is not None and runtime.same_name(container, actual)
+                    ):
+                        msg = f"ownership transfer has a surviving annotation: {path}:{expression}"
+                        raise ValueError(msg)
+                return None
+
+            FlextInfraUtilitiesSemanticNestingTypes.rewrite_quoted_types(
+                project, resource, source, quoted
+            )
+
+    @classmethod
+    def _retire_contract_bases(
+        cls,
+        project: p.Infra.RopeProject,
+        sources: t.MutableMappingKV[t.Infra.RopeSourcePath, str],
+        container: p.Infra.RopePyName,
+    ) -> None:
+        """Remove only class-header edges to the proven empty native container.
+
+        Raises:
+            TypeError: If a base-owning declaration is not a native class.
+            ValueError: If a base owner has no native declaring class, scope
+                or class header.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        for path, source in tuple(sources.items()):
+            resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                project.get_resource(
+                    path.relative_to(Path(project.root.real_path)).as_posix()
+                ),
+                path,
+            )
+            module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
+            changes = []
+            tree = module.get_ast()
+            if not isinstance(tree, ast.Module):
+                msg = "retiring bases require the native module AST"
+                raise TypeError(msg)
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.ClassDef) or not node.bases:
+                    continue
+                scope = runtime.scope_at(
+                    module,
+                    runtime.source_offset(source, node),
+                    declaration_line=node.lineno,
+                )
+                removed = tuple(
+                    base
+                    for base in node.bases
+                    if runtime.same_name(container, runtime.resolve_symbol(scope, base))
+                )
+                if not removed:
+                    continue
+                owner = runtime.expression_name(scope, node.name)
+                if owner is None:
+                    message = (
+                        "retiring base has no native declaring class: "
+                        f"{path}:{node.name}"
+                    )
+                    raise ValueError(message)
+                value = owner.get_object()
+                if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
+                    message = f"retiring base has a non-class owner: {path}:{node.name}"
+                    raise TypeError(message)
+                class_scope = value.get_scope()
+                if class_scope is None:
+                    message = (
+                        "retiring base has no native declaring scope: "
+                        f"{path}:{node.name}"
+                    )
+                    raise ValueError(message)
+                located = cls._header_argument_span(value, class_scope, module)
+                if located is None:
+                    message = (
+                        f"retiring base has no native class header: {path}:{node.name}"
+                    )
+                    raise ValueError(message)
+                header, (_words, first, last) = located
+                arguments = (
+                    FlextInfraUtilitiesSemanticFamilyTypeReferences.expression_segments(
+                        header.text, first + 1, last - 1, ","
+                    )
+                )
+                keep = [
+                    header.text[left:right]
+                    for left, right in arguments
+                    if not any(
+                        header.start_offset + left
+                        <= runtime.source_offset(source, base)
+                        < header.start_offset + right
+                        for base in removed
+                    )
+                ]
+                changes.append(
+                    m.Infra.SourceRewrite(
+                        start=header.start_offset + first + 1,
+                        end=header.start_offset + last - 1,
+                        text=",".join(keep),
+                    )
+                )
+            if changes:
+                sources[path] = refactors.content_change(
+                    resource, source, changes
+                ).new_contents
+
+
+__all__ = ["FlextInfraUtilitiesSemanticDeclarationRetirement"]

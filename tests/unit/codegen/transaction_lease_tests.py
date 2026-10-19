@@ -162,6 +162,7 @@ class TestsFlextInfraTransactionLease:
         """Publish a real prepared phase and commit after the contender finishes."""
         owner = FlextInfraCodegenMiseArtifacts(repository_root=root)
         transaction = FlextInfraCodegenTransaction(owner)
+        roots = transaction.capability_roots("mise", (root,))
 
         def publish(scope_root: Path) -> p.Result[bool]:
             config_path = root / ".mise.toml"
@@ -176,21 +177,23 @@ class TestsFlextInfraTransactionLease:
                 desired_mode=before.mode,
                 owner="mise",
             )
-            session = tm.ok(transaction.begin_locked(scope_root, (plan,), (plan,)))
+            session = tm.ok(transaction.begin_files_locked(scope_root, roots, ()))
+            session = tm.ok(
+                transaction.append_phase_locked(
+                    session, c.Infra.CodegenStagedFilePhase.MISE, (plan,)
+                ),
+            )
             ready.set()
             tm.that(
                 release.wait(config.Infra.tooling.tools.pytest.slow_timeout_seconds),
                 eq=True,
             )
             tm.ok(
-                transaction.commit_locked(
-                    session,
-                    lambda: owner.validate_artifacts(root, scope_root),
-                ),
+                transaction.commit_locked(session),
             )
             return r[bool].ok(value=True)
 
-        tm.ok(transaction.run_locked(prepare=True, operation=publish))
+        tm.ok(transaction.run_files_locked(roots, publish))
 
     @staticmethod
     def _acquire_when_granted(scope: Path, acquired: Event) -> None:

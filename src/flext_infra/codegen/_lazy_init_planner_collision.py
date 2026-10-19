@@ -256,7 +256,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         module_file = self._module_file(module_path)
         if module_file is None or module_file.name == "__init__.py":
             return None
-        tree = ast.parse(module_file.read_text(encoding="utf-8"))
+        tree = ast.parse(self.rope_workspace.rope_project.source_text(module_file))
         for node in tree.body:
             if not isinstance(node, ast.ImportFrom):
                 continue
@@ -433,3 +433,6 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             and name not in {c.Infra.DUNDER_INIT, "pytestmark"}
             and (name != "main" or allow_main)
         )
+
+
+__all__: list[str] = ["FlextInfraCodegenLazyInitPlannerCollisionMixin"]

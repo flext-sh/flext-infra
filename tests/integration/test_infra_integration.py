@@ -266,6 +266,44 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(item.script_reference_sites, eq=())
 
     @staticmethod
+    def test_census_multiline_parameters_keep_native_definition_positions(
+        tmp_path: Path,
+    ) -> None:
+        """Native parameter bindings retain positional and keyword signature lines."""
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-evidence",
+            package_name="flext_evidence",
+        )
+        definition = package / "helpers.py"
+        definition.write_text(
+            "def consume(\n"
+            "    first,\n"
+            "    /,\n"
+            "    second=None,\n"
+            "    *items,\n"
+            "    named=None,\n"
+            "    **options,\n"
+            "):\n"
+            "    return first, second, items, named, options\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with infra.rope_workspace(root) as rope:
+            parameters = {
+                item.name: item.line
+                for item in rope.objects(
+                    definition,
+                    include_local_scopes=True,
+                    include_references=False,
+                )
+                if item.kind == "parameter"
+            }
+        tm.that(
+            parameters,
+            eq={"first": 2, "second": 4, "items": 5, "named": 6, "options": 7},
+        )
+
+    @staticmethod
     def test_census_same_line_function_and_parameter_bindings_are_separate(
         tmp_path: Path,
     ) -> None:
@@ -352,7 +390,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
     @staticmethod
     @pytest.mark.integration
     def test_markdown_fix_reports_residual_after_repair(tmp_path: Path) -> None:
-        """A fixable finding is repaired; an unfixable one stays reported for check."""
+        """A valid repair survives while an unfixable finding fails the invocation."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-fmt-contract")
         document = project_dir / "README.md"
         document.write_text("not a heading   \n", encoding="utf-8")
@@ -365,13 +403,15 @@ class TestsFlextInfraIntegrationInfraIntegration:
 
         execution = FlextInfraMarkdownGate(tmp_path).fix(project_dir, context)
 
-        # The repair verb fixes what rumdl can fix (trailing spaces) and
-        # completes with the unfixable residual (MD041) reported: the fix
-        # verdict is the repair tool's own status, and the read-only check
-        # gate is what enforces the residual finding.
-        tm.that(execution.result.passed, eq=True)
+        # Valid trailing-space repair remains published; MD041 still fails
+        # this invocation with the same diagnostic as the read-only check.
+        tm.that(execution.result.passed, eq=False)
         tm.that(document.read_text(encoding="utf-8"), eq="not a heading\n")
         tm.that(execution.issues[0].code, eq="MD041")
+        tm.that(
+            execution.issues,
+            eq=FlextInfraMarkdownGate(tmp_path).check(project_dir, context).issues,
+        )
 
     @staticmethod
     @pytest.mark.integration

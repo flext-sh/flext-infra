@@ -1,379 +1,409 @@
-"""Render concrete model annotations as structural protocol annotations.
+"""Project annotations from authenticated native declarations, never imports.
 
-Copyright (c) 2025 FLEXT Team. All rights reserved.
+Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
 
-import re
-from collections import abc
-from enum import Enum
-from importlib import import_module
-from importlib.util import find_spec
+import ast
 from pathlib import Path
-from types import UnionType
-from typing import (
-    Annotated,
-    ClassVar,
-    ForwardRef,
-    Literal,
-    TypeAliasType,
-    TypeIs,
-    get_args,
-    get_origin,
-)
 
-from flext_infra import m, p, t
+from flext_infra import c, p, t, u
+from flext_infra._utilities import FlextInfraUtilitiesRopeRuntimeModules
 
 
 class FlextInfraCodegenProtocolModelAnnotations:
-    """Map validated runtime model types to public protocol-facade types."""
+    """Resolve aliases and specializations in their original lexical scopes."""
 
-    _ORIGINS: ClassVar[t.MappingKV[p.AttributeProbe, str]] = {
-        list: "list",
-        tuple: "tuple",
-        dict: "dict",
-        set: "set",
-        frozenset: "frozenset",
-        type: "type",
-        abc.Sequence: "Sequence",
-        abc.Mapping: "Mapping",
-        abc.MutableSequence: "MutableSequence",
-        abc.MutableMapping: "MutableMapping",
-        abc.Set: "AbstractSet",
-        abc.MutableSet: "MutableSet",
-        abc.Iterable: "Iterable",
-        abc.Iterator: "Iterator",
-    }
-    _ANNOTATED_PREFIX = "Annotated["
-    _BANNED = frozenset({"Any", "object", "typing.Any"})
-    _TOKEN_RE: ClassVar[re.Pattern[str]] = re.compile(r"[A-Za-z_][A-Za-z0-9_.]*")
-
-    class ProtocolModelTarget(m.FrozenModel):
-        """The member namespace the generator renders protocols for."""
-
-        package_name: str = m.Field(
-            description="Member package name (pyproject name, underscore form).",
+    def __init__(
+        self,
+        project: p.Infra.ProjectSpec,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        declarations: t.MappingKV[str, p.Infra.RopePyName],
+    ) -> None:
+        if not workspace.rope_project.authenticated_sources:
+            msg = "protocol projection requires authenticated native sources"
+            raise ValueError(msg)
+        self.project = project
+        self.workspace = workspace
+        self.declarations = declarations
+        self.protocol_facade = u.Infra.qualified_name(
+            workspace.rope_project, "p", module_name=project.package_name
         )
-        facade_container: str = m.Field(
-            description="CamelCase member container prefix (for example AiHub).",
+        self.imports: dict[str, str] = {}
+        self.dependencies: set[str] = set()
+        self.references: dict[str, str] = {}
+        self.owner = ""
+        self.local_members: frozenset[str] = frozenset()
+        self.protocol_package = (
+            f"{project.package_name}.{u.Infra.facade_families()['p'].directory}"
         )
-        package_module_prefix: str = m.Field(
-            description="Module prefix naming member-owned models.",
-        )
-        protocol_ref_prefix: str = m.Field(
-            description="Public protocols facade reference (for example p.AiHub).",
-        )
-        models_facade_name: str = m.Field(
-            description="Single-letter models facade alias used in sources.",
-        )
-        facade_probes: t.VariadicTuple[t.Pair[str, str]] = m.Field(
-            description=(
-                "Alias to importable facade object paths probed when mapping "
-                "identical runtime types to public names."
-            ),
-        )
-
-        @property
-        def model_ref_re(self) -> re.Pattern[str]:
-            """Forward-ref pattern naming this member's model containers."""
-            container = re.escape(self.facade_container)
-            return re.compile(rf"{container}(?:Config)?Models\w*\.([A-Z]\w*)")
-
-    @classmethod
-    def render(
-        cls,
-        annotation: object,
-        target: ProtocolModelTarget,
-    ) -> str:
-        """Render one field/property type without exposing a concrete model.
-
-        ``annotation`` accepts any runtime annotation object carried by
-        ``typing.get_args``; unsupported payloads fail loud with
-        ``TypeError``.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        if isinstance(annotation, ForwardRef | str):
-            forward = (
-                annotation.__forward_arg__
-                if isinstance(annotation, ForwardRef)
-                else annotation
-            )
-            return cls._render_forward(forward, target)
-        if annotation is None or annotation is type(None):
-            return "None"
-        if isinstance(annotation, TypeAliasType):
-            return cls.render(annotation.__value__, target)
-        return cls._render_origin_dispatch(annotation, target)
-
-    @classmethod
-    def _render_origin_dispatch(
-        cls,
-        annotation: object,
-        target: ProtocolModelTarget,
-    ) -> str:
-        """Render an annotation by its generic origin.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        origin = get_origin(annotation)
-        arguments = get_args(annotation)
-        if isinstance(origin, TypeAliasType):
-            return cls._render_alias_origin(origin, arguments, target)
-        if origin is Annotated:
-            return cls.render(arguments[0], target)
-        if origin is UnionType:
-            return " | ".join(cls.render(argument, target) for argument in arguments)
-        return cls._render_special_origin(origin, arguments, annotation, target)
-
-    @classmethod
-    def _render_special_origin(
-        cls,
-        origin: object,
-        arguments: tuple[object, ...],
-        annotation: object,
-        target: ProtocolModelTarget,
-    ) -> str:
-        """Render a Literal, Callable, generic, or bare annotation.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        if origin is Literal:
-            return f"Literal[{', '.join(repr(argument) for argument in arguments)}]"
-        if origin is get_origin(abc.Callable[..., None]):
-            return cls._render_callable(arguments, target)
-        if origin is not None:
-            return cls._render_origin(origin, arguments, target)
-        return cls._render_bare_type(annotation, target)
-
-    @classmethod
-    def _render_alias_origin(
-        cls,
-        origin: TypeAliasType,
-        arguments: tuple[object, ...],
-        target: ProtocolModelTarget,
-    ) -> str:
-        """Render a parameterized type alias through its bound value.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        bindings = dict(zip(origin.__type_params__, arguments, strict=True))
-        value = origin.__value__
-        for parameter, argument in bindings.items():
-            if value is parameter:
-                return cls.render(argument, target)
-        parameters = getattr(value, "__parameters__", ())
-        if parameters:
-            value = value[tuple(bindings[parameter] for parameter in parameters)]
-        return cls.render(value, target)
-
-    @classmethod
-    def _render_callable(
-        cls,
-        arguments: tuple[object, ...],
-        target: ProtocolModelTarget,
-    ) -> str:
-        """Render a ``Callable`` annotation with its parameters and return.
-
-        Returns:
-            The resulting ``str``.
-
-        Raises:
-            TypeError: If unsupported Callable parameters.
-
-        """
-        parameters, return_type = arguments
-        if parameters is Ellipsis:
-            return f"Callable[..., {cls.render(return_type, target)}]"
-        if cls._is_parameter_list(parameters):
-            rendered_parameters = ", ".join(
-                cls.render(parameter, target) for parameter in parameters
-            )
-        else:
-            msg = f"unsupported Callable parameters: {parameters!r}"
-            raise TypeError(msg)
-        rendered = cls.render(return_type, target)
-        return f"Callable[[{rendered_parameters}], {rendered}]"
 
     @staticmethod
-    def _is_parameter_list(value: p.AttributeProbe) -> TypeIs[list[p.AttributeProbe]]:
-        """Narrow the runtime list whose annotation elements are inspected later.
+    def identity(value: p.Infra.RopePyObject) -> str:
+        """Return the native qualified declaration identity."""
+        module = value.get_module()
+        scope = value.get_scope()
+        if module is None or scope is None:
+            msg = f"declaration has no native source identity: {value.get_name()}"
+            raise ValueError(msg)
+        names = [value.get_name()]
+        while scope.parent is not None:
+            scope = scope.parent
+            if scope.get_kind() == c.Infra.RopeScopeKind.CLASS:
+                names.append(scope.pyobject.get_name())
+        return f"{module.get_name()}.{'.'.join(reversed(names))}"
 
-        Returns:
-            Whether the value is a list of annotation parameters.
-
-        """
-        return isinstance(value, list)
-
-    @classmethod
-    def _render_origin(
-        cls,
-        origin: object,
-        arguments: tuple[object, ...],
-        target: ProtocolModelTarget,
-    ) -> str:
-        """Render a generic annotation over a recognized origin.
-
-        Returns:
-            The resulting ``str``.
-
-        Raises:
-            TypeError: If unsupported protocol annotation origin.
-
-        """
-        rendered_origin = cls._ORIGINS.get(origin)
-        if rendered_origin is None:
-            rendered_origin = cls._facade_name(origin, target)
-        if rendered_origin is None:
-            msg = f"unsupported protocol annotation origin: {origin!r}"
-            raise TypeError(msg)
-        rendered_arguments = ", ".join(
-            "..." if argument is Ellipsis else cls.render(argument, target)
-            for argument in arguments
-        )
-        return (
-            f"{rendered_origin}[{rendered_arguments}]"
-            if rendered_arguments
-            else rendered_origin
+    def is_type(
+        self, node: ast.expr, scope: p.Infra.RopeScope, module: str, name: str
+    ) -> bool:
+        return u.Infra.same_name(
+            u.Infra.qualified_name(
+                self.workspace.rope_project, name, module_name=module
+            ),
+            u.Infra.expression_name(scope, ast.unparse(node)),
         )
 
-    @classmethod
-    def _render_bare_type(
-        cls,
-        annotation: object,
-        target: ProtocolModelTarget,
+    alias_definition = staticmethod(
+        FlextInfraUtilitiesRopeRuntimeModules.annotation_alias_definition
+    )
+
+    def source(
+        self,
+        annotation: str,
+        scope: p.Infra.RopeScope,
+        parameters: t.MappingKV[str, ast.expr] | None = None,
     ) -> str:
-        """Render a bare (non-generic) annotation type.
+        """Expand bound aliases and reject weak types without executing source."""
+        return ast.unparse(
+            self._expression(
+                ast.parse(annotation, mode="eval").body,
+                scope,
+                parameters if parameters is not None else {},
+                (),
+            )
+        )
 
-        Returns:
-            The resulting ``str``.
-
-        Raises:
-            TypeError: If unsupported protocol annotation.
-
-        """
-        probe: p.AttributeProbe = annotation
-        if isinstance(annotation, type):
-            if issubclass(annotation, m.BaseModel):
-                if annotation.__module__.startswith(target.package_module_prefix):
-                    return f"{target.protocol_ref_prefix}.{annotation.__name__}"
-                facade_name = cls._facade_name(annotation, target)
-                if facade_name is not None:
-                    return facade_name
-            if issubclass(annotation, Enum):
-                facade_name = cls._facade_name(annotation, target)
-                if facade_name is not None:
-                    return facade_name
-            if annotation.__module__ in {"builtins", "datetime", "uuid"}:
-                return cls._validate(annotation.__name__)
-            if annotation is Path:
-                return "Path"
-        facade_name = cls._facade_name(probe, target)
-        if facade_name is not None:
-            return facade_name
-        msg = f"unsupported protocol annotation: {annotation!r}"
+    def _expression(
+        self,
+        node: ast.expr,
+        scope: p.Infra.RopeScope,
+        parameters: t.MappingKV[str, ast.expr],
+        visiting: tuple[str, ...],
+    ) -> ast.expr:
+        if isinstance(node, ast.Name) and node.id in parameters:
+            return parameters[node.id]
+        if isinstance(node, ast.Constant):
+            if isinstance(node.value, str):
+                return self._expression(
+                    ast.parse(node.value, mode="eval").body,
+                    scope,
+                    parameters,
+                    visiting,
+                )
+            return node
+        if isinstance(node, ast.Name | ast.Attribute | ast.Subscript):
+            primary = node.value if isinstance(node, ast.Subscript) else node
+            binding = u.Infra.expression_name(scope, ast.unparse(primary))
+            for module, name in (("builtins", "object"), ("typing", "Any")):
+                if self.is_type(primary, scope, module, name):
+                    msg = f"forbidden generated protocol annotation: {module}.{name}"
+                    raise TypeError(msg)
+            alias = self.alias_definition(binding) if binding is not None else None
+            if alias is not None:
+                declaration, lexical = alias
+                module = lexical.pyobject.get_module()
+                if module is None:
+                    msg = "type alias has no authenticated native module"
+                    raise ValueError(msg)
+                identity = f"{module.get_name()}:{declaration.lineno}"
+                if identity in visiting:
+                    msg = (
+                        f"recursive alias requires a canonical public owner: {identity}"
+                    )
+                    raise ValueError(msg)
+                arguments = (
+                    node.slice.elts
+                    if isinstance(node, ast.Subscript)
+                    and isinstance(node.slice, ast.Tuple)
+                    else [node.slice]
+                    if isinstance(node, ast.Subscript)
+                    else []
+                )
+                variadic = next(
+                    (
+                        index
+                        for index, parameter in enumerate(declaration.type_params)
+                        if isinstance(parameter, ast.TypeVarTuple)
+                    ),
+                    None,
+                )
+                if variadic is None and len(arguments) != len(declaration.type_params):
+                    msg = f"type alias specialization has unmatched parameters: {identity}"
+                    raise ValueError(msg)
+                specialized: dict[str, ast.expr] = {}
+                if variadic is None:
+                    specialized = {
+                        parameter.name: self._expression(
+                            argument, scope, parameters, visiting
+                        )
+                        for parameter, argument in zip(
+                            declaration.type_params, arguments, strict=True
+                        )
+                    }
+                else:
+                    trailing = len(declaration.type_params) - variadic - 1
+                    if len(arguments) < len(declaration.type_params) - 1:
+                        msg = f"type alias variadic specialization is incomplete: {identity}"
+                        raise ValueError(msg)
+                    stop = len(arguments) - trailing
+                    for index, parameter in enumerate(declaration.type_params):
+                        if index == variadic:
+                            specialized[parameter.name] = ast.Tuple(
+                                elts=[
+                                    self._expression(
+                                        argument, scope, parameters, visiting
+                                    )
+                                    for argument in arguments[index:stop]
+                                ],
+                                ctx=ast.Load(),
+                            )
+                        else:
+                            argument = arguments[
+                                index
+                                if index < variadic
+                                else stop + index - variadic - 1
+                            ]
+                            specialized[parameter.name] = self._expression(
+                                argument, scope, parameters, visiting
+                            )
+                return self._expression(
+                    declaration.value, lexical, specialized, (*visiting, identity)
+                )
+            if isinstance(node, ast.Subscript):
+                if self.is_type(primary, scope, "typing", "Literal"):
+                    self.record_imports(ast.unparse(primary), scope)
+                    return node
+                if self.is_type(primary, scope, "typing", "Annotated"):
+                    if not isinstance(node.slice, ast.Tuple):
+                        msg = "Annotated requires a native payload and metadata"
+                        raise ValueError(msg)
+                    return self._expression(
+                        node.slice.elts[0], scope, parameters, visiting
+                    )
+                return ast.Subscript(
+                    value=self._expression(primary, scope, parameters, visiting),
+                    slice=self._expression(node.slice, scope, parameters, visiting),
+                    ctx=ast.Load(),
+                )
+            if binding is None:
+                msg = f"annotation has no authenticated native identity: {ast.unparse(node)}"
+                raise ValueError(msg)
+            for name, declaration in self.declarations.items():
+                published: p.Infra.RopePyName | None = self.protocol_facade
+                for member in name.split("."):
+                    published = (
+                        published.get_object().get_attributes().get(member)
+                        if published is not None
+                        else None
+                    )
+                if u.Infra.same_name(declaration, binding) or u.Infra.same_name(
+                    published, binding
+                ):
+                    self.dependencies.add(name)
+                    reference = self.references.get(name)
+                    if reference is None:
+                        if self.owner:
+                            parent = u.Infra.qualified_name(
+                                self.workspace.rope_project,
+                                f"p.{name}",
+                                module_name=self.project.upstream,
+                            )
+                            published = u.Infra.qualified_name(
+                                self.workspace.rope_project,
+                                f"p.{name}",
+                                module_name=self.project.package_name,
+                            )
+                            if not u.Infra.same_name(parent, published):
+                                msg = f"model dependency has no elected protocol receiver: {name}"
+                                raise ValueError(msg)
+                            statement = f"from {self.project.upstream} import p"
+                            self.imports[statement] = statement
+                            return ast.parse(f"p.{name}", mode="eval").body
+                        return ast.Name(
+                            id=declaration.get_object().get_name(), ctx=ast.Load()
+                        )
+                    if name in self.local_members:
+                        reference = f"{self.owner}.{name.rpartition('.')[2]}"
+                    elif reference.partition(".")[0] != self.owner:
+                        statement = f"import {self.protocol_package}"
+                        self.imports[statement] = statement
+                        reference = f"{self.protocol_package}.{reference}"
+                    return ast.parse(reference, mode="eval").body
+            root, separator, tail = ast.unparse(node).partition(".")
+            root_binding = u.Infra.expression_name(scope, root)
+            if (
+                separator
+                and root_binding is not None
+                and (
+                    u.Infra.same_name(self.protocol_facade, root_binding)
+                    or root_binding.get_object()
+                    in u.Infra.class_ancestry(self.protocol_facade.get_object())
+                )
+            ):
+                upstream = u.Infra.qualified_name(
+                    self.workspace.rope_project, "p", module_name=self.project.upstream
+                )
+                selected: p.Infra.RopePyName | None = upstream
+                for component in tail.split("."):
+                    selected = (
+                        selected.get_object().get_attributes().get(component)
+                        if selected is not None
+                        else None
+                    )
+                if u.Infra.same_name(selected, binding):
+                    statement = f"from {self.project.upstream} import p"
+                    self.imports[statement] = statement
+                    return ast.parse(f"p.{tail}", mode="eval").body
+                if u.Infra.same_name(self.protocol_facade, root_binding):
+                    return ast.parse(
+                        self._declared_owner_reference(binding), mode="eval"
+                    ).body
+                if not u.Infra.same_name(selected, binding):
+                    msg = f"annotation protocol differs from the configured parent: {ast.unparse(node)}"
+                    raise ValueError(msg)
+            imported_roots = self.record_imports(ast.unparse(node), scope)
+            root = ast.unparse(node).partition(".")[0]
+            builtin = (
+                self.workspace.rope_project
+                .get_module("builtins")
+                .get_attributes()
+                .get(root)
+            )
+            if root not in imported_roots and not u.Infra.same_name(builtin, binding):
+                msg = f"annotation has no public imported owner: {ast.unparse(node)}"
+                raise ValueError(msg)
+            return node
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+            return ast.BinOp(
+                left=self._expression(node.left, scope, parameters, visiting),
+                op=ast.BitOr(),
+                right=self._expression(node.right, scope, parameters, visiting),
+            )
+        if isinstance(node, ast.Tuple | ast.List):
+            values = [
+                self._expression(item, scope, parameters, visiting)
+                for item in node.elts
+            ]
+            return (
+                ast.Tuple(elts=values, ctx=ast.Load())
+                if isinstance(node, ast.Tuple)
+                else ast.List(elts=values, ctx=ast.Load())
+            )
+        if isinstance(node, ast.Starred):
+            return ast.Starred(
+                value=self._expression(node.value, scope, parameters, visiting),
+                ctx=ast.Load(),
+            )
+        msg = f"unsupported native protocol annotation: {ast.unparse(node)}"
         raise TypeError(msg)
 
-    @classmethod
-    def _facade_name(
-        cls,
-        value: p.AttributeProbe,
-        target: ProtocolModelTarget,
-    ) -> str | None:
-        """Return the existing public facade path for an identical runtime type.
-
-        Returns:
-            The existing public facade path for an identical runtime type.
-
-        """
-        for prefix, probe in target.facade_probes:
-            module_path, _, attribute = probe.rpartition(".")
-            # A member without that facade surface cannot hold the value;
-            # probing continues with the next surface. A surface that exists
-            # but fails to import is a real defect and escapes.
-            package = module_path.partition(".")[0]
-            if find_spec(package) is None or find_spec(module_path) is None:
-                continue
-            module = import_module(module_path)
-            facade = getattr(module, attribute, None)
-            if facade is None:
-                continue
-            for name in dir(facade):
-                if getattr(facade, name, None) is value:
-                    return f"{prefix}.{name}"
-        return None
-
-    @classmethod
-    def _render_forward(cls, annotation: str, target: ProtocolModelTarget) -> str:
-        """Normalize a postponed source annotation without evaluating Field data.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        rendered = annotation.strip()
-        if rendered.startswith(cls._ANNOTATED_PREFIX):
-            rendered = cls._first_annotated_argument(rendered)
-        rendered = target.model_ref_re.sub(
-            rf"{target.protocol_ref_prefix}.\1",
-            rendered,
+    def _declared_owner_reference(self, binding: p.Infra.RopePyName) -> str:
+        """Use the existing same-family barrel, never reenter this project's p."""
+        value = binding.get_object()
+        module, scope = value.get_module(), value.get_scope()
+        resource = module.get_resource() if module is not None else None
+        layout = u.Infra.layout(
+            self.workspace.repository_root, rope_project=self.workspace.rope_project
         )
-        rendered = rendered.replace(
-            target.models_facade_name,
-            target.protocol_ref_prefix,
+        if (
+            layout is None
+            or scope is None
+            or resource is None
+            or not Path(resource.real_path).is_relative_to(
+                layout.package_dir / u.Infra.facade_families()["p"].directory
+            )
+        ):
+            msg = "protocol reference has no declared same-family source owner"
+            raise ValueError(msg)
+        parts = [value.get_name()]
+        while scope.parent is not None:
+            scope = scope.parent
+            if scope.get_kind() == c.Infra.RopeScopeKind.CLASS:
+                parts.append(scope.pyobject.get_name())
+        parts.reverse()
+        barrel = u.Infra.qualified_name(
+            self.workspace.rope_project,
+            parts[0],
+            module_name=self.protocol_package,
         )
-        return cls._validate(rendered)
+        selected = barrel
+        for member in parts[1:]:
+            child = selected.get_object().get_attributes().get(member)
+            if child is None:
+                msg = f"protocol barrel member is unresolved: {'.'.join(parts)}"
+                raise ValueError(msg)
+            selected = child
+        if not u.Infra.same_name(selected, binding):
+            msg = "protocol barrel changes the authenticated declaration identity"
+            raise ValueError(msg)
+        statement = f"import {self.protocol_package}"
+        self.imports[statement] = statement
+        return f"{self.protocol_package}.{'.'.join(parts)}"
 
-    @classmethod
-    def _first_annotated_argument(cls, annotation: str) -> str:
-        """Extract the first top-level argument from ``Annotated[...]``.
-
-        Returns:
-            The resulting ``str``.
-
-        Raises:
-            ValueError: If malformed Annotated protocol field.
-
-        """
-        content = annotation[len(cls._ANNOTATED_PREFIX) : -1]
-        depth = 0
-        for index, character in enumerate(content):
-            if character in "([{":
-                depth += 1
-            elif character in ")]}":
-                depth -= 1
-            elif character == "," and depth == 0:
-                return content[:index].strip()
-        msg = f"malformed Annotated protocol field: {annotation}"
-        raise ValueError(msg)
-
-    @classmethod
-    def _validate(cls, rendered: str) -> str:
-        """Reject escape-hatch types from generated public contracts.
-
-        Returns:
-            The resulting ``str``.
-
-        Raises:
-            TypeError: If forbidden generated protocol annotation.
-
-        """
-        tokens = frozenset(cls._TOKEN_RE.findall(rendered))
-        banned = tokens.intersection(cls._BANNED)
-        if banned:
-            msg = f"forbidden generated protocol annotation: {sorted(banned)}"
-            raise TypeError(msg)
-        return rendered
+    def record_imports(self, source: str, scope: p.Infra.RopeScope) -> set[str]:
+        """Retain imports only from the authenticated declaring lexical module."""
+        module = scope.pyobject.get_module()
+        if not u.Infra.source_module(module):
+            msg = "protocol annotation has no declaring source module"
+            raise ValueError(msg)
+        roots = {
+            source[begin:end].partition(".")[0]
+            for begin, end in u.Infra.reference_regions(source)
+        }
+        protocol = u.Infra.expression_name(module.get_scope(), "p")
+        upstream_protocol = protocol is not None and (
+            u.Infra.same_name(protocol, self.protocol_facade)
+            or protocol.get_object()
+            in u.Infra.class_ancestry(self.protocol_facade.get_object())
+        )
+        imported_roots: set[str] = set()
+        for information in u.Infra.native_import_infos(
+            self.workspace.rope_project, module
+        ):
+            aliases = tuple(
+                (name, alias)
+                for name, alias in information.names_and_aliases
+                if (alias or name.partition(".")[0]) in roots
+                and not (upstream_protocol and (alias or name.partition(".")[0]) == "p")
+            )
+            if aliases:
+                imported_roots.update(
+                    alias or name.partition(".")[0] for name, alias in aliases
+                )
+                resource = module.get_resource()
+                if resource is None:
+                    msg = "annotation import has no authenticated source resource"
+                    raise ValueError(msg)
+                imported = (
+                    u.Infra.from_import(
+                        u.Infra.resolve_import_module(
+                            current_package=u.Infra.package_name_for_module(
+                                module.get_name(), resource
+                            ),
+                            module_name=information.module_name,
+                            level=information.level,
+                        ),
+                        0,
+                        aliases,
+                    )
+                    if isinstance(information, p.Infra.RopeFromImport)
+                    else u.Infra.normal_import(aliases)
+                )
+                statement = imported.get_import_statement()
+                self.imports[statement] = statement
+        return imported_roots
 
 
 __all__: list[str] = ["FlextInfraCodegenProtocolModelAnnotations"]

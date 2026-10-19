@@ -1,3 +1,4 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
 """Protocol definitions for flext-infra utilities and services.
 
 Defines structural contracts (runtime-checkable Protocols) for orchestration,
@@ -13,6 +14,7 @@ from __future__ import annotations
 from flext_cli import FlextCliProtocols
 
 from flext_infra._protocols import (
+    FlextInfraProtocolsBase,
     FlextInfraProtocolsCheck,
     FlextInfraProtocolsDeps,
     FlextInfraProtocolsDocs,
@@ -20,7 +22,6 @@ from flext_infra._protocols import (
     FlextInfraProtocolsRope,
     FlextInfraProtocolsRopeRuntime,
 )
-from flext_infra._protocols.base import FlextInfraProtocolsBase
 
 
 class FlextInfraProtocols(FlextCliProtocols):

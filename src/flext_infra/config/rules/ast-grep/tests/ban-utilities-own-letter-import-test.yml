@@ -1,5 +1,7 @@
 # Shape only: the engine admits a finding when the imported module's root is
-# the scanned project's own package (context own-package). The law is per
+# the scanned project's own package (context own-package) and the finding's
+# file belongs to the declared utilities facade family (context file-family).
+# A directory name alone never establishes the producer role. The law is per
 # letter: this producer tree bans only its own letter `u` — a different
 # letter from the own root is facade assembly (consumption-law.md:52) and
 # stays legal.
@@ -24,6 +26,12 @@ valid:
   - |
     import ai_hub
 invalid:
+  # These remain syntactic candidates in both tests and production. Native
+  # admission distinguishes tests/_utilities from tests/unit/_utilities.
+  - |
+    from tests import u
+  - |
+    import tests.utilities
   - |
     from ai_hub import u as aliased
   - |

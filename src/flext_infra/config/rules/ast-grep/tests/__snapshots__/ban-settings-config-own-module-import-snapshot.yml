@@ -23,6 +23,17 @@ snapshots:
       start: 5
       end: 34
   ? |
+    from flext_infra._models import FlextInfraModelsBase
+  : labels:
+    - source: from flext_infra._models import FlextInfraModelsBase
+      style: primary
+      start: 0
+      end: 52
+    - source: flext_infra._models
+      style: secondary
+      start: 5
+      end: 24
+  ? |
     from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
   : labels:
     - source: from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
@@ -33,17 +44,6 @@ snapshots:
       style: secondary
       start: 5
       end: 38
-  ? |
-    from flext_infra._models.base import FlextInfraModelsBase
-  : labels:
-    - source: from flext_infra._models.base import FlextInfraModelsBase
-      style: primary
-      start: 0
-      end: 57
-    - source: flext_infra._models.base
-      style: secondary
-      start: 5
-      end: 29
   ? |
     from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolConfig
   : labels:
@@ -69,16 +69,28 @@ snapshots:
   ? |
     from typing import TYPE_CHECKING
     if TYPE_CHECKING:
-        from flext_infra._models.base import FlextInfraModelsBase
+        from flext_infra._models import FlextInfraModelsBase
   : labels:
-    - source: from flext_infra._models.base import FlextInfraModelsBase
+    - source: from flext_infra._models import FlextInfraModelsBase
       style: primary
       start: 55
-      end: 112
-    - source: flext_infra._models.base
+      end: 107
+    - source: flext_infra._models
       style: secondary
       start: 60
-      end: 84
+      end: 79
+  ? |
+    if TYPE_CHECKING:
+        from flext_infra._models import FlextInfraModelsBase
+  : labels:
+    - source: from flext_infra._models import FlextInfraModelsBase
+      style: primary
+      start: 22
+      end: 74
+    - source: flext_infra._models
+      style: secondary
+      start: 27
+      end: 46
   ? |
     import flext_infra
   : labels:

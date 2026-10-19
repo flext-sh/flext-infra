@@ -36,6 +36,16 @@ class FlextInfraCodegenPipeline(
     )
 
     @override
+    def codegen_conform_collaborators(self) -> p.Infra.CodegenConformPorts:
+        """Expose the capabilities bound to this pipeline invocation.
+
+        Returns:
+            The exact supplied conform ports.
+
+        """
+        return self.conform_collaborators
+
+    @override
     def execute(self) -> p.Result[str]:
         """Execute the end-to-end codegen pipeline via DAG runner.
 

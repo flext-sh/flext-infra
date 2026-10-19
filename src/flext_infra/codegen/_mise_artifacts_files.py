@@ -7,17 +7,206 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import stat
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
+from urllib.parse import unquote, urlsplit
 
-from flext_infra import m, r, t, u
+from flext_infra import c, m, p, r, t, u
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from importlib.metadata import Distribution
 
 
 class FlextInfraMiseArtifactsFiles:
     """Exact filesystem-state primitives for Mise artifact transactions."""
+
+    @classmethod
+    def editable_project_source(
+        cls,
+        direct_url: m.Cli.AtomicFileState,
+    ) -> p.Result[t.VariadicTuple[t.Pair[m.Cli.AtomicFileState, p.ProjectMetadata]]]:
+        """Parse captured PEP 610 bytes and authenticate its declared project input.
+
+        Returns:
+            The editable source and metadata, or no entries for a noneditable source.
+
+        """
+        result_type = r[
+            t.VariadicTuple[t.Pair[m.Cli.AtomicFileState, p.ProjectMetadata]]
+        ]
+        content = direct_url.content
+        if content is None:
+            return result_type.fail(
+                f"producer metadata bytes are absent: {direct_url.path}"
+            )
+        parsed = r[m.Infra.DirectUrlReceipt].create_from_callable(
+            partial(m.Infra.DirectUrlReceipt.model_validate_json, content)
+        )
+        if parsed.failure:
+            return result_type.from_failure(parsed)
+        receipt = parsed.value
+        if receipt.dir_info is None or not receipt.dir_info.editable:
+            return result_type.ok(())
+        location = urlsplit(receipt.url)
+        if location.scheme != "file" or location.netloc not in {"", "localhost"}:
+            return result_type.fail(
+                f"editable producer has no local physical root: {receipt.url}"
+            )
+        project = Path(unquote(location.path)).absolute()
+        captured = cls.read_state(project / c.PYPROJECT_FILENAME, required=True)
+        if captured.failure:
+            return result_type.from_failure(captured)
+        return u.Infra.read_project_metadata_result(project).map(
+            lambda metadata: ((captured.value, metadata),)
+        )
+
+    @classmethod
+    def capture_sources(
+        cls,
+        paths: t.IterableOf[Path],
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        """Read ordered physical sources, stopping before the next path on failure.
+
+        Returns:
+            Exact authenticated file states in the caller's original order.
+
+        """
+        sources: list[m.Cli.AtomicFileState] = []
+        for path in paths:
+            captured = cls.read_state(path, required=True)
+            if captured.failure:
+                return r[t.VariadicTuple[m.Cli.AtomicFileState]].from_failure(captured)
+            sources.append(captured.value)
+        return r[t.VariadicTuple[m.Cli.AtomicFileState]].ok(tuple(sources))
+
+    @classmethod
+    def capture_tree_sources(
+        cls,
+        root: Path,
+    ) -> p.Result[
+        t.Pair[m.Cli.AtomicPhysicalTreeManifest, t.VariadicTuple[m.Cli.AtomicFileState]]
+    ]:
+        """Authenticate a complete native tree before selecting source resources.
+
+        Returns:
+            The physical inventory and its exact ordered source states.
+
+        """
+        return u.Cli.atomic_inventory_physical_tree(root).flat_map(
+            lambda inventory: cls.capture_sources(
+                entry.path
+                for entry in inventory.entries
+                if entry.kind == "file"
+                and c.Infra.DUNDER_PYCACHE not in entry.path.parts
+            ).map(lambda sources: (inventory, sources))
+        )
+
+    @classmethod
+    def capture_distribution_sources(
+        cls,
+        distribution: Distribution,
+    ) -> p.Result[
+        t.Triple[
+            t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            t.VariadicTuple[Path],
+        ]
+    ]:
+        """Capture native metadata and bindings before locating ownership paths.
+
+        The captured RECORD owns mandatory bindings even when the native SDK
+        omits missing files. Ownership paths retain the SDK's public manifest.
+
+        Returns:
+            Physical metadata trees, all source states and declared file paths.
+
+        """
+        result_type = r[
+            t.Triple[
+                t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+                t.VariadicTuple[m.Cli.AtomicFileState],
+                t.VariadicTuple[Path],
+            ]
+        ]
+        declared = distribution.files
+        if declared is None:
+            return result_type.fail("producer distribution has no native file manifest")
+        paths = tuple(
+            Path(str(distribution.locate_file(item))).absolute() for item in declared
+        )
+        roots = {
+            path.parent for path in paths if path.parent.name.endswith(".dist-info")
+        }
+        trees: list[m.Cli.AtomicPhysicalTreeManifest] = []
+        sources: list[m.Cli.AtomicFileState] = []
+        for root in sorted(roots):
+            captured = cls.capture_tree_sources(root)
+            if captured.failure:
+                return result_type.from_failure(captured)
+            trees.append(captured.value[0])
+            sources.extend(captured.value[1])
+        bindings = cls._distribution_binding_paths(
+            distribution, tuple(sorted(roots)), tuple(sources), paths
+        ).flat_map(cls.capture_sources)
+        if bindings.failure:
+            return result_type.from_failure(bindings)
+        name = distribution.metadata.get("Name")
+        if not isinstance(name, str) or not name.strip():
+            return result_type.fail("producer distribution has no declared name")
+        return result_type.ok((
+            tuple(trees),
+            (*sources, *bindings.value),
+            paths,
+        ))
+
+    @staticmethod
+    def _distribution_binding_paths(
+        distribution: Distribution,
+        roots: t.VariadicTuple[Path],
+        sources: t.VariadicTuple[m.Cli.AtomicFileState],
+        paths: t.VariadicTuple[Path],
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Elect mandatory bindings from the captured installed-project manifest.
+
+        Other native manifest formats retain their existing SDK path election.
+        RECORD payload files are not promoted to consumed source inputs.
+
+        Returns:
+            Ordered binding paths, or the first missing or invalid RECORD failure.
+
+        """
+        result_type = r[t.VariadicTuple[Path]]
+        if not roots:
+            return result_type.ok(
+                tuple(path for path in paths if path.suffix == ".pth"),
+            )
+        captured = {state.path: state for state in sources}
+        bindings: list[Path] = []
+        for root in roots:
+            record = captured.get(root / "RECORD")
+            if record is None or record.content is None:
+                return result_type.fail(
+                    f"producer distribution lacks captured RECORD: {root}"
+                )
+            parsed = u.Cli.csv_loads(record.content.decode(c.DEFAULT_ENCODING))
+            if parsed.failure:
+                return result_type.from_failure(parsed)
+            if not parsed.value:
+                return result_type.fail(
+                    f"producer distribution RECORD is empty: {root}",
+                )
+            for row in parsed.value:
+                if len(row) != c.Infra.DISTRIBUTION_RECORD_ROW_FIELDS or not row[0]:
+                    return result_type.fail(
+                        f"producer distribution RECORD has an invalid entry: {root}"
+                    )
+                path = Path(row[0])
+                if path.suffix == ".pth":
+                    bindings.append(
+                        Path(str(distribution.locate_file(path))).absolute()
+                    )
+        return result_type.ok(tuple(bindings))
 
     @classmethod
     def transaction_participants(
@@ -102,16 +291,6 @@ class FlextInfraMiseArtifactsFiles:
 
         """
         return u.Cli.sha256_bytes(content)
-
-    @classmethod
-    def package_directory(cls) -> Path:
-        """Return the physical directory of the running ``flext_infra`` package.
-
-        Returns:
-            The physical directory of the running ``flext_infra`` package.
-
-        """
-        return Path(__file__).resolve().parents[1]
 
     @classmethod
     def read_state(

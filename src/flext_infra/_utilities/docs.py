@@ -11,9 +11,8 @@ from urllib.parse import urlsplit
 
 from flext_cli import u
 
-from flext_infra import c, m, r, t
+from flext_infra import c, config, m, r, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesDocsContract,
     FlextInfraUtilitiesDocsScope,
     FlextInfraUtilitiesDocsScopeBuildMixin,
 )
@@ -84,7 +83,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
             path
             for path in search_root.rglob("*.md")
             if not any(
-                part in c.Infra.DOC_EXCLUDED_DIRS or part.startswith(".")
+                part in config.Infra.codegen.docs_excluded_dirs or part.startswith(".")
                 for part in path.relative_to(search_root).parts
             )
         )
@@ -155,7 +154,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
         Every table row is one changed file, so the row count is the changed
         file count both reports publish.
         """
-        summary_payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python({
+        summary_payload = u.json_mapping_adapter().validate_python({
             c.Infra.RK_SUMMARY: {
                 c.Infra.RK_SCOPE: scope.name,
                 "changed_files": len(table.rows),
@@ -202,36 +201,6 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
             ),
             apply=apply,
         )
-
-    @staticmethod
-    def anchorize(text: str) -> str:
-        """Convert heading text to the anchor consumed by MkDocs.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        return FlextInfraUtilitiesDocsContract.docs_contract_anchorize(text)
-
-    @staticmethod
-    def build_toc(content: str) -> str:
-        """Generate a TOC block from ## and ### headings in content.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        return FlextInfraUtilitiesDocsContract.docs_contract_build_toc(content)
-
-    @staticmethod
-    def update_toc(content: str) -> t.StrIntPair:
-        """Insert or replace the TOC in content, returning (updated, changed).
-
-        Returns:
-            The resulting ``t.StrIntPair``.
-
-        """
-        return FlextInfraUtilitiesDocsContract.docs_contract_update_toc(content)
 
     @staticmethod
     def run_scoped(

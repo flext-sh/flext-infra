@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config, infra, m, p
+from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 from flext_infra.codemod import (
     FlextInfraAccessorRenamePhase,
     FlextInfraApplyRenames,
@@ -18,7 +19,6 @@ from flext_infra.codemod import (
     FlextInfraModGateEngine,
     FlextInfraNamespaceRelocationPhase,
 )
-from flext_infra.codegen.staged_package import FlextInfraStagedPackage
 from flext_infra.transformers import FlextInfraSemanticPublication
 from tests import tm, u
 
@@ -51,6 +51,7 @@ def _phase_fixture(tmp_path: Path) -> tuple[Path, Path, Path, Path, Path]:
 
     Returns:
         The resulting ``tuple[Path, Path, Path, Path, Path]``.
+
     """
     workspace, project, pkg = u.Tests.namespace_workspace(
         tmp_path,
@@ -112,6 +113,7 @@ def _apply_accessor(project: Path, *, callback: bool) -> p.Result[bool]:
 
     Returns:
         The real public candidate verdict without substituting its validators.
+
     """
     if not callback:
         return infra.accessor_migrate(
@@ -158,7 +160,37 @@ class TestsFlextInfraCodemodLoopPhases:
         with infra.rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
             phase = FlextInfraNamespaceRelocationPhase()
-
+            states = tuple(
+                u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+                for path in u.Infra.iter_python_files(
+                    m.Infra.SourceScanRequest(project_roots=(project,)),
+                ).unwrap()
+            )
+            sources = {
+                state.path: tm.not_none(state.content).decode(c.DEFAULT_ENCODING)
+                for state in states
+            }
+            frozen = dict(sources)
+            analysis = phase.plan(
+                project,
+                preflight,
+                rope,
+                sources=sources,
+                source_states=states,
+            ).unwrap()
+            tm.that(analysis.files, empty=False)
+            tm.that(analysis.issues, empty=True)
+            tm.that(sources, eq=frozen)
+            for state in states:
+                tm.that(state.path.read_bytes(), eq=state.content)
+            for plan in analysis.files:
+                if plan.path in sources:
+                    tm.that(
+                        plan.before,
+                        eq=next(state for state in states if state.path == plan.path),
+                    )
+                else:
+                    tm.that(plan.path.exists(), eq=False)
             changed = phase.apply(project, preflight, rope)
 
         tm.that(changed.failure, eq=False)

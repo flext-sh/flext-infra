@@ -57,6 +57,18 @@ class FlextInfraModelsCodegenJournalModels:
                 description="Exact dependencies consumed by this destination",
             ),
         ] = ()
+        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
+            default=(),
+            strict=True,
+            description="Native directory queries consumed by this target",
+        )
+        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
+            m.Field(
+                default=(),
+                strict=True,
+                description="Physical ancestry of queried source directories",
+            )
+        )
         tracking: Annotated[
             Literal["versioned", "runtime-local"],
             m.Field(description="Managed artifact persistence policy"),
@@ -257,6 +269,9 @@ class FlextInfraModelsCodegenJournalModels:
             t.NonEmptyStr,
             m.Field(description="Generation phase that consumed source"),
         ]
+        role: (
+            Literal["layer0", "family", "consumer", "resource", "distribution"] | None
+        ) = m.Field(default=None, description="Authenticated producer input role")
         path: Annotated[Path, m.Field(description="Absolute authenticated source path")]
         parent_device: Annotated[
             int | None,
@@ -375,7 +390,15 @@ class FlextInfraModelsCodegenJournalModels:
                     self.absent_parent.target != self.path.parent
                     or not self.absent_parent.directories
                 ):
-                    msg = "source absence witness does not describe its missing parent"
+                    msg = (
+                        "source absence witness does not describe its missing parent"
+                        f"; phase={self.phase}; source={self.path}"
+                        f"; parent=({self.parent_device}, {self.parent_inode})"
+                        f"; witness_target={self.absent_parent.target}"
+                        f"; anchor={self.absent_parent.anchor_path}"
+                        f"; anchor_identity=({self.absent_parent.anchor_device}, {self.absent_parent.anchor_inode})"
+                        f"; missing_directories={self.absent_parent.directories!r}"
+                    )
                     raise ValueError(msg)
             elif self.absent_parent is not None:
                 msg = "existing source parent cannot carry an absence witness"
@@ -509,6 +532,7 @@ class FlextInfraModelsCodegenJournalModels:
                     or if dependent group requires a durable original preimage; or if
                     dependent group preimage differs from original bytes; or if absent
                     group original cannot carry a preimage.
+
             """
             if self.dependency_group is None:
                 if (
@@ -545,6 +569,16 @@ class FlextInfraModelsCodegenJournalModels:
                 description="Authenticated source identities consumed by this entry"
             ),
         ] = ()
+        source_directory_paths: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            strict=True,
+            description="Phase-bound native directory query receipt references",
+        )
+        source_query_topology_paths: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            strict=True,
+            description="Phase-bound source query ancestry receipt references",
+        )
         tracking: Annotated[
             Literal["versioned", "runtime-local"],
             m.Field(description="Declared persistence policy for this destination"),

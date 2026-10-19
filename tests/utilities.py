@@ -150,17 +150,17 @@ class TestsFlextInfraUtilitiesCodegenTestSupport:
                 TypeError: If workflow job steps must be a sequence.
 
             """
-            document = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            document = u.json_mapping_adapter().validate_python(
                 tm.ok(u.Cli.yaml_parse(rendered)),
             )
-            jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(document["jobs"])
-            job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["ci"])
+            jobs = u.json_mapping_adapter().validate_python(document["jobs"])
+            job = u.json_mapping_adapter().validate_python(jobs["ci"])
             steps = job["steps"]
             if not isinstance(steps, list):
                 msg = "workflow job steps must be a sequence"
                 raise TypeError(msg)
             return tuple(
-                t.Cli.JSON_MAPPING_ADAPTER.validate_python(step) for step in steps
+                u.json_mapping_adapter().validate_python(step) for step in steps
             )
 
 
@@ -241,6 +241,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
         class MakeEnvironmentShape:
             """Repository-shape knobs for the generated Make fixture."""
 
+            project_name: str = "fixture-project"
             package: bool = True
             examples_module: str | None = None
             extra_verbs: t.VariadicTuple[m.Infra.MakeVerbSpec] = ()
@@ -263,7 +264,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             shape = u.Tests.MakeEnvironmentShape() if shape is None else shape
             role = c.Infra.MakeProfile(profile.value)
             repository = u.Tests.repository_ref(
-                "fixture-project",
+                shape.project_name,
                 role=role,
             ).model_copy(
                 update={
@@ -274,7 +275,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     "script_dispatch": shape.script_dispatch,
                 },
             )
-            project_root = tmp_path / profile.value / "fixture-project"
+            project_root = tmp_path / profile.value / shape.project_name
             u.Tests.WorktreeFixture.write_python_project(
                 project_root,
                 repository.distribution,
@@ -323,7 +324,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             repository_root = project_root
             workspace = u.Tests.workspace_spec(
                 repository,
-                project=u.Tests.project_spec("fixture-project"),
+                project=u.Tests.project_spec(shape.project_name),
             )
             request = u.Tests.conform_request(
                 project_root,
@@ -333,8 +334,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             plan = tm.ok(
                 FlextInfraCodegenConform(
                     repository_root=repository_root,
-                    request=request,
-                    initial_workspace=workspace,
+                    state=m.Infra.CodegenConformState(
+                        repository_root=repository_root,
+                        request=request,
+                        initial_workspace=workspace,
+                    ),
                 ).plan(request),
             )
             # Materialize the complete activation contract through its guarded
@@ -349,6 +353,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 paths.update(
                     project_root / name
                     for name in (c.PYPROJECT_FILENAME, c.Infra.MISE_TOML_FILENAME)
+                )
+                paths.update(
+                    project_root / directory / c.PYPROJECT_FILENAME
+                    for directory in (
+                        plan.make_spec.uv_resolution.local_directory,
+                        plan.make_spec.uv_resolution.standalone_directory,
+                    )
                 )
             artifacts = tuple(
                 file

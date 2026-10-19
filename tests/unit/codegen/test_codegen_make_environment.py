@@ -22,6 +22,37 @@ pytestmark = pytest.mark.slow
 class TestsFlextInfraCodegenMakeEnvironment:
     """Prove generated operations ignore the caller shell environment."""
 
+    def test_credential_rewrite_rejection_never_prints_the_git_key(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Native Make refuses a credential-bearing rewrite without exposing it."""
+        project_root, _ = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.STANDALONE,
+        )
+        credential = "fixture-credential-sentinel"
+        source = (
+            f'[url "https://fixture-user:{credential}@github.com/"]\n'
+            "\tinsteadOf = git@github.com:\n"
+        )
+        global_config = tmp_path / "isolated.gitconfig"
+        global_config.write_text(source, encoding="utf-8")
+        checked = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "check"],
+                cwd=project_root,
+                env={
+                    "GIT_CONFIG_GLOBAL": str(global_config),
+                    "GIT_CONFIG_NOSYSTEM": "1",
+                },
+            ),
+        )
+        tm.that(checked.outcome.raw_return_code, eq=2)
+        tm.that(checked.stdout + checked.stderr, lacks=credential)
+        tm.that(bool(checked.stderr.strip()), eq=True)
+        tm.that(global_config.read_text(encoding="utf-8"), eq=source)
+
     def test_make_hands_the_selected_credential_to_the_real_mise_child(
         self,
         tmp_path: Path,
@@ -897,5 +928,5 @@ class TestsFlextInfraCodegenMakeEnvironment:
         assert external
         for requirement in external:
             url, ref = tm.ok(u.Infra.declared_git_source(requirement))
-            assert url.endswith(f"/{u.Infra.dep_name(requirement)}.git")
-            assert ref == u.Tests.provider_branch()
+            tm.that(url.endswith(f"/{u.Infra.dep_name(requirement)}.git"), truth=True)
+            tm.that(ref == u.Tests.provider_branch(), truth=True)

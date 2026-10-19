@@ -40,6 +40,7 @@ if TYPE_CHECKING:
         FlextInfraCodegenConformFilePlans,
     )
     from flext_infra.codegen._conform.gitignore import FlextInfraCodegenConformGitignore
+    from flext_infra.codegen._conform.plan import FlextInfraCodegenConformPlan
     from flext_infra.codegen._conform.pyproject_policy import (
         FlextInfraCodegenConformPyprojectPolicy,
     )
@@ -60,6 +61,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenConformExistingPlan",
     "FlextInfraCodegenConformFilePlans",
     "FlextInfraCodegenConformGitignore",
+    "FlextInfraCodegenConformPlan",
     "FlextInfraCodegenConformPyprojectPolicy",
     "FlextInfraCodegenConformScaffoldPlan",
 )
@@ -79,6 +81,7 @@ install_lazy_exports(
         "FlextInfraCodegenConformExistingPlan": ".existing_plan",
         "FlextInfraCodegenConformFilePlans": ".file_plans",
         "FlextInfraCodegenConformGitignore": ".gitignore",
+        "FlextInfraCodegenConformPlan": ".plan",
         "FlextInfraCodegenConformPyprojectPolicy": ".pyproject_policy",
         "FlextInfraCodegenConformScaffoldPlan": ".scaffold_plan",
     }),

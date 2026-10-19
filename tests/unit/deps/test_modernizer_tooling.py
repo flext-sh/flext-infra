@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.deps import FlextInfraEnsureRuffConfigPhase
 from tests import m, t, tm, u
 
@@ -37,7 +35,6 @@ class TestsFlextInfraDepsModernizerTooling:
         )
         phase = FlextInfraEnsureRuffConfigPhase(
             tool_config_document,
-            u.Infra.empty_snapshot().resolution.artifacts.Ruff,
         )
         path = project_dir / "pyproject.toml"
         _ = phase.apply_payload(payload, path=path)
@@ -134,10 +131,7 @@ class TestsFlextInfraDepsModernizerTooling:
             list(u.Tests.toml_strings(lint["extend-safe-fixes"])),
             eq=sorted(ruff_policy.lint.extend_safe_fixes),
         )
-        tm.that(
-            list(u.Tests.toml_strings(lint["ignore"])),
-            eq=list(ruff_policy.lint.ignore),
-        )
+        tm.that(lint["ignore"], eq=sorted(ruff_policy.lint.rule_owners))
         tm.that(
             list(
                 u.Tests.toml_strings(
@@ -145,23 +139,16 @@ class TestsFlextInfraDepsModernizerTooling:
                 ),
             ),
             eq=sorted({
-                *tool_config_document.tools.deptry.known_first_party,
                 "flext_sample",
             }),
         )
-        tm.that(
-            u.Tests.toml_mapping(lint["per-file-ignores"]),
-            eq={
-                pattern: sorted(rules)
-                for pattern, rules in ruff_policy.lint.per_file_ignores.items()
-            },
-        )
+        tm.that(lint, lacks="per-file-ignores")
 
     @staticmethod
     def test_project_cannot_declare_its_own_ruff_exemption(
         tmp_path: Path,
     ) -> None:
-        """Per-file exemptions live only at the tooling owner, never per project."""
+        """A project cannot reintroduce retired exemption configuration."""
         project_dir = tmp_path / "flext-sample"
         config_dir = project_dir / "config"
         config_dir.mkdir(parents=True)
@@ -173,8 +160,7 @@ class TestsFlextInfraDepsModernizerTooling:
             encoding="utf-8",
         )
 
-        with pytest.raises(m.ValidationError):
-            u.Infra.load_project_managed_artifacts(project_dir)
+        tm.fail(u.Infra.load_project_managed_artifacts(project_dir), has="Ruff")
 
     def test_ruff_phase_skips_nonmember_workspace_namespaces(
         self,

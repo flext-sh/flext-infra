@@ -53,10 +53,9 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         """
         if not imports:
             return list(lines)
-        insert_idx = (
-            FlextInfraUtilitiesRopeSource.index_after_docstring_and_future_imports(
-                lines,
-            )
+        insert_idx = FlextInfraUtilitiesRopeSource.find_import_insert_position(
+            lines,
+            past_existing=False,
         )
         return [*lines[:insert_idx], *imports, *lines[insert_idx:]]
 

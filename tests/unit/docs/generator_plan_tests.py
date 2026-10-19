@@ -6,13 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests import c, m, tm, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class TestsFlextInfraDocsGeneratorPlan:

@@ -38,7 +38,8 @@ class FlextInfraUtilitiesPyrefly:
             The resulting ``t.StrSequence``.
 
         """
-        document = u.Cli.toml_read(project_dir / c.PYPROJECT_FILENAME)
+        parsed = u.Cli.toml_read_document(project_dir / c.PYPROJECT_FILENAME)
+        document = parsed.value if parsed.success else None
         tool = (
             None if document is None else u.Cli.toml_table_child(document, c.Infra.TOOL)
         )

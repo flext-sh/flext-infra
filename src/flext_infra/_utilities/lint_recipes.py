@@ -5,7 +5,7 @@ The tooling owner maps each Ruff rule code to one recipe
 then these recipes to the findings left. Every repair is derived from the
 source itself: a docstring section from the signature, the summary and the
 raise statement, a summary from the declared name, the notice from the
-project's declared author, copyright year and module path, and a static
+project's declared copyright holder, license, year and module path, and a static
 method from a method Ruff reports as never reading its instance: only its
 receiver parameter and its decorator list change, its body keeps every byte. A
 finding the recipe cannot place raises; nothing is skipped.
@@ -21,57 +21,149 @@ import io
 import re
 import textwrap
 import tokenize
-from collections.abc import Iterable, MutableMapping
+from collections.abc import MutableMapping
+from functools import lru_cache
 from itertools import pairwise
 from operator import itemgetter
 from pathlib import Path
 
-from flext_infra import c, config, m, t
-from flext_infra._utilities import FlextInfraUtilitiesPyproject
+from flext_cli import u
+
+from flext_infra import c, config, m, p, r, t
+from flext_infra._config import FlextInfraConfig
+from flext_infra._utilities import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesPyproject,
+)
+from flext_infra._utilities._lint_recipes_part import FlextInfraUtilitiesLintRecipesPart
 
 
-class FlextInfraUtilitiesLintRecipes:
+class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
     """Lint-gate policy and repair utilities behind the ``u.Infra`` facade."""
 
     @staticmethod
-    def ruff_finding_severity(code: str, advisory: Iterable[str]) -> str:
-        """Severity one Ruff finding reports at.
-
-        The declared warning classification is retained in every report.
-        Severity never exempts a finding from the blocking gate verdict.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        return (
-            c.Infra.GateSeverity.WARNING.value
-            if code in frozenset(advisory)
-            else c.Infra.GateSeverity.ERROR.value
-        )
-
-    @staticmethod
     def blocking_gate_findings(
-        issues: t.SequenceOf[m.Infra.Issue],
-    ) -> tuple[m.Infra.Issue, ...]:
+        issues: t.SequenceOf[p.Infra.Issue],
+    ) -> t.VariadicTuple[p.Infra.Issue]:
         """Retain every finding as blocking under the approved quality baseline.
 
         Returns:
-            The resulting ``tuple[m.Infra.Issue, ...]``.
+            The same diagnostic instances, without filtering or reconstruction.
 
         """
         return tuple(issues)
 
     @staticmethod
-    def copyright_notice(pkg_dir: Path, *, module: Path | None = None) -> str:
+    def project_notice_identity(
+        project_root: Path,
+        declared: m.Infra.ProjectSpec | None,
+        scaffold: m.Infra.ScaffoldProjectSpec,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> p.Result[t.Triple[str, str, int]]:
+        """Resolve the copyright holder, license and year a project declares.
+
+        The repository's ``Infra.codegen.repository.project`` declaration owns
+        all three: ``author_name`` is the copyright holder, ``license`` the
+        SPDX identifier and ``year`` the notice year. A tree without that
+        declaration derives them from its live PEP 621 manifest, the
+        existing-tree rule: the first author is the holder, ``project.license``
+        the license, and the scaffold copyright year the year.
+        ``scaffold.supported_licenses`` only validates the result: a license
+        without complete templates is rejected, never replaced.
+
+        Returns:
+            The ``(holder, license, year)`` triple, or the first missing or
+            unsupported declaration.
+
+        """
+        result_type = r[t.Triple[str, str, int]]
+        if declared is not None:
+            identity = (declared.author_name, declared.license, declared.year)
+        else:
+            metadata = FlextInfraUtilitiesPyproject.read_project_metadata_result(
+                project_root,
+                source_project=source_project,
+            )
+            if metadata.failure:
+                return result_type.from_failure(metadata)
+            authors = metadata.value.project.authors
+            holder = authors[0].name if authors else None
+            if not holder:
+                return result_type.fail(
+                    f"project manifest declares no author name: {project_root}",
+                )
+            license_id = u.Cli.json_walk_path(
+                FlextInfraUtilitiesPyproject.pyproject_payload(
+                    project_root / c.PYPROJECT_FILENAME,
+                    source_project=source_project,
+                ),
+                (c.Infra.PROJECT, c.Infra.LICENSE),
+            )
+            if not isinstance(license_id, str) or not license_id:
+                return result_type.fail(
+                    "project manifest declares no SPDX project.license and the "
+                    f"repository declares no codegen project: {project_root}",
+                )
+            identity = (holder, license_id, scaffold.copyright_year)
+        if identity[1] not in scaffold.supported_licenses:
+            supported = ", ".join(scaffold.supported_licenses)
+            return result_type.fail(
+                f"unsupported scaffold license: {identity[1]}; "
+                f"supported licenses: {supported}",
+            )
+        return result_type.ok(identity)
+
+    @staticmethod
+    @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
+    def _declared_notice_identity(
+        project_root: Path,
+        inputs: t.VariadicTuple[bytes | None],
+    ) -> p.Result[t.Triple[str, str, int]]:
+        """Resolve one project's notice identity once per exact input content.
+
+        ``inputs`` holds the bytes of the repository's own codegen layers and
+        its manifest, so an edited input is a new key, never a stale identity.
+        The repository declaration is still read through its owner, which must
+        observe the same layer bytes the key carries.
+
+        Returns:
+            The ``project_notice_identity`` result for the declared inputs.
+
+        """
+        result_type = r[t.Triple[str, str, int]]
+        artifacts = FlextInfraUtilitiesProjectManagedArtifacts
+        declaration = artifacts.load_repository_declaration_inputs(project_root)
+        if declaration.failure:
+            return result_type.from_failure(declaration)
+        observed = tuple(state.content for state in declaration.value.sources[1:])
+        if observed != inputs[: len(observed)]:
+            return result_type.fail(
+                f"codegen declaration changed during notice resolution: {project_root}",
+            )
+        return FlextInfraUtilitiesLintRecipes.project_notice_identity(
+            project_root,
+            declaration.value.spec.project,
+            config.Infra.codegen.scaffold.project,
+        )
+
+    @classmethod
+    def copyright_notice(
+        cls,
+        pkg_dir: Path,
+        *,
+        module: Path | None = None,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> str:
         """Render the copyright notice of the project that owns ``pkg_dir``.
 
-        The author is the manifest's first declared author and the year is the
-        scaffold copyright year, the same owners the scaffold templates
-        render. ``module`` names the file that carries the notice. Its
-        project-relative path, without the suffix every module shares, is the
-        line between the copyright sentence and the SPDX line: the sentence
-        and the license stay legal, and the notice is not one stamp.
+        The holder, license and year come from the owning repository's
+        declaration through ``project_notice_identity``, the same owner the
+        conform render consumes. ``module`` names the file that carries the
+        notice. Its project-relative path, without the suffix every module
+        shares, is the line between the copyright sentence and the SPDX line:
+        the sentence and the license stay legal, and the notice is not one
+        stamp.
 
         Returns:
             The copyright sentence, that module identity when ``module`` is
@@ -79,29 +171,51 @@ class FlextInfraUtilitiesLintRecipes:
 
         Raises:
             ValueError: If the path is outside any project manifest, the
-                manifest declares no author name, or ``module`` has no
-                identity.
+                project declares no holder or a missing or unsupported
+                license, or ``module`` has no identity.
 
         """
         for candidate in (pkg_dir, *pkg_dir.parents):
-            if not (candidate / c.PYPROJECT_FILENAME).is_file():
+            if not (
+                (candidate / c.PYPROJECT_FILENAME).is_file()
+                if source_project is None
+                else source_project.source_query(
+                    candidate / c.PYPROJECT_FILENAME, "isfile"
+                )
+            ):
                 continue
-            authors = (
-                FlextInfraUtilitiesPyproject
-                .read_project_metadata_result(candidate)
-                .unwrap()
-                .project.authors
+            root = candidate.resolve()
+            layers = FlextInfraConfig.config_layer_paths_for_repository(
+                root,
+                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
             )
-            author = authors[0].name if authors else None
-            if not author:
-                msg = f"project manifest declares no author name: {candidate}"
-                raise ValueError(msg)
-            scaffold = config.Infra.codegen.scaffold.project
-            copyright_line = (
-                f"Copyright (c) {scaffold.copyright_year} {author}. "
-                "All rights reserved."
-            )
-            spdx = f"SPDX-License-Identifier: {scaffold.supported_licenses[0]}"
+            if source_project is None:
+                notice = cls._declared_notice_identity(
+                    root,
+                    tuple(
+                        u.Cli.files_read_binary(path).unwrap()
+                        if path.is_file()
+                        else None
+                        for path in (*layers[1:], root / c.PYPROJECT_FILENAME)
+                    ),
+                )
+            else:
+                artifacts = FlextInfraUtilitiesProjectManagedArtifacts
+                declaration = artifacts.load_repository_declaration_inputs(
+                    root,
+                    source_project=source_project,
+                ).unwrap()
+                notice = cls.project_notice_identity(
+                    root,
+                    declaration.spec.project,
+                    config.Infra.codegen.scaffold.project,
+                    source_project=source_project,
+                )
+            if notice.failure:
+                raise ValueError(notice.error)
+            holder, license_id, year = notice.value
+            copyright_line = f"Copyright (c) {year} {holder}. All rights reserved."
+            spdx = f"SPDX-License-Identifier: {license_id}"
             if module is None:
                 return f"{copyright_line}\n{spdx}"
             try:
@@ -126,7 +240,7 @@ class FlextInfraUtilitiesLintRecipes:
     def apply_lint_recipes(
         cls,
         source: str,
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         *,
         path: Path,
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
@@ -170,7 +284,7 @@ class FlextInfraUtilitiesLintRecipes:
     def _collected_sections(
         cls,
         tree: ast.Module,
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         path: Path,
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
     ) -> t.Triple[
@@ -318,75 +432,6 @@ class FlextInfraUtilitiesLintRecipes:
             rewritten = f"{rewritten[:start]}{text}{rewritten[end:]}"
         return rewritten
 
-    @staticmethod
-    def _docstring_expr(
-        node: ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
-    ) -> ast.Expr | None:
-        """Return the docstring statement of a module, class or function.
-
-        Returns:
-            The docstring statement of a module, class or function.
-
-        """
-        first = node.body[0] if node.body else None
-        if (
-            isinstance(first, ast.Expr)
-            and isinstance(first.value, ast.Constant)
-            and isinstance(first.value.value, str)
-        ):
-            return first
-        return None
-
-    @classmethod
-    def _documented_at(
-        cls,
-        tree: ast.Module,
-        line: int,
-        path: Path,
-    ) -> ast.FunctionDef | ast.AsyncFunctionDef:
-        """Return the function whose docstring starts at ``line``.
-
-        Returns:
-            The function whose docstring starts at ``line``.
-
-        Raises:
-            ValueError: Always.
-
-        """
-        for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-                docstring = cls._docstring_expr(node)
-                if docstring is not None and docstring.lineno == line:
-                    return node
-        msg = f"{path}: no function docstring starts at line {line}"
-        raise ValueError(msg)
-
-    @staticmethod
-    def _enclosing_function(
-        tree: ast.Module,
-        line: int,
-        path: Path,
-    ) -> ast.FunctionDef | ast.AsyncFunctionDef:
-        """Return the innermost function whose body spans ``line``.
-
-        Returns:
-            The innermost function whose body spans ``line``.
-
-        Raises:
-            ValueError: If ``not enclosing``.
-
-        """
-        enclosing = [
-            node
-            for node in ast.walk(tree)
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
-            and node.lineno <= line <= (node.end_lineno or node.lineno)
-        ]
-        if not enclosing:
-            msg = f"{path}: no function encloses line {line}"
-            raise ValueError(msg)
-        return max(enclosing, key=lambda node: node.lineno)
-
     @classmethod
     def _summary_edit(
         cls,
@@ -433,52 +478,12 @@ class FlextInfraUtilitiesLintRecipes:
             f'{line[:colon]}\n{block}"""{text}"""\n{block}{suite}\n',
         )
 
-    @staticmethod
-    def _utf8_chars(line: str, col_offset: int) -> int:
-        """Return the character index of a UTF-8 AST column on ``line``.
-
-        Returns:
-            The character index of a UTF-8 AST column on ``line``.
-
-        """
-        return len(
-            line.encode(c.DEFAULT_ENCODING)[:col_offset].decode(
-                c.DEFAULT_ENCODING,
-            ),
-        )
-
-    @staticmethod
-    def _defined_at(
-        tree: ast.Module,
-        line: int,
-        path: Path,
-    ) -> ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef:
-        """Return the class or function defined at ``line``.
-
-        An inline body is a legal definition. The summary edit expands it.
-
-        Returns:
-            The class or function defined at ``line``.
-
-        Raises:
-            ValueError: If no class or function is defined at ``line``.
-
-        """
-        for node in ast.walk(tree):
-            if (
-                isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef)
-                and node.lineno == line
-            ):
-                return node
-        msg = f"{path}: no class or function is defined at line {line}"
-        raise ValueError(msg)
-
     @classmethod
     def _static_method_plan(
         cls,
         source: str,
         tree: ast.Module,
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         path: Path,
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
     ) -> t.VariadicTuple[t.Triple[int, int, str]]:
@@ -502,7 +507,7 @@ class FlextInfraUtilitiesLintRecipes:
 
     @staticmethod
     def _recipe_for(
-        issue: m.Infra.Issue,
+        issue: p.Infra.Issue,
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
         path: Path,
     ) -> c.Infra.LintFixRecipe:
@@ -574,12 +579,12 @@ class FlextInfraUtilitiesLintRecipes:
     def overridden_findings(
         cls,
         source: str,
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         *,
         path: Path,
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
         overridden: frozenset[t.Pair[str, str]],
-    ) -> t.VariadicTuple[m.Infra.Issue]:
+    ) -> t.VariadicTuple[p.Infra.Issue]:
         """Return the static-method findings the recipe must not convert.
 
         A method on an override chain, or one whose body reads its receiver,
@@ -589,13 +594,41 @@ class FlextInfraUtilitiesLintRecipes:
             The findings the static-method recipe leaves to their owner.
 
         """
-        tree = ast.parse(source)
         return tuple(
             issue
+            for issue, owner, method in cls._static_method_candidates(
+                source,
+                issues,
+                path=path,
+                recipes=recipes,
+            )
+            if (owner.name, method.name) in overridden or cls._reads_receiver(method)
+        )
+
+    @classmethod
+    def _static_method_candidates(
+        cls,
+        source: str,
+        issues: t.SequenceOf[p.Infra.Issue],
+        *,
+        path: Path,
+        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
+    ) -> t.VariadicTuple[
+        t.Triple[p.Infra.Issue, ast.ClassDef, ast.FunctionDef | ast.AsyncFunctionDef]
+    ]:
+        """Pair each static-method finding with its owner and method.
+
+        Returns:
+            The ``(issue, owner, method)`` triples the static-method recipe
+            targets.
+
+        """
+        tree = ast.parse(source)
+        return tuple(
+            (issue, owner, method)
             for issue in issues
             if recipes.get(issue.code) is c.Infra.LintFixRecipe.STATIC_METHOD
             for owner, method in (cls._receiver_method_at(tree, issue, path),)
-            if (owner.name, method.name) in overridden or cls._reads_receiver(method)
         )
 
     @staticmethod
@@ -616,10 +649,57 @@ class FlextInfraUtilitiesLintRecipes:
             for node in ast.walk(statement)
         )
 
+    @classmethod
+    def service_operation_findings(
+        cls,
+        source: str,
+        issues: t.SequenceOf[p.Infra.Issue],
+        *,
+        path: Path,
+        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
+    ) -> t.VariadicTuple[p.Infra.Issue]:
+        """Return the static-method findings on methods of a service subclass.
+
+        A service operation must stay a plain public instance function
+        (ADR-019): core discovery excludes staticmethods, classmethods and
+        properties, so converting such a method silently removes the
+        operation and every derived route raises ``no operation``. The
+        static-method recipe leaves these findings to their owner.
+
+        Returns:
+            The findings the static-method recipe leaves to their owner.
+
+        """
+        return tuple(
+            issue
+            for issue, owner, _method in cls._static_method_candidates(
+                source,
+                issues,
+                path=path,
+                recipes=recipes,
+            )
+            if cls._declares_service_base(owner)
+        )
+
+    @staticmethod
+    def _declares_service_base(owner: ast.ClassDef) -> bool:
+        """Return whether the class declares a FLEXT service base.
+
+        Bases are matched by their declared root name, so ``s[Status]``,
+        ``FlextService[Status]`` and ``service.FlextService[Status]`` all
+        declare; an ambiguous name only keeps more methods with their owner.
+
+        """
+        for base in owner.bases:
+            root = ast.unparse(base).split("[", maxsplit=1)[0]
+            if root.rsplit(".", maxsplit=1)[-1].strip() in c.Infra.SERVICE_BASE_ROOTS:
+                return True
+        return False
+
     @staticmethod
     def _receiver_method_at(
         tree: ast.Module,
-        issue: m.Infra.Issue,
+        issue: p.Infra.Issue,
         path: Path,
     ) -> t.Pair[ast.ClassDef, ast.FunctionDef | ast.AsyncFunctionDef]:
         """Return the class method Ruff reports as never reading its receiver.
@@ -831,7 +911,7 @@ class FlextInfraUtilitiesLintRecipes:
     def _raises_entry(
         cls,
         function: ast.FunctionDef | ast.AsyncFunctionDef,
-        issue: m.Infra.Issue,
+        issue: p.Infra.Issue,
         path: Path,
     ) -> str:
         """Name the raised exception and the conditions that raise it.

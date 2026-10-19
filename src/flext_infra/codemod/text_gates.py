@@ -106,6 +106,7 @@ class FlextInfraModTextGateEngine:
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.ModTextRule]]``.
+
         """
         if identity.content is None:
             return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(
@@ -121,8 +122,7 @@ class FlextInfraModTextGateEngine:
             return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(
                 f"text rule project identity is invalid TOML: {identity.path}",
             )
-        validated = u.Infra.validate_infra_payload(payload)
-        distribution = u.Infra.project_name_from_payload(identity.path, validated)
+        distribution = u.Infra.project_name_from_payload(identity.path, payload)
         return r[t.VariadicTuple[m.Infra.ModTextRule]].ok(
             tuple(
                 rule
@@ -491,6 +491,7 @@ class FlextInfraModTextGateEngine:
         Returns:
             Central issues for unsupported explicit input declarations. A scope
             glob without a suffix still selects the canonical Python inventory.
+
         """
         return tuple(
             cls._source_issue(
@@ -508,6 +509,8 @@ class FlextInfraModTextGateEngine:
     def _source_paths(
         root: Path,
         rules: t.VariadicTuple[m.Infra.ModTextRule],
+        *,
+        sources: t.MappingKV[Path, str] | None = None,
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Inventory Python sources and only explicitly declared Markdown globs.
 
@@ -531,12 +534,25 @@ class FlextInfraModTextGateEngine:
                     return r[t.VariadicTuple[Path]].fail(
                         f"text Markdown include escapes repository: {pattern}",
                     )
-                matches = tuple(sorted(root.glob(pattern)))
+                matches = tuple(
+                    sorted(
+                        set(root.glob(pattern))
+                        | {
+                            path
+                            for path in sources or ()
+                            if path.is_relative_to(root)
+                            and fnmatch(path.relative_to(root).as_posix(), pattern)
+                        }
+                    )
+                )
                 if not matches:
                     return r[t.VariadicTuple[Path]].fail(
                         f"text Markdown include has no source: {pattern}",
                     )
                 for path in matches:
+                    if sources is not None and path in sources:
+                        paths.add(path)
+                        continue
                     if (
                         not path.is_file()
                         or path.is_symlink()
@@ -678,11 +694,14 @@ class FlextInfraModTextGateEngine:
     def _scan_paths(
         cls,
         root: Path,
-        sources: t.SequenceOf[Path],
+        paths: t.SequenceOf[Path],
         rules: t.VariadicTuple[m.Infra.ModTextRule],
         base_states: t.VariadicTuple[m.Cli.AtomicFileState],
         *,
         fix: bool,
+        sources: t.MappingKV[Path, str] | None = None,
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[
         t.Pair[
             m.Infra.ModTextReport,
@@ -694,6 +713,9 @@ class FlextInfraModTextGateEngine:
         Returns:
             Reported matches and the canonical phase analysis with its first cause.
 
+        Raises:
+            ValueError: If a planning source lacks its original receipt.
+
         """
         entries: list[m.Infra.ModTextFinding] = []
         files: set[Path] = set()
@@ -701,18 +723,53 @@ class FlextInfraModTextGateEngine:
         plans: list[m.Infra.CodegenFilePlan] = []
         issues: list[m.Infra.Issue] = []
         first_exception: BaseException | None = None
-        for path in sources:
+        originals = {state.path: state for state in source_states}
+        declarations = {plan.path: plan for plan in declared_files}
+        consumed: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {
+            state.path: state for state in base_states
+        }
+        for path in paths:
+            relative = path.relative_to(root).as_posix()
+            if not any(cls._rule_elects(rule, relative) for rule in rules):
+                continue
+            declaration = declarations.get(path)
             try:
-                prepared = cls._authenticated_source(root, path)
+                before: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan
+                if sources is None:
+                    prepared = cls._authenticated_source(root, path)
+                    if prepared.failure:
+                        issues.append(cls._source_issue(path, str(prepared.error)))
+                        first_exception = first_exception or prepared.exception
+                        continue
+                    before, source, relative = prepared.value
+                else:
+                    if path not in sources or (
+                        path not in originals and declaration is None
+                    ):
+                        msg = f"text planning source lacks its original receipt: {path}"
+                        raise ValueError(msg)
+                    before = (
+                        declaration.before
+                        if declaration is not None
+                        else originals[path]
+                    )
+                    source = sources[path]
+                if isinstance(before, m.Cli.AtomicFileState):
+                    if consumed.setdefault(path, before) != before:
+                        msg = f"text planning original receipts disagree: {path}"
+                        raise ValueError(msg)
+                if declaration is not None:
+                    for state in declaration.source_states:
+                        if consumed.setdefault(state.path, state) != state:
+                            msg = (
+                                f"text declaration original "
+                                f"receipts disagree: {state.path}"
+                            )
+                            raise ValueError(msg)
             except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
                 first_exception = first_exception or exc
                 issues.append(cls._source_issue(path, str(exc), exception=exc))
                 continue
-            if prepared.failure:
-                issues.append(cls._source_issue(path, str(prepared.error)))
-                first_exception = first_exception or prepared.exception
-                continue
-            before, source, relative = prepared.value
             try:
                 updated, target_entries, target_actionable = cls._rewrite_source(
                     source, relative, rules
@@ -741,6 +798,24 @@ class FlextInfraModTextGateEngine:
                     issues.append(cls._source_issue(path, str(exc), exception=exc))
                     continue
             if fix and updated != source:
+                if declaration is not None:
+                    plans.append(
+                        declaration.model_copy(
+                            update={
+                                "desired_content": updated.encode(c.DEFAULT_ENCODING),
+                                "source_states": (
+                                    *base_states,
+                                    *declaration.source_states,
+                                ),
+                                "owner": "mod-text",
+                            }
+                        )
+                    )
+                    continue
+                if not isinstance(before, m.Cli.AtomicFileState):
+                    return r[
+                        t.Pair[m.Infra.ModTextReport, m.Infra.CodegenPhaseAnalysis]
+                    ].fail(f"text declaration lacks its original file plan: {path}")
                 plans.append(
                     cls._rewrite_plan(root, path, before, updated, base_states),
                 )
@@ -760,13 +835,7 @@ class FlextInfraModTextGateEngine:
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.MOD_TEXT,
                 files=tuple(plans),
-                inputs=tuple(
-                    {
-                        state.path: state
-                        for plan in plans
-                        for state in plan.source_states
-                    }.values()
-                ),
+                inputs=tuple(consumed.values()),
                 issues=tuple(issues),
                 exception=first_exception,
             ),
@@ -796,14 +865,16 @@ class FlextInfraModTextGateEngine:
         )
 
     @classmethod
-    def scan(
+    def plan(
         cls,
         root: Path,
         *,
-        fix: bool,
+        sources: t.MappingKV[Path, str] | None = None,
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
         validate_receipts: bool = False,
-    ) -> p.Result[m.Infra.ModTextReport]:
-        """Scan the governed surface or apply every rule rewrite in place.
+    ) -> p.Result[t.Pair[m.Infra.ModTextReport, m.Infra.CodegenPhaseAnalysis]]:
+        """Plan the complete text cascade without publishing any source.
 
         Returns:
             The resulting ``p.Result[m.Infra.ModTextReport]``.
@@ -822,7 +893,10 @@ class FlextInfraModTextGateEngine:
             try:
                 outcome = cls._scan_project(
                     project,
-                    fix=fix,
+                    fix=True,
+                    sources=sources,
+                    source_states=source_states,
+                    declared_files=declared_files,
                     validate_receipts=validate_receipts,
                 )
             except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
@@ -865,7 +939,42 @@ class FlextInfraModTextGateEngine:
             issues=tuple(issues),
             exception=first_exception,
         )
-        if fix and plans:
+        return r[t.Pair[m.Infra.ModTextReport, m.Infra.CodegenPhaseAnalysis]].ok((
+            report,
+            analysis,
+        ))
+
+    @classmethod
+    def scan(
+        cls,
+        root: Path,
+        *,
+        fix: bool,
+        validate_receipts: bool = False,
+    ) -> p.Result[m.Infra.ModTextReport]:
+        """Observe or publish the same complete, authenticated text plan.
+
+        Returns:
+            The observed or published report, or the first phase failure.
+
+        """
+        planned = cls.plan(root, validate_receipts=validate_receipts)
+        if planned.failure:
+            return r[m.Infra.ModTextReport].from_failure(planned)
+        report, analysis = planned.value
+        issues = analysis.issues
+        if issues:
+            return r[m.Infra.ModTextReport].fail(
+                "\n".join(issue.formatted for issue in issues),
+                exception=analysis.exception,
+                error_code=c.Infra.ToolOutcome.ERROR.value,
+                error_data={
+                    "report": report.model_dump(mode="json"),
+                    "issues": tuple(issue.model_dump() for issue in issues),
+                    "written_files": (),
+                },
+            )
+        if fix and analysis.files:
             published = cls._publish(root, analysis)
             if published.failure:
                 details: t.MutableMappingKV[str, t.JsonValue] = {
@@ -879,17 +988,6 @@ class FlextInfraModTextGateEngine:
                     error_code=published.error_code,
                     error_data=details,
                 )
-        if issues:
-            return r[m.Infra.ModTextReport].fail(
-                "\n".join(issue.formatted for issue in issues),
-                exception=first_exception,
-                error_code=c.Infra.ToolOutcome.ERROR.value,
-                error_data={
-                    "report": report.model_dump(mode="json"),
-                    "issues": tuple(issue.model_dump() for issue in issues),
-                    "written_files": (),
-                },
-            )
         return r[m.Infra.ModTextReport].ok(report)
 
     @staticmethod
@@ -901,11 +999,11 @@ class FlextInfraModTextGateEngine:
 
         Returns:
             Dependency paths with conflicting authenticated identities.
+
         """
         return {
             state.path
             for state in analysis.inputs
-            if analysis.files
             if inputs.setdefault(state.path, state) != state
         }
 
@@ -920,6 +1018,7 @@ class FlextInfraModTextGateEngine:
 
         Returns:
             Plans with consistent dependency identities.
+
         """
         allowed: list[m.Infra.CodegenFilePlan] = []
         for plan in plans:
@@ -947,6 +1046,9 @@ class FlextInfraModTextGateEngine:
         *,
         fix: bool,
         validate_receipts: bool,
+        sources: t.MappingKV[Path, str] | None = None,
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[
         t.Pair[
             m.Infra.ModTextReport,
@@ -969,20 +1071,38 @@ class FlextInfraModTextGateEngine:
             ].from_failure(context)
         catalogues, identity, rules = context.value
         include_issues = cls._include_issues(root, rules)
-        sources = cls._source_paths(root, rules)
-        if sources.failure:
+        paths = cls._source_paths(root, rules, sources=sources)
+        if paths.failure:
             return r[
                 t.Pair[
                     m.Infra.ModTextReport,
                     m.Infra.CodegenPhaseAnalysis,
                 ]
-            ].from_failure(sources)
+            ].from_failure(paths)
         scanned = cls._scan_paths(
             root,
-            sources.value,
+            tuple(
+                sorted(
+                    set(paths.value)
+                    | {
+                        path
+                        for path in sources or ()
+                        if path.is_relative_to(root)
+                        and path.suffix == c.Infra.EXT_PYTHON
+                        and not any(
+                            path.is_relative_to(member)
+                            for member in u.Infra.governed_project_roots(root)
+                            if member != root
+                        )
+                    }
+                )
+            ),
             rules,
             (*catalogues, identity),
             fix=fix,
+            sources=sources,
+            source_states=source_states,
+            declared_files=declared_files,
         )
         if scanned.failure:
             return scanned
@@ -994,40 +1114,24 @@ class FlextInfraModTextGateEngine:
                     "exception": ValueError(include_issues[0].message),
                 }
             )
-            scanned = r[t.Pair[m.Infra.ModTextReport, m.Infra.CodegenPhaseAnalysis]].ok((
-                report,
-                analysis,
-            ))
+            scanned = r[
+                t.Pair[
+                    m.Infra.ModTextReport,
+                    m.Infra.CodegenPhaseAnalysis,
+                ]
+            ].ok((report, analysis))
         if validate_receipts:
-            failed_rules: set[str] = set()
             receipt_issues: list[m.Infra.Issue] = []
             first_exception = analysis.exception
             for rule in rules:
                 try:
                     cls._validate_expected_receipts((rule,), report)
                 except RuntimeError as exc:
-                    failed_rules.add(rule.rule_id)
                     receipt_issues.append(cls._source_issue(root, str(exc)))
                     first_exception = first_exception or exc
             if receipt_issues:
-                blocked = {
-                    root / entry.file
-                    for entry in report.entries
-                    if entry.rule_id in failed_rules
-                }
-                allowed = tuple(
-                    plan for plan in analysis.files if plan.path not in blocked
-                )
                 analysis = analysis.model_copy(
                     update={
-                        "files": allowed,
-                        "inputs": tuple(
-                            {
-                                state.path: state
-                                for plan in allowed
-                                for state in plan.source_states
-                            }.values()
-                        ),
                         "issues": (*analysis.issues, *receipt_issues),
                         "exception": first_exception,
                     }
@@ -1052,25 +1156,24 @@ class FlextInfraModTextGateEngine:
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
         )
-        roots = {
-            f"@mod-text-{index}": project
-            for index, project in enumerate(
-                sorted({plan.project for plan in analysis.files})
-            )
-        }
-
-        def validate_published() -> p.Result[bool]:
-            return transaction.validate_phase_analysis_locked(analysis)
+        roots = transaction.capability_roots(
+            "mod-text",
+            sorted({plan.project for plan in analysis.files}),
+        )
 
         def publish(scope_root: Path) -> p.Result[t.VariadicTuple[Path]]:
-            return transaction.publish_file_phase_locked(
+            published = transaction.publish_file_phase_locked(
                 scope_root,
                 roots,
                 analysis,
-                m.Infra.CodegenPhasePublicationPolicy(
-                    directories=(), validator=validate_published
-                ),
+                m.Infra.CodegenPhasePublicationPolicy(directories=()),
             )
+            if published.failure:
+                return r[t.VariadicTuple[Path]].from_failure(published)
+            verified = transaction.validate_phase_analysis_locked(analysis)
+            if verified.failure:
+                return r[t.VariadicTuple[Path]].from_failure(verified)
+            return published
 
         return transaction.run_files_locked(roots, publish)
 

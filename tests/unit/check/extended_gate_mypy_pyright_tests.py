@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, m, main, s
+from flext_infra import FlextInfra, c, config, m, main
+from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
@@ -27,23 +28,16 @@ class TestsFlextInfraTypeGates:
     """The selected project's actual findings determine acceptance."""
 
     @staticmethod
-    def test_omitted_ruff_policy_uses_concrete_environment_defaults() -> None:
-        """The Make default factory produces a usable typed cache policy."""
+    def test_omitted_ruff_policy_is_rejected() -> None:
+        """A governed Make policy requires an explicit typed Ruff cache."""
         configured = config.Infra.codegen.make
-        restored = m.Infra.MakeSpec.model_validate(
-            configured.model_dump(
-                exclude={"ruff_cache"},
-                exclude_computed_fields=True,
-            ),
-        )
-        expected = m.Infra.RuffCacheSpec(
-            external_storage_directory=restored.ruff_cache.external_storage_directory,
-        )
-        tm.that(restored.ruff_cache, eq=expected)
-        tm.that(
-            u.Infra.external_cache_directory(restored.ruff_cache),
-            eq=u.Infra.external_cache_directory(expected),
-        )
+        with pytest.raises(ValueError, match="ruff_cache"):
+            m.Infra.MakeSpec.model_validate(
+                configured.model_dump(
+                    exclude={"ruff_cache"},
+                    exclude_computed_fields=True,
+                ),
+            )
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -68,7 +62,7 @@ class TestsFlextInfraTypeGates:
     def test_mypy_cache_is_project_keyed_across_checkouts_and_relocks(
         tmp_path: Path,
     ) -> None:
-        """Real gate runs populate one external cache per declared project name."""
+        """One environment shares one external cache per declared project name."""
         spec = config.Infra.codegen.make.mypy_cache
         cache_home = tmp_path / "cache"
         shared_root = cache_home / spec.external_storage_directory
@@ -91,7 +85,11 @@ class TestsFlextInfraTypeGates:
                     reports_dir=root / ".reports",
                 )
                 gate = FlextInfraMypyGate(root)
-                cache = shared_root / project
+                cache = (
+                    shared_root
+                    / project
+                    / FlextInfraUtilitiesResourceLimits.environment_cache_identity()
+                )
                 for revision in (1, 2):
                     lock.write_text(
                         f"version = 1\nrevision = {revision}\n",
@@ -233,7 +231,6 @@ class TestsFlextInfraTypeGates:
             ("flext_infra", "FlextInfraServiceBase"),
             ("flext_infra", "FlextInfraProjectSelectionServiceBase"),
             ("flext_infra.codegen", "FlextInfraCodegenExecutionBase"),
-            ("flext_infra", "FlextInfraSonarcloudClient"),
         ],
     )
     def test_mypy_public_service_payload_bound(
@@ -252,7 +249,7 @@ class TestsFlextInfraTypeGates:
             ),
             encoding=c.DEFAULT_ENCODING,
         )
-        tm.that(s[str](repository_root=project).root, eq=project.resolve())
+        tm.that(FlextInfra(repository_root=project).root, eq=project.resolve())
         source = project / "src" / "test_pkg" / "payload_bound.py"
         valid_source = (
             f"from {module} import {service}\n\n"
@@ -392,7 +389,7 @@ class TestsFlextInfraTypeGates:
         first = gate.check(project, checker_context)
         assert first.result.passed, first
         native_reports = tuple(reports.glob("*-pyrefly.json"))
-        assert len(native_reports) == 1
+        tm.that(len(native_reports) == 1, truth=True)
         assert not m.Infra.PyreflyReport.model_validate_json(
             native_reports[0].read_text(encoding="utf-8"),
             strict=True,
@@ -517,7 +514,7 @@ class TestsFlextInfraTypeGates:
             strict=True,
         )
         assert report.general_diagnostics[0].range is None
-        assert report.summary.information_count == 1
+        tm.that(report.summary.information_count == 1, truth=True)
 
     @staticmethod
     def test_pyright_zero_collection() -> None:
@@ -528,7 +525,7 @@ class TestsFlextInfraTypeGates:
             '"informationCount":0,"timeInSec":0.1}}',
             strict=True,
         )
-        assert report.summary.files_analyzed == 0
+        tm.that(report.summary.files_analyzed == 0, truth=True)
         assert not report.general_diagnostics
 
     @staticmethod

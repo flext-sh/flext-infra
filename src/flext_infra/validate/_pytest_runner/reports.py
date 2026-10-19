@@ -33,6 +33,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
 
         Returns:
             The resulting ``bool``.
+
         """
         plan = m.Infra.PytestSelectionPlan.model_validate_json(
             (report_dir / "selection-plan.json").read_text(encoding="utf-8"),
@@ -259,10 +260,8 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             )
             if (
                 context.execution_mode == c.Infra.PytestExecutionMode.FULL
-                # A whole-target run (the declared single file) executes
-                # under --testmon-noselect with the collection manifest
-                # enforced, so testmon writes no selection receipt: the
-                # enforced manifest IS the executed selection.
+                # Full runs and declared single-file selections use the
+                # centrally enforced manifest as the executed selection.
                 or selection_plan.whole_target
             )
             else m.Infra.PytestCollectionManifest.model_validate_json(
@@ -280,10 +279,9 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             msg = "testmon selected node IDs outside the complete collection inventory"
             raise RuntimeError(msg)
         inventory_count = len(inventory.node_ids)
-        # Deselection is what pytest observably skipped. An empty selection of a
-        # declared file runs under --testmon-forceselect, so an unchanged file
-        # is a complete deselection (a typed cache hit); the complete phase of
-        # the same verb then executes the whole file.
+        # Deselection follows the centrally enforced manifest. An empty
+        # incremental suite selection deselects the complete inventory; declared
+        # file and full requests execute their complete in-scope inventory.
         return (inventory_count - len(selected.node_ids), inventory_count)
 
     def _diagnostics(self, report_dir: Path) -> p.Result[m.Infra.PytestDiagnostics]:

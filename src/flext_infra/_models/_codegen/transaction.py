@@ -8,34 +8,32 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal, Self
+from types import MappingProxyType
+from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import p, t
-from flext_infra._models import FlextInfraModelsCodegenToolchain, FlextInfraModelsRope
-from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
-from flext_infra._models.check import FlextInfraModelsCheck
+from flext_infra import c, p, t
+from flext_infra._models import (
+    FlextInfraModelsBase,
+    FlextInfraModelsCheck,
+    FlextInfraModelsCodegenToolchain,
+    FlextInfraModelsRope,
+    FlextInfraModelsWorkspace,
+)
+from flext_infra._models._codegen import (
+    FlextInfraModelsCodegenJournalModels,
+    FlextInfraModelsCodegenPipelineModels,
+)
+from flext_infra._models._config import FlextInfraConfigModels
 
 
 class FlextInfraModelsCodegenTransactionModels:
     """Transaction and session models for the codegen pipeline."""
 
-    class CodegenPhasePublicationPolicy(m.ArbitraryTypesModel):
-        """Caller-owned directories and final validation for one publication."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
-        directories: t.VariadicTuple[Path] = m.Field(
-            description="Exact generated directories requested by the caller",
-        )
-        validator: Callable[[], p.Result[bool]] = m.Field(
-            description="Caller validation required before committing the phase",
-        )
-
-    class StagePackagePlan(m.ArbitraryTypesModel):
+    class StagePackagePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Pinned package/dependency inputs and the declared public facade contract."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
         package: str = m.Field(description="Selected canonical package namespace")
         module: str = m.Field(description="Selected public facade module")
         classname: str = m.Field(description="Published class preserved by projection")
@@ -56,19 +54,36 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Workspace namespaces requiring sealed origins"
         )
 
-    class StageSourcePlan(m.ArbitraryTypesModel):
+    class StageSourcePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Pinned project closure and desired bytes for effect-free validation."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
         workspace: Path = m.Field(description="Canonical source workspace root")
+        workspaces: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Explicit composition scopes, never a parent-directory scan",
+        )
         roots: t.VariadicTuple[Path] = m.Field(
             description="Discovered project roots covering the pinned source closure"
         )
         inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
             description="Exact source and configuration observations"
         )
-        updates: t.MappingKV[Path, str] = m.Field(
-            description="Desired source updates keyed by live destination"
+        updates: t.MappingKV[Path, str | None] = m.Field(
+            description=(
+                "Desired sources keyed by live destination; None retires an artifact"
+            ),
+        )
+        modes: t.MappingKV[Path, int] = m.Field(
+            default_factory=lambda: MappingProxyType[Path, int]({}),
+            description="Desired file-effect modes derived from original move sources",
+        )
+        declared_files: t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan] = (
+            m.Field(
+                default=(),
+                description=(
+                    "Original file/absence witnesses with the current desired effects"
+                ),
+            )
         )
         layouts: t.VariadicTuple[FlextInfraModelsRope.RopeProjectLayout] = m.Field(
             description="Original project layouts in the desired import closure",
@@ -77,10 +92,9 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Declared workspace namespaces with sealed candidate origins",
         )
 
-    class StagePackageView(m.ArbitraryTypesModel):
+    class StagePackageView(FlextInfraModelsBase.FrozenArbitrary):
         """Journal-owned materialized package view, never another source of truth."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
         plan: FlextInfraModelsCodegenTransactionModels.StagePackagePlan = m.Field(
             description="Pinned input and public-feature contract"
         )
@@ -97,10 +111,8 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Exact desired facade bytes and physical identity"
         )
 
-    class CodegenTransactionJournal(m.ArbitraryTypesModel):
+    class CodegenTransactionJournal(FlextInfraModelsBase.FrozenArbitrary):
         """Persisted recovery contract for one workspace-wide generation."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         version: Annotated[
             Literal[9],
@@ -137,6 +149,50 @@ class FlextInfraModelsCodegenTransactionModels:
             t.VariadicTuple[FlextInfraModelsCodegenJournalModels.CodegenJournalSource],
             m.Field(description="Source identities used by staging"),
         ]
+        outputs: t.VariadicTuple[
+            FlextInfraModelsCodegenJournalModels.CodegenJournalSource
+        ] = m.Field(default=(), description="Complete output proof, including no-ops")
+        generator_sources: t.VariadicTuple[
+            FlextInfraModelsCodegenJournalModels.CodegenJournalSource
+        ] = m.Field(default=(), description="Captured loaded generator implementation")
+        generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
+            default=(), description="Producer resource membership before planning"
+        )
+        generator_modules: t.VariadicTuple[t.Pair[str, Path]] = m.Field(
+            default=(), description="Immutable producer module election"
+        )
+        generator_reference: FlextInfraModelsWorkspace.NativeImportReference | None = (
+            m.Field(
+                default=None,
+                description="Immutable native producer epoch before effects",
+            )
+        )
+        source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
+            default=(),
+            description="Source-owner directory witnesses for observation",
+        )
+        source_directories: t.VariadicTuple[
+            t.Pair[str, m.Cli.AtomicDirectoryInventory]
+        ] = m.Field(
+            default=(), strict=True, description="Native source election query receipts"
+        )
+        source_query_topology: t.VariadicTuple[
+            t.Pair[str, m.Cli.AtomicDirectoryChainPlan]
+        ] = m.Field(
+            default=(),
+            strict=True,
+            description="Historical ancestry inputs of native source queries",
+        )
+        scope_roots: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Source-owner roots for topology observation",
+        )
+        source_scope: Path | None = m.Field(
+            default=None, description="Member elected by the native docs source owner"
+        )
+        phase: c.Infra.CodegenStagedFilePhase | None = m.Field(
+            default=None, description="Actual publication phase"
+        )
         directories: Annotated[
             t.VariadicTuple[
                 FlextInfraModelsCodegenJournalModels.CodegenJournalDirectory
@@ -188,6 +244,17 @@ class FlextInfraModelsCodegenTransactionModels:
             self._validate_staging_authority()
             self._validate_participant_coverage(selectors)
             source_keys = {(source.phase, source.path) for source in self.sources}
+            directory_keys = {
+                (phase, receipt.root.path) for phase, receipt in self.source_directories
+            }
+            topology_keys = {
+                (phase, receipt.target) for phase, receipt in self.source_query_topology
+            }
+            if len(directory_keys) != len(self.source_directories) or len(
+                topology_keys
+            ) != len(self.source_query_topology):
+                msg_0 = "journal native query receipts require unique phase paths"
+                raise ValueError(msg_0)
             for entry in self.entries:
                 if len(set(entry.source_paths)) != len(entry.source_paths):
                     msg = "journal entry source dependencies must be unique"
@@ -198,6 +265,15 @@ class FlextInfraModelsCodegenTransactionModels:
                 ):
                     msg = "journal entry source dependency has no same-phase authority"
                     raise ValueError(msg)
+                if any(
+                    (entry.phase, path) not in directory_keys
+                    for path in entry.source_directory_paths
+                ) or any(
+                    (entry.phase, path) not in topology_keys
+                    for path in entry.source_query_topology_paths
+                ):
+                    msg_0 = "journal native query reference lacks same-phase authority"
+                    raise ValueError(msg_0)
             staging_paths = tuple(intent.before.path for intent in self.staging_intents)
             if len(set(staging_paths)) != len(staging_paths):
                 msg = "staging intention paths must have unique authority"
@@ -327,10 +403,8 @@ class FlextInfraModelsCodegenTransactionModels:
             description="Exact journal observation retained for revalidation",
         )
 
-    class CodegenFileSessionPlan(m.ArbitraryTypesModel):
+    class CodegenFileSessionPlan(FlextInfraModelsBase.FrozenArbitrary):
         """File-only transaction topology; contains no Mise artifact snapshot."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         layout: Annotated[
             FlextInfraModelsCodegenToolchain.MiseToolchainWorkspaceLayout,
@@ -344,10 +418,10 @@ class FlextInfraModelsCodegenTransactionModels:
                 raise ValueError(msg)
             return self
 
-    class CodegenTransactionSession(m.ArbitraryTypesModel):
+    class CodegenTransactionSession(
+        FlextInfraModelsBase.FrozenArbitrary, strict=True, validate_default=True
+    ):
         """Immutable cursor for one live prepared generation transaction."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         plan: Annotated[
             FlextInfraModelsCodegenToolchain.MiseToolchainWorkspacePlan
@@ -394,3 +468,50 @@ class FlextInfraModelsCodegenTransactionModels:
                 msg = "codegen session layout and journal transaction ids differ"
                 raise ValueError(msg)
             return self
+
+    class CodegenPhasePublicationPolicy(
+        FlextInfraModelsBase.FrozenArbitrary, strict=True, validate_default=True
+    ):
+        """Caller-owned directories and native admission for one publication."""
+
+        directories: t.VariadicTuple[Path] = m.Field(
+            description="Exact generated directories requested by the caller",
+        )
+        source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
+            default=(), description="Authenticated source directory ancestry"
+        )
+        scope_roots: t.VariadicTuple[Path] = m.Field(
+            default=(), description="Source membership roots for this publication"
+        )
+        source_scope: Path | None = m.Field(
+            default=None,
+            description="Selected source scope within the membership roots",
+        )
+        admission: FlextInfraModelsCodegenPipelineModels.CodegenPhaseOutcome | None = (
+            m.Field(
+                default=None,
+                exclude=True,
+                description="Exact prior batch admission when the caller captured it",
+            )
+        )
+        staged_validator: (
+            Callable[
+                [
+                    FlextInfraModelsCodegenTransactionModels.CodegenTransactionSession,
+                    t.VariadicTuple[
+                        FlextInfraModelsCodegenJournalModels.CodegenStagedFile
+                    ],
+                ],
+                p.Result[
+                    FlextInfraModelsCodegenTransactionModels.CodegenTransactionSession
+                ],
+            ]
+            | None
+        ) = m.Field(
+            default=None,
+            exclude=True,
+            description="Real staged consumer required before publishing this batch",
+        )
+
+
+__all__: list[str] = ["FlextInfraModelsCodegenTransactionModels"]

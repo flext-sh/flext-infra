@@ -115,6 +115,7 @@ class TestsFlextInfraCodemodGate:
 
         Returns:
             The sorted project-relative files the real scan reported.
+
         """
         execution = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
         return sorted(
@@ -145,27 +146,17 @@ class TestsFlextInfraCodemodGate:
             eq=["src/flext_infra/leak.py"],
         )
 
-    def test_subprocess_is_banned_outside_the_run_owner_scope(
+    def test_subprocess_is_banned_in_a_consumer(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
     ) -> None:
-        """Only the Bandit-authorized owner modules may import subprocess.
-
-        Premise (operator-ruling-2026-10-08-subprocess-test-imports, item 1):
-        the codemod rule and the Bandit authorized exception share one owner
-        scope; every other module runs processes through u.Cli.run.
-        """
+        """A consumer routes processes through the public execution owner."""
         project = self._project(tmp_path, installed_dependency_path)
-        entry = config.Infra.tooling.tools.bandit.authorized_exceptions[0]
-        owners = tuple(
-            pattern.replace("**/", "").replace("*", "spawn") for pattern in entry.files
-        )
         consumer = "src/consumer/spawn.py"
-        for relative in (*owners, consumer):
-            module = project / relative
-            module.parent.mkdir(parents=True, exist_ok=True)
-            module.write_text("import subprocess\n", encoding="utf-8")
+        module = project / consumer
+        module.parent.mkdir(parents=True, exist_ok=True)
+        module.write_text("import subprocess\n", encoding="utf-8")
 
         tm.that(
             self._rule_files(project, "ban-subprocess-outside-run-owner", tmp_path),

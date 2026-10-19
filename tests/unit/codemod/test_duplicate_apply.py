@@ -6,17 +6,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+import pytest
 
 from flext_infra import infra
 from flext_infra.codemod import (
     FlextInfraCodemodDuplicateApply,
     FlextInfraDuplicateApplyPhase,
+    FlextInfraModGateEngine,
 )
-from tests import c, m, tm
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -32,10 +34,10 @@ class TestsFlextInfraCodemodDuplicateApply:
         self,
         tmp_path: Path,
     ) -> None:
-        """Census cure contracts retain native syntax during validated transport."""
+        """Census cure contracts consume the same typed source objects directly."""
         path = tmp_path / "definition.py"
         path.write_text(_CORE_CONSTANT, encoding=c.DEFAULT_ENCODING)
-        statement = ast.parse(_CORE_CONSTANT, filename=str(path)).body[0]
+        statement = u.Infra.logical_statements(_CORE_CONSTANT)[0]
         item = m.Infra.Object(
             file_path=str(path),
             line=1,
@@ -62,12 +64,15 @@ class TestsFlextInfraCodemodDuplicateApply:
             copies=(),
             edits=(),
         )
-        transported = m.Infra.DuplicateGroupCure.model_validate(
-            planned.model_dump(),
-        )
-        assert transported.owner.definition.statement is statement
-        assert transported.owner.definition.source == path.read_text(
-            encoding=c.DEFAULT_ENCODING,
+        assert planned.owner is copy
+        assert planned.owner.definition is definition
+        assert planned.owner.definition.statement is statement
+        tm.that(
+            planned.owner.definition.source
+            == path.read_text(
+                encoding=c.DEFAULT_ENCODING,
+            ),
+            truth=True,
         )
         deletion = m.Infra.DuplicateDeletion(
             path=path,
@@ -75,12 +80,8 @@ class TestsFlextInfraCodemodDuplicateApply:
             line=item.line,
             project=item.project,
         )
-        assert (
-            m.Infra.DuplicateDeletion.model_validate_json(
-                deletion.model_dump_json(),
-            )
-            == deletion
-        )
+        tm.that(deletion.path == definition.path, truth=True)
+        tm.that(deletion.name == definition.item.name, truth=True)
 
     @staticmethod
     def _module(summary: str) -> str:
@@ -190,6 +191,41 @@ class TestsFlextInfraCodemodDuplicateApply:
                 self._objects(rope, (core, side), "SHARED_LIMIT"),
                 value_identical=True,
             )
+            sources = {
+                Path(resource.real_path).resolve(): resource.read()
+                for resource in rope.rope_project.get_python_files()
+            }
+            frozen = dict(sources)
+            states = tuple(
+                tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+                for path in sources
+            )
+            planned, deletions = tm.ok(
+                FlextInfraCodemodDuplicateApply.plan_census(
+                    root,
+                    rope,
+                    (group,),
+                    sources=sources,
+                    source_states=states,
+                )
+            )
+            tm.that(planned.edits, empty=False)
+            tm.that(deletions, empty=False)
+            tm.that(sources, eq=frozen)
+            for edit in planned.edits:
+                tm.that(
+                    edit.file_path.read_text(encoding=c.DEFAULT_ENCODING),
+                    eq=edit.original_source,
+                )
+            preview = tm.ok(
+                FlextInfraCodemodDuplicateApply.census_duplicates(
+                    root,
+                    rope,
+                    (group,),
+                    apply=False,
+                )
+            )
+            tm.that(preview.edits, eq=planned.edits)
             outcome = tm.ok(
                 FlextInfraCodemodDuplicateApply.census_duplicates(
                     root,
@@ -232,10 +268,14 @@ class TestsFlextInfraCodemodDuplicateApply:
         )
         with infra.rope_workspace(root) as rope:
             first = tm.ok(
-                FlextInfraDuplicateApplyPhase.apply(root, _PREFLIGHT, rope),
+                FlextInfraDuplicateApplyPhase.apply(
+                    root, tm.ok(FlextInfraModGateEngine.scan(root, fix=False)), rope
+                ),
             )
             second = tm.ok(
-                FlextInfraDuplicateApplyPhase.apply(root, _PREFLIGHT, rope),
+                FlextInfraDuplicateApplyPhase.apply(
+                    root, tm.ok(FlextInfraModGateEngine.scan(root, fix=False)), rope
+                ),
             )
         tm.that(first, eq=True)
         tm.that(second, eq=False)
@@ -323,6 +363,50 @@ class TestsFlextInfraCodemodDuplicateApply:
             eq=before,
         )
 
+    @pytest.mark.parametrize(
+        "source",
+        [
+            pytest.param(
+                "def str(value):\n"
+                "    return value + 'custom'\n\n"
+                "LIMIT = str('value')\n",
+                id="shadowed-constructor",
+            ),
+            pytest.param(
+                "LIMIT = str.upper('value')\n",
+                id="attribute-call",
+            ),
+            pytest.param(
+                "LIMIT = 42\nLIMIT = 99\n",
+                id="rebound-module-definition",
+            ),
+        ],
+    )
+    def test_unprovable_cure_owner_never_cures(
+        self,
+        duplicate_project: Path,
+        source: str,
+    ) -> None:
+        """Equal text without one provable cure owner plans but never writes."""
+        root, package = self._workspace(duplicate_project)
+        first, second = package / "left.py", package / "right.py"
+        for path in (first, second):
+            path.write_text(self._module("Binding trap") + source, encoding="utf-8")
+        before = first.read_bytes(), second.read_bytes()
+        with infra.rope_workspace(root) as workspace:
+            group = self._group(
+                self._objects(workspace, (first, second), "LIMIT"),
+                value_identical=True,
+            )
+            outcome = tm.ok(
+                FlextInfraCodemodDuplicateApply.census_duplicates(
+                    root, workspace, (group,), apply=True
+                )
+            )
+        tm.that(outcome.edits, empty=True)
+        tm.that(outcome.plans, length=1)
+        tm.that((first.read_bytes(), second.read_bytes()), eq=before)
+
     def test_structural_clone_is_planned_without_writes(
         self,
         duplicate_project: Path,
@@ -365,8 +449,8 @@ class TestsFlextInfraCodemodDuplicateApply:
         plan = outcome.plans[0]
         tm.that(plan.origin, eq="jscpd")
         assert plan.reason
-        assert plan.edits[0].action == c.Infra.DUPLICATE_KEEP_ACTION
-        assert plan.edits[1].action == c.Infra.DUPLICATE_DELETE_ACTION
+        tm.that(plan.edits[0].action == c.Infra.DUPLICATE_KEEP_ACTION, truth=True)
+        tm.that(plan.edits[1].action == c.Infra.DUPLICATE_DELETE_ACTION, truth=True)
         tm.that(plan.owner_file_path, eq=owner)
         tm.that(
             (owner.read_bytes(), clone.read_bytes()),
@@ -506,6 +590,3 @@ class TestsFlextInfraCodemodDuplicateApply:
             json.dumps(report),
             encoding=c.DEFAULT_ENCODING,
         )
-
-
-_PREFLIGHT = m.Infra.ModScanReport(files=frozenset(), entries=())

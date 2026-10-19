@@ -46,18 +46,13 @@ class FlextInfraModelsDepsToolConfig(
     class DeptryConfig(m.ArbitraryTypesModel):
         """Deptry namespace and dependency-group policy."""
 
-        known_first_party: Annotated[
+        optional_dependencies_dev_groups: Annotated[
             t.StrTuple,
             m.Field(
-                alias="known-first-party",
-                description="Base first-party namespaces extended by project metadata.",
-            ),
-        ]
-        pep621_dev_dependency_groups: Annotated[
-            t.StrTuple,
-            m.Field(
-                alias="pep621-dev-dependency-groups",
-                description="PEP 735 groups treated as development dependencies.",
+                alias="optional-dependencies-dev-groups",
+                description=(
+                    "PEP 621 optional groups treated as development dependencies."
+                ),
             ),
         ]
 
@@ -248,10 +243,20 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
         parallel_distribution: Annotated[
-            Literal["load"],
+            Literal["load", "loadscope"],
             m.Field(
                 alias="parallel-distribution",
                 description="Pytest-xdist scheduler for full runs.",
+            ),
+        ]
+        loadscope_reorder: Annotated[
+            bool,
+            m.Field(
+                alias="loadscope-reorder",
+                strict=True,
+                description=(
+                    "Let the native loadscope scheduler reorder scopes by size."
+                ),
             ),
         ]
         parallel_schedule_chunk: Annotated[
@@ -401,6 +406,21 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ] = ()
 
+        @m.computed_field
+        @property
+        def parallel_arguments(self) -> t.StrTuple:
+            """Native scheduler arguments derived from the typed policy."""
+            scheduling = (
+                ("--maxschedchunk", str(self.parallel_schedule_chunk))
+                if self.parallel_distribution == "load"
+                else (
+                    "--loadscope-reorder"
+                    if self.loadscope_reorder
+                    else "--no-loadscope-reorder",
+                )
+            )
+            return ("--dist", self.parallel_distribution, *scheduling)
+
         @property
         def process_timeout_seconds(self) -> int:
             """Derive the fleet-default outer wall without a second config field."""
@@ -463,7 +483,15 @@ class FlextInfraModelsDepsToolConfig(
             ):
                 msg = "pytest run timeout must exceed the suite stop reserve"
                 raise ValueError(msg)
-            derived_options = ("--timeout", "--session-timeout")
+            derived_options = (
+                "--timeout",
+                "--session-timeout",
+                "--dist",
+                "--loadscope-reorder",
+                "--no-loadscope-reorder",
+                "--maxschedchunk",
+                "-n",
+            )
             if any(
                 option in {"-o", "--override-ini"}
                 or option.startswith(("-o=", "--override-ini=", *derived_options))
@@ -516,6 +544,9 @@ class FlextInfraModelsDepsToolConfig(
                 "-x",
                 "--cov",
                 "--dist",
+                "--loadscope-reorder",
+                "--no-loadscope-reorder",
+                "--maxschedchunk",
                 "--junitxml",
                 "--override-ini",
                 "--timeout",
@@ -658,9 +689,6 @@ class FlextInfraModelsDepsToolConfig(
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
 
-        bandit: FlextInfraModelsDepsToolConfig.BanditConfig = m.Field(
-            description="Bandit gate authorization policy.",
-        )
         codespell: FlextInfraModelsDepsToolConfig.CodespellConfig = m.Field(
             description="Codespell settings",
         )
@@ -820,6 +848,13 @@ class FlextInfraModelsDepsToolConfig(
             t.JsonMapping,
             m.Field(description="Conformed pyrefly table"),
         ]
+        pyrefly_project_includes: Annotated[
+            t.StrTuple,
+            m.Field(
+                validation_alias=m.AliasPath("pyrefly", "project-includes"),
+                description="Conformed Pyrefly analysis scope",
+            ),
+        ]
         pyrefly_search_path: Annotated[
             t.StrTuple,
             m.Field(
@@ -870,23 +905,14 @@ class FlextInfraModelsDepsToolConfig(
             t.StrTuple,
             m.Field(description="Resolved first-party namespaces"),
         ]
+        deptry_first_party: Annotated[
+            t.StrTuple,
+            m.Field(description="Target-owned live and planned production packages"),
+        ]
         mypy_path: Annotated[
             t.StrTuple,
             m.Field(description="Resolved Mypy search paths"),
         ]
-        mypy_facade_rebind_modules: Annotated[
-            t.StrTuple,
-            m.Field(description="Modules written in the canonical facade-rebind form"),
-        ]
-        mypy_generated_source_modules: Annotated[
-            t.StrTuple,
-            m.Field(
-                description=(
-                    "Module patterns of the generated source trees, which Mypy "
-                    "analyzes for their importers but never reports on"
-                ),
-            ),
-        ] = ()
         ruff_runtime_evaluated_base_classes: Annotated[
             t.StrTuple,
             m.Field(

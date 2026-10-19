@@ -31,7 +31,13 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     """Manifest + naming constants for project creation (flat in ``c.Infra.*``)."""
 
     CODEGEN_CLI_MODULE_FILENAME: ClassVar[str] = "cli.py"
-
+    GITHUB_WORKFLOWS_RELATIVE_PATH: ClassVar[str] = ".github/workflows"
+    CUSTOM_MAKE_FILENAME: ClassVar[str] = "custom.mk"
+    """Operator-owned Make include rendered beside the generated Makefile."""
+    CODEGEN_CONFIG_DIR: ClassVar[str] = "config"
+    """Directory name for flext-infra config files relative to the package root."""
+    CODEGEN_LOCAL_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.local.yaml"
+    """Local operator override file name, excluded from the tracked baseline."""
     # These enums define the
     # one public conform contract shared by new and existing repositories. The
     # declarative values live in config/codegen.yaml; constants only type the
@@ -165,6 +171,14 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     ``u.Cli.toml_dot_path``; it is never written a second time.
     """
 
+    DOCS_SOURCE_STATE_RACE_MARKER: ClassVar[str] = (
+        "docs source state changed during planning"
+    )
+    """Emitted when a captured docs source changes content or physical identity."""
+    DOCS_SOURCE_TOPOLOGY_RACE_MARKER: ClassVar[str] = (
+        "docs source topology changed during planning"
+    )
+    """Emitted when the captured docs source membership changes."""
     CONFIG_SNAPSHOT_ROOT_RACE_MARKER: ClassVar[str] = (
         "project root changed during config snapshot"
     )
@@ -233,7 +247,6 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
     "Scaffold template for canonical test c/t/p/m/u facades."
     CODEGEN_CONFIG_FILENAME: ClassVar[str] = "codegen.yaml"
     INFRA_CONFIG_FILENAME: ClassVar[str] = "infra.yaml"
-    CODEGEN_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.yaml"
     CODEGEN_GEN_FILENAME: ClassVar[str] = "codegen.gen.yaml"
     CODEGEN_GEN_SUFFIX: ClassVar[str] = ".gen.yaml"
     "File suffix for generation requirements contract files managed by conform."

@@ -22,6 +22,7 @@ class FlextInfraMakeContract:
 
         Returns:
             Whether the operation satisfies selector-free all-profile admission.
+
         """
         return not arguments and set(profiles) == set(required_profiles)
 

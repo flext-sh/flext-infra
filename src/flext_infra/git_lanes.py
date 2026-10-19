@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -317,6 +317,7 @@ class FlextInfraGitLanes:
         Raises:
             ValueError: If lane governance file must be declared by the selected host or
                 target.
+
         """
         source = (
             request.governance_file
@@ -593,7 +594,7 @@ class FlextInfraGitLanes:
         repository = captured.value.spec.repository
         declared = (
             repository.integration.branch
-            if repository is not None and repository.integration is not None
+            if repository.integration is not None
             else request.declared
         )
         targets = u.Infra.repository_operation_targets(

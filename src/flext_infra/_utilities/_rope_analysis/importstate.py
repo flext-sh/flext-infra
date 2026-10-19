@@ -241,10 +241,11 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
                 if FlextInfraUtilitiesRopeRuntime.instance_object(superclass)
                 or FlextInfraUtilitiesRopeRuntime.abstract_class(superclass)
             )
-            if (
-                name in declared_base_counts
-                and len(bases) != declared_base_counts[name]
-            ):
+            if len(bases) < declared_base_counts.get(name, 0):
+                # Fewer resolved superclasses than declared bases means a
+                # declared base Rope could not resolve (true unresolved
+                # lineage). Extra entries beyond the declaration are the
+                # indirect ancestry Rope legitimately reports.
                 msg = (
                     f"Unresolved Rope superclass lineage for {name} in {resource.path}"
                 )
@@ -262,6 +263,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         Returns:
             The SDK class name, resolving inferred instances through their
             type.
+
         """
         return FlextInfraUtilitiesRopeAnalysisImportState._superclass_name(superclass)
 
@@ -444,9 +446,11 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         pyname = attributes[symbol]
         definition_module, definition_line = pyname.get_definition_location()
         if definition_module is not None:
-            definition_resource = definition_module.get_resource()
+            definition_resource = definition_module.get_module().get_resource()
             if definition_resource is not None:
-                source = definition_resource.read()
+                source = FlextInfraUtilitiesRopeRuntime.require_file_resource(
+                    definition_resource, symbol
+                ).read()
         if definition_line is None:
             return None
         lines = source.splitlines(keepends=True)
@@ -467,11 +471,14 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             {local_name: fully_qualified_name} for all imports in a module.
 
         """
-        imports: t.StrMapping = (
-            FlextInfraUtilitiesRopeAnalysisImportState.resolve_module_semantic_state(
-                rope_project,
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(rope_project, resource)
+        _, imports = FlextInfraUtilitiesRopeAnalysisImportState._module_import_maps(
+            rope_project=rope_project,
+            resource=resource,
+            current_package=FlextInfraUtilitiesRopeAnalysisImportState._package_name_for_module(
+                module.get_name(),
                 resource,
-            ).semantic_imports
+            ),
         )
         return imports
 
@@ -580,9 +587,6 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         )
         owners: set[t.Pair[str, str]] = set()
         scope = module.get_scope()
-        if scope is None:
-            msg = f"module has no declaration scope: {resource.path}"
-            raise ValueError(msg)
         for child in scope.get_scopes():
             if child.get_kind() != "Class":
                 continue
@@ -626,7 +630,9 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         if module is None or (resource := module.get_resource()) is None:
             return frozenset()
         exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-            resource.read(),
+            FlextInfraUtilitiesRopeRuntime.require_file_resource(
+                resource, target.get_name()
+            ).read(),
         )
         return frozenset(
             name
@@ -783,7 +789,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         *,
         class_name: str,
         include_private: bool,
-        pymodule: t.Infra.RopePyModule,
+        pymodule: t.Infra.RopeSemanticModule,
     ) -> t.StrMapping:
         """Return method symbols for a class from one resolved Rope module.
 
@@ -909,3 +915,6 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         finally:
             rope_project.close()
         return target_map
+
+
+__all__: list[str] = ["FlextInfraUtilitiesRopeAnalysisImportState"]

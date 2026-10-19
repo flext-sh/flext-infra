@@ -1,8 +1,9 @@
 # Shape only: the engine admits a finding when $MODULE belongs to another
-# facade package and $NAME is not one of its runtime aliases. The lazy
-# defining module is exempt: every generated consumer initializer imports
-# the lazy helpers from it (contract #1362), and the literal mirrors the
-# SSOT constant `c.Infra.LAZY_BOOTSTRAP_MODULE` (flext-infra
+# facade package, $NAME is not one of its runtime aliases, and $MODULE is not
+# a canonical public family compose module (the compose-module predicate, bead
+# flext-6e72w). The lazy defining module is exempt: every generated consumer
+# initializer imports the lazy helpers from it (contract #1362), and the
+# literal mirrors the SSOT constant `c.Infra.LAZY_BOOTSTRAP_MODULE` (flext-infra
 # src/flext_infra/_constants/codegen_lazy.py, value "flext_core.lazy").
 id: ban-consumer-submodule-import
 valid:

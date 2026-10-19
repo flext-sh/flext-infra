@@ -90,3 +90,21 @@ class TestsFlextInfraCodegenCensusModels:
         )
         tm.that(report.total, eq=3)
         tm.that(report.fixable, eq=2)
+
+    @staticmethod
+    def test_fix_context_factories_keep_accumulation_instance_local() -> None:
+        """Fresh factory defaults isolate both violation lists and path sets."""
+        first = m.Infra.FixContext()
+        second = m.Infra.FixContext()
+
+        first.fix(module="src/first.py", rule="example", line=1, message="fixed")
+        first.skip(module="src/second.py", rule="example", line=2, message="skipped")
+        first.files_modified.add("src/first.py")
+
+        tm.that(first.has_changes, eq=True)
+        tm.that(len(first.violations_fixed), eq=1)
+        tm.that(len(first.violations_skipped), eq=1)
+        tm.that(second.has_changes, eq=False)
+        tm.that(second.violations_fixed, empty=True)
+        tm.that(second.violations_skipped, empty=True)
+        tm.that(second.files_modified, empty=True)

@@ -6,29 +6,467 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
-from inspect import getfile, isclass, isfunction, unwrap
+import hashlib
+import sys
+from base64 import urlsafe_b64encode
+from functools import lru_cache
+from importlib.metadata import Distribution, PackagePath
 from json import dumps
 from pathlib import Path
-from sys import modules, prefix
-from typing import TYPE_CHECKING
+from sys import modules
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra import c, m, p, r, t, u
+from flext_infra.workspace import FlextInfraBindingService, FlextInfraWorkspaceDetector
+from flext_infra.workspace._environment_provenance_editable import (
+    FlextInfraWorkspaceEnvironmentProvenanceEditableMixin,
+)
+from flext_infra.workspace._environment_provenance_module_source import (
+    FlextInfraWorkspaceEnvironmentProvenanceModuleSourceMixin,
+)
 
-if TYPE_CHECKING:
-    from importlib.metadata import Distribution
 
-
-class FlextInfraWorkspaceEnvironmentProvenance:
+class FlextInfraWorkspaceEnvironmentProvenance(
+    FlextInfraWorkspaceEnvironmentProvenanceModuleSourceMixin,
+    FlextInfraWorkspaceEnvironmentProvenanceEditableMixin,
+):
     """Bind installed packages to live local or immutable CI workspace sources."""
+
+    @classmethod
+    def member_project_declaration(
+        cls,
+        repository_root: Path,
+        repository: m.Infra.RepositoryRef,
+        *,
+        lock_state: m.Cli.AtomicFileState | None = None,
+    ) -> p.Result[m.Cli.AtomicFileState]:
+        """Capture the authenticated live or installed producer declaration.
+
+        Returns:
+            Declaration bytes authenticated by editable ownership or the
+            installed locked artifact's RECORD and producer build contract.
+
+        """
+        result = r[m.Cli.AtomicFileState]
+        observed = cls._observe_environment(repository_root, (repository,))
+        if observed.failure:
+            return result.from_failure(observed)
+        installed = cls._member_installation(
+            repository,
+            metadata_paths=tuple(str(path) for path in observed.value.metadata_paths),
+            environment_root=observed.value.prefix,
+        )
+        if installed.failure:
+            return result.from_failure(installed)
+        distribution, raw, receipt = installed.value
+        if receipt.dir_info is not None and receipt.dir_info.editable:
+            if not repository.editable:
+                return result.fail(
+                    "member editable installation differs from declaration: "
+                    f"{repository.distribution}",
+                )
+            authenticated = cls.validate_editable_installation(
+                repository,
+                repository_root,
+                distribution,
+                receipt,
+            )
+            if authenticated.failure:
+                return result.from_failure(authenticated)
+            return u.Cli.atomic_read_binary_file_state(
+                repository_root / repository.path / c.PYPROJECT_FILENAME,
+                required=True,
+            )
+        return cls._locked_member_declaration(
+            repository_root,
+            repository,
+            (distribution, raw, receipt),
+            lock_state=lock_state,
+            environment_root=observed.value.prefix,
+        )
+
+    @staticmethod
+    def _member_installation(
+        repository: m.Infra.RepositoryRef,
+        *,
+        metadata_paths: t.StrSequence,
+        environment_root: Path,
+    ) -> p.Result[t.Triple[Distribution, str, m.Infra.DirectUrlReceipt]]:
+        """Read the member's unique installed distribution and native PEP 610 record.
+
+        Returns:
+            The distribution, original receipt bytes and validated URL declaration.
+
+        """
+        result = r[t.Triple[Distribution, str, m.Infra.DirectUrlReceipt]]
+        matches = u.installed_distributions(
+            name=repository.distribution,
+            path=metadata_paths,
+        )
+        if len(matches) != 1:
+            return result.fail(
+                "member declaration needs one installed distribution: "
+                f"{repository.distribution}",
+            )
+        distribution = matches[0]
+        if (
+            not Path(str(distribution.locate_file("")))
+            .resolve()
+            .is_relative_to(
+                environment_root.resolve(),
+            )
+        ):
+            return result.fail(
+                "member distribution is outside the owned environment: "
+                f"{repository.distribution}",
+            )
+        raw = distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
+        if raw is None:
+            return result.fail(
+                "member declaration lacks PEP 610 provenance: "
+                f"{repository.distribution}",
+            )
+        receipt = r[m.Infra.DirectUrlReceipt].create_from_callable(
+            lambda: m.Infra.DirectUrlReceipt.model_validate_json(raw, strict=True),
+        )
+        if receipt.failure:
+            return result.from_failure(receipt)
+        return result.ok((distribution, raw, receipt.value))
+
+    @staticmethod
+    def _member_locked_environment(
+        repository_root: Path,
+        lock_state: m.Cli.AtomicFileState | None,
+    ) -> p.Result[m.Infra.LockedEnvironment]:
+        """Parse only the captured lock elected by the physical runtime owner.
+
+        Returns:
+            The validated committed environment or its first lock failure.
+
+        """
+        result = r[m.Infra.LockedEnvironment]
+        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
+        if context.failure:
+            return result.from_failure(context)
+        if lock_state is None:
+            lock_read = u.Cli.atomic_read_binary_file_state(
+                context.value.lock_path,
+                required=True,
+            )
+            if lock_read.failure:
+                return result.from_failure(lock_read)
+            lock_state = lock_read.value
+        if (
+            lock_state.path != context.value.lock_path.resolve()
+            or lock_state.content is None
+        ):
+            return result.fail("member artifact needs its captured elected lock")
+        locked_document = u.Cli.toml_parse_text(
+            lock_state.content.decode(c.DEFAULT_ENCODING),
+        )
+        if locked_document is None:
+            return result.fail("captured member artifact lock is invalid TOML")
+        locked_payload = u.Cli.toml_as_mapping(locked_document)
+        if locked_payload is None:
+            return result.fail("captured member artifact lock is not a mapping")
+        return result.create_from_callable(
+            lambda: m.Infra.LockedEnvironment.model_validate_json(
+                dumps(locked_payload)
+            ),
+        )
+
+    @classmethod
+    def _locked_member_declaration(
+        cls,
+        repository_root: Path,
+        repository: m.Infra.RepositoryRef,
+        installation: t.Triple[Distribution, str, m.Infra.DirectUrlReceipt],
+        *,
+        lock_state: m.Cli.AtomicFileState | None,
+        environment_root: Path,
+    ) -> p.Result[m.Cli.AtomicFileState]:
+        """Bind the installed Git build to its lock and declared repository.
+
+        Returns:
+            The installed producer declaration authenticated by its build record.
+
+        """
+        result = r[m.Cli.AtomicFileState]
+        distribution, raw, receipt = installation
+        locked = cls._member_locked_environment(repository_root, lock_state)
+        if locked.failure:
+            return result.from_failure(locked)
+        candidates = tuple(
+            item
+            for item in locked.value.package
+            if u.Infra.dep_name(item.name) == u.Infra.dep_name(repository.distribution)
+            and item.version == distribution.version
+        )
+        if len(candidates) != 1 or candidates[0].source.git is None:
+            return result.fail(
+                "member declaration requires its installed locked Git artifact: "
+                f"{repository.distribution}",
+            )
+        origin = cls.locked_origin_verdict(
+            repository.distribution,
+            candidates[0],
+            raw,
+        )
+        if origin.failure:
+            return result.from_failure(origin)
+        if u.Infra.git_remote_identity(receipt.url) != u.Infra.git_remote_identity(
+            repository.url
+        ):
+            return result.fail(
+                "member artifact origin differs from declared repository: "
+                f"{repository.distribution}",
+            )
+        return cls._member_recorded_declaration(
+            repository,
+            distribution,
+            environment_root=environment_root,
+        )
+
+    @staticmethod
+    def _member_declaration_state(
+        repository: m.Infra.RepositoryRef,
+        distribution: Distribution,
+        *,
+        environment_root: Path,
+    ) -> p.Result[t.Pair[PackagePath, m.Cli.AtomicFileState]]:
+        """Read the unique producer declaration inside the installed environment.
+
+        Returns:
+            The RECORD entry and its current authenticated physical file.
+
+        """
+        result = r[t.Pair[PackagePath, m.Cli.AtomicFileState]]
+        files = distribution.files
+        if files is None:
+            return result.fail(
+                f"member artifact has no RECORD inventory: {repository.distribution}",
+            )
+        resources = tuple(item for item in files if item.name == c.PYPROJECT_FILENAME)
+        if len(resources) != 1:
+            return result.fail(
+                "member artifact needs one packaged producer declaration: "
+                f"{repository.distribution}; publish its generated wheel first",
+            )
+        resource = resources[0]
+        path = Path(str(distribution.locate_file(resource))).resolve()
+        if not path.is_relative_to(environment_root.resolve()):
+            return result.fail(
+                "member declaration escapes its installed environment: "
+                f"{repository.distribution}",
+            )
+        captured = u.Cli.atomic_read_binary_file_state(path, required=True)
+        if captured.failure:
+            return result.from_failure(captured)
+        return result.ok((resource, captured.value))
+
+    @classmethod
+    def _member_recorded_declaration(
+        cls,
+        repository: m.Infra.RepositoryRef,
+        distribution: Distribution,
+        *,
+        environment_root: Path,
+    ) -> p.Result[m.Cli.AtomicFileState]:
+        """Authenticate declaration content through RECORD and the producer's wheel.
+
+        Returns:
+            The complete original declaration state or the first build mismatch.
+
+        """
+        result = r[m.Cli.AtomicFileState]
+        captured = cls._member_declaration_state(
+            repository,
+            distribution,
+            environment_root=environment_root,
+        )
+        if captured.failure:
+            return result.from_failure(captured)
+        resource, state = captured.value
+        if (
+            state.content is None
+            or resource.hash is None
+            or resource.hash.mode != "sha256"
+            or resource.size != len(state.content)
+            or resource.hash.value
+            != urlsafe_b64encode(bytes.fromhex(u.Cli.sha256_bytes(state.content)))
+            .rstrip(b"=")
+            .decode("ascii")
+        ):
+            return result.fail(
+                "member producer declaration differs from its RECORD: "
+                f"{repository.distribution}",
+            )
+        producer = u.Infra.parsed_pyproject(
+            state.content.decode(c.DEFAULT_ENCODING),
+        )
+        if producer.failure:
+            return result.from_failure(producer)
+        document, name, _payload = producer.value
+        force_include = u.Cli.toml_table_path(
+            document,
+            ("tool", "hatch", "build", "targets", "wheel", "force-include"),
+        )
+        if (
+            u.Infra.dep_name(name) != u.Infra.dep_name(repository.distribution)
+            or force_include is None
+            or u.Cli.toml_value(force_include, c.PYPROJECT_FILENAME)
+            != resource.as_posix()
+        ):
+            return result.fail(
+                "packaged declaration differs from its producer build contract: "
+                f"{repository.distribution}",
+            )
+        return result.ok(state)
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def installed_toolchain_identity() -> str:
+        """Fingerprint the interpreter and installed distribution provenance.
+
+        PEP 610 records distinguish Git revisions with equal package versions.
+        Editable source paths are excluded because consumers track their source
+        files independently. Registry distributions have no direct-URL receipt.
+
+        Returns:
+            The installed environment's deterministic SHA-256 identity.
+
+        """
+        provenance: t.MutableSequenceOf[str] = []
+        for distribution in u.installed_distributions():
+            receipt = distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
+            dir_info = (
+                None
+                if receipt is None
+                else m.Infra.DirectUrlReceipt.model_validate_json(receipt).dir_info
+            )
+            identity = (
+                "editable" if dir_info is not None and dir_info.editable else receipt
+            )
+            provenance.append(
+                f"{distribution.name}={distribution.version}:{identity!r}",
+            )
+        fingerprint = "\n".join((sys.version, *sorted(provenance)))
+        return hashlib.sha256(fingerprint.encode()).hexdigest()
+
+    @classmethod
+    def editable_members(
+        cls,
+        repository_root: Path,
+        *,
+        metadata_paths: t.StrSequence | None = None,
+    ) -> p.Result[t.VariadicTuple[m.Infra.RepositoryRef]]:
+        """Elect declared mutable members with authenticated installed editables.
+
+        Frozen or registry-installed dependencies remain libraries even when
+        their checkouts are present. The invocation's CI variable does not
+        change the observed installation's ownership.
+
+        Returns:
+            Members whose installed metadata and physical source match declaration.
+
+        """
+        root = repository_root.expanduser().resolve()
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+        if workspace.failure:
+            return r[t.VariadicTuple[m.Infra.RepositoryRef]].from_failure(workspace)
+        repositories = tuple(
+            repository
+            for repository in u.Infra.mutable_flext_members(workspace.value)
+            if repository.package
+        )
+        if metadata_paths is None and repositories:
+            native = cls._observe_environment(root, repositories)
+            if native.failure:
+                return r[t.VariadicTuple[m.Infra.RepositoryRef]].from_failure(native)
+            metadata_paths = tuple(str(path) for path in native.value.metadata_paths)
+        selected: list[m.Infra.RepositoryRef] = []
+        for repository in repositories:
+            matches = u.installed_distributions(
+                name=repository.distribution,
+                path=metadata_paths,
+            )
+            if len(matches) != 1:
+                return r[t.VariadicTuple[m.Infra.RepositoryRef]].fail(
+                    "member provenance distribution count mismatch: "
+                    f"distribution={repository.distribution} expected=1 "
+                    f"actual={len(matches)}",
+                )
+            raw = matches[0].read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
+            if raw is None:
+                continue
+            receipt = m.Infra.DirectUrlReceipt.model_validate_json(raw, strict=True)
+            if receipt.dir_info is None or not receipt.dir_info.editable:
+                continue
+            if not repository.editable:
+                return r[t.VariadicTuple[m.Infra.RepositoryRef]].fail(
+                    f"member is installed editable against declaration: "
+                    f"{repository.distribution}",
+                )
+            authenticated = cls.validate_editable_installation(
+                repository,
+                root,
+                matches[0],
+                receipt,
+            )
+            if authenticated.failure:
+                return r[t.VariadicTuple[m.Infra.RepositoryRef]].from_failure(
+                    authenticated,
+                )
+            selected.append(repository)
+        return r[t.VariadicTuple[m.Infra.RepositoryRef]].ok(tuple(selected))
+
+    @classmethod
+    def validate_editable_installation(
+        cls,
+        repository: m.Infra.RepositoryRef,
+        resolved_root: Path,
+        distribution: Distribution,
+        receipt: m.Infra.DirectUrlReceipt,
+    ) -> p.Result[bool]:
+        """Authenticate installation ownership without importing member code.
+
+        Args:
+            repository: The repository reference to validate.
+            resolved_root: The resolved root path of the repository.
+            distribution: The distribution object representing the installed package.
+            receipt: The direct URL receipt for the editable installation.
+
+        Returns:
+            A result indicating whether the installation is authenticated.
+
+        """
+        expected_root = (resolved_root / repository.path).resolve()
+        origin = cls._editable_url_verdict(
+            repository.distribution,
+            receipt,
+            expected_root,
+        )
+        if origin.failure:
+            return r[bool].from_failure(origin)
+        inventory = cls._validate_pth_inventory(
+            repository,
+            distribution,
+            expected_root,
+        )
+        if inventory.failure:
+            return r[bool].from_failure(inventory)
+        return cls._submodule_gitlink_verdict(
+            repository,
+            resolved_root,
+            expected_root,
+            r[bool].ok(value=True),
+        )
 
     @classmethod
     def execute_request(
         cls,
-        request: p.Infra.WorkspaceEnvironmentRequest,
+        request: p.Infra.WorkspaceRequest,
     ) -> p.Result[int]:
         """Validate one CLI request without mutating the environment.
 
@@ -51,14 +489,11 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             The resulting ``p.Result[int]``.
 
         """
-        runtime_root = u.Infra.git_runtime_root(
-            m.Infra.GitRepoRequest(repo_root=repository_root),
-        )
-        if runtime_root.failure:
-            return r[int].from_failure(runtime_root)
-        resolved_root = runtime_root.value.repository_root.resolve()
-        ci = config.Infra.codegen.make.ci
-        if u.Infra.env_value(ci.variable).strip() == ci.value:
+        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
+        if context.failure:
+            return r[int].from_failure(context)
+        resolved_root = context.value.runtime_root
+        if context.value.standalone:
             return cls.validate_locked(resolved_root, metadata_paths=metadata_paths)
         workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
             resolved_root,
@@ -73,17 +508,138 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             )
             if repository.package and repository.editable
         )
+        observation: m.Infra.PythonEnvironmentObservation | None = None
+        if metadata_paths is None and repositories:
+            native = cls._observe_environment(resolved_root, repositories)
+            if native.failure:
+                return r[int].from_failure(native)
+            observation = native.value
+            metadata_paths = tuple(str(path) for path in observation.metadata_paths)
         validated = 0
         for repository in repositories:
             provenance = cls._validate_editable_provenance(
                 repository,
                 resolved_root,
                 metadata_paths=metadata_paths,
+                observation=observation,
+            )
+            if provenance.failure:
+                return r[int].from_failure(provenance)
+            validated += int(provenance.value)
+        return cls._validate_supplier_environment(
+            resolved_root, metadata_paths=metadata_paths
+        ).map(lambda count: validated + count)
+
+    @classmethod
+    def _validate_supplier_environment(
+        cls,
+        consumer_root: Path,
+        *,
+        metadata_paths: t.StrSequence | None,
+    ) -> p.Result[int]:
+        """Prove selected external editables through the consumer's owned runtime.
+
+        Returns:
+            The authenticated supplier count or the first provenance failure.
+
+        """
+        inputs = u.Infra.load_codegen_inputs(consumer_root)
+        if inputs.failure:
+            return r[int].from_failure(inputs)
+        supplier_root = inputs.value.spec.make.uv_resolution.editable_supplier_root
+        if supplier_root is None:
+            return r[int].ok(0)
+        return cls._validate_supplier_projects(
+            consumer_root, supplier_root, metadata_paths=metadata_paths
+        )
+
+    @classmethod
+    def _validate_supplier_projects(
+        cls,
+        consumer_root: Path,
+        supplier_root: Path,
+        *,
+        metadata_paths: t.StrSequence | None,
+    ) -> p.Result[int]:
+        """Authenticate supplier origins, imports and metadata in the consumer.
+
+        Returns:
+            The authenticated supplier count or the first native failure.
+
+        """
+        python = u.Infra.runtime_python(consumer_root, runtime_root=consumer_root)
+        targets = FlextInfraBindingService.plan_targets(
+            consumer_root=consumer_root,
+            flext_root=supplier_root,
+            python=python,
+        )
+        if targets.failure:
+            return r[int].from_failure(targets)
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(supplier_root)
+        if workspace.failure:
+            return r[int].from_failure(workspace)
+        repositories = tuple(
+            item
+            for item in (workspace.value.repository, *workspace.value.subprojects)
+            if u.Infra.dep_name(item.distribution) in targets.value
+        )
+        observed = FlextInfraBindingService.consumer_package_environment(
+            consumer_root=consumer_root,
+            python=python,
+            packages=tuple(
+                u.Infra.project_package_name(supplier_root / item.path)
+                for item in repositories
+            ),
+        )
+        if observed.failure:
+            return r[int].from_failure(observed)
+        paths = (
+            metadata_paths
+            if metadata_paths is not None
+            else tuple(str(path) for path in observed.value.metadata_paths)
+        )
+        validated = 0
+        for repository in repositories:
+            provenance = cls._validate_editable_provenance(
+                repository,
+                supplier_root,
+                metadata_paths=paths,
+                observation=observed.value,
             )
             if provenance.failure:
                 return r[int].from_failure(provenance)
             validated += int(provenance.value)
         return r[int].ok(validated)
+
+    @staticmethod
+    def _observe_environment(
+        root: Path,
+        repositories: t.VariadicTuple[m.Infra.RepositoryRef],
+    ) -> p.Result[m.Infra.PythonEnvironmentObservation]:
+        """Read package facts exclusively through the elected physical runtime.
+
+        Args:
+            root: The root path of the repository.
+            repositories: The repository references to observe.
+
+        Returns:
+            A result containing the observed Python environment.
+
+        """
+        context = FlextInfraWorkspaceDetector.resolution_context(root)
+        if context.failure:
+            return r[m.Infra.PythonEnvironmentObservation].from_failure(context)
+        return FlextInfraBindingService.consumer_package_environment(
+            consumer_root=root,
+            python=u.Infra.runtime_python(
+                root,
+                runtime_root=context.value.runtime_root,
+            ),
+            packages=tuple(
+                u.Infra.project_package_name(root / repository.path)
+                for repository in repositories
+            ),
+        )
 
     @classmethod
     def _validate_editable_provenance(
@@ -92,6 +648,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         resolved_root: Path,
         *,
         metadata_paths: t.StrSequence | None,
+        observation: m.Infra.PythonEnvironmentObservation | None,
     ) -> p.Result[bool]:
         """Prove one editable member's PEP 610 and path metadata provenance.
 
@@ -110,6 +667,13 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                 f"actual={len(matches)}",
             )
         distribution = matches[0]
+        if observation is not None and not Path(
+            str(distribution.locate_file("")),
+        ).resolve().is_relative_to(observation.prefix.resolve()):
+            return r[bool].fail(
+                "editable distribution is outside the owned environment: "
+                f"{repository.distribution}",
+            )
         expected_root = (resolved_root / repository.path).resolve()
         direct_url_result = cls._validate_direct_url(
             repository.distribution,
@@ -125,10 +689,8 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         )
         if inventory.failure:
             return r[bool].from_failure(inventory)
-        source_result = (
-            cls._validate_import_source(repository, expected_root)
-            if metadata_paths is None
-            else r[bool].ok(value=True)
+        source_result = cls._editable_import_verdict(
+            repository, expected_root, observation
         )
         if source_result.failure:
             return r[bool].from_failure(source_result)
@@ -140,21 +702,57 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         )
 
     @classmethod
+    def _editable_import_verdict(
+        cls,
+        repository: m.Infra.RepositoryRef,
+        expected_root: Path,
+        observation: m.Infra.PythonEnvironmentObservation | None,
+    ) -> p.Result[bool]:
+        """Bind editable import election to the already observed owned runtime.
+
+        Returns:
+            The same loaded-binding or resolver-only observation verdict.
+
+        """
+        if observation is None:
+            return r[bool].ok(value=True)
+        package_name = u.Infra.project_package_name(expected_root)
+        directories = observation.package_directories.get(package_name, ())
+        if (
+            len(directories) != 1
+            or not directories[0].is_dir()
+            or not directories[0].resolve().is_relative_to(expected_root)
+        ):
+            return r[bool].fail(
+                "editable provenance import source differs from declaration: "
+                f"distribution={repository.distribution} expected={expected_root} "
+                f"actual={directories}",
+            )
+        if Path(sys.prefix).resolve() == observation.prefix.resolve():
+            return cls._validate_import_source(repository, expected_root)
+        u.Cli.info(
+            f"environment distribution={repository.distribution} "
+            f"import_source={directories[0].resolve()} "
+            "loaded_import_binding=unobserved resolver_only=True",
+        )
+        return r[bool].ok(value=False)
+
+    @classmethod
     def _validate_pth_inventory(
         cls,
         repository: m.Infra.RepositoryRef,
         distribution: Distribution,
         expected_root: Path,
-    ) -> p.Result[int]:
+    ) -> p.Result[bool]:
         """Prove the installed file inventory yields exactly one editable .pth.
 
         Returns:
-            The resulting ``p.Result[int]``.
+            The resulting ``p.Result[bool]``.
 
         """
         files = distribution.files
         if files is None:
-            return r[int].fail(
+            return r[bool].fail(
                 "editable provenance has no installed file inventory: "
                 f"distribution={repository.distribution}",
             )
@@ -170,7 +768,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             if str(file).endswith(".pth")
         )
         if len(pth_files) != 1:
-            return r[int].fail(
+            return r[bool].fail(
                 "editable provenance pth count mismatch: "
                 f"distribution={repository.distribution} expected=1 "
                 f"actual={len(pth_files)}",
@@ -214,10 +812,15 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         repository: m.Infra.RepositoryRef,
         expected_root: Path,
     ) -> p.Result[bool]:
-        """Authenticate loaded modules and owned code against the declared source.
+        """Authenticate physical import bindings against the installed declaration.
 
         Returns:
             The resulting ``p.Result[bool]``.
+
+        Executable declarations have a separate producer/check admission owner.
+        Environment verification never traverses functions, classes or libraries
+        exported by these module namespaces.
+
         """
         package_name = u.Infra.project_package_name(expected_root)
         package = u.Infra.declared_package_dir(package_name)
@@ -235,154 +838,28 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             f"environment distribution={repository.distribution} "
             f"import_source={package.resolve()}",
         )
-        sources = cls._loaded_import_sources(package_name)
-        if sources.failure:
-            return r[bool].from_failure(sources)
-        if not sources.value:
+        names = tuple(
+            name
+            for name in tuple(modules)
+            if name == package_name or name.startswith(f"{package_name}.")
+        )
+        for name in names:
+            elected = cls.module_source(name)
+            if elected.failure:
+                return r[bool].from_failure(elected)
+            if not elected.value.resolve().is_relative_to(expected_root):
+                return r[bool].fail(
+                    "editable provenance loaded import escapes declaration: "
+                    f"distribution={repository.distribution} "
+                    f"module={name} expected={expected_root} actual={elected.value}",
+                )
+        if not names:
             u.Cli.info(
                 f"environment distribution={repository.distribution} "
-                "loaded_code=unobserved resolver_only=True",
+                "loaded_import_binding=unobserved resolver_only=True",
             )
             return r[bool].ok(value=False)
-        for definition_name, source, class_source in sources.value:
-            if source.startswith("<") and source.endswith(">"):
-                if not class_source:
-                    return r[bool].fail(
-                        "editable provenance generated code has no class owner: "
-                        f"definition={definition_name} compiler={source}",
-                    )
-                # Compiler labels are not paths; authenticate their class owner.
-                u.Cli.info(
-                    f"environment generated_definition={definition_name} "
-                    f"compiler_label={source} class_source={class_source}",
-                )
-                actual = Path(class_source).resolve()
-            else:
-                actual = Path(source).resolve()
-            if not actual.is_relative_to(expected_root):
-                return r[bool].fail(
-                    "editable provenance loaded code differs from declaration: "
-                    f"distribution={repository.distribution} expected={expected_root} "
-                    f"actual={actual} definition={definition_name}",
-                )
         return r[bool].ok(value=True)
-
-    @classmethod
-    def _loaded_import_sources(
-        cls,
-        package_name: str,
-    ) -> p.Result[t.SequenceOf[t.Triple[str, str, str]]]:
-        """Collect actual module, function and generated class-owner sources.
-
-        Returns:
-            Observed sources without importing dormant package capabilities.
-        """
-        source_files: t.MutableSequenceOf[t.Triple[str, str, str]] = []
-        for name in tuple(modules):
-            if name != package_name and not name.startswith(f"{package_name}."):
-                continue
-            module = modules.get(name)
-            if module is None:
-                return r[t.SequenceOf[t.Triple[str, str, str]]].fail(
-                    f"editable provenance module is unavailable: {name}",
-                )
-            if module.__file__ is not None:
-                source_files.append((name, module.__file__, ""))
-            definitions = cls._declaration_sources(name)
-            if definitions.failure:
-                return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(
-                    definitions
-                )
-            source_files.extend(definitions.value)
-        return r[t.SequenceOf[t.Triple[str, str, str]]].ok(source_files)
-
-    @classmethod
-    def _declaration_sources(
-        cls,
-        module_name: str,
-    ) -> p.Result[t.SequenceOf[t.Triple[str, str, str]]]:
-        """Walk loaded declarations without resolving attributes or capabilities.
-
-        Returns:
-            Code sources whose generated definitions have authenticated owners.
-        """
-        pending = [(value, 0) for value in tuple(vars(modules[module_name]).values())]
-        visited: set[int] = set()
-        sources: t.MutableSequenceOf[t.Triple[str, str, str]] = []
-        while pending:
-            definition, receiver = pending.pop()
-            if isclass(definition):
-                if (
-                    definition.__module__ == module_name
-                    and id(definition) not in visited
-                ):
-                    visited.add(id(definition))
-                    pending.extend(
-                        (value, id(definition))
-                        for value in tuple(vars(definition).values())
-                    )
-                continue
-            outer = (
-                definition.__func__
-                if type(definition) in {classmethod, staticmethod}
-                else definition
-            )
-            if not isfunction(outer) or outer.__module__ != module_name:
-                continue
-            function = unwrap(outer)
-            source = function.__code__.co_filename
-            class_source = ""
-            if source.startswith("<") and source.endswith(">"):
-                owner = cls._compiler_definition_owner(
-                    module_name,
-                    outer.__qualname__,
-                    id(outer),
-                    receiver,
-                )
-                if owner.failure:
-                    return r[t.SequenceOf[t.Triple[str, str, str]]].from_failure(owner)
-                class_source = owner.value
-            sources.append((outer.__qualname__, source, class_source))
-        return r[t.SequenceOf[t.Triple[str, str, str]]].ok(sources)
-
-    @staticmethod
-    def _compiler_definition_owner(
-        module_name: str,
-        qualified_name: str,
-        definition_identity: int,
-        receiver_identity: int,
-    ) -> p.Result[str]:
-        """Authenticate the defining descriptor before trusting generated code.
-
-        Returns:
-            The physical declaration file of the identity-matched class owner.
-        """
-        namespace = vars(modules[module_name])
-        owner_path, separator, attribute = qualified_name.rpartition(".")
-        owner = None
-        for component in owner_path.split("."):
-            candidate = namespace.get(component)
-            if not isclass(candidate) or candidate.__module__ != module_name:
-                return r[str].fail(
-                    f"generated definition owner is unresolved: {qualified_name}",
-                )
-            owner = candidate
-            namespace = vars(candidate)
-        if not separator or owner is None or id(owner) != receiver_identity:
-            return r[str].fail(
-                f"generated definition owner differs from receiver: {qualified_name}",
-            )
-        descriptor = namespace.get(attribute)
-        outer = (
-            descriptor.__func__
-            if isinstance(descriptor, p.Infra.FunctionDescriptor)
-            else descriptor
-        )
-        if not isfunction(outer) or id(outer) != definition_identity:
-            return r[str].fail(
-                f"generated definition descriptor identity differs: {qualified_name}",
-            )
-        return r[str].ok(getfile(owner))
 
     @classmethod
     def validate_locked(
@@ -395,28 +872,41 @@ class FlextInfraWorkspaceEnvironmentProvenance:
 
         Returns:
             The resulting ``p.Result[int]``.
+
         """
-        repository_root = repository_root.resolve()
-        document = u.Cli.toml_read_json(repository_root / "uv.lock")
+        context = FlextInfraWorkspaceDetector.resolution_context(repository_root)
+        if context.failure:
+            return r[int].from_failure(context)
+        repository_root = context.value.runtime_root
+        document = u.Cli.toml_read_json(context.value.lock_path)
         if document.failure:
             return r[int].from_failure(document)
         # TOML arrays are wire arrays; JSON mode preserves the strict tuple contract.
         locked = m.Infra.LockedEnvironment.model_validate_json(dumps(document.value))
-        observed = FlextInfraWorkspaceDetector.load_repository_ref(repository_root)
+        observed = FlextInfraWorkspaceDetector.load_workspace_spec(
+            repository_root,
+            allow_unprovisioned_members=context.value.standalone,
+        )
         if observed.failure:
             return r[int].from_failure(observed)
-        repository = observed.value
+        workspace = observed.value
         members = {
-            repository.distribution: repository.model_copy(
-                update={"path": Path()},
-            ),
+            repository.distribution: repository
+            for repository in (
+                () if context.value.standalone else workspace.subprojects
+            )
+            if repository.package
         }
-        if not repository.package and not any(
-            item.name == repository.distribution
+        if workspace.repository.package or any(
+            item.name == workspace.repository.distribution
             and (item.source.editable is not None or item.source.directory is not None)
             for item in locked.package
         ):
-            members.clear()
+            members[workspace.repository.distribution] = (
+                workspace.repository.model_copy(
+                    update={"path": Path()},
+                )
+            )
         # Local sources outside the declared member set must fail, not disappear.
         required = set(members)
         required.update(
@@ -426,12 +916,17 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             or item.source.editable is not None
             or item.source.directory is not None
         )
+        if metadata_paths is None:
+            native = cls._observe_environment(repository_root, tuple(members.values()))
+            if native.failure:
+                return r[int].from_failure(native)
+            metadata_paths = tuple(str(path) for path in native.value.metadata_paths)
         validated = 0
         for name in sorted(required):
             provenance = cls._validate_locked_provenance(
                 name,
                 locked,
-                repository_root,
+                context.value,
                 repository=members.get(name),
                 metadata_paths=metadata_paths,
             )
@@ -445,7 +940,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         cls,
         name: str,
         locked: m.Infra.LockedEnvironment,
-        repository_root: Path,
+        context: m.Infra.WorkspaceRuntimeContext,
         *,
         repository: m.Infra.RepositoryRef | None,
         metadata_paths: t.StrSequence | None,
@@ -463,7 +958,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             )
         distribution = distributions[0]
         location = Path(str(distribution.locate_file(""))).resolve()
-        if not location.is_relative_to(Path(prefix).resolve()):
+        if not location.is_relative_to(context.environment_path.resolve()):
             return r[bool].fail(
                 f"locked dependency is outside the owned environment: {name}",
             )
@@ -483,24 +978,28 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return cls._validate_workspace_build(
                 item,
                 repository,
-                repository_root,
+                context,
                 distribution,
             )
-        origin = cls._locked_origin_verdict(
+        origin = cls.locked_origin_verdict(
             name,
             matches[0],
             distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE),
         )
         if origin.failure:
             return r[bool].from_failure(origin)
-        return cls._locked_pth_verdict(name, distribution)
+        return cls._locked_pth_verdict(
+            name,
+            distribution,
+            environment_root=context.environment_path,
+        )
 
     @classmethod
     def _validate_workspace_build(
         cls,
         item: m.Infra.LockedPackage,
         repository: m.Infra.RepositoryRef,
-        repository_root: Path,
+        context: m.Infra.WorkspaceRuntimeContext,
         distribution: Distribution,
     ) -> p.Result[bool]:
         """Authenticate a workspace checkout before accepting its installed build.
@@ -509,17 +1008,23 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             The resulting ``p.Result[bool]``.
 
         """
-        checkout = cls._workspace_checkout_verdict(item, repository, repository_root)
+        checkout = cls._workspace_checkout_verdict(
+            item, repository, context.runtime_root, context.resolution_root
+        )
         if checkout.failure:
             return r[bool].from_failure(checkout)
         origin = cls._workspace_origin_verdict(
             item.name,
             distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE),
-            (repository_root / repository.path).resolve(),
+            (context.runtime_root / repository.path).resolve(),
         )
         if origin.failure:
             return r[bool].from_failure(origin)
-        return cls._locked_pth_verdict(item.name, distribution)
+        return cls._locked_pth_verdict(
+            item.name,
+            distribution,
+            environment_root=context.environment_path,
+        )
 
     @classmethod
     def _workspace_checkout_verdict(
@@ -527,8 +1032,9 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         item: m.Infra.LockedPackage,
         repository: m.Infra.RepositoryRef,
         repository_root: Path,
+        resolution_root: Path,
     ) -> p.Result[bool]:
-        """Bind the declared local lock source to a clean, committed checkout.
+        """Bind the local lock source to its physical checkout and committed revision.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -558,10 +1064,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return r[bool].fail(
                 f"locked workspace source differs from declaration: {item.name}",
             )
-        if (
-            Path(local_source) != repository.path
-            or (repository_root / local_source).resolve() != expected_root
-        ):
+        if (resolution_root / local_source).resolve() != expected_root:
             return r[bool].fail(
                 f"locked workspace source differs from declaration: {item.name}",
             )
@@ -572,7 +1075,6 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return r[bool].from_failure(identity)
         if (
             identity.value.repo_root.resolve() != expected_root
-            or identity.value.dirty
             or identity.value.origin_remote is None
             or u.Infra.git_remote_identity(identity.value.origin_remote)
             != u.Infra.git_remote_identity(repository.url)
@@ -669,7 +1171,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         return r[bool].ok(value=True)
 
     @classmethod
-    def _locked_origin_verdict(
+    def locked_origin_verdict(
         cls,
         name: str,
         item: m.Infra.LockedPackage,
@@ -721,6 +1223,8 @@ class FlextInfraWorkspaceEnvironmentProvenance:
     def _locked_pth_verdict(
         name: str,
         distribution: Distribution,
+        *,
+        environment_root: Path,
     ) -> p.Result[bool]:
         """Prove one installed artifact's path inventory stays environment-owned.
 
@@ -738,109 +1242,11 @@ class FlextInfraWorkspaceEnvironmentProvenance:
                     if Path(line).is_absolute() and not Path(
                         line,
                     ).resolve().is_relative_to(
-                        Path(prefix).resolve(),
+                        environment_root.resolve(),
                     ):
                         return r[bool].fail(
                             f"CI artifact exposes an external source path: {name}",
                         )
-        return r[bool].ok(value=True)
-
-    @classmethod
-    def _validate_direct_url(
-        cls,
-        distribution: str,
-        raw_payload: str | None,
-        expected_root: Path,
-    ) -> p.Result[int]:
-        """Validate one PEP 610 payload against the declared member root.
-
-        Returns:
-            The resulting ``p.Result[int]``.
-
-        """
-        if raw_payload is None:
-            return r[int].fail(
-                "editable provenance missing direct_url.json: "
-                f"distribution={distribution} expected={expected_root}",
-            )
-        try:
-            payload = m.Infra.DirectUrlReceipt.model_validate_json(
-                raw_payload,
-                strict=True,
-            )
-        except ValueError as exc:
-            return r[int].fail_op(
-                f"editable provenance direct_url validation ({distribution})",
-                exc,
-            )
-        parsed = urlparse(payload.url)
-        if (
-            parsed.scheme != "file"
-            or payload.dir_info is None
-            or not payload.dir_info.editable
-            or payload.vcs_info is not None
-        ):
-            revision = (
-                payload.vcs_info.commit_id if payload.vcs_info is not None else None
-            )
-            return r[int].fail(
-                "editable provenance is not an editable file URL: "
-                f"distribution={distribution} expected={expected_root} "
-                f"url={payload.url} installed_revision={revision}",
-            )
-        actual_root = Path(url2pathname(unquote(parsed.path))).resolve()
-        if actual_root != expected_root:
-            return r[int].fail(
-                "editable provenance direct_url mismatch: "
-                f"distribution={distribution} expected={expected_root} "
-                f"actual={actual_root}",
-            )
-        return r[int].ok(1)
-
-    @classmethod
-    def _validate_pth(
-        cls,
-        distribution: str,
-        pth_file: Path,
-        expected_root: Path,
-    ) -> p.Result[bool]:
-        """Validate the distribution-owned editable path file.
-
-        Returns:
-            Whether the distribution-owned editable paths are valid.
-
-        """
-        read_result = u.Cli.files_read_text(pth_file)
-        if read_result.failure:
-            return r[bool].from_failure(read_result)
-        entries = tuple(
-            line.strip()
-            for line in read_result.value.splitlines()
-            if line.strip() and not line.lstrip().startswith("#")
-        )
-        if not entries:
-            return r[bool].fail(
-                "editable provenance pth is empty: "
-                f"distribution={distribution} path={pth_file}",
-            )
-        for entry in entries:
-            if re.match(r"^import\s", entry) or not Path(entry).is_absolute():
-                return r[bool].fail(
-                    "editable provenance pth entry is not an absolute source path: "
-                    f"distribution={distribution} entry={entry}",
-                )
-            actual_source = Path(entry).resolve()
-            if not actual_source.is_relative_to(expected_root):
-                return r[bool].fail(
-                    "editable provenance pth mismatch: "
-                    f"distribution={distribution} expected_root={expected_root} "
-                    f"actual={actual_source}",
-                )
-            if not actual_source.is_dir():
-                return r[bool].fail(
-                    "editable provenance source directory is not live: "
-                    f"distribution={distribution} path={actual_source}",
-                )
         return r[bool].ok(value=True)
 
 

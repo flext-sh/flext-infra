@@ -29,12 +29,13 @@ class FlextInfraConformWiring:
     def generation_participant_policy(
         root: Path,
         *,
-        initial_workspace: m.Infra.WorkspaceSpec | None,
-    ) -> p.Result[m.Infra.CodegenParticipantPolicy]:
+        initial_workspace: p.Infra.WorkspaceSpec | None,
+    ) -> p.Result[p.Infra.CodegenParticipantPolicy]:
         """Authorize the actual physical coordination root and declared members.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenParticipantPolicy]``.
+            The resulting ``p.Result[p.Infra.CodegenParticipantPolicy]``.
+
         """
         return FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),
@@ -48,6 +49,7 @@ class FlextInfraConformWiring:
 
         Returns:
             The resulting ``p.Result[str]``.
+
         """
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=request.root),
@@ -76,7 +78,7 @@ class FlextInfraConformWiring:
         footprint = authorized.value
         planned = FlextInfraCodegenConform(
             repository_root=request.root,
-            ports=None,
+            state=m.Infra.CodegenConformState(repository_root=request.root),
         ).plan(request)
         if planned.failure:
             return r[str].from_failure(planned)
@@ -134,11 +136,11 @@ class FlextInfraConformWiring:
         """
         return FlextInfraMarkdownFormatGate(repository_root)
 
-    def codegen_conform_collaborators(self) -> m.Infra.CodegenConformPorts:
+    def codegen_conform_collaborators(self) -> p.Infra.CodegenConformPorts:
         """Bind the docs family complete conform crosses into.
 
         Returns:
-            The resulting ``m.Infra.CodegenConformPorts``.
+            The caller-bound docs planner and participant policy capabilities.
 
         """
         return m.Infra.CodegenConformPorts(

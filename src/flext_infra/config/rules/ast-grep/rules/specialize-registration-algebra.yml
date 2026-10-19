@@ -1,0 +1,142 @@
+id: specialize-registration-algebra
+language: python
+severity: error
+metadata:
+  context:
+    OWNER:
+      is: generic-specialization
+      of: ALIAS
+      arg: p
+files:
+  - "**/*.py"
+rule:
+  pattern: $OWNER.$ALIAS
+  inside:
+    kind: module
+    stopBy: end
+    has:
+      kind: import_from_statement
+      stopBy: end
+      all:
+        - has:
+            pattern: p
+            stopBy: end
+  not:
+    inside:
+      kind: subscript
+      field: value
+constraints:
+  OWNER:
+    regex: "^(?:t|FlextTypesServices)$"
+  ALIAS:
+    regex: "^(?:ServiceValue|RegisterableService|FactoryCallable|ResourceCallable|ServiceMap|FactoryMap|ResourceMap|GuardInput)$"
+fix: p.$ALIAS
+message: >-
+  Registration and guard algebra requires the canonical structural specialization
+  at the protocol boundary, not an unbound generic type parameter.
+---
+id: specialize-settings-class-algebra
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  pattern: t.SettingsClass
+  inside:
+    kind: module
+    stopBy: end
+    has:
+      kind: import_from_statement
+      stopBy: end
+      has:
+        pattern: p
+        stopBy: end
+  not:
+    inside:
+      kind: subscript
+      field: value
+fix: t.SettingsClass[p.SettingsType]
+message: Settings class algebra must bind its structural class capability downstream.
+---
+id: bind-registration-specialization
+language: python
+severity: error
+metadata:
+  context:
+    OWNER:
+      is: generic-specialization
+      of: ALIAS
+      arg: p PACKAGE
+files:
+  - "**/*.py"
+rule:
+  pattern: "from $PACKAGE import $$$NAMES"
+  inside:
+    kind: module
+    stopBy: end
+    all:
+      - has:
+          stopBy: end
+          pattern: $OWNER.$ALIAS
+      - not:
+          has:
+            stopBy: end
+            kind: import_from_statement
+            has:
+              pattern: p
+              stopBy: end
+  has:
+    pattern: t
+    stopBy: end
+constraints:
+  OWNER:
+    regex: "^t$"
+  ALIAS:
+    regex: "^(?:ServiceValue|RegisterableService|FactoryCallable|ResourceCallable|ServiceMap|FactoryMap|ResourceMap|GuardInput)$"
+fix: "from $PACKAGE import p, $$$NAMES"
+message: Bind the structural specialization from the same public facade as its algebra.
+---
+id: bind-direct-registration-specialization
+language: python
+severity: error
+metadata:
+  context:
+    OWNER:
+      is: generic-specialization
+      of: ALIAS
+      arg: p PACKAGE
+files:
+  - "**/*.py"
+rule:
+  pattern: "from $PACKAGE._typings import $$$NAMES"
+  has:
+    pattern: FlextTypesServices
+    stopBy: end
+  inside:
+    kind: module
+    stopBy: end
+    all:
+      - has:
+          stopBy: end
+          all:
+            - pattern: $OWNER.$ALIAS
+            - not:
+                inside:
+                  kind: subscript
+                  field: value
+      - not:
+          has:
+            stopBy: end
+            kind: import_from_statement
+            has:
+              pattern: p
+              stopBy: end
+constraints:
+  OWNER:
+    regex: "^FlextTypesServices$"
+  ALIAS:
+    regex: "^(?:ServiceValue|RegisterableService|FactoryCallable|ResourceCallable|ServiceMap|FactoryMap|ResourceMap|GuardInput)$"
+fix: |-
+  from $PACKAGE import p
+  from $PACKAGE._typings import $$$NAMES
+message: Bind a direct generic owner's proven structural specialization at its public boundary.

@@ -12,6 +12,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
+from flext_infra._pytest_profile_child import FlextInfraPytestProfileChild
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -20,95 +21,179 @@ if TYPE_CHECKING:
 class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
     """Check infrastructure constants."""
 
+    AST_GREP_DOCS_URL: ClassVar[str] = "https://ast-grep.github.io/"
+    LINT: ClassVar[str] = "lint"
+    FORMAT: ClassVar[str] = "format"
+    MARKDOWN: ClassVar[str] = "markdown"
+    MARKDOWN_FORMAT: ClassVar[str] = "markdown-format"
+    MARKDOWN_CODE: ClassVar[str] = "markdown-code"
+    SMELLS: ClassVar[str] = "smells"
+    RUNTIME_CENSUS: ClassVar[str] = "runtime-census"
+    FRESH_IMPORT: ClassVar[str] = "fresh-import"
+    CONFLICT_MARKERS: ClassVar[str] = "conflict-markers"
+    DEPS: ClassVar[str] = "deps"
+
+    GATE_TOOLS_BY_KIND: ClassVar[
+        t.MappingKV[
+            FlextInfraConfigVocabulary.GateKind,
+            t.MappingKV[str, t.Quad[str, str, bool, bool]],
+        ]
+    ] = MappingProxyType({
+        FlextInfraConfigVocabulary.GateKind.EXTERNAL: MappingProxyType({
+            "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/", True, True),
+            "format": (
+                "Ruff Formatter",
+                "https://docs.astral.sh/ruff/formatter/",
+                False,
+                True,
+            ),
+            "security": ("Bandit", "https://bandit.readthedocs.io/", False, False),
+            "markdown": ("rumdl", "https://rumdl.dev/", True, False),
+            "markdown-format": ("rumdl", "https://rumdl.dev/", False, False),
+            "markdown-code": ("Ruff", "https://docs.astral.sh/ruff/", True, False),
+            "duplication": (
+                "jscpd",
+                "https://github.com/kucherenko/jscpd",
+                False,
+                False,
+            ),
+        }),
+        FlextInfraConfigVocabulary.GateKind.TYPE_CHECKER: MappingProxyType({
+            "pyrefly": ("Pyrefly", "https://github.com/facebook/pyrefly", False, True),
+            "mypy": ("Mypy", "https://mypy.readthedocs.io/", False, True),
+            "pyright": ("Pyright", "https://github.com/microsoft/pyright", False, True),
+        }),
+        FlextInfraConfigVocabulary.GateKind.INFRA: MappingProxyType({
+            CONFLICT_MARKERS: (
+                "Git Conflict Markers",
+                "internal://flext-infra/conflict-markers",
+                False,
+                False,
+            ),
+            "loc-cap": ("scc", "https://github.com/boyter/scc", False, False),
+            "runtime-census": (
+                "Flext Runtime Enforcement Census",
+                "internal://flext-infra/runtime-census",
+                False,
+                False,
+            ),
+            FRESH_IMPORT: (
+                "Flext Fresh-Process Import Gate",
+                "internal://flext-infra/fresh-import",
+                False,
+                False,
+            ),
+            DEPS: (
+                "Flext Dependency Declaration Gate",
+                "internal://flext-infra/deps",
+                True,
+                False,
+            ),
+            "index-declarations": (
+                "Flext Index Declarations Gate",
+                "internal://flext-infra/index-declarations",
+                False,
+                False,
+            ),
+            SMELLS: (
+                "Flext Code Smell Detector",
+                "internal://flext-infra/smells",
+                False,
+                False,
+            ),
+            "codemod": ("ast-grep", AST_GREP_DOCS_URL, False, True),
+            "layout": (
+                "Flext Project Layout Gate",
+                "internal://flext-infra/layout",
+                False,
+                False,
+            ),
+            "direnv": (
+                "Flext Direnv Environment Contract Gate",
+                "internal://flext-infra/direnv",
+                False,
+                False,
+            ),
+        }),
+    })
+    """Sole gate registry; each gate is declared once under its catalog owner.
+
+    Each row carries the gate's SARIF tool identity (name, URL), its
+    ``make fix`` repair policy, and whether the checker accepts one
+    declared file via the file-gate verbs.
+    """
+    GATE_KINDS: ClassVar[t.MappingKV[str, FlextInfraConfigVocabulary.GateKind]] = (
+        MappingProxyType({
+            gate: kind for kind, tools in GATE_TOOLS_BY_KIND.items() for gate in tools
+        })
+    )
+    TYPE_CHECKER_GATES: ClassVar[frozenset[str]] = frozenset(
+        GATE_TOOLS_BY_KIND[FlextInfraConfigVocabulary.GateKind.TYPE_CHECKER],
+    )
+    SARIF_TOOL_INFO: ClassVar[t.MappingKV[str, t.StrPair]] = MappingProxyType({
+        gate: (tool[0], tool[1])
+        for tools in GATE_TOOLS_BY_KIND.values()
+        for gate, tool in tools.items()
+    })
+    ALLOWED_GATES: ClassVar[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
+    CANONICAL_GATE_IDS: ClassVar[t.VariadicTuple[str]] = tuple(SARIF_TOOL_INFO)
+    CANONICAL_FIXABLE_GATE_IDS: ClassVar[t.VariadicTuple[str]] = tuple(
+        gate
+        for tools in GATE_TOOLS_BY_KIND.values()
+        for gate, tool in tools.items()
+        if tool[2]
+    )
+    """Independent repair policy; formatting remains owned by Make fmt."""
+    CANONICAL_FILE_GATE_IDS: ClassVar[t.VariadicTuple[str]] = tuple(
+        gate
+        for tools in GATE_TOOLS_BY_KIND.values()
+        for gate, tool in tools.items()
+        if tool[3]
+    )
+    """Gates whose checker accepts one declared file via ``make <verb>-file``."""
+
     CHECK_FAIL_FAST_DEFAULT: ClassVar[bool] = False
     """Run every independent quality gate unless fail-fast is requested."""
     SERVICE_FAIL_FAST: ClassVar[bool] = True
     """Stop mutating service workflows at the first failed project or rule."""
+    NATIVE_CODE_WITNESS_MARSHAL_VERSION: ClassVar[int] = 2
+    """Complete CPython code encoding without reference or interning flags."""
+    NATIVE_TUPLE_REPEAT_LIMIT: ClassVar[int] = 255
+    """Largest literal repeat count read as closed tuple constructor data."""
 
     PYTEST_SELECTED_COLLECTION_OPTION: ClassVar[str] = "--flext-selected-collection"
     PYTEST_SUITE_STOP_OPTION: ClassVar[str] = "--flext-suite-stop-monotonic"
+    PYTEST_CASE_TIMEOUT_DISABLED_SECONDS: ClassVar[int] = 0
+    """Native pytest-timeout sentinel disabling per-item deadlines."""
     PYTEST_COLLECTION_MANIFEST_OPTION: ClassVar[str] = "--flext-collection-manifest"
     PYTEST_PROFILE_PROCESS_DIRECTORY_ENV: ClassVar[str] = (
-        "FLEXT_PYTEST_PROFILE_PROCESS_DIRECTORY"
+        FlextInfraPytestProfileChild.PROCESS_DIRECTORY_ENV
     )
-    PYTEST_PROFILE_CHILD_ROOT_ENV: ClassVar[str] = "FLEXT_PYTEST_PROFILE_CHILD_ROOT"
+    PYTEST_PROFILE_CHILD_ROOT_ENV: ClassVar[str] = (
+        FlextInfraPytestProfileChild.CHILD_ROOT_ENV
+    )
     PYTEST_SELECTION_PROFILE_FILENAME: ClassVar[str] = "testmon-selection.pstats"
     PYTEST_INVENTORY_PROFILE_FILENAME: ClassVar[str] = "testmon-inventory.pstats"
-    PYTEST_PROFILE_CLOCK_MODULE: ClassVar[str] = "flext_infra._pytest_clock"
-    PYTEST_PROFILE_BOOTSTRAP: ClassVar[str] = (
-        "import sys\n"
-        "from pathlib import Path\n"
-        "from importlib.util import "
-        "find_spec, module_from_spec, spec_from_file_location\n"
-        f"clock_name = {PYTEST_PROFILE_CLOCK_MODULE!r}\n"
-        "clock = sys.modules.get(clock_name)\n"
-        "if clock is None:\n"
-        "    package = find_spec(clock_name.split('.', 1)[0])\n"
-        "    if package is None or package.origin is None:\n"
-        "        raise ModuleNotFoundError(clock_name)\n"
-        "    clock_path = Path(package.origin).with_name("
-        "clock_name.rsplit('.', 1)[1] + '.py')\n"
-        "    clock_spec = spec_from_file_location(clock_name, clock_path)\n"
-        "    if clock_spec is None or clock_spec.loader is None:\n"
-        "        raise ImportError(clock_name)\n"
-        "    clock = module_from_spec(clock_spec)\n"
-        "    sys.modules[clock_name] = clock\n"
-        "    clock_spec.loader.exec_module(clock)\n"
-        "profile = clock.FlextInfraPytestClock.start_profiler()\n"
+    PYTEST_PROFILE_CLOCK_MODULE: ClassVar[str] = (
+        FlextInfraPytestProfileChild.CLOCK_MODULE
     )
-    PYTEST_PROFILE_STARTUP: ClassVar[str] = (
-        PYTEST_PROFILE_BOOTSTRAP + "import atexit, os, sys\n"
-        "from pathlib import Path\n"
-        "from importlib.machinery import PathFinder\n"
-        "from importlib.util import module_from_spec\n"
-        f"output = Path(os.environ[{PYTEST_PROFILE_CHILD_ROOT_ENV!r}])\n"
-        "clock.FlextInfraPytestClock.register_signal_checkpoint("
-        "profile, output / f'{os.getpid()}.pstats')\n"
-        "atexit.register(clock.FlextInfraPytestClock.publish_profile, "
-        "profile, output / f'{os.getpid()}.pstats')\n"
-        "startup = str(Path(__file__).parent)\n"
-        "original = PathFinder.find_spec('sitecustomize', "
-        "[path for path in sys.path if path != startup])\n"
-        "if original is not None and original.loader is not None:\n"
-        "    module = module_from_spec(original)\n"
-        "    sys.modules['sitecustomize'] = module\n"
-        "    original.loader.exec_module(module)\n"
+    PYTEST_PROFILE_BOOTSTRAP: ClassVar[str] = (
+        FlextInfraPytestProfileChild.bootstrap_stub()
     )
     PYTEST_PROFILE_LAUNCHER: ClassVar[str] = (
-        PYTEST_PROFILE_BOOTSTRAP + "import os, runpy, sys\n"
-        "from pathlib import Path\n"
-        "output = sys.argv.pop(1)\n"
-        "clock.FlextInfraPytestClock.register_signal_checkpoint(profile, "
-        "Path(output))\n"
-        "try:\n"
-        f"    directory = os.environ.get({PYTEST_PROFILE_PROCESS_DIRECTORY_ENV!r})\n"
-        "    if directory is not None:\n"
-        "        children = Path(output).resolve().parent / directory\n"
-        "        startup = children / 'startup'\n"
-        "        startup.mkdir(parents=True, exist_ok=True)\n"
-        "        (startup / 'sitecustomize.py').write_text("
-        f"{PYTEST_PROFILE_STARTUP!r}, encoding='utf-8')\n"
-        "        inherited = os.environ.get('PYTHONPATH', '')\n"
-        f"        previous = os.environ.get({PYTEST_PROFILE_CHILD_ROOT_ENV!r})\n"
-        "        if previous is not None:\n"
-        "            previous_startup = str(Path(previous) / 'startup')\n"
-        "            inherited = os.pathsep.join("
-        "path for path in inherited.split(os.pathsep) "
-        "if path != previous_startup)\n"
-        f"        os.environ[{PYTEST_PROFILE_CHILD_ROOT_ENV!r}] = str(children)\n"
-        "        os.environ['PYTHONPATH'] = str(startup) + "
-        "(os.pathsep + inherited if inherited else '')\n"
-        "    runpy.run_module('pytest', run_name='__main__', alter_sys=True)\n"
-        "finally:\n"
-        "    clock.FlextInfraPytestClock.publish_profile(profile, Path(output))\n"
+        FlextInfraPytestProfileChild.launcher_stub()
     )
-    """``python -c`` profiled pytest child: ``<output.pstats> <pytest args...>``.
+    """Parent-free ``python -c`` payloads projected from their real owner.
 
-    The profile entry enables run-owned startup instrumentation for descendants,
-    including pytester children. Existing site customization is still executed.
-    The stdlib loader resolves the clock without importing its parent package.
-    Pytest installs assertion rewriting before any plugin package is imported;
-    its ``SystemExit`` still sets the native exit status.
+    ``FlextInfraPytestProfileChild`` owns the child transport and renders
+    these stubs from its live module, class and method identities, so the
+    embedded transport logic has exactly one authored source. The launcher
+    accepts ``<output.pstats> <pytest args...>`` and enables run-owned
+    startup instrumentation for descendants, including pytester children,
+    while still executing the existing site customization. The stdlib
+    loader resolves the clock without importing the parent package.
+    Pytest installs assertion rewriting before any plugin package is
+    imported; its ``SystemExit`` still sets the native exit status.
     """
 
     @unique
@@ -163,6 +248,12 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
         STATIC_METHOD = "static-method"
         NORMALIZE_IMPORTS = "normalize-imports"
         WRAP_LONG_LINE = "wrap-long-line"
+
+    SERVICE_BASE_ROOTS: ClassVar[frozenset[str]] = frozenset({"FlextService", "s"})
+    """Roots whose service operations remain public instance methods (ADR-019).
+
+    Core discovery excludes static methods, class methods and properties.
+    """
 
     CHECK_REPORT_MARKDOWN_FILENAME: ClassVar[str] = "check-report.md"
     "Human-readable check report written beside the SARIF report."
@@ -250,23 +341,6 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
         "qlty ruleId suffix -> flext-core enforcement tag "
         "(texts SSOT: core ENFORCEMENT_RULES_TEXT)."
     )
-    # Operator ruling 2026-10-05 (SSOT informative-rules law): the complexity
-    # families report in every log, summary, and SARIF but never fail a run —
-    # their census is re-measured as the fleet converges. The duplication
-    # families ride the same non-blocking set for a different reason: the
-    # blocking duplication gate is their single enforcement owner, and a
-    # second blocking route for the same census is a duplicate route.
-    SMELLS_NON_BLOCKING_FAMILIES: ClassVar[frozenset[str]] = frozenset((
-        "boolean-logic",
-        "file-complexity",
-        "function-complexity",
-        "function-parameters",
-        "identical-code",
-        "nested-control-flow",
-        "return-statements",
-        "similar-code",
-    ))
-
     # --- jscpd duplication gate SSOT (flext-infra owns the
     # jscpd plugin behind one centralized `make check` verb; its config is
     # rendered from this typed SSOT at scan time, never a hand-maintained file).
@@ -302,26 +376,12 @@ class FlextInfraConstantsCheck(FlextInfraConfigVocabulary):
         MappingProxyType({"django": ("j2",)})
     )
     "Parse Jinja projections in place; never duplicate templates into a scan tree."
-    JSCPD_IGNORE_PATTERNS: ClassVar[t.StrSequence] = (
-        "**/__snapshots__/**",
-        "**/__init__.py",
-        "**/api_cases/**",
-        "**/_cases/**",
-        "**/rules/ast-grep/tests/**",
-        "**/_cov.py",
-        "**/_parts/**",
-        "**/package-lock.json",
-    )
-    "Generated Python surfaces and structured test-case parameterization files "
-    "excluded semantically; Git owns artifact visibility. ast-grep rule "
-    "fixtures mirror their rule pattern/fix text by design (the fix output IS "
-    "the next stage's valid input), so jscpd would always report the fixture "
-    "pair; the corpus is validated by `ast-grep test`, never by clone count. "
-    "package-lock.json is npm's emission, not authored code: sibling packages "
-    "of one tool family share resolved dependency lines by construction, so "
-    "their overlap is a data coincidence the resolver owns, never a clone to "
-    "refactor (operator per-change authorization under the 2026-09-24 "
-    "suppression ruling, granted 2026-10-13)."
+    # NOTE: JSCPD_IGNORE_PATTERNS was removed: the duplication gate derives
+    # its ignore list from the declared sgconfig fixture topology, the
+    # generated-surface and snapshot declarations, the artifact
+    # resolver_owned emission type, and the declared exclusion registry
+    # (parameterized case fixtures, part containers, helper modules).
+    # No hand-maintained pattern list remains.
 
     # --- Extended duplication gate (R2 consumer+family scope) ---
     JSCPD_CONSUMER_FAMILY_SCOPE: ClassVar[bool] = True

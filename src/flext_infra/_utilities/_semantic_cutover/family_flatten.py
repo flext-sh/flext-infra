@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
@@ -15,8 +14,10 @@ from flext_cli import u
 from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._semantic_cutover import (
@@ -39,7 +40,8 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         candidates = tuple(
             path
             for path in sources
-            if FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
+            if path.is_relative_to(workspace.repository_root)
+            and FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
                 path.parent.name,
             )
             is not None
@@ -107,18 +109,15 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
             The resulting scope pair, or ``None`` when this part holds no
             flattenable inline wrapper.
 
-        Raises:
-            ValueError: If family part has no Rope scope.
-
         """
         root = Path(project.root.real_path)
-        module = project.get_pymodule(
-            project.get_resource(path.relative_to(root).as_posix()),
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project,
+            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                project.get_resource(path.relative_to(root).as_posix()), path
+            ),
         )
         scope = module.get_scope()
-        if scope is None:
-            msg = f"family part has no Rope scope: {path}"
-            raise ValueError(msg)
         owner_name = workspace.convention(path).module_policy.expected_family
         if owner_name is None:
             return None
@@ -352,31 +351,22 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
             if source.startswith(c.Infra.AUTOGEN_HEADERS):
                 continue
             resource = project.get_resource(path.relative_to(root).as_posix())
-            module = project.get_pymodule(resource)
+            module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
             covered = rewrites.get(path, ())
-            for node in ast.walk(ast.parse(source)):
-                if (
-                    not isinstance(node, ast.Attribute)
-                    or node.attr not in flatten.names
-                ):
+            for start, end in cls.reference_regions(source):
+                prefix, separator, name = source[start:end].rpartition(".")
+                if not separator or name not in flatten.names:
                     continue
-                start, end = cls.expression_range(source, node)
                 if any(edit.start <= start and end <= edit.end for edit in covered):
                     continue
                 scope = runtime.scope_at(module, start)
-                resolved = runtime.resolve_symbol(scope, node.value)
+                resolved = runtime.expression_name(scope, prefix)
                 if runtime.same_name(flatten.wrapper, resolved):
                     return True
                 # An unresolved attribute that still spells the wrapper is a
                 # caller the occurrence finder did not bind (a lazy facade).
                 # Flattening would drop that name.
-                value = node.value
-                spells_wrapper = (
-                    isinstance(value, ast.Name) and value.id == flatten.wrapper_name
-                ) or (
-                    isinstance(value, ast.Attribute)
-                    and value.attr == flatten.wrapper_name
-                )
+                spells_wrapper = prefix.rpartition(".")[2] == flatten.wrapper_name
                 if resolved is None and spells_wrapper:
                     return True
         return False

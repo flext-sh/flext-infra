@@ -11,7 +11,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import FlextInfraCodegenLazyInitPlannerPublicRootMixin
 from flext_infra.codegen._lazy_init_planner_aliases import (
     FlextInfraCodegenLazyInitPlannerAliasesMixin,
@@ -31,6 +31,7 @@ from flext_infra.codegen._lazy_init_planner_exports import (
 from flext_infra.codegen._lazy_init_planner_parents import (
     FlextInfraCodegenLazyInitPlannerParentsMixin,
 )
+from flext_infra.workspace import FlextInfraRopeWorkspace
 
 
 class FlextInfraCodegenLazyInitPlanner(
@@ -67,21 +68,141 @@ class FlextInfraCodegenLazyInitPlanner(
     _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan] = u.PrivateAttr(
         default_factory=dict[str, m.Infra.LazyInitPlan],
     )
+    _plan_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = u.PrivateAttr(
+        default_factory=dict,
+    )
     _parent_package_cache: MutableMapping[str, t.StrSequence] = u.PrivateAttr(
         default_factory=dict[str, t.StrSequence],
     )
     _module_file_by_name: MutableMapping[str, Path] = u.PrivateAttr(
         default_factory=dict[str, Path],
     )
+    _project_layout_cache: MutableMapping[Path, m.Infra.RopeProjectLayout] = (
+        u.PrivateAttr(
+            default_factory=dict[Path, m.Infra.RopeProjectLayout],
+        )
+    )
     _version_module_name: str = u.PrivateAttr(
         default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py",
     )
     _collision_count: int = u.PrivateAttr(default_factory=int)
 
-    @property
-    def collision_count(self) -> int:
-        """Number of unresolved export collisions found so far."""
-        return self._collision_count
+    def plan_all_inits(
+        self,
+        pkg_dirs: t.SequenceOf[Path],
+        *,
+        target_package_dir: Path | None = None,
+    ) -> p.Result[t.VariadicTuple[m.Infra.LazyInitPlan]]:
+        """Resolve selected plans bottom-up and reject ambiguous ownership.
+
+        Returns:
+            The selected plans, or failure after the complete collision inventory.
+
+        """
+        dir_exports: MutableMapping[str, t.LazyAliasMap] = {}
+        planned: list[m.Infra.LazyInitPlan] = []
+        repository_root = self.rope_workspace.repository_root
+        progress_interval = max(1, len(pkg_dirs) // 20) if pkg_dirs else 1
+        for idx, pkg_dir in enumerate(pkg_dirs, start=1):
+            report_progress = (
+                idx == 1 or idx == len(pkg_dirs) or idx % progress_interval == 0
+            )
+            if report_progress:
+                rel_path = (
+                    pkg_dir.relative_to(repository_root)
+                    if repository_root in pkg_dir.parents
+                    else pkg_dir
+                )
+                u.Cli.info(f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}")
+            plan, receipt = self._isolated_plan(pkg_dir, dir_exports=dir_exports)
+            package_key = str(pkg_dir.resolve())
+            self._source_plan_cache[package_key] = plan
+            self._plan_receipts[package_key] = receipt
+            if report_progress:
+                u.Cli.info(
+                    f"lazy-init: resolved {idx}/{len(pkg_dirs)} "
+                    f"package={plan.context.current_pkg} "
+                    f"importable={plan.context.importable} "
+                    f"action={plan.action} exports={len(plan.lazy_map)}"
+                )
+            if plan.lazy_map:
+                dir_exports[str(pkg_dir.resolve())] = dict(plan.lazy_map)
+            should_process = (
+                target_package_dir is None
+                or pkg_dir.resolve() == target_package_dir.resolve()
+                or (
+                    target_package_dir.name == c.Infra.DIR_TESTS
+                    and pkg_dir.resolve().is_relative_to(target_package_dir.resolve())
+                )
+            )
+            if should_process:
+                planned.append(plan)
+            if (
+                target_package_dir is not None
+                and pkg_dir.resolve() == target_package_dir.resolve()
+            ):
+                break
+        u.Cli.info(f"lazy-init: resolved {len(planned)} package artifact plans")
+        if self._collision_count:
+            return r[t.VariadicTuple[m.Infra.LazyInitPlan]].fail(
+                "lazy-init public export ownership is ambiguous: "
+                f"{self._collision_count} collision(s)",
+            )
+        return r[t.VariadicTuple[m.Infra.LazyInitPlan]].ok(tuple(planned))
+
+    def _isolated_plan(
+        self,
+        pkg_dir: Path,
+        *,
+        dir_exports: t.MappingKV[str, t.LazyAliasMap],
+    ) -> t.Pair[m.Infra.LazyInitPlan, m.Infra.CodegenPhaseAnalysis]:
+        """Resolve one artifact with fresh native and planner caches in the same epoch.
+
+        Structural indexes are rebuilt until their live selection owner can supply
+        an authenticated, content-free reusable inventory. No semantic cache is copied.
+
+        Returns:
+            The isolated plan bound to its original consumption receipt.
+
+        """
+        project = self.rope_workspace.rope_project
+        with (
+            project.source_consumption() as consumption,
+            project.source_consumer() as consumer,
+            FlextInfraRopeWorkspace.open_workspace(
+                self.rope_workspace.repository_root,
+                rope_repository_root=self.rope_workspace.rope_repository_root,
+                source_project=consumer,
+                workspace_index=self.rope_workspace.workspace_index,
+                index_receipt=self.rope_workspace.source_index_receipt,
+            ) as workspace,
+        ):
+            planner = type(self)(rope_workspace=workspace, lazy_init=self.lazy_init)
+            planner._source_plan_cache.update(self._source_plan_cache)
+            planner._plan_receipts.update(self._plan_receipts)
+            plan = planner.build_plan(pkg_dir, dir_exports=dir_exports)
+            self._collision_count += planner._collision_count
+        receipt = consumption.receipt()
+        return plan.model_copy(
+            update={
+                "source_states": receipt.inputs,
+                "source_directories": receipt.source_directories,
+                "source_query_topology": receipt.source_query_topology,
+            }
+        ), receipt
+
+    def source_receipt(self, package_dir: Path) -> m.Infra.CodegenPhaseAnalysis:
+        """Return only the sealed receipt minted for an actual package decision.
+
+        Raises:
+            ValueError: If the package lacks its original provenance.
+
+        """
+        receipt = self._plan_receipts.get(str(package_dir.resolve()))
+        if receipt is None:
+            msg = f"lazy-init package lacks original provenance: {package_dir}"
+            raise ValueError(msg)
+        return receipt
 
     @override
     def build_plan(
@@ -97,11 +218,20 @@ class FlextInfraCodegenLazyInitPlanner(
 
         """
         context = self.context(pkg_dir)
-        current = u.Cli.atomic_read_binary_file_state(
+        self.rope_workspace.rope_project.source_state(
             context.init_path,
             required=False,
-        ).unwrap()
-        if u.Infra.codegen_initializer_is_authored(current.content):
+        )
+        selected = (
+            self.rope_workspace.rope_project.source_text(context.init_path).encode(
+                c.DEFAULT_ENCODING
+            )
+            if self.rope_workspace.rope_project.source_query(
+                context.init_path, "isfile"
+            )
+            else None
+        )
+        if u.Infra.codegen_initializer_is_authored(selected):
             return self._authored_plan(context)
         if not context.importable or self._shadows_stdlib_module(pkg_dir):
             return self._residue_plan(context)
@@ -296,7 +426,10 @@ class FlextInfraCodegenLazyInitPlanner(
         lazy_map: t.MutableLazyAliasMap,
     ) -> None:
         """Merge the package's version module exports into the lazy map."""
-        if not (context.pkg_dir / self._version_module_name).is_file():
+        if not self.rope_workspace.rope_project.source_query(
+            context.pkg_dir / self._version_module_name,
+            "isfile",
+        ):
             return
         lazy_map.update(
             self._module_exports(

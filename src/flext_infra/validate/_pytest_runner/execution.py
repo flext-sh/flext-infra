@@ -65,6 +65,7 @@ class FlextInfraPytestRunnerExecution(
 
         Raises:
             ValueError: If test target has no declared project owner.
+
         """
         testmon_keys = (
             config.Infra.codegen.make.testmon_cache.database_environment_variable,
@@ -80,19 +81,19 @@ class FlextInfraPytestRunnerExecution(
                 msg = "test target has no declared project owner"
                 raise ValueError(msg)
             source_root = target_root
-        inherited_path = u.Cli.process_env().get(
-            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, ""
-        )
-        overrides = {
-            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: os.pathsep.join(
+        overrides: dict[str, str] = {}
+        if not self.ci_context:
+            inherited_path = u.Cli.process_env().get(
+                c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, ""
+            )
+            overrides[c.Infra.ORCHESTRATOR_ENV_PYTHONPATH] = os.pathsep.join(
                 path
                 for path in (
                     str(source_root / c.Infra.DEFAULT_SRC_DIR),
                     inherited_path,
                 )
                 if path
-            ),
-        }
+            )
         if not coverage:
             overrides.update(dict.fromkeys(testmon_keys, str(self.testmon_db)))
         if self.profile_enabled or self.collection_command_prefix:
@@ -595,6 +596,7 @@ class FlextInfraPytestRunnerExecution(
 
         Raises:
             ValueError: If the original suite checkpoint has no native test selection.
+
         """
         start = m.Infra.GateCaptureStart.model_validate_json(
             u.Cli.files_read_binary(
@@ -748,10 +750,16 @@ class FlextInfraPytestRunnerExecution(
             )
         )
         self._cache_publication = None
+        lease_started = time.monotonic()
+        sys.stderr.write(f"pytest cache lease: acquiring {self.testmon_db}\n")
         with u.Infra.codegen_transaction_lease(
             self.testmon_db,
             wait_seconds=wait_seconds,
         ):
+            sys.stderr.write(
+                "pytest cache lease: acquired "
+                f"after {time.monotonic() - lease_started:.3f}s\n",
+            )
             result = self._execute_testmon_leased(
                 complete=complete,
                 execution_mode=execution_mode,
@@ -845,8 +853,8 @@ class FlextInfraPytestRunnerExecution(
         ).unwrap()
         selection = selection_plan.node_ids
         # A declared file whose inventory was collected still runs: testmon may
-        # select nothing for a file that has in-scope tests, and noselect
-        # executes that file. An empty scope is owns_no_tests and is not this
+        # select nothing for a file that has in-scope tests, and the declared
+        # file selection executes it. An empty scope is owns_no_tests and is not this
         # guard. A suite with no proved inventory stays a failure.
         if (
             not selection
@@ -867,8 +875,8 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=execution_mode,
         )
         outcome = self._run_suite(command, report_dir, execution_mode=execution_mode)
-        # A declared file always executes under noselect, so an empty testmon
-        # selection over a restored cache is never a cache hit for it.
+        # A declared file executes its complete collected inventory, so an empty
+        # incremental suite selection never grants a cache hit to a file request.
         cache_hit = (
             self.target_file is None
             and not complete

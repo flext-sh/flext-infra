@@ -11,9 +11,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import m, u
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from flext_infra.refactor.namespace_relocations import (
-    FlextInfraNamespaceRelocationCascade,
-)
+from flext_infra.refactor import FlextInfraNamespaceRelocationCascade
 
 if TYPE_CHECKING:
     from flext_infra import t

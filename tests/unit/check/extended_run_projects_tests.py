@@ -90,28 +90,8 @@ class TestsFlextInfraRunProjects:
         tm.that(tuple(result.value[0].gates), eq=("lint",))
         receipt = result.value[0].gates["lint"].raw_receipt
         assert receipt is not None
-        tm.that((receipt.parent.parent / report_name).exists(), eq=True)
-        tm.that(receipt.parent.parent.parent, eq=tmp_path / "reports")
-
-    @staticmethod
-    def test_run_projects_creates_project_scoped_reports_dir(
-        tmp_path: Path,
-    ) -> None:
-        """Test run projects creates project scoped reports dir."""
-        checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
-        project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
-        (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
-
-        result = checker.run_projects(
-            ["p1"],
-            ["lint"],
-            reports_dir=tmp_path / "reports",
-        )
-
-        tm.ok(result)
-        receipt = result.value[0].gates["lint"].raw_receipt
-        assert receipt is not None
         tm.that(receipt.parent.name, eq="p1")
+        tm.that((receipt.parent.parent / report_name).exists(), eq=True)
         tm.that(receipt.parent.parent.parent, eq=tmp_path / "reports")
 
     @staticmethod
