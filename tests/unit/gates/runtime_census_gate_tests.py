@@ -164,11 +164,13 @@ class TestRuntimeCensusSelection:
             root,
             {
                 "pyproject.toml": (
-                    '[project]\nname = "fixturecensussealed"\nversion = "0.1.0"\n',
+                    '[project]\n'
+                    'name = "fixturecensussealed"\n'
+                    'version = "0.1.0"\n'
                 ),
                 "src/fixturecensussealed/__init__.py": (
-                    "def __dir__():\n    ",
-                    'raise RuntimeError("cached live census imported")\n',
+                    "def __dir__():\n    "
+                    'raise RuntimeError("cached live census imported")\n'
                 ),
             },
         )

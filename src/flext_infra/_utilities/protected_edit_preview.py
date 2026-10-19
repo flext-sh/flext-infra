@@ -15,6 +15,9 @@ from flext_infra import c, m, t
 from flext_infra._utilities.protected_edit_linting import (
     FlextInfraUtilitiesProtectedEditLinting,
 )
+from flext_infra._utilities.project_discovery import (
+    FlextInfraUtilitiesProjectDiscovery,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -174,6 +177,8 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
     ) -> t.Infra.EditResult:
         """Validate a journal-owned source view without writing live destinations.
 
+        The workspace's physical runtime imports the candidate before gate checks.
+
         Returns:
             The resulting ``t.Infra.EditResult``.
 
@@ -193,13 +198,13 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         )
 
         def validate(
-            view_root: Path,
+            _view_root: Path,
             candidates: t.MappingKV[Path, Path],
         ) -> t.Infra.EditResult:
             """Run the real configured validators against the staged candidate.
 
             Args:
-                view_root: The root directory of the staged source view.
+                _view_root: The root directory of the staged source view.
                 candidates: A mapping from original file paths to their staged
                 counterparts.
 
@@ -212,12 +217,19 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
                 candidates,
                 before_sources,
                 before_lints,
-                view_root,
+                workspace,
                 gates=gates,
             )
 
         return source_preview.preview_sources(
-            workspace, normalized_updates, validate
+            workspace,
+            normalized_updates,
+            validate,
+            options=m.Infra.CodegenSourcePreviewOptions(
+                runtime_root=FlextInfraUtilitiesProjectDiscovery.runtime_environment_dir(
+                    workspace,
+                ).parent,
+            ),
         ).unwrap()
 
     @staticmethod
@@ -256,15 +268,22 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         path = py_file.resolve()
 
         def validate(
-            view_root: Path,
+            _view_root: Path,
             candidates: t.MappingKV[Path, Path],
         ) -> t.Infra.LintSnapshot[m.Infra.LintGateResult]:
             return FlextInfraUtilitiesProtectedEditPreview.lint_snapshot(
-                candidates[path], view_root, gates=gates
+                candidates[path], workspace, gates=gates
             )
 
         after = source_preview.preview_sources(
-            workspace, {path: updated_source}, validate
+            workspace,
+            {path: updated_source},
+            validate,
+            options=m.Infra.CodegenSourcePreviewOptions(
+                runtime_root=FlextInfraUtilitiesProjectDiscovery.runtime_environment_dir(
+                    workspace,
+                ).parent,
+            ),
         ).unwrap()
         return before, after
 

@@ -1265,7 +1265,7 @@ class FlextInfraUtilitiesSemanticContracts(
         tuple[p.Infra.RopePyName, ...],
         t.Infra.RopeNativeObject,
     ]:
-        builtin_module = project.get_module("builtins")
+        builtin_module = project.get_module("__builtin__")
         names = FlextInfraUtilitiesSemanticContracts._deferred_builtin_names(
             builtin_module
         )

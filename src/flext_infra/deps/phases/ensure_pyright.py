@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from os.path import relpath
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -487,19 +486,9 @@ class FlextInfraEnsurePyrightConfigPhase:
                 operations.append(toml.RemoveOp(key="stubPath"))
         else:
             operations.append(toml.RemoveOp(key="stubPath"))
-        # Top-level venv/venvPath bind the project to its runtime environment
-        # (deps modernize ownership; conform preserves them). The root owns
-        # its local .venv, a child member resolves the containing workspace
-        # venv, and a standalone checkout is its own root — the relative path
-        # from the project root expresses all three.
-        runtime_venv_path = (
-            "."
-            if repository_root is None or is_root
-            else relpath(repository_root, project_root)
-        )
-        operations.extend((
-            toml.SetOp(key=c.Infra.VENV_NAME, value=c.Infra.VENV_DIR),
-            toml.SetOp(key=c.Infra.VENV_PATH, value=runtime_venv_path),
+        # Runtime bindings belong to the tooling request's declared environment.
+        # This analyzer-path phase preserves them rather than choosing an owner.
+        operations.append(
             toml.SetOp(
                 key="executionEnvironments",
                 value=[
@@ -509,7 +498,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                     for expected_env in expected_envs
                 ],
             ),
-        ))
+        )
         operations.extend(
             toml.SetOp(key=key, value=value)
             for settings in (
@@ -518,6 +507,9 @@ class FlextInfraEnsurePyrightConfigPhase:
             )
             for key, value in settings.items()
         )
+        # Runtime environment binding (venv/venvPath) is owned by the tooling
+        # request's declared environment_dir and projected through pyright_settings.
+        # This analyzer-path phase must not overwrite or strip that binding.
         return toml.PhaseConfig(
             name="pyright",
             table_path=(c.Infra.PYRIGHT,),

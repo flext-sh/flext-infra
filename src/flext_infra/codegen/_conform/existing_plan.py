@@ -888,6 +888,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         repository = target.repository
         project, metadata = identity
         return m.Infra.ToolingContextRequest(
+            # Attached members resolve through the canonical workspace runtime
+            # owner: runtime_environment_dir derives the superproject root when
+            # the checkout is a submodule, and the checkout's own root otherwise.
+            environment_dir=u.Infra.runtime_environment_dir(root),
             planned_sources={
                 plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
                 for plan in planned

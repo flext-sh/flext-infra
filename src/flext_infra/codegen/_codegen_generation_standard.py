@@ -86,13 +86,9 @@ class FlextInfraCodegenGenerationStandardMixin(
                     cls._type_checking_sort_key(rendered_module, root_names),
                     cls._format_import("", rendered_module, parts),
                 ))
-        # Only the foundation root bootstraps its kernel; consumers use its
-        # already-bound public helper, including foundation subpackages.
-        lazy_module = (
-            c.Infra.LAZY_BOOTSTRAP_MODULE
-            if current_pkg == c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE
-            else c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE
-        )
+        # Bind the kernel without re-entering a facade whose lazy namespace
+        # may still be initializing.
+        lazy_module = c.Infra.LAZY_BOOTSTRAP_MODULE
         statements.append((
             cls._type_checking_sort_key(lazy_module, root_names),
             cls._format_import(
@@ -286,6 +282,7 @@ class FlextInfraCodegenGenerationStandardMixin(
                 child_packages=plan.child_packages_for_lazy,
                 local_package_root=current_pkg,
                 root_names=type_checking_root_names,
+                source_project=source_project,
             ),
         )
         runtime_import_lines = cls._runtime_import_lines(plan, type_checking_root_names)

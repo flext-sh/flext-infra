@@ -19,11 +19,16 @@ from libcst import (
     Arg,
     Assign,
     ClassDef,
+    Comma,
     CSTNode,
     CSTTransformer,
+    LeftParen,
     Module,
     Name,
+    ParenthesizedWhitespace,
     RemovalSentinel,
+    RightParen,
+    SimpleWhitespace,
     parse_module,
 )
 from libcst.codemod import CodemodContext
@@ -199,13 +204,8 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                                 ),
                             })
                         ),
-                        extension_modules=tuple(
-                            sorted(
-                                u.type_adapter(set[str]).validate_python(
-                                    live.get_pycore().extension_modules,
-                                    strict=True,
-                                )
-                            )
+                        extension_modules=FlextInfraUtilitiesRopeRuntime.extension_module_names(
+                            live
                         ),
                         python_path_folders=tuple(
                             folder.real_path
@@ -725,18 +725,20 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         facade, namespace, scope, typing_objects, base_objects, markers = (
             cls._facade_namespace_context(project, source, facade_path)
         )
-        if any(
-            owner is not typing_objects[0]
-            and typing_objects[0] not in owner.get_superclasses()
-            for owner in base_objects
-        ) or (
-            not any(
-                isinstance(
-                    member, ast.FunctionDef | ast.AsyncFunctionDef | ast.AnnAssign
-                )
-                for member in namespace.body
+        if not any(
+            isinstance(member, ast.FunctionDef | ast.AsyncFunctionDef)
+            or (
+                isinstance(member, ast.AnnAssign)
+                and cls._namespace_class_alias(member) is None
             )
-            and any(
+            for member in namespace.body
+        ) and (
+            any(
+                owner is not typing_objects[0]
+                and typing_objects[0] not in owner.get_superclasses()
+                for owner in base_objects
+            )
+            or any(
                 isinstance(member, ast.ClassDef)
                 or (
                     isinstance(member, ast.Assign)
@@ -759,14 +761,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 facade_path,
                 ignored_bases=markers,
             )
-        source = cls._remove_namespace_class_shadows(
-            source, namespace, scope, base_objects, family="protocol"
-        )
-        facade, namespace = cls._facade_classes(
-            ast.parse(source, filename=str(facade_path)),
-            facade_path,
-            ignored_bases=markers,
-        )
         additions = cls._select_protocol_owner_bases(
             facade_path,
             (facade, namespace),
@@ -775,7 +769,9 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             binding=binding,
         )
         if not additions:
-            return source
+            return cls._remove_namespace_class_shadows(
+                source, namespace, scope, base_objects, family="protocol"
+            )
         source = cls._insert_protocol_imports(source, additions, package=pkg_dir.name)
         _, namespace = cls._facade_classes(
             ast.parse(source, filename=str(facade_path)),
@@ -974,7 +970,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         cls,
         base_objects: tuple[p.Infra.RopePyObject, ...],
         names: frozenset[str],
-    ) -> dict[str, p.Infra.RopePyObject]:
+    ) -> t.MutableMappingKV[str, p.Infra.RopePyObject]:
         """Resolve effective inherited declarations in native-identity C3 order.
 
         Returns:
@@ -985,7 +981,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             str(id(owner)): owner
             for owner in cls._protocol_ancestor_objects(base_objects)
         }
-        lineages: dict[str, t.StrTuple] = {}
+        lineages: t.MutableMappingKV[str, t.StrTuple] = {}
 
         def lineage(bases: t.SequenceOf[p.Infra.RopePyObject]) -> t.StrTuple:
             for base in bases:
@@ -1003,7 +999,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 message="Inconsistent facade namespace class lineage",
             )
 
-        members: dict[str, p.Infra.RopePyObject] = {}
+        members: t.MutableMappingKV[str, p.Infra.RopePyObject] = {}
         for identity in lineage(base_objects):
             owner = owners[identity]
             scope = (
@@ -1064,7 +1060,11 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     for attribute in owner.get_attributes().values()
                 )
             )
-            if source.startswith(c.Infra.AUTOGEN_HEADERS) and inherited_class:
+            if (
+                family == "model"
+                and source.startswith(c.Infra.AUTOGEN_HEADERS)
+                and inherited_class
+            ):
                 # A projection cannot turn an inherited declaration into a new
                 # alias or replace a different canonical member with its value.
                 shadows.append(member)
@@ -2131,63 +2131,74 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         namespace: ast.ClassDef,
         additions: t.SequenceOf[t.Pair[str, str]],
     ) -> str:
-        if not namespace.bases:
-            wrapper = MetadataWrapper(parse_module(source))
-            positions = wrapper.resolve(PositionProvider)
-            owners = tuple(
-                node
-                for node, span in positions.items()
-                if isinstance(node, ClassDef)
-                and span.start.line == namespace.lineno
-                and span.start.column
-                == len(
-                    source
-                    .splitlines()[namespace.lineno - 1]
-                    .encode(c.DEFAULT_ENCODING)[: namespace.col_offset]
-                    .decode(c.DEFAULT_ENCODING),
-                )
-            )
-            if len(owners) != 1:
-                message = "facade namespace has no unique concrete source span"
-                raise ValueError(message)
-            owner = owners[0]
-            updated = wrapper.module.deep_replace(
-                owner,
-                owner.with_changes(
-                    bases=tuple(Arg(Name(name)) for _module, name in additions),
-                ),
-            )
-            if not isinstance(updated, Module):
-                message = "facade base projection did not preserve the module"
-                raise ValueError(message)
-            return updated.code
-        last_base = namespace.bases[-1]
-        if last_base.end_lineno is None or last_base.end_col_offset is None:
-            message = "utility namespace base has no source span"
-            raise ValueError(message)
+        wrapper = MetadataWrapper(parse_module(source))
+        owner = cls._facade_namespace_cst(wrapper, namespace)
+        additions_args = tuple(Arg(Name(name)) for _module, name in additions)
         # A base listed after Protocol has no consistent MRO, so owners
         # projected onto a protocol namespace go before its terminal Protocol.
-        precede = cls._base_name(last_base) == c.Infra.PROTOCOL_BASE
-        lines = source.encode(c.DEFAULT_ENCODING).splitlines(keepends=True)
-        line, column = (
-            (last_base.lineno, last_base.col_offset)
+        precede = bool(namespace.bases) and (
+            cls._base_name(namespace.bases[-1]) == c.Infra.PROTOCOL_BASE
+        )
+        bases = (
+            (*owner.bases[:-1], *additions_args, owner.bases[-1])
             if precede
-            else (last_base.end_lineno, last_base.end_col_offset)
+            else (*owner.bases, *additions_args)
         )
-        offset = sum(map(len, lines[: line - 1])) + column
-        separator = (
-            ", "
-            if last_base.lineno == namespace.lineno
-            else ",\n" + " " * last_base.col_offset
+        replacement = owner.with_changes(bases=bases)
+        arguments = (*bases, *owner.keywords)
+        header_length = namespace.col_offset + len(
+            f"class {owner.name.value}("
+            + ", ".join(wrapper.module.code_for_node(arg.value) for arg in arguments)
+            + "):"
         )
-        inserted = "".join(
-            name + separator if precede else separator + name
-            for _module, name in additions
-        )
-        encoded = b"".join(lines)
-        return (
-            encoded[:offset] + inserted.encode(c.DEFAULT_ENCODING) + encoded[offset:]
-        ).decode(c.DEFAULT_ENCODING)
+        if (
+            any(base.lineno != namespace.lineno for base in namespace.bases)
+            or header_length > config.Infra.tooling.tools.ruff.line_length
+        ):
+            wrapped: list[t.Infra.CstArgument] = []
+            for index, arg in enumerate(arguments):
+                whitespace = (
+                    arg.comma.whitespace_after
+                    if isinstance(arg.comma, Comma)
+                    and isinstance(arg.comma.whitespace_after, ParenthesizedWhitespace)
+                    else ParenthesizedWhitespace()
+                )
+                wrapped.append(
+                    arg.with_changes(
+                        comma=Comma(
+                            whitespace_after=whitespace.with_changes(
+                                indent=True,
+                                last_line=SimpleWhitespace(
+                                    wrapper.module.default_indent
+                                    if index < len(arguments) - 1
+                                    else ""
+                                ),
+                            ),
+                        ),
+                    ),
+                )
+            opening = (
+                owner.lpar.whitespace_after
+                if isinstance(owner.lpar, LeftParen)
+                and isinstance(owner.lpar.whitespace_after, ParenthesizedWhitespace)
+                else ParenthesizedWhitespace()
+            )
+            replacement = replacement.with_changes(
+                bases=tuple(wrapped[: len(bases)]),
+                keywords=tuple(wrapped[len(bases) :]),
+                lpar=LeftParen(
+                    whitespace_after=opening.with_changes(
+                        indent=True,
+                        last_line=SimpleWhitespace(wrapper.module.default_indent),
+                    ),
+                ),
+                rpar=RightParen(),
+            )
+        updated = wrapper.module.deep_replace(owner, replacement)
+        if not isinstance(updated, Module):
+            message = "facade base projection did not preserve the module"
+            raise TypeError(message)
+        return updated.code
 
 
 __all__: list[str] = ["FlextInfraUtilitiesCodegenFacades"]

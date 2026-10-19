@@ -211,6 +211,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         prepared = FlextInfraCodegenStaging.prepare_python_plans(
             request.root,
             analysis.files,
+            prepare=u.Infra.normalize_source_plan,
         )
         if prepared.failure:
             return r[p.Infra.CodegenResult].from_failure(prepared)

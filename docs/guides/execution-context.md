@@ -821,6 +821,13 @@ does not contain a Git index. Ordinary checkout checks retain the tracked and
 unpublished Git inventory; both routes reject an empty inventory and use the same
 marker scanner.
 
+Pyright environment bindings come from `ToolingContextRequest.environment_dir`.
+Existing checkouts use the canonical runtime owner: attached members share their
+workspace environment, while independent checkouts and worktrees own theirs.
+Scaffolds declare their future local environment explicitly. The tooling context
+projects its directory name and a relative `venvPath`; analyzer-path phases preserve
+that binding.
+
 ## Mise toolchain
 
 Mise manages itself: the generated `.mise.toml` declares the `toolchain.mise_selector`

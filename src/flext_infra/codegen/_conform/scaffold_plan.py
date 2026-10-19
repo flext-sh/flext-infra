@@ -83,6 +83,9 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         if lazy_sources.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(lazy_sources)
         tooling_request = m.Infra.ToolingContextRequest(
+            # A future scaffold owns its declared runtime (standalone), so the
+            # runtime root is pinned to the scaffold root itself.
+            environment_dir=u.Infra.runtime_environment_dir(root, runtime_root=root),
             planned_sources={
                 plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
                 for plan in lazy_sources.value[0]

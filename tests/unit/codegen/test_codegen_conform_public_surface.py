@@ -860,7 +860,10 @@ class TestsFlextInfraCodegenConformPublicSurface:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        planned = FlextInfraCodegenConform(repository_root=root, request=request).plan(
+        planned = FlextInfraCodegenConform(
+            repository_root=root,
+            state=m.Infra.CodegenConformState(repository_root=root, request=request),
+        ).plan(
             request,
         )
         tm.ok(planned)

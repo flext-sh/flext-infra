@@ -202,6 +202,8 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         states: tuple[m.Cli.AtomicFileState, ...],
         directories: tuple[m.Cli.AtomicDirectoryInventory, ...],
         topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...],
+        *,
+        observations: t.MutableMappingKV[Path, m.Cli.AtomicDirectoryInventory],
     ) -> p.Result[bool]:
         """Reverify original evidence via the native verifier, never recapture.
 
@@ -214,7 +216,9 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             verified = u.Cli.atomic_verify_binary_file_states(states)
             if verified.failure:
                 return r[bool].from_failure(verified)
-            return u.Cli.atomic_verify_directory_queries(directories, topology)
+            return u.Cli.atomic_verify_directory_queries(
+                directories, topology, observations=observations
+            )
         except runtime_errors as exc:
             return r[bool].fail(str(exc), exception=exc)
 
@@ -308,28 +312,32 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 ),
             ),
         )
+        observations: t.MutableMappingKV[Path, m.Cli.AtomicDirectoryInventory] = {}
         failed_states = tuple(
             original
             for original in project.consumed_source_states()
-            if cls._verify_original_sources((original,), (), ()).failure
+            if cls._verify_original_sources(
+                (original,), (), (), observations=observations
+            ).failure
         )
         if any(original not in states for original in failed_states):
             raise cause
         failed_directories = tuple(
             original
             for original in project.consumed_source_directories()
-            if cls._verify_original_sources((), (original,), ()).failure
+            if cls._verify_original_sources(
+                (), (original,), (), observations=observations
+            ).failure
         )
         failed_topology = tuple(
             original
             for original in project.consumed_source_topology()
-            if cls._verify_original_sources((), (), (original,)).failure
+            if cls._verify_original_sources(
+                (), (), (original,), observations=observations
+            ).failure
         )
-        candidates: tuple[
-            m.Cli.AtomicDirectoryInventory | m.Cli.AtomicDirectoryChainPlan, ...
-        ] = (*directories, *topology)
         if not cls._original_plans_covered(
-            (*failed_directories, *failed_topology), candidates
+            (*failed_directories, *failed_topology), (*directories, *topology)
         ):
             raise cause
         if not (failed_states or failed_directories or failed_topology):
@@ -342,6 +350,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 receipt.inputs,
                 receipt.source_directories,
                 receipt.source_query_topology,
+                observations=observations,
             ).failure
         }
         for file in analysis.files:
@@ -349,6 +358,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 file.source_states,
                 file.source_directories,
                 file.source_query_topology,
+                observations=observations,
             ).success:
                 accepted.append(file)
             else:
@@ -361,6 +371,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                     publication.source_states,
                     publication.source_directories,
                     publication.source_query_topology,
+                    observations=observations,
                 ).failure
             ):
                 affected.add(publication.context.init_path)

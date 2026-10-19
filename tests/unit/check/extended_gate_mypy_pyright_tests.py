@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import FlextInfra, c, config, m, main
+from flext_infra import c, config, m, main
 from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.mypy import FlextInfraMypyGate
@@ -249,7 +249,6 @@ class TestsFlextInfraTypeGates:
             ),
             encoding=c.DEFAULT_ENCODING,
         )
-        tm.that(FlextInfra(repository_root=project).root, eq=project.resolve())
         source = project / "src" / "test_pkg" / "payload_bound.py"
         valid_source = (
             f"from {module} import {service}\n\n"

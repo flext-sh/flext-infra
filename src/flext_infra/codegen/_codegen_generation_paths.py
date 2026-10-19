@@ -187,11 +187,18 @@ class FlextInfraCodegenGenerationPathsMixin:
                 )
             ):
                 elected = f".{mod}"
-        return u.Infra.resolve_import_module(
+        resolved = u.Infra.resolve_import_module(
             current_package=local_package_root,
             module_name=elected.lstrip("."),
             level=len(elected) - len(elected.lstrip(".")),
         )
+        if resolved.startswith("."):
+            msg = (
+                f"TYPE_CHECKING import {mod!r} did not resolve to an absolute "
+                f"module for package {local_package_root!r}"
+            )
+            raise ValueError(msg)
+        return resolved
 
     @staticmethod
     def _reject_noncanonical_type_checking_import(
@@ -209,6 +216,13 @@ class FlextInfraCodegenGenerationPathsMixin:
             ValueError: If relative TYPE_CHECKING import.
 
         """
+        if mod.startswith("."):
+            exports = ", ".join(name for name, _ in items)
+            msg = (
+                f"relative TYPE_CHECKING import {mod!r} has no local package "
+                f"(exports: {exports})"
+            )
+            raise ValueError(msg)
         if mod.startswith(".") and not local_package_root:
             exports = ", ".join(name for name, _ in items)
             msg = (

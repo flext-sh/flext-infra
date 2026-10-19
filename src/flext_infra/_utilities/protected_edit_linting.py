@@ -675,6 +675,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
             environment[c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE] = str(
                 FlextInfraUtilitiesResourceLimits.ruff_cache_directory(command_cwd)
             )
+        elif tool_name == c.Infra.MYPY:
+            environment[c.Infra.MypyCacheEnvironment.CACHE_DIR.value] = str(
+                FlextInfraUtilitiesResourceLimits.mypy_cache_directory(command_cwd)
+            )
         run_result = u.Cli.run_raw(
             cmd,
             cwd=command_cwd,

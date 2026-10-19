@@ -59,8 +59,11 @@ class TestsFlextInfraFileGateAndReconcileMakefile:
         )
         planned = FlextInfraCodegenConform(
             repository_root=root,
-            request=request,
-            initial_workspace=workspace,
+            state=m.Infra.CodegenConformState(
+                repository_root=root,
+                request=request,
+                initial_workspace=workspace,
+            ),
         ).plan(request)
         plan = tm.ok(planned)
         makefile = next(

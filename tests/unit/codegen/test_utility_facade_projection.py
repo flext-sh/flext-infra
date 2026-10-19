@@ -9,18 +9,111 @@ from __future__ import annotations
 import ast
 import os
 import sys
+from functools import partial
 from pathlib import Path
 from typing import Literal
 
 import pytest
 
 from flext_infra import config, infra
-from flext_infra.codegen import FlextInfraCodegenLazyInit
 from tests import c, m, p, r, t, tm, u
 
 
 class TestsFlextInfraUtilityFacadeProjection:
     """Exercise declared owner projection only through ``u.Infra``."""
+
+    @pytest.mark.parametrize("header", ["plain", "protocol", "commented"])
+    def test_long_protocol_owner_bases_are_canonical_before_publication(
+        self,
+        tmp_path: Path,
+        header: str,
+    ) -> None:
+        """Long owner composition preserves comments, identities and a fixed point."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        self._write(package / "__init__.py", "")
+        self._write(package / "_protocols" / "__init__.py", "")
+        width = config.Infra.tooling.tools.ruff.line_length
+        names = tuple(f"Owner{index}" + "X" * (width // 4) for index in range(5))
+        imports: list[str] = []
+        aliases: list[str] = []
+        for index, name in enumerate(names):
+            self._write(
+                package / "_protocols" / f"owner_{index}.py",
+                "from typing import Protocol\n\n"
+                f"class {name}:\n"
+                f"    class Contract{index}(Protocol):\n"
+                "        value: str\n"
+                f"__all__ = [{name!r}]\n",
+            )
+            imports.append(
+                f"from {package.name}._protocols.owner_{index} import {name}\n"
+            )
+            aliases.append(f"        Contract{index} = {name}.Contract{index}\n")
+        self._write(
+            package / "_protocols" / "__init__.py",
+            "".join(
+                f"from .owner_{index} import {name}\n"
+                for index, name in enumerate(names)
+            )
+            + f"__all__ = {list(names)!r}\n",
+        )
+        self._write(
+            package.parent / "upstream.py",
+            "class ExistingOwner:\n    pass\n",
+        )
+        declaration = {
+            "plain": "    class Sample:\n",
+            "protocol": "    class Sample(Protocol):\n",
+            "commented": (
+                "    class Sample(  # Preserve opening\n"
+                "        ExistingOwner,  # Preserve existing owner\n"
+                "    ):\n"
+            ),
+        }[header]
+        facade = package / "protocols.py"
+        self._write(
+            facade,
+            "from typing import Protocol\nfrom upstream import ExistingOwner\n"
+            + "".join(imports)
+            + "\nclass SampleProtocols:\n"
+            + declaration
+            + "".join(aliases)
+            + "\np = SampleProtocols\n__all__ = ['SampleProtocols', 'p']\n",
+        )
+        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="p"))
+        tm.that(max(map(len, rendered.splitlines())), lte=width)
+        for name in names:
+            tm.that(rendered, has=f"        {name},\n")
+        if header == "commented":
+            tm.that(rendered, has="# Preserve opening")
+            tm.that(rendered, has="# Preserve existing owner")
+        self._write(facade, rendered)
+        tm.that(u.Infra.render_utility_facade(package, family="p"), eq=rendered)
+        output = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "from importlib import import_module\n"
+                        f"p = import_module({(package.name + '.protocols')!r}).p\n"
+                        f"names = {names!r}\n"
+                        "owners = tuple(import_module("
+                        f"{(package.name + '._protocols.owner_')!r} + str(index))"
+                        ".__dict__[name] for index, name in enumerate(names))\n"
+                        "assert tuple(base for base in p.Sample.__mro__ "
+                        "if base in owners)"
+                        " == owners\n"
+                        "for index, owner in enumerate(owners):\n"
+                        "    name = 'Contract' + str(index)\n"
+                        "    assert getattr(p.Sample, name) is getattr(owner, name)\n"
+                    ),
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            ),
+        )
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
 
     @pytest.mark.parametrize("length_delta", [0, 16])
     @pytest.mark.parametrize("parenthesized", [False, True])
@@ -49,6 +142,8 @@ class TestsFlextInfraUtilityFacadeProjection:
             f'__all__ = ["{owner}"]\n',
         )
         binding = f"({owner})" if parenthesized else owner
+        barrel_name = f"{package.name}.{family.directory}"
+        owner_module = f"{barrel_name}.{module}"
         facade = package / c.Infra.UTILITIES_PY
         self._write(
             facade,
@@ -86,6 +181,19 @@ class TestsFlextInfraUtilityFacadeProjection:
             "assert tm.ok(u.Cli.atomic_read_binary_file_state(\n"
             "    initializer, required=True)) == published\n"
             "assert u.Infra.render_utility_facade(package) == rendered\n"
+            f"barrel = import_module({barrel_name!r})\n"
+            f"leaf = import_module({owner_module!r})\n"
+            f"assert barrel.{owner} is leaf.{owner}\n"
+            "with u.Infra.facade_source_project(root) as binding:\n"
+            f"    barrel = binding[0].get_module({barrel_name!r})\n"
+            f"    leaf = binding[0].get_module({owner_module!r})\n"
+            f"    assert barrel.get_attributes()[{owner!r}].get_object() is "
+            f"leaf.get_attributes()[{owner!r}].get_object()\n"
+            "for path in (initializer, package / "
+            f"{family.directory!r} / '__init__.py', facade):\n"
+            "    state = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))\n"
+            "    assert max(map(len, state.content.decode().splitlines())) <= "
+            f"{width}\n"
             "print(repr(expected))\n"
         )
         environment = {
@@ -155,6 +263,31 @@ class TestsFlextInfraUtilityFacadeProjection:
             eq=True,
             msg=checked.stdout + checked.stderr,
         )
+        consumer_path = package.parent / "consumer.py"
+        self._write(
+            consumer_path,
+            f"from {barrel_name} import (\n    {owner},\n)\n\n"
+            f"value: {owner} = {owner}()\n"
+            f"owner: type[{owner}] = {owner}\n",
+        )
+        for checker in ("mypy", "pyright"):
+            result = tm.ok(
+                u.Cli.run_raw(
+                    (
+                        sys.executable,
+                        "-m",
+                        checker,
+                        str(consumer_path),
+                    ),
+                    cwd=root,
+                    options=m.Cli.ProcessOptions(env=environment),
+                ),
+            )
+            tm.that(
+                u.Cli.process_succeeded(result.outcome),
+                eq=True,
+                msg=result.stdout + result.stderr,
+            )
 
     @staticmethod
     def _write(path: Path, source: str) -> None:
@@ -170,7 +303,12 @@ class TestsFlextInfraUtilityFacadeProjection:
 
     def _future_exposure_sources(
         self, tmp_path: Path, scope: str
-    ) -> tuple[list[Path], list[m.Infra.RopeProjectLayout], dict[Path, str], list[str]]:
+    ) -> tuple[
+        list[Path],
+        list[m.Infra.RopeProjectLayout],
+        t.MutableMappingKV[Path, str],
+        list[str],
+    ]:
         """Declare original and planned providers for each exposure scenario.
 
         Returns:
@@ -179,7 +317,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         """
         roots: list[Path] = []
         layouts: list[m.Infra.RopeProjectLayout] = []
-        desired: dict[Path, str] = {}
+        desired: t.MutableMappingKV[Path, str] = {}
         scripts: list[str] = []
         for suffix in ("first", "second") if scope == "independent" else ("first",):
             root, package = u.Tests.create_lazy_init_workspace(
@@ -238,7 +376,7 @@ class TestsFlextInfraUtilityFacadeProjection:
 
         """
         by_path = {state.path: state for state in originals}
-        facade_plans = []
+        facade_plans: list[m.Infra.CodegenFilePlan] = []
         with u.Infra.facade_source_project(
             tmp_path,
             source_states=originals,
@@ -249,8 +387,11 @@ class TestsFlextInfraUtilityFacadeProjection:
                 package = layout.package_dir
                 if scope == "collision":
                     rejected = r[str | None].create_from_callable(
-                        lambda package=package: u.Infra.render_utility_facade(
-                            package, project=binding[0], sources=binding[2]
+                        partial(
+                            u.Infra.render_utility_facade,
+                            package,
+                            project=binding[0],
+                            sources=binding[2],
                         ),
                     )
                     tm.fail(rejected, has="Owner")
@@ -307,9 +448,8 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         if scope == "collision":
             return
-        service = FlextInfraCodegenLazyInit(
-            repository_root=tmp_path, project_scope_roots=tuple(roots)
-        )
+        service = u.Tests.create_lazy_init_service(tmp_path)
+        service.project_scope_roots = tuple(roots)
         with u.Infra.facade_source_project(
             tmp_path,
             source_states=originals,
@@ -1981,19 +2121,22 @@ class TestsFlextInfraUtilityFacadeProjection:
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
 
     @pytest.mark.parametrize("multiline", [False, True])
-    @pytest.mark.parametrize("shadow", [False, True])
     @pytest.mark.parametrize("organizer_protocol", [False, True])
     @pytest.mark.parametrize("import_alias", [False, True])
+    @pytest.mark.parametrize(
+        "owner_state", [(False, False), (False, True), (True, False), (True, True)]
+    )
     def test_protocol_owner_precedes_terminal_protocol_base(
         self,
         tmp_path: Path,
         *,
         multiline: bool,
-        shadow: bool,
         organizer_protocol: bool,
         import_alias: bool,
+        owner_state: tuple[bool, bool],
     ) -> None:
         """Both source forms import and expose the real structural protocol."""
+        shadow, inherited_owner = owner_state
         root, package = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-sample",
@@ -2027,7 +2170,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         facade = package / "protocols.py"
         owner_name = "ImportedOwner" if import_alias else "PayloadOwner"
-        bases = f"{owner_name}, p" if shadow else "p"
+        bases = f"{owner_name}, p" if shadow and inherited_owner else "p"
         header = (
             f"    class Sample(\n        {bases},\n        Protocol,\n    ):\n"
             if multiline

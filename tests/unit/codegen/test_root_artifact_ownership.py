@@ -175,7 +175,13 @@ class TestsFlextInfraRootArtifactOwnership:
         )
 
         plan = tm.ok(
-            FlextInfraCodegenConform(repository_root=root, request=request).plan(
+            FlextInfraCodegenConform(
+                repository_root=root,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    request=request,
+                ),
+            ).plan(
                 request
             )
         )
@@ -243,7 +249,13 @@ class TestsFlextInfraRootArtifactOwnership:
             (root.parent / "origin.git").rename(root.parent / "origin.git.removed")
             request = m.Infra.CodegenConformRequest(root=root)
             tm.ok(
-                FlextInfraCodegenConform(repository_root=root, request=request).plan(
+                FlextInfraCodegenConform(
+                    repository_root=root,
+                    state=m.Infra.CodegenConformState(
+                        repository_root=root,
+                        request=request,
+                    ),
+                ).plan(
                     request,
                 ),
             )

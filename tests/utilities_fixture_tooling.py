@@ -14,9 +14,7 @@ from functools import cache
 from pathlib import Path
 from textwrap import indent
 
-from flext_infra import config, u
-from flext_infra.validate import FlextInfraPytestRunner
-from flext_infra.workspace import FlextInfraWorkspaceDetector
+from flext_infra import config, u, validate, workspace
 from tests import c, m, p, r, t, tm
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
 
@@ -35,7 +33,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             profile_collection: bool = False,
             slow_phase: bool = False,
             target_file: Path | None = None,
-        ) -> FlextInfraPytestRunner:
+        ) -> validate.FlextInfraPytestRunner:
             """Bind a runner to its config-owned persistent cache and reports.
 
             Returns:
@@ -50,7 +48,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                 / cache.database_filename
             )
             testmon_db.parent.mkdir(parents=True, exist_ok=True)
-            return FlextInfraPytestRunner(
+            return validate.FlextInfraPytestRunner(
                 repository_root=cached_runner_project,
                 ci_context=ci_context,
                 collection_command_prefix=(
@@ -70,7 +68,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         def declared_project_runner(
             project_root: Path,
             name: str,
-        ) -> FlextInfraPytestRunner:
+        ) -> validate.FlextInfraPytestRunner:
             """Declare the fixture identity before constructing its runner.
 
             Returns:
@@ -319,16 +317,20 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
 
         """
         checkout = Path(__file__).resolve().parents[1]
-        context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(checkout))
-        workspace = tm.ok(
-            FlextInfraWorkspaceDetector.load_workspace_spec(context.runtime_root),
+        context = tm.ok(
+            workspace.FlextInfraWorkspaceDetector.resolution_context(checkout)
+        )
+        specification = tm.ok(
+            workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
+                context.runtime_root
+            ),
         )
         projects = {
             repository.distribution: context.runtime_root / repository.path
-            for repository in (workspace.repository, *workspace.subprojects)
+            for repository in (specification.repository, *specification.subprojects)
         }
         metadata = tm.ok(u.Infra.read_project_metadata_result(root))
-        selected: dict[str, Path] = {}
+        selected: t.MutableMappingKV[str, Path] = {}
         pending = list(metadata.project.dependencies)
         while pending:
             requirement = pending.pop()
@@ -427,6 +429,20 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         )
         if wheels.failure:
             return r[bool].from_failure(wheels)
+        override_option, override_filename = c.Infra.BINDING_RESOLUTION_FILES[0]
+        overrides = environment / override_filename
+        bound = u.Cli.files_write_text(
+            overrides,
+            "".join(
+                f"{tm.ok(u.Infra.read_project_metadata_result(project)).project.name}"
+                f" @ {wheel.resolve().as_uri()}\n"
+                for project, wheel in zip(
+                    dependency_projects, wheels.value, strict=True
+                )
+            ),
+        )
+        if bound.failure:
+            return r[bool].from_failure(bound)
         return u.Cli.run_checked(
             (
                 str(binary.value),
@@ -434,6 +450,8 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                 "install",
                 "--python",
                 str(environment),
+                override_option,
+                str(overrides),
                 *(str(wheel) for wheel in wheels.value),
             ),
             cwd=root,

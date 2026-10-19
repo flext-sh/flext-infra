@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from os.path import relpath
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, r, t, u
@@ -233,12 +234,16 @@ class FlextInfraPyprojectModernizerTooling:
                     or declared_roots
                 ),
                 "pyright_settings": [
-                    # The workspace environment is a generated invariant: every
-                    # projected project owns a physical checkout-local ``.venv``
-                    # (D-VENV), and Pyright must resolve imports through it
-                    # without an invocation-side override.
-                    {"name": "venv", "value": ".venv"},
-                    {"name": "venvPath", "value": "."},
+                    {
+                        "name": c.Infra.VENV_NAME,
+                        "value": request.environment_dir.name,
+                    },
+                    {
+                        "name": c.Infra.VENV_PATH,
+                        "value": self._relative_environment_parent(
+                            request.environment_dir.parent, project_dir
+                        ),
+                    },
                     *(
                         {"name": key, "value": value}
                         for key, value in sorted(tools.pyright.items())
@@ -455,6 +460,29 @@ class FlextInfraPyprojectModernizerTooling:
         return r[t.SequenceOf[m.Infra.ToolingPyrightEnvironment]].ok(
             sorted(environments, key=lambda environment: environment.root or ""),
         )
+
+    @staticmethod
+    def _relative_environment_parent(
+        environment_parent: Path,
+        project_dir: Path,
+    ) -> str:
+        """Return the environment parent relative to the consuming project.
+
+        Returns:
+            The project-relative environment path.
+
+        Raises:
+            ValueError: If the paths are not absolute or not relative.
+
+        """
+        if not environment_parent.is_absolute() or not project_dir.is_absolute():
+            msg = "environment paths must be absolute"
+            raise ValueError(msg)
+        try:
+            return relpath(environment_parent, project_dir)
+        except ValueError as exc:
+            msg = "environment parent is not relative to the project"
+            raise ValueError(msg) from exc
 
 
 __all__: list[str] = ["FlextInfraPyprojectModernizerTooling"]

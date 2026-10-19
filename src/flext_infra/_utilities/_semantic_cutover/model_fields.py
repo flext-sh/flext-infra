@@ -17,6 +17,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodemodProject,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
@@ -318,6 +319,14 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
                 annotated, runtime.resolve_symbol(scope, node.value)
             ):
                 continue
+            reference = ast.unparse(node.value)
+            if not all(
+                FlextInfraUtilitiesCodemodProject.single_reaching_binding(
+                    module, scope, name, runtime.source_offset(module.source_code, node)
+                )
+                for name in dict.fromkeys((reference.partition(".")[0], reference))
+            ):
+                continue
             for metadata in node.slice.elts[1:]:
                 if not isinstance(
                     metadata, ast.Call
@@ -351,7 +360,12 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         if keyword.arg != "default_factory" or not isinstance(keyword.value, ast.Name):
             return False
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        builtin = project.get_module("__builtin__").get_attributes().get(keyword.value.id)
+        builtin = (
+            FlextInfraUtilitiesRopeRuntimeTypes
+            .require_semantic_module(project.get_module("__builtin__"))
+            .get_attributes()
+            .get(keyword.value.id)
+        )
         constraint = rule.arguments.get(rule.call_target)
         if (
             builtin is None
@@ -359,6 +373,10 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
             or not runtime.same_name(
                 builtin, runtime.resolve_symbol(scope, keyword.value)
             )
+        ):
+            return False
+        if FlextInfraUtilitiesCodemodProject.single_reaching_declarations(
+            module, scope, keyword.value.id
         ):
             return False
         if not FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture(

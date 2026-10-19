@@ -545,10 +545,10 @@ class TestsFlextInfraGitFacet:
         )
 
     @staticmethod
-    def test_tracked_scope_refreshes_after_filesystem_mutation(
+    def test_tracked_scope_refreshes_after_index_mutation(
         tmp_path: Path,
     ) -> None:
-        """Tracked-scope discovery must not retain a stale dirty-file inventory."""
+        """Only indexed files enter tracked scope, with no stale index inventory."""
         repository = u.Tests.git_repository(tmp_path)
         scope = repository / "src"
         scope.mkdir()
@@ -557,13 +557,33 @@ class TestsFlextInfraGitFacet:
         created = scope / "created.py"
         created.write_text("VALUE = 1\n", encoding="utf-8")
 
+        tm.that(u.Infra.git_tracked_scope_paths(scope), eq=[])
+        _ = u.Tests.git_run(repository, "add", "--", "src/created.py")
         tm.that(u.Infra.git_tracked_scope_paths(scope), eq=[created])
+        created.unlink()
+        tm.that(u.Infra.git_tracked_scope_paths(scope), eq=[])
 
     @staticmethod
-    def test_invalid_nested_git_marker_does_not_borrow_parent_index(
+    def test_source_scope_refreshes_after_filesystem_mutation(
         tmp_path: Path,
     ) -> None:
-        """An explicit invalid Git boundary falls back to filesystem discovery."""
+        """Source inventory includes unpublished files without staging them."""
+        repository = u.Tests.git_repository(tmp_path)
+        scope = repository / "src"
+        scope.mkdir()
+        tm.that(u.Infra.git_source_scope_paths(scope), eq=())
+
+        created = scope / "created.py"
+        created.write_text("VALUE = 1\n", encoding="utf-8")
+
+        tm.that(u.Infra.git_source_scope_paths(scope), eq=(created,))
+        tm.that(u.Infra.git_tracked_scope_paths(scope), eq=[])
+
+    @staticmethod
+    def test_invalid_nested_git_marker_matches_native_tracked_scope(
+        tmp_path: Path,
+    ) -> None:
+        """An empty Git marker never turns untracked files into tracked sources."""
         repository = u.Tests.git_repository(tmp_path)
         project = repository / "project"
         project.mkdir()
@@ -572,10 +592,15 @@ class TestsFlextInfraGitFacet:
         source.mkdir(parents=True)
         created = source / "module.py"
         created.write_text("VALUE = 1\n", encoding="utf-8")
+        sibling = repository / "tracked.py"
+        sibling.write_text("VALUE = 2\n", encoding="utf-8")
+        _ = u.Tests.git_run(repository, "add", "--", sibling.name)
+        native = u.Tests.git_capture(repository, "ls-files", "--", "project/src")
 
         tracked = u.Infra.git_tracked_scope_paths(project / "src")
 
-        tm.that(tracked, eq=[created])
+        tm.that(native.strip(), eq="")
+        tm.that(tracked, eq=[])
 
     @staticmethod
     def test_tracked_scope_does_not_borrow_an_ignoring_parent_repository(

@@ -88,7 +88,11 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         )
         planned = FlextInfraCodegenConform(
             repository_root=root,
-            initial_workspace=workspace,
+            state=m.Infra.CodegenConformState(
+                repository_root=root,
+                initial_workspace=workspace,
+                request=request,
+            ),
         ).plan(request)
         return planned, source, root / entry.destination
 
@@ -198,7 +202,9 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         emitted = tm.not_none(prepared[1].desired_content)
         tm.that(destination.exists(), eq=False)
         tm.that(metadata.read_text(encoding=c.DEFAULT_ENCODING), eq=before_metadata)
-        tm.that(emitted.decode(c.DEFAULT_ENCODING), has='{"answer": 42}')
+        tm.that(
+            emitted.decode(c.DEFAULT_ENCODING), eq="values = dict(answer=42)\n"
+        )
         tm.that("import os" in emitted.decode(c.DEFAULT_ENCODING), eq=False)
         receipt = tm.not_none(prepared[0].prepared_sources)
         if not isinstance(receipt, m.Infra.StageSourcePlan):
@@ -428,15 +434,23 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             eq=tuple(plan.dependency_group for plan in plans),
         )
         tm.that(any(path.exists() for path in destinations), eq=False)
+        updates = {
+            plan.path: tm.not_none(plan.desired_content).decode(c.DEFAULT_ENCODING)
+            for plan in prepared
+        }
+        unselected = tm.ok(
+            FlextInfraStagedPackage.plan_sources(workspace, updates)
+        )
+        rejected = FlextInfraStagedPackage.project_layouts(unselected, first.project)
+        tm.that(rejected.failure, eq=True)
+        tm.that(str(rejected.error), has="no original source authority")
         joint = tm.ok(
             FlextInfraStagedPackage.plan_sources(
                 workspace,
-                {
-                    plan.path: tm.not_none(plan.desired_content).decode(
-                        c.DEFAULT_ENCODING
-                    )
-                    for plan in prepared
-                },
+                updates,
+                options=m.Infra.StageSourceOptions(
+                    workspaces=(first.project, second.project),
+                ),
             )
         )
         elected = tm.ok(FlextInfraStagedPackage.project_layouts(joint, first.project))

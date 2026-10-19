@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Set as AbstractSet
 from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, ClassVar, Literal, Protocol, Self, runtime_checkable
 
@@ -240,6 +240,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         @property
         def project(self) -> FlextInfraProtocolsRopeRuntime.RopeProject: ...
+
+        @property
+        def extension_modules(self) -> AbstractSet[str]: ...
 
     @runtime_checkable
     class RopeScope(Protocol):

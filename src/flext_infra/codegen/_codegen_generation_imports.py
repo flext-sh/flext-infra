@@ -33,16 +33,48 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
         return f"{imported_name} as {export_name}"
 
     @staticmethod
-    def _format_import(indent: str, mod: str, parts: t.StrSequence) -> t.StrSequence:
+    def _format_import(
+        indent: str,
+        mod: str,
+        parts: t.StrSequence,
+        local_package_root: str | None = None,
+    ) -> t.StrSequence:
         """Emit one Ruff-canonical import statement within the configured width.
 
         Returns:
             The resulting ``t.StrSequence``.
 
+        Raises:
+            ValueError: If the absolute import owner cannot fit the configured width.
+
         """
         compact = f"{indent}from {mod} import {', '.join(parts)}"
-        if len(compact) <= config.Infra.tooling.tools.ruff.line_length:
+        line_length = config.Infra.tooling.tools.ruff.line_length
+        if len(compact) <= line_length:
             return (compact,)
+        # When the wrapped form's opening line still exceeds the limit, shorten
+        # the module path by using a relative import if the module is a direct
+        # child of the current package root.
+        wrapped_open = f"{indent}from {mod} import ("
+        if len(wrapped_open) > line_length and local_package_root:
+            prefix = f"{local_package_root}."
+            if mod.startswith(prefix):
+                child = mod.removeprefix(prefix)
+                if "." not in child:
+                    relative_open = f"{indent}from .{child} import ("
+                    if len(relative_open) <= line_length:
+                        nested_indent = f"{indent}    "
+                        return (
+                            f"{indent}from .{child} import (",
+                            *(f"{nested_indent}{part}," for part in parts),
+                            f"{indent})",
+                        )
+        if len(wrapped_open) > line_length:
+            message = (
+                f"Absolute import owner {mod!r} exceeds Ruff line length "
+                f"{line_length}; select its canonical public package export."
+            )
+            raise ValueError(message)
         nested_indent = f"{indent}    "
         # One symbol per wrapped line is the only form Ruff's isort accepts
         # (I001); a generated facade that outgrows a LOC cap is the cap

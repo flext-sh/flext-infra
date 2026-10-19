@@ -13,6 +13,7 @@ from inspect import getsourcefile
 from pathlib import Path
 
 from flext_cli import u
+from typing_extensions import TypeForm
 
 from flext_infra import config, m, p, r, t
 from flext_infra._utilities import (
@@ -23,6 +24,25 @@ from flext_infra._utilities import (
 
 class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntimeBase):
     """Authenticate native suppliers and construct Rope source snapshots."""
+
+    @staticmethod
+    def extension_module_names(project: p.Infra.RopeProject) -> t.StrTuple:
+        """Read native extension names through their validated structural boundary.
+
+        Returns:
+            The exact elected extension names in deterministic order.
+
+        """
+        core = u.type_adapter(
+            TypeForm(t.InstanceOf[p.Infra.RopePyCore])
+        ).validate_python(project.get_pycore(), strict=True)
+        return tuple(
+            sorted(
+                u.type_adapter(set[str]).validate_python(
+                    core.extension_modules, strict=True
+                )
+            )
+        )
 
     @classmethod
     def from_import(
@@ -346,7 +366,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             else dict(captured.contents)
         )
         root = Path(project.root.real_path).resolve()
-        declared: dict[Path, str] = {}
+        declared: t.MutableMappingKV[Path, str] = {}
         for plan in declared_files:
             path, content = cls.snapshot_destination(root, plan)
             proposed = content.decode("utf-8")
@@ -381,7 +401,6 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         if not callable(factory):
             msg = "Rope project owner does not expose snapshot construction"
             raise TypeError(msg)
-        pycore = project.get_pycore()
         snapshot = factory(
             project.root.real_path,
             contents,
@@ -392,13 +411,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
                 ignored_resources=tuple(
                     sorted(config.Infra.codegen.source_scan_ignored)
                 ),
-                extension_modules=tuple(
-                    sorted(
-                        u.type_adapter(set[str]).validate_python(
-                            pycore.extension_modules, strict=True
-                        )
-                    )
-                ),
+                extension_modules=cls.extension_module_names(project),
                 python_path_folders=tuple(
                     folder.real_path
                     for folder in project.get_python_path_folders()

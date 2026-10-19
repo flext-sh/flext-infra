@@ -551,7 +551,8 @@ class TestsFlextInfraRopeContractBindings:
                     "u = 'existing consumer binding'\n"
                     "class Payload(BaseModel):\n"
                     "    values: tuple[str, ...] = Field(default_factory=list)\n"
-                    "evidence = (u, Payload().model_dump_json())\n"
+                    "evidence = (u, type(Payload().values), "
+                    "Payload.model_json_schema())\n"
                 ),
                 r"destination u.empty is shadowed",
             ),
@@ -570,7 +571,7 @@ class TestsFlextInfraRopeContractBindings:
                     "class Payload(BaseModel):\n"
                     "    values: tuple[str, ...] = Field(default_factory=list)\n"
                     "from flext_core import u\n"
-                    "evidence = Payload().model_dump_json()\n"
+                    "evidence = (type(Payload().values), Payload.model_json_schema())\n"
                 ),
                 "no preceding unconditional import",
             ),

@@ -62,8 +62,11 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         )
         service = FlextInfraCodegenConform(
             repository_root=root,
-            request=request,
-            initial_workspace=u.Tests.workspace_spec(repository, project=project),
+            state=m.Infra.CodegenConformState(
+                repository_root=root,
+                request=request,
+                initial_workspace=u.Tests.workspace_spec(repository, project=project),
+            ),
         )
         first_plan = tm.ok(service.plan(request))
         first = next(
@@ -104,7 +107,15 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             scope=c.Infra.CodegenConformScope.ALL,
             mode=c.Infra.CodegenConformMode.APPLY,
         )
-        tm.ok(FlextInfraCodegenConform(repository_root=root, request=request).execute())
+        tm.ok(
+            FlextInfraCodegenConform(
+                repository_root=root,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    request=request,
+                ),
+            ).execute()
+        )
         for verb in ("upg", "setup"):
             provisioned = tm.ok(u.Tests.run_isolated_make([verb], cwd=root))
             tm.that(
@@ -552,8 +563,11 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         plan: m.Infra.CodegenPlan = tm.ok(
             FlextInfraCodegenConform(
                 repository_root=repository_root,
-                request=request,
-                initial_workspace=workspace,
+                state=m.Infra.CodegenConformState(
+                    repository_root=repository_root,
+                    request=request,
+                    initial_workspace=workspace,
+                ),
             ).plan(request),
         )
         makefile_plans = tuple(

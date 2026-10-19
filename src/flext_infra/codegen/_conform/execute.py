@@ -1126,14 +1126,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             )
             for item in failures
         )
-        first_exception = next(
-            (
-                item.exception
-                for item in (planned.value, *failures)
-                if item.exception is not None
-            ),
-            None,
-        )
+        first_exception = planned.value.exception
+        if first_exception is None:
+            first_exception = next(
+                (item.exception for item in failures if item.exception is not None),
+                None,
+            )
         completed = self._settle_generation_stage(
             lambda: FlextInfraCodegenTransaction.publish_operation_receipt(
                 request,
@@ -1181,9 +1179,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
             The original result or a failure retaining the native exception.
 
         """
+        runtime_errors: tuple[type[Exception], ...] = (OSError, *c.EXC_BROAD_RUNTIME)
         try:
             return operation()
-        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+        except runtime_errors as exc:
             return r[T].fail(str(exc), exception=exc)
 
     def _publish_lazy_batch(
@@ -1650,6 +1649,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 )
                 for file in analysis.files
             ),
+            prepare=u.Infra.normalize_source_plan,
         )
         if prepared.failure:
             return result_type.from_failure(prepared)
@@ -1783,6 +1783,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
         if docs_generator is None:
             return r[bool].fail("docs publication lacks its original planner")
         failures: list[p.FailureLike] = []
+        runtime_errors: tuple[type[Exception], ...] = (OSError, *c.EXC_BROAD_RUNTIME)
         try:
             for prepared in docs_generator.prepare_batches(
                 publication_receipts=receipts,
@@ -1798,7 +1799,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 )
                 if published.failure:
                     failures.append(published)
-        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+        except runtime_errors as exc:
             failures.append(r[bool].fail(str(exc), exception=exc))
         self._generation_issues.extend(
             m.Infra.Issue(

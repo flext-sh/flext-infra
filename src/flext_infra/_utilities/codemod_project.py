@@ -19,11 +19,13 @@ import ast
 import sys
 from collections.abc import Generator, Mapping, MutableMapping
 from contextlib import closing, contextmanager
+from contextvars import ContextVar
 from functools import cache, lru_cache
 from importlib.metadata import packages_distributions
 from importlib.util import find_spec
 from pathlib import Path
 from types import MappingProxyType
+from typing import ClassVar
 
 from flext_cli import u
 from packaging.utils import canonicalize_name
@@ -57,6 +59,9 @@ from flext_infra._utilities._rope_analysis.importstate import (
 from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
+from flext_infra._utilities._rope_source_bases_runtime import (
+    FlextInfraUtilitiesRopeSourceBasesRuntime,
+)
 from flext_infra._utilities.rope_runtime_matching import (
     FlextInfraUtilitiesRopeRuntimeMatching,
 )
@@ -67,6 +72,10 @@ class FlextInfraUtilitiesCodemodProject(
     FlextInfraUtilitiesImportLaw,
 ):
     """Evaluate rule context over project facts: packages, layers, graphs."""
+
+    _module_role_cache: ClassVar[
+        ContextVar[t.MutableMappingKV[Path, int] | None]
+    ] = ContextVar("codemod_module_role_cache", default=None)
 
     @classmethod
     def project_import_graph(
@@ -431,6 +440,7 @@ class FlextInfraUtilitiesCodemodProject(
             c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION,
             c.Infra.CodemodContextPredicate.PROTOCOL_DECLARATION,
             c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE,
+            c.Infra.CodemodContextPredicate.LATER_LAYER,
             c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER,
             c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION,
         }
@@ -582,6 +592,20 @@ class FlextInfraUtilitiesCodemodProject(
             ValueError: If a native predicate lacks its original source epoch.
 
         """
+        if (
+            condition.predicate is c.Infra.CodemodContextPredicate.LATER_LAYER
+            and project is not None
+            and sources is not None
+        ):
+            return cls._later_layer(
+                admission.root,
+                source,
+                cls._captured_text(
+                    admission.rule, condition.variable, admission.captures, source
+                ),
+                condition,
+                binding=(project, sources),
+            )
         if (
             condition.predicate is c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE
             and project is not None
@@ -1126,10 +1150,12 @@ class FlextInfraUtilitiesCodemodProject(
             project.frozen_layout(),
         ):
             token = cls._type_payload_cache.set({})
+            roles = cls._module_role_cache.set({})
             try:
                 with FlextInfraUtilitiesRopeRuntimeMatching.semantic_matching_context():
                     yield project, sources
             finally:
+                cls._module_role_cache.reset(roles)
                 cls._type_payload_cache.reset(token)
 
     @classmethod
@@ -1504,11 +1530,7 @@ class FlextInfraUtilitiesCodemodProject(
             if owner is None:
                 message = f"project owner is unresolved: {file_path}"
                 raise ValueError(message)
-            namespace = FlextInfraUtilitiesImportLaw.import_namespace(owner, file_path)
-            if namespace is None:
-                # Root-level files retain the existing project-package scope.
-                return FlextInfraUtilitiesPyproject.project_package_name(owner)
-            own = cls._top_module(namespace[1])
+            return FlextInfraUtilitiesPyproject.project_package_name(owner)
         return own
 
     @classmethod
@@ -1895,6 +1917,8 @@ class FlextInfraUtilitiesCodemodProject(
         file_path: Path,
         imported: str,
         condition: p.Infra.CodemodContextOperands,
+        *,
+        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]] | None = None,
     ) -> bool:
         """Return whether an import reaches a later layer than its module's.
 
@@ -1917,12 +1941,113 @@ class FlextInfraUtilitiesCodemodProject(
         if condition.arg:
             owner = cls._layer_rank(order, frozenset(condition.arg))
         else:
-            namespace = ".".join(file_path.relative_to(root).with_suffix("").parts)
-            owner = FlextInfraUtilitiesImportLaw.module_import_layer(namespace)
+            owner = cls._resolved_module_layer(root, file_path, binding)
         if owner is None:
             message = f"import comparison layer is undeclared: {condition.arg!r}"
             raise ValueError(message)
-        return cls._import_target_later(root, file_path, imported, condition, owner)
+        return cls._import_target_later(
+            root, file_path, imported, condition, (owner, binding)
+        )
+
+    @classmethod
+    def _resolved_module_layer(
+        cls,
+        root: Path,
+        path: Path,
+        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]] | None,
+    ) -> int:
+        """Resolve fallback service roles from the pass's authenticated native graph.
+
+        Returns:
+            The explicit path layer or its proven service implementation role.
+
+        """
+        order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
+        namespace = ".".join(path.relative_to(root).with_suffix("").parts)
+        rank = FlextInfraUtilitiesImportLaw.module_import_layer(namespace)
+        if rank != order.index("other") or binding is None:
+            return rank
+        cache = cls._module_role_cache.get()
+        cached = None if cache is None else cache.get(path)
+        if cached is not None:
+            return cached
+        resolved = cls._native_service_layer(root, path, binding)
+        rank = order.index("services") if resolved else rank
+        if cache is not None:
+            cache[path] = rank
+        return rank
+
+    @staticmethod
+    def _native_service_layer(
+        root: Path,
+        path: Path,
+        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
+    ) -> bool:
+        """Prove service ancestry using the existing authenticated source C3 owner.
+
+        Returns:
+            Whether a module-defined class derives from its own service root.
+
+        """
+        project, sources = binding
+        if path not in sources:
+            return False
+        modules: t.MutableMappingKV[str, t.Pair[Path, str]] = {}
+        roots: list[m.Infra.SourceClassReference] = []
+        declarations: list[m.Infra.SourceClassReference] = []
+        order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
+        for source_path, text in sources.items():
+            if (
+                source_path.suffix != c.Infra.EXT_PYTHON
+                or not source_path.is_relative_to(root)
+            ):
+                continue
+            module = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
+                project.get_pymodule(
+                    project.get_resource(source_path.relative_to(root).as_posix())
+                )
+            )
+            name = module.get_name()
+            modules[name] = source_path, text
+            namespace = ".".join(source_path.relative_to(root).with_suffix("").parts)
+            if (
+                FlextInfraUtilitiesImportLaw.module_import_layer(namespace)
+                == order.index("base")
+                and "s" in module.get_attributes()
+                and FlextInfraUtilitiesRopeRuntimeTypes.py_class(
+                    module.get_attribute("s").get_object()
+                )
+            ):
+                roots.append(
+                    m.Infra.SourceClassReference(
+                        target=name, attributes=("s",), qualified_base=f"{name}.s"
+                    )
+                )
+            if source_path == path:
+                declarations.extend(
+                    m.Infra.SourceClassReference(
+                        target=name,
+                        attributes=(class_name,),
+                        qualified_base=f"{name}.{class_name}",
+                    )
+                    for class_name in dict.fromkeys(
+                        value.get_name()
+                        for attribute in module.get_attributes().values()
+                        if FlextInfraUtilitiesRopeRuntimeTypes.py_class(
+                            value := attribute.get_object()
+                        )
+                        and value.get_module() is module
+                    )
+                )
+        if not declarations:
+            return False
+        return any(
+            FlextInfraUtilitiesRopeSourceBasesRuntime.source_class_order(
+                project, modules, (service, *declarations)
+            )[0]
+            != service.qualified_base
+            for service in roots
+        )
 
     @classmethod
     def _import_target_later(
@@ -1931,7 +2056,9 @@ class FlextInfraUtilitiesCodemodProject(
         file_path: Path,
         imported: str,
         condition: p.Infra.CodemodContextOperands,
-        owner: int,
+        comparison: t.Pair[
+            int, t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]] | None
+        ],
     ) -> bool:
         """Compare an import target with its resolved source layer.
 
@@ -1942,6 +2069,7 @@ class FlextInfraUtilitiesCodemodProject(
             ValueError: If the target layer or project namespace is undeclared.
 
         """
+        owner, binding = comparison
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         if not condition.as_:
             layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
@@ -1961,8 +2089,7 @@ class FlextInfraUtilitiesCodemodProject(
                     return False
                 target_rank = FlextInfraUtilitiesImportLaw.module_import_layer(imported)
                 return target_rank > owner
-            namespace = ".".join(target.relative_to(root).with_suffix("").parts)
-            return FlextInfraUtilitiesImportLaw.module_import_layer(namespace) > owner
+            return cls._resolved_module_layer(root, target, binding) > owner
         target_rank = cls._layer_rank(order, target_layers)
         if target_rank is None:
             message = f"import target layer is undeclared: {condition.as_!r}"
