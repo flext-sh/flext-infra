@@ -28,6 +28,7 @@ class FlextInfraProjectClassifierFamilyMixin:
     _CLASS_DEF_RE: t.RegexPattern = c.Infra.CLASS_WITH_BASES_RE
 
     if TYPE_CHECKING:
+        _project_root: Path
         _src_path: Path
 
         @staticmethod
@@ -162,27 +163,33 @@ class FlextInfraProjectClassifierFamilyMixin:
             return ""
         return "".join(part.capitalize() for part in parts)
 
-    @staticmethod
     def _infer_project_kind(
+        self,
         *,
         internal_dependencies: t.StrSequence,
         local_facade_classes: t.Infra.StrSet,
     ) -> str:
         """Infer project kind.
 
+        Domain/platform member identity derives from the declared
+        per-member ``flext-layer`` attributes in the containing workspace's
+        ``.gitmodules``; a standalone checkout declares no members and
+        classifies through dependencies alone.
+
         Returns:
             The resulting ``str``.
 
         """
+        domain_members, platform_members = u.Infra.workspace_member_layer_names(
+            self._project_root,
+        )
         if not internal_dependencies:
             return "core"
         has_domain_dependency = any(
-            dependency in c.Infra.DOMAIN_PACKAGES
-            for dependency in internal_dependencies
+            dependency in domain_members for dependency in internal_dependencies
         )
         has_platform_dependency = any(
-            dependency in c.Infra.PLATFORM_PACKAGES
-            for dependency in internal_dependencies
+            dependency in platform_members for dependency in internal_dependencies
         )
         dependency_kind = "app"
         if has_domain_dependency and has_platform_dependency:

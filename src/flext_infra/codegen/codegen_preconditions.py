@@ -15,6 +15,7 @@ from importlib.machinery import (
     SourceFileLoader,
 )
 from importlib.metadata import packages_distributions
+from json import dumps
 from operator import itemgetter
 from pathlib import Path
 from types import ModuleType
@@ -1252,7 +1253,14 @@ class FlextInfraCodegenPreconditions:
         ]
         declared = distribution.files
         if declared is None:
-            return result_type.fail("producer distribution has no native file manifest")
+            return result_type.fail(
+                "producer distribution has no native file manifest: "
+                f"name={distribution.name!r} version={distribution.version!r} "
+                f"descriptor={type(distribution).__module__}."
+                f"{type(distribution).__qualname__} "
+                f"location={distribution.locate_file('')} "
+                f"elected_namespaces={tuple(sorted(roots.items()))}"
+            )
         paths = tuple(
             Path(str(distribution.locate_file(item))).absolute() for item in declared
         )
@@ -1753,7 +1761,10 @@ class FlextInfraCodegenPreconditions:
             .toml_read_json(lock_path)
             .flat_map(
                 lambda payload: r[m.Infra.LockedEnvironment].create_from_callable(
-                    partial(m.Infra.LockedEnvironment.model_validate, payload)
+                    partial(
+                        m.Infra.LockedEnvironment.model_validate_json,
+                        dumps(payload),
+                    )
                 )
             )
             .flat_map(

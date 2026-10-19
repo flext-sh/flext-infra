@@ -13,12 +13,97 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, r
+from flext_infra import config, infra, r, settings
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraCodegenMakeUpgrade:
     """Prove only ``upg`` resolves locks and setup preserves native lock inputs."""
+
+    @staticmethod
+    def test_editable_cold_setup_requires_its_own_lock(tmp_path: Path) -> None:
+        """An elected supplier never lets frozen setup seed another view's lock."""
+        credential = t.SecretStr(settings.env_required("GITHUB_TOKEN"))
+        source = tm.ok(infra.project_context(Path.cwd()))
+        root, _ = u.Tests.render_make_environment(
+            tmp_path, c.Infra.MakeProfile.STANDALONE, bootstrap=True
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / "codegen.local.yaml",
+                {
+                    "Infra": {
+                        "codegen": {
+                            "make": {
+                                "uv_resolution": {
+                                    "editable_supplier_root": tm.not_none(
+                                        source.runtime
+                                    ).runtime_root.as_posix(),
+                                },
+                            },
+                        },
+                    },
+                },
+            )
+        )
+        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / c.Infra.MAKEFILE_FILENAME,
+                u.Tests.conform_makefile_text(root, workspace),
+            )
+        )
+        policy = inputs.spec.make.uv_resolution
+        paths = (
+            root / c.PYPROJECT_FILENAME,
+            root / c.Infra.UV_LOCK_FILENAME,
+            root / c.Infra.MISE_LOCK_FILENAME,
+            *(
+                root / directory / name
+                for directory in (
+                    policy.local_directory,
+                    policy.standalone_directory,
+                    policy.editable_directory,
+                )
+                for name in (c.PYPROJECT_FILENAME, c.Infra.UV_LOCK_FILENAME)
+            ),
+        )
+        before = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in paths
+        )
+        process = tm.ok(
+            u.Tests.run_isolated_make(
+                ["setup"], cwd=root, private_env={"GITHUB_TOKEN": credential}
+            )
+        )
+        tm.that(process.outcome.raw_return_code, eq=2)
+        tm.that(
+            process.stderr,
+            has=f"ERROR[setup] uv.lock is missing: {root / policy.editable_directory}",
+        )
+        tm.that((root / c.Infra.ENVIRONMENT_DIRECTORY).exists(), eq=False)
+        tm.that(
+            tuple(tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in paths),
+            eq=before,
+        )
+
+    @staticmethod
+    def test_help_parses_before_runtime_provisioning(
+        generated_make_template: t.Pair[c.Infra.MakeProfile, Path],
+    ) -> None:
+        """Public help parses bootstrap recipes without creating an environment."""
+        _profile, root = generated_make_template
+        environment = root / c.Infra.ENVIRONMENT_DIRECTORY
+        tm.that(environment.exists(), eq=False)
+        output = tm.ok(u.Tests.run_isolated_make(["help"], cwd=root))
+        tm.that(
+            u.Cli.process_succeeded(output.outcome),
+            eq=True,
+            msg=output.stdout + output.stderr,
+        )
+        tm.that(environment.exists(), eq=False)
 
     @staticmethod
     def test_bootstrap_seed_has_native_resolution_inputs_without_lock_writes(
@@ -440,18 +525,21 @@ class TestsFlextInfraCodegenMakeUpgrade:
         for needle in (
             "deps modernize",
             "--rewrite-constraints",
-            "--upgrade --refresh",
         ):
             tm.that(
                 self._recipe_targets_containing(makefile, needle),
                 eq={"_upg_lifecycle"},
             )
         tm.that(
+            self._recipe_targets_containing(makefile, "--upgrade --refresh"),
+            eq={"_upg_resolve_locks"},
+        )
+        tm.that(
             self._recipe_targets_containing(
                 makefile,
                 '$(UV) lock --check --project "$$resolution"',
             ),
-            eq={"_upg_reconcile_locks"},
+            eq={"_upg_resolve_locks", "_upg_reconcile_locks"},
         )
         tm.that(makefile, lacks="--constraint-policy")
 
@@ -477,7 +565,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         def first(needle: str) -> int:
             return next(index for index, step in enumerate(steps) if needle in step)
 
-        resolved = first("--upgrade --refresh")
+        resolved = first("_upg_resolve_locks")
         installed = first("_upg_install_runtime")
         corrected = first("--what pyproject --scope all")
         reconciled = first("_upg_reconcile_locks")
@@ -507,13 +595,12 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 if index > start and needle in step
             )
 
-        upgraded = after(-1, "lock --project")
-        bumped = after(upgraded, "lock --bump")
+        upgraded = after(-1, "_upg_resolve_locks")
+        bumped = after(upgraded, "_upg_provision_tools")
         projected = after(bumped, "$(call RUN_PUBLIC_PRODUCE,gen)")
         relocked = after(projected, "_upg_reconcile_locks")
         installed = after(relocked, "_builtin_setup_environment")
 
-        tm.that(steps[upgraded], has="--upgrade")
         tm.that(steps[relocked], lacks="--upgrade")
         tm.that(
             upgraded < bumped < projected < relocked < installed,
@@ -581,8 +668,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
             next(i for i, step in enumerate(steps) if needle in step)
             for needle in (
                 "--what mise-config --scope self",
-                "lock --bump",
-                "install --locked --yes",
+                "--what makefile --scope all",
+                "_upg_provision_tools",
                 "deps modernize",
                 "$(call RUN_PUBLIC_PRODUCE,gen)",
                 "deps verify-locks",

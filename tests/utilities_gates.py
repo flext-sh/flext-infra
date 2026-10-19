@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import infra
-from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
+from flext_infra.deps import FlextInfraConfigFixer
 from tests import c, m, t, tm
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
 

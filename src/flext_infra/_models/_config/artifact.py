@@ -20,20 +20,20 @@ from flext_infra._models import (
     FlextInfraModelsLayout,
     FlextInfraModelsMiseToolchain,
 )
-from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
-from flext_infra._models._config.make import FlextInfraConfigModelsMake
-from flext_infra._models._config.provider import FlextInfraConfigModelsProvider
-from flext_infra._models._config.refactor_campaigns import (
+from flext_infra._models._config import (
+    FlextInfraConfigModelsContexts,
+    FlextInfraConfigModelsContract,
+    FlextInfraConfigModelsMake,
+    FlextInfraConfigModelsProvider,
     FlextInfraConfigModelsRefactorCampaigns,
+    FlextInfraConfigModelsRelease,
+    FlextInfraConfigModelsRender,
+    FlextInfraConfigModelsScaffold,
+    FlextInfraConfigModelsTemplates,
+    FlextInfraConfigModelsWorkspace,
+    FlextInfraConfigVocabulary,
 )
-from flext_infra._models._config.release import FlextInfraConfigModelsRelease
-from flext_infra._models._config.render import FlextInfraConfigModelsRender
-from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
-from flext_infra._models._config.templates import FlextInfraConfigModelsTemplates
-from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
-from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
-from flext_infra._models._git.worktree_state import FlextInfraModelsGitWorktreeState
+from flext_infra._models._git import FlextInfraModelsGitWorktreeState
 
 
 class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
@@ -74,6 +74,28 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 ),
             ),
         ] = False
+        analysis_exclude: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Feed the declared directory-exclusion registry: "
+                    "tree-walking analyzers (discovery, docs, markdown, "
+                    "census, worktree deltas) never descend into this "
+                    "machine-emitted artifact"
+                ),
+            ),
+        ] = False
+        resolver_owned: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Package-manager lockfile emission: sibling packages of "
+                    "one tool family share resolved dependency lines by "
+                    "construction, so the resolver owns the content and "
+                    "clone detection never reads it"
+                ),
+            ),
+        ] = False
 
         @m.model_validator(mode="after")
         def _validate_generated_source_is_directory(self) -> Self:
@@ -90,6 +112,118 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 msg = f"generated source artifact must be a directory: {self.name}"
                 raise ValueError(msg)
             return self
+
+    class DeclaredExclusionsSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Declared directory-exclusion registry (the one exclusion SSOT).
+
+        Every name here is a declared topology fact, not a per-scanner
+        exemption: tool-state homes, immutable archive roots, editor/agent
+        state, and per-scanner deltas compose with the artifact SSOT
+        (``analysis_exclude``) and the VCS-derived names into each consumer's
+        derived set. Rules derive from these declarations; adding an exclusion
+        is a config declaration, never a code edit.
+        """
+
+        tool_state: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Non-artifact tool homes and scratch roots (agent sync "
+                    "home, transient test scratch)"
+                ),
+            ),
+        ] = ()
+        archive_roots: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Immutable archive contracts: historical evidence trees "
+                    "that are never production input to any analyzer"
+                ),
+            ),
+        ] = ()
+        docs: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Docs-scanner delta: generated sites and documentation "
+                    "report outputs excluded from live documentation"
+                ),
+            ),
+        ] = ()
+        pyproject_scan: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "pyproject-discovery delta: non-productive trees whose "
+                    "pyproject tables never declare workspace membership"
+                ),
+            ),
+        ] = ()
+        check: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Quality-check delta: editor/agent state, report "
+                    "outputs, and caches excluded from every check surface"
+                ),
+            ),
+        ] = ()
+        validation_clone: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Validation-clone delta: directories excluded when "
+                    "cloning a project tree for post-apply validation"
+                ),
+            ),
+        ] = ()
+        worktree_transaction: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Worktree-transaction delta: cache directories excluded "
+                    "from isolated worktree transaction deltas"
+                ),
+            ),
+        ] = ()
+        deps_discovery: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Dependency-discovery delta: directories skipped while "
+                    "searching for pyproject declarations"
+                ),
+            ),
+        ] = ()
+        parameterized_case_dirs: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Structured test-case parameterization directories: "
+                    "fixture twins whose bodies mirror their case tables"
+                ),
+            ),
+        ] = ()
+        part_container_dirs: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Declared part-container directories: mechanical "
+                    "declaration splits whose overlap is structural, not "
+                    "authored duplication"
+                ),
+            ),
+        ] = ()
+        helper_modules: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Declared helper module filenames (coverage aggregation "
+                    "and similar mechanical companions)"
+                ),
+            ),
+        ] = ()
 
     class CodegenGovernedPlanRequest(FlextInfraConfigModelsContract.ConfigContract):
         """Resolved inputs for planning one governed artifact's file plan."""
@@ -329,6 +463,19 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 ),
             ),
         ]
+        exclusions: Annotated[
+            FlextInfraConfigModelsArtifact.DeclaredExclusionsSpec,
+            m.Field(
+                description=(
+                    "Declared directory-exclusion registry: the one SSOT "
+                    "every scanner exclusion derives from"
+                ),
+            ),
+        ] = m.Field(
+            default_factory=lambda: (
+                FlextInfraConfigModelsArtifact.DeclaredExclusionsSpec.model_validate({})
+            ),
+        )
         layout: Annotated[
             FlextInfraModelsLayout.LayoutSpec,
             m.Field(
@@ -420,6 +567,173 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
 
             """
             return tuple(f"**/{name}/**" for name in self.generated_sources)
+
+        @m.computed_field
+        @property
+        def analysis_excluded_dirs(self) -> t.VariadicTuple[str]:
+            """Derived base directory exclusion set every walker composes.
+
+            Machine-emitted artifacts flagged ``analysis_exclude`` plus the
+            declared tool-state roots plus the VCS-derived names (Git
+            internals and the worktree namespace) form the one base set the
+            per-scanner derivations extend.
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
+            return tuple(
+                sorted(
+                    {
+                        artifact.name
+                        for artifact in self.artifacts
+                        if artifact.analysis_exclude
+                    }
+                    | set(self.exclusions.tool_state)
+                    | {c.Infra.GIT_DIR, c.Infra.WORKTREES_DIRNAME},
+                ),
+            )
+
+        @m.computed_field
+        @property
+        def docs_excluded_dirs(self) -> t.VariadicTuple[str]:
+            """Derived live-documentation exclusion set.
+
+            The base walker set plus the declared archive roots and the
+            generated-site/report delta: live docs exclude generated sites
+            and immutable or historical evidence roots.
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
+            return tuple(
+                sorted(
+                    set(self.analysis_excluded_dirs)
+                    | set(self.exclusions.archive_roots)
+                    | set(self.exclusions.docs)
+                )
+            )
+
+        @m.computed_field
+        @property
+        def pyproject_scan_excluded_dirs(self) -> t.VariadicTuple[str]:
+            """Derived pyproject-discovery exclusion set.
+
+            The base walker set plus the declared archive roots and the
+            pyproject-scan delta whose trees never declare workspace
+            membership.
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
+            return tuple(
+                sorted(
+                    set(self.analysis_excluded_dirs)
+                    | set(self.exclusions.archive_roots)
+                    | set(self.exclusions.pyproject_scan)
+                )
+            )
+
+        @m.computed_field
+        @property
+        def check_excluded_dirs(self) -> t.VariadicTuple[str]:
+            """Derived quality-check exclusion set.
+
+            The base walker set plus the declared archive roots and the
+            check delta (editor/agent state, report outputs, caches).
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
+            return tuple(
+                sorted(
+                    set(self.analysis_excluded_dirs)
+                    | set(self.exclusions.archive_roots)
+                    | set(self.exclusions.check)
+                )
+            )
+
+        @m.computed_field
+        @property
+        def validation_clone_excluded_dirs(self) -> t.VariadicTuple[str]:
+            """Derived validation-clone exclusion set.
+
+            The base walker set plus the declared archive roots and the
+            validation-clone delta applied while cloning a project tree for
+            post-apply validation.
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
+            return tuple(
+                sorted(
+                    set(self.analysis_excluded_dirs)
+                    | set(self.exclusions.archive_roots)
+                    | set(self.exclusions.validation_clone)
+                )
+            )
+
+        @m.computed_field
+        @property
+        def worktree_transaction_excluded_dirs(self) -> t.VariadicTuple[str]:
+            """Derived worktree-transaction exclusion set.
+
+            The base walker set plus the declared archive roots and the
+            cache delta excluded from isolated worktree transaction deltas.
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
+            return tuple(
+                sorted(
+                    set(self.analysis_excluded_dirs)
+                    | set(self.exclusions.archive_roots)
+                    | set(self.exclusions.worktree_transaction)
+                )
+            )
+
+        @m.computed_field
+        @property
+        def deps_discovery_excluded_dirs(self) -> t.VariadicTuple[str]:
+            """Derived dependency-discovery exclusion set.
+
+            The base walker set plus the declared archive roots and the
+            dependency-discovery delta skipped while searching for pyproject
+            declarations.
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
+            return tuple(
+                sorted(
+                    set(self.analysis_excluded_dirs)
+                    | set(self.exclusions.archive_roots)
+                    | set(self.exclusions.deps_discovery)
+                )
+            )
+
+        @m.computed_field
+        @property
+        def resolver_owned_files(self) -> t.VariadicTuple[str]:
+            """Derived filenames whose content the package resolver owns.
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
+            return tuple(
+                sorted(
+                    artifact.name
+                    for artifact in self.artifacts
+                    if artifact.resolver_owned
+                )
+            )
 
         # The canonical .gitignore body is ONE computed
         # projection — the artifact SSOT feeds the Python/build section and the
@@ -543,6 +857,11 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 for directory in (
                     self.make.uv_resolution.local_directory,
                     self.make.uv_resolution.standalone_directory,
+                    *(
+                        (self.make.uv_resolution.editable_directory,)
+                        if self.make.uv_resolution.editable_supplier_root is not None
+                        else ()
+                    ),
                 )
             )
 
@@ -564,9 +883,15 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                 for item in self.managed_files
                 if item.path == Path(c.PYPROJECT_FILENAME)
             )
-            if len(roots) != 1:
+            if len(roots) > 1:
                 msg = "managed files require exactly one root pyproject owner"
                 raise ValueError(msg)
+            if not roots:
+                # A projected slice (e.g. a single owner's artifacts planned by
+                # the runtime) carries no resolver projection of its own; the
+                # exactly-one-root-owner rule is a full-declaration authoring
+                # guard, enforced at config load, never on derived slices.
+                return self.managed_files
             owner = roots[0]
             projected = tuple(
                 FlextInfraConfigModelsTemplates.ManagedFileSpec(
@@ -574,6 +899,11 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                     owner=owner.owner,
                     policy="full",
                     mode=owner.mode,
+                    tracking=(
+                        "runtime-local"
+                        if path.parent == self.make.uv_resolution.editable_directory
+                        else owner.tracking
+                    ),
                 )
                 for path in self.uv_resolution_pyprojects
             )
@@ -1001,6 +1331,20 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
     class CodegenRepositoryPlanTask(FlextInfraConfigModelsContract.ConfigContract):
         """One repository's read-only planning inputs sent to a fleet worker."""
 
+        generation_only: Annotated[
+            bool,
+            m.Field(description="Retain the invoking operation's generation boundary"),
+        ] = False
+        provider_plans: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenFilePlan] | None,
+            m.Field(
+                exclude=True,
+                description=(
+                    "Original lazy plans of the selected cohort, supplied as "
+                    "planning data; publication still requires live admission"
+                ),
+            ),
+        ] = None
         selected_inputs: Annotated[
             FlextInfraConfigModelsArtifact.CodegenInputs | None,
             m.Field(
@@ -1073,6 +1417,18 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             float,
             m.Field(ge=0, description="Planning wall seconds"),
         ] = 0.0
+
+        @m.computed_field
+        @property
+        def failed(self) -> bool:
+            """Include native causes even when no diagnostic was constructed."""
+            return bool(
+                self.error
+                or self.error_type
+                or self.error_traceback
+                or self.issues
+                or self.exception is not None
+            )
 
     class CodegenPlanningFileEvidence(FlextInfraConfigModelsContract.ConfigContract):
         """One planned destination without source bytes or captured file state."""

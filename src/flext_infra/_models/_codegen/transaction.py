@@ -8,17 +8,24 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
 from flext_infra import c, p, t
-from flext_infra._models import FlextInfraModelsCodegenToolchain, FlextInfraModelsRope
-from flext_infra._models._codegen.journal import FlextInfraModelsCodegenJournalModels
-from flext_infra._models._codegen.pipeline import FlextInfraModelsCodegenPipelineModels
-from flext_infra._models.base import FlextInfraModelsBase
-from flext_infra._models.check import FlextInfraModelsCheck
-from flext_infra._models.workspace import FlextInfraModelsWorkspace
+from flext_infra._models import (
+    FlextInfraModelsBase,
+    FlextInfraModelsCheck,
+    FlextInfraModelsCodegenToolchain,
+    FlextInfraModelsRope,
+    FlextInfraModelsWorkspace,
+)
+from flext_infra._models._codegen import (
+    FlextInfraModelsCodegenJournalModels,
+    FlextInfraModelsCodegenPipelineModels,
+)
+from flext_infra._models._config import FlextInfraConfigModels
 
 
 class FlextInfraModelsCodegenTransactionModels:
@@ -51,14 +58,32 @@ class FlextInfraModelsCodegenTransactionModels:
         """Pinned project closure and desired bytes for effect-free validation."""
 
         workspace: Path = m.Field(description="Canonical source workspace root")
+        workspaces: t.VariadicTuple[Path] = m.Field(
+            default=(),
+            description="Explicit composition scopes, never a parent-directory scan",
+        )
         roots: t.VariadicTuple[Path] = m.Field(
             description="Discovered project roots covering the pinned source closure"
         )
         inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
             description="Exact source and configuration observations"
         )
-        updates: t.MappingKV[Path, str] = m.Field(
-            description="Desired source updates keyed by live destination"
+        updates: t.MappingKV[Path, str | None] = m.Field(
+            description=(
+                "Desired sources keyed by live destination; None retires an artifact"
+            ),
+        )
+        modes: t.MappingKV[Path, int] = m.Field(
+            default_factory=lambda: MappingProxyType[Path, int]({}),
+            description="Desired file-effect modes derived from original move sources",
+        )
+        declared_files: t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan] = (
+            m.Field(
+                default=(),
+                description=(
+                    "Original file/absence witnesses with the current desired effects"
+                ),
+            )
         )
         layouts: t.VariadicTuple[FlextInfraModelsRope.RopeProjectLayout] = m.Field(
             description="Original project layouts in the desired import closure",

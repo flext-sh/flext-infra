@@ -267,7 +267,7 @@ class FlextInfraCodegenVscodeMixin:
             The effective declaration after ordered mapping/list composition.
 
         """
-        baseline = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        baseline = u.json_mapping_adapter().validate_python(
             spec.model_dump(mode="json"),
         )
         merged = u.config_merge(dict(baseline), dict(delta.values))
@@ -353,7 +353,7 @@ class FlextInfraCodegenVscodeMixin:
         if not isinstance(parsed.value, Mapping):
             return r[t.JsonMapping].fail("VS Code settings root must be an object")
         return r[t.JsonMapping].ok(
-            t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed.value),
+            u.json_mapping_adapter().validate_python(parsed.value),
         )
 
     @classmethod

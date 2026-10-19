@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra import m
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests import c, tm, u
@@ -18,6 +20,37 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraRopeSignaturePatch:
     """Validate signature token walking against annotated call parameters."""
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "source",
+        [
+            "def consume[T: module.Model](value: T) -> T:\n    return value\n",
+            "type Payload = tuple[module.Model, ...]\n",
+            "type Payload[T: module.Model] = tuple[T, module.Model]\n",
+            (
+                "try:\n    value = 1\n"
+                "except ValueError:\n    value = 2\n"
+                "else:\n    value = module.Model()\n"
+                "finally:\n    value = 3\n"
+            ),
+        ],
+    )
+    def test_semantic_matching_in_qualified_reference_contexts(
+        tmp_path: Path, source: str
+    ) -> None:
+        """Native matching covers type parameters, aliases and try-else branches."""
+        module_path = tmp_path / "consumer.py"
+        module_path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with FlextInfraRopeWorkspace.open_workspace(tmp_path) as rope:
+            module = u.Infra.build_string_module(
+                rope.rope_project, source, resource=rope.resource(module_path)
+            )
+            regions = u.Infra.semantic_regions(module, "module.Model", arguments={})
+        tm.that(
+            tuple(source[start:end] for start, end in regions),
+            eq=("module.Model",) * source.count("module.Model"),
+        )
 
     @staticmethod
     def test_objects_walk_annotated_call_parameters(tmp_path: Path) -> None:

@@ -13,16 +13,31 @@ from typing import Annotated, ClassVar
 from flext_cli import m
 
 from flext_infra import c, p, t
-from flext_infra._models import FlextInfraModelsMixins
+from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsMixins
 from flext_infra._models._codegen import (
     FlextInfraModelsCodegenFixModels,
     FlextInfraModelsCodegenLazyInitModels,
 )
-from flext_infra._models.base import FlextInfraModelsBase
 
 
 class FlextInfraModelsRope:
     """Rope operation result models — accessed via m.Infra.Rope.*."""
+
+    class RopeProjectElection(m.FrozenModel, str_strip_whitespace=False):
+        """Exact ordered native import roots and source-selection policy."""
+
+        source_folders: t.StrTuple = m.Field(
+            description="Ordered project-relative importable source folders",
+        )
+        ignored_resources: t.StrTuple = m.Field(
+            description="Source-scan ignore patterns elected by the caller",
+        )
+        extension_modules: t.StrTuple = m.Field(
+            description="Native extension modules elected by the original project",
+        )
+        python_path_folders: t.StrTuple = m.Field(
+            description="Ordered physical native import roots sharing the read owner",
+        )
 
     class RopeRestructureRequest(FlextInfraModelsBase.FrozenArbitrary):
         """One complete native restructuring operation and its admitted inputs."""

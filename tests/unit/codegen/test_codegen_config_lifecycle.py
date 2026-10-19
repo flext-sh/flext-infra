@@ -12,12 +12,14 @@ from pathlib import Path
 import pytest
 from jinja2 import Template
 
-from flext_infra import config, infra
+from flext_infra import config, infra, settings
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsVerification,
 )
-from tests import c, tm, u
+from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate
+from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
+from tests import c, m, tm, u
 from tests.unit.codegen import test_codegen_ci_matrix
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
@@ -131,6 +133,7 @@ class TestsFlextInfraCodegenConfigLifecycle:
                     [verb],
                     cwd=root,
                     env={
+                        "GITHUB_TOKEN": settings.env_required("GITHUB_TOKEN"),
                         config.Infra.codegen.make.ci.variable: (
                             "" if verb == "upg" else config.Infra.codegen.make.ci.value
                         ),
@@ -330,6 +333,7 @@ print(
                     [verb],
                     cwd=root,
                     env={
+                        "GITHUB_TOKEN": settings.env_required("GITHUB_TOKEN"),
                         config.Infra.codegen.make.ci.variable: (
                             config.Infra.codegen.make.ci.value if verb == "gen" else ""
                         ),
@@ -348,11 +352,41 @@ print(
 
     @staticmethod
     def test_initializer_no_op_publishes_observable_request_proof(
-        tmp_path: Path,
+        installed_artifact_consumer: Path,
     ) -> None:
-        """A settled initializer batch retains scope identity on repeated APPLY."""
-        root = test_codegen_ci_matrix.TestsFlextInfraCodegenCiMatrix.render_project(
-            tmp_path / "project",
+        """First publication is policy-clean and repeated APPLY retains its proof."""
+        root, package = u.Tests.create_lazy_init_workspace(installed_artifact_consumer)
+        u.Tests.WorktreeFixture.attach_submodule(
+            installed_artifact_consumer,
+            root,
+            distribution=root.name,
+            relative_path=str(root.relative_to(installed_artifact_consumer)),
+        )
+        metadata = root / c.PYPROJECT_FILENAME
+        document = tm.not_none(
+            u.Cli.toml_parse_text(metadata.read_text(encoding=c.DEFAULT_ENCODING)),
+        )
+        document["tool"] = {
+            "ruff": {
+                "indent-width": 2,
+                "format": {"quote-style": "single"},
+                "lint": {"select": ["F", "I"]},
+            },
+        }
+        metadata.write_text(u.Cli.toml_dumps(document), encoding=c.DEFAULT_ENCODING)
+        authored_module = package / "authored.py"
+        owner = u.Infra.project_prefix(authored_module) + "Authored"
+        notice = u.Infra.copyright_notice(package, module=authored_module)
+        authored_module.write_text(
+            '"""Authored module retained by initializer publication.\n\n'
+            f'{notice}\n"""\n\n\n'
+            f"class {owner}:\n"
+            '  """Public authored declaration."""\n\n\n'
+            f"__all__: list[str] = ['{owner}']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        authored = (
+            tm.ok(u.Cli.atomic_read_binary_file_state(authored_module, required=True)),
         )
         request = u.Tests.conform_request(
             root,
@@ -360,8 +394,22 @@ print(
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.APPLY,
         )
-        tm.ok(infra.codegen_conform(request))
+        first = tm.ok(infra.codegen_conform(request))
+        plan = tm.not_none(first.plan)
+        tm.that(bool(first.written_files), eq=True)
+        for file in plan.files:
+            tm.that(file.path.read_bytes(), eq=file.desired_content)
+        context = m.Infra.GateContext(repository_root=root, reports_dir=root)
+        for gate in (FlextInfraRuffLintGate(root), FlextInfraRuffFormatGate(root)):
+            checked = gate.check_files(
+                tuple(file.path for file in plan.files),
+                root,
+                context,
+            )
+            tm.that(checked.result.passed, eq=True, msg=checked.raw_output)
+        tm.ok(u.Cli.atomic_verify_binary_file_states(authored))
         tm.that(tm.ok(infra.codegen_conform(request)).written_files, eq=())
+        tm.ok(u.Cli.atomic_verify_binary_file_states(authored))
         report = root / FlextInfraMiseArtifactsVerification.publication_receipt(
             c.Infra.CodegenConformSurface.LAZY_INIT,
         )
@@ -379,11 +427,83 @@ print(
         )
 
     @staticmethod
+    @pytest.mark.parametrize("target_exists", [False, True])
+    def test_directed_initializer_rejects_banned_import_before_publication(
+        tmp_path: Path,
+        *,
+        target_exists: bool,
+    ) -> None:
+        """Native unrepairable diagnostics leave target bytes or absence unchanged."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        metadata = root / c.PYPROJECT_FILENAME
+        document = tm.not_none(
+            u.Cli.toml_parse_text(metadata.read_text(encoding=c.DEFAULT_ENCODING)),
+        )
+        wheel = u.Cli.toml_ensure_path(
+            document,
+            ("tool", "hatch", "build", "targets", "wheel"),
+        )
+        wheel["packages"] = [package.relative_to(root).as_posix()]
+        ruff = u.Cli.toml_ensure_path(document, ("tool", "ruff"))
+        ruff["lint"] = {
+            "select": ["F", "I", "TID251"],
+            "flake8-tidy-imports": {
+                "banned-api": {
+                    "types.MappingProxyType": {
+                        "msg": "Fixture rejects the template's immutable mapping API",
+                    },
+                },
+            },
+        }
+        metadata.write_text(u.Cli.toml_dumps(document), encoding=c.DEFAULT_ENCODING)
+        destination = package / c.Infra.INIT_PY
+        u.Tests.write_lazy_init_namespace_module(
+            package / "constants.py",
+            class_name=u.Infra.project_prefix(destination) + "Constants",
+            alias="c",
+        )
+        if not target_exists:
+            destination.unlink()
+        before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(destination, required=False),
+        )
+        request = u.Tests.conform_request(
+            root,
+            what=c.Infra.CodegenConformSurface.LAZY_INIT,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        rejected = infra.codegen_conform(request)
+        tm.that(rejected.failure, eq=True)
+        tm.that(str(rejected.error), has="TID251")
+        tm.that(str(rejected.error), has="MappingProxyType")
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(destination, required=False)),
+            eq=before,
+        )
+
+    @staticmethod
     def test_installed_git_artifact_retains_complete_declaration(
         installed_artifact_consumer: Path,
     ) -> None:
         """Read the native Git artifact and reject bytes outside its wheel RECORD."""
         root = installed_artifact_consumer
+        repository = tm.ok(
+            u.Infra.configured_repository_ref(
+                codegen=config.Infra.codegen,
+                repository_root=root,
+            ),
+        )
+        state = tm.ok(
+            FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
+                root,
+                repository,
+            ),
+        )
+        tm.that(
+            state.path.is_relative_to(u.Infra.runtime_environment_dir(root)),
+            eq=True,
+        )
         script = """
 import sys
 from pathlib import Path
@@ -483,3 +603,10 @@ print("installed Git declaration: complete groups, extras and RECORD authenticat
             msg=output.stdout + output.stderr,
         )
         tm.that(output.stdout, has="installed Git declaration: complete groups")
+        tm.fail(
+            FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
+                root,
+                repository,
+            ),
+            has="RECORD",
+        )

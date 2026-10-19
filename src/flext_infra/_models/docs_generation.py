@@ -13,8 +13,8 @@ from flext_cli import m as cli_m
 from flext_core import m
 
 from flext_infra import t
-from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
-from flext_infra._models.base import FlextInfraModelsBase
+from flext_infra._models import FlextInfraModelsBase
+from flext_infra._models._config import FlextInfraConfigModelsWorkspace
 
 
 class FlextInfraModelsDocsGeneration:

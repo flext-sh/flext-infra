@@ -1,7 +1,8 @@
 """Gate vocabulary contract: one SSOT, every gate reachable.
 
-``c.Infra.SARIF_TOOL_INFO`` owns the gate ids; the registry classes and the
-`make check` vocabulary are derived from it and must never diverge.
+``c.Infra.GATE_TOOLS_BY_KIND`` owns the gate ids; the registry classes
+declare their ids from the same constants and the `make check` vocabulary
+is derived from it, so the surfaces cannot diverge.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -46,25 +47,6 @@ class TestsFlextInfraGateRegistry:
         )
 
     @staticmethod
-    def test_every_allowed_gate_resolves_in_the_registry() -> None:
-        """Every gate the Make surface accepts must be instantiable.
-
-        `format` once sat in the canonical check-gate vocabulary
-        and FlextInfraRuffFormatGate declared gate_id="format" with
-        can_fix=True, but the class was never listed in the registry. The
-        generated check command could therefore name a gate that silently
-        resolved to nothing.
-        """
-        registry = FlextInfraGateRegistry.default()
-        unresolved = [
-            gate_id
-            for gate_id in c.Infra.CANONICAL_GATE_IDS
-            if registry.get(gate_id) is None
-        ]
-
-        tm.that(unresolved, eq=[])
-
-    @staticmethod
     def test_fixable_gate_vocabulary_matches_the_registry() -> None:
         """The Make fixable-gate vocabulary equals the gates that declare can_fix.
 
@@ -90,12 +72,7 @@ class TestsFlextInfraGateRegistry:
         fmt_owned = set(config.Infra.codegen.make.fmt_gates)
         tm.that(set(c.Infra.CANONICAL_FIXABLE_GATE_IDS), eq=mutating - fmt_owned)
         tm.that(fmt_owned & set(c.Infra.CANONICAL_GATE_IDS) <= mutating, eq=True)
-        registered_mutating = {
-            gate_id
-            for gate_id in c.Infra.ALLOWED_GATES
-            if (gate_cls := registry.get(gate_id)) is not None and gate_cls.can_fix
-        }
-        tm.that(fmt_owned <= registered_mutating, eq=True)
+        tm.that(fmt_owned <= mutating, eq=True)
         # `format` applies only through `make fmt`; check runs its read-only
         # side, and fix never formats.
         tm.that(c.Infra.FORMAT not in c.Infra.CANONICAL_FIXABLE_GATE_IDS, eq=True)

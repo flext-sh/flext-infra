@@ -59,17 +59,50 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         return tuple(values)
 
     @staticmethod
+    def export_declaration_body(module: ast.Module) -> t.SequenceOf[ast.stmt]:
+        """Read metadata from the module or its single class-owned root.
+
+        A module declaration wins over class metadata; unrelated nested classes
+        never contribute package exports.
+
+        Returns:
+            The statement list owning the explicit export declaration.
+
+        """
+        for node in module.body:
+            targets = (
+                node.targets
+                if isinstance(node, ast.Assign)
+                else (node.target,)
+                if isinstance(node, ast.AnnAssign)
+                else ()
+            )
+            if any(
+                isinstance(target, ast.Name) and target.id == "__all__"
+                for target in targets
+            ):
+                return module.body
+        roots = [node for node in module.body if isinstance(node, ast.ClassDef)]
+        return roots[0].body if len(roots) == 1 else module.body
+
+    @staticmethod
     def _top_level_value(source: str, name: str) -> ast.expr | None:
-        """Return the value node assigned to one top-level symbol.
+        """Return a module binding or its single root's export metadata.
 
         Parsing the module keeps assignments embedded in string literals (for
         example source templates inside tests) from reading as real bindings.
 
         Returns:
-            The value node assigned to one top-level symbol.
+            The value node assigned in the owning declaration scope.
 
         """
-        for node in ast.parse(source).body:
+        module = ast.parse(source)
+        body = (
+            FlextInfraUtilitiesRopeAnalysisSourceScan.export_declaration_body(module)
+            if name == "__all__"
+            else module.body
+        )
+        for node in body:
             if isinstance(node, ast.Assign):
                 targets: t.SequenceOf[ast.expr] = node.targets
             elif isinstance(node, ast.AnnAssign):
@@ -106,7 +139,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
 
     @classmethod
     def module_assignment_strings_source(cls, source: str, name: str) -> t.StrSequence:
-        """Collect strings from a literal module-level assignment.
+        """Collect literal module strings, including class-owned export metadata.
 
         Returns:
             The resulting ``t.StrSequence``.

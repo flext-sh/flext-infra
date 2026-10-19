@@ -12,7 +12,9 @@ import pytest
 
 from flext_infra import c, config, t
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.services.codegen import FlextInfraCodegen
+from flext_infra.services._codegen import (
+    FlextInfraCodegenVscodeMixin as FlextInfraCodegen,
+)
 from tests import m, tm, u
 
 

@@ -6,7 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import runpy
+from contextlib import redirect_stderr
+from io import StringIO
 from typing import TYPE_CHECKING
 
 import pytest
@@ -22,11 +25,42 @@ class TestsFlextInfraRopeContracts:
     """Prove runtime values, failure contracts and the shared fixed point."""
 
     @staticmethod
+    @pytest.mark.parametrize(
+        "source",
+        [
+            "__all__ = ['u']; side_effect()\n",
+            "side_effect(); __all__ = ['u']\n",
+            "PUBLIC = __all__ = ['u']\n",
+            "__all__ = ['u']\n__all__ += ['kept']\n",
+        ],
+    )
+    def test_export_retirement_refuses_shared_lines_and_chained_targets(
+        source: str,
+    ) -> None:
+        """The owned writer cannot discard effects or another public binding."""
+        with pytest.raises(ValueError):
+            u.Infra.remove_runtime_alias_export(source, alias="u")
+
+    @staticmethod
+    def test_export_retirement_keeps_an_explicit_empty_literal() -> None:
+        """Empty literal exports stay explicit, so unrelated statements stay intact."""
+        updated = u.Infra.remove_runtime_alias_export("__all__ = ['u']\n", alias="u")
+        declarations = u.Infra.runtime_alias_bindings(updated, alias="__all__")
+        tm.that(len(declarations), eq=1)
+        value = declarations[0].value
+        if not isinstance(value, ast.List):
+            pytest.fail("export retirement must emit a literal list")
+        tm.that(value.elts, empty=True)
+
+    @staticmethod
     def test_catalog_phases_roundtrip_and_reject_unknown_values(
         tmp_path: Path,
     ) -> None:
         """Configured rules retain enum identities, never an unvalidated phase."""
-        for rule in u.Infra.declared_contract_rules(tmp_path):
+        for declared in u.Infra.declared_contract_rules(tmp_path):
+            rule = m.Infra.RopeContractRule.model_validate(
+                declared, from_attributes=True
+            )
             payload = rule.model_dump(round_trip=True)
             restored = m.Infra.RopeContractRule.model_validate_json(
                 rule.model_dump_json(round_trip=True)
@@ -57,6 +91,119 @@ class TestsFlextInfraRopeContracts:
         tm.that(composed, eq=(*packaged, "consumer-own-helper"))
 
     @staticmethod
+    def test_workspace_loads_only_declared_member_overlays(tmp_path: Path) -> None:
+        """One workspace catalogue discovers member policy without directory sweeps."""
+        packaged = tuple(rule.id for rule in u.Infra.declared_contract_rules(tmp_path))
+        member, _ = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="governed",
+            package_name="governed",
+        )
+        (tmp_path / ".gitmodules").write_text(
+            '[submodule "governed"]\n\tpath = governed\n\turl = https://example.invalid/governed.git\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        overlay = member / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
+        overlay.parent.mkdir(parents=True, exist_ok=True)
+        overlay.write_text(
+            "rules:\n  - id: governed-member-contract\n"
+            "    pattern: '${helper}(${value})'\n"
+            "    goal: 'str(${value})'\n"
+            "    arguments:\n      helper: name=consumer.helpers.Helpers.render\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        outsider = tmp_path / "not-declared" / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
+        outsider.parent.mkdir(parents=True)
+        outsider.write_text("not valid policy", encoding=c.DEFAULT_ENCODING)
+        rules = u.Infra.declared_contract_rules(tmp_path)
+        tm.that(
+            tuple(rule.id for rule in rules), eq=(*packaged, "governed-member-contract")
+        )
+        tm.that(rules[-1].source_states[0].path, eq=overlay)
+
+    @staticmethod
+    def test_constructor_target_preserves_arguments_and_noncall_references(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+    ) -> None:
+        """Native callee replacement needs no signature catalogue or argument rewrite."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "events = []\n"
+            "class Service:\n"
+            "    def __init__(self, value, *, label, registry=None):\n"
+            "        self.value, self.label = value, label\n"
+            "class Api(Service):\n"
+            "    pass\n"
+            "class Child(Service):\n"
+            "    pass\n"
+            "selected: type[Service] = Service\n"
+            "def load():\n"
+            "    events.append('positional')\n"
+            "    return 3\n"
+            "def tag():\n"
+            "    events.append('keyword')\n"
+            "    return 'label'\n"
+            "result = Service(load(), label=tag())\n"
+            "explicit = Service(load(), label=tag(), registry=object())\n"
+            "evidence = (result.value, result.label, tuple(events))\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        module = f"{path.parent.name}.{path.stem}"
+        rule = m.Infra.RopeContractRule(
+            id="service-constructor-composition",
+            pattern="${service}",
+            goal="Api",
+            arguments={"service": f"name={module}.Service"},
+            bindings={"Api": f"{module}.Api"},
+            call_target="service",
+            missing_keywords=("registry",),
+        )
+        edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, (rule,)))
+        tm.that(len(edits), eq=1)
+        updated = edits[0].updated_source
+        tm.that(updated, contains="result = Api(load(), label=tag())")
+        tm.that(updated, contains="class Child(Service):")
+        tm.that(updated, contains="selected: type[Service] = Service")
+        tm.that(
+            updated,
+            contains="explicit = Service(load(), label=tag(), registry=object())",
+        )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        path.write_text(updated, encoding=c.DEFAULT_ENCODING)
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+        tm.that(
+            tm.ok(u.Infra.plan_contract_rules(workspace, {path: updated}, (rule,))),
+            empty=True,
+        )
+
+    @staticmethod
+    def test_constructor_missing_port_proof_rejects_expanded_keywords(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+    ) -> None:
+        """Unproven expanded keywords never authorize a second composition graph."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "class Service:\n    pass\n"
+            "class Api(Service):\n    pass\n"
+            "kwargs = {}\nresult = Service(**kwargs)\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        module = f"{path.parent.name}.{path.stem}"
+        rule = m.Infra.RopeContractRule(
+            id="service-constructor-injected-port",
+            pattern="${service}",
+            goal="Api",
+            arguments={"service": f"name={module}.Service"},
+            bindings={"Api": f"{module}.Api"},
+            call_target="service",
+            missing_keywords=("registry",),
+        )
+        with pytest.raises(ValueError, match="expanded keywords"):
+            u.Infra.plan_contract_rules(workspace, {path: source}, (rule,))
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
     def test_repository_overlay_cannot_redeclare_a_packaged_rule(
         tmp_path: Path,
     ) -> None:
@@ -77,32 +224,42 @@ class TestsFlextInfraRopeContracts:
 
     @staticmethod
     @pytest.mark.parametrize(
-        "declaration",
+        ("declaration", "changes"),
         [
-            "values: list[str] = Field(default_factory=list)",
-            "values: dict[str, list[int]] = Field(default_factory=dict)",
-            "values: Meta[list[str], Field(default_factory=list)]",
-            "values: Meta[int, Field(default=3)]",
-            "values: set[str] = Field(default_factory=set)",
-            "values: tuple[str, ...] = Field(default_factory=tuple)",
-            "values: list[str] = Field(default_factory=list, description='d')",
+            ("values: list[str] = Field(default_factory=list)", False),
+            ("values: dict[str, list[int]] = Field(default_factory=dict)", False),
+            ("values: Meta[list[str], Field(default_factory=list)]", True),
+            ("values: Meta[int, Field(default=3)]", True),
+            ("values: set[str] = Field(default_factory=set)", False),
+            ("values: tuple[str, ...] = Field(default_factory=tuple)", True),
+            ("values: list[str] = Field(default_factory=list, description='d')", False),
             (
-                "values: dict[str, list[int]] = "
-                "Field(default_factory=dict, description='d')"
+                (
+                    "values: dict[str, list[int]] = "
+                    "Field(default_factory=dict, description='d')"
+                ),
+                False,
             ),
             (
-                "values: Meta[list[str], Field(description='d')] = "
-                "Field(default_factory=list)"
+                (
+                    "values: Meta[list[str], Field(description='d')] = "
+                    "Field(default_factory=list)"
+                ),
+                False,
             ),
             (
-                "values: Meta[dict[str, list[int]], Field(min_length=0)] = "
-                "Field(default_factory=dict)"
+                (
+                    "values: Meta[dict[str, list[int]], Field(min_length=0)] = "
+                    "Field(default_factory=dict)"
+                ),
+                False,
             ),
         ],
     )
     def test_real_defaults_preserve_runtime_and_converge(
         rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
         declaration: str,
+        changes: bool,
     ) -> None:
         """Native Rope retains independent instances and public JSON roundtrips."""
         source = (
@@ -117,9 +274,277 @@ class TestsFlextInfraRopeContracts:
             "    first.values['consumer'] = [1]\n"
             "restored = Payload.model_validate_json(first.model_dump_json())\n"
             "evidence = (first.model_dump_json(), second.model_dump_json(), "
-            "restored.model_dump_json())\n"
+            "restored.model_dump_json(), "
+            "Payload.model_fields['values'].default_factory)\n"
+        )
+        workspace, path = rope_contract_consumer
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        edits = tm.ok(
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=workspace,
+                sources={path: source},
+            )
+        )
+        tm.that(bool(edits), eq=changes)
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        updated = edits[0].updated_source if edits else source
+        path.write_text(updated, encoding=c.DEFAULT_ENCODING)
+        after = runpy.run_path(str(path))["evidence"]
+        tm.that(after[:3], eq=before[:3])
+        if not changes:
+            tm.that(after[3] is before[3], eq=True)
+        tm.that(
+            tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                    rope_workspace=workspace,
+                    sources={path: updated},
+                )
+            ),
+            empty=True,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "declaration",
+        [
+            "values: list[Domain.Item] = Field(default_factory=list)",
+            "values: t.MutableSequenceOf[Domain.Item] = Field(default_factory=list)",
+            "values: dict[str, Domain.Item] = Field(default_factory=dict)",
+            (
+                "values: Annotated[list[Domain.Item], 'metadata'] = "
+                "Field(default_factory=list)"
+            ),
+            (
+                "values: Annotated[dict[str, Domain.Item], 'metadata'] = "
+                "Field(default_factory=dict)"
+            ),
+            "values: list[Domain.Item] = Field(default_factory=list, description='d')",
+            "values: dict[str, Domain.Item] = Field(default_factory=dict, description='d')",
+        ],
+    )
+    def test_own_outer_contract_stays_deferred_during_class_construction(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        declaration: str,
+    ) -> None:
+        """Native mutable factories never evaluate an unfinished outer owner."""
+        source = (
+            "from __future__ import annotations\n"
+            "from typing import Annotated\n"
+            "from flext_core import t\n"
+            "from pydantic import BaseModel, Field\n"
+            "class Domain:\n"
+            "    class Item(BaseModel):\n"
+            "        label: str\n"
+            "    class Payload(BaseModel):\n"
+            f"        {declaration}\n"
+            "class Independent(BaseModel):\n"
+            "    values: list[str] = Field(default_factory=list)\n"
+            "deferred = not Domain.Payload.__pydantic_complete__\n"
+            "if not deferred:\n"
+            "    raise AssertionError('outer contract resolved during construction')\n"
+            "first, second = Domain.Payload(), Domain.Payload()\n"
+            "if isinstance(first.values, dict):\n"
+            "    first.values['entry'] = Domain.Item(label='consumer')\n"
+            "else:\n"
+            "    first.values.append(Domain.Item(label='consumer'))\n"
+            "restored = Domain.Payload.model_validate_json(first.model_dump_json())\n"
+            "evidence = (deferred, first.values is not second.values, "
+            "first.model_dump_json(), second.model_dump_json(), "
+            "restored.model_dump_json(), Independent().model_dump_json())\n"
+        )
+        u.Tests.prove_contract_migration(
+            rope_contract_consumer, source, expect_change=False
+        )
+        _workspace, path = rope_contract_consumer
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), contains=declaration)
+
+    @staticmethod
+    def test_own_class_contract_keeps_its_native_factory(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+    ) -> None:
+        """Pydantic self resolution does not bind the class name for field values."""
+        source = (
+            "from __future__ import annotations\n"
+            "from pydantic import BaseModel, Field\n"
+            "class Payload(BaseModel):\n"
+            "    values: list[Payload] = Field(default_factory=list)\n"
+            "class Independent(BaseModel):\n"
+            "    values: list[str] = Field(default_factory=list)\n"
+            "first, second = Payload(), Payload()\n"
+            "first.values.append(Payload())\n"
+            "restored = Payload.model_validate_json(first.model_dump_json())\n"
+            "evidence = (first.values is not second.values, first.model_dump_json(), "
+            "second.model_dump_json(), restored.model_dump_json(), "
+            "Independent().model_dump_json())\n"
+        )
+        u.Tests.prove_contract_migration(
+            rope_contract_consumer, source, expect_change=False
+        )
+        _workspace, path = rope_contract_consumer
+        tm.that(
+            path.read_text(encoding=c.DEFAULT_ENCODING),
+            contains="values: list[Payload] = Field(default_factory=list)",
+        )
+
+    @staticmethod
+    def test_already_bound_mutable_outer_contract_stays_native(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+    ) -> None:
+        """Binding an outer owner does not change a mutable factory's identity."""
+        source = (
+            "from __future__ import annotations\n"
+            "from pydantic import BaseModel, Field\n"
+            "class Domain:\n"
+            "    class Item(BaseModel):\n"
+            "        label: str\n"
+            "class Payload(BaseModel):\n"
+            "    values: list[Domain.Item] = Field(default_factory=list)\n"
+            "first, second = Payload(), Payload()\n"
+            "first.values.append(Domain.Item(label='consumer'))\n"
+            "restored = Payload.model_validate_json(first.model_dump_json())\n"
+            "evidence = (Payload.model_fields['values'].default_factory is list, "
+            "first.values is not second.values, first.model_dump_json(), "
+            "second.model_dump_json(), restored.model_dump_json())\n"
+        )
+        u.Tests.prove_contract_migration(
+            rope_contract_consumer, source, expect_change=False
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("minimum", [0, 1])
+    @pytest.mark.parametrize("alias", [False, True])
+    def test_readonly_factory_preserves_full_field_validation_and_freshness(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        minimum: int,
+        alias: bool,
+    ) -> None:
+        """The owning field validates all metadata, not just a collection origin."""
+        declaration = (
+            f"type Contract = Annotated[Sequence[str], Field(min_length={minimum})]\n"
+            if alias
+            else ""
+        )
+        annotation = (
+            "Contract"
+            if alias
+            else f"Annotated[Sequence[str], Field(min_length={minimum})]"
+        )
+        source = (
+            "from collections.abc import Sequence\n"
+            "from typing import Annotated\n"
+            "from pydantic import BaseModel, ConfigDict, Field, ValidationError\n"
+            f"{declaration}"
+            "class Payload(BaseModel):\n"
+            "    model_config = ConfigDict(validate_default=True)\n"
+            "    seed: int = 7\n"
+            f"    values: {annotation} = "
+            "Field(default_factory=list)\n"
+            "try:\n"
+            "    first, second = Payload(), Payload()\n"
+            "except ValidationError as error:\n"
+            "    default = tuple((item['type'], item['loc']) "
+            "for item in error.errors())\n"
+            "else:\n"
+            "    first.values.append('consumer')\n"
+            "    default = (first.values is not second.values, "
+            "first.model_dump_json(), second.model_dump_json())\n"
+            "try:\n"
+            "    Payload(values=[3])\n"
+            "except ValidationError as error:\n"
+            "    rejected = tuple((item['type'], item['loc']) "
+            "for item in error.errors())\n"
+            "else:\n"
+            "    raise AssertionError('element contract was discarded')\n"
+            "evidence = (default, rejected, "
+            "Payload.model_fields['values'].default_factory_takes_validated_data)\n"
         )
         u.Tests.prove_contract_migration(rope_contract_consumer, source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("origin", "factory", "changes"),
+        [
+            ("Sequence", "list", True),
+            ("MutableSequence", "list", False),
+            ("Mapping", "dict", True),
+            ("MutableMapping", "dict", False),
+            ("Set", "set", True),
+            ("MutableSet", "set", False),
+        ],
+    )
+    def test_alias_factory_admission_follows_native_origin_not_alias_spelling(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        origin: str,
+        factory: str,
+        changes: bool,
+    ) -> None:
+        """An arbitrary alias name cannot grant or deny collection mutability."""
+        arguments = "str, int" if factory == "dict" else "str"
+        source = (
+            f"from collections.abc import {origin}\n"
+            "from pydantic import BaseModel, ConfigDict, Field\n"
+            f"type Contract = {origin}[{arguments}]\n"
+            "class Payload(BaseModel):\n"
+            "    model_config = ConfigDict(validate_default=True)\n"
+            f"    values: Contract = Field(default_factory={factory})\n"
+            "first, second = Payload(), Payload()\n"
+            "evidence = (first.values is not second.values, "
+            "first.model_dump_json(), second.model_dump_json())\n"
+        )
+        u.Tests.prove_contract_migration(
+            rope_contract_consumer, source, expect_change=changes
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("factory", ["list[str]", "lambda: ['consumer']"])
+    def test_typed_constructor_and_authored_callback_keep_distinct_behavior(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        factory: str,
+    ) -> None:
+        """Only the catalogue's builtin factories are empty-factory candidates."""
+        source = (
+            "from collections.abc import Sequence\n"
+            "from pydantic import BaseModel, ConfigDict, Field\n"
+            f"factory = {factory}\n"
+            "class Payload(BaseModel):\n"
+            "    model_config = ConfigDict(validate_default=True)\n"
+            f"    values: Sequence[str] = Field(default_factory={factory})\n"
+            "first, second = Payload(), Payload()\n"
+            "evidence = (Payload.model_fields['values'].default_factory is factory, "
+            "first.values is not second.values, first.model_dump_json(), "
+            "second.model_dump_json())\n"
+        )
+        u.Tests.prove_contract_migration(
+            rope_contract_consumer, source, expect_change=False
+        )
+
+    @staticmethod
+    def test_readonly_deferred_outer_owner_keeps_native_field_resolution(
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+    ) -> None:
+        """The SDK callback never evaluates an unfinished enclosing annotation."""
+        source = (
+            "from __future__ import annotations\n"
+            "from collections.abc import Sequence\n"
+            "from pydantic import BaseModel, ConfigDict, Field\n"
+            "class Domain:\n"
+            "    class Item(BaseModel):\n"
+            "        label: str\n"
+            "    class Payload(BaseModel):\n"
+            "        model_config = ConfigDict(validate_default=True)\n"
+            "        values: Sequence[Domain.Item] = Field(default_factory=list)\n"
+            "first, second = Domain.Payload(), Domain.Payload()\n"
+            "evidence = (first.values is not second.values, "
+            "first.model_dump_json(), second.model_dump_json())\n"
+        )
+        u.Tests.prove_contract_migration(rope_contract_consumer, source)
+        _workspace, path = rope_contract_consumer
+        updated = path.read_text(encoding=c.DEFAULT_ENCODING)
+        tm.that("TypeAdapter" not in updated, eq=True)
+        tm.that("TypeForm" not in updated, eq=True)
 
     @staticmethod
     def test_strict_json_boundary_and_validator_modes_survive_factory_migration(
@@ -152,7 +577,9 @@ class TestsFlextInfraRopeContracts:
             "context={'consumer': 'json'})\n"
             "evidence = (rejected, accepted.model_dump_json(), tuple(events))\n"
         )
-        u.Tests.prove_contract_migration(rope_contract_consumer, source)
+        u.Tests.prove_contract_migration(
+            rope_contract_consumer, source, expect_change=False
+        )
 
     @staticmethod
     def test_dependent_factory_preserves_call_order_and_instance_isolation(
@@ -197,37 +624,27 @@ class TestsFlextInfraRopeContracts:
             "evidence = (first.model_dump_json(), second.model_dump_json(), "
             "restored.model_dump_json())\n"
         )
-        u.Tests.prove_contract_migration(rope_contract_consumer, source)
+        u.Tests.prove_contract_migration(
+            rope_contract_consumer, source, expect_change=False
+        )
 
     @staticmethod
     def test_factory_migration_cannot_repeat_annotation_effects(
-        tmp_path: Path,
+        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """A repeated type expression must not run an authored callback twice."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "consumer.py"
         source = (
+            "from collections.abc import Sequence\n"
             "from pydantic import BaseModel, Field\n"
             "events = []\n"
             "def element_type():\n"
             "    events.append('annotation')\n"
             "    return str\n"
             "class Payload(BaseModel):\n"
-            "    values: list[element_type()] = Field(default_factory=list)\n"
+            "    values: Sequence[element_type()] = Field(default_factory=list)\n"
             "evidence = (tuple(events), Payload().model_dump_json())\n"
         )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        before = runpy.run_path(str(path))["evidence"]
-        with (
-            infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match=r"annotation.*repeat"),
-        ):
-            u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                rope_workspace=rope,
-                sources={path: source},
-            )
-        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+        u.Tests.prove_contract_migration(rope_contract_consumer, source)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -294,90 +711,6 @@ class TestsFlextInfraRopeContracts:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    def test_shadowed_dictionary_constructor_retains_its_own_contract(
-        tmp_path: Path,
-    ) -> None:
-        """Inherited BaseModel.dict is not lexical, but a real local dict is."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "consumer.py"
-        source = (
-            "from builtins import dict as BuiltinDictionary\n"
-            "from pydantic import BaseModel, Field, ConfigDict\n"
-            "class dict(BuiltinDictionary):\n"
-            "    pass\n"
-            "class Payload(BaseModel):\n"
-            "    model_config = ConfigDict(arbitrary_types_allowed=True)\n"
-            "    values: dict[str, list[int]] = Field(default_factory=dict)\n"
-            "evidence = type(Payload().values) is dict\n"
-        )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        tm.that(runpy.run_path(str(path))["evidence"], eq=True)
-        with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                    rope_workspace=rope,
-                    sources={path: source},
-                )
-            )
-        tm.that(edits, empty=True)
-        tm.that(runpy.run_path(str(path))["evidence"], eq=True)
-
-    @staticmethod
-    @pytest.mark.parametrize(
-        ("source", "diagnostic"),
-        [
-            (
-                (
-                    "from pydantic import BaseModel, Field\n"
-                    "u = 'existing consumer binding'\n"
-                    "class Payload(BaseModel):\n"
-                    "    values: list[str] = Field(default_factory=list)\n"
-                    "evidence = (u, Payload().model_dump_json())\n"
-                ),
-                r"destination u.empty is shadowed",
-            ),
-            (
-                (
-                    "from pydantic import TypeAdapter\n"
-                    "def consume(u):\n"
-                    "    return TypeAdapter(list[int]).validate_python([1])\n"
-                    "evidence = consume('existing parameter')\n"
-                ),
-                r"destination u.type_adapter is shadowed",
-            ),
-            (
-                (
-                    "from pydantic import BaseModel, Field\n"
-                    "class Payload(BaseModel):\n"
-                    "    values: list[str] = Field(default_factory=list)\n"
-                    "from flext_core import u\n"
-                    "evidence = Payload().model_dump_json()\n"
-                ),
-                "no preceding unconditional import",
-            ),
-        ],
-        ids=["module-shadow", "parameter-shadow", "late-import"],
-    )
-    def test_destination_binding_refuses_invalid_publication(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
-        source: str,
-        diagnostic: str,
-    ) -> None:
-        """Module, parameter and execution-order bindings preserve public behavior."""
-        rope, path = rope_contract_consumer
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        before = runpy.run_path(str(path))["evidence"]
-        with pytest.raises(ValueError, match=diagnostic):
-            u.Infra.plan_semantic_cutover(
-                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                rope_workspace=rope,
-                sources={path: source},
-            )
-        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
-        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
-
-    @staticmethod
     def test_existing_cli_facade_and_unrelated_field_info_are_preserved(
         rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
@@ -392,7 +725,9 @@ class TestsFlextInfraRopeContracts:
             "info.default_factory is list, "
             "u.Cli.env_read('consumer_key', {'consumer_key': 'value'}).unwrap())\n"
         )
-        u.Tests.prove_contract_migration(rope_contract_consumer, source)
+        u.Tests.prove_contract_migration(
+            rope_contract_consumer, source, expect_change=False
+        )
 
     @staticmethod
     def test_aliased_adapter_preserves_validation_and_failure_modes(
@@ -412,3 +747,487 @@ class TestsFlextInfraRopeContracts:
             "evidence = consume()\n"
         )
         u.Tests.prove_contract_migration(rope_contract_consumer, source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("declaration", "factory"),
+        [
+            ("from logging import getLogger as acquire", "acquire"),
+            ("import logging as diagnostics", "diagnostics.getLogger"),
+            ("from structlog import get_logger as acquire", "acquire"),
+            ("import structlog as diagnostics", "diagnostics.get_logger"),
+        ],
+    )
+    def test_logging_factory_identity_imports_and_real_printf(
+        rope_contract_consumer: t.Pair[
+            p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath
+        ],
+        declaration: str,
+        factory: str,
+    ) -> None:
+        """Native aliases migrate once, complete imports and emit through Core."""
+        workspace, path = rope_contract_consumer
+        source = (
+            f"{declaration}\n"
+            "names = []\n"
+            "def module_name():\n"
+            "    names.append('evaluated')\n"
+            "    return 'contract.consumer'\n"
+            f"logger = {factory}(module_name())\n"
+            "logger.info('worker %s', 'ready')\n"
+            "logger.debug('filtered %s %s', 'one argument')\n"
+            "evidence = tuple(names)\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        edits = tm.ok(
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=workspace,
+                sources={path: source},
+            )
+        )
+        tm.that(len(edits), eq=1)
+        updated = edits[0].updated_source
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        path.write_text(updated, encoding=c.DEFAULT_ENCODING)
+        stream = StringIO()
+        original_settings, original_options = u.logging_settings(), u.logging_options()
+        handler = u.create_logging_handler(stream=stream)
+        try:
+            selected = u.resolve_logging_settings(
+                runtime_settings=original_settings,
+                log_level="INFO",
+                debug=False,
+                trace=False,
+            )
+            u.configure_structlog(
+                settings=m.StructlogOptions(handlers=(handler,), async_logging=False),
+                runtime_settings=selected,
+            )
+            namespace = runpy.run_path(str(path))
+            tm.that(namespace["evidence"], eq=("evaluated",))
+            tm.that(stream.getvalue(), contains="worker ready")
+            tm.that("filtered" in stream.getvalue(), eq=False)
+        finally:
+            u.configure_structlog(
+                settings=original_options, runtime_settings=original_settings
+            )
+            handler.close()
+        tm.that(
+            tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                    rope_workspace=workspace,
+                    sources={path: updated},
+                )
+            ),
+            empty=True,
+        )
+        # The retired native factory import had a real use before this cut.
+        # No wholesale unused-import sweep is part of the contract planner.
+        tm.that(declaration in updated, eq=False)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "source",
+        [
+            (
+                "import logging\n"
+                "def configure():\n"
+                "    logger = logging.getLogger('thirdparty')\n"
+                "    logger.addHandler(logging.NullHandler())\n"
+                "    return logger\n"
+            ),
+            (
+                "from logging import getLogger\n"
+                "__all__ = ['logger']\n"
+                "logger = getLogger(__name__)\n"
+                "logger.info('exported interface')\n"
+            ),
+            (
+                "from logging import getLogger\n"
+                "logger = getLogger(__name__)\n"
+                "def inject(logger):\n"
+                "    return logger\n"
+                "injected = inject(logger)\n"
+            ),
+            (
+                "from logging import getLogger\n"
+                "logger = getLogger(__name__)\n"
+                "alias = logger\n"
+                "alias.info('escaped alias')\n"
+            ),
+            (
+                "import logging\n"
+                "logger = logging.getLogger()\n"
+                "logger.info('native root logger')\n"
+            ),
+            (
+                "import logging\n"
+                "logger = logging.getLogger(None)\n"
+                "logger.info('explicit native root logger')\n"
+            ),
+            (
+                "import logging\n"
+                "class Service:\n"
+                "    logger = logging.getLogger(__name__)\n"
+                "    def run(self):\n"
+                "        self.logger.info('service interface')\n"
+            ),
+            (
+                "import logging\n"
+                "def run(logging):\n"
+                "    logger = logging.getLogger(__name__)\n"
+                "    logger.info('parameter is not the module')\n"
+            ),
+            (
+                "import structlog\n"
+                "def run(structlog):\n"
+                "    return structlog.get_logger()\n"
+                "HELP = 'structlog.get_logger() and logging.getLogger(__name__)'\n"
+            ),
+            (
+                "from structlog import get_logger as acquire\n"
+                "def run(__name__):\n"
+                "    return acquire()\n"
+            ),
+        ],
+        ids=[
+            "handler-setup",
+            "export",
+            "di-escape",
+            "assigned-alias",
+            "root-logger",
+            "none-root-logger",
+            "service-interface",
+            "stdlib-shadow",
+            "structlog-shadow-and-prose",
+            "implicit-module-name-shadow",
+        ],
+    )
+    def test_logging_factory_preserves_unproven_native_interfaces(
+        rope_contract_consumer: t.Pair[
+            p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath
+        ],
+        source: str,
+    ) -> None:
+        """Unrelated symbols and richer native interfaces are never guessed."""
+        workspace, path = rope_contract_consumer
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        edits = tm.ok(
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=workspace,
+                sources={path: source},
+            )
+        )
+        tm.that(edits, empty=True)
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "emission",
+        [
+            "logger.log(logging.WARNING, 'numeric contract')",
+            "logger.warn('deprecated native alias')",
+            "logger.exception('implicit exception state is not proven')",
+            "logger.info('event', extra={'native': 'context'})",
+            "logger.info('event', stack_info=True)",
+            "logger.info('event', stacklevel=2)",
+            "logger.info(msg='keyword native message')",
+            "logger.info(42)",
+        ],
+    )
+    def test_logging_factory_blocks_unproven_emission_signatures_before_effects(
+        rope_contract_consumer: t.Pair[
+            p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath
+        ],
+        emission: str,
+    ) -> None:
+        """A method name alone never proves printf, context or level equivalence."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "import logging\n"
+            "logger = logging.getLogger('contract.arguments')\n"
+            f"{emission}\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with pytest.raises(
+            ValueError, match="unproven native logging|proven string message"
+        ):
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=workspace,
+                sources={path: source},
+            )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize("factory_arguments", ["'contract.bound'", ""])
+    def test_structlog_bound_context_and_stdout_are_not_collapsed(
+        rope_contract_consumer: t.Pair[
+            p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath
+        ],
+        factory_arguments: str,
+    ) -> None:
+        """Only the native factory changes; bound context and output stay authored."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "from structlog import get_logger as acquire\n"
+            "from io import StringIO\n"
+            "from contextlib import redirect_stdout\n"
+            f"logger = acquire({factory_arguments}).bind(component='receiver')\n"
+            "output = StringIO()\n"
+            "with redirect_stdout(output):\n"
+            "    print('result')\n"
+            "logger.info('bound %s', 'event')\n"
+            "HELP = 'acquire(\"contract.bound\") is prose'\n"
+            "evidence = (output.getvalue(), HELP)\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        edits = tm.ok(
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=workspace,
+                sources={path: source},
+            )
+        )
+        tm.that(len(edits), eq=1)
+        updated = edits[0].updated_source
+        tm.that(updated, contains=".bind(component='receiver')")
+        tm.that(updated, contains="logger.info('bound %s', 'event')")
+        tm.that(updated, contains="print('result')")
+        tm.that(updated, contains="HELP = 'acquire(\"contract.bound\") is prose'")
+        path.write_text(updated, encoding=c.DEFAULT_ENCODING)
+        stream = StringIO()
+        original_settings, original_options = u.logging_settings(), u.logging_options()
+        handler = u.create_logging_handler(stream=stream)
+        try:
+            u.configure_structlog(
+                settings=m.StructlogOptions(handlers=(handler,), async_logging=False),
+                runtime_settings=u.resolve_logging_settings(
+                    runtime_settings=original_settings, log_level="INFO", debug=False
+                ),
+            )
+            namespace = runpy.run_path(str(path))
+            tm.that(
+                namespace["evidence"],
+                eq=("result\n", 'acquire("contract.bound") is prose'),
+            )
+            tm.that(stream.getvalue(), contains="bound event")
+            tm.that(stream.getvalue(), contains="receiver")
+        finally:
+            u.configure_structlog(
+                settings=original_options, runtime_settings=original_settings
+            )
+            handler.close()
+
+    @staticmethod
+    @pytest.mark.parametrize("implementation", ["_native_logging", "moved_logging"])
+    def test_factory_contract_keeps_only_the_native_backend_unrewritten(
+        rope_contract_consumer: t.Pair[
+            p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath
+        ],
+        implementation: str,
+    ) -> None:
+        """A constructor's native factory survives; an importing consumer does not."""
+        workspace, path = rope_contract_consumer
+        package = path.parent
+        namespace = package.name
+        backend_path = package / "_logging_backend.py"
+        backend = (
+            "import structlog\n"
+            "class NativeBackend:\n"
+            "    def create(self, name):\n"
+            "        return structlog.get_logger('native.backend')\n"
+        )
+        (package / f"{implementation}.py").write_text(
+            "from ._logging_backend import NativeBackend\n"
+            "class Logging:\n"
+            "    @staticmethod\n"
+            "    def fetch(name):\n"
+            "        return NativeBackend().create(name)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (package / "logging_api.py").write_text(
+            f"from .{implementation} import Logging as Utilities\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        backend_path.write_text(backend, encoding=c.DEFAULT_ENCODING)
+        consumer = (
+            "from structlog import get_logger as acquire\n"
+            "from .logging_api import Utilities\n"
+            "logger = acquire('consumer.backend')\n"
+            "logger.info('consumer event')\n"
+        )
+        path.write_text(consumer, encoding=c.DEFAULT_ENCODING)
+        rules = tuple(
+            m.Infra.RopeContractRule.model_validate(
+                rule, from_attributes=True
+            ).model_copy(
+                update={
+                    "implementation_owner": (
+                        f"{namespace}.logging_api",
+                        "Utilities.fetch",
+                    )
+                }
+            )
+            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
+            if rule.implementation_owner is not None
+        )
+        edits = tm.ok(
+            u.Infra.plan_contract_rules(
+                workspace, {backend_path: backend, path: consumer}, rules
+            )
+        )
+        tm.that(tuple(edit.file_path for edit in edits), eq=(path,))
+        tm.that(backend_path.read_text(encoding=c.DEFAULT_ENCODING), eq=backend)
+        tm.that(edits[0].updated_source, contains="u.fetch_logger('consumer.backend')")
+
+    @staticmethod
+    def test_logging_factory_keeps_live_imports_and_a_richer_utilities_facade(
+        rope_contract_consumer: t.Pair[
+            p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath
+        ],
+    ) -> None:
+        """Retire only the disappeared factory use, not a live alias or CLI facade."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "from flext_cli import u\n"
+            "import logging as diagnostics\n"
+            "from logging import getLogger as acquire\n"
+            "level = diagnostics.WARNING\n"
+            "logger = acquire('contract.imports')\n"
+            "logger.info('retained %s', level)\n"
+            "evidence = u.Cli.env_read('consumer_key', {'consumer_key': 'value'}).unwrap()\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        edits = tm.ok(
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=workspace,
+                sources={path: source},
+            )
+        )
+        tm.that(len(edits), eq=1)
+        updated = edits[0].updated_source
+        tm.that(updated, contains="from flext_cli import u")
+        tm.that(updated, contains="import logging as diagnostics")
+        tm.that("from logging import getLogger" in updated, eq=False)
+        tm.that("from flext_core import u" in updated, eq=False)
+
+    @staticmethod
+    def test_logging_factory_refuses_a_shadowed_destination(
+        rope_contract_consumer: t.Pair[
+            p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath
+        ],
+    ) -> None:
+        """A correct source identity cannot overwrite an authored u binding."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "from logging import getLogger\n"
+            "u = 'authored consumer binding'\n"
+            "logger = getLogger('contract.shadow')\n"
+            "logger.info('authored %s', u)\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with pytest.raises(ValueError, match=r"destination u.fetch_logger is shadowed"):
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=workspace,
+                sources={path: source},
+            )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize("literal", [True, False])
+    def test_cli_result_error_retires_only_literal_verbose_flags(
+        rope_contract_consumer: t.Pair[
+            p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath
+        ],
+        *,
+        literal: bool,
+    ) -> None:
+        """Keep the exact native receiver and argument evaluation when removing a flag."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "from flext_cli import u as cli\n"
+            "from flext_core import r\n"
+            "calls = []\n"
+            "def result():\n"
+            "    calls.append('result')\n"
+            "    return r.fail('command error')\n"
+            "def unrelated(emit):\n"
+            f"    emit(result(), verbose={literal})\n"
+            "def report():\n"
+            f"    cli.Cli.commands_emit_result_error(result(), verbose={literal})\n"
+            "report()\n"
+            "evidence = tuple(calls)\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        edits = tm.ok(
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=workspace,
+                sources={path: source},
+            )
+        )
+        tm.that(len(edits), eq=1)
+        updated = edits[0].updated_source
+        tm.that(updated, contains="cli.Cli.commands_emit_result_error(result())")
+        tm.that(updated, contains=f"emit(result(), verbose={literal})")
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        path.write_text(updated, encoding=c.DEFAULT_ENCODING)
+        stream = StringIO()
+        original_settings, original_options = u.logging_settings(), u.logging_options()
+        handler = u.create_logging_handler(stream=stream)
+        try:
+            u.configure_structlog(
+                settings=m.StructlogOptions(handlers=(handler,), async_logging=False),
+                runtime_settings=original_settings,
+            )
+            with redirect_stderr(stream):
+                namespace = runpy.run_path(str(path))
+            tm.that(namespace["evidence"], eq=("result",))
+            tm.that(stream.getvalue(), contains="command error")
+        finally:
+            u.configure_structlog(
+                settings=original_options, runtime_settings=original_settings
+            )
+            handler.close()
+        tm.that(
+            tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                    rope_workspace=workspace,
+                    sources={path: updated},
+                )
+            ),
+            empty=True,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("expression", ["detail()", "settings.verbose", "verbose"])
+    def test_cli_result_error_never_discards_authored_argument_evaluation(
+        rope_contract_consumer: t.Pair[
+            p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath
+        ],
+        expression: str,
+    ) -> None:
+        """Calls, properties and name lookup retain effects or fail before publication."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "from flext_cli import u as cli\n"
+            "def report(result, settings, verbose, detail):\n"
+            f"    cli.Cli.commands_emit_result_error(result, verbose={expression})\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with pytest.raises(
+            ValueError, match="cannot discard authored evaluation of verbose"
+        ):
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=workspace,
+                sources={path: source},
+            )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)

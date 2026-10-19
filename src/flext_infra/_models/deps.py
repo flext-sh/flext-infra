@@ -16,9 +16,12 @@ from flext_infra._models import (
     FlextInfraModelsDepsToml,
     FlextInfraModelsDepsToolConfig,
     FlextInfraModelsMixins,
+    FlextInfraModelsWorkspace,
 )
-from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
-from flext_infra._models.workspace import FlextInfraModelsWorkspace
+from flext_infra._models._config import (
+    FlextInfraConfigModelsRepository,
+    FlextInfraConfigModelsScaffold,
+)
 
 GitSourceUrlPrefixField = Annotated[
     t.NonEmptyStr | None,
@@ -421,14 +424,6 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             t.StrSequence,
             m.Field(description="Detected first-party namespaces"),
         ]
-        stale_patterns: Annotated[
-            t.StrSequence,
-            m.Field(description="Legacy per-file ignore patterns to retire"),
-        ]
-        per_file_ignores: Annotated[
-            t.MappingKV[str, t.StrSequence],
-            m.Field(description="Effective managed per-file ignores"),
-        ]
         analysis_exclusions: Annotated[
             t.StrSequence | None,
             m.Field(
@@ -477,6 +472,18 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
                 ),
             ),
         ] = ()
+        project_declaration_resource: Annotated[
+            t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None,
+            m.Field(
+                description=(
+                    "Declared producer metadata source and wheel resource destination"
+                ),
+            ),
+        ] = None
+        hatch_build_hook_path: Annotated[
+            Path | None,
+            m.Field(description="Declared project-relative Hatch build hook module"),
+        ] = None
         planned_data_files: Annotated[
             t.StrTuple,
             m.Field(
@@ -510,6 +517,19 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
                 ),
             ),
         ] = None
+
+        @m.field_validator("hatch_build_hook_path")
+        @classmethod
+        def _validate_hatch_build_hook_path(cls, value: Path | None) -> Path | None:
+            """Validate the hook with the project declaration's canonical owner.
+
+            Returns:
+                The validated project-relative hook path.
+
+            """
+            return FlextInfraConfigModelsRepository.validated_hatch_build_hook_path(
+                value
+            )
 
     class PyprojectAnalyzerContext(m.ContractModel):
         """Placement and Python roots of one pyproject the analyzer phases conform.

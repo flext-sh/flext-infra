@@ -21,6 +21,7 @@ from importlib.machinery import ExtensionFileLoader, FrozenImporter, ModuleSpec
 from inspect import CO_NEWLOCALS, CO_OPTIMIZED
 from json import dumps
 from math import isnan
+from operator import itemgetter
 from pathlib import Path
 from types import (
     BuiltinFunctionType,
@@ -145,7 +146,7 @@ class FlextInfraWorkspaceNativeReference:
                 stores = frozenset(
                     instruction.argval
                     for instruction in get_instructions(unit)
-                    if instruction.opname == "STORE_NAME"
+                    if instruction.opname == c.Infra.OpCode.STORE_NAME
                     and isinstance(instruction.argval, str)
                 )
                 indexed.setdefault(unit.co_qualname, []).append((
@@ -216,6 +217,7 @@ class FlextInfraWorkspaceNativeReference:
         namespace: t.MappingKV[str, t.Infra.NativeOperand],
         declarations: frozenset[str],
         instruction_cache: t.Infra.NativeInstructionFacts,
+        supplier_functions: t.SequenceOf[t.Infra.NativeOperand],
     ) -> t.VariadicTuple[t.Triple[str, p.AttributeProbe, frozenset[str]]]:
         """Prove state writes through the exact native class or global receiver.
 
@@ -223,8 +225,28 @@ class FlextInfraWorkspaceNativeReference:
             Authenticated writer bindings and the declared fields they modify.
 
         """
+        own_functions = {
+            id(
+                member.__func__
+                if FlextInfraWorkspaceNativeReference._is_function_binding(member)
+                else member
+            )
+            for member in namespace.values()
+        }
+        # Supplier functions are unwrapped: only an exact global receiver can
+        # prove an external write, never another class's ``cls`` parameter.
+        members = (
+            *sorted(namespace.items()),
+            *(
+                (None, function)
+                for function in supplier_functions
+                if FlextInfraWorkspaceNativeReference._is_native(function, FunctionType)
+                and id(function) not in own_functions
+            ),
+        )
         writers: list[t.Triple[str, p.AttributeProbe, frozenset[str]]] = []
-        for name, member in sorted(namespace.items()):
+        supplier_writers: list[t.Triple[str, p.AttributeProbe, frozenset[str]]] = []
+        for name, member in members:
             # A plain method writes class state only through the global class
             # name; a class or static method may also write through ``cls``.
             if FlextInfraWorkspaceNativeReference._is_function_binding(member):
@@ -254,8 +276,8 @@ class FlextInfraWorkspaceNativeReference:
             )
             if receiver is not None and any(
                 (
-                    instruction.opname.startswith("STORE_FAST")
-                    or instruction.opname == "DELETE_FAST"
+                    instruction.opname.startswith(c.Infra.OpCode.STORE_FAST)
+                    or instruction.opname == c.Infra.OpCode.DELETE_FAST
                 )
                 and (
                     instruction.argval == receiver
@@ -272,7 +294,7 @@ class FlextInfraWorkspaceNativeReference:
             global_receivers = {
                 instruction.argval
                 for instruction in instructions
-                if instruction.opname == "LOAD_GLOBAL"
+                if instruction.opname == c.Infra.OpCode.LOAD_GLOBAL
                 and isinstance(instruction.argval, str)
                 and function.__globals__.get(instruction.argval) is owner
             }
@@ -284,25 +306,25 @@ class FlextInfraWorkspaceNativeReference:
             fields = frozenset(
                 instruction.argval
                 for previous, instruction in itertools.pairwise(instructions)
-                if instruction.opname == "STORE_ATTR"
+                if instruction.opname == c.Infra.OpCode.STORE_ATTR
                 and isinstance(instruction.argval, str)
                 and instruction.argval in declarations
                 and (
                     (
                         receiver is not None
-                        and previous.opname == "LOAD_FAST"
+                        and previous.opname == c.Infra.OpCode.LOAD_FAST
                         and previous.argval == receiver
                     )
                     or (
                         receiver is not None
-                        and previous.opname == "LOAD_FAST_LOAD_FAST"
+                        and previous.opname == c.Infra.OpCode.LOAD_FAST_LOAD_FAST
                         and FlextInfraWorkspaceNativeReference._is_operand_tuple(
                             previous.argval
                         )
                         and previous.argval[-1] == receiver
                     )
                     or (
-                        previous.opname == "LOAD_GLOBAL"
+                        previous.opname == c.Infra.OpCode.LOAD_GLOBAL
                         and previous.argval in global_receivers - rebound_globals
                     )
                 )
@@ -312,16 +334,16 @@ class FlextInfraWorkspaceNativeReference:
             augmented = frozenset(
                 instruction.argval
                 for index, instruction in enumerate(instructions)
-                if instruction.opname == "STORE_ATTR"
+                if instruction.opname == c.Infra.OpCode.STORE_ATTR
                 and isinstance(instruction.argval, str)
                 and instruction.argval in declarations
                 and index > 0
-                and instructions[index - 1].opname == "SWAP"
+                and instructions[index - 1].opname == c.Infra.OpCode.SWAP
                 and any(
-                    load.opname == "LOAD_GLOBAL"
+                    load.opname == c.Infra.OpCode.LOAD_GLOBAL
                     and load.argval in global_receivers - rebound_globals
-                    and copy.opname == "COPY"
-                    and read.opname == "LOAD_ATTR"
+                    and copy.opname == c.Infra.OpCode.COPY
+                    and read.opname == c.Infra.OpCode.LOAD_ATTR
                     and read.argval == instruction.argval
                     for load, copy, read in zip(
                         instructions[:index],
@@ -332,8 +354,15 @@ class FlextInfraWorkspaceNativeReference:
                 )
             )
             if fields | augmented:
-                writers.append((name, member, fields | augmented))
-        return tuple(writers)
+                if name is None:
+                    supplier_writers.append((
+                        FlextInfraWorkspaceNativeReference._symbol(function),
+                        member,
+                        fields | augmented,
+                    ))
+                else:
+                    writers.append((name, member, fields | augmented))
+        return (*writers, *sorted(supplier_writers, key=itemgetter(0)))
 
     @classmethod
     def _native_callable_instance(cls, value: t.Infra.NativeOperand) -> bool:
@@ -2735,7 +2764,7 @@ class FlextInfraWorkspaceNativeReference:
             mutable.update(
                 instruction.argval
                 for instruction in cls._instructions(function.__code__, instructions)
-                if instruction.opname == "STORE_GLOBAL"
+                if instruction.opname == c.Infra.OpCode.STORE_GLOBAL
             )
         return mutable
 
@@ -3003,7 +3032,11 @@ class FlextInfraWorkspaceNativeReference:
             return r[bool].from_failure(declarations)
         declaration = cls._class_declaration(namespace, declarations.value)
         writers = cls._class_state_writers(
-            value, namespace, frozenset(declaration), instructions
+            value,
+            namespace,
+            frozenset(declaration),
+            instructions,
+            cls._namespace_functions(cls._module_namespace(sys.modules[supplier])),
         )
         operational = frozenset(name for _, _, fields in writers for name in fields)
         context.pending.extend(
@@ -3022,6 +3055,22 @@ class FlextInfraWorkspaceNativeReference:
             for name in ("__dataclass_fields__", "__dataclass_params__")
             if name in namespace
         )
+        # Publication is another observed input, compared with the independent
+        # import; factory-local classes may legitimately have no lexical binding.
+        publication: t.Infra.NativeOperand = sys.modules[supplier]
+        publication_present = True
+        for component in qualname.split("."):
+            publication_scope: t.MappingKV[str, t.Infra.NativeOperand] = (
+                cls._module_namespace(publication)
+                if type(publication) is ModuleType
+                else cls._class_namespace(publication)
+                if cls._is_class(publication)
+                else {}
+            )
+            if component not in publication_scope:
+                publication_present = False
+                break
+            publication = publication_scope[component]
         context.evidence.append(
             m.Infra.NativeBindingEvidence(
                 binding=binding,
@@ -3030,6 +3079,13 @@ class FlextInfraWorkspaceNativeReference:
                 name=cls._type_attr("__name__", value, type(value)),
                 qualname=qualname,
                 operands=(
+                    (
+                        "supplier_publication",
+                        dumps((
+                            publication_present,
+                            publication_present and publication is value,
+                        )),
+                    ),
                     ("metaclass", cls._symbol(type(value))),
                     (
                         "bases",
@@ -3786,7 +3842,7 @@ class FlextInfraWorkspaceNativeReference:
         global_names = {
             instruction.argval
             for instruction in cls._instructions(facts.code, instructions)
-            if instruction.opname == "LOAD_GLOBAL"
+            if instruction.opname == c.Infra.OpCode.LOAD_GLOBAL
             and isinstance(instruction.argval, str)
         }
         native_getitem: Callable[
@@ -4135,10 +4191,12 @@ class FlextInfraWorkspaceNativeReference:
         receiver = None
         edge = context.binding
         for instruction in cls._instructions(facts.code, instructions):
-            if instruction.opname == "LOAD_GLOBAL":
+            if instruction.opname == c.Infra.OpCode.LOAD_GLOBAL:
                 receiver = facts.global_bindings.get(instruction.argval)
                 edge = f"{context.binding}.global.{instruction.argval}"
-            elif instruction.opname == "LOAD_ATTR" and receiver is not None:
+            elif (
+                instruction.opname == c.Infra.OpCode.LOAD_ATTR and receiver is not None
+            ):
                 namespaces = cls._receiver_namespaces(receiver)
                 if not namespaces:
                     receiver = None
@@ -4863,3 +4921,6 @@ class FlextInfraWorkspaceNativeReference:
         if not admitted:
             return r[bool].fail("cold producer authority has no authored driver code")
         return r[bool].ok(value=True)
+
+
+__all__: list[str] = ["FlextInfraWorkspaceNativeReference"]

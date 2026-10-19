@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import lru_cache
 from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, Literal, Self
@@ -22,6 +23,44 @@ from flext_infra._models._config.external_cache import (
 from flext_infra._models._config.make_clean import FlextInfraConfigModelsMakeClean
 from flext_infra._models._config.make_docs import FlextInfraConfigModelsMakeDocs
 from flext_infra._models._config.vocabulary import FlextInfraConfigVocabulary
+
+
+@lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
+def _effective_custom_handler_policies(
+    base: FlextInfraConfigModelsMake.CustomHandlerPolicy,
+    overrides: tuple[tuple[str, FlextInfraConfigModelsMake.CustomHandlerPolicy], ...],
+) -> Mapping[str, FlextInfraConfigModelsMake.CustomHandlerPolicy]:
+    """Derive the effective per-profile policy from frozen policy inputs.
+
+    Pure function of frozen models, memoized per distinct ``(base,
+    overrides)`` pair: the returned mapping is shared read-only instead of
+    re-copying a fresh map on every access and every serialization.
+
+    Args:
+        base: The strictest base policy every profile falls back to.
+        overrides: Sorted ``(profile, relaxed policy)`` declaration pairs.
+
+    Returns:
+        The resulting ``Mapping[str,
+            FlextInfraConfigModelsMake.CustomHandlerPolicy]``.
+
+    """
+    # Keys are normalised to the profile's string value: MakeProfile is a
+    # StrEnum, so a raw YAML key and its enum subproject must land on the SAME
+    # entry. Mixing both would make a lookup silently miss and fall back to
+    # the strict base policy. The plain dict serializes through the computed
+    # field; the read-only ``Mapping`` contract keeps callers from mutating it.
+    return {
+        str(profile): (
+            base.model_copy(update=override.model_dump(exclude_none=True))
+            if (override := dict(overrides).get(str(profile)))
+            else base
+        )
+        for profile in (
+            *dict(overrides),
+            *FlextInfraConfigVocabulary.MakeProfile,
+        )
+    }
 
 
 class FlextInfraConfigModelsMake(
@@ -56,6 +95,18 @@ class FlextInfraConfigModelsMake(
             Path,
             m.Field(description="Runtime-root-relative hosted resolution directory"),
         ]
+        editable_directory: Annotated[
+            Path,
+            m.Field(
+                description="Runtime-root-relative opt-in supplier resolution directory"
+            ),
+        ]
+        editable_supplier_root: Annotated[
+            Path | None,
+            m.Field(
+                description="Explicit external workspace supplying local editable dependencies"
+            ),
+        ] = None
         hosted_variable: Annotated[
             t.NonEmptyStr,
             m.Field(description="Actual hosted runner environment key"),
@@ -85,7 +136,12 @@ class FlextInfraConfigModelsMake(
                     relative path or the two views share a directory.
 
             """
-            for directory in (self.local_directory, self.standalone_directory):
+            directories = (
+                self.local_directory,
+                self.standalone_directory,
+                self.editable_directory,
+            )
+            for directory in directories:
                 if (
                     directory.is_absolute()
                     or ".." in directory.parts
@@ -93,8 +149,14 @@ class FlextInfraConfigModelsMake(
                 ):
                     msg = "UV resolution directories must be nonempty relative paths"
                     raise ValueError(msg)
-            if self.local_directory == self.standalone_directory:
+            if len(set(directories)) != len(directories):
                 msg = "UV resolution views must use distinct directories"
+                raise ValueError(msg)
+            if (
+                self.editable_supplier_root is not None
+                and not self.editable_supplier_root.is_absolute()
+            ):
+                msg = "editable supplier root must be an absolute path"
                 raise ValueError(msg)
             return self
 
@@ -1141,6 +1203,17 @@ class FlextInfraConfigModelsMake(
 
         @m.computed_field
         @property
+        def check_gates_file(self) -> t.VariadicTuple[str]:
+            """Gates whose checker accepts one declared file.
+
+            Returns:
+                The resulting ``t.VariadicTuple[str]``.
+
+            """
+            return c.Infra.CANONICAL_FILE_GATE_IDS
+
+        @m.computed_field
+        @property
         def custom_handler_policies(
             self,
         ) -> Mapping[str, FlextInfraConfigModelsMake.CustomHandlerPolicy]:
@@ -1159,21 +1232,13 @@ class FlextInfraConfigModelsMake(
             """
             base = self.custom_handler_policy
             overrides = self.custom_handler_profile_overrides
-            # Keys are normalised to the profile's string value: MakeProfile is a
-            # StrEnum, so a raw YAML key and its enum subproject must land on the SAME
-            # entry. Mixing both would make a lookup silently miss and fall back to
-            # the strict base policy.
-            return {
-                str(profile): (
-                    base.model_copy(update=override.model_dump(exclude_none=True))
-                    if (override := overrides.get(str(profile)))
-                    else base
-                )
-                for profile in (
-                    *overrides,
-                    *FlextInfraConfigVocabulary.MakeProfile,
-                )
-            }
+            # The derivation is a pure function of frozen models, so it is
+            # memoized once per distinct (base, overrides) pair instead of
+            # re-copying a fresh map on every access and every serialization.
+            return _effective_custom_handler_policies(
+                base,
+                tuple(sorted(overrides.items())),
+            )
 
     class CustomHandlerPolicy(FlextInfraConfigModelsContract.ConfigContract):
         """Strict schema for the only handwritten Make extension file."""
@@ -1207,3 +1272,6 @@ class FlextInfraConfigModelsMake(
             default=None,
             description="Permit toolchain declarations",
         )
+
+
+__all__: list[str] = ["FlextInfraConfigModelsMake"]

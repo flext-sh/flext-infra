@@ -26,6 +26,8 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
     def planned_source_render_inputs(
         render_inputs: m.Infra.CodegenRenderInputs,
         planned: t.SequenceOf[m.Infra.CodegenFilePlan],
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> m.Infra.CodegenRenderInputs:
         """Derive tooling from the Python sources the transaction will publish.
 
@@ -62,26 +64,23 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 root,
                 sources,
                 policy.runtime_evaluated_roots,
+                source_project=source_project,
             )
         )
-        rebinds = u.Infra.facade_rebind_modules(root, sources)
         first_party = tuple(
             FlextInfraToolTablesPhase.first_party_namespaces(
                 path=root,
                 planned_sources=tuple(sources),
             ),
         )
-        if (
-            rebinds == tuple(tooling.mypy_facade_rebind_modules)
-            and first_party == tuple(tooling.first_party)
-            and runtime_bases == tuple(tooling.ruff_runtime_evaluated_base_classes)
+        if first_party == tuple(tooling.first_party) and runtime_bases == tuple(
+            tooling.ruff_runtime_evaluated_base_classes
         ):
             return render_inputs
         return render_inputs.model_copy(
             update={
                 "tooling_runtime": tooling.model_copy(
                     update={
-                        "mypy_facade_rebind_modules": rebinds,
                         "ruff_runtime_evaluated_base_classes": runtime_bases,
                         "first_party": first_party,
                     },
@@ -146,6 +145,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[m.Infra.CodegenArtifactComposition]:
         """Apply typed project overlays after canonical template rendering.
+
+        Python repairs require the complete planned policy and source context;
+        the staging owner prepares those bytes after composition, never here.
 
         Without ``render_inputs`` the committed project catalog overlays the
         render and no pyproject conformance runs.

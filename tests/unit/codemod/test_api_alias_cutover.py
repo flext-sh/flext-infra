@@ -6,16 +6,171 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
 
-from flext_infra import c, infra, m, u
-from tests import tm
+from flext_infra import c, infra, m, t
+from tests import tm, u
 
 
 class TestsFlextInfraApiAliasCutover:
     """Exercise owner-first alias removal only through ``u.Infra``."""
+
+    @staticmethod
+    def _service_workspace(
+        tmp_path: Path,
+        consumer: str,
+    ) -> t.Pair[Path, t.MappingKV[Path, str]]:
+        """Build a real local foundation with the existing lazy root publisher."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        sources = {
+            package / "foundation.py": (
+                "from flext_core import p, s\nfrom flext_infra import m\n\n"
+                "class FlextSampleService[T: p.Base](s[T], m.Infra.CommandContext):\n"
+                "    @staticmethod\n    def delayed():\n        return s\n\n"
+                "s = FlextSampleService\n"
+                '__all__ = ["FlextSampleService", "s"]\n'
+            ),
+            package / "__init__.py": (
+                "from types import MappingProxyType\n"
+                "from typing import TYPE_CHECKING\n"
+                "if TYPE_CHECKING:\n"
+                "    from .foundation import FlextSampleService, s\n"
+                "from flext_core.lazy import install_lazy_exports\n"
+                "install_lazy_exports(__name__, globals(), MappingProxyType({\n"
+                '    "FlextSampleService": ".foundation", "s": ".foundation",\n'
+                "}))\n"
+                '__all__ = ["FlextSampleService", "s"]\n'
+            ),
+            package / "consumer.py": consumer.replace("sample_pkg", package.name),
+            package
+            / "kernel.py": "from flext_core import s\nclass Kernel(s[str]):\n    pass\n",
+        }
+        for path, source in sources.items():
+            path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        return root, sources
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("statement", "base", "expected"),
+        [
+            ("from sample_pkg import s", "s", "FlextSampleService"),
+            ("from sample_pkg.foundation import s", "s", "FlextSampleService"),
+            ("import sample_pkg as own", "own.s", "own.FlextSampleService"),
+            (
+                "import sample_pkg.foundation",
+                "sample_pkg.foundation.s",
+                "sample_pkg.foundation.FlextSampleService",
+            ),
+        ],
+    )
+    def test_service_retirement_preserves_kernel_context_and_shadowing(
+        tmp_path: Path,
+        statement: str,
+        base: str,
+        expected: str,
+    ) -> None:
+        """No scanner finding or filename convention substitutes for real identity."""
+        root, sources = TestsFlextInfraApiAliasCutover._service_workspace(
+            tmp_path,
+            f"{statement}\nclass Consumer({base}[str]):\n    pass\n"
+            'def shadowed(s):\n    return s\nliteral = "s"\n',
+        )
+        with infra.rope_workspace(root) as workspace:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
+                    rope_workspace=workspace,
+                    sources=sources,
+                )
+            )
+            updated = {
+                **sources,
+                **{edit.file_path: edit.updated_source for edit in edits},
+            }
+            owner = next(path for path in sources if path.name == "foundation.py")
+            consumer = owner.with_name("consumer.py")
+            tm.that(updated[owner], has="class FlextSampleService[T: p.Base](s[T],")
+            tm.that(updated[owner], has="from flext_core import p, s")
+            tm.that(updated[owner], has="return FlextSampleService")
+            tm.that(updated[owner], lacks="s = FlextSampleService")
+            tm.that(updated[owner], lacks='"s"')
+            destination = expected.replace("sample_pkg", owner.parent.name)
+            tm.that(updated[consumer], has=f"class Consumer({destination}[str]):")
+            if base == "s":
+                tm.that(
+                    updated[consumer],
+                    has=f"from {owner.parent.name} import FlextSampleService",
+                )
+            tm.that(updated[consumer], has="def shadowed(s):\n    return s")
+            tm.that(updated[consumer], has='literal = "s"')
+            tm.that(
+                updated[owner.with_name("kernel.py")],
+                eq=sources[owner.with_name("kernel.py")],
+            )
+            tm.that(
+                tm.ok(
+                    u.Infra.plan_semantic_cutover(
+                        c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
+                        rope_workspace=workspace,
+                        sources=updated,
+                    )
+                ),
+                eq=(),
+            )
+        for path, source in updated.items():
+            path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        outcome = tm.ok(
+            u.Cli.run((
+                sys.executable,
+                "-c",
+                (
+                    f"import sys; sys.path.insert(0, {str(owner.parent.parent)!r}); "
+                    f"from {owner.parent.name} import FlextSampleService; "
+                    f"from {owner.parent.name}.consumer import Consumer; "
+                    f"from pathlib import Path; service = Consumer(repository_root={str(root)!r}); "
+                    f"assert service.repository_root == Path({str(root)!r}); "
+                    "assert service.delayed() is FlextSampleService"
+                ),
+            ))
+        )
+        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("consumer", "reason"),
+        [
+            (
+                "from sample_pkg import s\ndef capture(FlextSampleService):\n    return s\n",
+                "shadowed",
+            ),
+            ('import sample_pkg\nvalue = getattr(sample_pkg, "s")\n', "reflective"),
+        ],
+    )
+    def test_service_retirement_refuses_uncovered_bindings(
+        tmp_path: Path,
+        consumer: str,
+        reason: str,
+    ) -> None:
+        """A captured destination or reflective access prevents owner retirement."""
+        root, sources = TestsFlextInfraApiAliasCutover._service_workspace(
+            tmp_path, consumer
+        )
+        with (
+            infra.rope_workspace(root) as workspace,
+            pytest.raises(ValueError, match=reason),
+        ):
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
+                rope_workspace=workspace,
+                sources=sources,
+            )
+        tm.that(
+            {path: path.read_text(encoding=c.DEFAULT_ENCODING) for path in sources},
+            eq=sources,
+        )
 
     @staticmethod
     @pytest.mark.parametrize(

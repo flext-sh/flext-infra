@@ -44,22 +44,30 @@ class FlextInfraUtilitiesRefactorNamespaceFlext(
             if resolved_file.name == c.Infra.PY_TYPED:
                 continue
             source = resolved_file.read_text(encoding=c.DEFAULT_ENCODING)
-            if c.Infra.FUTURE_ANNOTATIONS in source:
-                continue
-            lines = source.splitlines()
-            if not lines:
-                continue
-            rewritten = FlextInfraUtilitiesRefactorNamespaceFlext.insert_import_lines(
-                lines=lines,
-                imports=["", c.Infra.FUTURE_ANNOTATIONS, ""],
+            updated = FlextInfraUtilitiesRefactorNamespaceFlext.plan_future_annotations(
+                source
             )
+            if updated == source:
+                continue
             write_result = u.Cli.files_write_text(
                 resolved_file,
-                "\n".join(rewritten).rstrip() + "\n",
+                updated,
             )
             if write_result.failure:
                 msg = write_result.error or f"failed to rewrite {resolved_file}"
                 raise RuntimeError(msg)
+
+    @classmethod
+    def plan_future_annotations(cls, source: str) -> str:
+        """Return the existing future-import rewrite without publishing it."""
+        lines = source.splitlines()
+        if c.Infra.FUTURE_ANNOTATIONS in source or not lines:
+            return source
+        rewritten = cls.insert_import_lines(
+            lines=lines,
+            imports=["", c.Infra.FUTURE_ANNOTATIONS, ""],
+        )
+        return "\n".join(rewritten).rstrip() + "\n"
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRefactorNamespaceFlext"]

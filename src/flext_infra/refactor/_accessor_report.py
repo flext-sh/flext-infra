@@ -234,7 +234,16 @@ class FlextInfraAccessorMigrationReportMixin:
             if state.content is not None
             and state.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
         )
-        before = u.Infra.lint_snapshots(paths, plan.workspace, gates=gates)
+        scopes = plan.workspaces or (plan.workspace,)
+        before = {
+            path: snapshot
+            for root in scopes
+            for path, snapshot in u.Infra.lint_snapshots(
+                tuple(path for path in paths if path.is_relative_to(root)),
+                root,
+                gates=gates,
+            ).items()
+        }
 
         def validate(
             view_root: Path,
@@ -242,11 +251,23 @@ class FlextInfraAccessorMigrationReportMixin:
         ) -> t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]]:
             staged_paths = {
                 path: candidates.get(path, view_root / path.relative_to(plan.workspace))
-                for path in paths
+                for path in dict.fromkeys((*paths, *plan.updates))
+                if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+                and (path not in plan.updates or plan.updates[path] is not None)
             }
-            snapshots = u.Infra.lint_snapshots(
-                tuple(staged_paths.values()), view_root, gates=gates
-            )
+            snapshots = {
+                path: snapshot
+                for root in scopes
+                for path, snapshot in u.Infra.lint_snapshots(
+                    tuple(
+                        candidate
+                        for path, candidate in staged_paths.items()
+                        if path.is_relative_to(root)
+                    ),
+                    view_root / root.relative_to(plan.workspace),
+                    gates=gates,
+                ).items()
+            }
             return {
                 path: snapshots[candidate] for path, candidate in staged_paths.items()
             }
@@ -257,9 +278,11 @@ class FlextInfraAccessorMigrationReportMixin:
             validate,
             inputs=plan.inputs,
             runtime_root=u.Infra.runtime_environment_dir(
-                plan.workspace,
+                scopes[0],
                 runtime_root=type(settings).fetch_global().Infra.runtime_root,
             ).parent,
+            workspaces=plan.workspaces,
+            modes=plan.modes,
         )
         if previewed.failure:
             return r[
@@ -270,15 +293,15 @@ class FlextInfraAccessorMigrationReportMixin:
             ].from_failure(previewed)
         execution_errors = tuple(
             f"{path}: {error}"
-            for path in paths
-            for snapshot in (before[path], previewed.value[path])
+            for path in set(before) | set(previewed.value)
+            for snapshot in (before.get(path, {}), previewed.value.get(path, {}))
             for error in u.Infra.lint_execution_errors(snapshot)
         )
         errors = execution_errors + tuple(
             f"{path}: {tool}: {line}"
-            for path in paths
+            for path in previewed.value
             for tool, lines in u.Infra.lint_new_errors(
-                before[path], previewed.value[path]
+                before.get(path, {}), previewed.value[path]
             ).items()
             for line in lines
         )

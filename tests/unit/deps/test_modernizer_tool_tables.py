@@ -86,10 +86,7 @@ class TestsFlextInfraDepsModernizerToolTables:
             list(u.Tests.toml_strings(mypy["plugins"])),
             eq=list(mypy_policy.plugins),
         )
-        tm.that(
-            set(u.Tests.toml_strings(mypy["disable_error_code"])),
-            eq=set(mypy_policy.disable_error_code),
-        )
+        tm.that(mypy, lacks="disable_error_code")
         tm.that(
             list(u.Tests.toml_list(mypy["overrides"])),
             eq=[
@@ -139,7 +136,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         *,
         enable_unrelated: bool,
     ) -> None:
-        """A real Mypy consumer suppresses only the declared codes with its plugin."""
+        """The real Mypy consumer retains formerly suspended plugin diagnostics."""
         tooling = config.Infra.tooling
         if enable_unrelated:
             policy = tooling.tools.mypy
@@ -159,10 +156,7 @@ class TestsFlextInfraDepsModernizerToolTables:
             tuple(u.Tests.toml_strings(mypy["plugins"])),
             eq=tuple(tooling.tools.mypy.plugins),
         )
-        tm.that(
-            set(u.Tests.toml_strings(mypy["disable_error_code"])),
-            eq=set(tooling.tools.mypy.disable_error_code),
-        )
+        tm.that(mypy, lacks="disable_error_code")
         if enable_unrelated:
             tm.that(
                 mypy["enable_error_code"],
@@ -191,9 +185,9 @@ class TestsFlextInfraDepsModernizerToolTables:
             reports_dir=project / ".reports",
         )
         gate = FlextInfraMypyGate(project)
-        accepted = gate.check(project, context)
-        tm.that(accepted.result.passed, eq=True)
-        tm.that(accepted.issues, eq=())
+        initial = gate.check(project, context)
+        tm.that(initial.result.passed, eq=False)
+        tm.that([issue.code for issue in initial.issues], has="call-arg")
 
         source.write_text(
             declarations
@@ -204,7 +198,8 @@ class TestsFlextInfraDepsModernizerToolTables:
         )
         rejected = gate.check(project, context)
         tm.that(rejected.result.passed, eq=False)
-        tm.that(tuple(issue.code for issue in rejected.issues), eq=("arg-type",))
+        tm.that([issue.code for issue in rejected.issues], has="arg-type")
+        tm.that([issue.code for issue in rejected.issues], has="call-arg")
 
     def test_pytest_table_replaces_policy_and_merges_extensions(
         self,
@@ -581,23 +576,17 @@ class TestsFlextInfraDepsModernizerToolTables:
         )
         FlextInfraEnsureRuffConfigPhase(
             config.Infra.tooling,
-            u.Infra.empty_snapshot().resolution.artifacts.Ruff,
         ).apply_payload(
             payload,
             path=project_dir / "pyproject.toml",
         )
         table = self._table(payload, "ruff")
+        tm.that(
+            u.Tests.toml_strings(self._table(payload, "ruff", "lint")["extend-select"]),
+            eq=tuple(config.Infra.tooling.tools.ruff.lint.extend_select),
+        )
         src_roots = u.Tests.toml_strings(table["src"])
         namespace_packages = u.Tests.toml_strings(table.get("namespace-packages", []))
         tm.that(src_roots, lacks="scripts", has="src")
         tm.that(namespace_packages, lacks="scripts")
-        per_file = self._table(payload, "ruff", "lint", "per-file-ignores")
-        tm.that(
-            per_file,
-            eq={
-                pattern: sorted(rules)
-                for pattern, rules in (
-                    config.Infra.tooling.tools.ruff.lint.per_file_ignores.items()
-                )
-            },
-        )
+        tm.that(self._table(payload, "ruff", "lint"), lacks="per-file-ignores")

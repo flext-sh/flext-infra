@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests import tm, u
 
@@ -92,25 +94,46 @@ class TestsFlextInfraRopeImports:
             )
 
     @staticmethod
-    def test_organize_imports_treats_already_clean_module_as_noop(
+    @pytest.mark.parametrize(
+        ("module_source", "expected_change"),
+        [
+            pytest.param(
+                (
+                    "from __future__ import annotations\n\n"
+                    "import os\n\n\n"
+                    "def keep() -> str:\n"
+                    "    return os.getcwd()\n"
+                ),
+                False,
+                id="already-clean",
+            ),
+            pytest.param(
+                (
+                    "from __future__ import annotations\n\n"
+                    "import os\n"
+                    "import sys\n\n\n"
+                    "def keep() -> str:\n"
+                    "    return os.getcwd()\n"
+                ),
+                True,
+                id="unused-import",
+            ),
+        ],
+    )
+    def test_organize_imports_detection_matches_module_state(
         tmp_path: Path,
+        module_source: str,
+        *,
+        expected_change: bool,
     ) -> None:
-        """An already-organized module yields a clean no-op result."""
+        """Detection reports a pending organize change only for unorganized modules."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
             package_name="flext_demo",
         )
         module_path = package_root / "service.py"
-        module_path.write_text(
-            (
-                "from __future__ import annotations\n\n"
-                "import os\n\n\n"
-                "def keep() -> str:\n"
-                "    return os.getcwd()\n"
-            ),
-            encoding="utf-8",
-        )
+        module_path.write_text(module_source, encoding="utf-8")
 
         with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
             resource = rope.resource(module_path)
@@ -118,34 +141,4 @@ class TestsFlextInfraRopeImports:
             result = u.Infra.organize_imports(rope.rope_project, resource, apply=False)
 
         tm.ok(result)
-        tm.that(result.value, eq=False)
-
-    @staticmethod
-    def test_organize_imports_reports_change_for_unused_import(
-        tmp_path: Path,
-    ) -> None:
-        """A module with an unused import yields a pending organize change."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
-        module_path = package_root / "service.py"
-        module_path.write_text(
-            (
-                "from __future__ import annotations\n\n"
-                "import os\n"
-                "import sys\n\n\n"
-                "def keep() -> str:\n"
-                "    return os.getcwd()\n"
-            ),
-            encoding="utf-8",
-        )
-
-        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
-            resource = rope.resource(module_path)
-            resource = tm.not_none(resource)
-            result = u.Infra.organize_imports(rope.rope_project, resource, apply=False)
-
-        tm.ok(result)
-        tm.that(result.value, eq=True)
+        tm.that(result.value, eq=expected_change)

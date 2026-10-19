@@ -82,7 +82,7 @@ class FlextInfraCodegenConformExecuteScaffold(FlextInfraCodegenConformPlan):
             is not c.Infra.CodegenConformMode.APPLY
         ):
             return result_type.ok(((None, None), False))
-        scaffolding = self.initial_workspace
+        scaffolding = self.state.initial_workspace
         workspace = scaffolding
         if workspace is None:
             workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(

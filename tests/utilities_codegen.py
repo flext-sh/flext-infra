@@ -11,14 +11,23 @@ import sys
 from pathlib import Path
 
 from flext_infra import config, r, u
-from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from tests import c, m, p, t, tm
-from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
-from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
-from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
-from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
+from flext_infra.check import FlextInfraGateRegistry
+from flext_infra.codegen import (
+    FlextInfraCodegenConform,
+    FlextInfraCodegenConsolidator,
+    FlextInfraCodegenLazyInit,
+)
+from tests import (
+    TestsFlextInfraUtilitiesGitMixin,
+    TestsFlextInfraUtilitiesProjectFixtureMixin,
+    TestsFlextInfraUtilitiesTomlMixin,
+    TestsFlextInfraUtilitiesToolingFixtureMixin,
+    c,
+    m,
+    p,
+    t,
+    tm,
+)
 
 
 class TestsFlextInfraUtilitiesCodegenMixin:
@@ -35,12 +44,12 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         return u.Infra.facade_families()[family].module
 
     @staticmethod
-    def ruff_per_file_ignores_toml() -> str:
+    def ruff_policy_toml() -> str:
         """Render the fleet Ruff policy as a pyproject fragment.
 
         Reads the same typed SSOT production reads (P0): fixture
-        workspaces carry the real policy — select, the global ignore table,
-        preview and the per-file-ignores map — never a hand-rolled fragment.
+        workspaces carry the real rule selection, elected rule owners, native
+        convention, preview, and import policy without exemption tables.
 
         Returns:
             The resulting ``str``.
@@ -48,14 +57,15 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         """
         ruff_cfg = config.Infra.tooling.tools.ruff
         select = ", ".join(f'"{rule}"' for rule in sorted(ruff_cfg.lint.select))
-        ignore = ", ".join(f'"{rule}"' for rule in sorted(ruff_cfg.lint.ignore))
-        quoted_rules = {
-            pattern: ", ".join(f'"{rule}"' for rule in rules)
-            for pattern, rules in sorted(ruff_cfg.lint.per_file_ignores.items())
-        }
-        rows = "\n".join(
-            f'"{pattern}" = [{names}]' for pattern, names in quoted_rules.items()
+        delegated = FlextInfraGateRegistry.default().delegated_lint_rules(
+            ruff_cfg.lint.rule_owners,
+            check_gates=config.Infra.codegen.make.check_gates_default,
+            repair_gates=(
+                *config.Infra.codegen.make.check_gates_fixable,
+                *config.Infra.codegen.make.fmt_gates,
+            ),
         )
+        ignore = ", ".join(f'"{rule}"' for rule in delegated)
         isort = ruff_cfg.lint.isort
         src = ", ".join(f'"{root}"' for root in ruff_cfg.src)
         # Why: without the fleet's isort settings (combine-as-imports in
@@ -66,12 +76,13 @@ class TestsFlextInfraUtilitiesCodegenMixin:
             f"[tool.ruff]\nsrc = [{src}]\n"
             f"preview = {str(ruff_cfg.preview).lower()}\n\n"
             f"[tool.ruff.lint]\nselect = [{select}]\nignore = [{ignore}]\n\n"
+            "[tool.ruff.lint.pydocstyle]\n"
+            f'convention = "{ruff_cfg.lint.pydocstyle.convention}"\n\n'
             "[tool.ruff.lint.isort]\n"
             f"combine-as-imports = {str(isort.combine_as_imports).lower()}\n"
             f"force-single-line = {str(isort.force_single_line).lower()}\n"
             f"split-on-trailing-comma = "
             f"{str(isort.split_on_trailing_comma).lower()}\n\n"
-            f"[tool.ruff.lint.per-file-ignores]\n{rows}\n"
         )
 
     @staticmethod
@@ -112,8 +123,11 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         return tm.ok(
             FlextInfraCodegenConform(
                 repository_root=root,
-                request=request,
-                initial_workspace=workspace,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    request=request,
+                    initial_workspace=workspace,
+                ),
             ).plan(request),
         )
 
@@ -173,6 +187,15 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                                 ),
                                 "dependencies": [],
                             },
+                            "tool": {
+                                "flext": {
+                                    "docs": {
+                                        "package_name": fixture.project_spec(
+                                            name,
+                                        ).package_name,
+                                    },
+                                },
+                            },
                         },
                     ),
                 )
@@ -210,15 +233,14 @@ class TestsFlextInfraUtilitiesCodegenMixin:
             One rendered scaffold artifact, failing when it is not planned.
 
         """
+        plan = TestsFlextInfraUtilitiesCodegenMixin.scaffold_plan(
+            root,
+            members=members,
+            what=what,
+        )
+        tm.that(plan.issues, eq=(), msg=str(plan.issues))
         return tm.not_none(
-            TestsFlextInfraUtilitiesCodegenMixin.planned_text(
-                TestsFlextInfraUtilitiesCodegenMixin.scaffold_plan(
-                    root,
-                    members=members,
-                    what=what,
-                ),
-                destination,
-            ),
+            TestsFlextInfraUtilitiesCodegenMixin.planned_text(plan, destination),
         )
 
     @staticmethod
@@ -303,7 +325,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                 f'license = "{project.license}"\n'
                 f'authors = [{{name = "{project.author_name}", '
                 f'email = "{project.author_email}"}}]\n\n'
-                + TestsFlextInfraUtilitiesCodegenMixin.ruff_per_file_ignores_toml()
+                + TestsFlextInfraUtilitiesCodegenMixin.ruff_policy_toml()
             ),
             encoding=c.Infra.ENCODING_DEFAULT,
         )
@@ -319,7 +341,12 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         # checkout.  The shared workspace fixture therefore owns a real,
         # repository-local identity instead of letting individual tests depend
         # on whichever checkout happens to contain ``tmp_path``.
-        TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(repository_root)
+        TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(
+            repository_root,
+            TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
+                project_name
+            ).url,
+        )
         return (repository_root, package_root)
 
     @staticmethod
@@ -364,9 +391,10 @@ class TestsFlextInfraUtilitiesCodegenMixin:
     def run_lazy_init_probe(
         probe: str,
         *,
-        python_paths: t.StrSequence,
+        python_paths: t.StrSequence = (),
         cwd: Path | None = None,
         arguments: t.StrSequence = (),
+        runtime_root: Path | None = None,
     ) -> t.StrSequence:
         """Run ``probe`` in a fresh interpreter importing generated packages.
 
@@ -377,12 +405,21 @@ class TestsFlextInfraUtilitiesCodegenMixin:
             The probe's standard output lines.
 
         """
-        probe_env = dict(os.environ)
-        probe_env["PYTHONPATH"] = os.pathsep.join(python_paths)
+        if runtime_root is not None:
+            if python_paths:
+                msg = "An installed project probe cannot inject Python source paths"
+                raise ValueError(msg)
+            command = [str(u.Infra.runtime_python(runtime_root)), "-I", "-c", probe]
+            options = m.Cli.ProcessOptions(remove_env_keys=("PYTHONPATH", "PYTHONHOME"))
+        else:
+            probe_env = dict(os.environ)
+            probe_env["PYTHONPATH"] = os.pathsep.join(python_paths)
+            command = [sys.executable, "-c", probe]
+            options = m.Cli.ProcessOptions(env=probe_env)
         result = tm.ok(
             u.Cli.run(
-                [sys.executable, "-c", probe, *arguments],
-                options=m.Cli.ProcessOptions(env=probe_env),
+                [*command, *arguments],
+                options=options,
                 cwd=cwd,
             ),
         )
@@ -480,6 +517,20 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                 )
             if result.failure:
                 return r[bool].from_failure(result)
+        for project in sorted({plan.project for plan in changed}):
+            if (project / ".git").exists():
+                TestsFlextInfraUtilitiesGitMixin.git_bootstrap(
+                    project,
+                    (
+                        "add",
+                        "--",
+                        *(
+                            str(plan.path.relative_to(project))
+                            for plan in changed
+                            if plan.project == project
+                        ),
+                    ),
+                )
         return r[bool].ok(value=True)
 
     @staticmethod

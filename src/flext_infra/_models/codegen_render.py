@@ -8,17 +8,22 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableSet
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models._config.contexts import FlextInfraConfigModelsContexts
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
-from flext_infra._models._config.make import FlextInfraConfigModelsMake
-from flext_infra._models._config.provider import FlextInfraConfigModelsProvider
-from flext_infra._models._config.render import FlextInfraConfigModelsRender
-from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolConfig
+from flext_infra._models import (
+    FlextInfraModelsDepsToolConfig,
+    FlextInfraModelsMiseToolchain,
+)
+from flext_infra._models._config import (
+    FlextInfraConfigModelsContexts,
+    FlextInfraConfigModelsContract,
+    FlextInfraConfigModelsMake,
+    FlextInfraConfigModelsProvider,
+    FlextInfraConfigModelsRender,
+)
 
 
 class FlextInfraModelsCodegenRender:
@@ -68,7 +73,9 @@ class FlextInfraModelsCodegenRender:
         constraints: t.MutableJsonList = m.Field(
             description="Constraints preserving replaced local sources.",
         )
-        retained_overrides: t.MutableJsonList = m.Field(
+        retained_overrides: t.ListOf[
+            str | FlextInfraModelsMiseToolchain.UvScopedOverride
+        ] = m.Field(
             description="Declared overrides with member requests appended.",
         )
         overridden: MutableSet[str] = m.Field(
@@ -84,6 +91,10 @@ class FlextInfraModelsCodegenRender:
     class UvResolutionProject(FlextInfraConfigModelsContract.ConfigContract):
         """Authenticated project input to the native development resolution view."""
 
+        role: Literal["member", "supplier"] = m.Field(
+            default="member",
+            description="Member development graph or external runtime supplier",
+        )
         repository: Annotated[
             FlextInfraConfigModelsContexts.RepositoryRef,
             m.Field(
@@ -368,7 +379,7 @@ class FlextInfraModelsCodegenRender:
             m.Field(description="Declared constraints; the uv pin is never kept"),
         ]
         override_dependencies: Annotated[
-            t.VariadicTuple[str],
+            t.VariadicTuple[str | FlextInfraModelsMiseToolchain.UvScopedOverride],
             m.Field(
                 description=(
                     "SSOT-declared PEP 508 overrides resolving a transitive "

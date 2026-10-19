@@ -171,8 +171,11 @@ class FlextInfraMiseArtifactsVerification(
             The captured state of the governing slot, present or absent.
 
         """
+        storage = cls.publication_storage_root(root)
+        if storage.failure:
+            return r[m.Cli.AtomicFileState].from_failure(storage)
         captured = FlextInfraMiseArtifactsFiles.read_state(
-            root / cls.publication_receipt(surface),
+            storage.value / cls.publication_receipt(surface),
             required=False,
         )
         if (
@@ -182,9 +185,14 @@ class FlextInfraMiseArtifactsVerification(
         ):
             return captured
         return FlextInfraMiseArtifactsFiles.read_state(
-            root / cls.publication_receipt(c.Infra.CodegenConformSurface.ALL),
+            storage.value / cls.publication_receipt(c.Infra.CodegenConformSurface.ALL),
             required=False,
         )
+
+    @staticmethod
+    def publication_storage_root(root: Path) -> p.Result[Path]:
+        """Keep live journal evidence outside the consumed source namespace."""
+        return u.Infra.refactor_report_evidence_root(root)
 
     @classmethod
     def _receipt_incomplete(
@@ -280,6 +288,110 @@ class FlextInfraMiseArtifactsVerification(
         return r[bool].ok(value=True)
 
     @classmethod
+    def session_input_states(
+        cls,
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
+        session: m.Infra.CodegenTransactionSession,
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        """Bind only directory gains proven by the active journal's receipts.
+
+        Returns:
+            Verified current-parent inputs without changing original receipts.
+
+        """
+        result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
+        durable = cls.states_current((session.journal_state,))
+        if durable.failure:
+            return result_type.from_failure(durable)
+        states: list[m.Cli.AtomicFileState] = []
+        for original in inputs:
+            if original.parent_device is None:
+                bound = cls.bind_source_parent(original, session.journal)
+                if bound.failure:
+                    return result_type.from_failure(bound)
+                states.append(bound.value)
+            else:
+                states.append(original)
+        current = cls.states_current(tuple(states))
+        if current.failure:
+            return result_type.from_failure(current)
+        return result_type.ok(tuple(states))
+
+    @classmethod
+    def publication_input_states(
+        cls,
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
+        publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        """Bind a semantic read view through verified native publication history.
+
+        Original inputs remain owned by their analyses and source receipts. Only
+        a matching historical preimage may advance to its exact terminal output.
+
+        Returns:
+            Current-epoch inputs, or the first unowned transition.
+
+        """
+        result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
+        outputs = cls.publication_outputs_current(publications)
+        if outputs.failure:
+            return result_type.from_failure(outputs)
+        history = cls._publication_history_current(publications)
+        if history.failure:
+            return result_type.from_failure(history)
+        terminal = {record.path: record for record in outputs.value}
+        states: list[m.Cli.AtomicFileState] = []
+        for original in inputs:
+            output = terminal.get(original.path)
+            if output is None:
+                unchanged = cls.states_current((original,))
+                if unchanged.failure:
+                    return result_type.from_failure(unchanged)
+                states.append(original)
+                continue
+            records = (
+                record
+                for batch in history.value[1]
+                for record in (*batch.sources, *batch.outputs)
+                if record.path == original.path
+            )
+            matched = False
+            for record in records:
+                if cls._state_receipt_identity(original) == (
+                    record.parent_device,
+                    record.parent_inode,
+                    record.sha256,
+                    record.mode,
+                    record.device,
+                    record.inode,
+                    record.link_count,
+                    record.file_attributes,
+                    record.reparse_tag,
+                ):
+                    matched = True
+                    break
+            if not matched:
+                return result_type.fail(
+                    f"candidate input has no publication preimage: {original.path}"
+                )
+            observed = FlextInfraMiseArtifactsFiles.read_state(
+                original.path, required=output.sha256 is not None
+            )
+            if observed.failure:
+                return result_type.from_failure(observed)
+            recorded = FlextInfraMiseArtifactsJournalRelocation.source_record(
+                output.phase, observed.value, previous=output
+            )
+            if recorded.failure:
+                return result_type.from_failure(recorded)
+            if recorded.value != output:
+                return result_type.fail(
+                    f"candidate publication state changed: {original.path}"
+                )
+            states.append(observed.value)
+        return result_type.ok(tuple(states))
+
+    @classmethod
     def _publication_history_current(
         cls,
         publications: t.VariadicTuple[m.Infra.CodegenPhaseOutcome],
@@ -317,7 +429,7 @@ class FlextInfraMiseArtifactsVerification(
                 ),
                 *(destinations if destinations is not None else ()),
             ))
-            directories = (
+            directories: t.Infra.MutableSetOf[Path] = (
                 {tree.root.path for tree in reference.source_authority.generator_trees}
                 if reference is not None
                 else set()

@@ -1,0 +1,18 @@
+id: pydantic-model-config-classvar-import-new
+valid:
+  - |
+    from __future__ import annotations
+
+    from typing import Literal
+
+    class Model:
+        model_config = m.ConfigDict()
+  - |
+    class Other:
+        pass
+invalid:
+  - |
+    from __future__ import annotations
+
+    class Model:
+        model_config = m.ConfigDict(frozen=True)

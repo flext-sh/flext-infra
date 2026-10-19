@@ -20,6 +20,18 @@ class FlextInfraConfigVocabulary:
         EXCLUDED = "excluded"
 
     @unique
+    class MemberArchitectureLayer(StrEnum):
+        """Declared architecture layer of one workspace member.
+
+        The per-member ``flext-layer`` attribute in ``.gitmodules`` owns the
+        declaration; consumers derive domain/platform member name sets from
+        it instead of hand-maintained package lists.
+        """
+
+        DOMAIN = "domain"
+        PLATFORM = "platform"
+
+    @unique
     class CodegenKind(StrEnum):
         """Code-generation policy applied to one repository."""
 

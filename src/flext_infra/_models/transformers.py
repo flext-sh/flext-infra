@@ -11,10 +11,11 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import m
+from flext_cli import m, u
+from typing_extensions import TypeForm
 
 from flext_infra import p, t
-from flext_infra._models.base import FlextInfraModelsBase
+from flext_infra._models import FlextInfraModelsBase
 
 
 class FlextInfraModelsTransformers:
@@ -99,7 +100,9 @@ class FlextInfraModelsTransformers:
 
         # Why: source bytes must survive validation byte-exact;
         # the strict base strips whitespace, which corrupts CAS comparisons.
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(str_strip_whitespace=False)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            str_strip_whitespace=False, arbitrary_types_allowed=True
+        )
 
         file_path: Annotated[Path, m.Field(description="Source file to rewrite")]
         original_source: Annotated[
@@ -110,6 +113,15 @@ class FlextInfraModelsTransformers:
             str,
             m.Field(description="Prospective source bytes after migration"),
         ]
+        retire_file: bool = m.Field(
+            default=False,
+            description="Explicit source retirement, not empty-file output",
+        )
+        source_states: t.VariadicTuple[t.Port[p.Infra.SemanticSourceState]] = m.Field(
+            default=(),
+            exclude=True,
+            description="Original native inputs consumed by this source plan",
+        )
         changes: Annotated[
             t.VariadicTuple[str],
             m.Field(description="Recorded migration operations"),
@@ -186,26 +198,14 @@ class FlextInfraModelsTransformers:
             frozenset[str],
             m.Field(description="Module-level names the file already binds"),
         ]
-
-    class NestingModuleAliasScan(FlextInfraModelsBase.FrozenArbitrary):
-        """Module bindings one consumer holds on modules whose members nest."""
-
-        aliases: Annotated[
+        preserved_reads: Annotated[
+            frozenset[t.Pair[int, int]],
+            m.Field(description="Eager upstream reads before a local alias rebind"),
+        ] = frozenset()
+        upstream_aliases: Annotated[
             t.StrMapping,
-            m.Field(description="Local module binding mapped to its nested module"),
-        ]
-        residual: Annotated[
-            frozenset[str],
-            m.Field(description="Bindings still used as the module object"),
-        ]
-        read: Annotated[
-            frozenset[str],
-            m.Field(description="Bindings read through a member the owner holds"),
-        ]
-        owner_imports: Annotated[
-            frozenset[str],
-            m.Field(description="Nested modules whose owner the file imports"),
-        ]
+            m.Field(description="Proven upstream identities preceding local aliases"),
+        ] = m.Field(default_factory=u.empty(TypeForm(t.StrMapping)))
 
     class PrivateImportRewritePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Binding-proven import rewrites planned for one private-import file."""

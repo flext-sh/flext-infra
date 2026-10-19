@@ -7,9 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableMapping
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
-from flext_infra import c, infra, m
+from flext_infra import c, infra, m, p, r, t
 from flext_infra.codegen import (
     FlextInfraCodegenConsolidator,
     FlextInfraCodegenLayout,
@@ -31,8 +31,53 @@ from flext_infra.deps import (
     FlextInfraRuntimeDevDependencyDetector,
 )
 
-if TYPE_CHECKING:
-    from flext_infra import t
+
+def execute_codegen_generate(
+    request: m.Infra.CodegenGenerateRequest,
+) -> p.Result[t.Cli.ResultValue]:
+    """Erase the typed generation receipt for the declarative CLI route.
+
+    Returns:
+        The generation failure verbatim, or an erased success marker whose
+        static route message is the CLI output.
+
+    """
+    generated = infra.codegen_generate(request)
+    if generated.failure:
+        return r[t.Cli.ResultValue].from_failure(generated)
+    return r[t.Cli.ResultValue].ok(value=True)
+
+
+def execute_codegen_conform(
+    request: m.Infra.CodegenConformRequest,
+) -> p.Result[t.Cli.ResultValue]:
+    """Erase the typed conformance receipt for the declarative CLI route.
+
+    Returns:
+        The conformance failure verbatim, or an erased success marker whose
+        static route message is the CLI output.
+
+    """
+    conformed = infra.codegen_conform(request)
+    if conformed.failure:
+        return r[t.Cli.ResultValue].from_failure(conformed)
+    return r[t.Cli.ResultValue].ok(value=True)
+
+
+def execute_codegen_new(
+    command: FlextInfraCodegenProjectNew,
+) -> p.Result[t.Cli.ResultValue]:
+    """Erase the typed project-scaffolding receipt for the declarative CLI route.
+
+    Returns:
+        The scaffolding failure verbatim, or an erased success marker whose
+        static route message is the CLI output.
+
+    """
+    created = infra.codegen_new(command)
+    if created.failure:
+        return r[t.Cli.ResultValue].from_failure(created)
+    return r[t.Cli.ResultValue].ok(value=True)
 
 
 class FlextInfraCodegenRoutes:
@@ -67,14 +112,14 @@ class FlextInfraCodegenRoutes:
                 name="generate",
                 help_text="Generate managed projections without declaration repair",
                 model_cls=m.Infra.CodegenGenerateRequest,
-                handler=infra.codegen_generate,
+                handler=execute_codegen_generate,
                 success_message="managed projection generation complete",
             ),
             m.Cli.ResultCommandRoute(
                 name="conform",
                 help_text="Conform generated project and workspace files",
                 model_cls=m.Infra.CodegenConformRequest,
-                handler=infra.codegen_conform,
+                handler=execute_codegen_conform,
                 success_message="project conformance complete",
             ),
             m.Cli.ResultCommandRoute(
@@ -96,7 +141,7 @@ class FlextInfraCodegenRoutes:
                         "new",
                         "Create a new FLEXT project from the canonical templates",
                         FlextInfraCodegenProjectNew,
-                        infra.codegen_new,
+                        execute_codegen_new,
                         "project created",
                     ),
                     (
@@ -196,7 +241,7 @@ class FlextInfraCodegenRoutes:
                         ),
                         FlextInfraCodegenMiseToolchainRepair,
                         FlextInfraCodegenMiseToolchainRepair.execute,
-                        "Selected tool repaired and complete toolchain proven",
+                        "Selected tool installation and complete toolchain verified",
                     ),
                     (
                         "version-file",

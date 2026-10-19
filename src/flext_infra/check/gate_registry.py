@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import p, r, t
+from flext_infra import c, p, r, t
 from flext_infra.gates import (
     FlextInfraBanditGate,
     FlextInfraConflictMarkersGate,
@@ -111,6 +111,41 @@ class FlextInfraGateRegistry:
 
         """
         return self._gates.get(gate_id)
+
+    def delegated_lint_rules(
+        self,
+        owners: t.StrMapping,
+        *,
+        check_gates: t.StrSequence,
+        repair_gates: t.StrSequence,
+    ) -> t.StrTuple:
+        """Derive native delegation only for elected checking and repair owners.
+
+        Returns:
+            Declared rules whose registered owner remains in both contracts.
+
+        Raises:
+            ValueError: If an owner is unknown, self-owned, or not elected with
+                a native checking and repair implementation.
+
+        """
+        for rule, owner in owners.items():
+            gate = self.get(owner)
+            native_owner = (
+                owner != c.Infra.LINT
+                and owner in c.Infra.ALLOWED_GATES
+                and owner in c.Infra.CANONICAL_FILE_GATE_IDS
+                and gate is not None
+                and gate.can_fix
+            )
+            elected = owner in check_gates and owner in repair_gates
+            if not (native_owner and elected):
+                msg = (
+                    f"Ruff rule {rule} requires an elected native check/repair "
+                    f"owner: {owner}"
+                )
+                raise ValueError(msg)
+        return tuple(sorted(owners))
 
     def runtime_identity(
         self,

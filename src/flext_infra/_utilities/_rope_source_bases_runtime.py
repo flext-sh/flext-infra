@@ -199,38 +199,38 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 alias_path, alias_source = captured
                 if alias_path.name != c.Infra.INIT_PY:
                     continue
-                folder = self._project.get_folder(
-                    alias_path.parent.relative_to(
-                        Path(self._project.root.real_path)
-                    ).as_posix()
-                )
-                # Only a package the project's file owner holds has a native
-                # membership and an original input epoch. Planned bytes
-                # override disk: a planned-only sibling or package is captured
-                # without a native counterpart, so every native module must be
-                # captured, never the reverse, and the captured alias source
-                # stays authoritative.
-                if folder.has_child(alias_path.name):
-                    native = {
+                root = Path(self._project.root.real_path)
+                relative_parent = alias_path.parent.relative_to(root).as_posix()
+                if self._project.root.has_child(relative_parent):
+                    folder = self._project.get_folder(relative_parent)
+                    actual = {
                         Path(child.real_path)
                         for child in folder.get_children()
                         if not child.is_folder()
                         and Path(child.real_path).suffix == c.Infra.EXT_PYTHON
                     }
-                    captured_members = {
+                    expected = {
                         path
                         for path, _source in self._sources.values()
                         if path.parent == alias_path.parent
                         and path.suffix == c.Infra.EXT_PYTHON
+                        and self._project.root.has_child(
+                            path.relative_to(root).as_posix()
+                        )
                     }
-                    if not native <= captured_members:
+                    if actual != expected:
                         message = (
-                            "native lazy alias membership differs: "
-                            f"{alias_path.parent}"
+                            f"native lazy alias membership differs: {alias_path.parent}; "
+                            f"project={root}; alias={alias_module}; "
+                            f"expected={tuple(sorted(path.name for path in expected))}; "
+                            f"observed={tuple(sorted(path.name for path in actual))}"
                         )
                         raise ValueError(message)
+                relative = alias_path.relative_to(root).as_posix()
+                if self._project.root.has_child(relative):
+                    resource = self._project.get_resource(relative)
                     FlextInfraUtilitiesRopeRuntime.require_file_resource(
-                        folder.get_child(alias_path.name), alias_path
+                        resource, alias_path
                     ).read()
                 for alias, binding in (
                     FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
@@ -311,19 +311,14 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
             path, source = captured
             if provider is None:
-                folder = self._project.get_folder(
-                    path.parent.relative_to(
-                        Path(self._project.root.real_path)
-                    ).as_posix()
-                )
-                # Derived facade text retains its original file input epoch.
-                # The project's own file owner decides which captured sources
-                # hold one: authenticated projects overlay their planned
-                # bytes, while a planned-only source on a live project has no
-                # original input to register (planned bytes override disk).
-                if folder.has_child(path.name):
+                relative = path.relative_to(
+                    Path(self._project.root.real_path)
+                ).as_posix()
+                if self._project.root.has_child(relative):
+                    resource = self._project.get_resource(relative)
+                    # Derived facade text retains its original file input epoch.
                     FlextInfraUtilitiesRopeRuntime.require_file_resource(
-                        folder.get_child(path.name), path
+                        resource, path
                     ).read()
             request = m.Infra.SourceBindingInventoryRequest(
                 project=self._project,
@@ -527,49 +522,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             self._external[identity] = value
             return identity
 
-        def _provider_module_name(self, imported: p.Infra.RopeImportedModule) -> str:
-            """Return the absolute module name one Rope import points at.
-
-            Raises:
-                ValueError: If the import has no declared module location or a
-                    relative import escapes the package.
-
-            """
-            if imported.module_name is None:
-                if imported.resource is None:
-                    message = "Import has no declared module location"
-                    raise ValueError(message)
-                return FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                    self._project,
-                    imported.resource,
-                ).get_name()
-            if not imported.level:
-                return imported.module_name
-            declaring = imported.importing_module.get_module()
-            source = declaring.get_resource()
-            if source is None:
-                message = "Import has no declared module location"
-                raise ValueError(message)
-            name = imported.module_name
-            if imported.level:
-                package = declaring.get_name()
-                if Path(source.real_path).name != "__init__.py":
-                    package = package.rpartition(".")[0]
-                parts = package.split(".") if package else []
-                if imported.level > len(parts):
-                    message = f"Relative import escapes package: {package}.{name}"
-                    raise ValueError(message)
-                name = ".".join(
-                    filter(
-                        None,
-                        (
-                            ".".join(parts[: len(parts) - imported.level + 1]),
-                            name,
-                        ),
-                    ),
-                )
-            return name
-
         def _provider_module(
             self,
             imported: p.Infra.RopeImportedModule,
@@ -579,18 +531,31 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Returns:
                 The resolved Rope module object.
 
+            Raises:
+                ValueError: The import has no declared module location.
+
             """
-            name = self._provider_module_name(imported)
-            module = self._project.get_module(name)
-            resource = imported.resource or self._project.find_module(name)
-            if resource is not None and not isinstance(
-                module,
-                self._native_module_type,
-            ):
-                module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            if imported.resource is not None:
+                return FlextInfraUtilitiesRopeCore.resolve_pymodule(
                     self._project,
-                    resource,
+                    imported.resource,
                 )
+            if imported.module_name is None:
+                message = "Import has no declared module location"
+                raise ValueError(message)
+            source = imported.importing_module.get_module().get_resource()
+            folder = source.parent if source is not None else None
+            if imported.level:
+                if folder is None:
+                    message = "Import has no declared module location"
+                    raise ValueError(message)
+                module = self._project.get_relative_module(
+                    imported.module_name,
+                    folder,
+                    imported.level,
+                )
+            else:
+                module = self._project.get_module(imported.module_name, folder)
             return FlextInfraUtilitiesRopeRuntime.require_semantic_module(module)
 
         def _provider_reference(
@@ -645,7 +610,17 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         visiting | {target},
                         depth + 1,
                     )
-            binding = module.get_attribute(name)
+            try:
+                binding = module.get_attribute(name)
+            except (
+                FlextInfraUtilitiesRopeRuntime.rope_attribute_not_found_error_types()
+            ) as exc:
+                resource = module.get_resource()
+                exc.add_note(
+                    f"Provider base reference: {target}; source="
+                    f"{resource.real_path if resource is not None else '<native>'}"
+                )
+                raise
             if isinstance(binding, p.Infra.RopeImportedName):
                 return self._provider_imported_name_reference(
                     binding,
@@ -782,7 +757,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 The resolved declaration identity.
 
             """
-            imported_name = self._provider_module_name(binding.imported_module)
+            imported = self._provider_module(binding.imported_module)
+            imported_name = imported.get_name()
             if imported_name in self._namespaces:
                 return self._resolve(
                     m.Infra.SourceClassReference(
@@ -793,7 +769,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     visiting | {target},
                     depth + 1,
                 )
-            imported = self._provider_module(binding.imported_module)
             return self._provider_reference(
                 imported,
                 (binding.imported_name, *remaining),
@@ -815,7 +790,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 The resolved declaration identity.
 
             """
-            imported_name = self._provider_module_name(binding)
+            imported = self._provider_module(binding)
+            imported_name = imported.get_name()
             if imported_name in self._namespaces:
                 return self._resolve(
                     m.Infra.SourceClassReference(
@@ -826,7 +802,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     visiting | {target},
                     depth + 1,
                 )
-            imported = self._provider_module(binding)
             return self._provider_reference(
                 imported,
                 tuple(remaining),
@@ -843,28 +818,14 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         ) -> str:
             """Resolve one external qualified target through Rope.
 
-            Rope raises its own ModuleNotFoundError (not the builtin). Virtual
-            stdlib submodules (collections.abc since 3.13, and aliases like
-            os.path) exist only through runtime module aliasing, so static file
-            lookup cannot see them. Their declarations live in the backing real
-            module, which rope resolves normally.
-            Native Rope resolution and attribute errors propagate unchanged.
+            The injected project retains its original native-module election.
+            Resolution and attribute errors propagate unchanged.
 
             Returns:
                 The resolved declaration identity.
 
             """
-            errors: t.VariadicTuple[type[BaseException]] = (
-                *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
-                ModuleNotFoundError,
-            )
-            try:
-                module = self._project.get_module(target)
-            except errors:
-                real = self._stdlib_backing_module(target)
-                if real is None:
-                    raise
-                module = self._project.get_module(real)
+            module = self._project.get_module(target)
             resource = self._project.find_module(target)
             if resource is not None and not isinstance(
                 module,
@@ -1228,35 +1189,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 qualified_base=root,
             )
 
-        def _stdlib_backing_module(self, target: str) -> str | None:
-            """Return the importable real module backing one virtual stdlib module.
-
-            Returns:
-                The backing module name when the target's import specification
-                declares a file importable under its own stem; otherwise None.
-
-            """
-            if self._stdlib_backing_cache is None:
-                self._stdlib_backing_cache = {}
-            if target in self._stdlib_backing_cache:
-                return self._stdlib_backing_cache[target] or None
-            backing: str | None = None
-            try:
-                spec = importlib.util.find_spec(target)
-            except ImportError:
-                spec = None
-            file = spec.origin if spec is not None else None
-            if file:
-                stem = Path(file).stem
-                if stem != target.rpartition(".")[-1] and importlib.util.find_spec(
-                    stem,
-                ):
-                    backing = stem
-            self._stdlib_backing_cache[target] = backing or ""
-            return backing
-
-        _stdlib_backing_cache: t.MutableMappingKV[str, str] | None = None
-
     @classmethod
     def source_class_order(
         cls,
@@ -1280,7 +1212,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
     @classmethod
     def runtime_bases(
         cls,
-        project: t.Infra.RopeProject,
+        project: p.Infra.RopeProject,
         sources: t.MappingKV[str, t.Pair[Path, str]],
         roots: t.StrSequence,
         extra_module_aliases: t.MappingKV[str, str] | None = None,

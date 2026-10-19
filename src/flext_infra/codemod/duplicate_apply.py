@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
+from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.gates.duplication import FlextInfraDuplicationGate
 from flext_infra.refactor._census_objects import FlextInfraRefactorCensusObjectsMixin
 from flext_infra.transformers import FlextInfraSemanticPublication
@@ -54,12 +55,145 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         *,
         apply: bool,
     ) -> p.Result[m.Infra.DuplicateCureOutcome]:
-        """Cure the trivial duplicate groups and plan every other duplicate.
+        """Plan every duplicate and publish only a complete trivial candidate.
 
         Returns:
             The resulting ``p.Result[m.Infra.DuplicateCureOutcome]``.
 
         """
+        states = tuple(
+            u.Cli.atomic_read_binary_file_state(
+                resource.real_path, required=True
+            ).unwrap()
+            for resource in rope_workspace.rope_project.get_python_files()
+        )
+        planned = cls.plan_census(
+            root,
+            rope_workspace,
+            groups,
+            sources={
+                state.path: state.content.decode(c.DEFAULT_ENCODING)
+                for state in states
+                if state.content is not None
+            },
+            source_states=states,
+        )
+        if planned.failure:
+            return r[m.Infra.DuplicateCureOutcome].from_failure(planned)
+        outcome, deletions = planned.value
+        if not apply or not outcome.edits or outcome.plans:
+            return r[m.Infra.DuplicateCureOutcome].ok(outcome)
+        published = cls._publish(
+            root,
+            rope_project=rope_workspace.rope_project,
+            working={edit.file_path: edit.updated_source for edit in outcome.edits},
+            edits=outcome.edits,
+            deletions=deletions,
+        )
+        if published.failure:
+            return r[m.Infra.DuplicateCureOutcome].from_failure(published)
+        return r[m.Infra.DuplicateCureOutcome].ok(outcome)
+
+    @classmethod
+    def plan_census(
+        cls,
+        root: Path,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        groups: t.SequenceOf[m.Infra.DuplicateGroup],
+        *,
+        sources: t.MappingKV[Path, str],
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+    ) -> p.Result[
+        t.Pair[m.Infra.DuplicateCureOutcome, t.VariadicTuple[m.Infra.DuplicateDeletion]]
+    ]:
+        """Retain every native cure effect and manual diagnostic without publishing.
+
+        Returns:
+            The retained cure outcome with its deletions, or the first failure.
+
+        """
+        captured = FlextInfraCodegenPreconditions.unique_states((
+            *source_states,
+            *(state for plan in declared_files for state in plan.source_states),
+        ))
+        if captured.failure:
+            return r[
+                t.Pair[
+                    m.Infra.DuplicateCureOutcome,
+                    t.VariadicTuple[m.Infra.DuplicateDeletion],
+                ]
+            ].from_failure(captured)
+        source_states = captured.value
+        snapshot = u.Infra.snapshot_project(
+            rope_workspace.rope_project,
+            sources,
+            captured=u.Infra.codemod_source_epoch(
+                m.Infra.CodemodBindingSnapshot(
+                    states=tuple(
+                        state
+                        for state in source_states
+                        if state.path in sources
+                        or state.path.suffix
+                        in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
+                    )
+                )
+            ),
+            declared_files=tuple(
+                plan.model_copy(
+                    update={
+                        "desired_content": sources[plan.path].encode(
+                            c.DEFAULT_ENCODING
+                        ),
+                    }
+                )
+                for plan in declared_files
+                if plan.path in sources
+                and (
+                    isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
+                    or plan.before.content is None
+                )
+            ),
+        )
+        with type(rope_workspace).open_workspace(
+            root,
+            rope_repository_root=Path(snapshot.root.real_path),
+            source_project=snapshot,
+            workspace_index=rope_workspace.workspace_index,
+            index_receipt=rope_workspace.source_index_receipt,
+        ) as planning_workspace:
+            return cls._plan_census_sources(
+                root, planning_workspace, groups, sources=sources
+            )
+
+    @classmethod
+    def _plan_census_sources(
+        cls,
+        root: Path,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        groups: t.SequenceOf[m.Infra.DuplicateGroup],
+        *,
+        sources: t.MappingKV[Path, str],
+    ) -> p.Result[
+        t.Pair[m.Infra.DuplicateCureOutcome, t.VariadicTuple[m.Infra.DuplicateDeletion]]
+    ]:
+        """Elect cures and every residual diagnostic on one frozen native workspace.
+
+        Returns:
+            The elected cure outcome with its deletions, or the first failure.
+
+        """
+        for path, source in sources.items():
+            if rope_workspace.source(path) != source:
+                return r[
+                    t.Pair[
+                        m.Infra.DuplicateCureOutcome,
+                        t.VariadicTuple[m.Infra.DuplicateDeletion],
+                    ]
+                ].fail(
+                    f"duplicate planning workspace differs from its "
+                    f"working view: {path}"
+                )
         layers = cls._project_layers(root)
         working: MutableMapping[Path, str] = {}
         edits: list[m.Infra.SemanticMigrationEdit] = []
@@ -67,6 +201,19 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         deletions: list[m.Infra.DuplicateDeletion] = []
         bindings = 0
         for group in groups:
+            if any(
+                not Path(item.file_path).resolve().is_relative_to(root)
+                for item in group.definitions
+            ):
+                return r[
+                    t.Pair[
+                        m.Infra.DuplicateCureOutcome,
+                        t.VariadicTuple[m.Infra.DuplicateDeletion],
+                    ]
+                ].fail(
+                    f"duplicate declaration is outside its selected "
+                    f"target: {group.name}"
+                )
             planned = cls._plan_group(
                 rope_workspace,
                 group,
@@ -76,6 +223,17 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             if isinstance(planned, m.Infra.DuplicateCurePlan):
                 plans.append(planned)
                 continue
+            for edit in planned.edits:
+                if sources.get(edit.file_path) != edit.original_source:
+                    return r[
+                        t.Pair[
+                            m.Infra.DuplicateCureOutcome,
+                            t.VariadicTuple[m.Infra.DuplicateDeletion],
+                        ]
+                    ].fail(
+                        f"duplicate effect is outside its immutable "
+                        f"working view: {edit.file_path}"
+                    )
             edits.extend(planned.edits)
             cls._collect_working(working, planned.edits)
             deletions.extend(
@@ -89,20 +247,11 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             )
             bindings += sum(len(copy.consumer_files) for copy in planned.copies)
         plans.extend(cls._jscpd_plans(root, layers=layers))
-        if not apply or not edits:
-            return r[m.Infra.DuplicateCureOutcome].ok(
-                m.Infra.DuplicateCureOutcome(plans=tuple(plans)),
-            )
-        published = cls._publish(
-            root,
-            rope_project=rope_workspace.rope_project,
-            working=working,
-            edits=tuple(edits),
-            deletions=tuple(deletions),
-        )
-        if published.failure:
-            return r[m.Infra.DuplicateCureOutcome].from_failure(published)
-        return r[m.Infra.DuplicateCureOutcome].ok(
+        return r[
+            t.Pair[
+                m.Infra.DuplicateCureOutcome, t.VariadicTuple[m.Infra.DuplicateDeletion]
+            ]
+        ].ok((
             m.Infra.DuplicateCureOutcome(
                 edits=tuple(edits),
                 plans=tuple(plans),
@@ -110,7 +259,8 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                 copies_removed=len(deletions),
                 bindings_rewired=bindings,
             ),
-        )
+            tuple(deletions),
+        ))
 
     # -------------------------------------------------------------- planning
 
@@ -255,7 +405,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         definitions: list[m.Infra.DuplicateDefinition] = []
         for item in group.definitions:
             path = Path(item.file_path).resolve()
-            source = path.read_text(encoding=c.DEFAULT_ENCODING)
+            source = workspace.source(path)
             statement = cls._definition_statement(workspace.rope_project, source, item)
             definitions.append(
                 m.Infra.DuplicateDefinition(
@@ -436,13 +586,8 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             item.module_name for item in group.definitions if item.module_name
         }
         importers: list[str] = []
-        for entry in rope_workspace.modules():
-            path = entry.file_path
-            if not path.is_file():
-                continue
-            resource = rope_workspace.resource(path)
-            if resource is None:
-                continue
+        for resource in rope_workspace.rope_project.get_python_files():
+            path = Path(resource.real_path).resolve()
             imports = u.Infra.resolve_module_imports(
                 rope_workspace.rope_project, resource
             )
@@ -487,7 +632,10 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                 if path == definition.path:
                     in_module_uses += 1
                     continue
-                if cls._is_generated(path):
+                generated = rope_workspace.source(path).startswith(
+                    c.Infra.AUTOGEN_HEADERS
+                )
+                if generated or c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(path.name):
                     return f"a consumer is generated: {path}"
                 if not cls._consumer_is_rebindable(
                     rope_workspace,
@@ -622,22 +770,6 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
                 start=start,
                 end=end,
             )
-        )
-
-    @staticmethod
-    def _is_generated(path: Path) -> bool:
-        """Return whether one path is a generated module or export sidecar.
-
-        Returns:
-            Whether the path is generated surface the engine never rewrites.
-
-        """
-        if c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(path.name):
-            return True
-        if not path.is_file():
-            return False
-        return path.read_text(encoding=c.DEFAULT_ENCODING).startswith(
-            c.Infra.AUTOGEN_HEADERS,
         )
 
     # ----------------------------------------------------------------- edits
@@ -1149,7 +1281,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
         if mirror in seen:
             return None
         seen.add(mirror)
-        if not FlextInfraDuplicationGate.is_semantic_clone(duplicate, first, second):
+        if not FlextInfraDuplicationGate.semantic_clone(duplicate, first, second):
             return None
         owner_side, other_side = sorted(sides, key=cls._side_layer_key(layers))
         return cls._clone_plan(report_duplicate.lines, owner_side, other_side)

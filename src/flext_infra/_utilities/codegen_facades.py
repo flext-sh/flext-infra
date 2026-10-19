@@ -29,7 +29,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
-from flext_infra._utilities._rope.project import FlextInfraRopeProject
+from flext_infra._utilities._rope.project import FlextInfraRopeProject, require_value
 from flext_infra._utilities._rope_analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
@@ -48,6 +48,8 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         *,
         source_states: tuple[m.Cli.AtomicFileState, ...] = (),
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        planned_sources: t.MappingKV[Path, str | None] | None = None,
+        project_roots: t.VariadicTuple[Path] = (),
     ) -> Generator[
         t.Triple[
             p.Infra.RopeProject,
@@ -59,7 +61,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     tuple[m.Cli.AtomicDirectoryChainPlan, ...],
                 ],
             ],
-            t.MappingKV[Path, str],
+            dict[Path, str],
         ]
     ]:
         """Share one authenticated native source graph across a planning pass.
@@ -67,19 +69,46 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         Yields:
             The native Rope project, original-state reader and planned sources.
 
+        Raises:
+            ValueError: If a declared project root lies outside the original
+                authority.
+
         """
         root = root.resolve()
-        if not source_states:
-            paths = FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(
-                root,
-            )
-            source_states = tuple(
+        project_roots = tuple(sorted({project.resolve() for project in project_roots}))
+        if any(not project.is_relative_to(root) for project in project_roots):
+            msg = "Rope declared project root is outside the original authority"
+            raise ValueError(msg)
+        known = {
+            *(state.path for state in source_states),
+            *(plan.path for plan in declared_files),
+            *(state.path for plan in declared_files for state in plan.source_states),
+        }
+        iteration = FlextInfraUtilitiesIterationDirectory
+        paths = {
+            path
+            for project in project_roots or (root,)
+            if project.is_dir()
+            for path in iteration.iter_directory_python_files(project)
+        }
+        source_states = (
+            *source_states,
+            *(
                 u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
-                for path in paths
+                for path in sorted(paths)
+                if path not in known
+            ),
+        )
+        if planned_sources:
+            source_states, declared_files = (
+                FlextInfraUtilitiesCodegenFacades._facade_declared_sources(
+                    root, source_states, declared_files, planned_sources
+                )
             )
-        source_states = m.Infra.CodemodBindingSnapshot(
+        original_states = m.Infra.CodemodBindingSnapshot(
             states=(
                 *source_states,
+                *(state for plan in declared_files for state in plan.source_states),
                 *(
                     plan.before
                     for plan in declared_files
@@ -88,10 +117,13 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ),
         ).states
         proposed = {
-            plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
+            plan.path: plan.desired_content
             for plan in declared_files
             if plan.desired_content is not None
         }
+        retired = frozenset(
+            plan.path for plan in declared_files if plan.desired_content is None
+        )
         # Consumed states include the dependency modules native reads loaded
         # from the checkout-local environment; they stay verified inputs, but
         # only repository-owned sources are planning targets (70dc29f1b9
@@ -103,20 +135,73 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 if state.path.is_relative_to(root)
                 and state.path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
                 if state.content is not None
+                and state.path not in retired
                 and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
                     root, state.path
                 )
             },
-            **proposed,
+            **{
+                plan.path: proposed[plan.path].decode(c.DEFAULT_ENCODING)
+                for plan in declared_files
+                if plan.path.is_relative_to(root)
+                and plan.path.suffix == c.Infra.EXT_PYTHON
+                and plan.path in proposed
+                and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                    root, plan.path
+                )
+            },
         }
         with (
-            FlextInfraUtilitiesRopeCore.open_project(root) as live,
+            FlextInfraUtilitiesRopeCore.open_project(
+                next(path for path in (root, *root.parents) if path.is_dir()),
+                project_roots=project_roots or None,
+            ) as live,
             closing(
                 FlextInfraRopeProject.from_atomic_reads(
                     live,
-                    source_states,
-                    ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
-                    sources=proposed,
+                    original_states,
+                    election=m.Infra.RopeProjectElection(
+                        ignored_resources=tuple(
+                            sorted(config.Infra.codegen.source_scan_ignored)
+                        ),
+                        source_folders=tuple(
+                            sorted({
+                                *(folder.path for folder in live.get_source_folders()),
+                                *(
+                                    ""
+                                    if folder == Path(live.root.real_path)
+                                    else folder.relative_to(
+                                        live.root.real_path
+                                    ).as_posix()
+                                    for folder in (
+                                        root,
+                                        *project_roots,
+                                        *(
+                                            project / name
+                                            for project in (root, *project_roots)
+                                            for name in config.Infra.source_scan.roots
+                                        ),
+                                    )
+                                    if any(
+                                        path.is_relative_to(folder) for path in proposed
+                                    )
+                                ),
+                            })
+                        ),
+                        extension_modules=tuple(
+                            sorted(
+                                u.type_adapter(set[str]).validate_python(
+                                    live.get_pycore().extension_modules, strict=True
+                                )
+                            )
+                        ),
+                        python_path_folders=tuple(
+                            folder.real_path
+                            for folder in live.get_python_path_folders()
+                            if folder.is_folder()
+                        ),
+                    ),
+                    sources={},
                     declared_files=declared_files,
                 )
             ) as project,
@@ -142,6 +227,54 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             finally:
                 if completed:
                     project.verify_source_states()
+
+    @staticmethod
+    def _facade_declared_sources(
+        root: Path,
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        planned_sources: t.MappingKV[Path, str | None],
+    ) -> t.Pair[
+        t.VariadicTuple[m.Cli.AtomicFileState],
+        t.VariadicTuple[m.Infra.CodegenFilePlan],
+    ]:
+        """Authenticate planned overlays against their original physical inputs.
+
+        Returns:
+            Original source receipts and their consistent publication plans.
+
+        Raises:
+            ValueError: If a declaration competes or a native input cannot be read.
+
+        """
+        originals = {state.path: state for state in source_states}
+        declarations = {plan.path: plan for plan in declared_files}
+        for supplied_path, source in planned_sources.items():
+            path = supplied_path.resolve()
+            content = source.encode(c.DEFAULT_ENCODING) if source is not None else None
+            declared = declarations.get(path)
+            if declared is not None:
+                if declared.desired_content != content:
+                    message = f"Rope planned source has competing declarations: {path}"
+                    raise ValueError(message)
+                continue
+            original = originals.get(path)
+            if original is None:
+                original = require_value(u.Cli.atomic_read_binary_file_state(path))
+                originals[path] = original
+            chain = require_value(u.Cli.atomic_plan_directory_chain(path.parent))
+            declarations[path] = m.Infra.CodegenFilePlan(
+                project=root,
+                path=path,
+                before=chain if chain.directories else original,
+                desired_content=content,
+                desired_mode=(
+                    original.mode
+                    if original.mode is not None
+                    else config.Infra.codegen.modes.file_default
+                ),
+            )
+        return tuple(originals.values()), tuple(declarations.values())
 
     @classmethod
     def render_type_facade(
@@ -555,7 +688,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ast.parse(source, filename=str(facade_path)),
             facade_path,
         )
-        owners, ancestors = cls._facade_protocol_owners(
+        owners, _ = cls._facade_protocol_owners(
             pkg_dir
             / FlextInfraUtilitiesCodegenNamespace.facade_families()[
                 c.Infra.FacadeFamily.P
@@ -563,10 +696,170 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             binding[1],
             project=binding[0],
         )
-        reachable = cls._reachable_bases(
-            tuple(cls._base_name(base) for base in namespace.bases),
-            ancestors,
+        project = binding[0]
+        module = FlextInfraUtilitiesRopeRuntime.build_string_module(
+            project,
+            source,
+            resource=project.get_resource(
+                facade_path.relative_to(Path(project.root.real_path)).as_posix()
+            ),
         )
+        scope = module.get_scope()
+        if namespace is not facade:
+            scope = next(
+                child
+                for child in scope.get_scopes()
+                if child.get_start() == facade.lineno
+            )
+        protocol_module = FlextInfraUtilitiesRopeRuntime.build_string_module(
+            project, "from typing import Protocol, runtime_checkable\n"
+        )
+        protocol = protocol_module.get_scope().get_name("Protocol").get_object()
+        runtime_checkable = (
+            protocol_module.get_scope().get_name("runtime_checkable").get_object()
+        )
+        base_objects: list[p.Infra.RopePyObject] = []
+        for base in namespace.bases:
+            resolved = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                scope, base.value if isinstance(base, ast.Subscript) else base
+            )
+            if resolved is None:
+                message = f"Unresolved protocol facade base: {ast.unparse(base)}"
+                raise ValueError(message)
+            base_objects.append(resolved.get_object())
+        inherited: list[p.Infra.RopePyObject] = []
+        pending = list(base_objects)
+        while pending:
+            owner = pending.pop(0)
+            if owner not in inherited:
+                inherited.append(owner)
+                pending.extend(owner.get_superclasses())
+        plain_owner = any(
+            owner is not protocol and protocol not in owner.get_superclasses()
+            for owner in base_objects
+        )
+        if namespace is not facade and plain_owner:
+            protocol_decorators = {
+                ast.unparse(decorator)
+                for decorator in namespace.decorator_list
+                if (
+                    resolved := FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                        scope, decorator
+                    )
+                )
+                is not None
+                and resolved.get_object() is runtime_checkable
+            }
+            wrapper = MetadataWrapper(parse_module(source))
+            positions = wrapper.resolve(PositionProvider)
+            for node, span in positions.items():
+                if (
+                    not isinstance(node, ClassDef)
+                    or span.start.line != namespace.lineno
+                ):
+                    continue
+                replacement = node.with_changes(
+                    bases=tuple(
+                        base
+                        for base in node.bases
+                        if base_objects[node.bases.index(base)] is not protocol
+                    ),
+                    decorators=tuple(
+                        decorator
+                        for decorator in node.decorators
+                        if wrapper.module.code_for_node(decorator.decorator)
+                        not in protocol_decorators
+                    ),
+                )
+                updated = wrapper.module.deep_replace(node, replacement)
+                if not isinstance(updated, Module):
+                    message = (
+                        "protocol namespace projection did not preserve the module"
+                    )
+                    raise ValueError(message)
+                source = updated.code
+                break
+            context = CodemodContext()
+            for name in (c.Infra.PROTOCOL_BASE, "runtime_checkable"):
+                RemoveImportsVisitor.remove_unused_import(context, "typing", name)
+            source = (
+                RemoveImportsVisitor(context)
+                .transform_module(parse_module(source))
+                .code
+            )
+            facade, namespace = cls._facade_classes(
+                ast.parse(source, filename=str(facade_path)),
+                facade_path,
+            )
+        shadows: list[ast.AnnAssign] = []
+        for member in namespace.body:
+            if not (
+                isinstance(member, ast.AnnAssign)
+                and isinstance(member.target, ast.Name)
+                and isinstance(member.annotation, ast.Subscript)
+                and isinstance(member.annotation.value, ast.Name)
+                and member.annotation.value.id == "type"
+                and member.value is not None
+            ):
+                continue
+            value = FlextInfraUtilitiesRopeRuntime.resolve_symbol(scope, member.value)
+            annotated = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                scope, member.annotation.slice
+            )
+            if value is None or annotated is None:
+                message = f"Unresolved protocol class attribute: {member.target.id}"
+                raise ValueError(message)
+            target = value.get_object()
+            if (
+                protocol in target.get_superclasses()
+                and target is not annotated.get_object()
+            ):
+                message = (
+                    f"ambiguous protocol class attribute {member.target.id}: "
+                    "annotation does not identify the declared contract"
+                )
+                raise ValueError(message)
+            inherited_member = next(
+                (
+                    owner.get_attributes()[member.target.id].get_object()
+                    for owner in base_objects
+                    if member.target.id in owner.get_attributes()
+                ),
+                None,
+            )
+            if (
+                target is inherited_member
+                and target is annotated.get_object()
+                and protocol in target.get_superclasses()
+            ):
+                shadows.append(member)
+            elif (
+                inherited_member is not None
+                and protocol in target.get_superclasses()
+                and any(
+                    target is attribute.get_object()
+                    for owner in base_objects
+                    for attribute in owner.get_attributes().values()
+                )
+            ):
+                message = (
+                    f"ambiguous protocol class attribute {member.target.id}: "
+                    "value does not identify the inherited contract"
+                )
+                raise ValueError(message)
+        if shadows:
+            lines = source.splitlines(keepends=True)
+            for member in reversed(shadows):
+                lines[member.lineno - 1 : member.end_lineno] = (
+                    [f"{' ' * member.col_offset}pass\n"]
+                    if len(shadows) == len(namespace.body) and member is shadows[0]
+                    else []
+                )
+            source = "".join(lines)
+            facade, namespace = cls._facade_classes(
+                ast.parse(source, filename=str(facade_path)),
+                facade_path,
+            )
         additions: list[t.Pair[str, str]] = []
         declared = {
             member.name
@@ -604,7 +897,12 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 if method in methods
             )
             if not candidates or any(
-                class_name in reachable for _module, class_name in candidates
+                project
+                .get_module(f"{pkg_dir.name}._protocols.{module}")
+                .get_attributes()[class_name]
+                .get_object()
+                in inherited
+                for module, class_name in candidates
             ):
                 continue
             if len(candidates) != 1:
@@ -615,7 +913,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 )
                 raise ValueError(message)
             additions.append(candidates[0])
-            reachable.update(cls._reachable_bases((candidates[0][1],), ancestors))
         if not additions:
             return source
         source = cls._insert_protocol_imports(
@@ -627,7 +924,12 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ast.parse(source, filename=str(facade_path)),
             facade_path,
         )
-        return cls._insert_bases(source, namespace, additions)
+        return cls._render_protocol_facade(
+            pkg_dir,
+            facade_path,
+            cls._insert_bases(source, namespace, additions),
+            binding=binding,
+        )
 
     @classmethod
     def _render_declared_facade(
@@ -881,11 +1183,17 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         )
         if not candidates:
             return frozenset()
-        resource = project.get_resource(
-            facade_path.relative_to(Path(project.root.real_path)).as_posix(),
+        contents = dict(sources.values())
+        projection_is_autogen = contents[facade_path].startswith(
+            c.Infra.AUTOGEN_HEADERS
         )
+        barrel = contents.get(roots[1] / c.Infra.INIT_PY)
         scope = FlextInfraUtilitiesRopeRuntime.build_string_module(
-            project, dict(sources.values())[facade_path], resource=resource
+            project,
+            contents[facade_path],
+            resource=project.get_resource(
+                facade_path.relative_to(Path(project.root.real_path)).as_posix(),
+            ),
         ).get_scope()
         retired: set[str] = set()
         for base in candidates:
@@ -908,33 +1216,98 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             if binding is None:
                 message = f"Unresolved facade base: {facade_path}:{ast.unparse(base)}"
                 raise ValueError(message)
-            value = binding.get_object()
-            if FlextInfraUtilitiesRopeRuntime.semantic_module(value):
+            if FlextInfraUtilitiesRopeRuntime.semantic_module(binding.get_object()):
                 message = f"Module used as a class base: {ast.unparse(base)}"
                 raise ValueError(message)
             holder = binding.get_definition_location()[0]
             provider = holder.get_resource() if holder is not None else None
             if provider is None:
-                if (
-                    FlextInfraUtilitiesRopeRuntime.abstract_class(value)
-                    and not FlextInfraUtilitiesRopeRuntime.py_class(value)
-                ) or FlextInfraUtilitiesCodegenFacades._upstream_binding(
-                    project,
-                    project,
-                    binding,
+                if projection_is_autogen and (
+                    FlextInfraUtilitiesCodegenFacades._departed_projected_binding(
+                        project,
+                        binding,
+                        roots[1],
+                        barrel,
+                        declared_names=declared_names,
+                    )
                 ):
-                    continue
-                message = (
-                    f"Facade base has no source owner: "
-                    f"{facade_path}:{ast.unparse(base)}"
-                )
-                raise ValueError(message)
+                    retired.add(ast.unparse(base))
+                else:
+                    FlextInfraUtilitiesCodegenFacades._require_facade_base_owner(
+                        project,
+                        binding,
+                        facade_path,
+                        ast.unparse(base),
+                    )
+                continue
             path = Path(provider.real_path).resolve()
             if path.is_relative_to(roots[0].resolve()) and not path.is_relative_to(
                 roots[1].resolve(),
             ):
                 retired.add(ast.unparse(base))
         return frozenset(retired)
+
+    @staticmethod
+    def _departed_projected_binding(
+        project: p.Infra.RopeProject,
+        binding: p.Infra.RopePyName,
+        owners_dir: Path,
+        barrel: str | None,
+        *,
+        declared_names: set[str],
+    ) -> bool:
+        """Retire undefined generated imports from the elected family boundary.
+
+        The caller proves the facade projection is generated; ``barrel`` is
+        the family barrel text of ``owners_dir``. Authored facades and
+        unresolved or external module providers stay errors. Rope resolves the
+        exact family resource; spelling grants no ownership.
+
+        Returns:
+            Whether the generated base lost its own family's declared owner.
+
+        A ``ValueError`` propagates from ``imported_module_path`` when a
+        source-free binding has no native owner.
+
+        """
+        if not (
+            isinstance(binding, p.Infra.RopeImportedName)
+            and binding.get_definition_location()[0] is None
+        ):
+            return False
+        provider = FlextInfraUtilitiesRopeRuntime.imported_module_path(project, binding)
+        # The marker proves projection ownership, not export membership.
+        # Only the current leaf declarations decide whether an owner left.
+        return (
+            provider in {owners_dir.resolve(), (owners_dir / c.Infra.INIT_PY).resolve()}
+            and barrel is not None
+            and barrel.startswith(c.Infra.AUTOGEN_HEADERS)
+            and binding.imported_name not in declared_names
+        )
+
+    @staticmethod
+    def _require_facade_base_owner(
+        project: p.Infra.RopeProject,
+        binding: p.Infra.RopePyName,
+        facade_path: Path,
+        expression: str,
+    ) -> None:
+        """Keep a source-free facade base only when it is abstract or upstream.
+
+        Raises:
+            ValueError: If the binding has no resolved source owner.
+
+        """
+        value = binding.get_object()
+        if (
+            FlextInfraUtilitiesRopeRuntime.abstract_class(value)
+            and not FlextInfraUtilitiesRopeRuntime.py_class(value)
+        ) or FlextInfraUtilitiesCodegenFacades._upstream_binding(
+            project, project, binding
+        ):
+            return
+        message = f"Facade base has no source owner: {facade_path}:{expression}"
+        raise ValueError(message)
 
     @staticmethod
     def _upstream_binding(

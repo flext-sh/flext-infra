@@ -21,8 +21,11 @@ class TestsFlextInfraLazyInitBootstrapPackage:
     """Every initializer publishes its owning modules' declared contract."""
 
     @staticmethod
-    def test_shipped_bootstrap_packages_publish_their_declared_classes() -> None:
-        """Resolve actual leaf declarations through their generated package."""
+    @pytest.mark.parametrize("subpackage_first", [False, True])
+    def test_shipped_bootstrap_packages_publish_their_declared_classes(
+        *, subpackage_first: bool
+    ) -> None:
+        """Cold-import native roots and preserve installer/declaration identities."""
         output = tm.ok(
             u.Cli.run_raw(
                 (
@@ -31,15 +34,31 @@ class TestsFlextInfraLazyInitBootstrapPackage:
                     (
                         "import importlib, pkgutil, sys\n"
                         "from typing import TypeAliasType\n"
-                        "loader = importlib.import_module(sys.argv[1])\n"
-                        "core = importlib.import_module(loader.__package__)\n"
+                        "assert sys.argv[1] not in sys.modules\n"
+                        f"if {subpackage_first!r}:\n"
+                        "    importlib.import_module(sys.argv[3])\n"
+                        "core = importlib.import_module(sys.argv[1])\n"
+                        "helpers = sys.argv[4:]\n"
+                        "for name in helpers:\n"
+                        "    assert name in vars(core), name\n"
+                        "    assert name in core.__all__, name\n"
+                        "    assert name in dir(core), name\n"
+                        "    assert name not in core._LAZY_IMPORTS, name\n"
+                        "loader = importlib.import_module(sys.argv[2])\n"
+                        "for name in helpers:\n"
+                        "    assert vars(core)[name] is getattr(loader, name), name\n"
+                        f"from {c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE} import "
+                        "install_lazy_exports\n"
+                        "assert install_lazy_exports is loader.install_lazy_exports\n"
                         "for name in loader.__all__:\n"
                         "    value = getattr(loader, name)\n"
                         "    if isinstance(value, type):\n"
                         "        assert getattr(core, name) is value, name\n"
-                        "packages = (sys.argv[2],)\n"
+                        "packages = (sys.argv[3],)\n"
                         "for package_name in packages:\n"
                         "    package = importlib.import_module(package_name)\n"
+                        "    assert vars(package)['install_lazy_exports'] is"
+                        " install_lazy_exports, package_name\n"
                         "    expected = set()\n"
                         "    for info in pkgutil.iter_modules(package.__path__,"
                         " package_name + '.'):\n"
@@ -67,11 +86,13 @@ class TestsFlextInfraLazyInitBootstrapPackage:
                         "    print('declared typing classes:', len(expected))\n"
                         "print('declared bootstrap exports resolved')\n"
                     ),
+                    c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE,
                     c.Infra.LAZY_BOOTSTRAP_MODULE,
                     (
                         f"{c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE}."
                         f"{u.Infra.facade_family_declared_by(c.Infra.TYPINGS_PY).directory}"
                     ),
+                    *c.Infra.LAZY_BOOTSTRAP_HELPERS,
                 ),
             ),
         )

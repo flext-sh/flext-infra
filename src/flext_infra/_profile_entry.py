@@ -12,7 +12,6 @@ import sys
 import traceback
 from pathlib import Path
 
-from flext_infra import main
 from flext_infra._pytest_clock import FlextInfraPytestClock
 
 
@@ -57,4 +56,6 @@ class FlextInfraProfileEntry:
 
 
 if __name__ == "__main__":
+    from flext_infra import main
+
     raise SystemExit(FlextInfraProfileEntry.run())

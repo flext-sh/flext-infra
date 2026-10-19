@@ -16,11 +16,13 @@ from packaging.utils import canonicalize_name
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsDepsToolConfig
-from flext_infra._models._config.beads import FlextInfraConfigModelsBeads
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
-from flext_infra._models._config.make import FlextInfraConfigModelsMake
-from flext_infra._models._config.repository import FlextInfraConfigModelsRepository
-from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
+from flext_infra._models._config import (
+    FlextInfraConfigModelsBeads,
+    FlextInfraConfigModelsContract,
+    FlextInfraConfigModelsMake,
+    FlextInfraConfigModelsRepository,
+    FlextInfraConfigModelsScaffold,
+)
 
 
 class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
@@ -212,15 +214,6 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             t.NonEmptyStr,
             m.Field(description="Configured uv installation link mode"),
         ]
-        ruff_per_file_ignores: Annotated[
-            t.MappingKV[str, t.StrSequence],
-            m.Field(
-                description=(
-                    "Effective Ruff exemptions: fleet policy composed with this "
-                    "repository's own ManagedArtifacts overlay"
-                ),
-            ),
-        ]
         ruff_extend_exclude: Annotated[
             t.StrSequence,
             m.Field(
@@ -234,6 +227,10 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         make_profile: Annotated[
             c.Infra.MakeProfile,
             m.Field(description="Generated Make execution profile"),
+        ]
+        ruff_delegated_rules: Annotated[
+            t.StrTuple,
+            m.Field(description="Native rules checked by elected canonical owners"),
         ]
         repository_root_rel: Annotated[
             t.NonEmptyStr,

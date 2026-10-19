@@ -36,12 +36,6 @@ class FlextInfraConstantsSharedInfra:
         USAGE = 2
         INFRA = 3
 
-    EXEMPT_FILENAMES: ClassVar[frozenset[str]] = frozenset({
-        "__init__.py",
-        "conftest.py",
-        "__main__.py",
-    })
-    EXEMPT_PREFIXES: ClassVar[frozenset[str]] = frozenset({"test_", "_"})
     FACADE_MODULE_DEPTH: ClassVar[int] = 3
     "Relative path part count for root facade modules (src/<pkg>/<file>.py)."
     FACADE_MINIMUM_BASES: ClassVar[int] = 2
@@ -87,6 +81,7 @@ class FlextInfraConstantsSharedInfra:
     MAKEFILE_FILENAME: ClassVar[str] = "Makefile"
     GITMODULES: ClassVar[str] = ".gitmodules"
     GITMODULE_MANAGED_KEY: ClassVar[str] = "flext-managed"
+    GITMODULE_LAYER_KEY: ClassVar[str] = "flext-layer"
     "``.gitmodules`` key whose non-``true`` value opts a member out of governance."
     GITMODULE_SECTION_PREFIX: ClassVar[str] = "submodule."
     GITMODULE_PATH_KEY: ClassVar[str] = "path"

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import sys
 from pathlib import Path
 from typing import Literal
@@ -13,11 +14,282 @@ from typing import Literal
 import pytest
 
 from flext_infra import infra
-from tests import c, t, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraLazyInitRuntime:
     """Exercise generated roots through Python's real import machinery."""
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("source", "expected"),
+        [
+            ("class Root:\n    __all__ = ('Root',)\n", ("Root",)),
+            ("class Root:\n    __all__: tuple[str, ...] = ()\n", ()),
+            (
+                "__all__ = ('Module',)\nclass Root:\n    __all__ = ('Root',)\n",
+                ("Module",),
+            ),
+            ("class Root:\n    class Nested:\n        __all__ = ('Nested',)\n", ()),
+            ("class First:\n    __all__ = ('First',)\nclass Second: pass\n", ()),
+        ],
+    )
+    def test_export_metadata_has_one_declaration_owner(
+        source: str, expected: tuple[str, ...]
+    ) -> None:
+        """Only explicit module metadata or a single root's metadata publishes."""
+        tm.that(u.Infra.public_export_names_source(source), eq=expected)
+        tm.that(
+            u.Infra.module_export_names_source(
+                source,
+                export_options=m.Infra.ExportOptions(require_explicit_all=True),
+            ),
+            eq=expected,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("imported_alias", "published_alias"),
+        [(False, False), (True, False), (True, True)],
+    )
+    def test_public_generation_publishes_test_exports_without_namespace_classes(
+        tmp_path: Path, imported_alias: bool, published_alias: bool
+    ) -> None:
+        """Generated initializers propagate precise aliases at module scope."""
+        repository, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-owned-tests",
+            package_name="flext_owned_tests",
+        )
+        u.Tests.write_lazy_init_namespace_module(
+            package / "constants.py", class_name="ParentConstants", alias="c"
+        )
+        package.joinpath("api.py").write_text(
+            "raise ModuleNotFoundError('unavailable application dependency')\n"
+            "class PublishedApi: pass\n__all__ = ('PublishedApi',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        testing = repository / c.Infra.DIR_TESTS
+        testing.mkdir()
+        declaration = testing / "constants.py"
+        declaration.write_text(
+            ("from flext_owned_tests.constants import c\n" if imported_alias else "")
+            + "class TestsFlextOwnedTestsConstants:\n"
+            + (
+                "    __all__ = ('TestsFlextOwnedTestsConstants', 'c')\n"
+                if published_alias
+                else "    __all__ = ('TestsFlextOwnedTestsConstants',)\n"
+            )
+            + "    value = 'local'\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        nested = testing / "unit"
+        nested.mkdir()
+        nested.joinpath("provider.py").write_text(
+            "from tests import c\n"
+            "class TestsFlextOwnedTestsProvider(c):\n"
+            "    __all__ = ('TestsFlextOwnedTestsProvider',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        original = declaration.read_bytes()
+        request = m.Infra.CodegenGenerateRequest(
+            root=repository,
+            what=c.Infra.CodegenConformSurface.LAZY_INIT,
+            scope=c.Infra.CodegenConformScope.SELF,
+        )
+        tm.ok(u.Tests.create_python_environment(repository))
+
+        tm.ok(infra.codegen_generate(request))
+
+        generated = {path: path.read_bytes() for path in testing.rglob(c.Infra.INIT_PY)}
+        tm.that(len(generated), eq=2)
+        for content in generated.values():
+            source = content.decode(c.DEFAULT_ENCODING)
+            module = ast.parse(source)
+            roots = [node for node in module.body if isinstance(node, ast.ClassDef)]
+            tm.that(roots, empty=True)
+            for node in module.body:
+                if isinstance(node, ast.If):
+                    tm.that(isinstance(node.test, ast.Name), eq=True)
+                    tm.that(ast.unparse(node.test), eq="TYPE_CHECKING")
+                    tm.that(bool(node.orelse), eq=False)
+                    tm.that(
+                        all(
+                            isinstance(item, (ast.Import, ast.ImportFrom))
+                            for item in node.body
+                        ),
+                        eq=True,
+                    )
+                else:
+                    tm.that(
+                        isinstance(
+                            node,
+                            (ast.Import, ast.ImportFrom, ast.Assign, ast.AnnAssign),
+                        ),
+                        eq=True,
+                    )
+            tm.that(
+                any(
+                    isinstance(node, ast.Assign)
+                    and any(
+                        isinstance(target, ast.Name) and target.id == "__getattr__"
+                        for target in node.targets
+                    )
+                    for node in module.body
+                ),
+                eq=True,
+            )
+            tm.that(bool(u.Infra.public_export_names_source(source)), eq=True)
+        initializer = testing / c.Infra.INIT_PY
+        source = initializer.read_text(encoding=c.DEFAULT_ENCODING)
+        expected_target = "c" if published_alias else "TestsFlextOwnedTestsConstants"
+        tm.that(
+            any(
+                item.level == 0
+                and item.module == "tests.constants"
+                and any(
+                    alias.name == expected_target and alias.asname == "c"
+                    for alias in item.names
+                )
+                for node in ast.parse(source).body
+                if isinstance(node, ast.If)
+                for item in node.body
+                if isinstance(item, ast.ImportFrom)
+            ),
+            eq=True,
+        )
+        base = (
+            "flext_owned_tests.constants.ParentConstants"
+            if published_alias
+            else "tests.constants.TestsFlextOwnedTestsConstants"
+        )
+        tm.that(
+            "tests.c"
+            in u.Infra.runtime_evaluated_base_classes(
+                repository, {initializer: source}, (base,)
+            ),
+            eq=True,
+        )
+        if published_alias:
+            planned_source = source.replace(
+                '"c": ".constants"',
+                '"c": (".constants", "TestsFlextOwnedTestsConstants")',
+            )
+            tm.that(planned_source == source, eq=False)
+            tm.that(
+                "tests.c"
+                in u.Infra.runtime_evaluated_base_classes(
+                    repository,
+                    {initializer: planned_source},
+                    ("tests.constants.TestsFlextOwnedTestsConstants",),
+                ),
+                eq=True,
+            )
+        tm.that(declaration.read_bytes(), eq=original)
+        tm.ok(infra.codegen_generate(request))
+        tm.that({path: path.read_bytes() for path in generated}, eq=generated)
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                "import sys\nimport tests as generated\n"
+                "print('flext_owned_tests' not in sys.modules)\n"
+                "print('tests.constants' not in sys.modules)\n"
+                "from tests.constants import TestsFlextOwnedTestsConstants\n"
+                + (
+                    "from flext_owned_tests.constants import c as expected\n"
+                    if published_alias
+                    else "expected = TestsFlextOwnedTestsConstants\n"
+                )
+                + "print(generated.c is expected)\n"
+                "print(generated.TestsFlextOwnedTestsConstants "
+                "is TestsFlextOwnedTestsConstants)\n"
+                "print(generated.__all__ "
+                "== generated.TestsFlextOwnedTestsPackage.__all__)\n"
+                "print('flext_owned_tests.api' not in sys.modules)\n",
+                python_paths=(
+                    str(repository),
+                    str(repository / c.Infra.DEFAULT_SRC_DIR),
+                ),
+                cwd=repository,
+            ),
+            eq=["True"] * 6,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("exports", [False, True])
+    def test_isolated_package_decisions_keep_only_consumed_original_reads(
+        tmp_path: Path,
+        *,
+        exports: bool,
+    ) -> None:
+        """Cold artifact graphs retain negative modules with no cross-surface leak."""
+        repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "service.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                source,
+                "class Published: pass\n__all__ = ['Published']\n",
+            ),
+        )
+        tests = repository / c.Infra.DIR_TESTS
+        tests.mkdir()
+        conftest = tests / "conftest.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                conftest,
+                "class TestProvider: pass\n__all__ = ['TestProvider']\n"
+                if exports
+                else "__all__ = []\n",
+            ),
+        )
+        analysis = tm.ok(u.Tests.create_lazy_init_service(repository).plan_files())
+        production = next(
+            plan for plan in analysis.publications if plan.context.pkg_dir == package
+        )
+        testing = next(
+            plan for plan in analysis.publications if plan.context.pkg_dir == tests
+        )
+        tm.that(source in {state.path for state in production.source_states}, eq=True)
+        tm.that(
+            conftest in {state.path for state in production.source_states}, eq=False
+        )
+        tm.that(conftest in {state.path for state in testing.source_states}, eq=True)
+
+    @staticmethod
+    def test_parent_consumes_original_receipt_of_removed_child(tmp_path: Path) -> None:
+        """A cached negative child decision remains an authenticated parent input."""
+        repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / "service.py",
+                "class Published: pass\n__all__ = ['Published']\n",
+            ),
+        )
+        child = package / "retired"
+        child.mkdir()
+        initializer = child / c.Infra.INIT_PY
+        tm.ok(
+            u.Cli.atomic_write_text_file(initializer, c.Infra.AUTOGEN_HEADER + "\n"),
+        )
+        analysis = tm.ok(u.Tests.create_lazy_init_service(repository).plan_files())
+        child_plan = next(
+            plan for plan in analysis.publications if plan.context.pkg_dir == child
+        )
+        parent_plan = next(
+            plan for plan in analysis.publications if plan.context.pkg_dir == package
+        )
+        tm.that(child_plan.action, eq=c.Infra.LazyInitAction.REMOVE)
+        tm.that("retired" in parent_plan.lazy_map, eq=False)
+        child_original = next(
+            state for state in child_plan.source_states if state.path == initializer
+        )
+        tm.that(
+            next(
+                state
+                for state in parent_plan.source_states
+                if state.path == initializer
+            ),
+            eq=child_original,
+        )
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -101,6 +373,12 @@ class TestsFlextInfraLazyInitRuntime:
         for path, content in sources.items():
             path.parent.mkdir(parents=True, exist_ok=True)
             tm.ok(u.Cli.atomic_write_text_file(path, content))
+        u.Tests.git_run(
+            repository,
+            "add",
+            "--",
+            *(str(path.relative_to(repository)) for path in sources),
+        )
         if ownership == "module-only":
             with pytest.raises(ValueError, match="Module used as a class base"):
                 u.Infra.render_utility_facade(package, family="m")
@@ -615,6 +893,80 @@ class TestsFlextInfraLazyInitRuntime:
                 python_paths=(str(repository_root / c.Infra.DEFAULT_SRC_DIR),),
             ),
             eq=["True"],
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("cyclic", [False, True])
+    def test_public_generation_repairs_existing_and_absent_initializers(
+        tmp_path: Path, cyclic: bool
+    ) -> None:
+        """Generation converges without executing or repairing authored consumers."""
+        repository, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-source-only",
+            package_name="flext_source_only",
+        )
+        u.Tests.write_lazy_init_namespace_module(
+            package / "models.py",
+            class_name="PublishedModels",
+            alias="m",
+        )
+        tm.that(u.Tests.run_lazy_init(repository), eq=0)
+        initializer = package / c.Infra.INIT_PY
+        original = initializer.read_bytes()
+        authored = package / "api.py"
+        authored.write_text(
+            (
+                "from flext_source_only.child.api import PublishedChild\n"
+                if cyclic
+                else "raise ModuleNotFoundError('unavailable runtime dependency')\n"
+            )
+            + "class PublishedApi:\n    value: int = 'invalid annotation value'\n"
+            "__all__ = ('PublishedApi',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        child = package / "child"
+        child.mkdir()
+        child.joinpath("api.py").write_text(
+            "from flext_source_only.api import PublishedApi\n"
+            "class PublishedChild:\n    pass\n"
+            "__all__ = ('PublishedChild',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        before = {path: path.read_bytes() for path in package.rglob("*.py")}
+        request = m.Infra.CodegenGenerateRequest(
+            root=repository,
+            what=c.Infra.CodegenConformSurface.LAZY_INIT,
+            scope=c.Infra.CodegenConformScope.SELF,
+        )
+
+        tm.ok(infra.codegen_generate(request))
+
+        tm.that(initializer.read_bytes() == original, eq=False)
+        child_initializer = child / c.Infra.INIT_PY
+        tm.that(child_initializer.is_file(), eq=True)
+        for path, content in before.items():
+            if path != initializer:
+                tm.that(path.read_bytes(), eq=content)
+        generated = {path: path.read_bytes() for path in package.rglob(c.Infra.INIT_PY)}
+        tm.ok(infra.codegen_generate(request))
+        tm.that(
+            {path: path.read_bytes() for path in generated},
+            eq=generated,
+        )
+        error_name = "ImportError" if cyclic else "ModuleNotFoundError"
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                "import flext_source_only as package\n"
+                "print('PublishedApi' in package.__all__)\n"
+                "print('child' in package.__all__)\n"
+                "try:\n"
+                "    package.PublishedApi\n"
+                "except ImportError as error:\n"
+                f"    print(type(error).__name__ == '{error_name}')\n",
+                python_paths=(str(repository / c.Infra.DEFAULT_SRC_DIR),),
+            ),
+            eq=["True", "True", "True"],
         )
 
     @staticmethod

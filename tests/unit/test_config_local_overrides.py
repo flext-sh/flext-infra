@@ -105,8 +105,7 @@ class TestsFlextInfraConfigLocalOverrides:
         )
         local.parent.mkdir(parents=True)
         local.write_text(
-            "Infra:\n  tooling:\n    tools:\n      mypy:\n"
-            "        plugins: []\n        disable-error-code: []\n",
+            "Infra:\n  tooling:\n    tools:\n      mypy:\n        plugins: []\n",
             encoding="utf-8",
         )
         document = tm.ok(
@@ -121,10 +120,6 @@ class TestsFlextInfraConfigLocalOverrides:
         tm.that(
             tuple(tooling.tools.mypy.plugins),
             eq=tuple(baseline.tools.mypy.plugins),
-        )
-        tm.that(
-            tuple(tooling.tools.mypy.disable_error_code),
-            eq=tuple(baseline.tools.mypy.disable_error_code),
         )
 
     @staticmethod

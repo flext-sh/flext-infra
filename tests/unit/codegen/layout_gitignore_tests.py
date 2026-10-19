@@ -10,11 +10,11 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, infra
+from flext_infra import FlextInfraConfig, c, config, infra, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.layout import FlextInfraCodegenLayout
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
-from tests import tm, u
+from tests import t, tm, u
 from tests.unit.codegen.layout_fixture import (
     archive_root,
     build_loose_project,
@@ -26,10 +26,50 @@ class TestsFlextInfraCodegenLayoutGitignore:
     """Test suite for layout gitignore, tracked-file moves, and canonical render."""
 
     @staticmethod
-    def test_apply_adds_gitignore_entries_exactly_once(tmp_path: Path) -> None:
+    def _declare_layout_override(root: Path, project_name: str) -> None:
+        """Declare the fixture's own policy through the production YAML boundary."""
+        artifact = f"{project_name}.local.json"
+        override = m.Infra.LayoutProjectOverrideSpec(
+            archive_names=(artifact,),
+            gitignore_additions=(artifact,),
+        )
+        _, declaration, _ = FlextInfraConfig.config_layer_paths_for_repository(
+            root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        declaration.parent.mkdir(parents=True, exist_ok=True)
+        payload: t.JsonMapping = {
+            "Infra": {
+                "codegen": {
+                    "layout": {
+                        "project_overrides": {
+                            project_name: override.model_dump(mode="json"),
+                        },
+                    },
+                },
+            },
+        }
+        tm.ok(u.Cli.yaml_dump(declaration, payload))
+
+    @classmethod
+    def test_apply_adds_gitignore_entries_exactly_once(
+        cls,
+        tmp_path: Path,
+    ) -> None:
         """Gitignore additions from the SSOT are appended once across applies."""
-        project = build_loose_project(tmp_path, name="flext-cli")
-        (project / "settings.json").write_text("{}\n", encoding="utf-8")
+        project = build_loose_project(tmp_path)
+        cls._declare_layout_override(project, project.name)
+        codegen = tm.ok(u.Infra.load_codegen_inputs(project)).spec
+        override = codegen.layout.project_overrides[project.name]
+        artifact = project / override.archive_names[0]
+        original = b'{"preserved": true}\n'
+        artifact.write_bytes(original)
+        tm.ok(
+            u.Cli.capture(
+                [c.Infra.GIT, "add", "--", artifact.name],
+                cwd=project,
+            ),
+        )
         engine = layout_engine(tmp_path, apply_changes=True)
 
         first = engine.execute()
@@ -38,15 +78,15 @@ class TestsFlextInfraCodegenLayoutGitignore:
         tm.ok(second)
 
         gitignore = (project / c.Infra.GITIGNORE).read_text(encoding="utf-8")
-        # Why: count exact ENTRIES, never substrings. The SSOT also carries
-        # negations such as !.vscode/settings.json, so a substring count reports
-        # two occurrences for a file that was appended exactly once.
         entries = gitignore.splitlines()
-        tm.that(entries.count("settings.json"), eq=1)
-        tm.that(entries.count(f"{archive_root()}/"), eq=1)
+        for pattern in override.gitignore_additions:
+            tm.that(entries.count(pattern), eq=1)
+        tm.that(entries.count(f"{codegen.layout.archive_root}/"), eq=1)
         tm.that(
-            (project / archive_root() / project.name / "settings.json").is_file(),
-            eq=True,
+            (
+                project / codegen.layout.archive_root / project.name / artifact.name
+            ).read_bytes(),
+            eq=original,
         )
 
     @staticmethod
@@ -68,18 +108,27 @@ class TestsFlextInfraCodegenLayoutGitignore:
             eq=False,
         )
 
-    @staticmethod
-    def test_managed_gitignore_render_includes_layout_additions() -> None:
+    @classmethod
+    def test_managed_gitignore_render_includes_layout_additions(
+        cls,
+        tmp_path: Path,
+    ) -> None:
         """The canonical gitignore render owns the layout SSOT additions."""
+        project = build_loose_project(tmp_path)
+        cls._declare_layout_override(project, project.name)
+        codegen = tm.ok(u.Infra.load_codegen_inputs(project)).spec
+        override = codegen.layout.project_overrides[project.name]
         rendered = FlextInfraCodegenConform.render_project_gitignore(
-            config.Infra.codegen,
+            codegen,
             profile=c.Infra.MakeProfile.STANDALONE,
-            project_name="flext-cli",
+            project_name=project.name,
+            project_dir=project,
         )
 
-        tm.ok(rendered)
-        tm.that(rendered.value, has="settings.json")
-        tm.that(rendered.value, has=f"{archive_root()}/")
+        entries = tm.ok(rendered).splitlines()
+        for pattern in override.gitignore_additions:
+            tm.that(entries.count(pattern), eq=1)
+        tm.that(entries.count(f"{codegen.layout.archive_root}/"), eq=1)
 
     @staticmethod
     def test_rendered_gitignore_keeps_backup_named_python_sources(
@@ -103,10 +152,11 @@ class TestsFlextInfraCodegenLayoutGitignore:
         )
         tm.that(tracked.failure, eq=True)
 
-    @staticmethod
+    @classmethod
     @pytest.mark.slow
     @pytest.mark.parametrize("directory_suffix", ["", "-lane"])
     def test_rendered_gitignore_satisfies_layout_additions(
+        cls,
         tmp_path: Path,
         directory_suffix: str,
     ) -> None:
@@ -122,28 +172,25 @@ class TestsFlextInfraCodegenLayoutGitignore:
         checkout directory: a linked worktree named after its lane renders the same
         additions (conform used ``repository_root.name`` and dropped them there).
         """
-        owner, override = next(
-            (name, item)
-            for name, item in sorted(
-                config.Infra.codegen.layout.project_overrides.items(),
-            )
-            if item.gitignore_additions
-        )
-        # The new project is created inside a governed workspace: its Taplo pin
-        # resolves through the nearest committed mise.lock above it.
-        u.Tests.copy_tracked_mise_seeds(tmp_path)
+        repository = u.Tests.repository_ref(config.Infra.name)
+        owner = f"{repository.name}-layout-consumer"
         root = tmp_path / f"{owner}{directory_suffix}"
-        repository = u.Tests.repository_ref(owner)
-        project = u.Tests.project_spec(owner)
+        cls._declare_layout_override(root, owner)
+        codegen = tm.ok(u.Infra.load_codegen_inputs(root)).spec
+        override = codegen.layout.project_overrides[owner]
+        project = u.Tests.project_spec(config.Infra.name)
         tm.ok(
             infra.codegen_new(
                 FlextInfraCodegenProjectNew(
+                    repository_root=Path.cwd(),
                     flext_source=u.Tests.flext_source(),
                     name=owner,
                     kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
                     output_root=root,
                     provider=repository.provider,
-                    repository_url=repository.url,
+                    repository_url=(
+                        f"{repository.url.rsplit('/', maxsplit=1)[0]}/{owner}.git"
+                    ),
                     repository_branch=u.Tests.provider_branch(),
                     flext_repository_url=u.Tests.repository_ref(config.Infra.name).url,
                     flext_repository_ref=u.Tests.provider_branch(),
@@ -156,10 +203,6 @@ class TestsFlextInfraCodegenLayoutGitignore:
                 ),
             ),
         )
-        tm.that(
-            (root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME).is_file(),
-            eq=True,
-        )
         entries = (root / c.Infra.GITIGNORE).read_text(encoding="utf-8").splitlines()
         missing = tuple(
             pattern
@@ -168,6 +211,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
         )
         tm.that(missing, eq=())
         report = FlextInfraCodegenLayout(repository_root=root).check_project(root)
+        tm.that(report.project, eq=owner)
         tm.that(
             tuple(
                 finding for finding in report.findings if finding.rule == "gitignore"

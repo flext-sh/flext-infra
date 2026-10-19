@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import m
+from flext_infra import c, m
 from flext_infra.refactor import FlextInfraImportNormalization
 from flext_infra.transformers import FlextInfraSemanticPublication
 from tests import tm, u
@@ -27,6 +27,61 @@ class TestsFlextInfraRefactorImportNormalization(
     TestsFlextInfraRefactorImportNormalizationSupport,
 ):
     """Each import-law rule observed through ``normalize_source``."""
+
+    @classmethod
+    def test_import_plan_uses_working_sources_without_replacing_original_receipts(
+        cls,
+        tmp_path: Path,
+    ) -> None:
+        """Working imports and lazy exports remain separate from physical sources."""
+        project, package = cls._project(tmp_path)
+        helper = package / "_utilities" / "helper.py"
+        helper.write_text(
+            "class DemoHelper:\n    marker = 'published'\n__all__ = ['DemoHelper']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        target = package / "consumer.py"
+        target.write_text("value = 'original'\n", encoding=c.DEFAULT_ENCODING)
+        paths = tm.ok(
+            u.Infra.iter_python_files(
+                m.Infra.SourceScanRequest(project_roots=(project,)),
+            )
+        )
+        states = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for path in paths
+        )
+        sources = {
+            state.path: tm.not_none(state.content).decode(c.DEFAULT_ENCODING)
+            for state in states
+        }
+        working = {
+            **sources,
+            target: (
+                "from demo_pkg._utilities import DemoHelper as imported\n"
+                "value = imported.marker\n"
+            ),
+        }
+        frozen = dict(working)
+        with u.Infra.open_project(project) as rope:
+            analysis = tm.ok(
+                FlextInfraImportNormalization.plan_files(
+                    project,
+                    (target,),
+                    sources=working,
+                    source_states=states,
+                    rope_project=rope,
+                )
+            )
+        tm.that(analysis.files, length=1)
+        plan = analysis.files[0]
+        tm.that(plan.before, eq=next(state for state in states if state.path == target))
+        desired = tm.not_none(plan.desired_content).decode(c.DEFAULT_ENCODING)
+        tm.that(desired, has="value = DemoHelper.marker")
+        tm.that(desired, lacks="as imported")
+        tm.that(working, eq=frozen)
+        for state in states:
+            tm.that(state.path.read_bytes(), eq=state.content)
 
     @classmethod
     def test_own_import_alias_rewrites_only_bound_references(

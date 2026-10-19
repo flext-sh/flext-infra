@@ -18,7 +18,7 @@ class FlextInfraTypesAdapters:
 
     # This alias removes the constants-to-typings cycle.
     INFRA_MAPPING_ADAPTER: ClassVar[m.TypeAdapter[t.JsonMapping]] = (
-        t.Cli.JSON_MAPPING_ADAPTER
+        u.json_mapping_adapter()
     )
     "Validates t.MappingKV[str, InfraValue] - the most common infra adapter."
 
@@ -37,7 +37,7 @@ class FlextInfraTypesAdapters:
     ] = u.type_adapter(Mapping[str, t.Scalar | Path])
     "Validates flat scalar/path mappings (no nested containers)."
 
-    INFRA_SEQ_ADAPTER: ClassVar[m.TypeAdapter[t.JsonList]] = t.Cli.JSON_LIST_ADAPTER
+    INFRA_SEQ_ADAPTER: ClassVar[m.TypeAdapter[t.JsonList]] = u.json_list_adapter()
     "Validates t.SequenceOf[InfraValue]."
 
     STR_SEQ_ADAPTER: ClassVar[m.TypeAdapter[t.StrSequence]] = u.type_adapter(

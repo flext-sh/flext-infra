@@ -1,0 +1,26 @@
+id: ban-api-local-methods
+valid:
+  - |
+    class Facade(Service):
+        """Public cooperative facade."""
+  - |
+    def execute():
+        return result
+invalid:
+  - |
+    class Facade(Service):
+        def execute(self):
+            return result
+  - |
+    class Facade(Service):
+        async def execute(self):
+            return result
+  - |
+    class Facade(Service):
+        @property
+        def state(self):
+            return value
+  - |
+    class Facade(Service):
+        def __init__(self):
+            super().__init__()

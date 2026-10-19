@@ -40,6 +40,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         cls,
         root: m.Infra.UvResolutionProject,
         *,
+        workspace: m.Infra.WorkspaceSpec,
         members: t.SequenceOf[m.Infra.UvResolutionProject],
         directory: Path,
         policy: m.Infra.MakeUvResolutionSpec,
@@ -50,6 +51,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
         with an installed project. Native path bindings therefore replace
         Git backedges without replacing any synthetic group requirement.
         Original package metadata and editable declarations remain unchanged.
+        Declared members without a local binding retain the workspace's
+        elected Git origin and integration line in this resolution alone.
 
         Returns:
             The resulting ``p.Result[t.Cli.TomlDocument]``.
@@ -64,16 +67,37 @@ class FlextInfraUtilitiesPyprojectUvSources(
         state = cls._resolution_view_state(
             root, projects, virtual_name, directory=directory, policy=policy
         )
+        elected = cls._resolution_workspace_bindings(state, root, workspace)
+        if elected.failure:
+            return r[t.Cli.TomlDocument].from_failure(elected)
         for position, project in enumerate(projects):
             projected = cls._resolution_project_view(state, project, position)
             if projected.failure:
                 return r[t.Cli.TomlDocument].from_failure(projected)
+        supplied = cls._resolution_supplier_bindings(state, root, members)
+        if supplied.failure:
+            return r[t.Cli.TomlDocument].from_failure(supplied)
         bound = cls._resolution_bound_groups(state, virtual_name)
         if bound.failure:
             return r[t.Cli.TomlDocument].from_failure(bound)
+        return r[t.Cli.TomlDocument].ok(cls._resolution_view_document(state))
+
+    @classmethod
+    def _resolution_view_document(
+        cls,
+        state: m.Infra.UvResolutionViewState,
+    ) -> t.Cli.TomlDocument:
+        """Serialize the collected native graph without changing its declarations.
+
+        Returns:
+            The native UV resolver input document.
+
+        """
         native_uv = state.native_uv
         native_uv["sources"] = dict(state.sources)
-        native_uv["override-dependencies"] = list(state.retained_overrides)
+        native_uv["override-dependencies"] = cls._resolution_override_wire(
+            state.retained_overrides
+        )
         if state.constraints:
             native_uv["constraint-dependencies"] = list(state.constraints)
         if state.group_metadata:
@@ -86,7 +110,96 @@ class FlextInfraUtilitiesPyprojectUvSources(
         }
         if state.view_project:
             view[c.Infra.PROJECT] = dict(state.view_project)
-        return r[t.Cli.TomlDocument].ok(u.Cli.toml_document_from_mapping(view))
+        return u.Cli.toml_document_from_mapping(view)
+
+    @classmethod
+    def _resolution_supplier_bindings(
+        cls,
+        state: m.Infra.UvResolutionViewState,
+        root: m.Infra.UvResolutionProject,
+        members: t.SequenceOf[m.Infra.UvResolutionProject],
+    ) -> p.Result[bool]:
+        """Bind external runtime suppliers without importing their development groups.
+
+        Returns:
+            Successful binding or the first supplier identity mismatch.
+
+        """
+        requirements = cls.document_requirement_lines(root.document).unwrap()
+        supplied_names = {
+            canonicalize_name(item.repository.distribution)
+            for item in members
+            if item.role == "supplier"
+        }
+        for supplier in (item for item in members if item.role == "supplier"):
+            name = canonicalize_name(supplier.repository.distribution)
+            payload = cls._resolution_project_payload(supplier)
+            metadata = payload.get(c.Infra.PROJECT, {})
+            identity = u.json_mapping_adapter().validate_python(metadata).get("name")
+            if not isinstance(identity, str) or canonicalize_name(identity) != name:
+                return r[bool].fail(
+                    f"editable supplier identity mismatch: {supplier.directory}"
+                )
+            tool = u.json_mapping_adapter().validate_python(
+                payload.get(c.Infra.TOOL, {})
+            )
+            project_uv = u.json_mapping_adapter().validate_python(tool.get("uv", {}))
+            state.constraints.extend(
+                constraint
+                for constraint in u.str_sequence_adapter().validate_python(
+                    project_uv.get("constraint-dependencies", [])
+                )
+                if constraint not in state.constraints
+            )
+            overrides = m.Infra.UvOverrideEntries.model_validate(
+                project_uv.get("override-dependencies", []), strict=True
+            ).root
+            state.retained_overrides.extend(
+                entry
+                for entry in overrides
+                if entry not in state.retained_overrides
+                and (
+                    not isinstance(entry, str)
+                    or FlextInfraUtilitiesDependencies.dep_name(entry)
+                    not in supplied_names
+                )
+            )
+            # Replace source provenance only; preserve bounds, extras and markers.
+            replaced = [
+                entry
+                for entry in state.retained_overrides
+                if isinstance(entry, str)
+                and FlextInfraUtilitiesDependencies.dep_name(entry) == name
+            ]
+            state.retained_overrides = [
+                entry
+                for entry in state.retained_overrides
+                if not isinstance(entry, str)
+                or FlextInfraUtilitiesDependencies.dep_name(entry) != name
+            ]
+            for requirement in (
+                *requirements,
+                *replaced,
+            ):
+                if FlextInfraUtilitiesDependencies.dep_name(requirement) == name:
+                    state.constraints.append(
+                        FlextInfraUtilitiesDependencies.dependency_constraint(
+                            requirement, replace_source=True
+                        )
+                    )
+            state.retained_overrides.append(
+                name
+                + FlextInfraUtilitiesDependencyRequirements.dependency_extras(
+                    requirements, name
+                )
+            )
+            state.sources[name] = {
+                "path": supplier.directory.relative_to(
+                    state.directory, walk_up=True
+                ).as_posix(),
+                "editable": True,
+            }
+        return r[bool].ok(value=True)
 
     @staticmethod
     def _resolution_bound_groups(
@@ -156,7 +269,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 f" {virtual_name}",
             )
         return failure.ok((
-            projects,
+            [project for project in projects if project.role == "member"],
             virtual_name,
         ))
 
@@ -177,14 +290,14 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
         """
         root_payload = cls._resolution_project_payload(root)
-        root_project = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        root_project = u.json_mapping_adapter().validate_python(
             root_payload.get(c.Infra.PROJECT, {}),
         )
-        root_tool = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        root_tool = u.json_mapping_adapter().validate_python(
             root_payload.get(c.Infra.TOOL, {}),
         )
         native_uv: t.JsonDict = deepcopy(
-            dict(t.Cli.JSON_MAPPING_ADAPTER.validate_python(root_tool.get("uv", {}))),
+            dict(u.json_mapping_adapter().validate_python(root_tool.get("uv", {}))),
         )
         for key in ("workspace", "sources", "package", "dev-dependencies"):
             native_uv.pop(key, None)
@@ -200,11 +313,12 @@ class FlextInfraUtilitiesPyprojectUvSources(
             if root_project
             else {}
         )
-        overrides = t.Cli.JSON_LIST_ADAPTER.validate_python(
+        overrides = m.Infra.UvOverrideEntries.model_validate(
             native_uv.get("override-dependencies", []),
-        )
+            strict=True,
+        ).root
         constraints = list(
-            t.Cli.JSON_LIST_ADAPTER.validate_python(
+            u.json_list_adapter().validate_python(
                 native_uv.get("constraint-dependencies", []),
             ),
         )
@@ -231,6 +345,63 @@ class FlextInfraUtilitiesPyprojectUvSources(
         )
 
     @classmethod
+    def _resolution_workspace_bindings(
+        cls,
+        state: m.Infra.UvResolutionViewState,
+        root: m.Infra.UvResolutionProject,
+        workspace: m.Infra.WorkspaceSpec,
+    ) -> p.Result[bool]:
+        """Elect declared remote members without replacing their authored metadata.
+
+        Local members already have native path bindings. The standalone view
+        retains the same composition's Git sources instead, so stale transitive
+        refs cannot elect another provider. Explicit URL overrides keep their
+        precedence; version bounds remain owned by the existing constraints.
+
+        Returns:
+            Successful source election or the first provenance failure.
+
+        """
+        requirements = cls.document_requirement_lines(root.document)
+        if requirements.failure:
+            return r[bool].from_failure(requirements)
+        overrides = tuple(
+            entry for entry in state.retained_overrides if isinstance(entry, str)
+        )
+        for requirement in (*requirements.value, *overrides):
+            name = FlextInfraUtilitiesDependencies.dep_name(requirement)
+            if name is not None:
+                admitted = cls._member_provenance(name, requirement, workspace)
+                if admitted.failure:
+                    return admitted
+        explicit = cls._resolution_explicit_overrides(state)
+        direct = {
+            canonicalize_name(entry.name)
+            for entry in map(Requirement, overrides)
+            if entry.url is not None
+        }
+        for member in workspace.subprojects:
+            name = canonicalize_name(member.distribution)
+            if not member.package or name in state.overridden:
+                continue
+            if workspace.integration is None:
+                return r[bool].fail(
+                    "remote member resolution requires declared workspace integration",
+                )
+            if name not in direct:
+                state.sources[name] = {
+                    "git": member.url,
+                    "branch": workspace.integration.branch,
+                }
+            if name not in explicit:
+                extras = FlextInfraUtilitiesDependencyRequirements.dependency_extras(
+                    requirements.value, name
+                )
+                state.retained_overrides.append(f"{name}{extras}")
+            state.overridden.add(name)
+        return r[bool].ok(value=True)
+
+    @classmethod
     def _resolution_project_view(
         cls,
         state: m.Infra.UvResolutionViewState,
@@ -244,7 +415,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
         """
         payload = cls._resolution_project_payload(project)
-        metadata = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        metadata = u.json_mapping_adapter().validate_python(
             payload.get(c.Infra.PROJECT, {}),
         )
         name = canonicalize_name(project.repository.distribution)
@@ -257,16 +428,16 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 f"resolution project identity differs from its declaration:"
                 f" {project.directory}",
             )
-        optional = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        optional = u.json_mapping_adapter().validate_python(
             metadata.get(c.Infra.OPTIONAL_DEPENDENCIES, {}),
         )
         root = position == 0
         cls._resolution_project_constraints(state, project)
         cls._resolution_project_request(state, project, optional, name, root=root)
-        tool = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        tool = u.json_mapping_adapter().validate_python(
             payload.get(c.Infra.TOOL, {}),
         )
-        project_uv = t.Cli.JSON_MAPPING_ADAPTER.validate_python(tool.get("uv", {}))
+        project_uv = u.json_mapping_adapter().validate_python(tool.get("uv", {}))
         if root and not project.repository.package:
             failed = cls._resolution_root_dependencies(state, project, metadata)
             if failed.failure:
@@ -275,7 +446,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         renamed = cls._resolution_group_targets(state, declared_groups, name, root=root)
         if renamed.failure:
             return r[bool].from_failure(renamed)
-        project_sources = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        project_sources = u.json_mapping_adapter().validate_python(
             project_uv.get("sources", {}),
         )
         if root and not project.repository.package:
@@ -364,20 +535,37 @@ class FlextInfraUtilitiesPyprojectUvSources(
     def _resolution_explicit_overrides(
         state: m.Infra.UvResolutionViewState,
     ) -> set[str]:
-        """Name the distributions explicitly pinned by declared overrides.
+        """Name distributions pinned by global overrides, excluding scoped tables.
 
         Returns:
             The canonical dependency names of the declared override entries.
 
         """
+        declared = m.Infra.UvOverrideEntries.model_validate(
+            state.native_uv.get("override-dependencies", []), strict=True
+        ).root
         return {
-            name
-            for entry in t.Cli.JSON_LIST_ADAPTER.validate_python(
-                state.native_uv.get("override-dependencies", []),
-            )
+            canonicalize_name(Requirement(entry).name)
+            for entry in declared
             if isinstance(entry, str)
-            and (name := FlextInfraUtilitiesDependencies.dep_name(entry)) is not None
         }
+
+    @staticmethod
+    def _resolution_override_wire(
+        entries: t.SequenceOf[str | m.Infra.UvScopedOverride],
+    ) -> t.JsonValueList:
+        """Serialize the ordered native override variants through their model.
+
+        Returns:
+            Native strings and scoped tables without changing scope or operands.
+
+        """
+        parsed = m.Infra.UvOverrideEntries.model_validate(list(entries), strict=True)
+        return list(
+            u.json_list_adapter().validate_python(
+                parsed.model_dump(mode="json", exclude_none=True),
+            )
+        )
 
     @classmethod
     def _resolution_project_request(
@@ -422,7 +610,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
             The resulting ``p.Result[bool]``.
 
         """
-        for requirement in t.Cli.JSON_LIST_ADAPTER.validate_python(
+        for requirement in u.json_list_adapter().validate_python(
             metadata.get(c.Infra.DEPENDENCIES, []),
         ):
             if not isinstance(requirement, str):
@@ -445,18 +633,18 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
         """
         declared_groups = dict(
-            t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            u.json_mapping_adapter().validate_python(
                 payload.get(c.Infra.DEPENDENCY_GROUPS, {}),
             ),
         )
         legacy_dev = project_uv.get("dev-dependencies")
         if legacy_dev is not None:
             development = list(
-                t.Cli.JSON_LIST_ADAPTER.validate_python(
+                u.json_list_adapter().validate_python(
                     declared_groups.get("dev", []),
                 ),
             )
-            development.extend(t.Cli.JSON_LIST_ADAPTER.validate_python(legacy_dev))
+            development.extend(u.json_list_adapter().validate_python(legacy_dev))
             declared_groups["dev"] = development
         validated_groups = m.Infra.DependencyGroupDeclarations.model_validate(
             {"dependency-groups": declared_groups},
@@ -474,31 +662,31 @@ class FlextInfraUtilitiesPyprojectUvSources(
         name: str,
         *,
         root: bool,
-    ) -> p.Result[dict[str, str]]:
+    ) -> p.Result[t.StrMapping]:
         """Rename the declared groups and refuse target collisions.
 
         Returns:
             The declared groups mapped to their view-level target names.
 
         """
-        renamed: dict[str, str] = {
+        renamed: t.StrMapping = {
             canonicalize_name(group): (
                 group if root else f"{name}{state.policy.member_group_separator}{group}"
             )
             for group in declared_groups
         }
         if len(renamed) != len(declared_groups):
-            return r[dict[str, str]].fail(
+            return r[t.StrMapping].fail(
                 f"resolution project has colliding normalized group names: {name}",
             )
         for target in renamed.values():
             normalized = canonicalize_name(target)
             if normalized in state.seen_groups:
-                return r[dict[str, str]].fail(
+                return r[t.StrMapping].fail(
                     f"resolution dependency-group names collide: {target}",
                 )
             state.seen_groups.add(normalized)
-        return r[dict[str, str]].ok(renamed)
+        return r[t.StrMapping].ok(renamed)
 
     @classmethod
     def _resolution_root_project_sources(
@@ -513,13 +701,13 @@ class FlextInfraUtilitiesPyprojectUvSources(
             if normalized_dependency in state.overridden:
                 continue
             entries = (
-                t.Cli.JSON_LIST_ADAPTER.validate_python(raw_sources)
+                u.json_list_adapter().validate_python(raw_sources)
                 if isinstance(raw_sources, list)
                 else [raw_sources]
             )
             state.sources[normalized_dependency] = [
                 cls._resolution_source(
-                    t.Cli.JSON_MAPPING_ADAPTER.validate_python(entry),
+                    u.json_mapping_adapter().validate_python(entry),
                     project,
                     directory=state.directory,
                     group=None,
@@ -536,7 +724,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         name: str,
         *,
         root: bool,
-    ) -> p.Result[dict[str, t.Pair[str, set[str]]]]:
+    ) -> p.Result[t.DictKV[str, t.Pair[str, set[str]]]]:
         """Rewrite the project's extras into view-level target groups.
 
         Returns:
@@ -544,8 +732,8 @@ class FlextInfraUtilitiesPyprojectUvSources(
             dependency names it selects.
 
         """
-        resolved: dict[str, t.Pair[str, set[str]]] = {}
-        failure = r[dict[str, t.Pair[str, set[str]]]]
+        resolved: t.DictKV[str, t.Pair[str, set[str]]] = {}
+        failure = r[t.DictKV[str, t.Pair[str, set[str]]]]
         for extra, raw_requirements in optional.items():
             target = (
                 extra if root else f"{name}{state.policy.member_group_separator}{extra}"
@@ -557,7 +745,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 )
             state.seen_extras.add(normalized)
             selected: list[t.JsonValue] = []
-            for requirement in t.Cli.JSON_LIST_ADAPTER.validate_python(
+            for requirement in u.json_list_adapter().validate_python(
                 raw_requirements,
             ):
                 if not isinstance(requirement, str):
@@ -609,12 +797,12 @@ class FlextInfraUtilitiesPyprojectUvSources(
                 ):
                     continue
                 entries = (
-                    t.Cli.JSON_LIST_ADAPTER.validate_python(raw_sources)
+                    u.json_list_adapter().validate_python(raw_sources)
                     if isinstance(raw_sources, list)
                     else [raw_sources]
                 )
                 for raw_source in entries:
-                    source = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_source)
+                    source = u.json_mapping_adapter().validate_python(raw_source)
                     declared = source.get(qualifier, origin)
                     if (
                         forbidden in source
@@ -649,7 +837,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         for group, raw_entries in declared_groups.items():
             target = renamed[canonicalize_name(group)]
             rewritten: list[t.JsonValue] = []
-            for entry in t.Cli.JSON_LIST_ADAPTER.validate_python(raw_entries):
+            for entry in u.json_list_adapter().validate_python(raw_entries):
                 if isinstance(entry, str):
                     rewritten.append(cls._resolution_requirement(entry, project))
                 else:
@@ -674,9 +862,14 @@ class FlextInfraUtilitiesPyprojectUvSources(
             The resulting ``p.Result[bool]``.
 
         """
-        for group, metadata_value in t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-            project_uv.get("dependency-groups", {}),
-        ).items():
+        for group, metadata_value in (
+            u
+            .json_mapping_adapter()
+            .validate_python(
+                project_uv.get("dependency-groups", {}),
+            )
+            .items()
+        ):
             if canonicalize_name(group) not in renamed:
                 return r[bool].fail(
                     f"resolution group metadata has no declaration: {name}:{group}",
@@ -699,10 +892,10 @@ class FlextInfraUtilitiesPyprojectUvSources(
             The resulting ``p.Result[bool]``.
 
         """
-        for raw_index in t.Cli.JSON_LIST_ADAPTER.validate_python(
+        for raw_index in u.json_list_adapter().validate_python(
             project_uv.get("index", []),
         ):
-            index = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_index)
+            index = u.json_mapping_adapter().validate_python(raw_index)
             identity = index.get("name", "")
             if not isinstance(identity, str):
                 return r[bool].fail(
@@ -740,7 +933,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
             if selected in visited:
                 continue
             visited.add(selected)
-            for requirement in t.Cli.JSON_LIST_ADAPTER.validate_python(
+            for requirement in u.json_list_adapter().validate_python(
                 normalized[selected],
             ):
                 if isinstance(requirement, str):
@@ -767,9 +960,9 @@ class FlextInfraUtilitiesPyprojectUvSources(
 
         """
         name = canonicalize_name(dependency)
-        existing = t.Cli.JSON_LIST_ADAPTER.validate_python(sources.get(name, []))
+        existing = u.json_list_adapter().validate_python(sources.get(name, []))
         unscoped = [
-            t.Cli.JSON_MAPPING_ADAPTER.validate_python(item)
+            u.json_mapping_adapter().validate_python(item)
             for item in existing
             if isinstance(item, Mapping) and "group" not in item and "extra" not in item
         ]
@@ -995,10 +1188,12 @@ class FlextInfraUtilitiesPyprojectUvSources(
             )
             overrides.append(f"{name}{extras} @ {source}")
         if overrides:
-            u.Cli.toml_sync_string_list(
+            u.Cli.toml_sync_value(
                 uv,
                 "override-dependencies",
-                overrides,
+                FlextInfraUtilitiesPyprojectUvSources._resolution_override_wire(
+                    overrides
+                ),
             )
         else:
             u.Cli.toml_remove_key_if_present(uv, "override-dependencies")
@@ -1129,7 +1324,7 @@ class FlextInfraUtilitiesPyprojectUvSources(
         sources = u.Cli.toml_table_child(uv, "sources")
         if sources is None:
             return
-        source_names = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        source_names = u.json_mapping_adapter().validate_python(
             u.Cli.toml_unwrap_item(sources),
         )
         declared = {canonicalize_name(item.distribution): item for item in repositories}

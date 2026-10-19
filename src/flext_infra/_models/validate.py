@@ -10,8 +10,6 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
-from flext_core import u
-from typing_extensions import TypeForm
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins
@@ -153,21 +151,15 @@ class FlextInfraModelsCore:
 
         eligible: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownOrigin] = (
             m.Field(
-                default_factory=u.empty(
-                    TypeForm(
-                        t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownOrigin"]
-                    )
-                ),
+                default_factory=list[FlextInfraModelsCore.PytestMarkdownOrigin],
+                validate_default=True,
                 description="Independently parsed origins",
             )
         )
         collected: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem] = (
             m.Field(
-                default_factory=u.empty(
-                    TypeForm(
-                        t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownItem"]
-                    )
-                ),
+                default_factory=list[FlextInfraModelsCore.PytestMarkdownItem],
+                validate_default=True,
                 description="Observed pre-selection items",
             )
         )
@@ -522,20 +514,14 @@ class FlextInfraModelsCore:
         markdown_attempts: t.MutableSequenceOf[
             FlextInfraModelsCore.PytestMarkdownAttempt
         ] = m.Field(
-            default_factory=u.empty(
-                TypeForm(
-                    t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownAttempt"]
-                )
-            ),
+            default_factory=list[FlextInfraModelsCore.PytestMarkdownAttempt],
+            validate_default=True,
             description="Call-phase attempt observations",
         )
         markdown_items: t.MutableSequenceOf[FlextInfraModelsCore.PytestMarkdownItem] = (
             m.Field(
-                default_factory=u.empty(
-                    TypeForm(
-                        t.MutableSequenceOf["FlextInfraModelsCore.PytestMarkdownItem"]
-                    )
-                ),
+                default_factory=list[FlextInfraModelsCore.PytestMarkdownItem],
+                validate_default=True,
                 description="Call-phase origin observations",
             )
         )

@@ -26,6 +26,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeSource,
 )
+from flext_infra._utilities._rope_analysis.sourcescan import (
+    FlextInfraUtilitiesRopeAnalysisSourceScan,
+)
 
 
 class FlextInfraUtilitiesCodegenNamespace:
@@ -261,7 +264,12 @@ class FlextInfraUtilitiesCodegenNamespace:
         return root
 
     @classmethod
-    def _runtime_aliases(cls, package_dir: Path) -> t.VariadicTuple[str]:
+    def _runtime_aliases(
+        cls,
+        package_dir: Path,
+        *,
+        rope_project: p.Infra.RopeProject | None = None,
+    ) -> t.VariadicTuple[str]:
         """Read root aliases from declarations, never from initializer outputs.
 
         Returns:
@@ -270,9 +278,14 @@ class FlextInfraUtilitiesCodegenNamespace:
         """
         return tuple(
             alias
-            for module_file in sorted(package_dir.glob("*.py"))
-            if module_file.name != c.Infra.INIT_PY
-            for alias in cls._declared_exports(module_file)
+            for module_file in (
+                sorted(package_dir.glob("*.py"))
+                if rope_project is None
+                else rope_project.source_children(package_dir)
+            )
+            if module_file.suffix == c.Infra.EXT_PYTHON
+            and module_file.name != c.Infra.INIT_PY
+            for alias in cls._declared_exports(module_file, rope_project=rope_project)
             if (
                 alias.isidentifier()
                 and alias.islower()
@@ -298,7 +311,9 @@ class FlextInfraUtilitiesCodegenNamespace:
 
         """
         assignments: MutableMapping[str, ast.expr] = {}
-        for node in tree.body:
+        for node in FlextInfraUtilitiesRopeAnalysisSourceScan.export_declaration_body(
+            tree
+        ):
             if isinstance(node, ast.Assign):
                 assignments.update(
                     (target.id, node.value)
@@ -339,21 +354,36 @@ class FlextInfraUtilitiesCodegenNamespace:
         return tuple(names)
 
     @classmethod
-    def _declared_exports(cls, file_path: Path) -> t.StrSequence:
-        if not file_path.is_file():
+    def _declared_exports(
+        cls,
+        file_path: Path,
+        *,
+        rope_project: p.Infra.RopeProject | None = None,
+    ) -> t.StrSequence:
+        if rope_project is not None and not rope_project.authenticated_sources:
+            rope_project = None
+        if not (
+            file_path.is_file()
+            if rope_project is None
+            else rope_project.source_query(file_path, "isfile")
+        ):
             return ()
         resolved = file_path.resolve()
-        mtime_ns = resolved.stat().st_mtime_ns
+        mtime_ns = resolved.stat().st_mtime_ns if rope_project is None else 0
         cache_key = str(resolved)
         cached = cls._declared_exports_cache.get(cache_key)
-        if cached is not None and cached[0] == mtime_ns:
+        if rope_project is None and cached is not None and cached[0] == mtime_ns:
             return cached[1]
         tree = ast.parse(
-            file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT),
+            file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            if rope_project is None
+            else rope_project.source_text(file_path),
             filename=str(file_path),
         )
         result: t.StrSequence = ()
-        for node in tree.body:
+        for node in FlextInfraUtilitiesRopeAnalysisSourceScan.export_declaration_body(
+            tree
+        ):
             match node:
                 case ast.Assign(targets=targets, value=value) if any(
                     isinstance(target, ast.Name) and target.id == c.Infra.DUNDER_ALL
@@ -368,7 +398,8 @@ class FlextInfraUtilitiesCodegenNamespace:
                     break
                 case _:
                     continue
-        cls._declared_exports_cache[cache_key] = (mtime_ns, result)
+        if rope_project is None:
+            cls._declared_exports_cache[cache_key] = (mtime_ns, result)
         return result
 
     @classmethod
@@ -377,6 +408,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         project_root: Path,
         *,
         project: p.Infra.ProjectInfo | None = None,
+        rope_project: p.Infra.RopeProject | None = None,
     ) -> m.Infra.RopeProjectLayout | None:
         """Return the canonical project layout contract for one project root.
 
@@ -385,19 +417,35 @@ class FlextInfraUtilitiesCodegenNamespace:
 
         """
         resolved_root = project_root.resolve()
+        if rope_project is not None and rope_project.authenticated_sources:
+            project = None
+        else:
+            rope_project = None
         package_name = (
             project.package_name
             if project is not None and project.package_name
-            else FlextInfraUtilitiesDiscovery.project_package_name(resolved_root)
+            else FlextInfraUtilitiesDiscovery.project_package_name(
+                resolved_root,
+                source_project=rope_project,
+            )
         )
         if not package_name:
             return None
         if project is not None and project.name:
             project_name = project.name
-        elif (resolved_root / c.PYPROJECT_FILENAME).is_file():
+        elif (
+            (resolved_root / c.PYPROJECT_FILENAME).is_file()
+            if rope_project is None
+            else rope_project.source_query(
+                resolved_root / c.PYPROJECT_FILENAME, "isfile"
+            )
+        ):
             project_name = FlextInfraUtilitiesDocsScope.project_name_from_payload(
                 resolved_root,
-                FlextInfraUtilitiesDocsScope.project_payload(resolved_root),
+                FlextInfraUtilitiesDiscovery.pyproject_payload(
+                    resolved_root / c.PYPROJECT_FILENAME,
+                    source_project=rope_project,
+                ),
             )
         else:
             project_name = resolved_root.name
@@ -418,7 +466,9 @@ class FlextInfraUtilitiesCodegenNamespace:
             src_dir=src_dir,
             package_dir=package_dir,
             init_path=package_dir / c.Infra.INIT_PY,
-            runtime_aliases=cls._runtime_aliases(package_dir),
+            runtime_aliases=cls._runtime_aliases(
+                package_dir, rope_project=rope_project
+            ),
         )
 
     @classmethod
@@ -439,7 +489,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
         """
         family_alias = cls.facade_family_of_directory(file_path.parent.name)
-        declared_exports = cls._declared_exports(file_path)
+        declared_exports = cls._declared_exports(file_path, rope_project=rope_project)
         uppercase_names = tuple(name for name in declared_exports if name[:1].isupper())
         # Family nesting remains a separate concern. Public alias ownership
         # comes from local class identity and declared bases, never the path.
@@ -456,10 +506,17 @@ class FlextInfraUtilitiesCodegenNamespace:
         project_root = (
             project_layout.project_root
             if project_layout is not None
-            else FlextInfraUtilitiesDiscovery.project_root(file_path)
+            else FlextInfraUtilitiesDiscovery.project_root(
+                file_path,
+                source_project=rope_project
+                if rope_project.authenticated_sources
+                else None,
+            )
         )
         if project_root is not None:
-            layout = project_layout or cls.layout(project_root)
+            layout = project_layout or cls.layout(
+                project_root, rope_project=rope_project
+            )
             direct_tier = file_path.parent.parent == project_root
             public_root = layout is not None and file_path.parent == layout.package_dir
             # A stub is never a facade source: Rope loads only Python sources,
@@ -489,6 +546,8 @@ class FlextInfraUtilitiesCodegenNamespace:
         resolved_rel_path: Path,
         package_parts: t.StrSequence,
         family_alias: str | None,
+        *,
+        rope_project: p.Infra.RopeProject | None = None,
     ) -> tuple[bool, bool, bool, bool, bool, bool, bool]:
         """Return the module/package placement booleans for one file.
 
@@ -513,7 +572,9 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
         is_services_module = "services" in resolved_rel_path.parts
         is_services_package = "services" in package_parts
-        is_namespace_file = bool(cls._declared_exports(file_path))
+        is_namespace_file = bool(
+            cls._declared_exports(file_path, rope_project=rope_project)
+        )
         is_root_namespace = (
             is_namespace_file
             and len(resolved_rel_path.parts) == 1
@@ -535,6 +596,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         file_path: Path,
         *,
         project_layout: m.Infra.RopeProjectLayout | None = None,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> str:
         """Derive the class-stem prefix for one file inside a project.
 
@@ -545,11 +607,13 @@ class FlextInfraUtilitiesCodegenNamespace:
         project_root = (
             project_layout.project_root
             if project_layout is not None
-            else FlextInfraUtilitiesDiscovery.project_root(file_path)
+            else FlextInfraUtilitiesDiscovery.project_root(
+                file_path, source_project=source_project
+            )
         )
         if project_root is None:
             return ""
-        layout = project_layout or cls.layout(project_root)
+        layout = project_layout or cls.layout(project_root, rope_project=source_project)
         if layout is None:
             return ""
         class_stem: str = layout.class_stem
@@ -723,12 +787,18 @@ class FlextInfraUtilitiesCodegenNamespace:
             resolved_rel_path,
             package_parts,
             family_alias,
+            rope_project=rope_project,
         )
-        declared_exports = cls._declared_exports(file_path)
+        declared_exports = cls._declared_exports(file_path, rope_project=rope_project)
         project_root = (
             project_layout.project_root
             if project_layout is not None
-            else FlextInfraUtilitiesDiscovery.project_root(file_path)
+            else FlextInfraUtilitiesDiscovery.project_root(
+                file_path,
+                source_project=rope_project
+                if rope_project.authenticated_sources
+                else None,
+            )
         )
         return m.Infra.NamespaceModulePolicy(
             enforce_contract=cls._policy_enforces_contract(
@@ -749,6 +819,9 @@ class FlextInfraUtilitiesCodegenNamespace:
             project_prefix=cls.project_prefix(
                 file_path,
                 project_layout=project_layout,
+                source_project=rope_project
+                if rope_project.authenticated_sources
+                else None,
             ),
             expected_alias=expected_alias,
             expected_family=expected_family,

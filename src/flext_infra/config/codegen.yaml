@@ -2,6 +2,28 @@ Infra:
   codegen:
     # Generic packaged defaults for deterministic project conformance.
     version: 1
+    # Universal documentation-audit declarations every repository composes.
+    # Each forbidden term names a retired surface and the canonical owner
+    # that superseded it: per-project change selection is owned by the
+    # `make check` verb itself (the Make verb SSOT); the retired
+    # text-rules filename is superseded by the declarative sed-by-list
+    # catalogue (config/rules/mod/sed.yaml); scripts/hooks is superseded
+    # by promoted `scripts/<verb>/<WHAT>` commands and agentsctl hook
+    # projections. Container/CI home identities are image contracts whose
+    # home is part of the declared runtime, not an operator machine.
+    repository:
+      docs_audit:
+        forbidden_terms:
+        - check_changed_projects
+        - text_rules.yml
+        - scripts/hooks
+        container_home_identities:
+        - runner
+        - vscode
+        - agent
+        - barman
+        - scanner
+        - argocd
     # Projections no template renders any more; generation removes the
     # generated copy from every consumer (renamed: install-git-hooks.sh ->
     # validate-git-hook.sh; flext-law-loop.sh validated the whole workspace
@@ -379,7 +401,7 @@ Infra:
       - main
       # The one versioned line this fleet integrates on (SSOT — no fallback
       # probe list; the model probes exactly this line against live Git).
-      integration_branch: "upload-20261007"
+      integration_branch: "0.12.0-dev"
     # SonarCloud automatic analysis (GitHub App) honors only the scope keys of
     # .sonarcloud.properties: sonar.sources/tests, exclusions/inclusions,
     # test.exclusions/inclusions, sourceEncoding and cpd.exclusions. Anything
@@ -514,11 +536,14 @@ Infra:
         maintenance_threshold_percent: 90
         block_threshold_percent: 95
         key_prefix: flext-testmon
-      # The Mypy gate shares one analysis per project name across checkouts
-      # (u.Infra.mypy_cache_directory). Relocks retain the directory; Mypy
-      # revalidates changed modules by source hash, so a warm cache never masks
-      # a finding. Distinct project names keep their module namespaces in
-      # separate directories.
+      # The Mypy gate shares one analysis per project name inside one
+      # environment (u.Infra.mypy_cache_directory keys the directory with the
+      # interpreter plus the installed core distribution version). Relocks
+      # retain the directory; Mypy revalidates changed modules by source hash,
+      # so a warm cache never masks a finding, while distinct checkouts whose
+      # environments resolve different installed views never share a cache.
+      # Distinct project names keep their module namespaces in separate
+      # directories.
       # Parsed codemod rule catalogs (u.Infra.codemod_rule_plan). Each entry is
       # keyed by the sha256 of the provider, its rule files' paths and text, and
       # the parser's own source, so a catalog is parsed once and re-parsed only
@@ -540,6 +565,7 @@ Infra:
       uv_resolution:
         local_directory: .flext/uv/local
         standalone_directory: .flext/uv/standalone
+        editable_directory: .flext/uv/editable
         hosted_variable: GITHUB_ACTIONS
         hosted_value: 'true'
         virtual_distribution_suffix: '-resolution'
@@ -669,7 +695,7 @@ Infra:
         description: Resolve the newest declared releases, write the uv and mise locks, then prove the upgraded tree still converges; gates stay with make check.
       - name: upg-sources
         arguments: [ SOURCE_ROOT, SOURCE_URL_PREFIX, SOURCE_REF_FROM, SOURCE_REF_TO ]
-        description: Migrate an explicitly selected dependency Git reference through the current tool owner before the consumer resolves its own locks.
+        description: Migrate an explicitly selected dependency Git reference in the root and its declared member manifests before resolving their locks.
       - name: validate-lifecycle
         description: Execute the declared public runtime acceptance steps serially, with root-owned mutation fanout and typed first-failure receipts.
       # Workspace-only (topology owns applicability): a standalone Makefile
@@ -691,6 +717,9 @@ Infra:
         description: Run the strict code-smell audit as a dedicated gate.
       - name: test
         description: Run incremental tests through the persistent testmon cache.
+      - name: tests
+        arguments: [ FILE ]
+        description: Run incremental tests first, then the complete eligible suite using the same persistent testmon database, without a time limit.
       - name: test-full
         arguments: [ FILE ]
         description: Run incremental tests first, then the complete eligible suite using the same persistent testmon database, without a time limit.
@@ -709,6 +738,10 @@ Infra:
         description: Profile the canonical environment provenance guard without invoking that guard as a prerequisite.
       - name: profile-environment-report
         description: Render the profile retained by the canonical environment provenance guard.
+      - name: profile-lanes
+        description: Profile the complete read-only workspace lane audit and retain its native failure outcome.
+      - name: profile-lanes-report
+        description: Render the retained profile of the complete workspace lane audit.
       - name: profile-mod
         description: Profile the canonical mutating codemod lifecycle and retain the profile on failure.
       - name: profile-mod-report
@@ -760,6 +793,7 @@ Infra:
       - name: project-new
         arguments: [ NAME, KIND, OUTPUT_ROOT, PROVIDER, REPOSITORY_URL, REPOSITORY_BRANCH, FLEXT_REPOSITORY_URL, FLEXT_REPOSITORY_REF, LICENSE, AUTHOR_NAME, AUTHOR_EMAIL, UPSTREAM, FLEXT_SOURCE, YEAR ]
         description: Create a new project through the canonical scaffold service using explicitly declared identity inputs.
+        requires_activation: false
       - name: mod
         description: Apply the declared structural codemods; committed rule-test snapshots are verified, never rewritten.
       - name: mod-rules
@@ -802,7 +836,7 @@ Infra:
     # computed fields. Add a tool cache/build dir here only — never in the
     # consuming projections. Ordering reproduces the historical derived maps.
     artifacts:
-    - { name: __pycache__, source_scan_ignore: true }
+    - { name: __pycache__, source_scan_ignore: true, analysis_exclude: true }
     - { name: __pyrefly_virtual__ }
     # Governance content (.agents/.claude) and direnv runtime state stay
     # visible to the editor and watcher; source_scan keeps its dotdir skip.
@@ -828,13 +862,13 @@ Infra:
     # Agent tool state (hook-state/hook-status) is machine-local cache, never
     # production input.
     - { name: .mimosa, source_scan_ignore: true }
-    - { name: .mypy_cache, source_scan_ignore: true }
+    - { name: .mypy_cache, source_scan_ignore: true, analysis_exclude: true }
     - { name: .omo }
     - { name: .pylance_cache, vscode_exclude: false }
-    - { name: .pytest_cache, source_scan_ignore: true }
-    - { name: .reports, source_scan_ignore: true }
+    - { name: .pytest_cache, source_scan_ignore: true, analysis_exclude: true }
+    - { name: .reports, source_scan_ignore: true, analysis_exclude: true }
     - { name: .ropeproject }
-    - { name: .ruff_cache, source_scan_ignore: true }
+    - { name: .ruff_cache, source_scan_ignore: true, analysis_exclude: true }
     - { name: .scope }
     - { name: .serena }
     - { name: .sisyphus }
@@ -842,7 +876,7 @@ Infra:
     - { name: .superpowers }
     - { name: .trash }
     - { name: .turbo }
-    - { name: .venv, source_scan_ignore: true }
+    - { name: .venv, source_scan_ignore: true, analysis_exclude: true }
     - { name: .venv.* }
     - { name: "*.egg-info", vscode_exclude: false }
     # Transient extraction scratch (e.g. legacy _tmp_mdpy_* fenced-block and
@@ -856,9 +890,9 @@ Infra:
     - { name: "*.orig" }
     - { name: "*.rej" }
     - { name: "*.swp" }
-    - { name: build, source_scan_ignore: true }
-    - { name: dist, source_scan_ignore: true }
-    - { name: node_modules, source_scan_ignore: true }
+    - { name: build, source_scan_ignore: true, analysis_exclude: true }
+    - { name: dist, source_scan_ignore: true, analysis_exclude: true }
+    - { name: node_modules, source_scan_ignore: true, analysis_exclude: true }
     # protoc-generated wire-protocol modules ("DO NOT EDIT"): tracked and
     # imported as a regular package, never first-party code. generated_source
     # is the one key every analyzer exclusion, scan, and init derives from.
@@ -867,11 +901,14 @@ Infra:
     - { name: target }
     - { name: .pyrefly_cache, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
     - { name: .tox, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
-    - { name: dist-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
+    - { name: dist-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true, analysis_exclude: true }
     - { name: legado, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
-    - { name: site-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
-    - { name: vendor, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
-    - { name: venv, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
+    - { name: site-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true, analysis_exclude: true }
+    - { name: vendor, gitignore: false, vscode_exclude: false, watch_exclude: false }
+    # npm's lockfile emission: the resolver owns sibling-shared resolved
+    # dependency lines; clone detection never reads it (resolver_owned).
+    - { name: package-lock.json, is_dir: false, vscode_exclude: false, watch_exclude: false, gitignore: false, resolver_owned: true }
+    - { name: venv, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true, analysis_exclude: true }
     # Gitignore-only entries; they feed no other projection.
     - { name: .flext-sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: .sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
@@ -880,6 +917,71 @@ Infra:
     - { name: .debug-journal.md, is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: .mcp.json, is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: CLAUDE.local.md, is_dir: false, vscode_exclude: false, watch_exclude: false }
+    # Declared directory-exclusion registry: the one exclusion SSOT. Names
+    # here are declared topology facts (tool state, archive contracts,
+    # per-scanner deltas); every scanner set derives by composing them with
+    # the artifact analysis_exclude flags and the VCS-derived names
+    # (.git, .worktrees). Add an exclusion by declaring it here — never in
+    # code.
+    exclusions:
+      tool_state:
+      - .agents-sync-home
+      - .test-tmp
+      archive_roots:
+      - incoming
+      - legado
+      docs:
+      - crg-reports
+      - site
+      pyproject_scan:
+      - .claude.disabled
+      - context_test
+      - rope_ws
+      - tmp_flow_test
+      - tests
+      - examples
+      check:
+      - .agents
+      - .archive
+      - .claude
+      - .codex
+      - .cursor
+      - .gemini
+      - .opencode
+      - .beads
+      - .serena
+      - .kilo
+      - .omo
+      - .tmp
+      - .snapshots
+      - .benchmarks
+      - .hypothesis
+      - .vscode
+      - .pyrefly_cache
+      - htmlcov
+      - reports
+      - site
+      - target
+      validation_clone:
+      - .archive
+      - .ropeproject
+      - htmlcov
+      worktree_transaction:
+      - .pyrefly_cache
+      - .cache
+      deps_discovery:
+      - .archive
+      - .claude.disabled
+      - htmlcov
+      - site
+      - vendor
+      parameterized_case_dirs:
+      - api_cases
+      - _cases
+      part_container_dirs:
+      - _parts
+      helper_modules:
+      - _cov.py
     vscode:
       # Portable defaults shared by attached and standalone repositories.
       # The editor owner binds environment tokens to the checkout runtime.
@@ -986,6 +1088,7 @@ Infra:
       - python.analysis.typeCheckingMode
       - python.analysis.diagnosticSeverityOverrides
       # The current Ruff extension always uses its native server.
+      - ruff.nativeServer
 
       # Declarative project-layout SSOT consumed by
       # the layout engine (codegen/layout.py) and the layout quality gate. Every
@@ -1304,7 +1407,6 @@ Infra:
       - tool.uv
       - tool.ruff
       - tool.ruff.lint.isort
-      - tool.ruff.lint.per-file-ignores
       - tool.mypy
       - tool.pyright
       - tool.pyrefly

@@ -143,79 +143,6 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             ),
         ]
 
-    class RuffAuthorizedException(m.ArbitraryTypesModel):
-        """One operator-authorized Ruff exception, recorded with its authority.
-
-        An exception exists only together with the operator ruling that
-        authorized it and the reason its rules cannot hold for its scope; an
-        entry missing either is refused when the config loads.
-        """
-
-        rules: Annotated[
-            t.SequenceOf[t.Infra.RuffRule],
-            m.Field(min_length=1, description="Ruff rules the exception covers."),
-        ]
-        files: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                description="Glob the exception is scoped to; absent, every file.",
-            ),
-        ] = None
-        authority: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Operator ruling that authorized the exception."),
-        ]
-        reason: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Why the rules cannot hold for this scope."),
-        ]
-
-    class BanditAuthorizedException(m.ArbitraryTypesModel):
-        """One operator-authorized Bandit exception, scoped to owner modules.
-
-        Bandit applies a skip to a whole invocation and reads no per-path
-        exception, so the security gate audits the matching files in their own
-        invocation that skips only these tests; every other file keeps every
-        test. An entry missing its authority or reason is refused at load.
-        """
-
-        tests: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(min_length=1, description="Bandit test IDs the owners may raise."),
-        ]
-        files: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                min_length=1,
-                description=(
-                    "Project-relative globs of the owner modules, matched "
-                    "with full-path glob semantics."
-                ),
-            ),
-        ]
-        authority: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Operator ruling that authorized the exception."),
-        ]
-        reason: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Why the tests cannot hold for these owners."),
-        ]
-
-    class BanditConfig(m.ArbitraryTypesModel):
-        """Bandit security gate settings loaded from YAML."""
-
-        authorized_exceptions: Annotated[
-            tuple[FlextInfraModelsDepsToolConfigLinters.BanditAuthorizedException, ...],
-            m.Field(
-                alias="authorized-exceptions",
-                description=(
-                    "Operator-authorized Bandit exceptions, each audited in "
-                    "its own invocation that skips only its tests."
-                ),
-            ),
-        ]
-
     class RuffLintConfig(m.ArbitraryTypesModel):
         """Ruff lint settings loaded from YAML."""
 
@@ -234,6 +161,44 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 ),
             ),
         ] = m.Field(default_factory=tuple)
+        rule_owners: Annotated[
+            t.MappingKV[t.Infra.RuffRule, t.NonEmptyStr],
+            m.Field(
+                alias="rule-owners",
+                description=(
+                    "Rules enforced by another registered canonical gate, never "
+                    "waived; projection verifies its complete check/repair election."
+                ),
+            ),
+        ]
+
+        @m.field_validator("rule_owners")
+        @classmethod
+        def require_distinct_registered_rule_owners(
+            cls,
+            owners: t.StrMapping,
+        ) -> t.StrMapping:
+            """Reject unknown owners and delegation back to the lint gate.
+
+            Returns:
+                The declared ownership mapping without introducing defaults.
+
+            Raises:
+                ValueError: If any rule has an unknown or self-owned gate.
+
+            """
+            invalid = sorted(
+                f"{rule}: {owner}"
+                for rule, owner in owners.items()
+                if owner == c.Infra.LINT or owner not in c.Infra.ALLOWED_GATES
+            )
+            if invalid:
+                msg = "Ruff rules require distinct registered owners: " + ", ".join(
+                    invalid
+                )
+                raise ValueError(msg)
+            return owners
+
         unfixable: Annotated[
             t.StrSequence,
             m.Field(
@@ -243,6 +208,18 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 ),
             ),
         ]
+        ruling_disabled_rules: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                alias="ruling-disabled-rules",
+                description=(
+                    "Operator-ruled rules disabled at the SSOT because the "
+                    "lazy facade architecture requires what they forbid; "
+                    "projected into lint ignore, never silenced by manual "
+                    "hints."
+                ),
+            ),
+        ] = ()
         extend_safe_fixes: Annotated[
             t.StrSequence,
             m.Field(
@@ -295,17 +272,6 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 ),
             ),
         ]
-        fix_recipe_residual: Annotated[
-            frozenset[c.Infra.LintFixRecipe],
-            m.Field(
-                alias="fix-recipe-residual",
-                description=(
-                    "Recipes whose findings may survive by law: their "
-                    "remainder stays a visible check finding for manual "
-                    "repair instead of failing make fix."
-                ),
-            ),
-        ]
         isort: FlextInfraModelsDepsToolConfigLinters.RuffIsortConfig = m.Field(
             description="Ruff isort configuration",
         )
@@ -322,87 +288,6 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 description="Ruff flake8-type-checking configuration",
             ),
         ]
-        authorized_exceptions: Annotated[
-            tuple[FlextInfraModelsDepsToolConfigLinters.RuffAuthorizedException, ...],
-            m.Field(
-                alias="authorized-exceptions",
-                description=(
-                    "Operator-authorized Ruff exceptions: unscoped entries render "
-                    "as ignore, scoped entries as per-file-ignores."
-                ),
-            ),
-        ]
-
-        @m.computed_field
-        @property
-        def ignore(self) -> t.StrSequence:
-            """Rules excepted for every file, rendered as Ruff ``ignore``.
-
-            Returns:
-                The resulting ``t.StrSequence``.
-
-            """
-            return tuple(
-                sorted({
-                    rule
-                    for entry in self.authorized_exceptions
-                    if entry.files is None
-                    for rule in entry.rules
-                }),
-            )
-
-        @m.computed_field
-        @property
-        def per_file_ignores(self) -> t.Infra.PerFileIgnores:
-            """Scoped exceptions, rendered as Ruff ``per-file-ignores``.
-
-            Returns:
-                The resulting ``t.Infra.PerFileIgnores``.
-
-            """
-            return {
-                pattern: tuple(
-                    sorted({
-                        rule
-                        for entry in self.authorized_exceptions
-                        if entry.files == pattern
-                        for rule in entry.rules
-                    }),
-                )
-                for pattern in sorted({
-                    entry.files
-                    for entry in self.authorized_exceptions
-                    if entry.files is not None
-                })
-            }
-
-        @m.model_validator(mode="after")
-        def _reject_repeated_exception(
-            self,
-        ) -> FlextInfraModelsDepsToolConfigLinters.RuffLintConfig:
-            """Refuse a rule excepted twice for the same scope.
-
-            Returns:
-                The validated Ruff lint settings.
-
-            Raises:
-                ValueError: If two entries except one rule for the same scope.
-
-            """
-            scopes = [
-                (entry.files, rule)
-                for entry in self.authorized_exceptions
-                for rule in entry.rules
-            ]
-            repeated = sorted({
-                f"{rule} for {files or 'every file'}"
-                for files, rule in scopes
-                if scopes.count((files, rule)) > 1
-            })
-            if repeated:
-                msg = "Ruff exceptions declared twice: " + ", ".join(repeated)
-                raise ValueError(msg)
-            return self
 
     class RuffConfig(m.ArbitraryTypesModel):
         """Ruff top-level settings loaded from YAML."""
@@ -426,19 +311,6 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             ),
         ] = m.Field(default_factory=tuple)
         fix: Annotated[bool, m.Field(description="Enable automatic ruff fixes")]
-        informative_rules: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                alias="informative-rules",
-                description=(
-                    "Ruff rule names reported as warnings: their findings "
-                    "stay visible in the gate log, the summary, and the SARIF "
-                    "reports, but never fail the lint gate (operator ruling "
-                    "2026-10-05: rules the operator never authorized as "
-                    "blocking are informative only)."
-                ),
-            ),
-        ] = ()
         findings_exit_codes: Annotated[
             t.VariadicTuple[int],
             m.Field(
@@ -546,45 +418,6 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 raise ValueError(msg)
             return plugins
 
-        facade_rebind_error_codes: Annotated[
-            t.StrSequence,
-            m.Field(
-                alias="facade-rebind-error-codes",
-                description=(
-                    "Mypy error codes the canonical facade rebind raises; codegen "
-                    "disables them only in the modules written in that form."
-                ),
-            ),
-        ]
-        disable_error_code: Annotated[
-            t.StrSequence,
-            m.Field(
-                alias="disable-error-code",
-                description=(
-                    "Mypy error codes an operator ruling suspends project-wide; "
-                    "rendered as [tool.mypy] disable_error_code. The pydantic "
-                    "mypy plugin stays mandatory (Pydantic 2 is the contract)."
-                ),
-            ),
-        ]
-
-        @m.field_validator("disable_error_code")
-        @classmethod
-        def require_mypy_ruling_codes(cls, codes: t.StrSequence) -> t.StrSequence:
-            """Validate the operator's immutable Mypy diagnostic contract.
-
-            Returns:
-                The declared policy without adding or replacing configured values.
-
-            Raises:
-                ValueError: If a mandatory code is removed or another is suspended.
-
-            """
-            if set(codes) != {"prop-decorator", "call-arg"}:
-                msg = "Mypy ruling requires only prop-decorator and call-arg"
-                raise ValueError(msg)
-            return codes
-
         boolean_settings: Annotated[
             t.BoolMapping,
             m.Field(
@@ -602,6 +435,17 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 ),
             ),
         ]
+        ruling_disable_error_codes: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                alias="ruling-disable-error-codes",
+                description=(
+                    "Operator-ruled mypy error codes suspended fleet-wide "
+                    "until the facade-alias family is cured; the tool-tables "
+                    "phase renders them as disable_error_code."
+                ),
+            ),
+        ] = ()
         overrides: Annotated[
             t.VariadicTuple[FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig],
             m.Field(
@@ -620,7 +464,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
 
         @m.model_validator(mode="after")
         def reject_policy_shadow(self) -> Self:
-            """Refuse ambiguous options and re-enabling suspended diagnostics.
+            """Refuse ambiguous options and diagnostic suppression.
 
             Returns:
                 The validated settings without modifying their declared values.
@@ -665,15 +509,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             if self.boolean_settings.get("ignore_errors", False) or (
                 "ignore_errors" in strings
             ):
-                msg = "Mypy policy cannot ignore unsuspended diagnostics"
-                raise ValueError(msg)
-            enabled = {
-                code.strip()
-                for code in strings.get("enable_error_code", "").split(",")
-                if code.strip()
-            }
-            if enabled.intersection(self.disable_error_code):
-                msg = "Mypy policy cannot re-enable suspended error codes"
+                msg = "Mypy policy cannot ignore diagnostics"
                 raise ValueError(msg)
             return self
 

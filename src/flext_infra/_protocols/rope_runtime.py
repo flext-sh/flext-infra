@@ -8,15 +8,36 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import AbstractContextManager
-from typing import TYPE_CHECKING, ClassVar, Protocol, Self, runtime_checkable
+from typing import TYPE_CHECKING, ClassVar, Literal, Protocol, Self, runtime_checkable
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from pathlib import Path
+
+    from flext_core import p, t
+
+    from flext_infra import m
+    from flext_infra._typings.rope_native import FlextInfraTypesRopeNative
 
 
 @runtime_checkable
 class FlextInfraProtocolsRopeRuntime(Protocol):
     """Rope object contracts used instead of importing untyped Rope classes."""
+
+    @runtime_checkable
+    class RopeProjectElection(Protocol):
+        """Readonly native import roots and source-selection policy."""
+
+        @property
+        def source_folders(self) -> t.StrTuple: ...
+
+        @property
+        def ignored_resources(self) -> t.StrTuple: ...
+
+        @property
+        def extension_modules(self) -> t.StrTuple: ...
+
+        @property
+        def python_path_folders(self) -> t.StrTuple: ...
 
     @runtime_checkable
     class RopeResource(Protocol):
@@ -25,6 +46,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def is_folder(self) -> bool: ...
 
         def exists(self) -> bool: ...
+
+        @property
+        def name(self) -> str: ...
 
         @property
         def path(self) -> str: ...
@@ -51,23 +75,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def has_child(self, name: str) -> bool: ...
 
     @runtime_checkable
-    class RopeFile(Protocol):
+    class RopeFile(RopeResource, Protocol):
         """Rope file resource with content access."""
-
-        def exists(self) -> bool: ...
-
-        @property
-        def path(self) -> str: ...
-
-        @property
-        def real_path(self) -> str: ...
-
-        def is_folder(self) -> bool:
-            """Report whether the resource is a folder in the project tree."""
-            ...
-
-        @property
-        def parent(self) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
 
         def read(self) -> str: ...
 
@@ -103,6 +112,12 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopePyObject]: ...
 
         def get_type(self) -> FlextInfraProtocolsRopeRuntime.RopePyObject: ...
+
+    @runtime_checkable
+    class RopeSourceDefinition(Protocol):
+        """Cached AST capability of native source-defined classes and functions."""
+
+        def get_ast(self) -> FlextInfraProtocolsRopeRuntime.RopeAstNode: ...
 
     @runtime_checkable
     class NativeClassMetadata(Protocol):
@@ -171,10 +186,17 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> Iterator[tuple[int, int]]: ...
 
     @runtime_checkable
+    class RopeCachedLogicalLineFinder(Protocol):
+        """Native cached lookup of the logical statement containing a line."""
+
+        def logical_line_in(self, line_number: int) -> t.Pair[int, int]: ...
+
+    @runtime_checkable
     class RopeAssignment(Protocol):
         """Rope assignment shape."""
 
-        ast_node: FlextInfraProtocolsRopeRuntime.RopeAstNode
+        ast_node: FlextInfraProtocolsRopeRuntime.RopeAstNode | None
+        type_hint: FlextInfraProtocolsRopeRuntime.RopeAstNode | None
 
         def get_lineno(self) -> int | None: ...
 
@@ -309,6 +331,11 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         @property
         def lines(self) -> FlextInfraProtocolsRopeRuntime.RopeSourceLines: ...
 
+        @property
+        def logical_lines(
+            self,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeCachedLogicalLineFinder: ...
+
         def get_module(self) -> FlextInfraProtocolsRopeRuntime.RopePyModule: ...
 
         def get_resource(
@@ -331,16 +358,91 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def find_relative_module(
             self,
             modname: str,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None,
             level: int,
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
 
     @runtime_checkable
-    class RopeProject(RopeModuleFinder, Protocol):
-        """Rope project shape used by flext-infra."""
+    class RopeSourceConsumption(Protocol):
+        """One consumer's original reads and exact native query receipts."""
+
+        def receipt(self) -> m.Infra.CodegenPhaseAnalysis: ...
+
+    @runtime_checkable
+    class RopePreferences(Protocol):
+        """Native preference updates required by project source election."""
+
+        def add(self, key: str, value: str) -> None: ...
+
+    @runtime_checkable
+    class RopeSourceAccess(Protocol):
+        """Authenticated source observations and per-consumer receipt scopes."""
+
+        def source_consumption(
+            self,
+        ) -> AbstractContextManager[
+            FlextInfraProtocolsRopeRuntime.RopeSourceConsumption
+        ]: ...
+
+        def source_selection(self) -> AbstractContextManager[None]: ...
+
+        def source_capture(self) -> AbstractContextManager[None]: ...
+
+        def verify_source_states(self) -> None: ...
+
+        def source_consumer(
+            self,
+            *,
+            consumer_root: Path | None = None,
+        ) -> AbstractContextManager[Self]: ...
 
         @property
-        def address(self) -> str: ...
+        def authenticated_sources(self) -> bool: ...
+
+        @property
+        def source_epoch_failure(self) -> BaseException | None: ...
+
+        def replay_source_consumption(
+            self, receipt: m.Infra.CodegenPhaseAnalysis
+        ) -> None: ...
+
+        def consumed_source_states(self) -> t.VariadicTuple[m.Cli.AtomicFileState]: ...
+
+        def consumed_source_directories(
+            self,
+        ) -> t.VariadicTuple[m.Cli.AtomicDirectoryInventory]: ...
+
+        def consumed_source_topology(
+            self,
+        ) -> t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan]: ...
+
+        def source_state(
+            self, path: Path, *, required: bool = True
+        ) -> m.Cli.AtomicFileState: ...
+
+        def source_query(
+            self, path: Path, predicate: Literal["exists", "isfile", "isdir"]
+        ) -> bool: ...
+
+        def source_children(
+            self,
+            path: Path,
+            *,
+            follow_aliases: bool = True,
+        ) -> tuple[Path, ...]: ...
+
+        def source_text(self, path: Path) -> str: ...
+
+        def source_bytes(self, path: Path) -> bytes: ...
+
+        def source_walk(
+            self,
+            path: Path,
+        ) -> Iterator[tuple[Path, list[str], list[str]]]: ...
+
+    @runtime_checkable
+    class RopeProject(RopeModuleFinder, RopeSourceAccess, Protocol):
+        """Compose native project lifecycle with authenticated source access."""
 
         @property
         def root(self) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
@@ -349,6 +451,11 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self,
             resource_name: str,
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource: ...
+
+        def get_file(
+            self,
+            path: str,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeFile: ...
 
         def get_folder(
             self,
@@ -360,7 +467,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             resource: FlextInfraProtocolsRopeRuntime.RopeResource,
             *,
             force_errors: bool = False,
-        ) -> t.Infra.RopeNativeParsedModule: ...
+        ) -> FlextInfraTypesRopeNative.RopeNativeParsedModule: ...
+
+        def get_pycore(self) -> FlextInfraTypesRopeNative.RopeNativeCore: ...
 
         def get_source_folders(
             self,
@@ -380,7 +489,14 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self,
             name: str,
             folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
-        ) -> t.Infra.RopeNativeSemanticModule: ...
+        ) -> FlextInfraTypesRopeNative.RopeNativeSemanticModule: ...
+
+        def get_relative_module(
+            self,
+            name: str,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None,
+            level: int,
+        ) -> FlextInfraTypesRopeNative.RopeNativeParsedModule: ...
 
         def get_python_files(
             self,
@@ -394,6 +510,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> None: ...
 
         def close(self) -> None: ...
+
+        def get_prefs(self) -> FlextInfraProtocolsRopeRuntime.RopePreferences: ...
 
         def frozen_layout(self) -> AbstractContextManager[Self]: ...
 
@@ -474,11 +592,30 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         changes: list[p.AttributeProbe]
 
     @runtime_checkable
+    class RopeInlineVariable(Protocol):
+        """Native assigned-name inlining without publishing its changes."""
+
+        def get_changes(
+            self,
+            *,
+            remove: bool,
+            resources: list[FlextInfraProtocolsRopeRuntime.RopeResource],
+            docs: bool,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeChangeSet: ...
+
+    @runtime_checkable
     class RopeChangeContents(Protocol):
         """A planned Rope content replacement with no applied effect."""
 
         resource: FlextInfraProtocolsRopeRuntime.RopeResource
         new_contents: str
+
+    @runtime_checkable
+    class RopeMoveResource(Protocol):
+        """Native observational relocation; publication remains infra-owned."""
+
+        resource: FlextInfraProtocolsRopeRuntime.RopeResource
+        new_resource: FlextInfraProtocolsRopeRuntime.RopeResource
 
     @runtime_checkable
     class RopeContractMatch(Protocol):
@@ -493,7 +630,12 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """One native Rope matcher for identity-bound matches and source regions."""
 
         def get_matches(
-            self, code: str, args: t.MappingKV[str, str] | None = None
+            self,
+            code: str,
+            args: t.MappingKV[str, str] | None = None,
+            *,
+            start: int = 0,
+            end: int | None = None,
         ) -> Iterator[FlextInfraProtocolsRopeRuntime.RopeContractMatch]: ...
 
         def get_match_regions(
@@ -512,6 +654,15 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def get_name(self) -> str: ...
 
         def matches(self, suspect: p.AttributeProbe, arg: Argument) -> bool: ...
+
+    @runtime_checkable
+    class RopeDefaultWildcard(RopeWildcard[str], Protocol):
+        """Native default wildcard consuming Rope's string constraint grammar."""
+
+    class RopeChangeComputer(Protocol):
+        """Native source computation consumed by the restructuring planner."""
+
+        def get_changed(self) -> str | None: ...
 
     @runtime_checkable
     class RopeRestructure(Protocol):

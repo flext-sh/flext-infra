@@ -12,9 +12,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLayoutPlanMixin,
+    FlextInfraMiseArtifactsVerification,
     FlextInfraMisePublication,
 )
 from flext_infra.workspace import FlextInfraWorkspaceDetector
@@ -30,60 +31,68 @@ class FlextInfraCodegenLayoutGitignoreMixin:
     ) -> p.Result[t.Infra.LayoutStatus]:
         """Ensure gitignore patterns via the canonical render or appending.
 
+        Derive content from the same captured state carried into publication.
+
         Returns:
             The resulting ``p.Result[t.Infra.LayoutStatus]``.
 
         """
-        managed = self._managed_profile(project_dir)
+        project_dir = FlextInfraWorkspaceDetector.resolve_repository_root(
+            project_dir,
+        ).unwrap()
+        inputs = u.Infra.load_codegen_inputs(project_dir).unwrap()
+        topology = u.Cli.atomic_read_binary_file_state(
+            project_dir / c.Infra.GITMODULES,
+            required=False,
+        ).unwrap()
+        source_states = (*inputs.sources, topology)
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+            project_dir,
+            inputs=inputs,
+        ).unwrap()
+        managed = self._managed_profile(project_dir, workspace, inputs=inputs)
         if managed.failure:
             return r[t.Infra.LayoutStatus].from_failure(managed)
-        profile = managed.value
-        if profile is not None:
-            return self._apply_gitignore_managed(project_dir, profile)
-        return self._apply_gitignore_append(project_dir, patterns)
-
-    @staticmethod
-    def _apply_gitignore_managed(
-        project_dir: Path,
-        profile: c.Infra.MakeProfile,
-    ) -> p.Result[t.Infra.LayoutStatus]:
-        """Write the canonical rendered gitignore for a governed project.
-
-        Returns:
-            The resulting ``p.Result[t.Infra.LayoutStatus]``.
-
-        """
-        rendered = u.Infra.render_project_gitignore(
-            config.Infra.codegen,
-            profile=profile,
-            project_name=FlextInfraCodegenLayoutPlanMixin.layout_project_name(
-                project_dir,
-            ),
-            project_dir=project_dir,
+        before = u.Cli.atomic_read_binary_file_state(
+            project_dir / c.Infra.GITIGNORE,
+            required=False,
         )
-        if rendered.failure:
-            return r[t.Infra.LayoutStatus].from_failure(rendered)
-        gitignore_path = project_dir / c.Infra.GITIGNORE
-        current = ""
-        if gitignore_path.is_file():
-            read = u.Cli.files_read_text(gitignore_path)
-            if read.failure:
-                return r[t.Infra.LayoutStatus].from_failure(read)
-            current = read.value
-        if rendered.value == current:
-            noop_status: t.Infra.LayoutStatus = "noop"
-            return r[t.Infra.LayoutStatus].ok(noop_status)
-        before = u.Cli.atomic_read_binary_file_state(gitignore_path, required=False)
         if before.failure:
             return r[t.Infra.LayoutStatus].from_failure(before)
+        current = (
+            ""
+            if before.value.content is None
+            else before.value.content.decode(c.DEFAULT_ENCODING)
+        )
+        if managed.value is None:
+            desired = self._gitignore_append_content(current, patterns)
+        else:
+            rendered = u.Infra.render_project_gitignore(
+                inputs.spec,
+                profile=managed.value,
+                project_name=FlextInfraCodegenLayoutPlanMixin.layout_project_name(
+                    project_dir,
+                ),
+                workspace=workspace,
+                project_dir=project_dir,
+            )
+            if rendered.failure:
+                return r[t.Infra.LayoutStatus].from_failure(rendered)
+            desired = rendered.value
+        if desired == current and before.value.mode == inputs.spec.modes.file_default:
+            noop_status: t.Infra.LayoutStatus = "noop"
+            return FlextInfraMiseArtifactsVerification.states_current(
+                (before.value, *source_states),
+            ).map(lambda _: noop_status)
         planned = m.Infra.CodegenFilePlan(
             project=project_dir,
-            path=gitignore_path,
+            path=before.value.path,
             before=before.value,
-            desired_content=rendered.value.encode(c.DEFAULT_ENCODING),
-            desired_mode=config.Infra.codegen.modes.file_default,
+            desired_content=desired.encode(c.DEFAULT_ENCODING),
+            desired_mode=inputs.spec.modes.file_default,
+            source_states=source_states,
             owner="codegen",
-            policy="full",
+            policy="full" if managed.value is not None else "merge",
         )
         written = FlextInfraMisePublication.publish_file_plan(
             planned,
@@ -95,23 +104,16 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         return r[t.Infra.LayoutStatus].ok(applied_status)
 
     @staticmethod
-    def _apply_gitignore_append(
-        project_dir: Path,
+    def _gitignore_append_content(
+        current: str,
         patterns: t.StrSequence,
-    ) -> p.Result[t.Infra.LayoutStatus]:
-        """Append missing patterns for an unmanaged or external project.
+    ) -> str:
+        """Derive missing layout patterns from the captured gitignore text.
 
         Returns:
-            The resulting ``p.Result[t.Infra.LayoutStatus]``.
+            The original text or its extension with the missing patterns.
 
         """
-        gitignore_path = project_dir / c.Infra.GITIGNORE
-        current = ""
-        if gitignore_path.is_file():
-            read = u.Cli.files_read_text(gitignore_path)
-            if read.failure:
-                return r[t.Infra.LayoutStatus].from_failure(read)
-            current = read.value
         covered = {line.strip() for line in current.splitlines()}
         missing = tuple(
             pattern
@@ -119,8 +121,7 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             if pattern not in covered and pattern.rstrip("/") not in covered
         )
         if not missing:
-            noop_status: t.Infra.LayoutStatus = "noop"
-            return r[t.Infra.LayoutStatus].ok(noop_status)
+            return current
         text = current
         if text and not text.endswith("\n"):
             text += "\n"
@@ -128,43 +129,25 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             text += "\n"
         text += f"# {c.Infra.GITIGNORE_LAYOUT_SECTION_NAME}\n"
         text += "\n".join(missing) + "\n"
-        before = u.Cli.atomic_read_binary_file_state(gitignore_path, required=False)
-        if before.failure:
-            return r[t.Infra.LayoutStatus].from_failure(before)
-        planned = m.Infra.CodegenFilePlan(
-            project=project_dir,
-            path=gitignore_path,
-            before=before.value,
-            desired_content=text.encode(c.DEFAULT_ENCODING),
-            desired_mode=config.Infra.codegen.modes.file_default,
-            owner="codegen",
-            policy="merge",
-        )
-        written = FlextInfraMisePublication.publish_file_plan(
-            planned,
-            phase=c.Infra.CodegenStagedFilePhase.LAYOUT,
-        )
-        if written.failure:
-            return r[t.Infra.LayoutStatus].from_failure(written)
-        applied_status: t.Infra.LayoutStatus = "applied"
-        return r[t.Infra.LayoutStatus].ok(applied_status)
+        return text
 
     @staticmethod
-    def _managed_profile(project_dir: Path) -> p.Result[c.Infra.MakeProfile | None]:
+    def _managed_profile(
+        project_dir: Path,
+        workspace: m.Infra.WorkspaceSpec,
+        *,
+        inputs: m.Infra.CodegenInputs,
+    ) -> p.Result[c.Infra.MakeProfile | None]:
         """Make profile when the project is governed by a workspace.
 
         Returns:
             The resulting ``p.Result[c.Infra.MakeProfile | None]``.
 
         """
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
-            u.Infra.resolve_repository_root_or_cwd(project_dir),
-        )
-        if workspace.failure:
-            return r[c.Infra.MakeProfile | None].from_failure(workspace)
         target = FlextInfraWorkspaceDetector.conform_target(
             project_dir,
-            workspace.value,
+            workspace,
+            inputs=inputs,
         )
         if target.failure:
             return r[c.Infra.MakeProfile | None].from_failure(target)

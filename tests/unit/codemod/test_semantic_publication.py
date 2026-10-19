@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import stat
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -85,6 +86,10 @@ class TestsFlextInfraSemanticPublication:
     @staticmethod
     def _rename_artifact(
         tmp_path: Path,
+        *,
+        kind: str = "callable",
+        external_consumers: int = 0,
+        executable: bool = False,
     ) -> t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState]:
         """Build a native artifact against an independent physical runtime.
 
@@ -95,8 +100,11 @@ class TestsFlextInfraSemanticPublication:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.provision_checkout(root)
         u.Tests.provision_runtime_environment(root)
+        driver = root / c.Infra.REPORTS_DIR_NAME / "native" / "rename.artifact"
+        driver.parent.mkdir(parents=True, exist_ok=True)
         notice = u.Infra.copyright_notice(root)
-        (package / "service.py").write_text(
+        source = package / "service.py"
+        source.write_text(
             f'"""Public callable contract.\n\n{notice}\n"""\n\n'
             "from __future__ import annotations\n\n\n"
             "class FlextSemanticService:\n"
@@ -118,6 +126,22 @@ class TestsFlextInfraSemanticPublication:
             'VALUE = FlextSemanticService.predicate("domain")\n',
             encoding=c.DEFAULT_ENCODING,
         )
+        if executable:
+            source.chmod(stat.S_IMODE(source.stat().st_mode) | stat.S_IXUSR)
+        consumer_roots = []
+        for index in range(external_consumers):
+            receiver, receiver_package = u.Tests.create_lazy_init_workspace(
+                tmp_path,
+                project_name=f"native-receiver-{index}",
+                package_name=f"native_receiver_{index}",
+            )
+            u.Tests.provision_checkout(receiver)
+            u.Tests.provision_runtime_environment(receiver)
+            (receiver_package / "consumer.py").write_text(
+                consumer.read_text(encoding=c.DEFAULT_ENCODING),
+                encoding=c.DEFAULT_ENCODING,
+            )
+            consumer_roots.append(receiver)
         with infra.rope_workspace(root) as workspace:
             artifact = tm.ok(
                 FlextInfraCodemodSemanticApply.build_rename_plan(
@@ -127,26 +151,227 @@ class TestsFlextInfraSemanticPublication:
                         decisions=(
                             m.Infra.SemanticRenameSelection(
                                 qualified_name=(
-                                    f"{package.name}.service.FlextSemanticService.predicate"
+                                    f"{package.name}.service"
+                                    + (
+                                        ".FlextSemanticService"
+                                        if kind != "module"
+                                        else ""
+                                    )
+                                    + (".predicate" if kind == "callable" else "")
                                 ),
-                                replacement_name="meaningful",
+                                replacement_name="FlextMeaningfulService"
+                                if kind == "class"
+                                else "meaningful",
                                 reason="Reviewed callable domain contract",
                             ),
-                        )
+                        ),
+                        consumer_roots=tuple(consumer_roots),
                     ),
                 )
             )
         tm.that(consumer in artifact.candidate.updates, eq=True)
-        driver = root / "rename.artifact"
         tm.ok(u.Cli.atomic_write_text_file(driver, artifact.model_dump_json()))
         captured = tm.ok(u.Cli.atomic_read_binary_file_state(driver, required=True))
-        tm.that(
-            m.Infra.SemanticRenamePlan.model_validate_json(
-                tm.not_none(captured.content)
-            ),
-            eq=artifact,
+        hydrated = m.Infra.SemanticRenamePlan.model_validate_json(
+            tm.not_none(captured.content)
         )
-        return artifact, captured
+        tm.that(
+            hydrated.model_dump(mode="python"),
+            eq=artifact.model_dump(mode="python"),
+        )
+        return hydrated, captured
+
+    @staticmethod
+    @pytest.mark.parametrize("kind", ["class", "module"])
+    def test_mod_composes_native_cross_root_effects_and_is_idempotent(
+        tmp_path: Path,
+        kind: str,
+        mod_progress: p.Infra.ModProgress,
+    ) -> None:
+        """The normal public mod action consumes one coordinated native candidate."""
+        artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(
+            tmp_path,
+            kind=kind,
+            external_consumers=2,
+            executable=kind == "module",
+        )
+        root = (artifact.candidate.workspaces or (artifact.candidate.workspace,))[0]
+        source = next(
+            state
+            for state in artifact.candidate.inputs
+            if state.path.name == "service.py"
+        )
+        tm.ok(
+            infra.mod(
+                m.Infra.ModCommand(
+                    repository_root=root,
+                    apply=True,
+                    rename_plan=driver.path,
+                    consumer_roots=artifact.consumer_roots,
+                ),
+                mod_progress,
+            )
+        )
+        if kind == "module":
+            origin, target = artifact.moves[0]
+            tm.that(origin.exists(), eq=False)
+            tm.that(stat.S_IMODE(target.stat().st_mode), eq=source.mode)
+        for receiver in artifact.consumer_roots:
+            package = next(
+                layout.package_name
+                for layout in artifact.candidate.layouts
+                if layout.project_root == receiver
+            )
+            tm.that(
+                u.Tests.run_lazy_init_probe(
+                    f"from {package}.consumer import VALUE\nprint(VALUE)\n",
+                    python_paths=tuple(
+                        str(layout.source_root.parent)
+                        for layout in artifact.candidate.layouts
+                    ),
+                ),
+                eq=["True"],
+            )
+        published = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for scope in (root, *artifact.consumer_roots)
+            for path in u.Infra.discover_python_files(
+                scope, workspace_excluded_top_dirs=frozenset()
+            )
+        )
+        tm.ok(
+            infra.mod(
+                m.Infra.ModCommand(
+                    repository_root=root,
+                    apply=True,
+                    consumer_roots=artifact.consumer_roots,
+                ),
+                mod_progress,
+            )
+        )
+        tm.ok(u.Cli.atomic_verify_binary_file_states(published))
+        tm.that(driver.path.read_bytes(), eq=driver.content)
+
+    @staticmethod
+    def test_automatic_nesting_rewrites_declared_consumers_without_syntax_fanout(
+        tmp_path: Path,
+        mod_progress: p.Infra.ModProgress,
+    ) -> None:
+        """Rule authority selects the owner while external read scope stays bounded."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        receiver, receiver_package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="native-receiver",
+            package_name="native_receiver",
+        )
+        for checkout in (root, receiver):
+            u.Tests.provision_checkout(checkout)
+            u.Tests.provision_runtime_environment(checkout)
+        alias = next(
+            letter
+            for letter, family in u.Infra.facade_families().items()
+            if family.module == "models"
+        )
+        source = package / f"{u.Tests.family_public_module(alias)}.py"
+        source.write_text("", encoding=c.DEFAULT_ENCODING)
+        with infra.rope_workspace(root) as graph:
+            owner = graph.convention(source).implementation_class
+        source.write_text(
+            f'class {owner}:\n    """Native public family owner."""\n\n'
+            'class Payload:\n    """Native introducing declaration."""\n'
+            '    VALUE = "native"\n\n'
+            f'__all__ = ({owner!r}, "Payload")\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        consumer = receiver_package / "consumer.py"
+        consumer.write_text(
+            f"from {package.name}.{source.stem} import Payload as Bound\n"
+            "VALUE = Bound.VALUE\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        unrelated = receiver_package / "unrelated.py"
+        unrelated.write_text(
+            'class Payload:\n    VALUE = "local"\nVALUE = Payload.VALUE\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        original = tm.ok(u.Cli.atomic_read_binary_file_state(unrelated, required=True))
+        tm.ok(
+            infra.mod(
+                m.Infra.ModCommand(
+                    repository_root=root,
+                    consumer_roots=(receiver,),
+                    apply=True,
+                ),
+                mod_progress,
+            )
+        )
+        tm.ok(u.Cli.atomic_verify_binary_file_states((original,)))
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                "from native_receiver.consumer import VALUE\nprint(VALUE)\n",
+                python_paths=(str(package.parent), str(receiver_package.parent)),
+            ),
+            eq=["native"],
+        )
+        tm.that(source.read_text(encoding=c.DEFAULT_ENCODING), has="    class Payload:")
+
+    @staticmethod
+    @pytest.mark.parametrize("failure", ["missing", "collision", "drift"])
+    def test_mod_refuses_invalid_cross_root_campaign_before_source_publication(
+        tmp_path: Path,
+        failure: str,
+        mod_progress: p.Infra.ModProgress,
+    ) -> None:
+        """Missing scope, occupied native name and stale epochs stay unpublished."""
+        artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(
+            tmp_path,
+            kind="class",
+            external_consumers=1,
+        )
+        root = artifact.candidate.workspaces[0]
+        roots = artifact.consumer_roots
+        if failure == "missing":
+            roots = (*roots, tmp_path / "missing-consumer")
+        elif failure == "collision":
+            declaration = next(
+                state.path
+                for state in artifact.candidate.inputs
+                if state.path.name == "service.py"
+            )
+            declaration.write_text(
+                declaration.read_text(encoding=c.DEFAULT_ENCODING)
+                + "\nclass FlextMeaningfulService:\n    pass\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        else:
+            consumer = next(
+                state.path
+                for state in artifact.candidate.inputs
+                if state.path.name == "consumer.py"
+                and state.path.is_relative_to(roots[0])
+            )
+            consumer.write_bytes(
+                consumer.read_bytes() + b"# a different physical epoch\n"
+            )
+        originals = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for scope in (root, *artifact.consumer_roots)
+            for path in u.Infra.discover_python_files(
+                scope, workspace_excluded_top_dirs=frozenset()
+            )
+        )
+        tm.fail(
+            infra.mod(
+                m.Infra.ModCommand(
+                    repository_root=root,
+                    consumer_roots=roots,
+                    rename_plan=driver.path,
+                    apply=True,
+                ),
+                mod_progress,
+            )
+        )
+        tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
 
     @staticmethod
     @pytest.mark.parametrize("drift", ["none", "driver", "source", "snapshot"])
@@ -170,7 +395,7 @@ class TestsFlextInfraSemanticPublication:
                 project=candidate.workspace,
                 path=path,
                 before=originals[path],
-                desired_content=source.encode(c.DEFAULT_ENCODING),
+                desired_content=tm.not_none(source).encode(c.DEFAULT_ENCODING),
                 desired_mode=originals[path].mode,
                 source_states=(driver,),
             )
@@ -197,7 +422,10 @@ class TestsFlextInfraSemanticPublication:
         if drift == "none":
             tm.that(tm.ok(published), eq=tuple(candidate.updates))
             for path, desired in candidate.updates.items():
-                tm.that(path.read_bytes(), eq=desired.encode(c.DEFAULT_ENCODING))
+                tm.that(
+                    path.read_bytes(),
+                    eq=tm.not_none(desired).encode(c.DEFAULT_ENCODING),
+                )
             before = tuple(
                 tm.ok(u.Cli.atomic_read_binary_file_state(state.path))
                 for state in candidate.inputs
@@ -215,11 +443,15 @@ class TestsFlextInfraSemanticPublication:
         tm.that(driver.path.read_bytes(), eq=driver_bytes)
 
     @staticmethod
+    @pytest.mark.parametrize("kind", ["callable", "class", "module"])
     def test_authenticated_rename_apply_publishes_then_rejects_stale_repeat(
         tmp_path: Path,
+        kind: str,
     ) -> None:
         """The actual artifact consumer applies once and preserves its stale driver."""
-        artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(tmp_path)
+        artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(
+            tmp_path, kind=kind
+        )
         root = artifact.candidate.workspace
         request = m.Infra.ModCommand(
             repository_root=root, rename_plan=driver.path, apply=True
@@ -233,17 +465,96 @@ class TestsFlextInfraSemanticPublication:
                 ),
                 eq=True,
             )
-            published = {path: path.read_bytes() for path in artifact.candidate.updates}
+            published = {
+                path: path.read_bytes() if path.exists() else None
+                for path in artifact.candidate.updates
+            }
             for path, desired in artifact.candidate.updates.items():
-                tm.that(published[path], eq=desired.encode(c.DEFAULT_ENCODING))
+                tm.that(
+                    published[path],
+                    eq=None if desired is None else desired.encode(c.DEFAULT_ENCODING),
+                )
             tm.fail(
                 FlextInfraCodemodSemanticApply.consume_rename_plan(
                     request, workspace, infra.source_preview(root)
                 )
             )
         for path, content in published.items():
-            tm.that(path.read_bytes(), eq=content)
+            tm.that(path.read_bytes() if path.exists() else None, eq=content)
         tm.that(driver.path.read_bytes(), eq=driver.content)
+        consumer = next(
+            path for path in artifact.candidate.updates if path.name == "consumer.py"
+        )
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                f"from {consumer.parent.name}.consumer import VALUE\nprint(VALUE)\n",
+                python_paths=(str(consumer.parent.parent),),
+            ),
+            eq=["True"],
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("kind", ["class", "module"])
+    def test_native_rename_artifact_preserves_originals_and_refuses_consumer_drift(
+        tmp_path: Path,
+        kind: str,
+    ) -> None:
+        """A changed external epoch rejects the cut before the producer changes."""
+        producer, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        consumer_root, consumer_package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="native-consumer",
+            package_name="native_consumer",
+        )
+        declaration = package / "original.py"
+        declaration.write_text(
+            "class Original:\n    pass\n", encoding=c.DEFAULT_ENCODING
+        )
+        consumer = consumer_package / "consumer.py"
+        consumer.write_text(
+            f"from {package.name}.original import Original\nVALUE = Original()\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with infra.rope_workspace(producer) as workspace:
+            artifact = tm.ok(
+                FlextInfraCodemodSemanticApply.build_rename_plan(
+                    producer,
+                    workspace,
+                    m.Infra.SemanticRenameSelections(
+                        decisions=(
+                            m.Infra.SemanticRenameSelection(
+                                qualified_name=f"{package.name}.original"
+                                + (".Original" if kind == "class" else ""),
+                                replacement_name="Renamed"
+                                if kind == "class"
+                                else "renamed",
+                                reason=(
+                                    "Coordinated native producer and consumer "
+                                    "identity cut"
+                                ),
+                            ),
+                        ),
+                        consumer_roots=(consumer_root,),
+                    ),
+                )
+            )
+            driver = producer / "native.artifact"
+            tm.ok(u.Cli.atomic_write_text_file(driver, artifact.model_dump_json()))
+            before = declaration.read_bytes()
+            changed = consumer.read_bytes() + b"# independent source epoch\n"
+            consumer.write_bytes(changed)
+            tm.fail(
+                FlextInfraCodemodSemanticApply.consume_rename_plan(
+                    m.Infra.ModCommand(
+                        repository_root=producer, rename_plan=driver, apply=True
+                    ),
+                    workspace,
+                    infra.source_preview(producer),
+                )
+            )
+        tm.that(declaration.read_bytes(), eq=before)
+        tm.that(consumer.read_bytes(), eq=changed)
+        tm.that(declaration.with_name("renamed.py").exists(), eq=False)
 
     @staticmethod
     def test_joint_phases_reconcile_an_unchanged_initializer_later_owned_by_lazy_init(
@@ -471,6 +782,92 @@ class TestsFlextInfraSemanticPublication:
             )
             tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
             tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize("accepted", [False, True])
+    def test_artifact_candidate_retires_old_package_before_acceptance(
+        mod_workspace: Path,
+        *,
+        accepted: bool,
+    ) -> None:
+        """Preview a package move without exposing retired sources or live effects."""
+        package = mod_workspace / c.Infra.DEFAULT_SRC_DIR / mod_workspace.name
+        previous = package / "previous" / "service.py"
+        current = package / "current" / previous.name
+        previous.parent.mkdir()
+        previous.write_text('VALUE = "previous"\n', encoding=c.DEFAULT_ENCODING)
+        original = tm.ok(u.Cli.atomic_read_binary_file_state(previous, required=True))
+        absent = tm.ok(u.Cli.atomic_read_binary_file_state(current))
+        parents = tm.ok(u.Cli.atomic_plan_directory_chain(current.parent))
+        desired = 'VALUE = "current"\n'
+        inputs = (original, absent)
+        plans = (
+            m.Infra.CodegenFilePlan(
+                project=mod_workspace,
+                path=previous,
+                before=original,
+                desired_content=None,
+                desired_mode=None,
+                source_states=inputs,
+            ),
+            m.Infra.CodegenFilePlan(
+                project=mod_workspace,
+                path=current,
+                before=parents,
+                desired_content=desired.encode(c.DEFAULT_ENCODING),
+                desired_mode=original.mode,
+                source_states=inputs,
+            ),
+        )
+        previews: list[Path] = []
+
+        def validate(candidate_root: Path) -> p.Result[bool]:
+            candidate = candidate_root / current.relative_to(mod_workspace)
+            retired = candidate_root / previous.relative_to(mod_workspace)
+            tm.that(candidate.read_text(encoding=c.DEFAULT_ENCODING), eq=desired)
+            tm.that(retired.exists(), eq=False)
+            if candidate_root != mod_workspace:
+                previews.append(candidate_root)
+                tm.ok(u.Cli.atomic_verify_binary_file_states(inputs))
+                tm.that(current.parent.exists(), eq=False)
+            consumer = tm.ok(
+                u.Cli.run(
+                    (
+                        sys.executable,
+                        "-c",
+                        (
+                            f"from {package.name}.{current.parent.name}.service "
+                            f"import VALUE; assert VALUE == {current.parent.name!r}"
+                        ),
+                    ),
+                    cwd=candidate_root,
+                    options=m.Cli.ProcessOptions(
+                        env={
+                            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
+                                candidate_root
+                                / package.parent.relative_to(mod_workspace)
+                            ),
+                        },
+                    ),
+                ),
+            )
+            tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
+            return r[bool].ok(accepted)
+
+        published = FlextInfraSemanticPublication.publish_semantic_artifact_plans(
+            plans,
+            repository_root=mod_workspace,
+            validator=validate,
+        )
+        tm.that(len(previews), eq=1)
+        if accepted:
+            tm.that(set(tm.ok(published)), eq={previous, current})
+            tm.that(previous.exists(), eq=False)
+            tm.that(current.read_text(encoding=c.DEFAULT_ENCODING), eq=desired)
+        else:
+            tm.fail(published, has="candidate acceptance rejected")
+            tm.ok(u.Cli.atomic_verify_binary_file_states(inputs))
+            tm.that(current.parent.exists(), eq=False)
 
     def test_preflight_and_commit_accept_the_real_published_consumer(
         self,
@@ -859,7 +1256,7 @@ class TestsFlextInfraSemanticPublication:
                 ),
             )
             tm.that(u.Cli.process_succeeded(fresh.outcome), eq=True)
-            return r[bool].ok(True)
+            return r[bool].ok(value=True)
 
         tm.ok(
             FlextInfraSemanticPublication.publish_semantic_file_plans(
@@ -927,7 +1324,11 @@ class TestsFlextInfraSemanticPublication:
             )
             tm.ok(consumer)
             tm.that(u.Cli.process_succeeded(consumer.value.outcome), eq=True)
-            return r[bool].ok(True) if accepted else r[bool].fail("consumer rejected")
+            return (
+                r[bool].ok(value=True)
+                if accepted
+                else r[bool].fail("consumer rejected")
+            )
 
         published = FlextInfraSemanticPublication.publish_semantic_file_plans(
             (),

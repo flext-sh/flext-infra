@@ -262,7 +262,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
         )
         if parsed.failure or not isinstance(parsed.value, dict):
             return None
-        return t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed.value)
+        return u.json_mapping_adapter().validate_python(parsed.value)
 
     def _quality_findings(
         self,

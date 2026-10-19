@@ -14,9 +14,12 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models import FlextInfraModelsCheck, FlextInfraModelsDuplication
-from flext_infra._models.deps import FlextInfraModelsDeps
-from flext_infra._protocols.deps import FlextInfraProtocolsDeps
+from flext_infra._models import (
+    FlextInfraModelsCheck,
+    FlextInfraModelsDeps,
+    FlextInfraModelsDuplication,
+)
+from flext_infra._protocols import FlextInfraProtocolsDeps
 
 
 class FlextInfraModelsGates(FlextInfraModelsDuplication):
@@ -166,6 +169,12 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             populate_by_name=True,
         )
         repository_root: Path = m.Field(description="Repository root directory")
+        runtime_root: Annotated[
+            Path | None,
+            m.Field(
+                description="Explicit physical runtime owner for a staged candidate"
+            ),
+        ] = None
         reports_dir: Annotated[Path, m.Field(description="Reports output directory")]
         apply_fixes: Annotated[
             bool,

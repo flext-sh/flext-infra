@@ -9,8 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import config, r, u
-from tests import c, m, p, t, tm
+from flext_infra import config, u
+from tests import c, m, p, r, t, tm
 
 
 class TestsFlextInfraUtilitiesTomlMixin:

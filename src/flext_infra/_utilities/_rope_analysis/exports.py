@@ -189,6 +189,14 @@ class FlextInfraUtilitiesRopeAnalysisExports:
         assignments = inventory[0]
         definitions = inventory[1]
         explicit_all = inventory[2]
+        if not explicit_all:
+            explicit_all = (
+                FlextInfraUtilitiesRopeAnalysisExports._source_binding_inventory(
+                    FlextInfraUtilitiesRopeAnalysisSourceScan.export_declaration_body(
+                        module
+                    ),
+                )[2]
+            )
         if explicit_all:
             return tuple(
                 dict.fromkeys(
@@ -314,6 +322,18 @@ class FlextInfraUtilitiesRopeAnalysisExports:
 
         """
         explicit_all_name = attributes.get(c.Infra.DUNDER_ALL)
+        if explicit_all_name is None:
+            module = ast.parse(pymodule.source_code)
+            body = FlextInfraUtilitiesRopeAnalysisSourceScan.export_declaration_body(
+                module
+            )
+            if FlextInfraUtilitiesRopeAnalysisExports._source_binding_inventory(body)[
+                2
+            ]:
+                scan = FlextInfraUtilitiesRopeAnalysisSourceScan
+                return scan.module_assignment_strings_source(
+                    pymodule.source_code, c.Infra.DUNDER_ALL
+                )
         if (
             explicit_all_name is None
             or not FlextInfraUtilitiesRopeRuntime.assigned_name(explicit_all_name)

@@ -79,6 +79,22 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         return isinstance(value, cls.runtime_type("rope.base.pyobjectsdef", "PyModule"))
 
     @classmethod
+    def require_parsed_module(cls, value: p.AttributeProbe) -> p.Infra.RopeParsedModule:
+        """Admit native parsed modules through the existing runtime predicate.
+
+        Returns:
+            The original module exposing the parsed-module contract.
+
+        Raises:
+            TypeError: The native result is not a parsed module.
+
+        """
+        if not cls.pymodule(value):
+            msg = "rope resource returned a non-parsed module"
+            raise TypeError(msg)
+        return value
+
+    @classmethod
     def from_import_info(
         cls,
         value: p.AttributeProbe,

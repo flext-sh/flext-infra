@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.codegen import FlextInfraCodegenGenerationStandardMixin
 
 
@@ -17,18 +17,31 @@ class FlextInfraCodegenGenerationFileMixin(FlextInfraCodegenGenerationStandardMi
     """Render canonical initializer artifacts from one validated plan."""
 
     @classmethod
-    def init_template_paths(cls) -> t.VariadicTuple[Path]:
+    def init_template_paths(
+        cls,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> t.VariadicTuple[Path]:
         """Return the closed lazy-init template input set.
 
         Returns:
             The closed lazy-init template input set.
 
         """
-        return (cls._template_path(c.Infra.TEMPLATE_ROOT_INIT),)
+        return (
+            cls._template_path(
+                c.Infra.TEMPLATE_ROOT_INIT, source_project=source_project
+            ),
+        )
 
     @classmethod
-    def render_init(cls, plan: m.Infra.LazyInitPlan) -> str:
-        """Render a lazy facade for each importable package boundary.
+    def render_init(
+        cls,
+        plan: m.Infra.LazyInitPlan,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> str:
+        """Render a lazy facade for composed preparation at a package boundary.
 
         Every package uses the same declared-export PEP 562 contract.
 
@@ -45,7 +58,11 @@ class FlextInfraCodegenGenerationFileMixin(FlextInfraCodegenGenerationStandardMi
             loader = root.parent.joinpath(
                 *c.Infra.LAZY_BOOTSTRAP_MODULE.split("."),
             ).with_suffix(c.Infra.EXT_PYTHON)
-            tree = ast.parse(loader.read_text(encoding=c.DEFAULT_ENCODING))
+            tree = ast.parse(
+                loader.read_text(encoding=c.DEFAULT_ENCODING)
+                if source_project is None
+                else source_project.source_text(loader),
+            )
             dependencies = {
                 node.module.rsplit(".", maxsplit=1)[0]
                 for node in tree.body
@@ -78,7 +95,7 @@ class FlextInfraCodegenGenerationFileMixin(FlextInfraCodegenGenerationStandardMi
                     f"{runtime}\n\n"
                     f"__all__: tuple[str, ...] = {exports}\n"
                 )
-        return cls._render_root(plan)
+        return cls._render_root(plan, source_project=source_project)
 
 
 __all__: list[str] = ["FlextInfraCodegenGenerationFileMixin"]

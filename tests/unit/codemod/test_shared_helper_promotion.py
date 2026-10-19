@@ -59,7 +59,7 @@ class TestsFlextInfraSharedHelperPromotion:
         )
         module = "._fixtures" if reexport else "._fixtures.behavior"
         (suite / "consumer.py").write_text(
-            f"from {module} import {helper} as Shared\n\n"
+            f"from {module} import (\n    {helper} as Shared,\n)\n\n"
             "class Consumer(Shared):\n"
             "    def read(self) -> str:\n"
             "        return self.value()\n\n"
@@ -73,6 +73,9 @@ class TestsFlextInfraSharedHelperPromotion:
             "from typing import Annotated, Literal\n"
             f"from {module} import {helper} as Shared\n\n"
             "ORDINARY = 'Shared'\n\n"
+            f"ORDINARY_IMPORT = '''\n"
+            f"from tests.unit._fixtures.behavior import {helper} as Shared\n"
+            f"'''\n\n"
             "def echo(value: 'Shared') -> 'Shared':\n"
             "    return value\n\n"
             "def annotated(value: \"Annotated[Shared, 'Shared']\")"
@@ -154,7 +157,7 @@ class TestsFlextInfraSharedHelperPromotion:
             self._seed_quoted_collision(root, helper)
         probe = (
             "from typing import get_args, get_type_hints\n"
-            "from tests.unit.quoted import ORDINARY, annotated, echo\n"
+            "from tests.unit.quoted import ORDINARY, ORDINARY_IMPORT, annotated, echo\n"
             "from tests.unit import unrelated\n"
             "Helper = get_type_hints(echo)['value']\n"
             "assert get_type_hints(echo)['return'] is Helper\n"
@@ -163,6 +166,8 @@ class TestsFlextInfraSharedHelperPromotion:
             "assert get_args(hints['value']) == (Helper, 'Shared')\n"
             "assert get_args(hints['return']) == ('Shared',)\n"
             "assert ORDINARY == 'Shared'\n"
+            f"assert ORDINARY_IMPORT == '\\n"
+            f"from tests.unit._fixtures.behavior import {helper} as Shared\\n'\n"
             f"assert get_type_hints(unrelated.echo)['value'] is unrelated.{helper}\n"
             "print(Helper().value(), unrelated.VALUE)\n"
             "print(repr(Helper().payload()), repr(Helper.__doc__))\n"

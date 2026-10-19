@@ -96,22 +96,9 @@ class FlextInfraConstantsRope:
     )
     "Identities declaration relocation resolves; its planning epoch captures them."
 
-    ROPE_IGNORED_RESOURCES: ClassVar[t.VariadicTuple[str]] = (
-        ".venv",
-        "venv",
-        "node_modules",
-        "*.pyc",
-        "dist/",
-        "build/",
-        ".tox/",
-        ".cache/",
-        "__pycache__",
-        ".mypy_cache",
-        ".pyrefly_cache",
-        ".pytest_cache",
-        ".git",
-    )
-    "Resources rope should ignore when scanning the project tree."
+    # NOTE: ROPE_IGNORED_RESOURCES was removed: the rope project election
+    # derives ignored resources from the codegen artifact SSOT
+    # (source_scan_ignored) through the typed RopeProjectElection owner.
 
     PROPERTY_DECORATORS: ClassVar[frozenset[str]] = frozenset({
         "property",
@@ -130,9 +117,9 @@ class FlextInfraConstantsRope:
     "Native Pydantic declaration decorators, resolved by Rope identity."
 
     PAYLOAD_DESCRIPTOR_DECORATORS: ClassVar[t.VariadicTuple[str]] = (
-        "__builtins__.classmethod",
-        "__builtins__.staticmethod",
-        "__builtins__.property",
+        "builtins.classmethod",
+        "builtins.staticmethod",
+        "builtins.property",
     )
     "Native descriptors permitted around a Pydantic declaration decorator."
 

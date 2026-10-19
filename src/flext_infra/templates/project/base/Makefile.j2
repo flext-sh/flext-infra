@@ -35,10 +35,12 @@ $(shell awk -v reference="{{ reference }}" 'index($$0, reference) { count++ } EN
 {%- endmacro -%}
 {%- macro fmt_body() -%}
 {{ "\t" }}@{{ check_run(gates_csv(make.fmt_gates), " --apply") }}
+{{ local_check_body() }}
 {%- endmacro -%}
 {%- macro fix_body() -%}
 {{ "\t" }}@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope self --mode apply
 {{ "\t" }}@{{ check_run(gates_csv(make.check_gates_fixable), " --apply") }}
+{{ local_check_body() }}
 {%- endmacro -%}
 {#- A local workspace run carries a mutating verb to every governed member
     after the root settles itself: flext-infra runs each member's own verb
@@ -51,6 +53,22 @@ ifneq ($({{ make.ci.variable }}),{{ make.ci.value }})
 {{ "\t" }}@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} fleet --repository-root "$(PROJECT_ROOT)" --verb {{ verb }}
 endif
 {%- endif -%}
+{%- endmacro -%}
+{%- macro upg_resolution_projects() -%}
+{%- if make.uv_resolution.editable_supplier_root is not none -%}
+"$(RUNTIME_ROOT)/{{ make.uv_resolution.editable_directory }}"
+{%- else -%}
+"$(PROJECT_ROOT)/{{ make.uv_resolution.local_directory }}" "$(PROJECT_ROOT)/{{ make.uv_resolution.standalone_directory }}"
+{%- endif -%}
+{%- endmacro -%}
+{%- macro upg_lock_views(upgrade=false) -%}
+{{ "\t" }}@set -eu; \
+	desired_python="$$(mise -C "$(RUNTIME_ROOT)" which python)"; \
+	for resolution in {{ upg_resolution_projects() }}; do \
+		printf 'upg: {{ "upgrading" if upgrade else "reconciling" }} UV lock for %s\n' "$$resolution"; \
+		$(UV) lock --project "$$resolution" --python "$$desired_python"{% if upgrade and make.uv_resolution.editable_supplier_root is none %} --upgrade --refresh{% endif %}; \
+		$(UV) lock --check --project "$$resolution" --python "$$desired_python"; \
+	done
 {%- endmacro -%}
 {%- macro pytest_testmon_guard() -%}
 set -eu; \
@@ -81,10 +99,9 @@ scratch_tmp="$$(cd "$$scratch/tmp" && pwd -P)"; \
 TMPDIR="$$scratch_tmp"; TMP="$$scratch_tmp"; TEMP="$$scratch_tmp"; \
 export TMPDIR TMP TEMP; \
 {%- endmacro -%}
-{#- Normal incremental verbs admit only the bounded phase. Slow-marked items
-    remain owned by the explicitly requested full verb, which runs locally
-    with the same persistent database and without any time limit, so it is the one runner that
-    is not wrapped in PYTEST_BOUNDED. -#}
+{#- Normal incremental verbs admit only the bounded phase. Explicit full and
+    single-file operations include slow items, use the same persistent database
+    and run without a time limit or PYTEST_BOUNDED wrapper. -#}
 {#- Tests run on the provisioned toolchain: every verb's tools resolve from
     the mise-managed PATH, so a test observes the runtime's tool versions. -#}
 {%- macro pytest_test_runner(operation="", bounded=true) -%}
@@ -97,9 +114,9 @@ fi; \
 {{ pytest_scratch_root() }}
 {{ make.testmon_cache.database_environment_variable }}="$$database" {% if bounded %}$(PYTEST_BOUNDED) {% endif %}$(PROJECT_INFRA_RUN) -m flext_infra._pytest_entry{% if operation %} {{ operation }}{% endif %}
 {%- endmacro -%}
-{#- The single-file verb validates its FILE input and executes the complete
-    requested file once, including its slow tests, in one bounded process
-    using the persistent database. Empty execution remains a failing result.
+{#- The single-file verb validates its FILE input and executes incremental then
+    complete phases, including slow tests, without a deadline using the
+    persistent database. Empty execution remains a failing result.
     The exported variable name mirrors
     c.Infra.PYTEST_ENV_TARGET_FILE in flext-infra/_constants/make.py; the entry
     fails loudly on a mismatch. -#}
@@ -109,7 +126,7 @@ case "$(FILE)" in /*|*..*) printf 'ERROR: FILE must stay a repository-relative p
 if [ ! -f "$(PROJECT_ROOT)/$(FILE)" ]; then printf 'ERROR: FILE is not an existing repository file: %s\n' "$(FILE)" >&2; exit 2; fi; \
 export FLEXT_PYTEST_TARGET_FILE="$(FILE)"; \
 {%- if run_tests %}
-{{ pytest_test_runner("file") | trim }}
+{{ pytest_test_runner("file", bounded=false) | trim }}
 {%- endif %}
 {%- endmacro -%}
 # @flext-generated: continuous
@@ -145,6 +162,13 @@ ifeq ($(strip $(SELF_MAKE_EXECUTABLE)),)
 $(error Current Make executable has no physical path: $(MAKE_COMMAND))
 endif
 .DEFAULT_GOAL := help
+{% if make.uv_resolution.editable_supplier_root is not none %}
+ifneq ($(filter upg,$(MAKECMDGOALS)),)
+ifeq ($(strip $({{ make.uv_resolution.hosted_variable }})),{{ make.uv_resolution.hosted_value }})
+$(error Editable supplier reconciliation is local only)
+endif
+endif
+{% endif %}
 
 # Approval fixes its context before any topology, activation or credential read.
 ifneq ($(filter pre-commit,$(MAKECMDGOALS)),)
@@ -480,10 +504,24 @@ endif
 override FLEXT_INFRA_PYTHON := $(RUNTIME_PYTHON)
 override UV_LOCAL_PROJECT := $(RUNTIME_ROOT)/{{ make.uv_resolution.local_directory }}
 override UV_STANDALONE_PROJECT := $(RUNTIME_ROOT)/{{ make.uv_resolution.standalone_directory }}
+{% if make.uv_resolution.editable_supplier_root is not none %}
+ifneq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
+$(error Configure editable_supplier_root at the physical runtime root, not an attached member)
+endif
+ifneq ($(filter upg,$(MAKECMDGOALS)),)
+ifeq ($(shell if [ -f "$(RUNTIME_ROOT)/{{ make.uv_resolution.editable_directory }}/pyproject.toml" ]; then printf present; fi),)
+$(error Editable resolution manifest is missing; publish the declared supplier resolution inputs before upgrading)
+endif
+endif
+{% endif %}
 ifeq ($(strip $({{ make.uv_resolution.hosted_variable }})),{{ make.uv_resolution.hosted_value }})
 override UV_PROJECT := $(UV_STANDALONE_PROJECT)
 else
+{% if make.uv_resolution.editable_supplier_root is not none %}
+override UV_PROJECT := $(RUNTIME_ROOT)/{{ make.uv_resolution.editable_directory }}
+{% else %}
 override UV_PROJECT := $(UV_LOCAL_PROJECT)
+{% endif %}
 endif
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
 override VIRTUAL_ENV := $(RUNTIME_VENV)
@@ -503,7 +541,7 @@ _bootstrap_setup_tools: _builtin_require_workspace
 .PHONY: _builtin_require_upg_lock_owner
 _builtin_require_upg_lock_owner:
 	@set -eu; \
-	for resolution in "$(UV_LOCAL_PROJECT)" "$(UV_STANDALONE_PROJECT)"; do \
+	for resolution in {{ upg_resolution_projects() }}; do \
 		owner="$$($(UV) workspace dir --project "$$resolution")"; \
 		if [ "$${owner}" != "$$resolution" ]; then \
 			printf 'ERROR[upg] UV lock owner is %s, not %s; regenerate the native resolution inputs before upgrading.\n' "$${owner}" "$$resolution" >&2; \
@@ -539,7 +577,10 @@ INSTALL_RUNTIME_RECIPE = set -eu; \
 		exit 2; \
 	fi; \
 	mise -C "$(RUNTIME_ROOT)" config ls --json; \
-	$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "$$desired_python" $(UV_SYNC_FLAGS) --frozen --link-mode "$(UV_LINK_MODE)"
+{% if make.uv_resolution.editable_supplier_root is not none %}	if [ "$(UV_PROJECT)" != "$(UV_STANDALONE_PROJECT)" ]; then \
+		$$credential_env $(UV) lock --check --project "$(UV_PROJECT)" --python "$$desired_python"; \
+	fi; \
+{% endif %}	$$credential_env $(UV) sync --project "$(UV_PROJECT)" --python "$$desired_python" $(UV_SYNC_FLAGS) --frozen --link-mode "$(UV_LINK_MODE)"
 SETUP_ENVIRONMENT_RECIPE = $(INSTALL_RUNTIME_RECIPE); \
 	setup_scope="{{ 'all' if make_profile == 'workspace' else 'self' }}"; \
 	if [ "$(strip $({{ make.uv_resolution.hosted_variable }}))" = "{{ make.uv_resolution.hosted_value }}" ]; then setup_scope=self; fi; \
@@ -717,7 +758,9 @@ _builtin-pre-commit: _builtin_require_environment
 # before bootstrap, installation, hooks or lock resolution.
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
 upg: TOOL_BOOTSTRAP_LIFECYCLE := _upg_lifecycle
+{% if make.uv_resolution.editable_supplier_root is none %}
 upg: TOOL_BOOTSTRAP_RESOLVE := 1
+{% endif %}
 upg: _bootstrap_setup_tools
 else
 upg: _builtin_require_workspace
@@ -817,7 +860,8 @@ ifneq ($(MAKECMDGOALS),help)
 endif
 
 # Runtime commands authenticate the graph setup provisioned; only setup installs.
-# Generation authenticates after publishing its declared activation inputs.
+# Generation guards its physical runtime and consumed inputs at publication;
+# the complete installed graph remains the explicit audit's responsibility.
 _builtin_require_environment: _builtin_require_interpreter
 ifneq ($(MAKECMDGOALS),help)
 	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
@@ -851,8 +895,9 @@ _upg_install_runtime:
 # consumer whose lock still pins an older producer (one without the routes
 # this template calls), or that has no view lock yet, upgrades in one run.
 # The corrective projection is then re-locked by _upg_reconcile_locks.
-# Only this elected runtime owner resolves both native views; attached
-# members delegate before bootstrap instead of writing member locks.
+# Only this elected runtime owner installs the resolved environment. Attached
+# members delegate before bootstrap; this owner also refreshes their own native
+# UV and tool locks for independent setup without installing member runtimes.
 # Reparse a changed dispatcher once; a second change fails the fixed point.
 .PHONY: _upg_lifecycle _upg_converge
 {% for verb in profile.verbs if verb.name == "upg-sources" %}
@@ -864,7 +909,7 @@ _builtin-upg-sources: _builtin_require_environment
 	fi
 {% endfor %}
 	@$(PROJECT_FLEXT_INFRA) deps modernize --repository-root "$(SOURCE_ROOT)" \
-		--projects . --apply --git-source-url-prefix "$(SOURCE_URL_PREFIX)" \
+		--apply --git-source-url-prefix "$(SOURCE_URL_PREFIX)" \
 		--git-source-ref-from "$(SOURCE_REF_FROM)" --git-source-ref-to "$(SOURCE_REF_TO)"
 {% endfor %}
 _upg_lifecycle: _builtin_setup_submodules
@@ -872,30 +917,41 @@ _upg_lifecycle: _builtin_setup_submodules
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
 	esac
-	@$(SELF_MAKE) _builtin_require_upg_lock_owner
-	@set -eu; \
-	desired_python="$$(mise -C "$(RUNTIME_ROOT)" which python)"; \
-	for resolution in "$(UV_LOCAL_PROJECT)" "$(UV_STANDALONE_PROJECT)"; do \
-		$(UV) lock --project "$$resolution" --python "$$desired_python" --upgrade --refresh; \
-	done
+{% if make.uv_resolution.editable_supplier_root is not none %}
+	+@$(SELF_MAKE) _upg_resolve_locks
+	@$(SELF_MAKE) _upg_install_runtime
+	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope self
+	@$(SELF_MAKE) _upg_reconcile_locks
+	@$(SELF_MAKE) _upg_install_runtime
+	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
+	$(call RUN_PUBLIC_POST,upg)
+{% else %}
+	+@$(SELF_MAKE) _upg_resolve_locks
 	@$(SELF_MAKE) _upg_install_runtime
 	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope all
 	@$(SELF_MAKE) _upg_reconcile_locks
 	@$(SELF_MAKE) _upg_install_runtime
 	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
 	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what mise-config --scope self
-	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what makefile --scope self
+	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what makefile --scope all
 	+@$(SELF_MAKE) _upg_provision_tools
 	@$(PROJECT_FLEXT_INFRA) deps modernize --repository-root "$(PROJECT_ROOT)" \
 		--apply --rewrite-constraints --projects .
 	$(call RUN_PUBLIC_PRODUCE,gen)
 	+@$(SELF_MAKE) _upg_converge
+{% endif %}
 
-# Reparse the projected dispatcher before installing: its declared backend keys
-# must agree with the Mise configuration just generated by the upgraded owner.
+# Reparse the projected dispatcher before resolving the declared native tool
+# locks. Each writable FLEXT member retains its own lock for independent setup;
+# only the elected runtime receives an installation.
 .PHONY: _upg_provision_tools
 _upg_provision_tools:
 	@mise -C "$(PROJECT_ROOT)" lock --bump
+{% for repository in workspace_repositories if repository.kind == "internal_flext" and repository.codegen != "none" and not repository.read_only %}
+	@printf 'upg: resolving native tool and UV locks for %s\n' "$(PROJECT_ROOT)/{{ repository.path }}"
+	@mise -C "$(PROJECT_ROOT)/{{ repository.path }}" lock --bump
+	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(PROJECT_ROOT)" -f "$(PROJECT_ROOT)/{{ repository.path }}/Makefile" _upg_resolve_locks
+{% endfor %}
 	@{{ mise_install_command("$(PROJECT_ROOT)", mise_install_tools) }}
 
 # Complete the upgrade against the projections just published. Re-reading the
@@ -903,19 +959,20 @@ _upg_provision_tools:
 # repeating generation and installation.
 _upg_converge:
 	@$(SELF_MAKE) _upg_reconcile_locks
+{% for repository in workspace_repositories if repository.kind == "internal_flext" and repository.codegen != "none" and not repository.read_only %}
+	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(PROJECT_ROOT)" -f "$(PROJECT_ROOT)/{{ repository.path }}/Makefile" _upg_reconcile_locks
+{% endfor %}
 	@$(SELF_MAKE) _builtin_setup_environment
 	@$(SELF_MAKE) _builtin_require_mise
 	@$(PROJECT_FLEXT_INFRA) deps verify-locks --repository-root "$(PROJECT_ROOT)"
 	+@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(SELF_MAKE) _upg_activated,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _upg_activated)
 
-.PHONY: _upg_reconcile_locks
+.PHONY: _upg_resolve_locks _upg_reconcile_locks
+_upg_resolve_locks: _builtin_require_upg_lock_owner
+{{ upg_lock_views(upgrade=true) }}
+
 _upg_reconcile_locks: _builtin_require_upg_lock_owner
-	@set -eu; \
-	desired_python="$$(mise -C "$(RUNTIME_ROOT)" which python)"; \
-	for resolution in "$(UV_LOCAL_PROJECT)" "$(UV_STANDALONE_PROJECT)"; do \
-		$(UV) lock --project "$$resolution" --python "$$desired_python"; \
-		$(UV) lock --check --project "$$resolution" --python "$$desired_python"; \
-	done
+{{ upg_lock_views() }}
 
 .PHONY: _upg_activated
 _upg_activated:
@@ -962,13 +1019,12 @@ _builtin_test_file_all: _builtin_require_environment
 # Export the raw Make value instead of interpolating operator input into shell code.
 export FLEXT_FILE_GATE_FILE := $(value FILE)
 _builtin_file_gate_all: _builtin_require_environment
-	@{{ check_run("lint,format,pyrefly,mypy,pyright,codemod", ' --file "$$FLEXT_FILE_GATE_FILE"') }}
+	@{{ check_run(gates_csv(make.check_gates_file), ' --file "$$FLEXT_FILE_GATE_FILE"') }}
 
 # fmt is format-only (single-pass verb law): ruff formats Python, the
 # fmt_gates formatters run once through the checker's apply mode, and every
-# lint repair belongs to `make fix`. Only a real tool failure (exit >= 2)
-# breaks the verb; a formatter's residual findings stay reportable and are
-# enforced by `make check`.
+# lint repair belongs to `make fix`. Every repair requires read-only native
+# verification; remaining findings and tool failures both fail the verb.
 _builtin_fmt_all: _builtin_require_environment
 {{ fmt_body() }}
 
@@ -1028,7 +1084,7 @@ profile-mypy-report: _builtin_require_environment
 
 # Profile the complete generation operation, including its publication.
 .PHONY: profile-gen
-profile-gen: _builtin_require_environment
+profile-gen: _builtin_require_interpreter
 	@mkdir -p "$(PROFILE_REPORTS_DIR)"
 	@set -eu; \
 	scope=all; \
@@ -1054,6 +1110,18 @@ _builtin-profile-environment-report: _builtin_require_interpreter
 	@cd "$(PROJECT_ROOT)" || exit $$?; \
 		$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \
 		"$(PROFILE_REPORTS_DIR)/environment.pstats"
+
+# Measure the same complete lane audit used by the public audit verb.
+_builtin-profile-lanes: _builtin_require_environment
+	@mkdir -p "$(PROFILE_REPORTS_DIR)"
+	@$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry \
+		"$(PROFILE_REPORTS_DIR)/lanes.pstats" \
+		{{ workspace_cli_group }} verify-lanes --repo-root "$(PROJECT_ROOT)"
+
+_builtin-profile-lanes-report: _builtin_require_environment
+	@cd "$(PROJECT_ROOT)" || exit $$?; \
+		$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \
+		"$(PROFILE_REPORTS_DIR)/lanes.pstats"
 
 # Measure the same mutating codemod lifecycle, retaining profiles on failure.
 _builtin-profile-mod: _builtin_require_environment
@@ -1100,7 +1168,8 @@ _builtin-profile-test: _builtin_require_environment
 		"$(PROFILE_REPORTS_DIR)/{{ pytest.profile_suite_filename }}"
 
 _builtin-profile-test-report: _builtin_require_environment
-	@$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \
+	@cd "$(PROJECT_ROOT)" || exit $$?; \
+		$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \
 		"$(PROFILE_REPORTS_DIR)/{{ pytest.profile_suite_filename }}" "$(PROFILE_REPORTS_DIR)/{{ pytest.profile_suite_filename }}.json"
 
 {% set status_origin_probe %}
@@ -1226,17 +1295,17 @@ _builtin_gen_init:
 export FLEXT_NEW_{{ argument }} := $(value {{ argument }})
 {% endfor %}
 
-_builtin-project-new: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) codegen new --apply{% for argument in project_new.arguments %} --{{ argument | lower | replace("_", "-") }} "$$FLEXT_NEW_{{ argument }}"{% endfor %}
+_builtin-project-new: _builtin_require_interpreter
+	@$(PROJECT_FLEXT_INFRA) codegen new --repository-root "$(PROJECT_ROOT)" --apply{% for argument in project_new.arguments %} --{{ argument | lower | replace("_", "-") }} "$$FLEXT_NEW_{{ argument }}"{% endfor %}
 {% endfor %}
 
-_builtin_gen_all: _builtin_require_environment
+_builtin_gen_all: _builtin_require_interpreter
 	@set -eu; \
 	scope=all; \
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then scope=self; fi; \
 	$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --scope "$$scope"
 
-_builtin-gen-footprint: _builtin_require_environment
+_builtin-gen-footprint: _builtin_require_interpreter
 	@$(PROJECT_FLEXT_INFRA) codegen footprint --root "$(PROJECT_ROOT)" --scope all
 
 _builtin-bootstrap-candidate: _builtin_require_environment
@@ -1310,6 +1379,7 @@ _builtin-examples: _builtin_require_environment
 {% endif %}
 _builtin-check: _builtin_check_all
 _builtin-test: _builtin_test_all
+_builtin-tests: _builtin_test_full_all
 _builtin-test-full: _builtin_test_full_all
 _builtin-test-file: _builtin_test_file_all
 _builtin-file-gate: _builtin_file_gate_all

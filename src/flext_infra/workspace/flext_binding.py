@@ -287,7 +287,8 @@ class FlextInfraBindingService:
         }
         if not selected:
             return r[t.MappingKV[str, Path]].fail(
-                "requested binding selects no active declared dependency",
+                "requested binding selects no active declared dependency: "
+                f"declared={names!r}; available={tuple(available)!r}",
             )
         for path in selected.values():
             if not (path / c.PYPROJECT_FILENAME).is_file():

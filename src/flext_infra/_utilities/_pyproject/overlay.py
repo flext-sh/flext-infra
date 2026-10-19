@@ -24,7 +24,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
 
     @staticmethod
     def _validated_requirement_lists(
-        project: t.MutableJsonMapping,
+        project: t.JsonMapping,
         live_project: t.JsonMapping,
         key: str,
     ) -> p.Result[t.Pair[t.StrSequence, t.StrSequence]]:
@@ -98,32 +98,42 @@ class FlextInfraUtilitiesPyprojectOverlay:
     def _overlay_project_surface(
         cls,
         merged: t.MutableJsonMapping,
-        live_payload: t.JsonMapping,
+        live_payload: t.JsonMapping | None,
         project_keys: t.StrSequence,
     ) -> p.Result[t.JsonDict]:
         """Overlay every declared CUSTOM project key onto the merged document.
+
+        Existing metadata owns omitted CUSTOM keys as well as provided values;
+        only a new project receives those scaffold defaults.
 
         Returns:
             The resulting ``p.Result[t.JsonDict]``.
 
         """
-        project = dict(u.Cli.toml_mapping_child(merged, c.Infra.PROJECT) or {})
-        live_project = u.Cli.toml_mapping_child(live_payload, c.Infra.PROJECT) or {}
-        for key in project_keys:
-            if key not in live_project:
-                continue
-            if key == c.Infra.DEPENDENCIES:
-                validated = cls._validated_requirement_lists(
-                    project,
-                    live_project,
-                    key,
-                )
-                if validated.failure:
-                    return r[t.JsonDict].from_failure(validated)
-                required, custom = validated.value
-                project[key] = cls._merged_requirements(required, custom)
-            else:
-                project[key] = live_project[key]
+        rendered_project = u.Cli.toml_mapping_child(merged, c.Infra.PROJECT) or {}
+        live_project = (
+            u.Cli.toml_mapping_child(live_payload, c.Infra.PROJECT)
+            if live_payload is not None
+            else None
+        )
+        if live_project is None:
+            return r[t.JsonDict].ok(dict(rendered_project))
+        project = dict(live_project)
+        project.update(
+            (key, value)
+            for key, value in rendered_project.items()
+            if key not in project_keys
+        )
+        if c.Infra.DEPENDENCIES in project_keys:
+            validated = cls._validated_requirement_lists(
+                rendered_project,
+                live_project,
+                c.Infra.DEPENDENCIES,
+            )
+            if validated.failure:
+                return r[t.JsonDict].from_failure(validated)
+            required, custom = validated.value
+            project[c.Infra.DEPENDENCIES] = cls._merged_requirements(required, custom)
         return r[t.JsonDict].ok(project)
 
     @staticmethod
@@ -157,7 +167,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
                 comment=(
                     None
                     if not isinstance(value, str) or value in custom_values
-                    else FlextInfraUtilitiesPyproject.MEMBER_DEV_PROVENANCE
+                    else c.Infra.MEMBER_DEV_PROVENANCE
                 ),
             )
         generated.add_line(indent="")
@@ -307,7 +317,11 @@ class FlextInfraUtilitiesPyprojectOverlay:
                 exception=live_payload.exception,
             )
         merged = dict(rendered_payload.value)
-        project = cls._overlay_project_surface(merged, live_payload.value, project_keys)
+        project = cls._overlay_project_surface(
+            merged,
+            live_payload.value if live is not None else None,
+            project_keys,
+        )
         if project.failure:
             return r[str].from_failure(project)
         merged[c.Infra.PROJECT] = project.value

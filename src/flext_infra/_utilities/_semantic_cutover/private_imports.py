@@ -195,13 +195,12 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
                 discovery_sources,
             )
         )
-        ancestry = ImportAncestry.FlextInfraUtilitiesPrivateImportAncestry
         return (
             FlextInfraUtilitiesPrivateImportFacades.discover(discovery_sources),
             (
                 export_bindings,
                 declared_exports,
-                ancestry.class_bases(discovery_sources),
+                ImportAncestry.class_bases(discovery_sources),
             ),
         )
 

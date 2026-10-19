@@ -1,0 +1,14 @@
+id: ban-runtime-protocols-in-settings
+valid:
+  - |
+    if TYPE_CHECKING:
+        from pkg import p
+  - |
+    if TYPE_CHECKING:
+        from pkg.protocols import Protocols
+invalid:
+  - from pkg import p
+  - from pkg import p as protocols
+  - from flext_core import p
+  - from pkg.protocols import Protocols
+  - import pkg._protocols.base

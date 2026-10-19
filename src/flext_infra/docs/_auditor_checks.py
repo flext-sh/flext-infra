@@ -58,11 +58,11 @@ class FlextInfraDocAuditorChecksMixin:
             Machine-local paths outside exact historical evidence files.
 
         """
+        policy = u.Infra.docs_audit_policy(scope)
         return u.Infra.docs_machine_path_issues(
             scope,
-            historical_evidence_files=(
-                u.Infra.docs_audit_policy(scope).historical_evidence_files
-            ),
+            historical_evidence_files=policy.historical_evidence_files,
+            container_home_identities=policy.container_home_identities,
         )
 
     def _collect_issues(

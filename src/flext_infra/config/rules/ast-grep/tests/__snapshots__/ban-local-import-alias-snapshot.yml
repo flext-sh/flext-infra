@@ -14,6 +14,26 @@ snapshots:
       style: secondary
       start: 0
       end: 27
+  ? |
+    if TYPE_CHECKING:
+        from pkg import child as renamed
+  : labels:
+    - source: child as renamed
+      style: primary
+      start: 38
+      end: 54
+    - source: pkg
+      style: secondary
+      start: 27
+      end: 30
+    - source: from pkg import child as renamed
+      style: secondary
+      start: 22
+      end: 54
+    - source: renamed
+      style: secondary
+      start: 47
+      end: 54
   import pkg.models as models:
     labels:
     - source: pkg.models as models

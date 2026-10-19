@@ -26,6 +26,95 @@ class TestsFlextInfraUvNativeResolution:
     """Resolve real local Git packages without external-service prerequisites."""
 
     @staticmethod
+    @pytest.mark.parametrize("invalid", ["relative-supplier", "same-directory"])
+    def test_editable_resolution_policy_rejects_ambiguous_paths(invalid: str) -> None:
+        """Invalid opt-ins cannot silently select a default graph."""
+        policy = config.Infra.codegen.make.uv_resolution
+        payload = policy.model_dump()
+        if invalid == "relative-supplier":
+            payload["editable_supplier_root"] = Path("relative")
+        else:
+            payload["editable_directory"] = policy.local_directory
+        with pytest.raises(ValueError, match="absolute path|distinct directories"):
+            m.Infra.MakeUvResolutionSpec.model_validate(payload)
+
+    @staticmethod
+    def test_external_editable_supplier_preserves_default_view_and_metadata(
+        tmp_path: Path,
+    ) -> None:
+        """Resolve a supplier only in its opt-in graph without rewriting metadata."""
+        root = tmp_path / "consumer"
+        supplier_root = tmp_path / "supplier"
+        repository = u.Tests.repository_ref("native-consumer")
+        supplier = u.Tests.repository_ref("native-supplier")
+        u.Tests.write_native_resolution_project(supplier_root, supplier.distribution)
+        u.Tests.write_native_resolution_project(
+            root,
+            repository.distribution,
+            dependencies=(f"{supplier.distribution}>=0",),
+        )
+        consumer_text = (root / c.PYPROJECT_FILENAME).read_text(
+            encoding=c.DEFAULT_ENCODING
+        )
+        supplier_text = (supplier_root / c.PYPROJECT_FILENAME).read_text(
+            encoding=c.DEFAULT_ENCODING
+        )
+        owner = m.Infra.UvResolutionProject(
+            repository=repository,
+            directory=root,
+            document=u.Tests.toml_doc(consumer_text),
+        )
+        supplied = m.Infra.UvResolutionProject(
+            role="supplier",
+            repository=supplier,
+            directory=supplier_root,
+            document=u.Tests.toml_doc(supplier_text),
+        )
+        policy = config.Infra.codegen.make.uv_resolution
+        workspace = u.Tests.workspace_spec(repository)
+        default = tm.ok(
+            u.Infra.pyproject_native_resolution_view(
+                owner,
+                workspace=workspace,
+                members=(),
+                directory=root / policy.local_directory,
+                policy=policy,
+            )
+        )
+        default_text = u.Cli.toml_dumps(default)
+        directory = root / policy.editable_directory
+        editable = tm.ok(
+            u.Infra.pyproject_native_resolution_view(
+                owner,
+                workspace=workspace,
+                members=(supplied,),
+                directory=directory,
+                policy=policy,
+            )
+        )
+        locked = TestsFlextInfraUvNativeResolution._resolved_identity_lock(
+            directory, editable
+        )
+        package = next(
+            item for item in locked.package if item.name == supplier.distribution
+        )
+        tm.that(
+            package.source.editable,
+            eq=supplier_root.relative_to(directory, walk_up=True).as_posix(),
+        )
+        tm.that(u.Cli.toml_dumps(default), eq=default_text)
+        tm.that(
+            (root / c.PYPROJECT_FILENAME).read_text(encoding=c.DEFAULT_ENCODING),
+            eq=consumer_text,
+        )
+        tm.that(
+            (supplier_root / c.PYPROJECT_FILENAME).read_text(
+                encoding=c.DEFAULT_ENCODING
+            ),
+            eq=supplier_text,
+        )
+
+    @staticmethod
     def _conformed_alias_document(
         root: Path,
         repository: m.Infra.RepositoryRef,
@@ -100,7 +189,7 @@ class TestsFlextInfraUvNativeResolution:
         The separate first-party-profile scenario qualifies the SSOT floor set.
         """
         root = tmp_path / "project"
-        root_name = "native-alias-root"
+        repository = u.Tests.repository_ref("native-alias-root")
         leaves = {
             tier: tmp_path / tier
             for tier in ("runtime", "development", "examples", "extra")
@@ -113,13 +202,14 @@ class TestsFlextInfraUvNativeResolution:
         }
         dev = str(c.Infra.DEV).capitalize()
         codegen = str(c.Infra.DependencyGroup.CODEGEN).capitalize()
+        extra_name = "feature"
         u.Tests.write_native_resolution_project(
             root,
-            root_name,
+            repository.distribution,
             dependencies=(requirements["runtime"],),
             groups=(
                 "[project.optional-dependencies]\n"
-                f"extra = [{json.dumps(requirements['extra'])}]\n"
+                f"{extra_name} = [{json.dumps(requirements['extra'])}]\n"
                 "[dependency-groups]\n"
                 f"{dev} = [{json.dumps(requirements['development'])}]\n"
                 f'{codegen} = [{{include-group = "{dev}"}}]\n'
@@ -127,7 +217,6 @@ class TestsFlextInfraUvNativeResolution:
                 f"{json.dumps(requirements['examples'])}]\n"
             ),
         )
-        repository = u.Tests.repository_ref(root_name)
         conformed = TestsFlextInfraUvNativeResolution._conformed_alias_document(
             root,
             repository,
@@ -146,6 +235,7 @@ class TestsFlextInfraUvNativeResolution:
                     directory=root,
                     document=u.Tests.toml_doc(conformed),
                 ),
+                workspace=u.Tests.workspace_spec(repository),
                 members=(),
                 directory=directory,
                 policy=policy,
@@ -154,7 +244,7 @@ class TestsFlextInfraUvNativeResolution:
         groups = u.Tests.toml_mapping(
             u.Tests.toml_doc_mapping(view)["dependency-groups"],
         )
-        tm.that(u.Tests.toml_list(groups[codegen]), eq=[{"include-group": dev}])
+        tm.that(u.Tests.toml_list(groups[codegen]), eq=({"include-group": dev},))
         tm.that(
             u.Tests.toml_list(groups["examples"])[0],
             eq={"include-group": codegen},
@@ -164,13 +254,15 @@ class TestsFlextInfraUvNativeResolution:
             view,
         )
         tm.that(
-            {root_name, *names.values()}.issubset(
+            {repository.distribution, *names.values()}.issubset(
                 {package.name for package in locked.package},
             ),
             eq=True,
         )
         package = next(
-            package for package in locked.package if package.name == root_name
+            package
+            for package in locked.package
+            if package.name == repository.distribution
         )
         tm.that(
             {dependency.name for dependency in package.dependencies},
@@ -179,7 +271,7 @@ class TestsFlextInfraUvNativeResolution:
         tm.that(
             {
                 dependency.name
-                for dependency in package.optional_dependencies["feature"]
+                for dependency in package.optional_dependencies[extra_name]
             },
             eq={names["extra"]},
         )
@@ -494,6 +586,7 @@ class TestsFlextInfraUvNativeResolution:
             view = tm.ok(
                 u.Infra.pyproject_native_resolution_view(
                     inputs[root_name],
+                    workspace=u.Tests.workspace_spec(inputs[root_name].repository),
                     members=(
                         tuple(
                             project
@@ -610,6 +703,7 @@ class TestsFlextInfraUvNativeResolution:
         view = tm.ok(
             u.Infra.pyproject_native_resolution_view(
                 inputs[0],
+                workspace=u.Tests.workspace_spec(inputs[0].repository),
                 members=(inputs[1],) if consumer == "member" else (),
                 directory=directory,
                 policy=config.Infra.codegen.make.uv_resolution,
@@ -699,6 +793,7 @@ class TestsFlextInfraUvNativeResolution:
                             (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
                         ),
                     ),
+                    workspace=u.Tests.workspace_spec(u.Tests.repository_ref(root_name)),
                     members=(),
                     directory=resolution_root,
                     policy=config.Infra.codegen.make.uv_resolution,
@@ -757,6 +852,7 @@ class TestsFlextInfraUvNativeResolution:
         provider = tmp_path / "provider"
         root_name = "identity-root"
         provider_name = "identity-provider"
+        extra_name = "feature"
         leaves = {
             name: tmp_path / name
             for name in (
@@ -774,11 +870,10 @@ class TestsFlextInfraUvNativeResolution:
         revision = tm.ok(
             u.Cli.capture([c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=remote),
         ).strip()
-        backedge = f"{root_name} @ git+{remote.as_uri()}@{revision}"
         u.Tests.write_native_resolution_project(
             provider,
             provider_name,
-            dependencies=(backedge,),
+            dependencies=(f"{root_name} @ git+{remote.as_uri()}@{revision}",),
         )
         u.Tests.initialize_git_repo(provider)
         provider_revision = tm.ok(
@@ -816,7 +911,7 @@ class TestsFlextInfraUvNativeResolution:
                 policy += f"[tool.uv.sources]\n{root_name} = {{workspace = true}}\n"
             case "global-self":
                 policy += (
-                    f'override-dependencies = ["{root_name}[feature]"]\n'
+                    f'override-dependencies = ["{root_name}[{extra_name}]"]\n'
                     f"[tool.uv.sources]\n{root_name} = {{workspace = true}}\n"
                 )
             case "scoped-self" | "scoped-self-unmapped":
@@ -838,7 +933,7 @@ class TestsFlextInfraUvNativeResolution:
             dependencies=(f"identity-runtime @ {leaves['identity-runtime'].as_uri()}",),
             groups=(
                 "[project.optional-dependencies]\n"
-                f"extra = {json.dumps(list(optional))}\n"
+                f"{extra_name} = {json.dumps(list(optional))}\n"
                 f"{groups}"
                 f"{policy}"
             ),

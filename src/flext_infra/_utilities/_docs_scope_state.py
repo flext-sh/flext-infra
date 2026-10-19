@@ -52,7 +52,7 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
             root,
             pyproject_path,
             snapshot.value.content,
-        ).model_copy(deep=True)
+        )
 
     @staticmethod
     @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
@@ -89,8 +89,7 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
             if parsed is None:
                 msg = f"docs pyproject TOML is invalid: {pyproject_path}"
                 raise ValueError(msg)
-            validated = FlextInfraUtilitiesPyproject.validate_infra_payload(parsed)
-            payload = validated
+            payload = parsed
         docs_meta = FlextInfraUtilitiesDocsScopeStateMixin.docs_meta_from_payload(
             payload,
         )
@@ -137,10 +136,10 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
         *,
         source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
     ) -> m.Infra.ProjectPyprojectState:
-        """Return one fresh state bound to authenticated pyproject bytes.
+        """Return the shared state bound to authenticated pyproject bytes.
 
         Returns:
-            One fresh state bound to authenticated pyproject bytes.
+            The immutable cached state for the authenticated pyproject bytes.
 
         """
         if source_states is None:
@@ -152,7 +151,7 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
             path,
             state.content,
             tuple(item.path for item in source_states),
-        ).model_copy(deep=True)
+        )
 
     @staticmethod
     def project_name_from_payload(entry: Path, payload: t.JsonMapping) -> str:

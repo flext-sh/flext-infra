@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import ast
 from functools import lru_cache, partial
+from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 import libcst as cst
@@ -47,7 +48,6 @@ from flext_infra._utilities._semantic_cutover import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable, MutableMapping
-    from pathlib import Path
 
     from flext_infra import p
 
@@ -599,14 +599,28 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             for alias in node.names
             if alias.name == c.Infra.FacadeFamily.U
         )
+        if any(
+            isinstance(node, ast.Import)
+            and any(alias.name == namespace[0].name for alias in node.names)
+            for node in ast.parse(source, filename=str(path)).body
+        ):
+            imports |= {(namespace[0].name, c.Infra.FacadeFamily.U)}
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         layer = FlextInfraUtilitiesImportLaw.module_import_layer(namespace[1])
-        if layer == order.index(c.Infra.FacadeFamily.U):
+        if layer in {
+            order.index(c.Infra.FacadeFamily.U),
+            order.index(c.Infra.FacadeFamily.M),
+        }:
             return (
                 frozenset(
                     identity for identity in imports if identity[0] == namespace[0].name
                 ),
-                frozenset(),
+                frozenset(
+                    identity
+                    for identity in imports
+                    if layer == order.index(c.Infra.FacadeFamily.M)
+                    and identity[0] != namespace[0].name
+                ),
             )
         if layer <= order.index(c.Infra.FacadeFamily.M):
             return (
@@ -622,6 +636,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         cls,
         root: Path,
         sources: t.MappingKV[Path, str],
+        *,
+        native_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Resolve removed typing behavior to its unique declared utility owner.
 
@@ -687,6 +703,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                         utility_imports=utility_imports,
                         declaration_imports=declaration_imports,
                     ),
+                    native_project=native_project,
                 )
 
             planned = cls._semantic_edits(
@@ -781,6 +798,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     def rewrite_behavior_consumer(
         cls,
         request: m.Infra.SemanticBehaviorRewriteRequest,
+        *,
+        native_project: p.Infra.RopeProject | None = None,
     ) -> t.Infra.TransformResult:
         """Rebind proven imported behavior and compose its semantic import edits.
 
@@ -807,6 +826,23 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             if isinstance(node, ast.ImportFrom) and node.module and not node.level
             for alias in node.names
         }
+        identities.update(elected_imports)
+        project_root = (
+            FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+                Path(native_project.root.real_path), path
+            )
+            if native_project is not None
+            else None
+        )
+        located = (
+            FlextInfraUtilitiesImportLaw.import_namespace(project_root, path)
+            if project_root is not None
+            else None
+        )
+        model_source = located is not None and (
+            FlextInfraUtilitiesImportLaw.module_import_layer(located[1])
+            == tuple(config.Infra.tooling.lazy_init.import_layer_order).index("m")
+        )
         obsolete: set[t.Pair[str, str]] = set()
         lineages: MutableMapping[
             t.Pair[str, str], t.VariadicTuple[t.Pair[str, str]]
@@ -828,6 +864,25 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         # for every reference. A new source/candidate creates a fresh resolver.
         @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
         def resolve(qualified: str) -> t.Triple[str, str, str] | None:
+            own_import = next(
+                (
+                    identity
+                    for identity in utility_imports
+                    if qualified.startswith(".".join(identity) + ".")
+                ),
+                None,
+            )
+            if model_source and own_import is not None:
+                if native_project is None:
+                    msg = (
+                        "model utility cutover requires its authenticated Rope project"
+                    )
+                    raise ValueError(msg)
+                target = FlextInfraUtilitiesImportLaw.model_utility_target(
+                    native_project, qualified
+                )
+                cls._record_obsolete_target(obsolete, own_import, target)
+                return target
             imported = next(
                 (
                     identity
@@ -880,7 +935,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             cls._record_obsolete_target(obsolete, imported, target)
             return target
 
-        if not lineages:
+        if not lineages and not (model_source and utility_imports):
             return cls._behavior_consumer_outcome(request, source, ())
         module_name = cls._source_module_name(path)
         context = CodemodContext(full_module_name=module_name)

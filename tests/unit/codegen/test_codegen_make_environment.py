@@ -928,5 +928,5 @@ class TestsFlextInfraCodegenMakeEnvironment:
         assert external
         for requirement in external:
             url, ref = tm.ok(u.Infra.declared_git_source(requirement))
-            assert url.endswith(f"/{u.Infra.dep_name(requirement)}.git")
-            assert ref == u.Tests.provider_branch()
+            tm.that(url.endswith(f"/{u.Infra.dep_name(requirement)}.git"), truth=True)
+            tm.that(ref == u.Tests.provider_branch(), truth=True)

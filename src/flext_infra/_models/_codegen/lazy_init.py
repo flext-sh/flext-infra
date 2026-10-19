@@ -18,7 +18,7 @@ from flext_infra._models import FlextInfraModelsMixins
 class FlextInfraModelsCodegenLazyInitModels:
     """Lazy-init planning and quality-gate models."""
 
-    class LazyInitPackageContext(m.ArbitraryTypesModel):
+    class LazyInitPackageContext(m.ContractModel):
         """Declarative package context for one lazy-init directory."""
 
         pkg_dir: Path = m.Field(description="Directory being processed.")
@@ -40,12 +40,8 @@ class FlextInfraModelsCodegenLazyInitModels:
             ),
         ] = False
 
-    class LazyInitPlan(m.ArbitraryTypesModel):
-        """Fully resolved lazy-init action and render payload.
-
-        Enforcement exemption: internal tooling model with intentional
-        mutable state.
-        """
+    class LazyInitPlan(m.ContractModel):
+        """Immutable resolved decision and its original source consumption."""
 
         context: FlextInfraModelsCodegenLazyInitModels.LazyInitPackageContext = m.Field(
             description="Discovered package context.",
@@ -92,6 +88,23 @@ class FlextInfraModelsCodegenLazyInitModels:
         excluded_lazy_names: t.StrSequence = m.Field(
             default_factory=tuple,
             description="Names excluded from runtime child lazy import merges.",
+        )
+        source_states: tuple[m.Cli.AtomicFileState, ...] = m.Field(
+            default=(),
+            strict=True,
+            description=(
+                "Original native source reads consumed by this package decision"
+            ),
+        )
+        source_directories: tuple[m.Cli.AtomicDirectoryInventory, ...] = m.Field(
+            default=(),
+            strict=True,
+            description="Exact native queries consumed by this package decision",
+        )
+        source_query_topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = m.Field(
+            default=(),
+            strict=True,
+            description="Original ancestry witnesses consumed by this package decision",
         )
 
     class QualityGateCheck(m.ArbitraryTypesModel):

@@ -29,13 +29,11 @@ import re
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, override
+from typing import Annotated, override
 
-from flext_infra import c, config, m, r, t, u
+from flext_infra import c, config, m, p, r, t, u
+from flext_infra._utilities import FlextInfraUtilitiesMiseBinary
 from flext_infra.codegen import FlextInfraCodegenExecutionBase
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
@@ -96,6 +94,8 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         entry: m.Infra.MiseToolEntry,
         lock: t.JsonMapping,
         platform_name: str,
+        *,
+        requested_version: str | None = None,
     ) -> p.Result[t.StrPair]:
         """Step 1: the locked version and checksum of one declared tool.
 
@@ -112,9 +112,12 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         if locked.failure:
             return r[t.StrPair].from_failure(locked)
         version = locked.value.get("version")
-        requested = config.Infra.codegen.toolchain.tool_version_pins.get(
-            entry.name,
-            entry.version,
+        requested = (
+            requested_version
+            if requested_version is not None
+            else config.Infra.codegen.toolchain.tool_version_pins.get(
+                entry.name, entry.version
+            )
         )
         if not isinstance(version, str) or not (
             requested in {c.Infra.MISE_MOVING_SELECTOR, version}
@@ -176,6 +179,8 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         version: str,
         executable: Path,
         install_root: Path,
+        *,
+        environment: t.StrMapping | None = None,
     ) -> p.Result[bool]:
         """Step 4: the declared probe reports the locked version.
 
@@ -184,15 +189,23 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
 
         """
         probe = entry.version_probe
+        scoped = {
+            key: value.replace(f"{install_root}", str(install_root))
+            for key, value in probe.environment.items()
+        }
+        if environment is not None:
+            scoped.update(environment)
         run = u.Cli.run_raw(
             (str(executable), *probe.arguments),
             cwd=executable.parent,
             timeout=c.Infra.TIMEOUT_SHORT,
             options=m.Cli.ProcessOptions(
-                env={
-                    key: value.replace(f"{install_root}", str(install_root))
-                    for key, value in probe.environment.items()
-                }
+                env=scoped,
+                remove_env_keys=(
+                    FlextInfraCodegenMiseToolchainProof._role_removed_keys(scoped)
+                    if environment is not None
+                    else ()
+                ),
             ),
         )
         if run.failure:
@@ -223,6 +236,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         binary: Path,
         *,
         probe_root: Path | None = None,
+        environment: t.StrMapping | None = None,
     ) -> p.Result[str]:
         """Steps 3-4: self-containment of the binary, then its real version.
 
@@ -243,7 +257,9 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         )
         if executable.failure:
             return r[str].from_failure(executable)
-        reported = cls._reported_version(entry, version, executable.value, root)
+        reported = cls._reported_version(
+            entry, version, executable.value, root, environment=environment
+        )
         if reported.failure:
             return r[str].from_failure(reported)
         if resources.value:
@@ -303,6 +319,312 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         if receipt.failure:
             return receipt
         return r[str].ok(f"{receipt.value} {checksum or 'checksum:none'}")
+
+    @staticmethod
+    def _role_removed_keys(environment: t.StrMapping) -> tuple[str, ...]:
+        return tuple(
+            key
+            for key in os.environ
+            if key not in environment
+            and (
+                key.startswith(("MISE_", "ASDF_"))
+                or key.upper().startswith("NPM_CONFIG_")
+                or key
+                in {
+                    "VIRTUAL_ENV",
+                    "PYTHONPATH",
+                    "PYTHONHOME",
+                    "NODE_OPTIONS",
+                    "NODE_PATH",
+                }
+            )
+        )
+
+    @staticmethod
+    def _role_environment(root: Path) -> dict[str, str]:
+        return {
+            "HOME": str(root / "home"),
+            "PWD": str(root),
+            "INIT_CWD": str(root),
+            "NPM_CONFIG_USERCONFIG": str(root / "home" / ".npmrc"),
+            "NPM_CONFIG_GLOBALCONFIG": str(root / "home" / "npm-globalrc"),
+            "NPM_CONFIG_PREFIX": str(root / "data" / "npm"),
+            "NPM_CONFIG_CACHE": str(root / "cache" / "npm"),
+            "XDG_CONFIG_HOME": str(root / "config"),
+            "XDG_CACHE_HOME": str(root / "cache"),
+            "XDG_DATA_HOME": str(root / "data"),
+            "XDG_STATE_HOME": str(root / "state"),
+            "MISE_DATA_DIR": str(root / "data"),
+            "MISE_CONFIG_DIR": str(root / "config"),
+            "MISE_CACHE_DIR": str(root / "cache"),
+            "MISE_STATE_DIR": str(root / "state"),
+            "MISE_GLOBAL_CONFIG_FILE": str(root / "config" / "config.toml"),
+            "MISE_CEILING_PATHS": str(root.parent),
+            "MISE_TRUSTED_CONFIG_PATHS": str(root),
+        }
+
+    @staticmethod
+    def _role_receipts_current(
+        receipts: Sequence[p.Cli.AtomicFileReceipt],
+    ) -> p.Result[bool]:
+        for expected in receipts:
+            accepted = m.Cli.AtomicFileReceipt.model_validate(
+                expected, from_attributes=True
+            )
+            observed = u.Cli.atomic_read_binary_file_receipt(
+                accepted.path, required=True
+            )
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            if observed.value != accepted:
+                return r[bool].fail(
+                    f"Mise role source identity changed: {accepted.path}"
+                )
+        return r[bool].ok(True)
+
+    @classmethod
+    def _role_command(
+        cls,
+        request: p.Infra.MiseRoleRequest,
+        arguments: tuple[str, ...],
+    ) -> p.Result[str]:
+        root = request.target_root
+        if root.resolve(strict=True) != root or any((root / "config").iterdir()):
+            return r[str].fail(f"Mise role scope is not isolated: {root}")
+        environment = cls._role_environment(root)
+        for name in ("home", "data", "config", "cache", "state", "node_modules"):
+            path = root / name
+            if (
+                not path.is_dir()
+                or path.is_symlink()
+                or path.resolve(strict=True) != path
+            ):
+                return r[str].fail(f"Mise role directory escaped its scope: {path}")
+        result = u.Cli.run_raw(
+            (str(request.reader.path), "-C", str(root), *arguments),
+            cwd=root,
+            timeout=c.Infra.TIMEOUT_LONG,
+            options=m.Cli.ProcessOptions(
+                env=environment, remove_env_keys=cls._role_removed_keys(environment)
+            ),
+        )
+        if result.failure:
+            return r[str].from_failure(result)
+        if result.value.stderr:
+            sys.stderr.write(result.value.stderr)
+        if not u.Cli.process_succeeded(result.value.outcome) or re.search(
+            r"\b(?:warn(?:ing)?|error)\b", result.value.stderr, re.IGNORECASE
+        ):
+            return r[str].fail(result.value.stderr or result.value.stdout)
+        return r[str].ok(result.value.stdout.strip())
+
+    @classmethod
+    def plan_role(
+        cls, request: p.Infra.MiseRoleRequest
+    ) -> p.Result[p.Infra.MiseRolePlan]:
+        """Project one authenticated exact role and resolve its own checksum lock."""
+        accepted = m.Infra.MiseRoleRequest.model_validate(request, from_attributes=True)
+        originals = (
+            accepted.declaration,
+            accepted.reader,
+            accepted.reader_manifest,
+            accepted.reader_lock,
+        )
+        current = cls._role_receipts_current(originals)
+        if current.failure:
+            return r[p.Infra.MiseRolePlan].from_failure(current)
+        receipt = accepted.declaration
+        if receipt.size is None:
+            return r[p.Infra.MiseRolePlan].fail("Mise role declaration is absent")
+        content = u.Cli.atomic_read_binary_file_range(receipt, 0, receipt.size)
+        if content.failure:
+            return r[p.Infra.MiseRolePlan].from_failure(content)
+        parsed = u.validate_value(
+            m.Infra.MiseRoleDeclaration, content.value, from_json=True
+        )
+        if parsed.failure:
+            return r[p.Infra.MiseRolePlan].from_failure(parsed)
+        declaration = parsed.value
+        current = cls._role_receipts_current(declaration.source_inputs)
+        if current.failure:
+            return r[p.Infra.MiseRolePlan].from_failure(current)
+        root = accepted.target_root
+        scope = accepted.scope_root
+        if (
+            not root.is_absolute()
+            or not scope.is_absolute()
+            or scope.resolve(strict=True) != scope
+            or root.parent.resolve(strict=True) != root.parent
+            or root == scope
+            or not root.is_relative_to(scope)
+            or root.exists()
+            or root.is_symlink()
+        ):
+            return r[p.Infra.MiseRolePlan].fail(f"invalid new Mise role target: {root}")
+        reader_root = Path(accepted.reader_manifest.path).parent
+        if (
+            Path(accepted.reader_manifest.path).name != c.Infra.MISE_TOML_FILENAME
+            or Path(accepted.reader_lock.path)
+            != reader_root / c.Infra.MISE_LOCK_FILENAME
+            or root.is_relative_to(reader_root)
+        ):
+            return r[p.Infra.MiseRolePlan].fail(
+                "Mise role must not modify its reader project"
+            )
+        # Reuse the reader's own manifest/lock authentication, never PATH election.
+        declared = FlextInfraUtilitiesMiseBinary._committed_mise_self_release(
+            reader_root
+        )
+        if declared.failure:
+            return r[p.Infra.MiseRolePlan].from_failure(declared)
+        if not declared.value:
+            return r[p.Infra.MiseRolePlan].fail(
+                "Mise role reader has no declared self pin"
+            )
+        pinned = FlextInfraUtilitiesMiseBinary._locked_mise_version(
+            reader_root, config.Infra.codegen.toolchain.mise_selector, declared.value[0]
+        )
+        if pinned.failure:
+            return r[p.Infra.MiseRolePlan].from_failure(pinned)
+        qualified = FlextInfraUtilitiesMiseBinary._mise_self_identity(
+            Path(accepted.reader.path), pinned.value, reader_root
+        )
+        if qualified.failure:
+            return r[p.Infra.MiseRolePlan].from_failure(qualified)
+        root.mkdir(mode=0o700)
+        # npm's vendor self-test must stop local-prefix discovery inside this scope.
+        for name in ("home", "data", "config", "cache", "state", "node_modules"):
+            (root / name).mkdir(mode=0o700)
+        project = m.Infra.ProjectMiseConfig(
+            tools={
+                entry.name: m.Infra.ProjectMiseTool(version=entry.version)
+                for entry in declaration.tools
+            }
+        )
+        document = project.model_dump(mode="json")
+        document["settings"] = {
+            "lockfile": True,
+            "lockfile_platforms": [cls.current_platform().unwrap()],
+            "minimum_release_age": f"{config.Infra.codegen.toolchain.dependency_cooldown_days}d",
+            "disable_update_warning": config.Infra.codegen.toolchain.mise_disable_update_warning,
+            "locked_verify_provenance": config.Infra.codegen.toolchain.mise_locked_verify_provenance,
+            "provenance_api_failures_fatal": config.Infra.codegen.toolchain.mise_provenance_api_failures_fatal,
+        }
+        written = u.Cli.toml_write_mapping(root / c.Infra.MISE_TOML_FILENAME, document)
+        if written.failure:
+            return r[p.Infra.MiseRolePlan].from_failure(written)
+        locked = cls._role_command(
+            accepted, ("lock", *(entry.name for entry in declaration.tools))
+        )
+        if locked.failure:
+            return r[p.Infra.MiseRolePlan].from_failure(locked)
+        lock = u.Cli.toml_read_json(root / c.Infra.MISE_LOCK_FILENAME)
+        if lock.failure:
+            return r[p.Infra.MiseRolePlan].from_failure(lock)
+        platform_name = cls.current_platform().unwrap()
+        for entry in declaration.tools:
+            identity = cls.lock_identity(
+                entry, lock.value, platform_name, requested_version=entry.version
+            )
+            if identity.failure:
+                return r[p.Infra.MiseRolePlan].from_failure(identity)
+            if identity.value[0] != entry.version:
+                return r[p.Infra.MiseRolePlan].fail(
+                    f"role lock changed exact pin: {entry.name}"
+                )
+        current = cls._role_receipts_current((*originals, *declaration.source_inputs))
+        if current.failure:
+            return r[p.Infra.MiseRolePlan].from_failure(current)
+        return r[p.Infra.MiseRolePlan].ok(
+            m.Infra.MiseRolePlan(
+                request=accepted,
+                manifest=u.Cli.atomic_read_binary_file_receipt(
+                    root / c.Infra.MISE_TOML_FILENAME, required=True
+                ).unwrap(),
+                lock=u.Cli.atomic_read_binary_file_receipt(
+                    root / c.Infra.MISE_LOCK_FILENAME, required=True
+                ).unwrap(),
+            )
+        )
+
+    @classmethod
+    def acquire_role(
+        cls, plan: p.Infra.MiseRolePlan
+    ) -> p.Result[p.Infra.MiseRoleInstallation]:
+        """Install only bare declared keys from the accepted role lock, then prove them."""
+        accepted = m.Infra.MiseRolePlan.model_validate(plan, from_attributes=True)
+        request = accepted.request
+        receipts = (
+            request.declaration,
+            request.reader,
+            request.reader_manifest,
+            request.reader_lock,
+            accepted.manifest,
+            accepted.lock,
+        )
+        current = cls._role_receipts_current(receipts)
+        if current.failure:
+            return r[p.Infra.MiseRoleInstallation].from_failure(current)
+        if request.declaration.size is None:
+            return r[p.Infra.MiseRoleInstallation].fail(
+                "Mise role declaration is absent"
+            )
+        source = u.Cli.atomic_read_binary_file_range(
+            request.declaration, 0, request.declaration.size
+        ).unwrap()
+        declaration = u.validate_value(
+            m.Infra.MiseRoleDeclaration, source, from_json=True
+        ).unwrap()
+        current = cls._role_receipts_current(declaration.source_inputs)
+        if current.failure:
+            return r[p.Infra.MiseRoleInstallation].from_failure(current)
+        installed = cls._role_command(
+            request,
+            ("install", "--locked", *(entry.name for entry in declaration.tools)),
+        )
+        if installed.failure:
+            return r[p.Infra.MiseRoleInstallation].from_failure(installed)
+        lock = u.Cli.toml_read_json(accepted.lock.path).unwrap()
+        binaries: dict[str, m.Cli.AtomicFileReceipt] = {}
+        platform_name = cls.current_platform().unwrap()
+        for entry in declaration.tools:
+            located = cls._role_command(request, ("which", entry.version_probe.binary))
+            installed_root = cls._role_command(request, ("where", entry.name))
+            if located.failure or installed_root.failure:
+                return r[p.Infra.MiseRoleInstallation].from_failure(
+                    located if located.failure else installed_root
+                )
+            binary = Path(located.value)
+            root = Path(installed_root.value)
+            if not root.resolve(strict=True).is_relative_to(
+                request.target_root / "data"
+            ):
+                return r[p.Infra.MiseRoleInstallation].fail(
+                    f"Mise role installation escaped target: {root}"
+                )
+            identity = cls.lock_identity(
+                entry, lock, platform_name, requested_version=entry.version
+            )
+            if identity.failure:
+                return r[p.Infra.MiseRoleInstallation].from_failure(identity)
+            proof = cls.installation(
+                entry,
+                entry.version,
+                root,
+                binary,
+                environment=cls._role_environment(request.target_root),
+            )
+            if proof.failure:
+                return r[p.Infra.MiseRoleInstallation].from_failure(proof)
+            binaries[entry.name] = u.Cli.atomic_read_binary_file_receipt(
+                binary.resolve(strict=True), required=True
+            ).unwrap()
+        current = cls._role_receipts_current((*receipts, *declaration.source_inputs))
+        if current.failure:
+            return r[p.Infra.MiseRoleInstallation].from_failure(current)
+        return r[p.Infra.MiseRoleInstallation].ok(
+            m.Infra.MiseRoleInstallation(plan=accepted, executables=binaries)
+        )
 
     def _mise_line(self, mise_binary: Path, *arguments: str) -> p.Result[str]:
         """Run one read-only ``mise -C <root>`` query and return its line.

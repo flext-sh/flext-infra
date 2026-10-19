@@ -11,39 +11,12 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsCodemod
 
 
 class FlextInfraModelsRefactorGrep:
     """Mixin containing migration/reporting contracts for refactor orchestration."""
-
-    class CodemodImportResources(m.ArbitraryTypesModel):
-        """One frozen-layout invocation's native module elections."""
-
-        modules: Annotated[
-            t.MutableMappingKV[
-                t.Triple[str, str | None, int],
-                t.Infra.RopeResource | None,
-            ],
-            m.Field(
-                description=(
-                    "Elected native module resources keyed by invocation identity"
-                ),
-            ),
-        ] = m.Field(default_factory=dict)
-        source_folders: Annotated[
-            tuple[p.Infra.RopeRoot, ...],
-            m.Field(description="Project-owned roots in the native search order"),
-        ]
-        python_folders: Annotated[
-            tuple[p.Infra.RopeRoot, ...],
-            m.Field(description="Native shared Python path roots in search order"),
-        ]
-        python_modules: Annotated[
-            t.MutableMappingKV[t.Pair[str, str], t.Infra.RopeResource | None],
-            m.Field(description="Shared native Python-root elections for this capture"),
-        ]
 
     class CodemodContextCondition(FlextInfraModelsBase.FrozenArbitrary):
         """One project-context condition over a captured metavariable."""
@@ -88,6 +61,31 @@ class FlextInfraModelsRefactorGrep:
                 ),
             ),
         ] = ()
+
+        @m.model_validator(mode="after")
+        def _validate_native_owner_reference(self) -> Self:
+            """Require one qualified primitive, never a module waiver table.
+
+            Returns:
+                The validated model instance.
+
+            Raises:
+                ValueError: If the native predicate lacks its module/producer pair.
+
+            """
+            if self.predicate in {
+                c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER,
+                c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION,
+            } and (
+                len(self.arg) != c.Infra.PAIRED_CONTEXT_PREDICATE_ARG_COUNT
+                or any(
+                    not all(part.isidentifier() for part in value.split("."))
+                    for value in self.arg
+                )
+            ):
+                msg = f"{self.predicate} requires one module and native producer"
+                raise ValueError(msg)
+            return self
 
     class CodemodRule(FlextInfraModelsBase.FrozenArbitrary):
         """One validated ast-grep rule document from a composed provider."""

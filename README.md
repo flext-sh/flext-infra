@@ -37,8 +37,7 @@ management
 
 ## Collection Rules
 
-Read
-[`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/upload-20261007/AGENTS.md)
+Read [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/0.12.0-dev/AGENTS.md)
 §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent
 FLEXT chain, Scope bootstrap, skill loading, zero-debt baseline, slot registry
 verification).
@@ -59,7 +58,7 @@ verification).
   classes listed under Module Map above.
 - Public extensions exposed by this project: `FlextInfra`, `FlextInfraCli`,
   `FlextInfraCommandPayloadMixin`, `FlextInfraConfig`, `FlextInfraConformWiring`,
-  `FlextInfraConstants` (+18 more).
+  `FlextInfraConstants` (+19 more).
 - Library abstraction boundaries: see AGENTS.md §2.7.
 
 ## Quality Gates
@@ -67,18 +66,17 @@ verification).
 Canonical `make` verbs (`gen`, `check`, `test`, `fmt`, `docs`) execute their declared
 operations directly.
 
-See
-[`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/upload-20261007/AGENTS.md)
+See [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/0.12.0-dev/AGENTS.md)
 for the build, test, and Python quality gates.
 
 ## Governance Pointer
 
 - Engineering law:
-  [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/upload-20261007/AGENTS.md)
+  [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/0.12.0-dev/AGENTS.md)
 - Governance + ADRs:
-  [`/flext/docs/GOVERNANCE.md`](https://github.com/flext-sh/flext/blob/upload-20261007/docs/GOVERNANCE.md)
+  [`/flext/docs/GOVERNANCE.md`](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/GOVERNANCE.md)
 - Skills index:
-  [`/flext/.agents/skills/`](https://github.com/flext-sh/flext/tree/upload-20261007/.agents/skills/)
+  [`/flext/.agents/skills/`](https://github.com/flext-sh/flext/tree/0.12.0-dev/.agents/skills/)
 - Onboarding:
-  [`/flext/docs/guides/onboarding.md`](https://github.com/flext-sh/flext/blob/upload-20261007/docs/guides/onboarding.md)
+  [`/flext/docs/guides/onboarding.md`](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/guides/onboarding.md)
 - Full project portal: [`docs/index.md`](docs/index.md).

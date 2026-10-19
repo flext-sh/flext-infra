@@ -1,9 +1,9 @@
 """Fresh-process import quality gate.
 
 Imports the checkout's published package and its declared entry points in
-fresh child processes of the checkout's own runtime. The proof belongs to
-``make check``: it needs the environment ``make setup`` provisions, so it is
-never a precondition of the generation that publishes the package.
+fresh child processes of the checkout's own runtime. ``make check`` and staged
+generation admission share this proof, using the physical environment that
+``make setup`` provisions rather than creating or borrowing a candidate venv.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -58,18 +58,17 @@ class FlextInfraFreshImportGate(FlextInfraGate):
             The resulting ``m.Infra.GateExecution``.
 
         """
-        _ = ctx
         started = time.monotonic()
-        # The runtime is derived from the gated checkout itself (a subproject
-        # uses its workspace's, a standalone checkout its own), never from the
-        # process that runs the gate. ``build_report`` keeps violations
+        # Live checks derive their runtime from the checkout. Candidate admission
+        # explicitly binds that physical owner without borrowing its source tree.
+        # ``build_report`` keeps violations
         # structured so a broken invocation (missing runtime, unreadable
         # manifest) grades apart from failed probes.
         return self._build_validation_report_result(
             project_dir,
             FlextInfraValidateFreshImport(
                 repository_root=project_dir,
-                runtime_root=None,
+                runtime_root=ctx.runtime_root,
             ).build_report(repository_roots=(project_dir,)),
             started=started,
         )

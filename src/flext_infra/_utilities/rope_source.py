@@ -11,7 +11,7 @@ import textwrap
 from operator import itemgetter
 from pathlib import Path
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesRopeRuntime,
@@ -22,7 +22,11 @@ class FlextInfraUtilitiesRopeSource:
     """Text-oriented helpers shared by Rope-backed refactors."""
 
     @staticmethod
-    def discover_first_party_namespaces(project_dir: Path) -> t.StrSequence:
+    def discover_first_party_namespaces(
+        project_dir: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> t.StrSequence:
         """Discover live regular, namespace, and stub packages under ``src/``.
 
         Returns:
@@ -35,6 +39,7 @@ class FlextInfraUtilitiesRopeSource:
             for name in FlextInfraUtilitiesDiscovery.discover_python_dirs(
                 src_dir,
                 workspace_excluded_top_dirs=frozenset(),
+                source_project=source_project,
             )
             if name.isidentifier()
         ]
@@ -137,6 +142,27 @@ class FlextInfraUtilitiesRopeSource:
         if not statement_lines:
             return False
         source = file_path.read_text(encoding=c.DEFAULT_ENCODING)
+        updated = cls.plan_hoist_inline_imports(file_path, source, statement_lines)
+        if updated == source:
+            return False
+        file_path.write_text(updated, encoding=c.DEFAULT_ENCODING)
+        return True
+
+    @classmethod
+    def plan_hoist_inline_imports(
+        cls,
+        file_path: Path,
+        source: str,
+        statement_lines: t.SequenceOf[t.IntPair],
+    ) -> str:
+        """Plan the same statement hoist without changing its physical source.
+
+        Returns:
+            The source with the selected statements hoisted to the import block.
+
+        """
+        if not statement_lines:
+            return source
         lines = source.splitlines(keepends=True)
         hoisted: list[str] = []
         drop: set[int] = set()
@@ -151,8 +177,7 @@ class FlextInfraUtilitiesRopeSource:
         block = [f"{text}\n" for text in hoisted if text not in present]
         updated = "".join([*kept[:position], *block, *kept[position:]])
         ast.parse(updated, filename=str(file_path))
-        file_path.write_text(updated, encoding=c.DEFAULT_ENCODING)
-        return True
+        return updated
 
     @staticmethod
     def statements_at_module_end(

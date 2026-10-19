@@ -24,6 +24,98 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 ):
     """Resolve lexical identities and construct Rope module/import objects."""
 
+    @staticmethod
+    def definition_location(
+        binding: t.Infra.RopePyName,
+    ) -> t.Pair[t.Infra.RopeParsedModule | None, int | None]:
+        """Read native definition metadata, including annotation-only bindings.
+
+        Returns:
+            The original supplier and first assignment's logical declaration line.
+
+        Raises:
+            TypeError: The native annotation is not an expression node.
+
+        """
+        module, line = binding.get_definition_location()
+        if (
+            line is not None
+            or not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module)
+            or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
+            or not binding.assignments
+        ):
+            return module, line
+        assignment = binding.assignments[0]
+        annotation = assignment.type_hint
+        if assignment.ast_node is not None or annotation is None:
+            return module, line
+        if not isinstance(annotation, ast.expr):
+            message = "native Rope assignment annotation is not an expression"
+            raise TypeError(message)
+        return module, module.logical_lines.logical_line_in(annotation.lineno)[0]
+
+    @classmethod
+    def annotation_alias_definition(
+        cls,
+        binding: p.Infra.RopePyName,
+    ) -> tuple[ast.TypeAlias, p.Infra.RopeScope] | None:
+        """Locate a PEP 695 alias without evaluating its deferred value."""
+        module, line = cls.definition_location(binding)
+        if (
+            not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module)
+            or line is None
+        ):
+            return None
+        for node in ast.walk(module.get_ast()):
+            if isinstance(node, ast.TypeAlias) and node.lineno == line:
+                return node, cls.scope_at(
+                    module, cls.source_offset(module.source_code, node)
+                )
+        return None
+
+    @classmethod
+    def annotation_origin(
+        cls,
+        project: p.Infra.RopeProject,
+        node: ast.expr,
+        scope: p.Infra.RopeScope,
+        *,
+        visiting: frozenset[tuple[str, int]] = frozenset(),
+    ) -> p.Infra.RopePyName | None:
+        """Resolve outer native types and aliases without evaluating element types."""
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return cls.annotation_origin(
+                project,
+                ast.parse(node.value, mode="eval").body,
+                scope,
+                visiting=visiting,
+            )
+        primary = node.value if isinstance(node, ast.Subscript) else node
+        binding = cls.resolve_symbol(scope, primary)
+        if binding is None:
+            return None
+        if isinstance(node, ast.Subscript) and cls.same_name(
+            binding, cls.qualified_name(project, "typing.Annotated")
+        ):
+            if not isinstance(node.slice, ast.Tuple) or not node.slice.elts:
+                return None
+            return cls.annotation_origin(
+                project, node.slice.elts[0], scope, visiting=visiting
+            )
+        alias = cls.annotation_alias_definition(binding)
+        if alias is None:
+            return binding
+        declaration, lexical = alias
+        module = lexical.pyobject.get_module()
+        if module is None:
+            return None
+        identity = (module.get_name(), declaration.lineno)
+        if identity in visiting:
+            return None
+        return cls.annotation_origin(
+            project, declaration.value, lexical, visiting=visiting | {identity}
+        )
+
     @classmethod
     def expression_name(
         cls, scope: p.Infra.RopeScope, expression: str
@@ -86,6 +178,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 
         Raises:
             ValueError: When the identity does not name an attribute.
+            TypeError: The fetched provider violates its native semantic contract.
 
         """
         attributes = expression.split(".")
@@ -93,7 +186,13 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         if not attributes:
             message = f"Rope identity requires an attribute: {expression}"
             raise ValueError(message)
-        value = project.get_module(module)
+        try:
+            value = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                project.get_module(module),
+            )
+        except TypeError as error:
+            error.add_note(f"Rope identity {expression!r} in module {module!r}")
+            raise
         identity = value.get_attribute(attributes[0])
         for attribute in attributes[1:]:
             identity = identity.get_object().get_attribute(attribute)
@@ -306,13 +405,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         ]
         | None
     ):
-        if not binding.assignments:
+        if not binding.assignments or (rhs := binding.assignments[0].ast_node) is None:
             return None
         if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(holder):
             message = "native class assignment has no source module"
             raise TypeError(message)
         source = holder.source_code
-        rhs = binding.assignments[0].ast_node
         rhs_offset = cls.source_offset(source, rhs)
         scope = cls.scope_at(holder, rhs_offset)
         if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
@@ -610,12 +708,13 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         *,
         ropefolder: str,
         save_objectdb: bool,
-        filter_lists: t.Triple[t.SequenceOf[str], t.SequenceOf[str], t.SequenceOf[str]],
+        filter_lists: t.Pair[t.SequenceOf[str], t.SequenceOf[str]],
     ) -> t.Infra.RopeProject:
         """Create one Rope project.
 
         ``filter_lists`` carries the Rope filter sequences in order:
-        ignored resources, source folders, extension modules.
+        ignored resources, source folders. The project itself declares the
+        interpreter's sourceless stdlib modules.
 
         Returns:
             The resulting ``t.Infra.RopeProject``.
@@ -624,7 +723,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             TypeError: If Rope project does not satisfy its project contract.
 
         """
-        ignored_resources, source_folders, extension_modules = filter_lists
+        ignored_resources, source_folders = filter_lists
         project_factory = cls.runtime_callable(
             "flext_infra._utilities._rope.project",
             "FlextInfraRopeProject",
@@ -642,7 +741,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             save_history=False,
             ignored_resources=list(ignored_resources),
             source_folders=list(source_folders),
-            extension_modules=list(extension_modules),
         )
         if not isinstance(project, p.Infra.RopeProject):
             msg = "rope Project does not satisfy p.Infra.RopeProject"

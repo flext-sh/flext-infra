@@ -42,7 +42,7 @@ class TestsFlextInfraRenderProvenance:
         metadata.mkdir()
         (metadata / "METADATA").write_text(
             "Metadata-Version: 2.4\nVersion: 1.0\n"
-            + ("Name: capture-provider\n" if failure == "none" else ""),
+            + ("Name: capture-provider\n" if failure != "name" else ""),
             encoding=c.DEFAULT_ENCODING,
         )
         (metadata / "resource.bin").write_bytes(b"unlisted physical resource")
@@ -425,7 +425,7 @@ print('physical-provider-proof=' + mutation)
                     what=c.Infra.CodegenConformSurface.MAKEFILE,
                     mode=c.Infra.CodegenConformMode.APPLY,
                 ),
-                ports=None,
+                execution_context=None,
             )
         )
         tm.that(

@@ -70,7 +70,9 @@ class FlextInfraWorkspaceEnvironmentMixin:
             The resulting ``p.Result[bool]``.
 
         """
-        rendered = cls._render_environment_template(c.Infra.ENVRC_FILENAME)
+        rendered = cls._render_environment_template(
+            c.Infra.ENVRC_FILENAME, request.repository_root
+        )
         if rendered.failure:
             return r[bool].from_failure(rendered)
         return cls._write_generated_text(
@@ -81,7 +83,9 @@ class FlextInfraWorkspaceEnvironmentMixin:
         )
 
     @classmethod
-    def _render_environment_template(cls, destination: str) -> p.Result[str]:
+    def _render_environment_template(
+        cls, destination: str, repository_root: Path
+    ) -> p.Result[str]:
         """Render one SSOT environment template from the toolchain spec.
 
         Returns:
@@ -95,12 +99,15 @@ class FlextInfraWorkspaceEnvironmentMixin:
             / "base"
             / f"{destination}.j2"
         )
+        inputs = u.Infra.load_codegen_inputs(repository_root)
+        if inputs.failure:
+            return r[str].from_failure(inputs)
         render_context = m.Infra.EnvrcRenderSpec(
-            toolchain=config.Infra.codegen.toolchain,
-            uv_resolution=config.Infra.codegen.make.uv_resolution,
+            toolchain=inputs.value.spec.toolchain,
+            uv_resolution=inputs.value.spec.make.uv_resolution,
             repository_root_rel=".",
             environment_path_prepends=(
-                config.Infra.codegen.toolchain.environment_path_prepends
+                inputs.value.spec.toolchain.environment_path_prepends
             ),
         )
         return u.Cli.template_render(template_path, render_context)
@@ -150,7 +157,9 @@ class FlextInfraWorkspaceEnvironmentMixin:
         """
         if envrc.is_symlink():
             return r[bool].fail(f"refusing to authorize symlinked environment: {envrc}")
-        rendered = cls._render_environment_template(c.Infra.ENVRC_FILENAME)
+        rendered = cls._render_environment_template(
+            c.Infra.ENVRC_FILENAME, envrc.parent
+        )
         if rendered.failure:
             return r[bool].from_failure(rendered)
         observed = u.Cli.files_read_text(envrc)

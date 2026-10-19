@@ -73,6 +73,10 @@ class FlextInfraWorkspaceDetector(
                     if native.failure:
                         return result_type.from_failure(native)
                     runtime_root = native.value
+        if runtime_root != project_root and policy.editable_supplier_root is not None:
+            return result_type.fail(
+                "configure editable_supplier_root at the physical runtime root, not an attached member"
+            )
         return cls._uv_runtime_context(
             project_root,
             runtime_root,
@@ -98,7 +102,11 @@ class FlextInfraWorkspaceDetector(
             return result_type.from_failure(inputs)
         policy = inputs.value.spec.make.uv_resolution
         directory = (
-            policy.standalone_directory if standalone else policy.local_directory
+            policy.standalone_directory
+            if standalone
+            else policy.editable_directory
+            if policy.editable_supplier_root is not None
+            else policy.local_directory
         )
         resolution_root = runtime_root / directory
         if not resolution_root.resolve().is_relative_to(runtime_root):

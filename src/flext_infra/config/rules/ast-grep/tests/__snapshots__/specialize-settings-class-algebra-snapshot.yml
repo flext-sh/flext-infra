@@ -1,0 +1,27 @@
+id: specialize-settings-class-algebra
+snapshots:
+  ? |
+    from flext_core import p, t
+    value: t.SettingsClass | None
+  : fixed: |
+      from flext_core import p, t
+      value: t.SettingsClass[p.SettingsType] | None
+    labels:
+    - source: t.SettingsClass
+      style: primary
+      start: 35
+      end: 50
+    - source: p
+      style: secondary
+      start: 23
+      end: 24
+    - source: from flext_core import p, t
+      style: secondary
+      start: 0
+      end: 27
+    - source: |
+        from flext_core import p, t
+        value: t.SettingsClass | None
+      style: secondary
+      start: 0
+      end: 58

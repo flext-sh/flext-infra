@@ -91,7 +91,11 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             "--config",
             c.PYPROJECT_FILENAME,
             "--python-interpreter-path",
-            sys.executable,
+            (
+                sys.executable
+                if ctx.runtime_root is None
+                else str(u.Infra.runtime_python(ctx.runtime_root))
+            ),
             "--output-format",
             c.Infra.OUTPUT_JSON,
             "--min-severity",
@@ -107,7 +111,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         result: p.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[p.Infra.Issue]]:
         """Read Pyrefly's freshly written JSON report file into findings.
 
         Returns:

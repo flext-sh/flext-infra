@@ -15,6 +15,7 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_core.config_sources import FlextStrictYamlConfigSource
+from pydantic import ValidationError
 
 from flext_infra import c, m, p, r, t
 from flext_infra._config import FlextInfraConfig
@@ -64,6 +65,8 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
     def load_repository_declaration_inputs(
         cls,
         repository_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[m.Infra.RepositoryDeclarationInputs]:
         """Validate only repository policy through the same captured YAML layers.
 
@@ -79,12 +82,13 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         document = cls.load_config_document_inputs(
             repository_root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+            source_project=source_project,
         )
         if document.failure:
             return result_type.from_failure(document)
         codegen = u.Cli.json_walk_path(document.value.values, ("Infra", "codegen"))
         section = r[t.JsonMapping].create_from_callable(
-            partial(t.Cli.JSON_MAPPING_ADAPTER.validate_python, codegen),
+            partial(u.json_mapping_adapter().validate_python, codegen),
         )
         if section.failure:
             return result_type.from_failure(section)
@@ -94,7 +98,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         )
         if loaded.failure:
             return result_type.from_failure(loaded)
-        verified = cls._verify_unchanged_snapshots(document.value.sources)
+        verified = (
+            cls._verify_unchanged_snapshots(document.value.sources)
+            if source_project is None
+            else r[bool].ok(value=True)
+        )
         if verified.failure:
             return result_type.from_failure(verified)
         return result_type.ok(
@@ -111,6 +119,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         *,
         filename: str,
         projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
+        source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[m.Infra.ConfigDocumentInputs]:
         """Capture and compose one F.yaml through the same strict layer reader.
 
@@ -119,12 +128,16 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
         """
         result_type = r[m.Infra.ConfigDocumentInputs]
-        elected = r[tuple[Path, ...]].create_from_callable(
-            partial(
-                FlextInfraConfig.config_sources_for_repository,
-                repository_root,
-                filename=filename,
-            ),
+        elected = (
+            r[tuple[Path, ...]].create_from_callable(
+                partial(
+                    FlextInfraConfig.config_sources_for_repository,
+                    repository_root,
+                    filename=filename,
+                ),
+            )
+            if source_project is None
+            else r[tuple[Path, ...]].ok(())
         )
         if elected.failure:
             return result_type.from_failure(elected)
@@ -140,6 +153,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             return result_type.fail(str(error), exception=error)
         snapshots: list[m.Cli.AtomicFileState] = []
         for path in selected:
+            if source_project is not None:
+                snapshots.append(
+                    source_project.source_state(path, required=path == selected[0])
+                )
+                continue
             observed = u.Cli.atomic_read_binary_file_state(
                 path,
                 required=path == selected[0] or path in elected.value,
@@ -153,11 +171,16 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 selected,
                 tuple(snapshots),
                 projections,
+                source_project=source_project,
             ),
         )
         if loaded.failure:
             return result_type.from_failure(loaded)
-        verified = cls._verify_unchanged_snapshots(snapshots)
+        verified = (
+            cls._verify_unchanged_snapshots(snapshots)
+            if source_project is None
+            else r[bool].ok(value=True)
+        )
         if verified.failure:
             return result_type.from_failure(verified)
         return result_type.ok(
@@ -308,7 +331,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             content.decode(c.DEFAULT_ENCODING),
         )
         return (
-            {} if parsed is None else t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed)
+            {} if parsed is None else u.json_mapping_adapter().validate_python(parsed)
         )
 
     @staticmethod
@@ -320,9 +343,19 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         Returns:
             The validated full repository codegen policy.
 
+        Raises:
+            ValueError: If the composed declaration violates the codegen
+                configuration schema; third-party validation detail travels
+                as the cause.
+
         """
         codegen = u.Cli.json_walk_path(document, ("Infra", "codegen"))
-        return m.Infra.CodegenConfigSpec.model_validate(codegen)
+        try:
+            return m.Infra.CodegenConfigSpec.model_validate(codegen)
+        except ValidationError as error:
+            # Config-authoring failures surface as the service contract's own
+            # error type, never as a raw third-party validation exception.
+            raise ValueError(str(error)) from error
 
     @classmethod
     def _repository_config_document(
@@ -330,6 +363,8 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         sources: tuple[Path, ...],
         snapshots: t.VariadicTuple[m.Cli.AtomicFileState],
         projections: t.VariadicTuple[m.Infra.CodegenLayerProjection],
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> t.JsonMapping:
         """Merge ordered captured F.yaml bytes and explicitly projected layers.
 
@@ -343,10 +378,19 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         merged: t.JsonDict = {}
         for path in sources:
             captured = next((item for item in snapshots if item.path == path), None)
-            if captured is None or captured.content is None:
+            content = (
+                (captured.content if captured is not None else None)
+                if source_project is None
+                else (
+                    source_project.source_text(path).encode(c.DEFAULT_ENCODING)
+                    if source_project.source_query(path, "isfile")
+                    else None
+                )
+            )
+            if content is None:
                 payload: t.JsonMapping = {}
             else:
-                payload = cls._parse_codegen_config_document(captured.content)
+                payload = cls._parse_codegen_config_document(content)
             projected = next(
                 (item for item in projections if item.path == path),
                 None,
@@ -358,29 +402,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             )
             merged = FlextStrictYamlConfigSource.merge_values(merged, values)
         return merged
-
-    @staticmethod
-    def compose_ruff_per_file_ignores(
-        tooling: m.Infra.ToolConfigDocument,
-        project: m.Infra.ProjectRuffConfig,
-    ) -> t.Infra.PerFileIgnores:
-        """Compose shared policy with this project's validated Ruff additions.
-
-        Returns:
-            Deterministic scoped rules retaining both owners' declarations.
-
-        """
-        shared = tooling.tools.ruff.lint.per_file_ignores
-        local = project.per_file_ignores
-        return {
-            pattern: tuple(
-                sorted({
-                    *shared.get(pattern, ()),
-                    *local.get(pattern, ()),
-                })
-            )
-            for pattern in sorted(shared.keys() | local.keys())
-        }
 
     @classmethod
     def _validated_config_roots(
@@ -594,7 +615,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 artifacts=m.Infra.ProjectManagedArtifactsConfig(
                     Mise=m.Infra.ProjectMiseConfig(tools={}),
                     Gitignore=m.Infra.ProjectGitignoreConfig(patterns=()),
-                    Ruff=m.Infra.ProjectRuffConfig(per_file_ignores={}),
                 ),
                 mise_tool_sources={},
             ),
@@ -897,39 +917,22 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         """
         mise_tools: MutableMapping[str, m.Infra.ProjectMiseTool] = {}
         mise_sources: MutableMapping[str, Path] = {}
-        ruff_ignores: MutableMapping[str, t.SequenceOf[t.Infra.RuffRule]] = {}
-        ruff_sources: MutableMapping[str, Path] = {}
         gitignore_patterns: list[str] = []
         gitignore_blocks: list[m.Infra.ProjectGitignorePreservedBlock] = []
         gitignore_markers: MutableMapping[str, Path] = {}
         for source, fragment in fragments:
-            failure = (
-                cls._merge_gitignore(
-                    source,
-                    fragment.Gitignore,
-                    gitignore_patterns,
-                    gitignore_blocks,
-                    gitignore_markers,
-                )
-                or cls._merge_unique_keys(
-                    "Ruff per-file ignore",
-                    source,
-                    {
-                        pattern: tuple(rules)
-                        for pattern, rules in fragment.Ruff.per_file_ignores.items()
-                    }
-                    if fragment.Ruff
-                    else {},
-                    ruff_ignores,
-                    ruff_sources,
-                )
-                or cls._merge_unique_keys(
-                    "Mise selector",
-                    source,
-                    fragment.Mise.tools if fragment.Mise else {},
-                    mise_tools,
-                    mise_sources,
-                )
+            failure = cls._merge_gitignore(
+                source,
+                fragment.Gitignore,
+                gitignore_patterns,
+                gitignore_blocks,
+                gitignore_markers,
+            ) or cls._merge_unique_keys(
+                "Mise selector",
+                source,
+                fragment.Mise.tools if fragment.Mise else {},
+                mise_tools,
+                mise_sources,
             )
             if failure is not None:
                 return r[m.Infra.ProjectManagedArtifactsResolution].fail(failure)
@@ -938,9 +941,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             Gitignore=m.Infra.ProjectGitignoreConfig(
                 patterns=tuple(gitignore_patterns),
                 preserved_blocks=tuple(gitignore_blocks),
-            ),
-            Ruff=m.Infra.ProjectRuffConfig(
-                per_file_ignores=dict(sorted(ruff_ignores.items())),
             ),
         )
         return r[m.Infra.ProjectManagedArtifactsResolution].ok(

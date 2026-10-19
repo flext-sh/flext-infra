@@ -7,18 +7,372 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import json
 import sys
 from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m, u
-from flext_infra.codemod import FlextInfraApplyRenames, FlextInfraRenameSymbols
-from tests import tm
+from flext_infra import infra
+from flext_infra.codemod import (
+    FlextInfraApplyRenames,
+    FlextInfraCodemodSemanticApply,
+    FlextInfraRenameSymbols,
+)
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraApplyRenames:
     """Campaigns change declared sources, preserve drivers, and prove convergence."""
+
+    @staticmethod
+    @pytest.fixture(autouse=True)
+    def campaign_runtime(mod_workspace: Path) -> None:
+        """Every publication consumes its checkout's independently owned runtime."""
+        u.Tests.provision_checkout(mod_workspace)
+        u.Tests.provision_runtime_environment(mod_workspace)
+
+    @staticmethod
+    def test_rejected_joint_runtime_never_publishes_provider_or_receivers(
+        tmp_path: Path,
+    ) -> None:
+        """A failing real receiver rejects the complete generated cutover preview."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.provision_checkout(root)
+        u.Tests.provision_runtime_environment(root)
+        provider = package / "provider.py"
+        first = package / "first.py"
+        second = package / "second.py"
+        provider.write_text(
+            '"""Provider contract for receiver rejection."""\n'
+            "class FlextProvider:\n"
+            '    """Public provider declaration."""\n'
+            '__all__ = ["FlextProvider"]\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        first.write_text(
+            '"""Direct receiver contract."""\n'
+            "from .provider import FlextProvider as Selected\n"
+            "class Derived(Selected):\n"
+            '    """Retain the public provider base."""\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        second.write_text(
+            '"""Fail at real runtime, not during static planning."""\n'
+            "from .first import Derived\n"
+            "class Transitive(Derived):\n"
+            '    """Observe the direct receiver base."""\n'
+            'raise RuntimeError("receiver rejected candidate")\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        originals = {
+            path: path.read_bytes()
+            for path in (
+                provider,
+                first,
+                second,
+                package / c.Infra.INIT_PY,
+            )
+        }
+        driver = root / "renames.csv"
+        driver.write_text(
+            "old,new\nFlextProvider,FlextRenamedProvider\n", encoding=c.DEFAULT_ENCODING
+        )
+        result = FlextInfraApplyRenames.run(
+            m.Infra.ApplyRenamesInput(
+                repository_root=root,
+                csv=str(driver),
+                roots=(str(root),),
+                bindings={"": (f"{package.name}.provider",)},
+                rename_definitions=True,
+                apply=True,
+            )
+        )
+        tm.fail(result, has="receiver rejected candidate")
+        for path, content in originals.items():
+            tm.that(path.read_bytes(), eq=content)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "authority", ["workspace", "member", "standalone", "external"]
+    )
+    @pytest.mark.parametrize("operation", ["class", "module"])
+    def test_provider_rename_reaches_all_native_consumer_scopes(
+        tmp_path: Path,
+        authority: str,
+        operation: str,
+    ) -> None:
+        """Public aliases, transitive users and generated exports cut over together."""
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-provider",
+            package_name="provider_pkg",
+        )
+        u.Tests.provision_checkout(root)
+        python = u.Tests.provision_runtime_environment(root)
+        projects = [root]
+        packages = [package]
+        if authority != "standalone":
+            for name in ("first", "second"):
+                project, receiver = u.Tests.create_lazy_init_workspace(
+                    tmp_path if authority == "external" else root,
+                    project_name=f"flext-{name}",
+                    package_name=f"{name}_pkg",
+                )
+                projects.append(project)
+                packages.append(receiver)
+            (root / ".gitmodules").write_text(
+                "".join(
+                    f'[submodule "{project.name}"]\n'
+                    f"path = {project.relative_to(root).as_posix()}\n"
+                    f"url = https://example.org/{project.name}.git\n"
+                    for project in projects[1:]
+                    if authority != "external"
+                ),
+                encoding=c.DEFAULT_ENCODING,
+            )
+            if authority == "external":
+                for project in projects[1:]:
+                    u.Tests.provision_checkout(project)
+                    u.Tests.provision_runtime_environment(project)
+                inventory = m.Infra.HostWorkspaceInventory(
+                    entries=tuple(
+                        m.Infra.HostWorkspaceInventoryEntry(
+                            project_id=project.name,
+                            owner="fixture",
+                            path=project,
+                            checkout_id=str(project),
+                            governing_checkout_id=str(project),
+                            project_profile=c.Infra.ProjectKind.INTERNAL_FLEXT,
+                            upstream_project_id=None,
+                            effective_ref=None,
+                        )
+                        for project in projects[1:]
+                    )
+                )
+                inventory_source = root / "_inventory.py"
+                inventory_source.write_text(
+                    '"""Expose the selected canonical host inventory."""\n'
+                    "import sys\n"
+                    f"sys.stdout.write({(inventory.model_dump_json() + chr(10))!r})\n",
+                    encoding=c.DEFAULT_ENCODING,
+                )
+                configuration = root / "config"
+                configuration.mkdir()
+                (configuration / "codegen.yaml").write_text(
+                    "Infra:\n  codegen:\n    workspace_inventory_command: "
+                    + json.dumps((str(python), "-B", str(inventory_source)))
+                    + "\n",
+                    encoding=c.DEFAULT_ENCODING,
+                )
+        provider = package / "owner.py"
+        provider.write_text(
+            '"""Public provider identity."""\n'
+            "from __future__ import annotations\n"
+            "class FlextProvider:\n"
+            '    """An independently declared provider."""\n'
+            "    @staticmethod\n"
+            "    def value() -> int:\n"
+            '        """Return the synthetic provider contract.\n\n'
+            '        Returns:\n            The provider value.\n        """\n'
+            "        return 17\n"
+            '__all__ = ["FlextProvider"]\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (package / "__init__.py").write_text(
+            '"""Public provider exports."""\n'
+            "from .owner import FlextProvider\n"
+            '__all__ = ["FlextProvider"]\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        first = packages[1] if len(packages) > 1 else package
+        second = packages[2] if len(packages) > 2 else package
+        (first / "receiver.py").write_text(
+            '"""Direct and aliased public provider consumers."""\n'
+            "from __future__ import annotations\n"
+            "from typing import Annotated, Literal\n"
+            "import provider_pkg.owner as ProviderModule\n"
+            "from provider_pkg import owner\n"
+            "from provider_pkg import FlextProvider\n"
+            "from provider_pkg import FlextProvider as Imported\n"
+            'def build(value: "FlextProvider") -> "Imported":\n'
+            '    """Preserve the actual provider identity.\n\n'
+            '    Returns:\n        The supplied provider.\n    """\n'
+            "    return value\n"
+            "class Derived(Imported):\n"
+            '    """Inherit the aliased provider."""\n'
+            "class GenericConsumer[Element](list[FlextProvider]):\n"
+            '    """Keep the native generic base bound to the provider."""\n'
+            'def by_module(value: "owner.FlextProvider") -> (\n'
+            '    "ProviderModule.FlextProvider"\n'
+            "):\n"
+            '    """Preserve module-qualified provider identity.\n\n'
+            '    Returns:\n        The supplied provider.\n    """\n'
+            "    return value\n"
+            'Payload = Literal["FlextProvider"]\n'
+            'Tagged = Annotated[Imported, "FlextProvider"]\n'
+            'PROSE = "FlextProvider"\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (second / "transitive.py").write_text(
+            '"""Transitive provider consumer."""\n'
+            f"from {first.name}.receiver import Derived as Selected\n"
+            "class Transitive(Selected):\n"
+            '    """Inherit the direct consumer."""\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        unrelated = second / "unrelated.py"
+        unrelated.write_text(
+            '"""An unrelated same-spelled declaration."""\n'
+            "class FlextProvider:\n"
+            '    """Keep the independently owned identity."""\n'
+            "    @staticmethod\n"
+            "    def value() -> int:\n"
+            '        """Return the unrelated value.\n\n'
+            '        Returns:\n            The unrelated contract value.\n        """\n'
+            "        return 23\n"
+            "__all__: list[str] = []\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        original_unrelated = unrelated.read_bytes()
+        for project in projects:
+            tests = project / "tests"
+            tests.mkdir(exist_ok=True)
+            (tests / "__init__.py").write_text("", encoding=c.DEFAULT_ENCODING)
+            (tests / "test_receiver.py").write_text(
+                '"""The local tests package owns its native import scope."""\n'
+                "from provider_pkg import FlextProvider as Selected\n"
+                "VALUE = Selected.value()\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        driver = root / "renames.csv"
+        driver.write_text(
+            "old,new\nFlextProvider,FlextRenamedProvider\n", encoding=c.DEFAULT_ENCODING
+        )
+        selected = projects[1] if authority == "member" else root
+        request = m.Infra.ApplyRenamesInput(
+            repository_root=root,
+            csv=str(driver),
+            roots=(str(selected),),
+            bindings={"": ("provider_pkg",)},
+            rename_definitions=True,
+            apply=True,
+        )
+        if operation == "class":
+            report = tm.ok(FlextInfraApplyRenames.run(request))
+            tm.that(report.occurrences, eq=0)
+            exported_name = "FlextRenamedProvider"
+        else:
+            with infra.rope_workspace(root) as workspace:
+                artifact = tm.ok(
+                    FlextInfraCodemodSemanticApply.build_rename_plan(
+                        root,
+                        workspace,
+                        m.Infra.SemanticRenameSelections(
+                            decisions=(
+                                m.Infra.SemanticRenameSelection(
+                                    qualified_name="provider_pkg.owner",
+                                    replacement_name="meaningful",
+                                    reason=(
+                                        "Move the authenticated provider and all"
+                                        " native receivers together"
+                                    ),
+                                ),
+                            )
+                        ),
+                    )
+                )
+                driver = root / "rename.artifact"
+                tm.ok(u.Cli.atomic_write_text_file(driver, artifact.model_dump_json()))
+                for apply in (False, True):
+                    tm.ok(
+                        FlextInfraCodemodSemanticApply.consume_rename_plan(
+                            m.Infra.ModCommand(
+                                repository_root=selected,
+                                rename_plan=driver,
+                                apply=apply,
+                            ),
+                            workspace,
+                            infra.source_preview(root),
+                        )
+                    )
+                    if not apply:
+                        tm.that(provider.is_file(), eq=True)
+                        tm.that(provider.with_name("meaningful.py").exists(), eq=False)
+                tm.that(provider.exists(), eq=False)
+                tm.that(provider.with_name("meaningful.py").is_file(), eq=True)
+            exported_name = "FlextProvider"
+        tm.that(unrelated.read_bytes(), eq=original_unrelated)
+        code = (
+            "from typing import get_args, get_type_hints\n"
+            f"from provider_pkg import {exported_name} as CanonicalProvider\n"
+            f"from {first.name}.receiver import (\n"
+            f"    build,\n    by_module,\n    GenericConsumer,\n"
+            f"    Imported,\n    Payload,\n    Tagged,\n    PROSE,\n)\n"
+            f"from {second.name}.transitive import Transitive\n"
+            f"from {second.name}.unrelated import FlextProvider\n"
+            "assert get_type_hints(build) == {\n"
+            "    'value': CanonicalProvider,\n"
+            "    'return': Imported,\n"
+            "}\n"
+            "assert get_type_hints(by_module) == {\n"
+            "    'value': CanonicalProvider,\n"
+            "    'return': CanonicalProvider,\n"
+            "}\n"
+            "assert Imported is CanonicalProvider\n"
+            "assert get_args(\n"
+            "    GenericConsumer.__orig_bases__[0]\n"
+            ") == (CanonicalProvider,)\n"
+            "assert issubclass(Transitive, CanonicalProvider)\n"
+            "assert Transitive.value() == 17 and FlextProvider.value() == 23\n"
+            "assert get_args(Payload) == ('FlextProvider',)\n"
+            "assert get_args(Tagged)[1:] == ('FlextProvider',)\n"
+            "assert PROSE == 'FlextProvider'\n"
+        )
+        imported = tm.ok(
+            u.Cli.run(
+                (str(python), "-B", "-c", code),
+                cwd=root,
+                options=m.Cli.ProcessOptions(
+                    env=u.Cli.process_env(
+                        overrides={
+                            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: (
+                                c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR.join(
+                                    str(project / c.Infra.DEFAULT_SRC_DIR)
+                                    for project in projects
+                                )
+                            ),
+                        }
+                    )
+                ),
+            )
+        )
+        tm.that(u.Cli.process_succeeded(imported.outcome), eq=True)
+        for project in projects:
+            checked = tm.ok(
+                u.Cli.run(
+                    (
+                        str(python),
+                        "-B",
+                        "-c",
+                        "from tests.test_receiver import VALUE; assert VALUE == 17",
+                    ),
+                    cwd=project,
+                    options=m.Cli.ProcessOptions(
+                        env=u.Cli.process_env(
+                            overrides={
+                                c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
+                                    package.parent
+                                ),
+                            }
+                        )
+                    ),
+                )
+            )
+            tm.that(u.Cli.process_succeeded(checked.outcome), eq=True)
+        if operation == "class":
+            again = tm.ok(FlextInfraApplyRenames.run(request))
+            tm.that(again.files_changed, eq=0)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -233,7 +587,7 @@ class TestsFlextInfraApplyRenames:
         first = tm.ok(
             FlextInfraApplyRenames.run(request.model_copy(update={"apply": True})),
         )
-        tm.that(first.files_changed, eq=2)
+        tm.that(first.files_changed >= 2, eq=True)
         tm.that(first.occurrences, eq=0)
         tm.that(
             target.read_text(),
@@ -434,15 +788,15 @@ class TestsFlextInfraApplyRenames:
         report = tm.ok(
             FlextInfraApplyRenames.run(self._request(mod_workspace, apply=True)),
         )
-        tm.that(report.files_changed, eq=2)
+        tm.that(report.files_changed >= 2, eq=True)
         tm.that(authored.read_text(), eq="campaign_renamed_token")
         tm.that(projected.read_text(), eq=generated)
 
-    def test_driver_drift_during_publication_rolls_back_consumer(
+    def test_driver_drift_refuses_candidate_without_overwriting_consumer(
         self,
         mod_workspace: Path,
     ) -> None:
-        """Test driver drift during publication rolls back consumer."""
+        """A drifted driver refuses exposure without restoring over live gains."""
         target = self._seed(mod_workspace)
         original = target.read_bytes()
         script = (

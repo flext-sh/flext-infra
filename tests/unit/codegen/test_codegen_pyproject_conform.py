@@ -275,6 +275,67 @@ class TestsFlextInfraCodegenPyprojectConform:
             eq="sample.plugin:main",
         )
 
+    @pytest.mark.parametrize("live_readme", [None, "docs/consumer.md"])
+    def test_custom_metadata_preserves_authored_absence(
+        self,
+        live_readme: t.StrippedStr | None,
+    ) -> None:
+        """A scaffold default cannot introduce an authored resource requirement."""
+        preserved = ("readme",)
+        scaffold_readme = config.Infra.codegen.scaffold.project.readme
+        rendered = (
+            '[project]\nname = "sample"\n'
+            f"readme = {tm.ok(u.Cli.json_dumps(scaffold_readme))}\n"
+        )
+        live = '[project]\nname = "sample"\n'
+        if live_readme is not None:
+            live += f"readme = {tm.ok(u.Cli.json_dumps(live_readme))}\n"
+
+        first = tm.ok(
+            u.Infra.overlay_preserved(rendered, live, preserve_project_keys=preserved),
+        )
+        project = u.Tests.toml_table_at(first, "project")
+        tm.that("readme" in project, eq=live_readme is not None)
+        tm.that(project.get("readme"), eq=live_readme)
+        second = tm.ok(
+            u.Infra.overlay_preserved(rendered, first, preserve_project_keys=preserved),
+        )
+        tm.that(second, eq=first)
+
+    @staticmethod
+    def test_new_project_keeps_scaffold_defaults_at_a_fixed_point() -> None:
+        """Initial creation retains defaults without changing the next projection."""
+        preserved = ("readme",)
+        readme = config.Infra.codegen.scaffold.project.readme
+        rendered = (
+            f'[project]\nname = "sample"\nreadme = {tm.ok(u.Cli.json_dumps(readme))}\n'
+        )
+        first = tm.ok(
+            u.Infra.overlay_preserved(rendered, None, preserve_project_keys=preserved),
+        )
+        tm.that(u.Tests.toml_table_at(first, "project")["readme"], eq=readme)
+        second = tm.ok(
+            u.Infra.overlay_preserved(rendered, first, preserve_project_keys=preserved),
+        )
+        tm.that(second, eq=first)
+
+    @staticmethod
+    def test_custom_metadata_outside_the_render_is_not_removed() -> None:
+        """An authored dynamic version is not replaced by a static scaffold value."""
+        preserved = ("version",)
+        rendered = '[project]\nname = "sample"\nversion = "1.2.3"\n'
+        live = '[project]\nname = "sample"\ndynamic = ["version"]\n'
+        first = tm.ok(
+            u.Infra.overlay_preserved(rendered, live, preserve_project_keys=preserved),
+        )
+        project = u.Tests.toml_table_at(first, "project")
+        tm.that("version" in project, eq=False)
+        tm.that(project["dynamic"], eq=["version"])
+        second = tm.ok(
+            u.Infra.overlay_preserved(rendered, first, preserve_project_keys=preserved),
+        )
+        tm.that(second, eq=first)
+
     @pytest.mark.parametrize("invalid_surface", ["rendered", "live"])
     def test_overlay_retains_native_toml_failure_context(
         self,
@@ -887,6 +948,32 @@ exclude-dependencies = [{exclusion}]
         tm.that("exclude-dependencies" not in uv, eq=True)
 
     @staticmethod
+    def test_scaffold_omits_diagnostic_suppression_catalogs(tmp_path: Path) -> None:
+        """The shipped Jinja surface cannot restore retired exemption tables."""
+        rendered = u.Tests.scaffold_text(
+            tmp_path / "no-suppression-project",
+            c.PYPROJECT_FILENAME,
+            what=c.Infra.CodegenConformSurface.PYPROJECT,
+        )
+        lint = u.Tests.toml_table_at(rendered, "tool", "ruff", "lint")
+        for key in (
+            "extend-ignore",
+            "per-file-ignores",
+            "extend-per-file-ignores",
+        ):
+            tm.that(lint, lacks=key)
+        tm.that(
+            lint["ignore"], eq=sorted(config.Infra.tooling.tools.ruff.lint.rule_owners)
+        )
+        mypy = u.Tests.toml_table_at(rendered, "tool", "mypy")
+        tm.that(mypy, lacks="disable_error_code")
+        tm.that(mypy, lacks="ignore_errors")
+        for entry in u.Tests.toml_list(mypy.get("overrides", [])):
+            override = u.Tests.toml_mapping(entry)
+            tm.that(override, lacks="disable_error_code")
+            tm.that(override, lacks="ignore_errors")
+
+    @staticmethod
     def test_scaffold_mypy_policy_matches_ssot_and_converges(tmp_path: Path) -> None:
         """The actual Jinja scaffold preserves typed policy on repeated rendering."""
         root = tmp_path / "fixture-project"
@@ -898,10 +985,7 @@ exclude-dependencies = [{exclusion}]
             tuple(u.Tests.toml_strings(mypy["plugins"])),
             eq=tuple(policy.plugins),
         )
-        tm.that(
-            tuple(u.Tests.toml_strings(mypy["disable_error_code"])),
-            eq=tuple(policy.disable_error_code),
-        )
+        tm.that(mypy, lacks="disable_error_code")
         for key, value in {**policy.boolean_settings, **policy.string_settings}.items():
             tm.that(mypy[key], eq=value)
         tm.that(

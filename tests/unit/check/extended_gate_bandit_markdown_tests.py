@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shutil
-from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, ClassVar
 
 import pytest
@@ -25,18 +24,6 @@ if TYPE_CHECKING:
 class TestsFlextInfraBanditAndMarkdownGates:
     """Declarative public-contract tests for Bandit and Markdown gates."""
 
-    BANDIT_OWNER_CASES: ClassVar[
-        t.VariadicTuple[tuple[m.Infra.BanditAuthorizedException, str, str]]
-    ] = tuple(
-        (
-            entry,
-            pattern,
-            pattern.replace("**/", "").replace("*", "probe").removesuffix(".py")
-            + ".py",
-        )
-        for entry in config.Infra.tooling.tools.bandit.authorized_exceptions
-        for pattern in entry.files
-    )
     HEADING_SKIP = "# Test\n\n### Skip\n"
     REFLOW_HINT = (
         "# Test\n\n"
@@ -71,15 +58,16 @@ class TestsFlextInfraBanditAndMarkdownGates:
         tm.that(result.issues[0].code, eq="B101")
 
     @staticmethod
-    def test_bandit_excludes_generated_source_trees(tmp_path: Path) -> None:
-        """Generated-source modules stay outside the audited package surface."""
+    def test_bandit_audits_generated_source_trees(tmp_path: Path) -> None:
+        """Generated project code cannot waive native security findings."""
         names = config.Infra.codegen.generated_sources
-        tm.that(names, empty=False)
         project_dir = u.Tests.mk_project(tmp_path, "bandit-project")
         package = project_dir / c.Infra.DEFAULT_SRC_DIR / "pkg"
-        tree = package / names[0]
-        tree.mkdir(parents=True)
-        for module in (tree / "wire_pb2.py", package / "main.py"):
+        for module in (
+            *(package / name / "wire_pb2.py" for name in names),
+            package / "main.py",
+        ):
+            module.parent.mkdir(parents=True, exist_ok=True)
             module.write_text("def check(value):\n    assert value\n", encoding="utf-8")
 
         result = u.Tests.check_gate_asserting(
@@ -87,89 +75,41 @@ class TestsFlextInfraBanditAndMarkdownGates:
             tmp_path,
             project_dir,
             passed=False,
-            issues_len=1,
+            issues_len=len(names) + 1,
         )
 
-        tm.that(result.issues[0].file, has="main.py")
+        tm.that({issue.code for issue in result.issues}, eq={"B101"})
 
     @staticmethod
-    @pytest.mark.parametrize(
-        ("entry", "pattern", "owner"),
-        BANDIT_OWNER_CASES,
-    )
-    def test_bandit_owner_scope_skips_only_its_authorized_tests(
+    @pytest.mark.parametrize("surface", config.Infra.source_scan.roots)
+    @pytest.mark.parametrize("files_only", [False, True])
+    def test_bandit_findings_remain_blocking_on_every_code_surface(
         tmp_path: Path,
-        entry: m.Infra.BanditAuthorizedException,
-        pattern: str,
-        owner: str,
+        surface: str,
+        *,
+        files_only: bool,
     ) -> None:
-        """An authorized owner module drops only its tests; others keep all.
-
-        Premise (operator-ruling-2026-10-08-subprocess-test-imports): Bandit
-        has no per-path exception, so the gate audits the owner modules in
-        their own run that skips only the authorized tests.
-        """
-        # A literal Bandit exclusion for the owner also matches this filename;
-        # the consumer must instead remain in the exact unowned partition.
-        consumer = f"{c.Infra.DEFAULT_SRC_DIR}/consumer/{owner}_extra.py"
-        entries = config.Infra.tooling.tools.bandit.authorized_exceptions
-        tm.that(PurePosixPath(owner).full_match(pattern), eq=True)
-        tm.that(
-            any(
-                PurePosixPath(consumer).full_match(authorized)
-                for configured in entries
-                for authorized in configured.files
-            ),
-            eq=False,
-        )
-        project_dir = u.Tests.mk_project(tmp_path, "bandit-owner-project")
-        for relative in (owner, consumer):
-            module = project_dir / relative
-            module.parent.mkdir(parents=True, exist_ok=True)
-            module.write_text(
-                "import subprocess\n\n\ndef spawn(argv):\n"
-                "    assert argv\n    return subprocess.run(argv, check=True)\n",
-                encoding="utf-8",
-            )
-
-        result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
-
-        codes = {
-            relative: {issue.code for issue in result.issues if issue.file == relative}
-            for relative in (owner, consumer)
-        }
-        tm.that(result.result.passed, eq=False)
-        raised_codes = {"B101", "B404", "B603"}
-        tm.that(codes[owner], eq=raised_codes - set(entry.tests))
-        tm.that(codes[consumer], eq=raised_codes)
-
-    @staticmethod
-    @pytest.mark.parametrize(
-        ("entry", "pattern", "owner"),
-        BANDIT_OWNER_CASES,
-    )
-    def test_bandit_owner_scope_alone_obeys_its_authorized_tests(
-        tmp_path: Path,
-        entry: m.Infra.BanditAuthorizedException,
-        pattern: str,
-        owner: str,
-    ) -> None:
-        """An owner-only project's verdict follows the declared exception."""
-        tm.that(PurePosixPath(owner).full_match(pattern), eq=True)
-        project_dir = u.Tests.mk_project(tmp_path, "bandit-owner-only")
-        module = project_dir / owner
-        module.parent.mkdir(parents=True)
+        """All native tests remain enabled without owner-specific invocations."""
+        project_dir = u.Tests.mk_project(tmp_path, "bandit-project-surface")
+        module = project_dir / surface / "spawn.py"
+        module.parent.mkdir(parents=True, exist_ok=True)
         module.write_text(
             "import subprocess\n\n\ndef spawn(argv):\n"
-            "    return subprocess.run(argv, check=True)\n",
+            "    assert argv\n    return subprocess.run(argv, check=True)\n",
             encoding="utf-8",
         )
 
-        result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
+        gate = FlextInfraBanditGate(tmp_path)
+        tm.that(gate.selected_for(project_dir), eq=True)
+        context = u.Tests.create_gate_context(tmp_path)
+        result = (
+            gate.check_files((module,), project_dir, context)
+            if files_only
+            else gate.check(project_dir, context)
+        )
 
-        remaining = {"B404", "B603"} - set(entry.tests)
-        tm.that(result.result.passed, eq=not remaining, msg=str(result.issues))
-        tm.that({issue.code for issue in result.issues}, eq=remaining)
+        tm.that(result.result.passed, eq=False)
+        tm.that({issue.code for issue in result.issues}, eq={"B101", "B404", "B603"})
 
     @staticmethod
     def test_bandit_syntax_error_is_a_failed_audit(tmp_path: Path) -> None:
@@ -186,28 +126,6 @@ class TestsFlextInfraBanditAndMarkdownGates:
         tm.that(result.issues, length=1)
         tm.that(result.issues[0].file, has=source.name)
         tm.that(result.issues[0].code, eq=c.Infra.ToolOutcome.ERROR.value)
-
-    @staticmethod
-    @pytest.mark.parametrize(
-        ("pattern", "owner"),
-        [(pattern, owner) for _, pattern, owner in BANDIT_OWNER_CASES],
-    )
-    def test_bandit_owner_cannot_alias_a_source_outside_the_project(
-        tmp_path: Path,
-        pattern: str,
-        owner: str,
-    ) -> None:
-        """An owner path cannot grant subprocess relief to an external source."""
-        tm.that(PurePosixPath(owner).full_match(pattern), eq=True)
-        project = u.Tests.mk_project(tmp_path, "bandit-external-owner")
-        external = tmp_path / "external.py"
-        external.write_text("import subprocess\n", encoding="utf-8")
-        source = project / owner
-        source.parent.mkdir(parents=True)
-        source.symlink_to(external)
-
-        with pytest.raises(ValueError, match="is not in the subpath of"):
-            u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -261,7 +179,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
     def test_bandit_without_source_tree_has_no_audit_surface(
         tmp_path: Path,
     ) -> None:
-        """A project without ``src`` does not select bandit at all.
+        """A project without Python input does not select bandit at all.
 
         Premise (#1223 content selection): an unselected gate never runs and
         never passes; a direct check without inputs establishes no acceptance.
@@ -413,7 +331,10 @@ class TestsFlextInfraBanditAndMarkdownGates:
         [
             *sorted(
                 (name,)
-                for name in c.Infra.CHECK_EXCLUDED_DIRS - c.Infra.COMMON_EXCLUDED_DIRS
+                for name in (
+                    frozenset(config.Infra.codegen.check_excluded_dirs)
+                    - frozenset(config.Infra.codegen.analysis_excluded_dirs)
+                )
             ),
             *sorted((".github", name) for name in c.Infra.GITHUB_AGENT_PROJECTION_DIRS),
         ],

@@ -109,7 +109,9 @@ class FlextInfraRefactorRoutes:
             )
         if before.content is not None:
             previous = m.Infra.SemanticRenamePlan.model_validate_json(before.content)
-            if previous.candidate.workspace != root:
+            if (previous.candidate.workspaces or (previous.candidate.workspace,))[
+                0
+            ] != u.Infra.import_project_roots(root)[0].resolve():
                 return r[str].fail(
                     "rename plan output belongs to another workspace",
                 )
@@ -174,7 +176,14 @@ class FlextInfraRefactorRoutes:
         if content.failure:
             return r[t.Cli.ResultValue].from_failure(content)
         published = FlextInfraRefactorRoutes._published_rename_content(
-            observed.value, content.value, planned.value.candidate.inputs
+            observed.value,
+            content.value,
+            m.Infra.CodemodBindingSnapshot(
+                states=(
+                    *planned.value.candidate.inputs,
+                    *planned.value.source_states,
+                )
+            ).states,
         )
         if published.failure:
             return r[t.Cli.ResultValue].from_failure(published)
@@ -244,7 +253,7 @@ class FlextInfraRefactorRoutes:
         return r[t.Cli.ResultValue].ok(value=True)
 
     @staticmethod
-    def execute_mod(request: m.Infra.ModCommand) -> p.Result[t.Cli.ResultValue]:
+    def execute_mod(request: p.Infra.ModRequest) -> p.Result[t.Cli.ResultValue]:
         """Compose the mod use case and pass through its first failure.
 
         Returns:

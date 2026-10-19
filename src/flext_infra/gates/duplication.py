@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, r, t, u
+from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
@@ -311,10 +312,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 name: tuple(extensions)
                 for name, extensions in c.Infra.JSCPD_FORMAT_EXTENSIONS.items()
             },
-            ignore=(
-                *c.Infra.JSCPD_IGNORE_PATTERNS,
-                *config.Infra.codegen.generated_source_globs,
-            ),
+            ignore=self._derived_ignore_patterns(),
             min_lines=overrides.min_lines,
             min_tokens=overrides.min_tokens,
             mode=overrides.mode,
@@ -332,6 +330,67 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         rendered = jscpd_config.model_dump_json(by_alias=True)
         u.Cli.atomic_write_text_file(config_path, rendered).unwrap()
         return r[Path].ok(config_path)
+
+    def _derived_ignore_patterns(self) -> t.StrSequence:
+        """Derive the complete jscpd ignore list from declared owners.
+
+        Every pattern names a declared semantic fact, never a hand-maintained
+        exception: the ast-grep corpus topology read from the declared
+        sgconfig fixtures (provider resource and the repository-local delta
+        when declared), the declared ast-grep snapshot directory, the
+        generated Python initializer surface, the generated foreign-source
+        globs, resolver-owned lockfile emission, and the declared exclusion
+        registry's structural fixture/container/helper names.
+
+        Returns:
+            The resulting ``t.StrSequence``.
+
+        """
+        globs: list[str] = []
+        corpus_root_rel = c.Infra.CODEMOD_CONFIG_RELPATH.parent.as_posix()
+        # The same relative corpus path names the governed checkout's
+        # catalog and the copy the distribution ships as <pkg>/config, so
+        # the packaged provider root resolves beside its packaged config
+        # directory.
+        provider_root = type(config).ssot_config_dir().parent / corpus_root_rel
+        if (provider_root / c.Infra.CODEMOD_CONFIG_FILENAME).is_file():
+            globs.extend(
+                self._sgconfig_fixture_globs(corpus_root_rel, provider_root),
+            )
+        local_root = self._repository_root / corpus_root_rel
+        if (local_root / c.Infra.CODEMOD_CONFIG_FILENAME).is_file():
+            globs.extend(self._sgconfig_fixture_globs(corpus_root_rel, local_root))
+        globs.extend((
+            f"**/{c.Infra.CODEMOD_SNAPSHOT_DIRNAME}/**",
+            f"**/{c.Infra.INIT_PY}",
+        ))
+        globs.extend(config.Infra.codegen.generated_source_globs)
+        globs.extend(f"**/{name}" for name in config.Infra.codegen.resolver_owned_files)
+        exclusions = config.Infra.codegen.exclusions
+        structural = (
+            *exclusions.parameterized_case_dirs,
+            *exclusions.part_container_dirs,
+        )
+        globs.extend(f"**/{name}/**" for name in sorted(set(structural)))
+        globs.extend(f"**/{name}" for name in sorted(set(exclusions.helper_modules)))
+        return tuple(dict.fromkeys(globs))
+
+    @staticmethod
+    def _sgconfig_fixture_globs(
+        corpus_root_rel: str,
+        config_root: Path,
+    ) -> t.StrSequence:
+        """Derive corpus globs from one declared sgconfig's fixture topology.
+
+        Returns:
+            The resulting ``t.StrSequence``.
+
+        """
+        fixtures = FlextInfraCodemodSnapshotReconciler.fixture_directories(config_root)
+        return tuple(
+            f"**/{corpus_root_rel}/{directory.name}/**"
+            for directory in sorted({*fixtures.rule_dirs, *fixtures.test_dirs})
+        )
 
     @staticmethod
     def _load_report(
@@ -408,7 +467,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             # The semantic classifier owns the verdict in both scopes: the
             # fleet union only widens WHICH clones are visible, never what
             # counts as one.
-            if not cls.is_semantic_clone(duplicate, first, second):
+            if not cls.semantic_clone(duplicate, first, second):
                 continue
             first_span = cls.side_span_key(first)
             second_span = cls.side_span_key(second)
@@ -529,7 +588,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         )
 
     @classmethod
-    def is_semantic_clone(
+    def semantic_clone(
         cls,
         duplicate: t.JsonMapping,
         first: t.JsonMapping,

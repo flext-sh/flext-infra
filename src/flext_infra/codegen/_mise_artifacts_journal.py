@@ -326,13 +326,34 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         encoded_sources = cls._merge_sources(journal.sources, sources)
         if encoded_sources.failure:
             return r[m.Infra.CodegenTransactionJournal].from_failure(encoded_sources)
-        candidate = journal.model_copy(
-            update={
-                "state": "prepared",
-                "sources": encoded_sources.value,
-                "entries": tuple(entries),
-            }
+        return cls.validated_extension(
+            journal,
+            journal.model_copy(
+                update={
+                    "state": "prepared",
+                    "sources": encoded_sources.value,
+                    "entries": tuple(entries),
+                }
+            ),
         )
+
+    @classmethod
+    def validated_extension(
+        cls,
+        journal: m.Infra.CodegenTransactionJournal,
+        candidate: m.Infra.CodegenTransactionJournal,
+    ) -> p.Result[m.Infra.CodegenTransactionJournal]:
+        """Validate one journal extension and keep its original live producer.
+
+        JSON shape validation rebuilds every nested model, so the validated
+        journal is rebound to the exact producer reference ``journal`` carries:
+        a rebuilt reference has no admission birth and fails every later
+        ``reference_birth_current`` check.
+
+        Returns:
+            The validated extension, or its validation or reference mismatch.
+
+        """
         validated = r[m.Infra.CodegenTransactionJournal].create_from_callable(
             lambda: m.Infra.CodegenTransactionJournal.model_validate_json(
                 candidate.model_dump_json()
@@ -341,18 +362,18 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         reference = journal.generator_reference
 
         def retain_reference(
-            prepared: m.Infra.CodegenTransactionJournal,
+            extended: m.Infra.CodegenTransactionJournal,
         ) -> p.Result[m.Infra.CodegenTransactionJournal]:
             """Keep only the original live reference after JSON shape validation.
 
             Returns:
-                The prepared journal or its original-reference mismatch.
+                The extended journal or its original-reference mismatch.
 
             """
             if reference is None:
-                return r[m.Infra.CodegenTransactionJournal].ok(prepared)
-            if prepared.generator_reference is None or (
-                prepared.generator_reference.model_dump() != reference.model_dump()
+                return r[m.Infra.CodegenTransactionJournal].ok(extended)
+            if extended.generator_reference is None or (
+                extended.generator_reference.model_dump() != reference.model_dump()
             ):
                 return r[m.Infra.CodegenTransactionJournal].fail(
                     "prepared journal differs from its original producer reference",
@@ -360,7 +381,7 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             return codegen.FlextInfraCodegenPreconditions.reference_birth_current(
                 reference
             ).map(
-                lambda _: prepared.model_copy(
+                lambda _: extended.model_copy(
                     update={"generator_reference": reference},
                 ),
             )
@@ -672,6 +693,8 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
         journal_snapshot: m.Cli.AtomicFileState,
+        *,
+        preserved_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[bool]:
         """Retain journal authority until all journal-authorized cleanup completes.
 
@@ -679,6 +702,12 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
             The resulting ``p.Result[bool]``.
 
         """
+        current = FlextInfraMiseArtifactsVerification.states_current((
+            *preserved_states,
+            journal_snapshot,
+        ))
+        if current.failure:
+            return current
         directories = FlextInfraMiseArtifactsState.cleanup_journaled_directories(
             layout,
             journal,
@@ -686,6 +715,9 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         )
         if directories.failure:
             return directories
+        retained = FlextInfraMiseArtifactsVerification.states_current(preserved_states)
+        if retained.failure:
+            return retained
         removed = FlextInfraMiseArtifactsFiles.delete_state(journal_snapshot)
         if removed.failure:
             return r[bool].from_failure(removed)
@@ -703,7 +735,22 @@ class FlextInfraMiseArtifactsJournal(FlextInfraMiseArtifactsJournalRelocation):
         for phase, source in sources:
             key = (phase, source.path)
             previous = by_key.get(key)
-            encoded = cls.source_record(phase, source, previous)
+            # A later phase may consume the same original absence after this
+            # journal created its parent. Keep the captured witness; the native
+            # state comparison separately proves any owned directory transition.
+            captured = (
+                previous
+                if previous is not None
+                else next(
+                    (
+                        item
+                        for item in by_key.values()
+                        if item.path == source.path and item.absent_parent is not None
+                    ),
+                    None,
+                )
+            )
+            encoded = cls.source_record(phase, source, captured)
             if encoded.failure:
                 return result_type.from_failure(encoded)
             if previous is not None and previous != encoded.value:

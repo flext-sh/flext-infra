@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 from flext_infra import c, m, p, t
@@ -36,7 +37,9 @@ class FlextInfraUtilitiesDeclarationPayload:
 
         """
         module, _, name = identity.rpartition(".")
-        return project.get_module(module).get_attribute(name)
+        return FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+            project, name, module_name=module
+        )
 
     @classmethod
     def class_ancestry(
@@ -131,20 +134,25 @@ class FlextInfraUtilitiesDeclarationPayload:
             module, header.start_offset, declaration_line=scope.get_start()
         )
         subscriptions = tuple(
-            binding
+            item
             for provider, name in (
                 ("pydantic", "BaseModel"),
                 ("typing", "Protocol"),
                 ("typing_extensions", "Protocol"),
             )
+            if (resource := module.pycore.project.find_module(provider)) is not None
+            if FlextInfraUtilitiesRopeCore.resolvable_module_resource(resource)
             if (
-                binding := module.pycore.project
-                .get_module(provider)
-                .get_attribute(name)
-                .get_object()
+                binding := FlextInfraUtilitiesRopeCore
+                .resolve_pymodule(
+                    module.pycore.project,
+                    resource,
+                )
                 .get_attributes()
-                .get("__class_getitem__")
+                .get(name)
             )
+            is not None
+            if (item := binding.get_object().get_attributes().get("__class_getitem__"))
             is not None
         )
         for argument in arguments:
@@ -332,7 +340,12 @@ class FlextInfraUtilitiesDeclarationPayload:
         for member_scope in scope.get_scopes():
             if (
                 member_scope.get_kind() == c.Infra.RopeScopeKind.FUNCTION
-                and not cls._payload_method(finder, member_scope.pyobject, statements)
+                and not cls._payload_method(
+                    project,
+                    finder,
+                    member_scope.pyobject,
+                    statements,
+                )
             ):
                 return None
         return binding
@@ -435,11 +448,16 @@ class FlextInfraUtilitiesDeclarationPayload:
             return None
         _module, binding = resolved
         bases = cls.direct_bases(binding.get_object())
+        defining = frozenset(
+            declared for base in bases if (declared := base.get_module()) is not None
+        )
         return (
             binding
             if any(
-                project.get_module(provider).get_attribute("Protocol").get_object()
-                in bases
+                (resource := project.find_module(provider)) is not None
+                and FlextInfraUtilitiesRopeCore.resolvable_module_resource(resource)
+                and FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
+                in defining
                 for provider in ("typing", "typing_extensions")
             )
             else None
@@ -506,8 +524,10 @@ class FlextInfraUtilitiesDeclarationPayload:
             )
         )
 
-    @staticmethod
+    @classmethod
     def _payload_method(
+        cls,
+        project: p.Infra.RopeProject,
         finder: p.Infra.RopeSimilarFinder,
         method: p.Infra.RopePyObject,
         statements: t.SequenceOf[m.Infra.LogicalStatement],
@@ -518,6 +538,18 @@ class FlextInfraUtilitiesDeclarationPayload:
             Whether every decorator is allowed and one belongs to Pydantic.
 
         """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        owning_module = method.get_module()
+        if owning_module is None:
+            return False
+        module_scope = owning_module.get_scope()
+        known_targets = {
+            identity: cls.identity_name(project, identity).get_object()
+            for identity in (
+                *c.Infra.PYDANTIC_PAYLOAD_DECORATORS,
+                *c.Infra.PAYLOAD_DESCRIPTOR_DECORATORS,
+            )
+        }
         scope = method.get_scope()
         if scope is None:
             return False
@@ -531,37 +563,23 @@ class FlextInfraUtilitiesDeclarationPayload:
             decorator = statement.text.lstrip()
             if not decorator.startswith("@"):
                 return False
-            expression = decorator[1:]
-            callee_start = (
-                statement.start_offset
-                + len(statement.text)
-                - len(decorator)
-                + 1
-                + len(expression)
-                - len(expression.lstrip())
-            )
-            identities = tuple(
-                identity
-                for identity in (
-                    *c.Infra.PYDANTIC_PAYLOAD_DECORATORS,
-                    *c.Infra.PAYLOAD_DESCRIPTOR_DECORATORS,
-                )
-                if any(
-                    start == callee_start
-                    for start, _end in finder.get_match_regions(
-                        f"${{{identity.rsplit('.', 1)[-1]}}}",
-                        {identity.rsplit(".", 1)[-1]: f"object={identity}"},
-                        start=statement.start_offset,
-                        end=statement.end_offset,
-                    )
-                )
-            )
-            if not identities:
+            callee = decorator[1:].strip()
+            expression = ast.parse(callee, mode="eval").body
+            callee_name = getattr(expression, "func", expression)
+            resolved = runtime.resolve_symbol(module_scope, callee_name)
+            if resolved is None:
                 return False
-            known |= any(
-                identity in c.Infra.PYDANTIC_PAYLOAD_DECORATORS
-                for identity in identities
+            identity = next(
+                (
+                    candidate
+                    for candidate, target in known_targets.items()
+                    if target is resolved
+                ),
+                None,
             )
+            if identity is None:
+                return False
+            known |= identity in c.Infra.PYDANTIC_PAYLOAD_DECORATORS
         return known
 
 

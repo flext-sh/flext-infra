@@ -17,11 +17,11 @@ from flext_cli import m, p
 
 from flext_infra import c, t
 from flext_infra._models import (
+    FlextInfraModelsBase,
     FlextInfraModelsCodemod,
     FlextInfraModelsMixins,
     FlextInfraModelsRefactorGrep,
 )
-from flext_infra._models.base import FlextInfraModelsBase
 
 
 class FlextInfraModelsScan:
@@ -325,7 +325,7 @@ class FlextInfraModelsScan:
             default=None, description="Original rule and configuration input snapshots"
         )
         native_artifacts: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
-            min_length=1, description="Complete authenticated native output inventory"
+            description="Complete authenticated native output inventory"
         )
 
         @m.model_validator(mode="after")

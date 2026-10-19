@@ -8,8 +8,19 @@ valid:
   - |
     if TYPE_CHECKING:
         from pkg.models import FlextFooModels
+  - |
+    if TYPE_CHECKING:
+        from flext_core import u as utilities
+  - |
+    if TYPE_CHECKING:
+        import flext_core._utilities.base
 invalid:
   - from pkg import m
   - from pkg.models import FlextFooModels
   - from .._models import base
   - import pkg.models
+  - from flext_core import u
+  - from flext_core import u as utilities
+  - from flext_core.utilities import FlextUtilities
+  - from flext_core._utilities import FlextUtilitiesBase
+  - import flext_core._utilities.base as utilities

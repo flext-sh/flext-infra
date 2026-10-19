@@ -10,12 +10,10 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, assert_never
 
-from typing_extensions import TypeForm
-
 from flext_infra import c, m, p, s, t, u
 
 
-class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
+class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
     """Root of the conform chain: request state and toolchain policy projections.
 
     This is the only orchestrator for Make/toolchain/source conformance.
@@ -23,59 +21,12 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
     are composed from their separately owned u.Infra/workspace services.
     """
 
-    request: Annotated[
-        m.Infra.CodegenConformRequest | None,
-        m.Field(default=None, exclude=True, description="Validated conform request"),
-    ] = None
-    generation_only: Annotated[
-        bool,
+    state: Annotated[
+        m.Infra.CodegenConformState,
         m.Field(
-            default=False,
-            exclude=True,
-            description="Project declared outputs without repairing authored inputs",
+            description="Mutable request-local data owned by one conform invocation.",
         ),
-    ] = False
-    repository_root: Annotated[
-        Path,
-        m.Field(default=Path(), exclude=True, description="Conform repository root"),
-    ] = Path()
-    initial_workspace: Annotated[
-        m.Infra.WorkspaceSpec | None,
-        m.Field(
-            default=None,
-            exclude=True,
-            description="Validated scaffold specification included in the atomic plan",
-        ),
-    ] = None
-    ports: Annotated[
-        m.Infra.CodegenConformPorts | None,
-        m.Field(
-            default=None,
-            exclude=True,
-            description=(
-                "Docs planner and participant policy wired by the facade; the "
-                "complete surface fails before any effect without them"
-            ),
-        ),
-    ] = None
-    planning_issues: Annotated[
-        t.MutableSequenceOf[m.Infra.Issue],
-        m.Field(
-            exclude=True,
-            description="Native file planning failures retained by this invocation",
-        ),
-    ] = m.Field(default_factory=u.empty(TypeForm(t.MutableSequenceOf[m.Infra.Issue])))
-
-    planning_exception: BaseException | None = m.Field(
-        default=None,
-        exclude=True,
-        description="First native file planning cause",
-    )
-    docs_planner: p.Infra.DocsArtifactPlanner | None = m.Field(
-        default=None,
-        exclude=True,
-        description="Actual docs planner retained before effects",
-    )
+    ] = m.Field(m.Infra.CodegenConformState(), validate_default=True)
 
     def _record_file_failure(
         self,
@@ -85,9 +36,9 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         exception: BaseException | None = None,
     ) -> None:
         """Retain an actual target failure through the shared diagnostic model."""
-        if self.planning_exception is None:
-            self.planning_exception = exception
-        self.planning_issues.append(
+        if self.state.planning_exception is None:
+            self.state.planning_exception = exception
+        self.state.planning_issues.append(
             m.Infra.Issue(
                 file=str(path),
                 line=0,
@@ -160,8 +111,9 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         if target.repository.package:
             if (
                 target.project is None
-                and self.initial_workspace is not None
-                and target.repository.name == self.initial_workspace.repository.name
+                and self.state.initial_workspace is not None
+                and target.repository.name
+                == self.state.initial_workspace.repository.name
                 and not (target.root / c.PYPROJECT_FILENAME).exists()
             ):
                 msg = f"scaffold environment has no project metadata: {target.root}"

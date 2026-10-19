@@ -13,6 +13,12 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_infra.workspace._environment_provenance_editable import (
+        FlextInfraWorkspaceEnvironmentProvenanceEditableMixin,
+    )
+    from flext_infra.workspace._environment_provenance_module_source import (
+        FlextInfraWorkspaceEnvironmentProvenanceModuleSourceMixin,
+    )
     from flext_infra.workspace._governance import FlextInfraWorkspaceGovernanceMixin
     from flext_infra.workspace._rope_query import FlextInfraRopeQueryMixin
     from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
@@ -30,6 +36,9 @@ if TYPE_CHECKING:
     from flext_infra.workspace.lock_completeness import (
         FlextInfraWorkspaceLockCompleteness,
     )
+    from flext_infra.workspace.native_reference import (
+        FlextInfraWorkspaceNativeReference,
+    )
     from flext_infra.workspace.propagation import FlextInfraWorkspacePropagation
     from flext_infra.workspace.rope import FlextInfraRopeWorkspace
     from flext_infra.workspace.runtime_dependencies import (
@@ -46,11 +55,14 @@ __all__: tuple[str, ...] = (
     "FlextInfraWorkspaceEnvironmentContracts",
     "FlextInfraWorkspaceEnvironmentMixin",
     "FlextInfraWorkspaceEnvironmentProvenance",
+    "FlextInfraWorkspaceEnvironmentProvenanceEditableMixin",
+    "FlextInfraWorkspaceEnvironmentProvenanceModuleSourceMixin",
     "FlextInfraWorkspaceFleetGaps",
     "FlextInfraWorkspaceFleetVerbs",
     "FlextInfraWorkspaceGovernanceMixin",
     "FlextInfraWorkspaceLifecycle",
     "FlextInfraWorkspaceLockCompleteness",
+    "FlextInfraWorkspaceNativeReference",
     "FlextInfraWorkspacePropagation",
 )
 
@@ -66,11 +78,18 @@ install_lazy_exports(
         "FlextInfraWorkspaceEnvironmentContracts": ".environment_contracts",
         "FlextInfraWorkspaceEnvironmentMixin": ".environment",
         "FlextInfraWorkspaceEnvironmentProvenance": ".environment_provenance",
+        "FlextInfraWorkspaceEnvironmentProvenanceEditableMixin": (
+            "._environment_provenance_editable"
+        ),
+        "FlextInfraWorkspaceEnvironmentProvenanceModuleSourceMixin": (
+            "._environment_provenance_module_source"
+        ),
         "FlextInfraWorkspaceFleetGaps": ".fleet_gaps",
         "FlextInfraWorkspaceFleetVerbs": ".fleet_verbs",
         "FlextInfraWorkspaceGovernanceMixin": "._governance",
         "FlextInfraWorkspaceLifecycle": ".lifecycle",
         "FlextInfraWorkspaceLockCompleteness": ".lock_completeness",
+        "FlextInfraWorkspaceNativeReference": ".native_reference",
         "FlextInfraWorkspacePropagation": ".propagation",
     }),
     public_exports=__all__,

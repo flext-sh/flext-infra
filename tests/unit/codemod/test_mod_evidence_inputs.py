@@ -110,6 +110,52 @@ class TestsFlextInfraModEvidenceInputs:
         )
 
     @staticmethod
+    def test_context_requires_a_captured_or_transformed_variable(
+        tmp_path: Path,
+    ) -> None:
+        """A declared transform never admits an unrelated context variable."""
+        rules = tmp_path / c.Infra.CODEMOD_RULE_DIRS_KEY
+        rules.mkdir()
+        configuration = tmp_path / c.Infra.CODEMOD_CONFIG_FILENAME
+        tm.ok(
+            u.Cli.yaml_dump(
+                configuration,
+                {c.Infra.CODEMOD_RULE_DIRS_KEY: [rules.name]},
+            )
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                rules / f"context{c.Infra.CODEMOD_RULE_SUFFIX}",
+                {
+                    "id": "unbound-context",
+                    "language": "Python",
+                    "severity": "error",
+                    "rule": {"pattern": "$CAPTURED"},
+                    "transform": {
+                        "DECLARED": {
+                            "replace": {
+                                "source": "$CAPTURED",
+                                "replace": "^.*$",
+                                "by": "derived",
+                            }
+                        }
+                    },
+                    "metadata": {
+                        "context": {
+                            "UNDECLARED": {
+                                "is": c.Infra.CodemodContextPredicate.FILE_FAMILY.value
+                            }
+                        }
+                    },
+                },
+            )
+        )
+        tm.fail(
+            u.Infra.codemod_catalog_rules("context-provider", configuration),
+            has="UNDECLARED",
+        )
+
+    @staticmethod
     def test_composed_native_scan_preserves_provider_utils_and_local_shadows(
         mod_workspace: Path,
         tmp_path: Path,
@@ -192,7 +238,7 @@ class TestsFlextInfraModEvidenceInputs:
         source.write_text("a = 'left'\nb = 'right'\nc = 'local'\n", encoding="utf-8")
         report = tm.ok(
             FlextInfraModGateEngine.scan(
-                mod_workspace, fix=False, plan=plan, source_files=(source,)
+                mod_workspace, fix=False, selection=plan, source_files=(source,)
             )
         )
         tm.that(capsys.readouterr().err.count(f"mod: start {c.Infra.SG} scan"), eq=1)
@@ -236,7 +282,7 @@ class TestsFlextInfraModEvidenceInputs:
             ValueError, match="elected codemod rule changed before projection"
         ):
             FlextInfraModGateEngine.scan(
-                mod_workspace, fix=False, plan=plan, source_files=(source,)
+                mod_workspace, fix=False, selection=plan, source_files=(source,)
             )
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True)),
@@ -255,7 +301,7 @@ class TestsFlextInfraModEvidenceInputs:
         )
         report = tm.ok(
             FlextInfraModGateEngine.scan(
-                mod_workspace, fix=False, rule_ids=("ban-pass-through-wrapper",)
+                mod_workspace, fix=False, selection=("ban-pass-through-wrapper",)
             )
         )
         tm.that(report.findings, eq=1)
@@ -285,7 +331,7 @@ class TestsFlextInfraModEvidenceInputs:
         """A zero report still records and authenticates the scanner's real output."""
         report = tm.ok(
             FlextInfraModGateEngine.scan(
-                mod_workspace, fix=False, rule_ids=("ban-pass-through-wrapper",)
+                mod_workspace, fix=False, selection=("ban-pass-through-wrapper",)
             )
         )
         tm.that(report.findings, eq=0)
@@ -315,7 +361,7 @@ class TestsFlextInfraModEvidenceInputs:
         source.write_text(content, encoding="utf-8")
         report = tm.ok(
             FlextInfraModGateEngine.scan(
-                mod_workspace, fix=False, rule_ids=("ban-pass-through-wrapper",)
+                mod_workspace, fix=False, selection=("ban-pass-through-wrapper",)
             )
         )
         tm.that(report.findings, eq=1)
@@ -602,7 +648,7 @@ class TestsFlextInfraModEvidenceInputs:
         )
         report = tm.ok(
             FlextInfraModGateEngine.scan(
-                mod_workspace, fix=False, rule_ids=("ban-pass-through-wrapper",)
+                mod_workspace, fix=False, selection=("ban-pass-through-wrapper",)
             )
         )
         tm.that(report.findings, eq=occurrences)
@@ -757,7 +803,7 @@ class TestsFlextInfraModEvidenceInputs:
         source.write_text("value = 1\n", encoding="utf-8")
         report = tm.ok(
             FlextInfraModGateEngine.scan(
-                mod_workspace, fix=False, rule_ids=("ban-pass-through-wrapper",)
+                mod_workspace, fix=False, selection=("ban-pass-through-wrapper",)
             )
         )
         tm.that(report.findings, eq=0)

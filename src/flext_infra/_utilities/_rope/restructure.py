@@ -7,25 +7,26 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import override
+from typing import Protocol, cast, override
 
+from rope.base.project import Project
 from rope.refactor.restructure import Restructure
 from rope.refactor.wildcards import DefaultWildcard
 
 from flext_infra import m, p, t
-from flext_infra._utilities._rope_core_pymodule import (
-    FlextInfraUtilitiesRopeCorePyModuleMixin,
-)
+from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraRopeRestructure(Restructure):
     """Keep native matching and writing while admitting each occurrence."""
 
+    project: p.Infra.RopeProject
+
     class _IdentityChoices:
         """Delegate every alternative to Rope's exact native identity matcher."""
 
-        def __init__(self, project: p.Infra.RopeProject) -> None:
-            self._wildcard: p.Infra.RopeWildcard[str] = DefaultWildcard(project)
+        def __init__(self, wildcard: p.Infra.RopeWildcard[str]) -> None:
+            self._wildcard = wildcard
 
         @staticmethod
         def get_name() -> str:
@@ -36,21 +37,45 @@ class FlextInfraRopeRestructure(Restructure):
 
     def __init__(
         self,
-        project: p.Infra.RopeProject,
+        project: p.AttributeProbe,
         request: m.Infra.RopeRestructureRequest,
     ) -> None:
-        """Receive the current consumer's native match and import policies."""
-        constraints = {
-            name: value
-            if isinstance(value, str)
-            else ("identity_choices", tuple(value))
-            for name, value in request.arguments.items()
-        }
-        super().__init__(
+        """Receive the current consumer's native match and import policies.
+
+        Raises:
+            TypeError: The project is not a native Rope project.
+
+        """
+        if not isinstance(project, Project):
+            message = "Rope restructuring requires a native project"
+            raise TypeError(message)
+        default: p.Infra.RopeWildcard[str] = DefaultWildcard(project)
+
+        class _NativeRestructureInit(Protocol):
+            """Typed initializer view over the fork's untyped constructor."""
+
+            def __init__(
+                self,
+                project: Project,
+                pattern: str,
+                goal: str,
+                args: (
+                    t.MappingKV[str, str | t.Pair[str, t.VariadicTuple[str]]] | None
+                ) = None,
+                imports: t.StrSequence | None = None,
+                wildcards: (t.MappingKV[str, p.Infra.RopeWildcard[str]] | None) = None,
+            ) -> None: ...
+
+        cast("_NativeRestructureInit", super()).__init__(
             project,
             request.pattern,
             request.goal,
-            args=constraints,
+            args={
+                name: value
+                if isinstance(value, str)
+                else ("identity_choices", tuple(value))
+                for name, value in request.arguments.items()
+            },
             imports=list(
                 request.imports.values()
                 if isinstance(request.imports, Mapping)
@@ -59,8 +84,8 @@ class FlextInfraRopeRestructure(Restructure):
             wildcards={
                 wildcard.get_name(): wildcard
                 for wildcard in (
-                    DefaultWildcard(project),
-                    self._IdentityChoices(project),
+                    default,
+                    self._IdentityChoices(default),
                 )
             },
         )
@@ -72,31 +97,46 @@ class FlextInfraRopeRestructure(Restructure):
     @override
     def _compute_changes(
         self,
-        matches: t.SequenceOf[p.Infra.RopeContractMatch],
-        pymodule: p.Infra.RopePyModule,
+        matches: t.SequenceOf[t.Infra.RopeNativeMatch],
+        pymodule: t.Infra.RopeNativeSourceModule,
     ) -> t.Infra.RopeChangeComputer:
         """Admit occurrences before the native change computer writes source.
 
         Returns:
             The upstream source-preserving change computer.
 
+        Raises:
+            TypeError: The module is not a native source module.
+
         """
-        selected = (
-            list(matches)
-            if self.match_filter is None
-            else [match for match in matches if self.match_filter(pymodule, match)]
-        )
+        if not FlextInfraUtilitiesRopeRuntime.source_module(pymodule):
+            message = "Rope restructuring requires a native source module"
+            raise TypeError(message)
+        selected = [
+            match
+            for match in matches
+            if self.match_filter is None or self.match_filter(pymodule, match)
+        ]
         self.matched_count += len(matches)
         self.admitted_count += len(selected)
-        computer: t.Infra.RopeChangeComputer = super()._compute_changes(
+
+        class _NativeChangeComputation(Protocol):
+            """Typed view of the fork's native change computation."""
+
+            def _compute_changes(
+                self,
+                matches: t.SequenceOf[t.Infra.RopeNativeMatch],
+                pymodule: t.Infra.RopeNativeSourceModule,
+            ) -> t.Infra.RopeChangeComputer: ...
+
+        return cast("_NativeChangeComputation", super())._compute_changes(
             selected, pymodule
         )
-        return computer
 
     @override
     def _add_imports(
         self,
-        resource: p.Infra.RopeResource,
+        resource: t.Infra.RopeNativeResource,
         source: str,
         imports: t.StrSequence,
     ) -> str:
@@ -105,16 +145,14 @@ class FlextInfraRopeRestructure(Restructure):
         Returns:
             Source emitted by the native import manager.
 
-        Raises:
-            TypeError: The native import manager did not emit source text.
-
         """
         selected = imports
         if isinstance(self.import_policy, Mapping):
-            project: p.Infra.RopeProject = self.project
             names = (
-                FlextInfraUtilitiesRopeCorePyModuleMixin
-                .resolve_pymodule(project, resource)
+                FlextInfraUtilitiesRopeRuntime
+                .require_parsed_module(
+                    self.project.get_pymodule(cast("p.Infra.RopeResource", resource))
+                )
                 .get_scope()
                 .get_defined_names()
             )
@@ -123,11 +161,20 @@ class FlextInfraRopeRestructure(Restructure):
                 for binding, declaration in self.import_policy.items()
                 if binding not in names
             )
-        emitted = super()._add_imports(resource, source, list(selected))
-        if not isinstance(emitted, str):
-            message = "Rope import manager did not emit source text"
-            raise TypeError(message)
-        return emitted
+
+        class _NativeImportWriter(Protocol):
+            """Typed view of the fork's native import writer."""
+
+            def _add_imports(
+                self,
+                resource: t.Infra.RopeNativeResource,
+                source: str,
+                imports: t.StrSequence,
+            ) -> str: ...
+
+        return cast("_NativeImportWriter", super())._add_imports(
+            resource, source, selected
+        )
 
 
 __all__: list[str] = ["FlextInfraRopeRestructure"]

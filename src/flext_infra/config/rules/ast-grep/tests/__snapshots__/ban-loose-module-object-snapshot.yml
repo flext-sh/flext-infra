@@ -30,6 +30,30 @@ snapshots:
       start: 0
       end: 40
   ? |
+    Alias: TypeAlias = int
+  : labels:
+    - source: 'Alias: TypeAlias = int'
+      style: primary
+      start: 0
+      end: 22
+    - source: |
+        Alias: TypeAlias = int
+      style: secondary
+      start: 0
+      end: 23
+    - source: Alias
+      style: secondary
+      start: 0
+      end: 5
+    - source: TypeAlias
+      style: secondary
+      start: 7
+      end: 16
+    - source: 'Alias: TypeAlias = int'
+      style: secondary
+      start: 0
+      end: 22
+  ? |
     LIMIT = 3
   : labels:
     - source: LIMIT = 3
@@ -77,6 +101,30 @@ snapshots:
       style: secondary
       start: 0
       end: 40
+  ? |
+    T = TypeVar("T")
+  : labels:
+    - source: T = TypeVar("T")
+      style: primary
+      start: 0
+      end: 16
+    - source: |
+        T = TypeVar("T")
+      style: secondary
+      start: 0
+      end: 17
+    - source: T
+      style: secondary
+      start: 0
+      end: 1
+    - source: TypeVar("T")
+      style: secondary
+      start: 4
+      end: 16
+    - source: T = TypeVar("T")
+      style: secondary
+      start: 0
+      end: 16
   ? |
     class First:
         pass
@@ -240,6 +288,26 @@ snapshots:
       start: 0
       end: 34
   ? |
+    def main() -> None:
+        return None
+  : labels:
+    - source: |-
+        def main() -> None:
+            return None
+      style: primary
+      start: 0
+      end: 35
+    - source: main
+      style: secondary
+      start: 4
+      end: 8
+    - source: |
+        def main() -> None:
+            return None
+      style: secondary
+      start: 0
+      end: 36
+  ? |
     logger = u.fetch_logger(__name__)
   : labels:
     - source: logger = u.fetch_logger(__name__)
@@ -263,3 +331,43 @@ snapshots:
       style: secondary
       start: 0
       end: 33
+  ? |
+    type Alias = int
+  : labels:
+    - source: type Alias = int
+      style: primary
+      start: 0
+      end: 16
+    - source: |
+        type Alias = int
+      style: secondary
+      start: 0
+      end: 17
+    - source: Alias
+      style: secondary
+      start: 5
+      end: 10
+    - source: Alias
+      style: secondary
+      start: 5
+      end: 10
+  ? |
+    type _PrivateAlias = str
+  : labels:
+    - source: type _PrivateAlias = str
+      style: primary
+      start: 0
+      end: 24
+    - source: |
+        type _PrivateAlias = str
+      style: secondary
+      start: 0
+      end: 25
+    - source: _PrivateAlias
+      style: secondary
+      start: 5
+      end: 18
+    - source: _PrivateAlias
+      style: secondary
+      start: 5
+      end: 18
