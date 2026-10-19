@@ -150,10 +150,10 @@ class TestsFlextInfraDepsModernizerHelpers:
         """Verify as string list toml item."""
         doc["items"] = ["a", "b"]
         items_array = u.Cli.toml_item_from_json_value(["a", "b"])
-        tm.that(u.Cli.toml_as_string_list(items_array), eq=["a", "b"])
+        tm.that(u.Cli.toml_as_string_list(items_array), eq=("a", "b"))
         doc["value"] = 42
         int_val = u.Cli.toml_item_from_json_value(42)
-        tm.that(u.Cli.toml_as_string_list(int_val), eq=[])
+        tm.that(u.Cli.toml_as_string_list(int_val), eq=())
 
     @staticmethod
     @pytest.mark.parametrize(

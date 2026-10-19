@@ -340,7 +340,12 @@ class TestsFlextInfraDepsGate:
 
     @staticmethod
     def test_development_only_supplier_requires_consumer_rewire(tmp_path: Path) -> None:
-        """Identity stays present while its contract forbids runtime promotion."""
+        """Identity stays present while its contract forbids runtime promotion.
+
+        A development-only supplier cannot become a runtime requirement, so
+        the repair refuses the unresolved import before any publication and
+        the check keeps reporting it until the consumer is rewired.
+        """
         root = TestsFlextInfraDepsGate._project(tmp_path, "", "import requests\n")
         inputs = TestsFlextInfraDepsGate._dependency_inputs(root)
         provider = inputs.providers[0]
