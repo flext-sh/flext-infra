@@ -659,7 +659,10 @@ class TestsFlextInfraTransactionStaging:
                         (
                             sys.executable,
                             "-c",
-                            "import runpy, sys; assert runpy.run_path(sys.argv[1])['VALUE'] == 2",
+                            (
+                                "import runpy, sys; assert runpy.run_path(sys.argv[1])",
+                                "['VALUE'] == 2",
+                            ),
                             str(view / target.relative_to(root)),
                         ),
                         cwd=view,

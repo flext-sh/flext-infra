@@ -192,7 +192,15 @@ class TestsFlextInfraFamilyTypeReferences:
 
     @staticmethod
     def _string_assignments(source: str) -> t.StrMapping:
-        """Read string payloads independently of assignment annotations or layout."""
+        """Read string payloads independently of assignment annotations or layout.
+
+        Args:
+            source: The Python source code to analyze.
+
+        Returns:
+            A mapping from variable names to their string values.
+
+        """
         return {
             target.id: node.value.value
             for node in ast.walk(ast.parse(source))

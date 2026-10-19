@@ -853,6 +853,7 @@ class FlextInfraStagedPackage:
 
         Args:
             declared_files: Candidate effects pinned to their original ancestry.
+            directory_publications: The current state of published directories.
 
         Returns:
             Acceptance while every declared preimage keeps its ancestry, or

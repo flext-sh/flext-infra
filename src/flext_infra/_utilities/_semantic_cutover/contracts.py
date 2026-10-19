@@ -768,8 +768,20 @@ class FlextInfraUtilitiesSemanticContracts(
     ) -> bool:
         """Prove native receivers, evaluation safety and destination bindings.
 
+        Args:
+            project: The rope project containing the module.
+            rule: The contract rule being evaluated.
+            module: The Python module under consideration.
+            match: The specific contract match instance.
+            context: A tuple containing the current state of implementation owners,
+              sources, and owned modules.
+
         Returns:
             Whether every native admission proof accepts the captured match.
+
+        Raises:
+            ValueError: If the contract cannot be admitted due to assertion lowering
+              requirements.
 
         """
         implementation_owners, sources, owned_modules = context

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import pstats
 import sys
 from pathlib import Path
 
@@ -19,6 +20,44 @@ from tests import c, m, t, tm, u
 
 class TestsFlextInfraCProfileReport:
     """Prove real pstats artifacts render through the typed owner."""
+
+    @staticmethod
+    def test_cli_profiles_retain_each_run_and_measure_startup(tmp_path: Path) -> None:
+        """Repeated public CLI launches preserve raw runs including CLI imports."""
+        output = tmp_path / "profile.pstats"
+        original: bytes | None = None
+        for _ in range(2):
+            tm.ok(
+                u.Cli.run_checked(
+                    (
+                        sys.executable,
+                        "-m",
+                        "flext_infra._profile_entry",
+                        str(output),
+                        "--help",
+                    ),
+                    cwd=tmp_path,
+                )
+            )
+            profiles = sorted(tmp_path.glob("profile-*.pstats"))
+            if original is None:
+                tm.that(len(profiles), eq=1)
+                original = profiles[0].read_bytes()
+            else:
+                tm.that(len(profiles), eq=2)
+                tm.that(original in (path.read_bytes() for path in profiles), eq=True)
+            tm.that(
+                output.read_bytes() in (path.read_bytes() for path in profiles), eq=True
+            )
+            for profile in profiles:
+                stats = pstats.Stats(str(profile))
+                tm.that(
+                    any(
+                        filename.endswith("/flext_infra/cli.py") and name == "<module>"
+                        for filename, _, name in stats.stats
+                    ),
+                    eq=True,
+                )
 
     @staticmethod
     @pytest.mark.parametrize(

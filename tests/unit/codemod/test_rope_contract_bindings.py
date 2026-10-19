@@ -24,7 +24,12 @@ class TestsFlextInfraRopeContractBindings:
 
     @staticmethod
     def _assertion_rules() -> t.SequenceOf[p.Infra.RopeContractRule]:
-        """Declare the Python statement contract consumed by the native writer."""
+        """Declare the Python statement contract consumed by the native writer.
+
+        Returns:
+            A sequence of RopeContractRule instances.
+
+        """
         return tuple(
             m.Infra.RopeContractRule(
                 id=f"native-assert-{name}",

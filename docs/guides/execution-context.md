@@ -1666,6 +1666,12 @@ All profiler output paths use one stdlib-only atomic publisher: native marshal
 data is staged on the destination filesystem, flushed and replaced atomically.
 An interrupted write preserves the previous readable profile. Corruption still
 fails the report reader explicitly; neither profiling nor reporting skips it.
+The infrastructure CLI profiler starts before importing its public CLI facade.
+Each completed invocation retains a uniquely named raw profile beside the latest
+profile through that same publisher; termination checkpoints have their own
+invocation-owned artifact and never overwrite the last completed profile.
+Make parsing, guards, hooks and subprocess internals remain outside that Python
+window, so comparable generation measurements also record external elapsed time.
 
 The root facade export rule preserves literal tuple values and order while removing
 an unnecessary type-only annotation dependency. It does not change classes, aliases

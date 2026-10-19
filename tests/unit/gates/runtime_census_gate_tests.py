@@ -163,8 +163,13 @@ class TestRuntimeCensusSelection:
         _write_project(
             root,
             {
-                "pyproject.toml": '[project]\nname = "fixturecensussealed"\nversion = "0.1.0"\n',
-                "src/fixturecensussealed/__init__.py": 'def __dir__():\n    raise RuntimeError("cached live census imported")\n',
+                "pyproject.toml": (
+                    '[project]\nname = "fixturecensussealed"\nversion = "0.1.0"\n',
+                ),
+                "src/fixturecensussealed/__init__.py": (
+                    "def __dir__():\n    ",
+                    'raise RuntimeError("cached live census imported")\n',
+                ),
             },
         )
         target = root / "src/fixturecensussealed/__init__.py"
