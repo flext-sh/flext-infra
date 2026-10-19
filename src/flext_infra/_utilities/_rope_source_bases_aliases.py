@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import importlib.util
 from pathlib import Path
 
@@ -139,7 +140,9 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             raise TypeError(message)
         aliases: t.MutableMappingKV[str, m.Infra.SourceClassReference] = {}
         for occurrence in finder.find_occurrences(pymodule=parsed):
-            mapping = cls._call_alias_source(source, words, occurrence.offset)
+            mapping = cls._call_alias_source(
+                source, words, occurrence.offset, parsed
+            )
             if mapping is None:
                 continue
             for key, (provider, attribute) in cls._literal_exports(mapping).items():
@@ -154,11 +157,13 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
                 )
         return aliases
 
-    @staticmethod
+    @classmethod
     def _call_alias_source(
+        cls,
         source: str,
         words: p.Infra.RopeWorder,
         offset: int,
+        module: p.Infra.RopeParsedModule,
     ) -> str | None:
         """Return the alias-mapping argument text of one lazy-exports call.
 
@@ -166,6 +171,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             source: Full native source text of the parsed package initializer.
             words: Rope's native parameter reader over that source text.
             offset: Lexical offset of the candidate call occurrence.
+            module: Authenticated native module supplying the call bindings.
 
         Returns:
             The literal mapping source, or None when the occurrence is not a
@@ -176,25 +182,84 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             return None
         first, last = words.get_word_parens_range(offset)
         arguments, keywords = words.get_parameters(first, last - 1)
-        mapping = next(
-            (
-                arg
-                for arg in (*arguments, *(value for _name, value in keywords))
-                if arg.lstrip().startswith("{")
-                or arg.partition("(")[0].strip() == "MappingProxyType"
-            ),
-            None,
-        )
+        named = dict(keywords)
+        mapping = named.get("aliases")
+        if mapping is None and len(arguments) >= 3:
+            mapping = arguments[2]
         if mapping is None:
             return None
-        mapping_start = source.index(mapping, first + 1, last)
-        if mapping.partition("(")[0].strip() == "MappingProxyType":
-            inner_first, inner_last = words.get_word_parens_range(mapping_start)
-            return source[inner_first + 1 : inner_last - 1].strip()
-        brace_first, brace_last = words.code_finder.get_word_parens_range(
-            mapping_start, "{", "}"
-        )
-        return source[brace_first:brace_last]
+        return cls._declared_alias_mapping_source(mapping, module)
+
+    @staticmethod
+    def _declared_alias_mapping_source(
+        expression: str,
+        module: p.Infra.RopeParsedModule,
+    ) -> str:
+        """Read one declared alias map without executing its source expressions.
+
+        Returns:
+            The dictionary literal supplied directly or through native bindings.
+
+        Raises:
+            TypeError: A native assignment has no expression value.
+            ValueError: The map is ambiguous, cyclic, or not a declared literal.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        node = ast.parse(expression, mode="eval").body
+        scope = module.get_scope()
+        visited: set[t.Pair[str, int]] = set()
+        while True:
+            if isinstance(node, ast.Dict):
+                literal = ast.get_source_segment(expression, node)
+                if literal is None:
+                    message = "Lazy alias mapping has no native source span"
+                    raise ValueError(message)
+                return literal
+            if isinstance(node, ast.Call):
+                constructor = runtime.resolve_symbol(scope, node.func)
+                expected = runtime.qualified_name(
+                    module.pycore.project,
+                    "MappingProxyType",
+                    module_name="types",
+                )
+                if (
+                    not runtime.same_name(constructor, expected)
+                    or len(node.args) != 1
+                    or node.keywords
+                ):
+                    message = "Lazy alias mapping requires its native immutable wrapper"
+                    raise ValueError(message)
+                node = node.args[0]
+                continue
+            binding = runtime.resolve_symbol(scope, node)
+            if (
+                binding is None
+                or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
+                or len(binding.assignments) != 1
+            ):
+                message = "Lazy alias mapping requires one native assignment"
+                raise ValueError(message)
+            provider, line = runtime.definition_location(binding)
+            if (
+                not FlextInfraUtilitiesRopeRuntimeTypes.source_module(provider)
+                or line is None
+            ):
+                message = "Lazy alias mapping requires a source declaration"
+                raise ValueError(message)
+            identity = provider.get_name(), line
+            if identity in visited:
+                message = f"Cyclic lazy alias mapping declaration: {identity!r}"
+                raise ValueError(message)
+            visited.add(identity)
+            value = binding.assignments[0].ast_node
+            if not isinstance(value, ast.expr):
+                message = "Lazy alias mapping assignment has no native expression"
+                raise TypeError(message)
+            node = value
+            module = provider
+            expression = provider.source_code
+            scope = provider.get_scope()
 
     @staticmethod
     def _absolute_alias(package: str, value: str) -> str | None:
