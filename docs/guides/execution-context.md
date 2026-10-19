@@ -197,6 +197,13 @@ base order declared in their configured private family. Protocol projection keep
 its consumer-based ownership resolution. The utility path delegates directly to
 the declaration planner. Static and runtime consumer checks retain their own
 import-failure verdicts.
+Generated protocol and model namespace assignments are derived output, not new
+contract declarations. When an assignment resolves to an exact inherited class,
+projection removes that binding and inherits the canonical private owners in C3
+order, including their declared overrides. A stale renamed alias cannot publish
+itself or shadow a different inherited contract. The generated ownership marker
+and native class identity are both required; unrelated namespace members remain
+unchanged, and contradictory authored class bindings still fail before publication.
 Generated Python imports use their absolute native package owner. The planner
 selects exports once; rendering groups those declarations without another
 name-based exclusion policy. Compact lazy-loader targets remain loader data.

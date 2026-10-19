@@ -217,14 +217,24 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
             if cls._external_port(facades["p"], name, package):
                 continue
             candidate = FlextInfraCodegenProtocolModelRender.member(facades["m"], name)
+            protocol = FlextInfraCodegenProtocolModelRender.member(facades["p"], name)
+            model_namespace = protocol_namespace = None
+            if name not in renderer.declarations:
+                model_namespace = cls._namespace_owner(
+                    candidate, renderer.workspace.rope_project
+                )
+                protocol_namespace = cls._namespace_owner(
+                    protocol, renderer.workspace.rope_project
+                )
+            # Empty markers alone do not prove that a payload reference is a namespace.
             if candidate is None or (
-                u.Infra.py_class(candidate.get_object())
-                and name not in renderer.declarations
-                and any(route.startswith(f"{name}.") for route in renderer.declarations)
+                model_namespace is not None
+                and protocol_namespace is not None
+                and (bool(model_namespace) or bool(protocol_namespace))
             ):
                 manual = cls._manual_dependencies(
                     renderer,
-                    FlextInfraCodegenProtocolModelRender.member(facades["p"], name),
+                    protocol,
                     name,
                 )
                 if manual.failure:
@@ -242,6 +252,150 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
             if not cls._external_port(facades["p"], route, package)
         )
         return result_type.ok((models, aliases))
+
+    @classmethod
+    def _namespace_owner(
+        cls, binding: p.Infra.RopePyName | None, project: p.Infra.RopeProject
+    ) -> t.MappingKV[str, p.Infra.RopePyName] | None:
+        """Prove a type-publishing namespace without admitting instance contracts.
+
+        Returns:
+            Native public types, including empty marker owners, or no namespace proof.
+
+        """
+        if binding is None or not u.Infra.py_class(value := binding.get_object()):
+            return None
+        members = {
+            name: member
+            for name, member in value.get_attributes().items()
+            if not name.startswith("_")
+        }
+        if any(
+            not u.Infra.abstract_class(member.get_object())
+            and u.Infra.annotation_alias_definition(member) is None
+            for member in members.values()
+        ):
+            return None
+        type_owner = u.Infra.qualified_name(project, "type", module_name="builtins")
+        class_var = u.Infra.qualified_name(project, "ClassVar", module_name="typing")
+        for owner in u.Infra.class_ancestry(value):
+            if not u.Infra.py_class(owner):
+                continue
+            if not isinstance(owner, p.Infra.RopeSourceDefinition):
+                return None
+            node, scope = owner.get_ast(), owner.get_scope()
+            if not isinstance(node, ast.ClassDef) or scope is None:
+                return None
+            if not all(
+                cls._namespace_statement(statement, scope, (type_owner, class_var))
+                for statement in node.body
+            ):
+                return None
+        return members
+
+    @classmethod
+    def _namespace_statement(
+        cls,
+        statement: ast.stmt,
+        scope: p.Infra.RopeScope,
+        markers: t.Pair[p.Infra.RopePyName, p.Infra.RopePyName],
+    ) -> bool:
+        """Admit only declarations and private implementation details in an owner.
+
+        Returns:
+            Whether the statement preserves a pure type-publishing namespace.
+
+        """
+        if isinstance(statement, ast.Pass | ast.ClassDef | ast.TypeAlias):
+            return True
+        if isinstance(statement, ast.Expr) and isinstance(
+            statement.value, ast.Constant
+        ):
+            return (
+                isinstance(statement.value.value, str)
+                or statement.value.value is Ellipsis
+            )
+        if isinstance(statement, ast.FunctionDef | ast.AsyncFunctionDef):
+            return statement.name.startswith("_")
+        return isinstance(statement, ast.Assign | ast.AnnAssign) and (
+            cls._namespace_assignment(statement, scope, markers)
+        )
+
+    @classmethod
+    def _namespace_assignment(
+        cls,
+        statement: ast.Assign | ast.AnnAssign,
+        scope: p.Infra.RopeScope,
+        markers: t.Pair[p.Infra.RopePyName, p.Infra.RopePyName],
+    ) -> bool:
+        """Require public assignments to preserve native type declaration identity.
+
+        Returns:
+            Whether the assignment publishes only direct type aliases.
+
+        """
+        targets: t.SequenceOf[ast.expr]
+        if isinstance(statement, ast.Assign):
+            targets = statement.targets
+        else:
+            targets = (statement.target,)
+        if not all(isinstance(target, ast.Name) for target in targets):
+            return False
+        public = tuple(
+            target.id
+            for target in targets
+            if isinstance(target, ast.Name) and not target.id.startswith("_")
+        )
+        if not public:
+            return True
+        if not isinstance(statement.value, ast.Name | ast.Attribute):
+            return False
+        return not isinstance(statement, ast.AnnAssign) or cls._namespace_annotation(
+            statement.annotation, scope, public, markers
+        )
+
+    @staticmethod
+    def _namespace_annotation(
+        annotation: ast.expr,
+        scope: p.Infra.RopeScope,
+        public: t.StrSequence,
+        markers: t.Pair[p.Infra.RopePyName, p.Infra.RopePyName],
+    ) -> bool:
+        """Authenticate optional ClassVar wrapping and the declared native type target.
+
+        Returns:
+            Whether the annotation resolves to the same public type bindings.
+
+        """
+        type_owner, class_var = markers
+        marker = (
+            u.Infra.resolve_symbol(scope, annotation.value)
+            if isinstance(annotation, ast.Subscript)
+            else None
+        )
+        if (
+            isinstance(annotation, ast.Subscript)
+            and marker is not None
+            and u.Infra.same_name(class_var, marker)
+        ):
+            annotation = annotation.slice
+            marker = (
+                u.Infra.resolve_symbol(scope, annotation.value)
+                if isinstance(annotation, ast.Subscript)
+                else None
+            )
+        if (
+            not isinstance(annotation, ast.Subscript)
+            or marker is None
+            or not u.Infra.same_name(type_owner, marker)
+        ):
+            return False
+        target = u.Infra.resolve_symbol(scope, annotation.slice)
+        declared = scope.get_defined_names()
+        return target is not None and all(
+            name in declared and target.get_object() is declared[name].get_object()
+            for name in public
+        )
 
     @staticmethod
     def _manual_dependencies(

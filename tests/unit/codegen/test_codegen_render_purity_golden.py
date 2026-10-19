@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, m, t
+from flext_infra import config, m
 from flext_infra.services._codegen import (
     FlextInfraCodegenVscodeMixin as FlextInfraCodegen,
 )
@@ -91,8 +91,7 @@ class TestsFlextInfraCodegenRenderPurityGolden:
             )
 
         rendered: str = tm.ok(FlextInfraCodegen.render_vscode_settings(project))
-        parsed: t.JsonValue = tm.ok(u.Cli.json_parse(rendered))
-        settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed)
+        settings = u.Cli.JSON_MAPPING_ADAPTER.validate_json(rendered)
 
         for key, value in expected.items():
             tm.that(settings[key], eq=value, msg=f"{environment}: {key}")

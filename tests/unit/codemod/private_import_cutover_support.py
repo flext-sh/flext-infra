@@ -122,11 +122,11 @@ class TestsFlextInfraPrivateImportCutoverSupport:
         sources: t.MappingKV[Path, str],
         consumer_path: Path,
         *private_imports: str,
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+    ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
         """Plan the cutover for every private import reported in the consumer.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
+            The originating immutable result view of semantic migration edits.
 
         """
         with infra.rope_workspace(tmp_path) as rope:
@@ -147,7 +147,7 @@ class TestsFlextInfraPrivateImportCutoverSupport:
         sources: t.MappingKV[Path, str],
         consumer_path: Path,
         *private_imports: str,
-    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+    ) -> t.VariadicTuple[p.Infra.SemanticMigrationEdit]:
         """Return the successful plan's edits.
 
         Returns:

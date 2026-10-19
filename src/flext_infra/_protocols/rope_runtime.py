@@ -284,6 +284,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     class RopeSemanticModule(Protocol):
         """Module attributes shared by native builtins, packages, and source."""
 
+        def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
+
         def get_module(
             self,
         ) -> FlextInfraProtocolsRopeRuntime.RopeSemanticModule | None: ...
@@ -570,6 +572,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         code_finder: FlextInfraProtocolsRopeRuntime.RopeWordFinder
 
         def get_primary_at(self, offset: int) -> str: ...
+
+        def get_primary_range(self, offset: int) -> tuple[int, int]: ...
 
         def is_a_function_being_called(self, offset: int) -> bool: ...
 

@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Callable
+from functools import partial
 from typing import TYPE_CHECKING
 
 import pytest
@@ -56,25 +57,25 @@ class TestsFlextInfraCodegenScaffolderNaming:
             [
                 pytest.param(
                     False,
-                    lambda target: _validate_modules_parse(
-                        target,
-                        tuple(row[0] for row in c.Infra.SRC_MODULES),
+                    partial(
+                        _validate_modules_parse,
+                        modules=tuple(row[0] for row in c.Infra.SRC_MODULES),
                     ),
                     id="src-parses",
                 ),
                 pytest.param(
                     True,
-                    lambda target: _validate_modules_parse(
-                        target,
-                        tuple(row[0] for row in c.Infra.TESTS_MODULES),
+                    partial(
+                        _validate_modules_parse,
+                        modules=tuple(row[0] for row in c.Infra.TESTS_MODULES),
                     ),
                     id="tests-parses",
                 ),
                 pytest.param(
                     False,
-                    lambda target: _validate_class_names(
-                        target,
-                        {
+                    partial(
+                        _validate_class_names,
+                        filename_to_expected_class={
                             "constants.py": "TestProjectConstants",
                             "typings.py": "TestProjectTypes",
                             "protocols.py": "TestProjectProtocols",
@@ -86,9 +87,9 @@ class TestsFlextInfraCodegenScaffolderNaming:
                 ),
                 pytest.param(
                     True,
-                    lambda target: _validate_class_names(
-                        target,
-                        {
+                    partial(
+                        _validate_class_names,
+                        filename_to_expected_class={
                             "constants.py": "TestsTestProjectConstants",
                             "typings.py": "TestsTestProjectTypes",
                             "protocols.py": "TestsTestProjectProtocols",

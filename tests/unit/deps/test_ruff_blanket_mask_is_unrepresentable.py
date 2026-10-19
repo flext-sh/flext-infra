@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from flext_infra import c, config, m
+from flext_infra import c, config, m, t
 from tests import tm, u
 
 
@@ -36,14 +36,14 @@ class TestsFlextInfraRuffBlanketMaskIsUnrepresentable:
     def test_ruff_policy_rejects_nonblocking_catalog() -> None:
         """The top-level policy cannot reintroduce informative-only rules."""
         ruff = config.Infra.tooling.tools.ruff
-        payload = ruff.model_dump(
+        payload: t.JsonDict = ruff.model_dump(
             mode="json",
             by_alias=True,
             exclude_computed_fields=True,
         )
-        payload["informative-rules"] = []
+        payload["informative-rules"] = list[t.JsonValue]()
         with pytest.raises(m.ValidationError, match="informative-rules"):
-            m.Infra.RuffConfig.model_validate_json(tm.ok(u.Cli.json_dumps(payload)))
+            m.Infra.RuffConfig.model_validate(payload)
 
     @staticmethod
     @pytest.mark.parametrize("self_owned", [False, True])

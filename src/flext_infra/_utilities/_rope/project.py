@@ -1,11 +1,4 @@
-"""Warning-free Rope project boundary.
-
-Rope 1.14.0 and its current upstream branch decorate
-``Project._init_source_folders`` as deprecated while still calling it
-unconditionally from ``Project.__init__``.  A strict warnings-as-errors runtime
-therefore cannot construct the documented public ``Project`` at all.  The
-boundary below preserves Rope's initializer semantics without filtering the
-warning or weakening the process warning policy.
+"""Authenticated Rope project boundary over the installed native lifecycle.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -1831,25 +1824,5 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
         if isinstance(self.fscommands, self.SnapshotFiles | self.AtomicReadFiles):
             core = cast("p.Infra.RopeProject", self).get_pycore()
             core.observer.timekeeper = self.SnapshotChangeIndicator(self.fscommands)
-
-    @override
-    def _init_source_folders(self) -> None:
-        """Initialize configured source roots without Rope's warning wrapper.
-
-        Raises:
-            ValueError: If rope preference 'source_folders' is None; expected a list of
-                source folder paths.
-
-        """
-        source_folders = self.prefs.get("source_folders", [])
-        if source_folders is None:
-            msg = (
-                "rope preference 'source_folders' is None; "
-                "expected a list of source folder paths"
-            )
-            raise ValueError(msg)
-        for path in source_folders:
-            self._custom_source_folders.append(self.get_resource(path))
-
 
 __all__: list[str] = ["FlextInfraRopeProject"]

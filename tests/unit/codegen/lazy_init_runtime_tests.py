@@ -67,7 +67,12 @@ class TestsFlextInfraLazyInitRuntime:
             )
         )
         with infra.rope_workspace(repository) as workspace:
-            module = workspace.rope_project.get_module(package.name)
+            module = u.Infra.resolve_pymodule(
+                workspace.rope_project,
+                workspace.rope_project.get_file(
+                    initializer.relative_to(repository).as_posix()
+                ),
+            )
             bindings = u.Infra.lazy_export_bindings(
                 package.name,
                 initializer,

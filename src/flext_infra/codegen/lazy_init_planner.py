@@ -56,36 +56,36 @@ class FlextInfraCodegenLazyInitPlanner(
     _module_exports_cache: MutableMapping[
         tuple[str, bool, bool, bool, bool, bool],
         t.LazyAliasMap,
-    ] = u.PrivateAttr(
+    ] = m.PrivateAttr(
         default_factory=dict[tuple[str, bool, bool, bool, bool, bool], t.LazyAliasMap],
     )
-    _package_exports_cache: MutableMapping[str, frozenset[str]] = u.PrivateAttr(
+    _package_exports_cache: MutableMapping[str, frozenset[str]] = m.PrivateAttr(
         default_factory=dict[str, frozenset[str]],
     )
-    _source_exports_cache: MutableMapping[str, frozenset[str]] = u.PrivateAttr(
+    _source_exports_cache: MutableMapping[str, frozenset[str]] = m.PrivateAttr(
         default_factory=dict[str, frozenset[str]],
     )
-    _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan] = u.PrivateAttr(
+    _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan] = m.PrivateAttr(
         default_factory=dict[str, m.Infra.LazyInitPlan],
     )
-    _plan_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = u.PrivateAttr(
+    _plan_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = m.PrivateAttr(
         default_factory=dict,
     )
-    _parent_package_cache: MutableMapping[str, t.StrSequence] = u.PrivateAttr(
+    _parent_package_cache: MutableMapping[str, t.StrSequence] = m.PrivateAttr(
         default_factory=dict[str, t.StrSequence],
     )
-    _module_file_by_name: MutableMapping[str, Path] = u.PrivateAttr(
+    _module_file_by_name: MutableMapping[str, Path] = m.PrivateAttr(
         default_factory=dict[str, Path],
     )
     _project_layout_cache: MutableMapping[Path, m.Infra.RopeProjectLayout] = (
-        u.PrivateAttr(
+        m.PrivateAttr(
             default_factory=dict[Path, m.Infra.RopeProjectLayout],
         )
     )
-    _version_module_name: str = u.PrivateAttr(
+    _version_module_name: str = m.PrivateAttr(
         default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py",
     )
-    _collision_count: int = u.PrivateAttr(default_factory=int)
+    _collision_count: int = m.PrivateAttr(default_factory=int)
 
     def plan_all_inits(
         self,

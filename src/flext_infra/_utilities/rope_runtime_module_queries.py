@@ -381,9 +381,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         if not callable(factory):
             msg = "Rope project owner does not expose snapshot construction"
             raise TypeError(msg)
-        # The native core is probed by attribute so its untyped preference
-        # members enter only through the validated adapter below.
-        pycore: p.AttributeProbe = project.get_pycore()
+        pycore = project.get_pycore()
         snapshot = factory(
             project.root.real_path,
             contents,

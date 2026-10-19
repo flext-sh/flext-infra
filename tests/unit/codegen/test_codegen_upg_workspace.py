@@ -375,10 +375,10 @@ class TestsFlextInfraCodegenUpgWorkspace:
             eq=gitlink,
         )
         locked = u.Tests.toml_payload((root / c.Infra.UV_LOCK_FILENAME).read_text())
-        packages = t.Cli.JSON_LIST_ADAPTER.validate_python(locked["package"])
+        packages = u.Cli.JSON_LIST_ADAPTER.validate_python(locked["package"])
         tm.that(
             tuple(
-                t.Cli.JSON_MAPPING_ADAPTER.validate_python(item)["name"]
+                u.Cli.JSON_MAPPING_ADAPTER.validate_python(item)["name"]
                 for item in packages
             ),
             has=member.distribution,

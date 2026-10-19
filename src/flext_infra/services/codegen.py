@@ -53,7 +53,7 @@ class FlextInfraCodegenHandlers:
         )
 
     def codegen_protocol_models(
-        self: p.Infra.CodegenExecutionContext,
+        self: p.Infra.CodegenHandlerContext,
         request: p.Infra.CommandPayloadContext,
     ) -> p.Result[p.Infra.CodegenResult]:
         """Bind protocol projection to this API's native conformance handler.

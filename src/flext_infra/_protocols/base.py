@@ -200,6 +200,10 @@ class FlextInfraProtocolsBase(Protocol):
             self,
         ) -> FlextInfraProtocolsBase.CodegenConformPorts | None: ...
 
+    @runtime_checkable
+    class CodegenHandlerContext(CodegenExecutionContext, Protocol):
+        """API handler context that also exposes native conform execution."""
+
         def codegen_conform(
             self,
             request: FlextInfraProtocolsBase.CodegenConformRequest,
