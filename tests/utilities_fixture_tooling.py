@@ -322,7 +322,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             return r[bool].from_failure(binary)
         environment = u.Infra.runtime_environment_dir(root)
         environment.parent.mkdir(parents=True, exist_ok=True)
-        uv = TestsFlextInfraUtilitiesToolingFixtureMixin.managed_uv()
+        TestsFlextInfraUtilitiesToolingFixtureMixin.managed_uv()
         created = u.Cli.run_checked(
             [str(binary.value), "venv", "--python", sys.executable, str(environment)],
             cwd=root,

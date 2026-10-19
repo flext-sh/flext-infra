@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING
 from flext_infra import r
 from flext_infra.codegen import FlextInfraMisePublication
 from flext_infra.docs.generator import FlextInfraDocGenerator
-from flext_infra.codegen import FlextInfraMisePublication
 from tests import m, tm, u
 
 if TYPE_CHECKING:

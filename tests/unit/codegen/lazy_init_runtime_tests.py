@@ -24,14 +24,18 @@ class TestsFlextInfraLazyInitRuntime:
     @pytest.mark.parametrize(
         ("declarations", "mapping_argument"),
         [
-            ("", 'MappingProxyType({"Exported": (".provider", "Declared")})'),
             (
-                '_LAZY_IMPORTS = MappingProxyType({"Exported": (".provider", "Declared")})\n',
+                "",
+                'MappingProxyType({"Exported": (".provider", "Declared")})',
+            ),
+            (
+                ("_LAZY_IMPORTS = MappingProxyType("
+                '{"Exported": (".provider", "Declared")})\n'),
                 "_LAZY_IMPORTS",
             ),
             (
-                '_PROVIDERS = {"Exported": (".provider", "Declared")}\n'
-                "_LAZY_IMPORTS = MappingProxyType(_PROVIDERS)\n",
+                ('_PROVIDERS = {"Exported": (".provider", "Declared")}\n'
+                "_LAZY_IMPORTS = MappingProxyType(_PROVIDERS)\n"),
                 "aliases=_LAZY_IMPORTS",
             ),
         ],
@@ -74,10 +78,11 @@ class TestsFlextInfraLazyInitRuntime:
                 (
                     sys.executable,
                     "-c",
+                    ("import sys\n"
                     f"from {package.name} import Exported\n"
-                    f"from {package.name}.provider import Declared\n"
-                    "assert Exported is Declared\n"
-                    "assert Exported.marker is True\n",
+                    "assert Exported is "
+                    f"sys.modules['{package.name}.provider'].Declared\n"
+                    "assert Exported.marker is True\n"),
                 ),
                 cwd=repository,
                 options=m.Cli.ProcessOptions(
