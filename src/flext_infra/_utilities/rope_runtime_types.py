@@ -197,7 +197,9 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         return isinstance(value, cls.runtime_type("rope.base.pynames", "DefinedName"))
 
     @classmethod
-    def imported_name(cls, value: p.AttributeProbe) -> bool:
+    def imported_name(
+        cls, value: p.Infra.RopePyName | None
+    ) -> TypeIs[p.Infra.RopeImportedName]:
         """Return whether ``value`` is a Rope imported name.
 
         Returns:
@@ -205,6 +207,20 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
 
         """
         return isinstance(value, cls.runtime_type("rope.base.pynames", "ImportedName"))
+
+    @classmethod
+    def imported_module(
+        cls, value: p.Infra.RopePyName | None
+    ) -> TypeIs[p.Infra.RopeImportedModule]:
+        """Prove native module-import provenance without evaluating the module.
+
+        Returns:
+            Whether the binding exposes the native module import contract.
+
+        """
+        return isinstance(
+            value, cls.runtime_type("rope.base.pynames", "ImportedModule")
+        )
 
     @classmethod
     def parameter_name(cls, value: p.AttributeProbe) -> bool:
@@ -248,16 +264,6 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
             cls._exception_type("rope.base.exceptions", "ModuleNotFoundError"),
             AttributeError,
         )
-
-    @classmethod
-    def rope_error_types(cls) -> t.VariadicTuple[type[BaseException]]:
-        """Return the generic Rope exception boundary.
-
-        Returns:
-            The generic Rope exception boundary.
-
-        """
-        return (cls._exception_type("rope.base.exceptions", "RopeError"),)
 
     @classmethod
     def rope_module_not_found_error_types(cls) -> t.VariadicTuple[type[BaseException]]:

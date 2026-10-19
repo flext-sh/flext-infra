@@ -68,7 +68,13 @@ class Shipment(m.FrozenModel):
         default=None, description="Typed envelope.")
 
 
-class Inventory(m.BaseModel):
+class _InventoryBase(m.BaseModel):
+    """Inherited model fields retain their native attribute bindings."""
+
+    environment: str = m.Field(default="test", description="Inventory environment.")
+
+
+class Inventory(_InventoryBase):
     """A mutable inventory count."""
 
     quantity: int = m.Field(default=1, description="Available units.")
@@ -146,6 +152,8 @@ CONSUMER = '''\
 """Consumer referencing the member protocols facade."""
 
 from demo_member import p
+
+NAMESPACE = p.DemoMember
 
 
 def ship(order: p.DemoMember.Order) -> p.DemoMember.Payload:
@@ -649,7 +657,7 @@ def test_missing_parent_epoch_requires_a_journal_owned_transition(
         "        assert accepted[0].content is None and accepted[0].device is None\n"
         "        assert accepted[0].parent_inode == source.parent.stat().st_ino\n"
         "        candidate = tm.ok(FlextInfraStagedPackage.plan_sources("
-        "root, {}, inputs=accepted))\n"
+        "root, {}, options=m.Infra.StageSourceOptions(inputs=accepted)))\n"
         "        assert next(item for item in candidate.inputs "
         "if item.path == source) == accepted[0]\n"
         "        assert original.parent_inode is None and original.content is None\n"
@@ -731,7 +739,8 @@ def test_candidate_inputs_advance_only_through_native_publication(
         "prior_publications=(receipt,))\n"
         "view = reader.preview_sources(root, {}, "
         "lambda candidate, _: (candidate / source.name).read_bytes(),\n"
-        "    inputs=(original,), runtime_check=False)\n"
+        "    options=m.Infra.CodegenSourcePreviewOptions("
+        "inputs=(original,), runtime_check=False))\n"
         "if change is None:\n"
         '    assert tm.ok(view) == b"owned bytes\\n"\n'
         "else:\n"

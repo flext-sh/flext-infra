@@ -26,6 +26,7 @@ from flext_infra._utilities._semantic_cutover import (
 
 class FlextInfraUtilitiesSemanticCutoverNestingCst(
     FlextInfraUtilitiesSemanticCutoverNestingReferences,
+    FlextInfraUtilitiesSemanticCutoverNestingOwner,
 ):
     """Move identity-proven members using one native source graph and regions."""
 
@@ -35,22 +36,19 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         source: str,
         *,
         native: t.Pair[p.Infra.RopeProject, p.Infra.RopeFile],
-        scope: t.Pair[str, bool],
-        bindings_by_module: t.MappingKV[str, t.StrMapping],
-        providers_by_module: t.MappingKV[str, p.Infra.RopeResource],
-        definitions: t.StrMapping,
+        bindings: t.Pair[
+            t.MappingKV[str, t.StrMapping],
+            t.MappingKV[str, p.Infra.RopeResource],
+        ],
+        selection: t.Pair[t.StrMapping, bool],
         sources: t.MappingKV[Path, str],
-        is_pytest: bool = False,
     ) -> str:
         project, resource = native
-        module_name, is_package_init = scope
+        definitions, is_pytest = selection
         rewritten = cls._rewrite_class_nesting_references(
             source,
             native=native,
-            module_name=module_name,
-            is_package_init=is_package_init,
-            bindings_by_module=bindings_by_module,
-            providers_by_module=providers_by_module,
+            bindings=bindings,
             definitions=definitions,
             sources=sources,
         )
@@ -447,8 +445,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         if not is_pytest:
             return nested_source
         return cls._publish_test_bindings(
-            project,
-            resource,
+            (project, resource),
             nested_source,
             owner_name,
             original_bindings=None
@@ -460,8 +457,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
     @classmethod
     def _publish_test_bindings(
         cls,
-        project: p.Infra.RopeProject,
-        resource: p.Infra.RopeResource,
+        native: t.Pair[p.Infra.RopeProject, p.Infra.RopeResource],
         source: str,
         owner_name: str,
         *,
@@ -471,18 +467,14 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         """Keep pytest's original module registration owning every declaration.
 
         Args:
+            native: The native project and original resource.
             source: Authored module text holding the owning class.
             owner_name: Class whose declarations this publication owns.
-            publisher: Dotted publish callable injected into the module.
             original_bindings: Names that must survive publication unchanged.
             composition: Whether the plain composition root is hidden.
 
         Returns:
             The published module text with the owned bootstrap appended.
-
-        Raises:
-            ValueError: A required staticmethod is missing from allowed tails,
-                or a class-owned binding shadows the publication bootstrap.
 
         """
         tree = ast.parse(source)
@@ -496,10 +488,32 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             and isinstance(node.value, ast.Call)
             and isinstance(node.value.func, ast.Attribute)
             and node.value.func.attr == "publish"
-            and isinstance(node.value.func.value, ast.Name)
+            and isinstance(node.value.func.value, ast.Name | ast.Attribute)
             for node in owner.body
         ):
             return source
+        bindings, metadata, registrations = cls._test_publication_members(
+            owner, tree, native, (original_bindings, composition)
+        )
+        bindings["__all__"] = repr([owner_name])
+        if not registrations:
+            return cls._publish_owner_exports(
+                native, source, owner, bindings["__all__"]
+            )
+        return cls._render_test_publication(
+            native, source, owner_name, (bindings, metadata, composition)
+        )
+
+    @classmethod
+    def _test_publication_members(
+        cls,
+        owner: ast.ClassDef,
+        tree: ast.Module,
+        native: t.Pair[p.Infra.RopeProject, p.Infra.RopeResource],
+        policy: t.Pair[frozenset[str] | None, bool],
+    ) -> t.Triple[dict[str, str], list[str], bool]:
+        project, resource = native
+        original_bindings, composition = policy
         fixtures = {"fixture", "hookimpl"} | {
             alias.asname or alias.name
             for node in tree.body
@@ -510,18 +524,14 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         bindings: dict[str, str] = {}
         metadata: list[str] = []
         registrations = False
-        patterns = (
-            FlextInfraUtilitiesSemanticCutoverNestingOwner._pytest_collection_patterns(
-                Path(project.root.real_path)
-            )
-        )
+        patterns = cls._pytest_collection_patterns(Path(project.root.real_path))
         original = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
         for node in owner.body:
             if isinstance(node, ast.ClassDef):
                 if (
                     composition
                     and (original_bindings is None or node.name in original_bindings)
-                    and FlextInfraUtilitiesSemanticCutoverNestingOwner._pytest_class_binding(
+                    and cls._pytest_class_binding(
                         node.name, original.get_attribute(node.name), patterns[1]
                     )
                 ):
@@ -529,97 +539,128 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                 if original_bindings is not None and node.name not in original_bindings:
                     continue
-                decorators = [
-                    decorator.func if isinstance(decorator, ast.Call) else decorator
-                    for decorator in node.decorator_list
-                ]
-                tails = {
-                    decorator.attr
-                    if isinstance(decorator, ast.Attribute)
-                    else decorator.id
-                    if isinstance(decorator, ast.Name)
-                    else ""
-                    for decorator in decorators
-                }
-                if (
-                    node.name.startswith("pytest_")
-                    or node.name
-                    in {
-                        "setup_module",
-                        "teardown_module",
-                        "setup_function",
-                        "teardown_function",
-                    }
-                    or tails & fixtures
-                    or (
-                        composition
-                        and FlextInfraUtilitiesSemanticCutoverNestingOwner._pytest_name_matches(
-                            node.name, patterns[2]
-                        )
-                    )
+                if cls._pytest_function_publication(
+                    node, fixtures, (composition, patterns[2]), resource.path
                 ):
-                    if "staticmethod" not in tails:
-                        msg = (
-                            "pytest publication requires staticmethod outside "
-                            f"fixture/hook decorators: {resource.path}:{node.name}"
-                        )
-                        raise ValueError(msg)
                     bindings[node.name] = f"{node.name}.__func__"
                     registrations = True
             elif isinstance(node, ast.Assign | ast.AnnAssign):
-                targets = (
+                for name in cls._pytest_metadata_names(node, original_bindings):
+                    bindings[name] = name
+                    metadata.append(name)
+                    registrations = True
+        return bindings, metadata, registrations
+
+    @staticmethod
+    def _pytest_metadata_names(
+        node: ast.Assign | ast.AnnAssign,
+        original_bindings: frozenset[str] | None,
+    ) -> t.StrTuple:
+        targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+        return tuple(
+            target.id
+            for target in targets
+            if isinstance(target, ast.Name)
+            and (
+                target.id in {"pytestmark", "pytest_plugins"}
+                or (
+                    target.id != "__all__"
+                    and target.id.startswith("__")
+                    and target.id.endswith("__")
+                )
+            )
+            and (original_bindings is None or target.id in original_bindings)
+        )
+
+    @classmethod
+    def _pytest_function_publication(
+        cls,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        fixtures: set[str],
+        policy: t.Pair[bool, t.StrSequence],
+        resource_path: str,
+    ) -> bool:
+        decorators = [
+            decorator.func if isinstance(decorator, ast.Call) else decorator
+            for decorator in node.decorator_list
+        ]
+        tails = {
+            decorator.attr
+            if isinstance(decorator, ast.Attribute)
+            else decorator.id
+            if isinstance(decorator, ast.Name)
+            else ""
+            for decorator in decorators
+        }
+        selected = bool(
+            node.name.startswith("pytest_")
+            or node.name
+            in {
+                "setup_module",
+                "teardown_module",
+                "setup_function",
+                "teardown_function",
+            }
+            or tails & fixtures
+            or (policy[0] and cls._pytest_name_matches(node.name, policy[1]))
+        )
+        if selected and "staticmethod" not in tails:
+            msg = (
+                "pytest publication requires staticmethod outside "
+                f"fixture/hook decorators: {resource_path}:{node.name}"
+            )
+            raise ValueError(msg)
+        return selected
+
+    @staticmethod
+    def _publish_owner_exports(
+        native: t.Pair[p.Infra.RopeProject, p.Infra.RopeResource],
+        source: str,
+        owner: ast.ClassDef,
+        exports: str,
+    ) -> str:
+        project, resource = native
+        if any(
+            isinstance(node, ast.Assign | ast.AnnAssign)
+            and any(
+                isinstance(target, ast.Name) and target.id == "__all__"
+                for target in (
                     node.targets if isinstance(node, ast.Assign) else [node.target]
                 )
-                for target in targets:
-                    if isinstance(target, ast.Name) and (
-                        target.id in {"pytestmark", "pytest_plugins"}
-                        or (
-                            target.id != "__all__"
-                            and target.id.startswith("__")
-                            and target.id.endswith("__")
-                        )
-                    ):
-                        if (
-                            original_bindings is not None
-                            and target.id not in original_bindings
-                        ):
-                            continue
-                        bindings[target.id] = target.id
-                        metadata.append(target.id)
-                        registrations = True
-        bindings["__all__"] = repr((owner_name,))
-        if not registrations:
-            if any(
-                isinstance(node, ast.Assign | ast.AnnAssign)
-                and any(
-                    isinstance(target, ast.Name) and target.id == "__all__"
-                    for target in (
-                        node.targets if isinstance(node, ast.Assign) else [node.target]
-                    )
-                )
-                for node in owner.body
-            ):
-                return source
-            module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
-                project, source, resource=resource
             )
-            scope = next(
-                scope
-                for scope in module.get_scope().get_scopes()
-                if scope.pyobject.get_name() == owner_name
-            )
-            insertion = min(module.lines.get_line_end(scope.get_end()) + 1, len(source))
-            return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
-                resource,
-                source,
-                (
-                    m.Infra.SourceRewrite(
-                        start=insertion,
-                        end=insertion,
-                        text=f"\n    __all__: list[str] = {bindings['__all__']}\n",
-                    ),
+            for node in owner.body
+        ):
+            return source
+        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+            project, source, resource=resource
+        )
+        scope = next(
+            scope
+            for scope in module.get_scope().get_scopes()
+            if scope.pyobject.get_name() == owner.name
+        )
+        insertion = min(module.lines.get_line_end(scope.get_end()) + 1, len(source))
+        return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+            resource,
+            source,
+            (
+                m.Infra.SourceRewrite(
+                    start=insertion,
+                    end=insertion,
+                    text=f"\n    __all__: list[str] = {exports}\n",
                 ),
-            ).new_contents
+            ),
+        ).new_contents
+
+    @staticmethod
+    def _render_test_publication(
+        native: t.Pair[p.Infra.RopeProject, p.Infra.RopeResource],
+        source: str,
+        owner_name: str,
+        publication: t.Triple[t.StrMapping, t.StrSequence, bool],
+    ) -> str:
+        project, resource = native
+        bindings, metadata, composition = publication
         module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
             project, source, resource=resource
         )
@@ -646,7 +687,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             raise ValueError(msg)
         insertion = min(module.lines.get_line_end(scope.get_end()) + 1, len(source))
         rendered = ", ".join(f"{name!r}: {value}" for name, value in bindings.items())
-        bootstrap = f"\n    {publisher}.publish(module_globals=globals(), bindings={{{rendered}}})\n"
+        bootstrap = (
+            f"\n    {publisher}.publish("
+            f"module_globals=globals(), bindings={{{rendered}}})\n"
+        )
         if composition:
             # Only this ordinary composition root is hidden. Original suite and
             # free-function objects remain children of their original module.

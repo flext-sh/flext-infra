@@ -8,7 +8,7 @@ files:
   - "scripts/**/*.py"
 rule:
   all:
-    - pattern: t.$FACTORY($$$ARGS)
+    - pattern: $TYPES.$FACTORY($$$ARGS)
     - inside:
         kind: module
         stopBy: end
@@ -16,6 +16,8 @@ rule:
           stopBy: end
           matches: u-imported-from-flext
 constraints:
+  TYPES:
+    regex: "^(?:t|Flext[A-Za-z0-9]*Types)$"
   FACTORY:
     regex: "^[a-z][a-z0-9_]*_adapter$"
 fix: u.$FACTORY($$$ARGS)

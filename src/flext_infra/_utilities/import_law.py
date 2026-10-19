@@ -8,9 +8,12 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from time import monotonic
+from typing import Literal
 
-from flext_infra import c, config, t
+from flext_cli import settings, u
+
+from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesProjectDiscovery,
@@ -22,12 +25,367 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 
-if TYPE_CHECKING:
-    from flext_infra import p
-
 
 class FlextInfraUtilitiesImportLaw:
     """Single owner of the import-law facts the enforcement routes read."""
+
+    @staticmethod
+    def codemod_progress(message: str, due: float = 0) -> float:
+        """Report active source work at the configured heartbeat interval.
+
+        Returns:
+            The next monotonic deadline for an interval progress row.
+
+        """
+        now = monotonic()
+        if now < due:
+            return due
+        u.Cli.info(f"mod: {message}")
+        return now + settings.cli_process_heartbeat_seconds
+
+    @staticmethod
+    def family_letter(namespace_dir: Path, file_path: Path) -> str | None:
+        """Return the facade letter of the family package holding one module.
+
+        Returns:
+            The family letter, or None outside every family package.
+
+        """
+        relative = file_path.resolve().relative_to(namespace_dir.resolve())
+        return next(
+            (
+                letter
+                for part in (*relative.parts[:-1], relative.stem)
+                for letter, family in (
+                    FlextInfraUtilitiesCodegenNamespace.facade_families().items()
+                )
+                if part in {family.directory, family.module}
+            ),
+            None,
+        )
+
+    @staticmethod
+    def _module_bindings(tree: ast.Module) -> t.MappingKV[str, ast.stmt]:
+        """Return the module-level statement binding each top-level name.
+
+        Returns:
+            The first declaring statement for each module-level name.
+
+        """
+        bindings: t.MutableMappingKV[str, ast.stmt] = {}
+        for statement in tree.body:
+            names: list[str] = []
+            match statement:
+                case ast.Import(names=aliases) | ast.ImportFrom(names=aliases):
+                    names = [
+                        alias.asname or alias.name.partition(".")[0]
+                        for alias in aliases
+                    ]
+                case (
+                    ast.FunctionDef(name=name)
+                    | ast.AsyncFunctionDef(name=name)
+                    | ast.ClassDef(name=name)
+                ):
+                    names = [name]
+                case ast.Assign(targets=targets):
+                    names = [
+                        target.id for target in targets if isinstance(target, ast.Name)
+                    ]
+                case ast.AnnAssign(target=ast.Name(id=name)):
+                    names = [name]
+                case _:
+                    pass
+            for bound in names:
+                bindings.setdefault(bound, statement)
+        return bindings
+
+    @classmethod
+    def lazy_source(
+        cls,
+        scope: m.Infra.ImportLawScope,
+        module: str,
+        name: str,
+        *,
+        sources: t.MappingKV[Path, str] | None = None,
+    ) -> str | None:
+        """Return the nearest package that lazily publishes one leaf object.
+
+        Returns:
+            The publishing package, or None when no parent route is needed.
+
+        """
+        package = module.rpartition(".")[0]
+        directory = cls.import_package_dir(scope.project_root, module, sources=sources)
+        if directory is not None:
+            return cls._declared_subpackage_source(scope, module, name, sources=sources)
+        if not package or module == scope.module:
+            return None
+        if (
+            cls.import_lazy_exports(scope.project_root, module, sources=sources)
+            is not None
+        ):
+            return None
+        exports = cls.import_lazy_exports(scope.project_root, package, sources=sources)
+        if exports is None or exports.get(name) != module:
+            return None
+        return package
+
+    @classmethod
+    def _declared_subpackage_source(
+        cls,
+        scope: m.Infra.ImportLawScope,
+        module: str,
+        name: str,
+        *,
+        sources: t.MappingKV[Path, str] | None = None,
+    ) -> str | None:
+        """Discover a unique source declaration published by its own package.
+
+        Returns:
+            The declaring package, or no declared destination.
+
+        Raises:
+            ValueError: When independent declarations publish the same name.
+
+        """
+        directory = cls.import_package_dir(scope.project_root, module, sources=sources)
+        if directory is None:
+            return None
+        candidates: t.MutableMappingKV[str, str] = {}
+        due = 0.0
+        scanned = 0
+        for source_path in sorted(
+            directory.rglob("*.py")
+            if sources is None
+            else (
+                path
+                for path in sources
+                if path.is_relative_to(directory) and path.suffix == c.Infra.EXT_PYTHON
+            ),
+            key=lambda path: (len(path.parts), path),
+        ):
+            due = cls.codemod_progress(
+                f"import publication lookup project={scope.project_root} "
+                f"consumer={scope.file_path} symbol={module}.{name} "
+                f"scanned={scanned} provider={source_path}",
+                due,
+            )
+            scanned += 1
+            if source_path.name == c.Infra.INIT_PY:
+                continue
+            source = (
+                source_path.read_text(encoding=c.DEFAULT_ENCODING)
+                if sources is None
+                else sources[source_path]
+            )
+            if name not in (
+                FlextInfraUtilitiesRopeAnalysis.public_export_names_source(source)
+            ):
+                continue
+            declaration = cls._module_bindings(ast.parse(source)).get(name)
+            if not isinstance(
+                declaration,
+                ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef | ast.ImportFrom,
+            ):
+                continue
+            relative = source_path.relative_to(directory)
+            owner = ".".join((module, *relative.parent.parts))
+            identity = cls._declaration_identity(
+                scope,
+                f"{owner}.{source_path.stem}",
+                name,
+                frozenset(),
+                sources=sources,
+            )
+            candidates.setdefault(identity, owner)
+        cls.codemod_progress(
+            f"import publication ancestry project={scope.project_root} "
+            f"consumer={scope.file_path} symbol={module}.{name} "
+            f"scanned={scanned} candidates={len(candidates)}",
+            due,
+        )
+        ancestors = cls._declared_ancestors(scope, tuple(candidates), sources=sources)
+        candidates = {
+            identity: owner
+            for identity, owner in candidates.items()
+            if identity not in ancestors
+        }
+        if len(candidates) > 1:
+            msg = (
+                f"Ambiguous declared public import {module}.{name}: "
+                f"{sorted(candidates)}"
+            )
+            raise ValueError(msg)
+        return next(iter(candidates.values()), None)
+
+    @classmethod
+    def _declared_ancestors(
+        cls,
+        scope: m.Infra.ImportLawScope,
+        identities: t.StrTuple,
+        *,
+        sources: t.MappingKV[Path, str] | None = None,
+    ) -> frozenset[str]:
+        """Find explicit source ancestors of the published declarations.
+
+        Returns:
+            Canonical identities extended by another declaration.
+
+        """
+        ancestors: set[str] = set()
+        for identity in identities:
+            provider, _, symbol = identity.rpartition(".")
+            parent = cls.import_package_dir(
+                scope.project_root, provider.rpartition(".")[0], sources=sources
+            )
+            if parent is None:
+                continue
+            path = parent / f"{provider.rpartition('.')[2]}.py"
+            tree = ast.parse(
+                path.read_text(encoding=c.DEFAULT_ENCODING)
+                if sources is None
+                else sources[path]
+            )
+            declaration = cls._module_bindings(tree).get(symbol)
+            if not isinstance(declaration, ast.ClassDef):
+                continue
+            for expression in declaration.bases:
+                base = (
+                    expression.value
+                    if isinstance(expression, ast.Subscript)
+                    else expression
+                )
+                if isinstance(base, ast.Attribute) and base.attr != symbol:
+                    continue
+                receiver = base.value if isinstance(base, ast.Attribute) else base
+                if not isinstance(receiver, ast.Name):
+                    continue
+                bound, binding = cls._declared_binding(tree, receiver.id)
+                if isinstance(binding, ast.ImportFrom) and binding.module:
+                    imported = next(
+                        (
+                            alias
+                            for alias in binding.names
+                            if (alias.asname or alias.name) == bound
+                        ),
+                        None,
+                    )
+                    if imported is not None and (
+                        isinstance(base, ast.Attribute) or imported.name == symbol
+                    ):
+                        ancestors.add(
+                            cls._declaration_identity(
+                                scope,
+                                f"{binding.module}.{imported.name}"
+                                if isinstance(base, ast.Attribute)
+                                else binding.module,
+                                base.attr
+                                if isinstance(base, ast.Attribute)
+                                else imported.name,
+                                frozenset(),
+                                sources=sources,
+                            )
+                        )
+        return frozenset(ancestors)
+
+    @classmethod
+    def _declared_binding(
+        cls, tree: ast.Module, name: str
+    ) -> tuple[str, ast.stmt | None]:
+        """Follow module-level name aliases without executing the provider.
+
+        Returns:
+            The original bound name and its declaring statement.
+
+        Raises:
+            ValueError: When aliases form a cycle.
+
+        """
+        bindings = cls._module_bindings(tree)
+        seen: set[str] = set()
+        while name not in seen:
+            seen.add(name)
+            binding = bindings.get(name)
+            if not isinstance(binding, ast.Assign | ast.AnnAssign) or not isinstance(
+                binding.value, ast.Name
+            ):
+                return name, binding
+            name = binding.value.id
+        msg = f"Cyclic declared binding: {name}"
+        raise ValueError(msg)
+
+    @classmethod
+    def _declaration_identity(
+        cls,
+        scope: m.Infra.ImportLawScope,
+        module: str,
+        name: str,
+        seen: frozenset[str],
+        *,
+        sources: t.MappingKV[Path, str] | None = None,
+    ) -> str:
+        """Follow explicit reexports to their source, rejecting cyclic bindings.
+
+        Returns:
+            The canonical declaration's qualified identity.
+
+        Raises:
+            ValueError: When a reexport cycles or has no declared binding.
+            TypeError: When the binding is not a source declaration.
+
+        """
+        identity = f"{module}.{name}"
+        if identity in seen:
+            msg = f"Cyclic declared public import: {identity}"
+            raise ValueError(msg)
+        exports = cls.import_lazy_exports(scope.project_root, module, sources=sources)
+        if exports is not None and name in exports:
+            return cls._declaration_identity(
+                scope, exports[name], name, seen | {identity}, sources=sources
+            )
+        parent = cls.import_package_dir(
+            scope.project_root, module.rpartition(".")[0], sources=sources
+        )
+        if parent is None:
+            return identity
+        path = parent / f"{module.rpartition('.')[2]}.py"
+        if not (path.is_file() if sources is None else path in sources):
+            msg = f"Missing declared public import: {identity}"
+            raise ValueError(msg)
+        binding = cls._module_bindings(
+            ast.parse(
+                path.read_text(encoding=c.DEFAULT_ENCODING)
+                if sources is None
+                else sources[path]
+            )
+        ).get(name)
+        if isinstance(binding, ast.ImportFrom):
+            alias = next(
+                alias for alias in binding.names if (alias.asname or alias.name) == name
+            )
+            parts = module.split(".")[:-1]
+            target = (
+                ".".join((
+                    *parts[: len(parts) - binding.level + 1],
+                    binding.module or "",
+                )).rstrip(".")
+                if binding.level
+                else binding.module
+            )
+            if target:
+                return cls._declaration_identity(
+                    scope, target, alias.name, seen | {identity}, sources=sources
+                )
+        if isinstance(binding, ast.Assign) and isinstance(binding.value, ast.Name):
+            return cls._declaration_identity(
+                scope, module, binding.value.id, seen | {identity}, sources=sources
+            )
+        if not isinstance(
+            binding, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
+        ):
+            msg = f"Missing declared public import: {identity}"
+            raise TypeError(msg)
+        return identity
 
     @staticmethod
     def model_utility_target(
@@ -43,33 +401,14 @@ class FlextInfraUtilitiesImportLaw:
 
         Raises:
             ValueError: If the method needs facade dispatch or is not published.
+            TypeError: If the source declaration is not a module AST.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         if binding is None:
-            receiver, _, member = qualified.rpartition(".")
-            resolver = FlextInfraUtilitiesRopeSourceBasesRuntime._RuntimeBaseResolver(
-                project, {}, (), None
+            binding = FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_binding(
+                project, qualified
             )
-            identity = resolver._resolve(resolver._root_reference(receiver))
-            for ancestor in resolver._linearize(identity):
-                if ancestor in resolver._external:
-                    binding = resolver._external[ancestor].get_attributes().get(member)
-                else:
-                    module_name, _class_name, line = ancestor.rsplit(":", 2)
-                    declared = project.get_module(module_name).get_module()
-                    declared_scope = declared.get_scope().get_inner_scope_for_line(
-                        int(line)
-                    )
-                    if declared_scope.get_start() != int(line):
-                        msg = f"native class scope does not identify source owner: {ancestor}"
-                        raise ValueError(msg)
-                    binding = declared_scope.get_defined_names().get(member)
-                if binding is not None:
-                    break
-            if binding is None:
-                msg = f"model utility has no declared binding: {qualified}"
-                raise ValueError(msg)
         if binding.get_object().get_kind() not in {
             "function",
             "method",
@@ -84,7 +423,7 @@ class FlextInfraUtilitiesImportLaw:
         tree = holder.get_ast()
         if not isinstance(tree, ast.Module):
             msg = f"model utility has no source declaration: {qualified}"
-            raise ValueError(msg)
+            raise TypeError(msg)
         declarations = [
             (owner, method)
             for owner in tree.body
@@ -135,7 +474,12 @@ class FlextInfraUtilitiesImportLaw:
     ) -> t.SequenceOf[
         t.Pair[p.Infra.RopeContractRule, t.SequenceOf[p.Infra.RopeResource]]
     ]:
-        """Bind a family's new calls through its declared helper, never its facade."""
+        """Bind a family's new calls through its declared helper, never its facade.
+
+        Returns:
+            Contract routes grouped by their rewritten goal and native bindings.
+
+        """
         routes: list[tuple[p.Infra.RopeContractRule, list[p.Infra.RopeResource]]] = []
         for resource in resources:
             routed = cls._import_contract_rule(project, rule, resource, sources)
@@ -163,10 +507,15 @@ class FlextInfraUtilitiesImportLaw:
         resource: p.Infra.RopeResource,
         sources: t.MappingKV[Path, str],
     ) -> p.Infra.RopeContractRule:
-        """Apply existing family publication law to one consumer's native goals."""
-        from flext_infra import m
-        from flext_infra.refactor import FlextInfraImportNormalization
+        """Apply existing family publication law to one consumer's native goals.
 
+        Returns:
+            The original rule or its same-family publication route.
+
+        Raises:
+            TypeError: If the consumer is not a native source module.
+
+        """
         path = Path(resource.real_path).resolve()
         root = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
             Path(project.root.real_path), path, source_project=project
@@ -179,92 +528,48 @@ class FlextInfraUtilitiesImportLaw:
         if root is None or located is None or not rule.bindings:
             return rule
         namespace, module_name = located
-        letter = FlextInfraImportNormalization._family_letter(namespace, path)
+        letter = cls.family_letter(namespace, path)
         if letter is None:
             return rule
-        family = FlextInfraUtilitiesCodegenNamespace.facade_families()[letter]
-        directory = namespace / family.directory
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
-        scope = module.get_scope()
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+            message = f"family contract consumer is not a source module: {path}"
+            raise TypeError(message)
+        context = m.Infra.ImportLawScope(
+            project_root=root,
+            file_path=path,
+            namespace_dir=namespace,
+            module=module_name,
+            layer=cls.module_import_layer(module_name),
+            own_exports=frozenset(
+                FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                    module.source_code
+                )
+            ),
+            family_letter=letter,
+        )
+        return cls._family_contract_rule(project, rule, (context, module), sources)
+
+    @classmethod
+    def _family_contract_rule(
+        cls,
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        frame: t.Pair[m.Infra.ImportLawScope, p.Infra.RopePyModule],
+        sources: t.MappingKV[Path, str],
+    ) -> p.Infra.RopeContractRule:
+        """Rewrite eligible bindings without changing unrelated imports.
+
+        Returns:
+            The original rule or a copy carrying family-local destinations.
+
+        """
         goal, imports, bindings = rule.goal, dict(rule.imports), dict(rule.bindings)
         for expression, identity in rule.bindings.items():
-            binding = runtime.qualified_name(project, identity)
-            provider = binding.get_object().get_module()
-            provider_resource = (
-                provider.get_resource() if provider is not None else None
-            )
-            if provider is None or provider_resource is None:
+            route = cls._family_binding_route(project, identity, frame, sources)
+            if route is None:
                 continue
-            provider_path = Path(provider_resource.real_path).resolve()
-            own_utility = letter == "m" and provider_path.is_relative_to(
-                namespace
-                / FlextInfraUtilitiesCodegenNamespace.facade_families()["u"].directory
-            )
-            if (
-                own_utility
-                and cls.model_utility_target(project, identity, binding=binding) is None
-            ):
-                message = (
-                    f"model utility destination is not a static method: {identity}"
-                )
-                raise ValueError(message)
-            if not own_utility and not provider_path.is_relative_to(directory):
-                continue
-            relative = identity.removeprefix(f"{provider.get_name()}.")
-            owner, separator, member = relative.partition(".")
-            if not separator or owner not in (
-                FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                    sources[provider_path]
-                )
-            ):
-                continue
-            owner_binding = runtime.qualified_name(
-                project, f"{provider.get_name()}.{owner}"
-            )
-            package = FlextInfraImportNormalization._lazy_source(
-                m.Infra.ImportLawScope(
-                    project_root=root,
-                    file_path=path,
-                    namespace_dir=namespace,
-                    module=module_name,
-                    layer=cls.module_import_layer(module_name),
-                    own_exports=frozenset(
-                        FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                            module.source_code
-                        )
-                    ),
-                    family_letter=letter,
-                ),
-                provider.get_name(),
-                owner,
-                sources=sources,
-            )
-            local = next(
-                (
-                    name
-                    for name, candidate in scope.get_names().items()
-                    if runtime.same_name(owner_binding, candidate)
-                ),
-                owner,
-            )
-            if not runtime.same_name(owner_binding, scope.get_names().get(local)):
-                local = next(
-                    (
-                        f"{name}.{owner}"
-                        for name, candidate in scope.get_names().items()
-                        if runtime.same_name(
-                            owner_binding,
-                            candidate.get_object().get_attributes().get(owner),
-                        )
-                    ),
-                    local,
-                )
-            if package is None and not runtime.same_name(
-                owner_binding, scope.get_names().get(local)
-            ):
-                message = f"{identity}: same-family destination has no lazy publication"
-                raise ValueError(message)
+            local, member, package, owner = route
             destination = f"{local}.{member}"
             del bindings[expression]
             bindings[destination] = identity
@@ -282,6 +587,122 @@ class FlextInfraUtilitiesImportLaw:
             rule, from_attributes=True
         ).model_copy(update={"goal": goal, "imports": imports, "bindings": bindings})
 
+    @classmethod
+    def _family_binding_route(
+        cls,
+        project: p.Infra.RopeProject,
+        identity: str,
+        frame: t.Pair[m.Infra.ImportLawScope, p.Infra.RopePyModule],
+        sources: t.MappingKV[Path, str],
+    ) -> tuple[str, str, str | None, str] | None:
+        """Resolve one published family binding into its consumer spelling.
+
+        Returns:
+            Local spelling, member, publication package and declared owner.
+
+        Raises:
+            ValueError: If a destination has no lazy publication.
+
+        """
+        context, module = frame
+        binding = FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+            project, identity
+        )
+        provider = binding.get_object().get_module()
+        resource = provider.get_resource() if provider is not None else None
+        if provider is None or resource is None:
+            return None
+        path = Path(resource.real_path).resolve()
+        if not cls._family_provider_admitted(project, identity, binding, context, path):
+            return None
+        owner, separator, member = identity.removeprefix(
+            f"{provider.get_name()}."
+        ).partition(".")
+        if not separator or owner not in (
+            FlextInfraUtilitiesRopeAnalysis.public_export_names_source(sources[path])
+        ):
+            return None
+        owner_binding = FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+            project, f"{provider.get_name()}.{owner}"
+        )
+        package = cls.lazy_source(context, provider.get_name(), owner, sources=sources)
+        local = cls._family_owner_spelling(module.get_scope(), owner_binding, owner)
+        if package is None and not FlextInfraUtilitiesRopeRuntimeModules.same_name(
+            owner_binding, module.get_scope().get_names().get(local)
+        ):
+            message = f"{identity}: same-family destination has no lazy publication"
+            raise ValueError(message)
+        return local, member, package, owner
+
+    @classmethod
+    def _family_provider_admitted(
+        cls,
+        project: p.Infra.RopeProject,
+        identity: str,
+        binding: p.Infra.RopePyName,
+        context: m.Infra.ImportLawScope,
+        path: Path,
+    ) -> bool:
+        """Check family ownership and the model-to-utility static boundary.
+
+        Returns:
+            Whether the provider belongs to the routed family.
+
+        Raises:
+            ValueError: If a model utility destination is not a static method.
+
+        """
+        families = FlextInfraUtilitiesCodegenNamespace.facade_families()
+        if context.family_letter is None:
+            message = "family provider routing requires a declared family letter"
+            raise ValueError(message)
+        own_utility = context.family_letter == "m" and path.is_relative_to(
+            context.namespace_dir / families["u"].directory
+        )
+        if (
+            own_utility
+            and cls.model_utility_target(project, identity, binding=binding) is None
+        ):
+            message = f"model utility destination is not a static method: {identity}"
+            raise ValueError(message)
+        return own_utility or path.is_relative_to(
+            context.namespace_dir / families[context.family_letter].directory
+        )
+
+    @staticmethod
+    def _family_owner_spelling(
+        scope: p.Infra.RopeScope,
+        binding: p.Infra.RopePyName,
+        owner: str,
+    ) -> str:
+        """Resolve direct and module-qualified spellings of one native owner.
+
+        Returns:
+            The existing local spelling, or the declared owner name.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        local = next(
+            (
+                name
+                for name, candidate in scope.get_names().items()
+                if runtime.same_name(binding, candidate)
+            ),
+            owner,
+        )
+        if runtime.same_name(binding, scope.get_names().get(local)):
+            return local
+        return next(
+            (
+                f"{name}.{owner}"
+                for name, candidate in scope.get_names().items()
+                if runtime.same_name(
+                    binding, candidate.get_object().get_attributes().get(owner)
+                )
+            ),
+            local,
+        )
+
     @staticmethod
     def import_contract_bindings(
         project: p.Infra.RopeProject,
@@ -290,9 +711,15 @@ class FlextInfraUtilitiesImportLaw:
         scope: p.Infra.RopeScope,
         offset: int,
     ) -> bool:
-        """Prove each destination and its preceding unconditional import."""
-        from flext_infra import p
+        """Prove each destination and its preceding unconditional import.
 
+        Returns:
+            True when every present destination preserves its native identity.
+
+        Raises:
+            ValueError: If a destination is shadowed or lacks its preceding import.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         for expression, expected in rule.bindings.items():
             identity = runtime.qualified_name(project, expected)
@@ -580,7 +1007,15 @@ class FlextInfraUtilitiesImportLaw:
         root: Path,
         sources: t.MappingKV[Path, str],
     ) -> p.Infra.RopePyName | None:
-        """Follow the existing native lazy routes without losing tuple aliases."""
+        """Follow the existing native lazy routes without losing tuple aliases.
+
+        Returns:
+            The declared native binding, or None when the final provider lacks it.
+
+        Raises:
+            ValueError: If a lazy route cycles or does not name one binding.
+
+        """
         provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
             project.get_module(module_name)
         )

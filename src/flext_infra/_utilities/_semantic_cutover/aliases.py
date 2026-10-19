@@ -343,6 +343,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
         findings: t.SequenceOf[m.Infra.ModOccurrence],
+        import_normalizer: p.Infra.SourceImportNormalizer | None,
     ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Plan local alias removal and binding-proven consumer rewrites atomically.
 
@@ -429,13 +430,20 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                 path in service_aliases
                 or any(module in service_projects for module in import_aliases)
             ):
-                rewritten = cls._normalize_service_alias_consumer(
-                    path,
-                    rewritten,
-                    consumer_project,
+                if consumer_project is None or import_normalizer is None:
+                    message = (
+                        "service alias consumer requires its project owner "
+                        f"and import normalizer: {path}"
+                    )
+                    raise ValueError(message)
+                normalized = import_normalizer(
+                    file_path=path,
+                    source=rewritten,
+                    project_root=consumer_project,
                     import_graph=service_graph,
                     sources={**sources, path: rewritten},
                 )
+                rewritten = rewritten if normalized is None else normalized
             FlextInfraUtilitiesCompatibilityAliasValidation.require_zero_compatibility_alias_residue(
                 rewritten,
                 path,
@@ -448,38 +456,6 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
             )
 
         return cls._semantic_edits(cls._editable_sources(sources), rewrite)
-
-    @staticmethod
-    def _normalize_service_alias_consumer(
-        path: Path,
-        source: str,
-        consumer_project: Path | None,
-        *,
-        import_graph: t.MappingKV[str, frozenset[str]],
-        sources: t.MappingKV[Path, str],
-    ) -> str:
-        """Normalize rewritten service imports against their authenticated owner.
-
-        Returns:
-            Normalized source, or the unchanged source when no import repair is needed.
-
-        Raises:
-            ValueError: If the service alias consumer has no project owner.
-
-        """
-        from flext_infra.refactor import FlextInfraImportNormalization
-
-        if consumer_project is None:
-            message = f"service alias consumer has no project owner: {path}"
-            raise ValueError(message)
-        normalized = FlextInfraImportNormalization.normalize_source(
-            project_root=consumer_project,
-            file_path=path,
-            source=source,
-            import_graph=import_graph,
-            sources=sources,
-        )
-        return source if normalized is None else normalized
 
     @staticmethod
     def _service_alias_projects(

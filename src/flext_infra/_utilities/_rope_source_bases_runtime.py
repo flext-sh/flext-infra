@@ -25,6 +25,22 @@ from flext_infra._utilities._rope_source_bases_inventory import (
 class FlextInfraUtilitiesRopeSourceBasesRuntime:
     """Qualified runtime-base resolution and linearization."""
 
+    @classmethod
+    def source_member_binding(
+        cls, project: p.Infra.RopeProject, qualified: str
+    ) -> p.Infra.RopePyName:
+        """Resolve the first declared member along its authenticated native C3 order.
+
+        Native resolution failures propagate without changing their cause.
+
+        Returns:
+            The member binding belonging to the exact source or external owner.
+
+        """
+        return cls._RuntimeBaseResolver(project, {}, (), None).source_member_binding(
+            qualified
+        )
+
     @staticmethod
     def merge_class_lineages[TIdentity: str | t.Pair[str, str]](
         lineages: t.SequenceOf[t.SequenceOf[TIdentity]],
@@ -70,6 +86,37 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         the ordered bases. Missing references and invalid inheritance fail
         loudly.
         """
+
+        def source_member_binding(self, qualified: str) -> p.Infra.RopePyName:
+            """Read a member from the first native declaration in the source MRO.
+
+            Returns:
+                The native member binding owned by the first declaring ancestor.
+
+            Raises:
+                ValueError: If an owner scope or declared member cannot be proven.
+
+            """
+            receiver, _, member = qualified.rpartition(".")
+            identity = self._resolve(self._root_reference(receiver))
+            for ancestor in self._linearize(identity):
+                if ancestor in self._external:
+                    binding = self._external[ancestor].get_attributes().get(member)
+                else:
+                    module_name, _class_name, line = ancestor.rsplit(":", 2)
+                    declared = self._project.get_module(module_name).get_module()
+                    scope = declared.get_scope().get_inner_scope_for_line(int(line))
+                    if scope.get_start() != int(line):
+                        msg = (
+                            "native class scope does not identify source owner: "
+                            f"{ancestor}"
+                        )
+                        raise ValueError(msg)
+                    binding = scope.get_defined_names().get(member)
+                if binding is not None:
+                    return binding
+            msg = f"model utility has no declared binding: {qualified}"
+            raise ValueError(msg)
 
         def __init__(
             self,
@@ -239,6 +286,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         alias_module,
                         alias_path,
                         alias_source,
+                        project=self._project,
                     )
                 ).items():
                     qualified_alias = f"{alias_module}.{alias}"

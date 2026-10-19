@@ -817,7 +817,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         cls._payload_insert(project, updated, destination, imports, transplanted)
         for path, source in sources.items():
             if updated[path] != source:
-                updated[path] = cls._remove_orphaned_imports(
+                updated[path] = cls.remove_orphaned_imports(
                     project,
                     project.get_resource(path.relative_to(root).as_posix()),
                     source,
@@ -826,7 +826,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         return updated
 
     @classmethod
-    def _remove_orphaned_imports(
+    def remove_orphaned_imports(
         cls,
         project: p.Infra.RopeProject,
         resource: p.Infra.RopeResource,

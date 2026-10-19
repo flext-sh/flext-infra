@@ -96,9 +96,8 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 path, destination = cls._retire_contract_rule(
                     project,
                     rule,
-                    owner,
                     proposed,
-                    owned_modules,
+                    (owner, owned_modules),
                     destinations=tuple(
                         runtime.qualified_name(project, identity)
                         for transfer in rules
@@ -119,9 +118,8 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         cls,
         project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
-        owner: Path,
         proposed: t.MutableMappingKV[t.Infra.RopeSourcePath, str],
-        owned_modules: t.MappingKV[str, t.Infra.RopeSourcePath],
+        ownership: tuple[Path, t.MappingKV[str, t.Infra.RopeSourcePath]],
         *,
         destinations: t.SequenceOf[p.Infra.RopePyName],
     ) -> t.Pair[t.Infra.RopeSourcePath | None, t.Infra.RopeSourcePath | None]:
@@ -139,6 +137,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
+        owner, owned_modules = ownership
         if rule.ownership_transfer is None:
             return None, None
         binding = cls.contract_transfer_binding(
@@ -220,6 +219,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             The optional lexical container and the cached native definition node.
 
         Raises:
+            TypeError: If the target is not a native source definition.
             ValueError: If no native declaration matches the scope, the
                 retiring wrapper cannot be proven or the declaration has no
                 native end span.
@@ -329,7 +329,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 project, resource
             )
             if after != before_module.source_code:
-                proposed[changed] = cls._remove_orphaned_imports(
+                proposed[changed] = cls.remove_orphaned_imports(
                     project,
                     resource,
                     before_module.source_code,
@@ -348,6 +348,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             Whether the retired module body became provably empty.
 
         Raises:
+            TypeError: If the proposed module has no native syntax tree.
             ValueError: If a retiring wrapper still carries live behavior.
 
         """
@@ -398,6 +399,10 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             The retiring module path and whether its body became provably
             empty.
 
+        Raises:
+            TypeError: If the native declaration or its span is unavailable.
+            ValueError: If the declaration has no native source resource.
+
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         module, (path, source) = cls._authenticated_retirement_owner(binding, proposed)
@@ -417,12 +422,9 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         cls._prove_contract_retirement(
             project,
             proposed,
-            binding=binding,
+            owners=(binding, container),
             destinations=destinations,
-            container=container,
-            owner_path=path,
-            first_line=target.lineno,
-            last_line=target.end_lineno,
+            span=(path, target.lineno, target.end_lineno),
         )
         cls._verify_transfer_compatibility(binding, destination)
         if container is not None:
@@ -453,7 +455,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 source, alias="__all__"
             )
         ):
-            source = FlextInfraUtilitiesRopeModulePatch._rewrite_all_declaration(
+            source = FlextInfraUtilitiesRopeModulePatch.rewrite_all_declaration(
                 source,
                 names=[
                     name
@@ -571,12 +573,9 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         project: p.Infra.RopeProject,
         sources: t.MappingKV[t.Infra.RopeSourcePath, str],
         *,
-        binding: p.Infra.RopePyName,
+        owners: tuple[p.Infra.RopePyName, p.Infra.RopePyName | None],
         destinations: t.SequenceOf[p.Infra.RopePyName],
-        container: p.Infra.RopePyName | None,
-        owner_path: t.Infra.RopeSourcePath,
-        first_line: int,
-        last_line: int,
+        span: tuple[Path, int, int],
     ) -> None:
         """Prove all governed uses without evaluating opaque receiver expressions."""
         cls._require_governed_inventory(project, sources)
@@ -590,9 +589,9 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             cls._prove_retirement_source(
                 project,
                 (path, source),
-                (binding, container),
+                owners,
                 (destinations, reflectors),
-                (owner_path, first_line, last_line),
+                span,
             )
 
     @classmethod
@@ -636,7 +635,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 and actual is not None
                 and (
                     runtime.same_name(container, actual)
-                    or actual.get_object() == binding.get_object().get_module()
+                    or actual.get_object() is binding.get_object().get_module()
                 )
             )
 
@@ -647,7 +646,10 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
 
         cls._prove_retirement_exports(module, entry, owners, span[0])
         cls._prove_retirement_nodes(
-            tree, covers, resolves, (whole_owner, carries),
+            tree,
+            covers,
+            resolves,
+            (whole_owner, carries),
             (binding, container, path, callees),
         )
         if path != span[0]:
@@ -674,7 +676,9 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             Callable[[p.Infra.RopeAstNode], bool],
         ],
         context: tuple[
-            p.Infra.RopePyName, p.Infra.RopePyName | None, Path,
+            p.Infra.RopePyName,
+            p.Infra.RopePyName | None,
+            Path,
             tuple[t.SequenceOf[p.Infra.RopePyName], t.SequenceOf[p.Infra.RopePyName]],
         ],
     ) -> None:
@@ -692,7 +696,10 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 )
             if isinstance(node, ast.Call):
                 cls._prove_retirement_call(
-                    node, resolves, whole_owner, carries,
+                    node,
+                    resolves,
+                    whole_owner,
+                    carries,
                     (*callees, binding.get_object().get_name(), path),
                 )
 
@@ -797,7 +804,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     @staticmethod
     def _prove_retirement_reference(
         node: ast.Name | ast.Attribute,
-        parents: t.MappingKV[int, ast.AST],
+        parents: t.MappingKV[int, p.Infra.RopeAstNode],
         resolves: Callable[[p.Infra.RopeAstNode], p.Infra.RopePyName | None],
         probes: tuple[
             Callable[[p.Infra.RopePyName | None], bool],
@@ -827,7 +834,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         if (
             actual is not None
             and whole_owner(actual)
-            and actual.get_object() == binding.get_object().get_module()
+            and actual.get_object() is binding.get_object().get_module()
             and not module_base
         ):
             msg = f"ownership transfer has surviving module usage: {path}:{node.lineno}"
@@ -887,7 +894,12 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         sources: t.MutableMappingKV[t.Infra.RopeSourcePath, str],
         container: p.Infra.RopePyName,
     ) -> None:
-        """Remove only class-header edges to the proven empty native container."""
+        """Remove only class-header edges to the proven empty native container.
+
+        Raises:
+            TypeError: If a base-owning module has no native syntax tree.
+
+        """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         for path, source in tuple(sources.items()):
             resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
@@ -897,7 +909,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 path,
             )
             module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
-            changes = []
+            changes: list[m.Infra.SourceRewrite] = []
             tree = module.get_ast()
             if not isinstance(tree, ast.Module):
                 msg = "retiring bases require the native module AST"

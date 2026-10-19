@@ -64,7 +64,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         path: Path,
         source: str,
         *,
-        project: p.Infra.RopeProject | None = None,
+        project: p.Infra.RopeProject,
         pymodule: p.Infra.RopeSemanticModule | None = None,
     ) -> t.StrDict:
         """Project the provider module of every declared lazy export binding.
@@ -91,7 +91,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         path: Path,
         source: str,
         *,
-        project: p.Infra.RopeProject | None = None,
+        project: p.Infra.RopeProject,
         pymodule: p.Infra.RopeSemanticModule | None = None,
     ) -> t.MappingKV[str, m.Infra.SourceClassReference]:
         """Read native lazy routes without losing their exported attributes.
@@ -100,6 +100,8 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         ``(provider, attribute)`` pair. An empty attribute elects the module
         itself. The same typed binding feeds source and upstream resolution;
         module-only consumers derive their projection from these bindings.
+        The owning project supplies native import identities even when the
+        initializer is parsed from proposed source rather than a live module.
 
         Returns:
             The absolute provider and exact attribute of every declared export.
@@ -236,14 +238,10 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
                     raise ValueError(message)
                 return literal
             if isinstance(node, ast.Call):
-                constructor = runtime.resolve_symbol(scope, node.func)
-                expected = runtime.qualified_name(
-                    module.pycore.project,
-                    "MappingProxyType",
-                    module_name="types",
-                )
                 if (
-                    not runtime.same_name(constructor, expected)
+                    not FlextInfraUtilitiesRopeSourceBasesAliases._immutable_alias_wrapper(
+                        node.func, scope
+                    )
                     or len(node.args) != 1
                     or node.keywords
                 ):
@@ -279,6 +277,41 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             module = provider
             expression = provider.source_code
             scope = provider.get_scope()
+
+    @staticmethod
+    def _immutable_alias_wrapper(
+        expression: ast.expr,
+        scope: p.Infra.RopeScope,
+    ) -> bool:
+        """Prove the standard wrapper from native import metadata alone.
+
+        Returns:
+            Whether this expression is the declared MappingProxyType import.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        if isinstance(expression, ast.Name):
+            binding = runtime.resolve_symbol(scope, expression)
+            if not types.imported_name(binding):
+                return False
+            module = binding.imported_module
+            attribute = binding.imported_name
+        elif isinstance(expression, ast.Attribute) and isinstance(
+            expression.value, ast.Name
+        ):
+            binding = runtime.resolve_symbol(scope, expression.value)
+            if not types.imported_module(binding):
+                return False
+            module = binding
+            attribute = expression.attr
+        else:
+            return False
+        return (
+            module.module_name == "types"
+            and module.level == 0
+            and attribute == "MappingProxyType"
+        )
 
     @staticmethod
     def _absolute_alias(package: str, value: str) -> str | None:

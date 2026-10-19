@@ -123,7 +123,7 @@ class TestsFlextInfraUvNativeResolution:
         root = tmp_path / "consumer"
         sdk = tmp_path / "sdk"
         provider = tmp_path / "provider"
-        u.Tests.write_native_resolution_project(sdk, sdk.name)
+        u.Tests.write_native_resolution_project(sdk, "source-election-sdk")
         u.Tests.initialize_git_repo(sdk)
         previous = tm.ok(
             u.Cli.capture([c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=sdk)
@@ -133,14 +133,14 @@ class TestsFlextInfraUvNativeResolution:
         current = tm.ok(
             u.Cli.capture([c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=sdk)
         ).strip()
-        stale = f"{sdk.name} @ git+{sdk.as_uri()}@{previous}"
-        selected = f"{sdk.name} @ git+{sdk.as_uri()}@{current}"
+        stale = f"source-election-sdk @ git+{sdk.as_uri()}@{previous}"
+        selected = f"source-election-sdk @ git+{sdk.as_uri()}@{current}"
         u.Tests.write_native_resolution_project(
-            provider, provider.name, dependencies=(stale,)
+            provider, "source-election-provider", dependencies=(stale,)
         )
         repository = u.Tests.repository_ref("source-election-root")
         leaf = u.Tests.repository_ref("source-election-leaf")
-        requirements = (selected, f"{provider.name} @ {provider.as_uri()}")
+        requirements = (selected, f"source-election-provider @ {provider.as_uri()}")
         u.Tests.write_native_resolution_project(
             root,
             repository.distribution,
@@ -208,7 +208,7 @@ class TestsFlextInfraUvNativeResolution:
         if configured:
             tm.that(
                 TestsFlextInfraUvNativeResolution._provider_source_locator(
-                    directory, sdk.name
+                    directory, "source-election-sdk"
                 )["git"],
                 has=current,
                 lacks=previous,
@@ -216,7 +216,8 @@ class TestsFlextInfraUvNativeResolution:
         else:
             tm.that(
                 process.stdout + process.stderr,
-                has=f"Requirements contain conflicting URLs for package `{sdk.name}`",
+                has="Requirements contain conflicting URLs for package "
+                "`source-election-sdk`",
             )
         tm.that(
             [u.Cli.toml_dumps(item.document) for item in (owner, *members)],

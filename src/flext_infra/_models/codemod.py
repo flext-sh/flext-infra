@@ -20,6 +20,16 @@ from flext_infra._models import FlextInfraModelsBase
 class FlextInfraModelsCodemod:
     """Typed contracts for native codemod scans and mutation reports."""
 
+    class ContractAdmissionOptions(FlextInfraModelsBase.FrozenArbitrary):
+        """Independent native admission selectors for one contract planning pass."""
+
+        annotation_only: bool = m.Field(
+            default=False, description="Limit admission to annotation-only contracts"
+        )
+        class_alias_only: bool = m.Field(
+            default=False, description="Limit admission to class-alias contracts"
+        )
+
     class AstGrepCapture(FlextInfraModelsBase.FrozenArbitrary):
         """Authenticate an occurrence against native UTF-8 capture coordinates."""
 

@@ -147,12 +147,18 @@ class FlextInfraNamespaceRelocationCascade:
             if state.content is not None
         }
         analysis = self.plan(
-            project_root=project_root,
+            m.Infra.NamespaceRelocationRequest(
+                project_root=project_root,
+                findings=findings,
+                py_files=py_files,
+                sources=sources,
+                receipt=m.Infra.CodegenPhaseAnalysis(
+                    phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                    inputs=states,
+                    files=(),
+                ),
+            ),
             rope_project=rope_project,
-            findings=findings,
-            py_files=py_files,
-            sources=sources,
-            source_states=states,
         ).unwrap()
         self.publish_plan(project_root, analysis, gates=gates).unwrap()
 
@@ -213,9 +219,11 @@ class FlextInfraNamespaceRelocationCascade:
         published = FlextInfraSemanticPublication.publish_semantic_artifact_plans(
             plans,
             repository_root=project_root,
-            projection_roots=(project_root,),
-            dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-            validator=verify if gates is not None else None,
+            options=m.Infra.SemanticPublicationOptions(
+                projection_roots=(project_root,),
+                dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                validator=verify if gates is not None else None,
+            ),
         )
         if published.failure:
             return r[bool].from_failure(published)
@@ -223,16 +231,9 @@ class FlextInfraNamespaceRelocationCascade:
 
     def plan(
         self,
+        request: m.Infra.NamespaceRelocationRequest,
         *,
-        project_root: Path,
         rope_project: p.Infra.RopeProject,
-        findings: t.SequenceOf[
-            t.Pair[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]
-        ],
-        py_files: t.SequenceOf[Path],
-        sources: t.MappingKV[Path, str],
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Compose native relocation effects without performing any Rope changes.
 
@@ -240,47 +241,93 @@ class FlextInfraNamespaceRelocationCascade:
             The composed phase analysis, or the first planning failure.
 
         """
-        selected = frozenset(py_files)
-        working = dict(sources)
-        originals = {state.path: state for state in source_states}
+        initialized = self._capture_relocation_state(request)
+        if initialized.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(initialized)
+        state = initialized.value
+        names, spans, imports, classes = self._grouped_targets(
+            request.project_root, request.findings
+        )
+        for file_path, statement_lines in spans.items():
+            state.working[file_path] = u.Infra.plan_hoist_inline_imports(
+                file_path, state.working[file_path], statement_lines
+            )
+        effect = self._relocate_imports(request, state, rope_project, imports)
+        if effect.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(effect)
+        selected = self._declaration_targets(request, state, names, classes)
+        if selected.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(selected)
+        effect = self._prepare_destinations(state, selected.value)
+        if effect.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(effect)
+        effect = self._move_declarations(request, state, rope_project, selected.value)
+        if effect.failure:
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(effect)
+        return self._relocation_analysis(request, state)
+
+    @staticmethod
+    def _capture_relocation_state(
+        request: m.Infra.NamespaceRelocationRequest,
+    ) -> p.Result[m.Infra.NamespaceRelocationState]:
+        """Authenticate working bytes, target selections and prior file declarations.
+
+        Returns:
+            Mutable candidate state with its unchanged receipts, or the first failure.
+
+        """
+        selected = frozenset(request.py_files)
+        working = dict(request.sources)
+        originals = {state.path: state for state in request.receipt.inputs}
         befores: t.MutableMappingKV[
             Path, m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan
         ] = dict(originals)
-        modes = {state.path: state.mode for state in source_states}
-        for declaration in declared_files:
+        modes = {state.path: state.mode for state in request.receipt.inputs}
+        for declaration in request.receipt.files:
             befores[declaration.path] = declaration.before
             modes[declaration.path] = declaration.desired_mode
             for state in declaration.source_states:
                 if originals.setdefault(state.path, state) != state:
-                    return r[m.Infra.CodegenPhaseAnalysis].fail(
+                    return r[m.Infra.NamespaceRelocationState].fail(
                         f"relocation declaration receipts disagree: {state.path}"
                     )
         for path in working:
             if path not in befores:
-                return r[m.Infra.CodegenPhaseAnalysis].fail(
+                return r[m.Infra.NamespaceRelocationState].fail(
                     f"relocation readscope lacks its original receipt: {path}"
                 )
-        for _relocation, finding in findings:
-            path = project_root / finding.file
-            if not path.is_relative_to(project_root) or path not in selected:
-                return r[m.Infra.CodegenPhaseAnalysis].fail(
+        for _relocation, finding in request.findings:
+            path = request.project_root / finding.file
+            if not path.is_relative_to(request.project_root) or path not in selected:
+                return r[m.Infra.NamespaceRelocationState].fail(
                     f"relocation declaration is outside its selected targets: {path}"
                 )
             if path not in working or path not in befores:
-                return r[m.Infra.CodegenPhaseAnalysis].fail(
+                return r[m.Infra.NamespaceRelocationState].fail(
                     f"relocation source lacks its working view "
                     f"or original receipt: {path}"
                 )
-        names, spans, imports, classes = self._grouped_targets(
-            project_root,
-            findings,
-        )
-        for file_path, statement_lines in spans.items():
-            working[file_path] = u.Infra.plan_hoist_inline_imports(
-                file_path,
-                working[file_path],
-                statement_lines,
+        return r[m.Infra.NamespaceRelocationState].ok(
+            m.Infra.NamespaceRelocationState(
+                working=working, originals=originals, befores=befores, modes=modes
             )
+        )
+
+    @staticmethod
+    def _relocate_imports(
+        request: m.Infra.NamespaceRelocationRequest,
+        state: m.Infra.NamespaceRelocationState,
+        rope_project: p.Infra.RopeProject,
+        imports: t.MappingKV[Path, t.MappingKV[t.StrPair, set[str]]],
+    ) -> p.Result[bool]:
+        """Plan each import relocation against the current authenticated candidate.
+
+        Returns:
+            Acceptance of all import moves, or the first native planning failure.
+
+        """
+        working, originals = state.working, state.originals
+        declared_files = request.receipt.files
         for file_path, moves in imports.items():
             for (source_module, target_module), aliases in sorted(moves.items()):
                 snapshot = u.Infra.snapshot_project(
@@ -329,15 +376,32 @@ class FlextInfraNamespaceRelocationCascade:
                     aliases=tuple(sorted(aliases)),
                 )
                 if updated is None:
-                    return r[m.Infra.CodegenPhaseAnalysis].fail(
+                    return r[bool].fail(
                         f"native import relocation did not plan: {file_path}"
                     )
                 working[file_path] = updated
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _declaration_targets(
+        request: m.Infra.NamespaceRelocationRequest,
+        state: m.Infra.NamespaceRelocationState,
+        names: t.MappingKV[c.Infra.CodemodRelocation, t.MappingKV[Path, set[str]]],
+        classes: t.SequenceOf[tuple[Path, str, str, int]],
+    ) -> p.Result[list[tuple[Path, str, Path]]]:
+        """Elect native class, protocol and type-alias destinations in phase order.
+
+        Returns:
+            Ordered declaration moves, or the first unsupported relocation failure.
+
+        """
+        project_root = request.project_root
+        working = state.working
         declarations: list[tuple[Path, str, Path]] = []
         if classes:
             layout = u.Infra.layout(project_root)
             if layout is None:
-                return r[m.Infra.CodegenPhaseAnalysis].fail(
+                return r[list[tuple[Path, str, Path]]].fail(
                     f"facade-class relocation requires a project layout: {project_root}"
                 )
             declarations.extend(
@@ -362,7 +426,7 @@ class FlextInfraNamespaceRelocationCascade:
                 c.Infra.CodemodRelocation.PROTOCOL,
                 c.Infra.CodemodRelocation.TYPING_ALIAS,
             }:
-                return r[m.Infra.CodegenPhaseAnalysis].fail(
+                return r[list[tuple[Path, str, Path]]].fail(
                     f"relocation has no native planning primitive: {relocation}"
                 )
             filename = (
@@ -383,87 +447,68 @@ class FlextInfraNamespaceRelocationCascade:
                 for path, declared in names_by_file.items()
                 for name in sorted(declared)
             )
+        return r[list[tuple[Path, str, Path]]].ok(declarations)
+
+    @staticmethod
+    def _prepare_destinations(
+        state: m.Infra.NamespaceRelocationState,
+        declarations: t.SequenceOf[tuple[Path, str, Path]],
+    ) -> p.Result[bool]:
+        """Capture absent destinations without creating files or parent directories.
+
+        Returns:
+            Acceptance of each destination receipt, or an uncaptured-file failure.
+
+        """
+        working, originals = state.working, state.originals
+        befores, modes = state.befores, state.modes
         for path, _name, target in declarations:
             if target not in working:
                 if target.parent.is_dir():
-                    state = u.Cli.atomic_read_binary_file_state(
+                    original = u.Cli.atomic_read_binary_file_state(
                         target, required=False
                     ).unwrap()
-                    if state.content is not None:
-                        return r[m.Infra.CodegenPhaseAnalysis].fail(
+                    if original.content is not None:
+                        return r[bool].fail(
                             f"relocation destination is outside "
                             f"its working view: {target}"
                         )
-                    originals[target] = state
-                    befores[target] = state
+                    originals[target] = original
+                    befores[target] = original
                 else:
                     befores[target] = u.Cli.atomic_plan_directory_chain(
                         target.parent
                     ).unwrap()
                 modes[target] = modes[path]
                 working[target] = f"{c.Infra.FUTURE_ANNOTATIONS}\n"
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _move_declarations(
+        cls,
+        request: m.Infra.NamespaceRelocationRequest,
+        state: m.Infra.NamespaceRelocationState,
+        rope_project: p.Infra.RopeProject,
+        declarations: t.SequenceOf[tuple[Path, str, Path]],
+    ) -> p.Result[bool]:
+        """Apply native move effects to candidate bytes, never to the filesystem.
+
+        Returns:
+            Acceptance of all declaration effects, or their first native failure.
+
+        """
+        working = state.working
         for path, name, target in declarations:
-            native_declarations: list[m.Infra.CodegenFilePlan] = []
-            for destination, source in working.items():
-                before = befores[destination]
-                if (
-                    isinstance(before, m.Cli.AtomicFileState)
-                    and before.content is not None
-                ):
-                    continue
-                native_declarations.append(
-                    m.Infra.CodegenFilePlan(
-                        project=project_root,
-                        path=destination,
-                        before=before,
-                        desired_content=source.encode(c.DEFAULT_ENCODING),
-                        desired_mode=modes[destination],
-                        source_states=tuple(originals.values()),
-                        owner="namespace-relocations",
-                    )
-                )
-            snapshot = u.Infra.snapshot_project(
-                rope_project,
-                working,
-                declared_files=tuple(native_declarations),
-                captured=u.Infra.codemod_source_epoch(
-                    m.Infra.CodemodBindingSnapshot(
-                        states=tuple(
-                            state
-                            for state in originals.values()
-                            if state.path in working
-                            or state.path.suffix
-                            in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
-                        )
-                    )
-                ),
-            )
+            snapshot = cls._relocation_snapshot(request, state, rope_project)
             coordinate = Path(snapshot.root.real_path)
             resource = u.Infra.require_file_resource(
                 snapshot.get_resource(path.relative_to(coordinate).as_posix()),
                 path,
             )
-            module = u.Infra.resolve_pymodule(snapshot, resource)
-            binding = module.get_scope().get_defined_names().get(name)
-            if binding is None:
-                return r[m.Infra.CodegenPhaseAnalysis].fail(
-                    f"native relocation declaration is absent: {path}:{name}"
-                )
-            owner, line = binding.get_definition_location()
-            if owner is not module or line is None:
-                return r[m.Infra.CodegenPhaseAnalysis].fail(
-                    f"native relocation declaration is not local: {path}:{name}"
-                )
-            offset = u.Infra.find_identifier_offset_in_lines(
-                working[path].splitlines(keepends=True),
-                line=line,
-                symbol=name,
-            )
-            if offset is None:
-                return r[m.Infra.CodegenPhaseAnalysis].fail(
-                    f"native relocation identifier is absent: {path}:{name}"
-                )
-            changes = u.Infra.create_move(snapshot, resource, offset).get_changes(
+            offset = cls._declaration_offset(snapshot, resource, working[path], name)
+            if offset.failure:
+                return r[bool].from_failure(offset)
+            changes = u.Infra.create_move(snapshot, resource, offset.value).get_changes(
                 u.Infra.require_file_resource(
                     snapshot.get_resource(target.relative_to(coordinate).as_posix()),
                     target,
@@ -481,31 +526,121 @@ class FlextInfraNamespaceRelocationCascade:
             )
             for change in changes.changes:
                 if not isinstance(change, p.Infra.RopeChangeContents):
-                    return r[m.Infra.CodegenPhaseAnalysis].fail(
+                    return r[bool].fail(
                         "native declaration relocation produced a non-content effect"
                     )
                 destination = Path(change.resource.real_path).resolve()
                 if destination not in working:
-                    return r[m.Infra.CodegenPhaseAnalysis].fail(
+                    return r[bool].fail(
                         f"native relocation escaped its working view: {destination}"
                     )
                 working[destination] = change.new_contents
-        dependencies = tuple(originals.values())
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _relocation_snapshot(
+        request: m.Infra.NamespaceRelocationRequest,
+        state: m.Infra.NamespaceRelocationState,
+        rope_project: p.Infra.RopeProject,
+    ) -> p.Infra.RopeProject:
+        """Build one native snapshot retaining absent files and original provenance.
+
+        Returns:
+            The authenticated Rope snapshot of the current candidate view.
+
+        """
+        native_declarations: list[m.Infra.CodegenFilePlan] = []
+        for destination, source in state.working.items():
+            before = state.befores[destination]
+            if isinstance(before, m.Cli.AtomicFileState) and before.content is not None:
+                continue
+            native_declarations.append(
+                m.Infra.CodegenFilePlan(
+                    project=request.project_root,
+                    path=destination,
+                    before=before,
+                    desired_content=source.encode(c.DEFAULT_ENCODING),
+                    desired_mode=state.modes[destination],
+                    source_states=tuple(state.originals.values()),
+                    owner="namespace-relocations",
+                )
+            )
+        return u.Infra.snapshot_project(
+            rope_project,
+            state.working,
+            declared_files=tuple(native_declarations),
+            captured=u.Infra.codemod_source_epoch(
+                m.Infra.CodemodBindingSnapshot(
+                    states=tuple(
+                        original
+                        for original in state.originals.values()
+                        if original.path in state.working
+                        or original.path.suffix
+                        in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
+                    )
+                )
+            ),
+        )
+
+    @staticmethod
+    def _declaration_offset(
+        snapshot: p.Infra.RopeProject,
+        resource: p.Infra.RopeResource,
+        source: str,
+        name: str,
+    ) -> p.Result[int]:
+        """Authenticate a local declaration before selecting its native identifier.
+
+        Returns:
+            The native source offset or the first missing-declaration failure.
+
+        """
+        path = Path(resource.real_path)
+        module = u.Infra.resolve_pymodule(snapshot, resource)
+        binding = module.get_scope().get_defined_names().get(name)
+        if binding is None:
+            return r[int].fail(
+                f"native relocation declaration is absent: {path}:{name}"
+            )
+        owner, line = binding.get_definition_location()
+        if owner is not module or line is None:
+            return r[int].fail(
+                f"native relocation declaration is not local: {path}:{name}"
+            )
+        offset = u.Infra.find_identifier_offset_in_lines(
+            source.splitlines(keepends=True), line=line, symbol=name
+        )
+        if offset is None:
+            return r[int].fail(f"native relocation identifier is absent: {path}:{name}")
+        return r[int].ok(offset)
+
+    @staticmethod
+    def _relocation_analysis(
+        request: m.Infra.NamespaceRelocationRequest,
+        state: m.Infra.NamespaceRelocationState,
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Seal candidate effects with their unchanged source and directory receipts.
+
+        Returns:
+            The complete semantic phase analysis of the native candidate.
+
+        """
+        dependencies = tuple(state.originals.values())
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
                 files=tuple(
                     m.Infra.CodegenFilePlan(
-                        project=u.Infra.project_root(path) or project_root,
+                        project=u.Infra.project_root(path) or request.project_root,
                         path=path,
-                        before=befores[path],
+                        before=state.befores[path],
                         desired_content=source.encode(c.DEFAULT_ENCODING),
-                        desired_mode=modes[path],
+                        desired_mode=state.modes[path],
                         source_states=dependencies,
                         owner="namespace-relocations",
                     )
-                    for path, source in working.items()
-                    if sources.get(path) != source
+                    for path, source in state.working.items()
+                    if request.sources.get(path) != source
                 ),
                 inputs=dependencies,
             )

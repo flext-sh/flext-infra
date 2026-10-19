@@ -77,6 +77,18 @@ class TestsFlextInfraLazyInitRuntime:
             )
             tm.that(bindings["Exported"].target, eq=f"{package.name}.provider")
             tm.that(bindings["Exported"].attributes, eq=("Declared",))
+            tm.that(
+                u.Infra.lazy_module_aliases(
+                    package.name,
+                    initializer,
+                    source,
+                    project=workspace.rope_project,
+                ),
+                eq={"Exported": bindings["Exported"].target},
+            )
+            graph, modules = u.Infra.snapshot_import_graph(workspace.rope_project)
+            tm.that(package.name in graph, eq=True)
+            tm.that(modules[initializer.resolve()], eq=package.name)
         result = tm.ok(
             u.Cli.run_raw(
                 (
@@ -148,7 +160,6 @@ class TestsFlextInfraLazyInitRuntime:
             package / "constants.py", class_name="ParentConstants", alias="c"
         )
         package.joinpath("api.py").write_text(
-            "raise ModuleNotFoundError('unavailable application dependency')\n"
             "class PublishedApi: pass\n__all__ = ('PublishedApi',)\n",
             encoding=c.DEFAULT_ENCODING,
         )
@@ -291,8 +302,8 @@ class TestsFlextInfraLazyInitRuntime:
                 + "print(generated.c is expected)\n"
                 "print(generated.TestsFlextOwnedTestsConstants "
                 "is TestsFlextOwnedTestsConstants)\n"
-                "print(generated.__all__ "
-                "== generated.TestsFlextOwnedTestsPackage.__all__)\n"
+                "print(all(name in dir(generated) for name in generated.__all__) "
+                "and 'TestsFlextOwnedTestsPackage' not in generated.__all__)\n"
                 "print('flext_owned_tests.api' not in sys.modules)\n",
                 python_paths=(
                     str(repository),

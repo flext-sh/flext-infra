@@ -28,6 +28,15 @@ from flext_infra._typings import FlextInfraTypesRopeNative
 class FlextInfraTypesRope(FlextInfraTypesRopeNative):
     """Rope type aliases — accessed via t.Infra.*."""
 
+    type RopeRestructureInitArguments = tuple[
+        FlextInfraTypesRopeNative.RopeNativeProject,
+        str,
+        str,
+        t.MappingKV[str, str | t.Pair[str, t.VariadicTuple[str]]] | None,
+        t.StrSequence | None,
+        t.MappingKV[str, FlextInfraProtocolsRopeRuntime.RopeWildcard[str]] | None,
+    ]
+
     type PythonImportNode = Import | ImportFrom
     type RopeSourcePath = Path
     type RopeImplementationPaths = frozenset[RopeSourcePath]

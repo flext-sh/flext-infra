@@ -159,7 +159,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             workspace_factory=self.workspace_factory,
             source_preview=self.source_preview,
             repository_root=self.repository_root,
-            apply_changes=False,
+            apply=False,
             options=m.Infra.CensusOptions(
                 families=("c",),
                 rules=(
@@ -196,7 +196,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             The complete all-root candidate with target-only syntax effects.
 
         Raises:
-            ValueError: If a syntax input changed after global capture.
             RuntimeError: If the syntax cascade repeats a source state.
 
         """
@@ -208,20 +207,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 self._preview_ast_candidate(root, plans, inputs, seed)
             )
         if after_ast.actionable:
-            for target in u.Infra.ast_grep_scan_targets(root):
-                path = root / target
-                paths = (
-                    u.Infra.iter_directory_python_files(path)
-                    if path.is_dir()
-                    else (path,)
-                )
-                for source in paths:
-                    captured = u.Cli.atomic_read_binary_file_state(
-                        source, required=True
-                    ).unwrap()
-                    if inputs.setdefault(source.resolve(), captured) != captured:
-                        msg = f"syntax input changed after global capture: {source}"
-                        raise ValueError(msg)
+            self._capture_ast_inputs(root, inputs)
         seen: set[t.VariadicTuple[t.Pair[str, str]]] = set()
         while after_ast.actionable:
             state = tuple(
@@ -270,11 +256,36 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                         if plan.desired_content is not None
                     },
                 },
-                inputs=tuple(inputs.values()),
-                workspaces=seed.workspaces,
-                modes=seed.modes,
+                options=m.Infra.StageSourceOptions(
+                    inputs=tuple(inputs.values()),
+                    workspaces=seed.workspaces,
+                    modes=seed.modes,
+                ),
             ).unwrap()
         return seed
+
+    @staticmethod
+    def _capture_ast_inputs(
+        root: Path, inputs: MutableMapping[Path, m.Cli.AtomicFileState]
+    ) -> None:
+        """Authenticate every syntax target before composing the first wave.
+
+        Raises:
+            ValueError: If a captured source changed after global capture.
+
+        """
+        for target in u.Infra.ast_grep_scan_targets(root):
+            path = root / target
+            paths = (
+                u.Infra.iter_directory_python_files(path) if path.is_dir() else (path,)
+            )
+            for source in paths:
+                captured = u.Cli.atomic_read_binary_file_state(
+                    source, required=True
+                ).unwrap()
+                if inputs.setdefault(source.resolve(), captured) != captured:
+                    msg = f"syntax input changed after global capture: {source}"
+                    raise ValueError(msg)
 
     def _preview_ast_candidate(
         self,
@@ -299,9 +310,11 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     if plan.desired_content is not None
                 },
             },
-            inputs=tuple(inputs.values()),
-            workspaces=seed.workspaces,
-            modes=seed.modes,
+            options=m.Infra.StageSourceOptions(
+                inputs=tuple(inputs.values()),
+                workspaces=seed.workspaces,
+                modes=seed.modes,
+            ),
         ).unwrap()
         for source in candidate.inputs:
             inputs.setdefault(source.path, source)
@@ -317,9 +330,11 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             candidate.workspace,
             candidate.updates,
             scan,
-            inputs=candidate.inputs,
-            workspaces=candidate.workspaces,
-            runtime_check=False,
+            options=m.Infra.CodegenSourcePreviewOptions(
+                inputs=candidate.inputs,
+                workspaces=candidate.workspaces,
+                runtime_check=False,
+            ),
         ).unwrap()
 
     @staticmethod
@@ -404,7 +419,70 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         ]
         fingerprint = FlextInfraCodemodSemanticApply.source_fingerprint
         phase_states = [fingerprint(root, current)]
-        driver = None
+        seeded = self._phase_seed(root, rope_workspace)
+        if seeded.failure:
+            return outcome.from_failure(seeded)
+        seed, driver = seeded.value
+        prepared = self._prepare_phase_seed(
+            root, current, seed, text_precondition_pending=text_precondition_pending
+        )
+        if prepared.failure:
+            return outcome.from_failure(prepared)
+        seed, analyses = prepared.value
+        semantic = self._plan_semantic_phase(root, seed, driver)
+        if semantic.failure:
+            return outcome.from_failure(semantic)
+        accepted = self._publish_phase_candidate(
+            root, semantic.value, analyses, publish=publish
+        )
+        if accepted.failure:
+            return outcome.from_failure(accepted)
+        return self._finish_phases(
+            root, rope_workspace, current, (publish, phase_states)
+        )
+
+    def _publish_phase_candidate(
+        self,
+        root: Path,
+        seed: m.Infra.SemanticRenamePlan,
+        analyses: t.SequenceOf[m.Infra.CodegenPhaseAnalysis],
+        *,
+        publish: bool,
+    ) -> p.Result[bool]:
+        """Compose final callbacks and text before publishing one candidate.
+
+        Returns:
+            The native publication result or the first planning failure.
+
+        """
+        outcome = r[bool]
+        callbacks = self._plan_phase_callbacks(root, seed)
+        if callbacks.failure:
+            return outcome.from_failure(callbacks)
+        seed, callback_analyses = callbacks.value
+        text = self._plan_text_phase(root, seed, text_precondition_pending=False)
+        if text.failure:
+            return outcome.from_failure(text)
+        seed, text_analysis = text.value
+        evidence = self._phase_publication_evidence(
+            seed, (*analyses, *callback_analyses, text_analysis)
+        )
+        if evidence.failure:
+            return outcome.from_failure(evidence)
+        return FlextInfraCodemodSemanticApply.publish_candidate(
+            root, seed, publish=publish, source_analysis=evidence.value
+        )
+
+    def _phase_seed(
+        self, root: Path, rope_workspace: p.Infra.RopeWorkspaceDsl
+    ) -> p.Result[t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState | None]]:
+        """Authenticate an explicit rename artifact or capture the empty campaign.
+
+        Returns:
+            The native seed with its optional original artifact receipt.
+
+        """
+        outcome = r[t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState | None]]
         if self.rename_plan is not None:
             loaded = FlextInfraCodemodSemanticApply.load_rename_artifact(
                 root,
@@ -412,42 +490,75 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             )
             if loaded.failure:
                 return outcome.from_failure(loaded)
-            seed, driver = loaded.value
-            authenticated = (
-                FlextInfraCodemodSemanticApply.authenticate_rename_candidate(
-                    root, seed, driver
-                )
+            return self._authenticate_phase_seed(root, rope_workspace, loaded.value)
+        return FlextInfraCodemodSemanticApply.build_rename_plan(
+            root,
+            rope_workspace,
+            m.Infra.SemanticRenameSelections(
+                decisions=(), consumer_roots=self.consumer_roots
+            ),
+        ).map(lambda seed: (seed, None))
+
+    def _authenticate_phase_seed(
+        self,
+        root: Path,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        loaded: t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState],
+    ) -> p.Result[t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState | None]]:
+        """Require the artifact to match its current native plan and consumer roots.
+
+        Returns:
+            The authenticated artifact with its original driver receipt.
+
+        """
+        outcome = r[t.Pair[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState | None]]
+        seed, driver = loaded
+        authenticated = FlextInfraCodemodSemanticApply.authenticate_rename_candidate(
+            root, seed, driver
+        )
+        if authenticated.failure:
+            return outcome.from_failure(authenticated)
+        rebuilt = FlextInfraCodemodSemanticApply.build_rename_plan(
+            root,
+            rope_workspace,
+            FlextInfraCodemodSemanticApply.rename_selections(seed),
+        )
+        if rebuilt.failure:
+            return outcome.from_failure(rebuilt)
+        if rebuilt.value != seed:
+            return outcome.fail(
+                "semantic rename artifact differs from current native plan"
             )
-            if authenticated.failure:
-                return outcome.from_failure(authenticated)
-            rebuilt = FlextInfraCodemodSemanticApply.build_rename_plan(
-                root,
-                rope_workspace,
-                FlextInfraCodemodSemanticApply.rename_selections(seed),
+        if self.consumer_roots and set(self.consumer_roots) != set(seed.consumer_roots):
+            return outcome.fail(
+                "run consumer roots differ from the authenticated native artifact"
             )
-            if rebuilt.failure:
-                return outcome.from_failure(rebuilt)
-            if rebuilt.value != seed:
-                return outcome.fail(
-                    "semantic rename artifact differs from current native plan"
-                )
-            if self.consumer_roots and set(self.consumer_roots) != set(
-                seed.consumer_roots
-            ):
-                return outcome.fail(
-                    "run consumer roots differ from the authenticated native artifact"
-                )
-        else:
-            captured = FlextInfraCodemodSemanticApply.build_rename_plan(
-                root,
-                rope_workspace,
-                m.Infra.SemanticRenameSelections(
-                    decisions=(), consumer_roots=self.consumer_roots
-                ),
-            )
-            if captured.failure:
-                return outcome.from_failure(captured)
-            seed = captured.value
+        return outcome.ok((seed, driver))
+
+    def _prepare_phase_seed(
+        self,
+        root: Path,
+        current: m.Infra.ModScanReport,
+        seed: m.Infra.SemanticRenamePlan,
+        *,
+        text_precondition_pending: bool,
+    ) -> p.Result[
+        t.Pair[
+            m.Infra.SemanticRenamePlan, t.VariadicTuple[m.Infra.CodegenPhaseAnalysis]
+        ]
+    ]:
+        """Compose syntax, initial text receipts and import normalization.
+
+        Returns:
+            The prepared seed and its ordered producer analyses.
+
+        """
+        outcome = r[
+            t.Pair[
+                m.Infra.SemanticRenamePlan,
+                t.VariadicTuple[m.Infra.CodegenPhaseAnalysis],
+            ]
+        ]
         syntax = self._plan_ast_phase(root, current, seed.candidate)
         seed = seed.model_copy(update={"candidate": syntax})
         text_preparation = self._plan_text_phase(
@@ -466,6 +577,21 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         if imports.failure:
             return outcome.from_failure(imports)
         seed, import_analyses = imports.value
+        return outcome.ok((seed, (text_preparation_analysis, *import_analyses)))
+
+    def _plan_semantic_phase(
+        self,
+        root: Path,
+        seed: m.Infra.SemanticRenamePlan,
+        driver: m.Cli.AtomicFileState | None,
+    ) -> p.Result[m.Infra.SemanticRenamePlan]:
+        """Compose all native semantic effects on the prepared source epoch.
+
+        Returns:
+            The authenticated staged semantic candidate.
+
+        """
+        outcome = r[m.Infra.SemanticRenamePlan]
         syntax = seed.candidate
         semantic_preflight = self._preview_ast_candidate(
             root,
@@ -542,34 +668,37 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         staged = FlextInfraStagedPackage.plan_sources(
             seed.candidate.workspace,
             updates,
-            inputs=seed.candidate.inputs,
-            workspaces=seed.candidate.workspaces,
-            modes=seed.candidate.modes,
+            options=m.Infra.StageSourceOptions(
+                inputs=seed.candidate.inputs,
+                workspaces=seed.candidate.workspaces,
+                modes=seed.candidate.modes,
+            ),
         )
         if staged.failure:
             return outcome.from_failure(staged)
-        candidate = seed.model_copy(
-            update={
-                "candidate": staged.value,
-                "source_states": source_states,
-                "source_directories": directories,
-                "source_query_topology": topology,
-            }
+        return outcome.ok(
+            seed.model_copy(
+                update={
+                    "candidate": staged.value,
+                    "source_states": source_states,
+                    "source_directories": directories,
+                    "source_query_topology": topology,
+                }
+            )
         )
-        callbacks = self._plan_phase_callbacks(root, candidate)
-        if callbacks.failure:
-            return outcome.from_failure(callbacks)
-        candidate, callback_analyses = callbacks.value
-        text = self._plan_text_phase(root, candidate, text_precondition_pending=False)
-        if text.failure:
-            return outcome.from_failure(text)
-        candidate, text_analysis = text.value
-        analyses = (
-            text_preparation_analysis,
-            *import_analyses,
-            *callback_analyses,
-            text_analysis,
-        )
+
+    @staticmethod
+    def _phase_publication_evidence(
+        candidate: m.Infra.SemanticRenamePlan,
+        analyses: t.SequenceOf[m.Infra.CodegenPhaseAnalysis],
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Require one original producer epoch and retain all phase evidence.
+
+        Returns:
+            The combined publication evidence or its first epoch conflict.
+
+        """
+        outcome = r[m.Infra.CodegenPhaseAnalysis]
         references = tuple(
             analysis.generator_reference
             for analysis in analyses
@@ -579,37 +708,57 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             return outcome.fail(
                 "planner phases have competing original producer epochs"
             )
-        evidence = m.Infra.CodegenPhaseAnalysis(
-            phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-            files=(),
-            inputs=candidate.source_states,
-            source_directories=candidate.source_directories,
-            source_query_topology=candidate.source_query_topology,
-            generator_trees=tuple(
-                tree for analysis in analyses for tree in analysis.generator_trees
-            ),
-            generator_modules=tuple(
-                module for analysis in analyses for module in analysis.generator_modules
-            ),
-            generator_reference=references[0] if references else None,
-            publications=tuple(
-                plan for analysis in analyses for plan in analysis.publications
-            ),
+        return outcome.ok(
+            m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                files=(),
+                inputs=candidate.source_states,
+                source_directories=candidate.source_directories,
+                source_query_topology=candidate.source_query_topology,
+                generator_trees=tuple(
+                    tree for analysis in analyses for tree in analysis.generator_trees
+                ),
+                generator_modules=tuple(
+                    module
+                    for analysis in analyses
+                    for module in analysis.generator_modules
+                ),
+                generator_reference=references[0] if references else None,
+                publications=tuple(
+                    plan for analysis in analyses for plan in analysis.publications
+                ),
+            )
         )
-        accepted = FlextInfraCodemodSemanticApply.publish_candidate(
-            root,
-            candidate,
-            publish=publish,
-            source_analysis=evidence,
-        )
-        if accepted.failure:
-            return outcome.from_failure(accepted)
+
+    def _finish_phases(
+        self,
+        root: Path,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        current: m.Infra.ModScanReport,
+        publication: t.Pair[bool, list[t.VariadicTuple[t.Pair[str, str]]]],
+    ) -> p.Result[
+        t.Pair[m.Infra.ModScanReport, t.SequenceOf[t.VariadicTuple[t.Pair[str, str]]]]
+    ]:
+        """Refresh and scan a published candidate before applying CSV campaigns.
+
+        Returns:
+            The post-publication report and its observed fingerprint sequence.
+
+        """
+        outcome = r[
+            t.Pair[
+                m.Infra.ModScanReport, t.SequenceOf[t.VariadicTuple[t.Pair[str, str]]]
+            ]
+        ]
+        publish, phase_states = publication
         if not publish:
             return outcome.ok((current, tuple(phase_states)))
         self.rename_plan = None
         rope_workspace.refresh()
         after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-        phase_states.append(fingerprint(root, after_ast))
+        phase_states.append(
+            FlextInfraCodemodSemanticApply.source_fingerprint(root, after_ast)
+        )
         # Exact optional migration receipts apply once per invocation,
         # not to every internal convergence pass after consuming matches.
         renames = self._apply_renames()
@@ -889,7 +1038,11 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                         preflight,
                         graph,
                         sources=sources,
-                        source_states=original.states,
+                        receipt=m.Infra.CodegenPhaseAnalysis(
+                            phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                            files=(),
+                            inputs=original.states,
+                        ),
                     )
                 if planned.failure:
                     return outcome.from_failure(planned)

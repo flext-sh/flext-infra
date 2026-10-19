@@ -564,15 +564,18 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 )
                 if planned.failure:
                     return result_type.from_failure(planned)
-                plans.append(planned.value.model_copy(
-                    update={
-                        "source_states": states,
-                        "source_directories": directories,
-                        "source_query_topology": topology,
-                    }
-                ))
+                plans.append(
+                    planned.value.model_copy(
+                        update={
+                            "source_states": states,
+                            "source_directories": directories,
+                            "source_query_topology": topology,
+                        }
+                    )
+                )
             return FlextInfraCodegenPreconditions.unique_states((
-                *initial[1], *states
+                *initial[1],
+                *states,
             )).map(lambda inputs: (tuple(plans), inputs))
 
     def _protocol_projection_pass(

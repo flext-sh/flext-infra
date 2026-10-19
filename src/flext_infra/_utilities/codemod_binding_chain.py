@@ -177,8 +177,8 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 target_frame = (project, target_module, target_module.get_scope())
                 target_start = len(target_source[1])
             if not (
-                cls._stable_binding_chain(frame, original, start, sources)
-                and cls._stable_binding_chain(
+                cls.stable_binding_chain(frame, original, start, sources)
+                and cls.stable_binding_chain(
                     target_frame, specialized, target_start, sources
                 )
             ):
@@ -301,7 +301,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 )
                 raise ValueError(message)
             expression = condition.arg[0]
-            if not cls._stable_binding_chain(
+            if not cls.stable_binding_chain(
                 frame,
                 expression,
                 start,
@@ -451,7 +451,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                     )
                 )
                 first, last = receiver
-                if left <= start < end <= right and not cls._stable_binding_chain(
+                if left <= start < end <= right and not cls.stable_binding_chain(
                     (
                         project,
                         module,
@@ -497,7 +497,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             if condition.predicate is c.Infra.CodemodContextPredicate.RESOLVED_SYMBOL:
                 return cls._resolved_symbol_matches(
                     project, condition, actual
-                ) and cls._stable_binding_chain(frame, expression, start, sources)
+                ) and cls.stable_binding_chain(frame, expression, start, sources)
             if len(condition.arg) != 1:
                 msg = "same-binding requires one lexical expression"
                 raise ValueError(msg)
@@ -506,8 +506,8 @@ class FlextInfraUtilitiesCodemodBindingChain:
             if target_expression is None:
                 return False
             if not (
-                cls._stable_binding_chain(frame, expression, start, sources)
-                and cls._stable_binding_chain(frame, target_expression, start, sources)
+                cls.stable_binding_chain(frame, expression, start, sources)
+                and cls.stable_binding_chain(frame, target_expression, start, sources)
             ):
                 return False
             primary = target_expression.partition(".")[0]
@@ -588,7 +588,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             )
 
         @classmethod
-        def _stable_binding_chain(
+        def stable_binding_chain(
             cls,
             frame: t.Triple[
                 p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope
@@ -621,7 +621,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             routes = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
                 module.get_name(), path, text, project=project, pymodule=module
             )
-            if not cls._single_reaching_binding(
+            if not cls.single_reaching_binding(
                 module, scope, expression, offset, routes
             ):
                 return False
@@ -630,7 +630,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             ):
                 return False
             if isinstance(binding, p.Infra.RopeImportedName):
-                return cls._chain_imported_binding(
+                return cls.chain_imported_binding(
                     project, binding, sources, visited=visited
                 )
             return cls._chain_declaration_stable(
@@ -661,7 +661,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             if normalized is None:
                 return None
             receiver, separator, _attribute = normalized.rpartition(".")
-            if separator and not cls._stable_binding_chain(
+            if separator and not cls.stable_binding_chain(
                 frame, receiver, offset, sources, visited=visited
             ):
                 return None
@@ -732,7 +732,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             )
 
         @classmethod
-        def _chain_imported_binding(
+        def chain_imported_binding(
             cls,
             project: p.Infra.RopeProject,
             binding: p.Infra.RopeImportedName,
@@ -776,7 +776,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 return (
                     not rebound and cls._chain_module_text(value, sources) is not None
                 )
-            return cls._stable_binding_chain(
+            return cls.stable_binding_chain(
                 (project, imported, imported_scope),
                 binding.imported_name,
                 len(imported_text),
@@ -853,7 +853,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             # link already proven: an import hop records (module, name) before this
             # declaration hop holds that same name, which is one chain, not a cycle.
             key = (holder.get_name(), value)
-            return key not in visited and cls._stable_binding_chain(
+            return key not in visited and cls.stable_binding_chain(
                 (project, holder, holder_scope),
                 value,
                 holder_offset,
@@ -960,7 +960,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             holder_scope = runtime.scope_at(
                 holder, holder_offset, declaration_line=line
             )
-            if not cls._single_reaching_binding(
+            if not cls.single_reaching_binding(
                 holder,
                 holder_scope,
                 name,
@@ -970,7 +970,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             return declaration, holder_offset, holder_scope
 
         @classmethod
-        def _single_reaching_binding(
+        def single_reaching_binding(
             cls,
             module: p.Infra.RopePyModule,
             scope: p.Infra.RopeScope,
@@ -984,7 +984,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 The resulting ``bool``.
 
             """
-            declarations = cls._single_reaching_declarations(module, scope, expression)
+            declarations = cls.single_reaching_declarations(module, scope, expression)
             if "." in expression:
                 return not declarations
             if len(declarations) != 1:
@@ -1032,7 +1032,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             return expression in imported_scope.get_defined_names()
 
         @classmethod
-        def _single_reaching_declarations(
+        def single_reaching_declarations(
             cls,
             module: p.Infra.RopePyModule,
             scope: p.Infra.RopeScope,

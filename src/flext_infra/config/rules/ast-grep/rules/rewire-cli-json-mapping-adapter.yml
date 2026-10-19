@@ -8,12 +8,15 @@ files:
   - "scripts/**/*.py"
 rule:
   all:
-    - pattern: t.Cli.JSON_MAPPING_ADAPTER
+    - pattern: t.Cli.$ADAPTER
     - inside:
         kind: module
         stopBy: end
         has:
           stopBy: end
           matches: u-imported-from-flext
-fix: u.Cli.JSON_MAPPING_ADAPTER
+constraints:
+  ADAPTER:
+    regex: "^JSON_(?:MAPPING|VALUE)_ADAPTER$"
+fix: u.Cli.$ADAPTER
 message: Use the original JSON mapping adapter factory on the utilities facade.

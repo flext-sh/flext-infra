@@ -595,7 +595,9 @@ class TestsFlextInfraSemanticPublication:
             FlextInfraSemanticPublication.publish_semantic_artifact_plans(
                 plans,
                 repository_root=mod_workspace,
-                projection_roots=(mod_workspace,),
+                options=m.Infra.SemanticPublicationOptions(
+                    projection_roots=(mod_workspace,),
+                ),
             ),
         )
         output = tm.ok(
@@ -753,7 +755,9 @@ class TestsFlextInfraSemanticPublication:
         result = FlextInfraSemanticPublication.publish_semantic_artifact_plans(
             (plan,),
             repository_root=mod_workspace,
-            projection_roots=(mod_workspace,),
+            options=m.Infra.SemanticPublicationOptions(
+                projection_roots=(mod_workspace,),
+            ),
         )
         if foreign_parent:
             tm.fail(result, has="parent chain changed")
@@ -857,7 +861,7 @@ class TestsFlextInfraSemanticPublication:
         published = FlextInfraSemanticPublication.publish_semantic_artifact_plans(
             plans,
             repository_root=mod_workspace,
-            validator=validate,
+            options=m.Infra.SemanticPublicationOptions(validator=validate),
         )
         tm.that(len(previews), eq=1)
         if accepted:

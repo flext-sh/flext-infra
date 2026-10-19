@@ -10,11 +10,21 @@ from collections.abc import Callable
 from importlib import import_module
 from typing import TypeIs, get_protocol_members
 
-from flext_infra import c, p
+from flext_infra import c, p, t
 
 
 class FlextInfraUtilitiesRopeRuntimeBase:
     """Resolve Rope runtime attributes without importing Rope in leaf modules."""
+
+    @classmethod
+    def rope_error_types(cls) -> t.VariadicTuple[type[BaseException]]:
+        """Return the generic Rope exception boundary.
+
+        Returns:
+            The generic Rope exception boundary.
+
+        """
+        return (cls._exception_type("rope.base.exceptions", "RopeError"),)
 
     @classmethod
     def runtime_type(cls, module_name: str, attribute: str) -> type[p.AttributeProbe]:

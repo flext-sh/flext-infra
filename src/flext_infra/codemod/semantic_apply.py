@@ -19,6 +19,7 @@ from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod._rename_symbols import FlextInfraRenameSymbols
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
+from flext_infra.refactor import FlextInfraImportNormalization
 from flext_infra.transformers import FlextInfraSemanticPublication
 from flext_infra.workspace import FlextInfraRopeWorkspace
 
@@ -112,8 +113,10 @@ class FlextInfraCodemodSemanticApply:
         bounded = FlextInfraStagedPackage.plan_sources(
             scopes[0],
             {},
-            inputs=inputs,
-            workspaces=scopes if len(scopes) > 1 else (),
+            options=m.Infra.StageSourceOptions(
+                inputs=inputs,
+                workspaces=scopes if len(scopes) > 1 else (),
+            ),
         )
         if bounded.failure:
             return result_type.from_failure(bounded)
@@ -249,7 +252,6 @@ class FlextInfraCodemodSemanticApply:
             )
             for selection in selections.decisions
         )
-        project_roots = {scope: u.Infra.import_project_roots(scope) for scope in scopes}
         captured_sources = cls._authenticated_sources(scopes)
         if captured_sources.failure:
             return r[m.Infra.SemanticRenamePlan].from_failure(captured_sources)
@@ -259,8 +261,8 @@ class FlextInfraCodemodSemanticApply:
             declared_projects = tuple(
                 dict.fromkeys(
                     project
-                    for projects in project_roots.values()
-                    for project in projects
+                    for scope in scopes
+                    for project in u.Infra.import_project_roots(scope)
                 )
             )
             live = tuple(
@@ -314,12 +316,13 @@ class FlextInfraCodemodSemanticApply:
         staged_inputs = cls._staged_inputs(moves, base_states)
         if staged_inputs.failure:
             return r[m.Infra.SemanticRenamePlan].from_failure(staged_inputs)
-        inputs = staged_inputs.value
         staged = FlextInfraStagedPackage.plan_sources(
             scopes[0],
             updates,
-            inputs=inputs,
-            workspaces=scopes if len(scopes) > 1 else (),
+            options=m.Infra.StageSourceOptions(
+                inputs=staged_inputs.value,
+                workspaces=scopes if len(scopes) > 1 else (),
+            ),
         )
         return staged.map(
             lambda candidate: m.Infra.SemanticRenamePlan(
@@ -330,7 +333,7 @@ class FlextInfraCodemodSemanticApply:
                         "modes": {
                             target: state.mode
                             for source, target in moves
-                            for state in inputs
+                            for state in staged_inputs.value
                             if state.path == source and state.mode is not None
                         }
                     }
@@ -467,16 +470,20 @@ class FlextInfraCodemodSemanticApply:
             )
             with project.source_consumption() as selected:
                 index = u.Infra.index_rope_workspace(project, root)
-            yield stack.enter_context(
-                FlextInfraRopeWorkspace.open_workspace(
-                    root,
-                    rope_repository_root=candidate.workspace,
-                    source_project=project,
-                    workspace_index=index,
-                    index_receipt=selected.receipt(),
-                )
-            )
-            project.verify_source_states()
+            with FlextInfraRopeWorkspace.open_workspace(
+                root,
+                rope_repository_root=candidate.workspace,
+                source_project=project,
+                workspace_index=index,
+                index_receipt=selected.receipt(),
+            ) as workspace:
+                completed = False
+                try:
+                    yield workspace
+                    completed = True
+                finally:
+                    if completed:
+                        project.verify_source_states()
 
     @classmethod
     def _planning_project(
@@ -756,9 +763,11 @@ class FlextInfraCodemodSemanticApply:
         return FlextInfraStagedPackage.plan_sources(
             candidate.candidate.workspace,
             updates,
-            inputs=tuple(originals.values()),
-            workspaces=candidate.candidate.workspaces,
-            modes=modes,
+            options=m.Infra.StageSourceOptions(
+                inputs=tuple(originals.values()),
+                workspaces=candidate.candidate.workspaces,
+                modes=modes,
+            ),
         ).map(
             lambda stage: candidate.model_copy(
                 update={
@@ -977,13 +986,15 @@ class FlextInfraCodemodSemanticApply:
         return FlextInfraSemanticPublication.publish_semantic_artifact_plans(
             plans,
             repository_root=u.Infra.import_project_roots(root)[0].resolve(),
-            projection_roots=tuple(
-                sorted({
-                    root,
-                    *(u.Infra.project_root(path) or root for path in updates),
-                })
+            options=m.Infra.SemanticPublicationOptions(
+                projection_roots=tuple(
+                    sorted({
+                        root,
+                        *(u.Infra.project_root(path) or root for path in updates),
+                    })
+                ),
+                dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
             ),
-            dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
             publish=publish,
         ).map(lambda _: True)
 
@@ -1100,6 +1111,7 @@ class FlextInfraCodemodSemanticApply:
         for phase in phases:
             planned = u.Infra.plan_semantic_cutover(
                 phase,
+                import_normalizer=FlextInfraImportNormalization.normalize_source,
                 rope_workspace=rope_workspace,
                 sources=working,
             )
@@ -1142,6 +1154,7 @@ class FlextInfraCodemodSemanticApply:
                 phase,
                 u.Infra.plan_semantic_cutover(
                     phase,
+                    import_normalizer=FlextInfraImportNormalization.normalize_source,
                     rope_workspace=rope_workspace,
                     sources=sources,
                 ),
@@ -1372,34 +1385,19 @@ class FlextInfraCodemodSemanticApply:
             "import_alignment_files": len(alignment.value),
             "future_annotations": len(future_annotations),
         }
-        residue = r[bool].ok(value=True)
-        if future_annotations:
-            residue = cls._check_residue(
-                "future-annotations",
-                r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
-                    cls._phase_future_annotations(root, preflight, working),
-                ),
-            )
+        residue = cls._future_annotation_residue(
+            root, preflight, working, changed=bool(future_annotations)
+        )
         # Class nesting establishes declaration scopes before references are
         # normalized; aliases and private imports follow those owner changes.
         for phase in c.Infra.SemanticCutoverPhase:
             if residue.failure:
                 return result_type.from_failure(residue)
             cli.display_text(f"mod: plan semantic phase {phase}")
-            phase_sources = working
-            if phase in {
-                c.Infra.SemanticCutoverPhase.MODEL_FIELDS,
-                c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT,
-                c.Infra.SemanticCutoverPhase.MODULE_END,
-                c.Infra.SemanticCutoverPhase.NOTICE_LAST,
-            }:
-                phase_sources = {
-                    path: source
-                    for path, source in working.items()
-                    if path.is_relative_to(root)
-                }
+            phase_sources = cls._semantic_phase_sources(root, phase, working)
             planned = u.Infra.plan_semantic_cutover(
                 phase,
+                import_normalizer=FlextInfraImportNormalization.normalize_source,
                 rope_workspace=rope_workspace,
                 sources=phase_sources,
                 findings=preflight.entries,
@@ -1415,6 +1413,7 @@ class FlextInfraCodemodSemanticApply:
                     phase,
                     u.Infra.plan_semantic_cutover(
                         phase,
+                        import_normalizer=FlextInfraImportNormalization.normalize_source,
                         rope_workspace=rope_workspace,
                         sources={path: working[path] for path in phase_sources},
                         findings=preflight.entries,
@@ -1442,6 +1441,55 @@ class FlextInfraCodemodSemanticApply:
                 for path in sorted(changed)
             )
         )
+
+    @classmethod
+    def _future_annotation_residue[FindingT: m.Infra.ModOccurrence](
+        cls,
+        root: Path,
+        preflight: m.Infra.ModOccurrenceReport[FindingT],
+        working: t.MutableMappingKV[Path, str],
+        *,
+        changed: bool,
+    ) -> p.Result[bool]:
+        """Recheck annotations only when the first pass actually changed sources.
+
+        Returns:
+            The exact annotation-residue result.
+
+        """
+        if not changed:
+            return r[bool].ok(value=True)
+        return cls._check_residue(
+            "future-annotations",
+            r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
+                cls._phase_future_annotations(root, preflight, working)
+            ),
+        )
+
+    @staticmethod
+    def _semantic_phase_sources(
+        root: Path,
+        phase: c.Infra.SemanticCutoverPhase,
+        working: t.MappingKV[Path, str],
+    ) -> t.MappingKV[Path, str]:
+        """Restrict local-only phases while retaining shared views for other phases.
+
+        Returns:
+            The phase's elected source view.
+
+        """
+        if phase in {
+            c.Infra.SemanticCutoverPhase.MODEL_FIELDS,
+            c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT,
+            c.Infra.SemanticCutoverPhase.MODULE_END,
+            c.Infra.SemanticCutoverPhase.NOTICE_LAST,
+        }:
+            return {
+                path: source
+                for path, source in working.items()
+                if path.is_relative_to(root)
+            }
+        return working
 
     @classmethod
     def _validate_candidate[FindingT: m.Infra.ModOccurrence](
@@ -1684,6 +1732,7 @@ class FlextInfraCodemodSemanticApply:
                 phase,
                 u.Infra.plan_semantic_cutover(
                     phase,
+                    import_normalizer=FlextInfraImportNormalization.normalize_source,
                     rope_workspace=rope_workspace,
                     sources=working,
                     findings=preflight.entries,
@@ -1865,12 +1914,49 @@ class FlextInfraCodemodSemanticApply:
             The resulting ``p.Result[bool]``.
 
         """
-        source_states, source_analysis = evidence
         if not updated:
             return r[bool].ok(value=False)
+        validated = cls._publication_inputs(original, updated, evidence)
+        if validated.failure:
+            return r[bool].from_failure(validated)
+        inputs = validated.value
+        source_analysis = evidence[1]
+        states = {state.path: state for state in inputs}
+        prepared = u.Infra.normalize_sources(
+            root,
+            {path: source for path, source in updated.items() if source is not None},
+            inputs=inputs,
+        )
+        if prepared.failure:
+            return r[bool].from_failure(prepared)
+        return cls._publish_normalized(
+            root,
+            updated,
+            prepared.value,
+            (states, inputs, source_analysis),
+            validator=validator,
+        )
+
+    @staticmethod
+    def _publication_inputs(
+        original: t.MappingKV[Path, str],
+        updated: t.MappingKV[Path, str | None],
+        evidence: t.Pair[
+            t.SequenceOf[p.Infra.SemanticSourceState],
+            p.Infra.SemanticSourceAnalysis | None,
+        ],
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        """Authenticate source bytes and retirement topology before normalization.
+
+        Returns:
+            The validated original file receipts, or the first preflight failure.
+
+        """
+        outcome = r[t.VariadicTuple[m.Cli.AtomicFileState]]
+        source_states, source_analysis = evidence
         retirement = any(source is None for source in updated.values())
         if retirement and source_analysis is None:
-            return r[bool].fail(
+            return outcome.fail(
                 "semantic retirement requires its original native topology"
             )
         supplied = (
@@ -1889,20 +1975,36 @@ class FlextInfraCodemodSemanticApply:
             or states[path].content != source.encode(c.DEFAULT_ENCODING)
             for path, source in original.items()
         ):
-            return r[bool].fail("source changed after semantic preflight")
+            return outcome.fail("source changed after semantic preflight")
         if retirement and (
             source_analysis is None or not source_analysis.source_directories
         ):
-            return r[bool].fail("semantic retirement has no original inventory witness")
-        prepared = u.Infra.normalize_sources(
-            root,
-            {path: source for path, source in updated.items() if source is not None},
-            inputs=inputs,
-        )
-        if prepared.failure:
-            return r[bool].from_failure(prepared)
+            return outcome.fail("semantic retirement has no original inventory witness")
+        return outcome.ok(inputs)
+
+    @classmethod
+    def _publish_normalized(
+        cls,
+        root: Path,
+        updated: t.MappingKV[Path, str | None],
+        prepared: m.Infra.StageSourcePlan,
+        evidence: t.Triple[
+            t.MappingKV[Path, m.Cli.AtomicFileState],
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            p.Infra.SemanticSourceAnalysis | None,
+        ],
+        *,
+        validator: Callable[[Path], p.Result[bool]] | None,
+    ) -> p.Result[bool]:
+        """Assemble normalized sources with their original publication evidence.
+
+        Returns:
+            The journaled publication result.
+
+        """
+        states, inputs, source_analysis = evidence
         dependencies = m.Infra.CodemodBindingSnapshot(
-            states=(*inputs, *prepared.value.inputs)
+            states=(*inputs, *prepared.inputs)
         ).states
         directories = tuple(
             m.Cli.AtomicDirectoryInventory.model_validate(receipt, from_attributes=True)
@@ -1922,7 +2024,7 @@ class FlextInfraCodemodSemanticApply:
         )
         assembled = cls._artifact_plans(
             updated,
-            (prepared.value.updates, states),
+            (prepared.updates, states),
             (dependencies, directories, topology),
         )
         if assembled.failure:
@@ -1931,14 +2033,16 @@ class FlextInfraCodemodSemanticApply:
         return FlextInfraSemanticPublication.publish_semantic_artifact_plans(
             plans,
             repository_root=root,
-            projection_roots=tuple(
-                sorted({
-                    *u.Infra.governed_project_roots(root),
-                    *(plan.project for plan in plans),
-                })
+            options=m.Infra.SemanticPublicationOptions(
+                projection_roots=tuple(
+                    sorted({
+                        *u.Infra.governed_project_roots(root),
+                        *(plan.project for plan in plans),
+                    })
+                ),
+                dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                validator=validator,
             ),
-            dependency_group=c.Infra.CodegenStagedFilePhase.SEMANTIC,
-            validator=validator,
         ).map(lambda _: True)
 
     @classmethod

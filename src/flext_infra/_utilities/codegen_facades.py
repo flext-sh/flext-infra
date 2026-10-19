@@ -771,8 +771,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             facade_path,
             (facade, namespace),
             owners=owners,
-            inherited=cls._protocol_ancestor_objects(base_objects),
-            scope=scope,
+            namespace_bindings=(scope, cls._protocol_ancestor_objects(base_objects)),
             binding=binding,
         )
         if not additions:
@@ -955,23 +954,20 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             The name, RHS and optional class annotation, or no supported binding.
 
         """
-        if (
-            isinstance(member, ast.Assign)
-            and len(member.targets) == 1
-            and isinstance(member.targets[0], ast.Name)
-            and isinstance(member.value, ast.Name | ast.Attribute)
-        ):
-            return member.targets[0].id, member.value, None
-        if (
-            isinstance(member, ast.AnnAssign)
-            and isinstance(member.target, ast.Name)
-            and isinstance(member.annotation, ast.Subscript)
-            and isinstance(member.annotation.value, ast.Name)
-            and member.annotation.value.id == "type"
-            and isinstance(member.value, ast.Name | ast.Attribute)
-        ):
-            return member.target.id, member.value, member.annotation.slice
-        return None
+        match member:
+            case ast.Assign(
+                targets=[ast.Name(id=name)],
+                value=(ast.Name() | ast.Attribute()) as value,
+            ):
+                return name, value, None
+            case ast.AnnAssign(
+                target=ast.Name(id=name),
+                annotation=ast.Subscript(value=ast.Name(id="type"), slice=annotation),
+                value=(ast.Name() | ast.Attribute()) as value,
+            ):
+                return name, value, annotation
+            case _:
+                return None
 
     @classmethod
     def _inherited_namespace_members(
@@ -1089,49 +1085,58 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     "value does not identify the inherited contract"
                 )
                 raise ValueError(message)
-        if shadows:
-            wrapper = MetadataWrapper(parse_module(source))
-            removals: set[CSTNode] = set()
-            lines = source.splitlines()
-            positions = {(member.lineno, member.col_offset) for member in shadows}
-            context = CodemodContext()
-            for node, span in wrapper.resolve(PositionProvider).items():
-                if (
-                    not isinstance(node, Assign | AnnAssign)
-                    or (
-                        span.start.line,
-                        len(lines[span.start.line - 1][: span.start.column].encode()),
-                    )
-                    not in positions
-                ):
-                    continue
-                if node.value is not None:
-                    RemoveImportsVisitor.remove_unused_import_by_node(
-                        context, node.value
-                    )
-                if isinstance(node, AnnAssign):
-                    RemoveImportsVisitor.remove_unused_import_by_node(
-                        context, node.annotation.annotation
-                    )
-                removals.add(node)
+        return cls._remove_shadow_statements(source, shadows) if shadows else source
 
-            class RemoveShadows(CSTTransformer):
-                """Remove all proven assignments in one identity-preserving traversal."""
+    @staticmethod
+    def _remove_shadow_statements(source: str, shadows: t.SequenceOf[ast.stmt]) -> str:
+        """Remove proven shadows and prune only imports belonging to those nodes.
 
-                @override
-                def on_leave(
-                    self, original_node: CSTNode, updated_node: CSTNode
-                ) -> CSTNode | RemovalSentinel:
-                    if original_node in removals:
-                        return RemovalSentinel.REMOVE
-                    return updated_node
+        Returns:
+            Source with the selected assignments and unused imports removed.
 
-            updated = wrapper.module.visit(RemoveShadows())
-            if not isinstance(updated, Module):
-                message = "Facade class shadow removal did not preserve the module"
-                raise TypeError(message)
-            source = RemoveImportsVisitor(context).transform_module(updated).code
-        return source
+        Raises:
+            TypeError: If the concrete rewrite does not preserve the source module.
+
+        """
+        wrapper = MetadataWrapper(parse_module(source))
+        removals: set[CSTNode] = set()
+        lines = source.splitlines()
+        positions = {(member.lineno, member.col_offset) for member in shadows}
+        context = CodemodContext(wrapper=wrapper)
+        for node, span in wrapper.resolve(PositionProvider).items():
+            if (
+                not isinstance(node, Assign | AnnAssign)
+                or (
+                    span.start.line,
+                    len(lines[span.start.line - 1][: span.start.column].encode()),
+                )
+                not in positions
+            ):
+                continue
+            if node.value is not None:
+                RemoveImportsVisitor.remove_unused_import_by_node(context, node.value)
+            if isinstance(node, AnnAssign):
+                RemoveImportsVisitor.remove_unused_import_by_node(
+                    context, node.annotation.annotation
+                )
+            removals.add(node)
+
+        class RemoveShadows(CSTTransformer):
+            """Remove proven assignments in one identity-preserving traversal."""
+
+            @override
+            def on_leave(
+                self, original_node: CSTNode, updated_node: CSTNode
+            ) -> CSTNode | RemovalSentinel:
+                if original_node in removals:
+                    return RemovalSentinel.REMOVE
+                return updated_node
+
+        updated = wrapper.module.visit(RemoveShadows())
+        if not isinstance(updated, Module):
+            message = "Facade class shadow removal did not preserve the module"
+            raise TypeError(message)
+        return RemoveImportsVisitor(context).transform_module(updated).code
 
     @staticmethod
     def _declared_namespace_members(namespace: ast.ClassDef) -> set[str]:
@@ -1169,8 +1174,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         facades: t.Pair[ast.ClassDef, ast.ClassDef],
         *,
         owners: t.VariadicTuple[t.Triple[str, str, frozenset[str]]],
-        inherited: list[p.Infra.RopePyObject],
-        scope: p.Infra.RopeScope,
+        namespace_bindings: t.Pair[p.Infra.RopeScope, list[p.Infra.RopePyObject]],
         binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
     ) -> list[t.Pair[str, str]]:
         """Select unique missing owners from admitted native semantic modules.
@@ -1183,6 +1187,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
 
         """
         facade, namespace = facades
+        scope, inherited = namespace_bindings
         pkg_dir = facade_path.parent
         additions: list[t.Pair[str, str]] = []
         declared = cls._declared_namespace_members(namespace)
@@ -1321,13 +1326,27 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             )
             source = cls._declared_facade_render(context, source, namespace, ordered)
         if family == "m":
-            _, namespace, scope, _, base_objects, _ = cls._facade_namespace_context(
+            source = cls._remove_model_namespace_class_shadows(
                 project, source, facade_path
             )
-            source = cls._remove_namespace_class_shadows(
-                source, namespace, scope, base_objects, family="model"
-            )
         return cls._wrap_facade_imports(source)
+
+    @classmethod
+    def _remove_model_namespace_class_shadows(
+        cls, project: p.Infra.RopeProject, source: str, facade_path: Path
+    ) -> str:
+        """Resolve the rendered model namespace before removing inherited shadows.
+
+        Returns:
+            The model facade source without redundant inherited class declarations.
+
+        """
+        _, namespace, scope, _, base_objects, _ = cls._facade_namespace_context(
+            project, source, facade_path
+        )
+        return cls._remove_namespace_class_shadows(
+            source, namespace, scope, base_objects, family="model"
+        )
 
     @classmethod
     def _retired_facade_projection(

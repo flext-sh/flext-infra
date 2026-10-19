@@ -1,0 +1,52 @@
+id: bind-typing-adapter-utilities
+snapshots:
+  ? |
+    from flext_cli import t
+    value = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload)
+  : fixed: |
+      from flext_cli import u, t
+      value = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload)
+    labels:
+    - source: from flext_cli import t
+      style: primary
+      start: 0
+      end: 23
+    - source: t.Cli.JSON_MAPPING_ADAPTER
+      style: secondary
+      start: 32
+      end: 58
+    - source: |
+        from flext_cli import t
+        value = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload)
+      style: secondary
+      start: 0
+      end: 84
+    - source: t
+      style: secondary
+      start: 22
+      end: 23
+  ? |
+    from tests import t
+    value = t.json_mapping_adapter().validate_python(payload)
+  : fixed: |
+      from tests import u, t
+      value = t.json_mapping_adapter().validate_python(payload)
+    labels:
+    - source: from tests import t
+      style: primary
+      start: 0
+      end: 19
+    - source: t.json_mapping_adapter()
+      style: secondary
+      start: 28
+      end: 52
+    - source: |
+        from tests import t
+        value = t.json_mapping_adapter().validate_python(payload)
+      style: secondary
+      start: 0
+      end: 78
+    - source: t
+      style: secondary
+      start: 18
+      end: 19

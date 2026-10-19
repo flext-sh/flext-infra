@@ -655,7 +655,9 @@ class FlextInfraCodegenTransactionRecovery(FlextInfraCodegenFileLeases):
         for surface in c.Infra.CodegenConformSurface:
             if surface is c.Infra.CodegenConformSurface.ALL:
                 continue
-            path = root / FlextInfraMiseArtifactsVerification.publication_receipt(surface)
+            path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
+                surface
+            )
             before = FlextInfraMiseArtifactsFiles.read_state(path, required=False)
             if before.failure:
                 return result_type.from_failure(before)

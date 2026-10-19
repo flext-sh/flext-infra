@@ -125,7 +125,8 @@ class FlextInfraCodegenRoutes:
             m.Cli.ResultCommandRoute(
                 name="footprint",
                 help_text=(
-                    "Inspect recorded generation effects without planning or publication"
+                    "Inspect recorded generation effects "
+                    "without planning or publication"
                 ),
                 model_cls=m.Infra.CodegenFootprintRequest,
                 handler=infra.codegen_footprint,

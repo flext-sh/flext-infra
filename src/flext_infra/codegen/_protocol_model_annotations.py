@@ -90,15 +90,13 @@ class FlextInfraCodegenProtocolModelAnnotations:
         Returns:
             The exact published binding, or absence of that route.
 
-        Raises:
-            ValueError: The facade lacks an authenticated lexical scope.
-
         """
-        scope = binding.get_object().get_scope()
-        if scope is None:
-            msg = "public facade has no native lexical scope"
-            raise ValueError(msg)
-        return u.Infra.resolve_symbol(scope, ast.parse(name, mode="eval").body)
+        for member in name.split("."):
+            resolved = binding.get_object().get_attributes().get(member)
+            if resolved is None:
+                return None
+            binding = resolved
+        return binding
 
     alias_definition = staticmethod(u.Infra.annotation_alias_definition)
 

@@ -157,7 +157,7 @@ class TestsFlextInfraApplyRenames:
                     f"sys.stdout.write({(inventory.model_dump_json() + chr(10))!r})\n",
                     encoding=c.DEFAULT_ENCODING,
                 )
-                (root / "config").mkdir()
+                (root / "config").mkdir(exist_ok=True)
                 (root / "config" / "codegen.yaml").write_text(
                     "Infra:\n  codegen:\n    workspace_inventory_command: "
                     + json.dumps((str(python), "-B", str(provider)))

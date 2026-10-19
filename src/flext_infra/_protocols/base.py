@@ -229,6 +229,22 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class SourceImportNormalizer(Protocol):
+        """Normalize source imports through the caller's explicit service binding."""
+
+        def __call__(
+            self,
+            *,
+            project_root: Path,
+            file_path: Path,
+            source: str,
+            import_graph: t.MappingKV[str, frozenset[str]],
+            sources: t.MappingKV[Path, str],
+        ) -> str | None:
+            """Return normalized source, or None when no import changes are needed."""
+            ...
+
+    @runtime_checkable
     class SourcePreview(Protocol):
         """Consumer-owned capability for validating authenticated source views."""
 
@@ -238,11 +254,7 @@ class FlextInfraProtocolsBase(Protocol):
             updates: t.MappingKV[Path, str | None],
             validator: Callable[[Path, t.MappingKV[Path, Path]], T],
             *,
-            inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
-            runtime_root: Path | None = None,
-            workspaces: t.VariadicTuple[Path] = (),
-            runtime_check: bool = True,
-            modes: t.MappingKV[Path, int] | None = None,
+            options: m.Infra.CodegenSourcePreviewOptions | None = None,
         ) -> p.Result[T]:
             """Validate staged updates and retirements while preserving live sources."""
             ...
@@ -414,8 +426,7 @@ class FlextInfraProtocolsBase(Protocol):
             rope_workspace: p.Infra.RopeWorkspaceDsl,
             *,
             sources: t.MappingKV[Path, str],
-            source_states: t.VariadicTuple[m.Cli.AtomicFileState],
-            declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+            receipt: m.Infra.CodegenPhaseAnalysis,
         ) -> p.Result[m.Infra.CodegenPhaseAnalysis]: ...
 
         def apply(

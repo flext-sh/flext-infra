@@ -6,15 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from typing import cast, override
 
 from rope.base.project import Project
-from rope.refactor.restructure import Restructure
 from rope.refactor.wildcards import DefaultWildcard
 
 from flext_infra import m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope._sdk import Restructure
 
 
 class FlextInfraRopeRestructure(Restructure):
@@ -51,14 +51,7 @@ class FlextInfraRopeRestructure(Restructure):
             raise TypeError(message)
         default: p.Infra.RopeWildcard[str] = DefaultWildcard(project)
 
-        initialize = cast(
-            "Callable[[Project, str, str, "
-            "t.MappingKV[str, str | t.Pair[str, t.VariadicTuple[str]]] | None, "
-            "t.StrSequence | None, "
-            "t.MappingKV[str, p.Infra.RopeWildcard[str]] | None], None]",
-            super().__init__,
-        )
-        initialize(
+        super().__init__(
             project,
             request.pattern,
             request.goal,
@@ -112,12 +105,7 @@ class FlextInfraRopeRestructure(Restructure):
         self.matched_count += len(matches)
         self.admitted_count += len(selected)
 
-        compute = cast(
-            "Callable[[t.SequenceOf[t.Infra.RopeNativeMatch], "
-            "t.Infra.RopeNativeSourceModule], t.Infra.RopeChangeComputer]",
-            super()._compute_changes,
-        )
-        return compute(selected, pymodule)
+        return super()._compute_changes(selected, pymodule)
 
     @override
     def _add_imports(
@@ -148,11 +136,7 @@ class FlextInfraRopeRestructure(Restructure):
                 if binding not in names
             )
 
-        write_imports = cast(
-            "Callable[[t.Infra.RopeNativeResource, str, t.StrSequence], str]",
-            super()._add_imports,
-        )
-        return write_imports(resource, source, selected)
+        return super()._add_imports(resource, source, selected)
 
 
 __all__: list[str] = ["FlextInfraRopeRestructure"]

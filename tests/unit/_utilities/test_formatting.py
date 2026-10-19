@@ -24,11 +24,14 @@ class TestsFlextInfraUtilitiesformatting:
     ) -> None:
         """Format and execute candidate bytes without replacing their live receipt."""
         width = max(1, config.Infra.tooling.tools.ruff.line_length // width_factor)
-        member = tmp_path / "member"
+        root, _ = u.Tests.create_lazy_init_workspace(tmp_path)
+        member = root / "member"
         tm.ok(u.Cli.ensure_dir(member))
+        tm.ok(u.Cli.atomic_write_text_file(member / c.Infra.INIT_PY, ""))
         tm.ok(
             u.Cli.atomic_write_text_file(
                 member / c.PYPROJECT_FILENAME,
+                '[project]\nname = "formatting-member"\nversion = "0.1.0"\n'
                 f"[tool.ruff]\nline-length = {width}\n",
             )
         )
@@ -37,11 +40,11 @@ class TestsFlextInfraUtilitiesformatting:
         tm.ok(u.Cli.atomic_write_text_file(path, original))
         values = tuple(range(width))
         candidate = "import sys\n\nvalues = [" + ", ".join(map(str, values)) + "]\n"
-        preserved = tm.ok(u.Infra.normalize_source(tmp_path, path, candidate))
-        tm.that("import sys" in preserved, eq=True)
+        preserved = tm.ok(u.Infra.normalize_source(root, path, candidate))
+        tm.that("import sys" in preserved, eq=False)
         normalized = tm.ok(
             u.Infra.normalize_source(
-                tmp_path,
+                root,
                 path,
                 candidate,
                 before_source=candidate + "print(sys.version)\n",
@@ -50,28 +53,29 @@ class TestsFlextInfraUtilitiesformatting:
         tm.that("import sys" in normalized, eq=False)
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
         tm.that(
-            tm.ok(u.Infra.normalize_source(tmp_path, path, normalized)),
+            tm.ok(u.Infra.normalize_source(root, path, normalized)),
             eq=normalized,
         )
         output = tm.ok(
             u.Cli.run((sys.executable, "-c", normalized + "print(sum(values))\n"))
         )
         tm.that(output.stdout.strip(), eq=str(sum(values)))
-        tm.fail(u.Infra.normalize_source(tmp_path, path, "values = [\n"))
+        tm.fail(u.Infra.normalize_source(root, path, "values = [\n"))
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
 
     @staticmethod
-    def test_touched_formatting_preserves_unused_imports_and_fixed_point(
+    def test_touched_formatting_repairs_imports_and_reaches_fixed_point(
         tmp_path: Path,
     ) -> None:
-        """Format published files without silently performing declaration removal."""
-        path = tmp_path / "published.py"
-        missing = tmp_path / "removed.py"
+        """Repair published sources through the destination's lint and format policy."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "published.py"
+        missing = package / "removed.py"
         tm.ok(u.Cli.atomic_write_text_file(path, "import sys\n\nvalues=[1,2]\n"))
-        u.Infra.normalize_touched_files((path, path, missing), tmp_path)
+        u.Infra.normalize_touched_files((path, path, missing), root)
         normalized = path.read_text(encoding=c.DEFAULT_ENCODING)
-        tm.that("import sys" in normalized, eq=True)
-        u.Infra.normalize_touched_files((path, missing), tmp_path)
+        tm.that("import sys" in normalized, eq=False)
+        u.Infra.normalize_touched_files((path, missing), root)
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=normalized)
         tm.that(missing.exists(), eq=False)
         output = tm.ok(

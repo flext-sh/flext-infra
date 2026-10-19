@@ -39,11 +39,7 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         updates: t.MappingKV[Path, str | None],
         validator: Callable[[Path, t.MappingKV[Path, Path]], T],
         *,
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
-        runtime_root: Path | None = None,
-        workspaces: t.VariadicTuple[Path] = (),
-        runtime_check: bool = True,
-        modes: t.MappingKV[Path, int] | None = None,
+        options: m.Infra.CodegenSourcePreviewOptions | None = None,
     ) -> p.Result[T]:
         """Validate a journal-owned source view without publishing live files.
 
@@ -51,39 +47,40 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             workspace: The declared source workspace.
             updates: Desired sources keyed by live paths; None retires an artifact.
             validator: A callable that validates the source view.
-            inputs: Original caller source states required to remain unchanged.
-            runtime_root: Declared physical runtime for pre-check candidate imports.
-            workspaces: Explicit composition scopes sharing the candidate view.
-            runtime_check: Consume runtime after semantic composition, not
-            during syntax planning.
-            modes: Native file-effect modes for newly staged module resources.
+            options: Original input witnesses, runtime policy and native file modes.
 
         Returns:
             A result wrapping the validation outcome or the first failure encountered.
 
 
         """
+        options = options or m.Infra.CodegenSourcePreviewOptions()
         if self._source_authority is not None and updates:
             return r[T].fail(
                 "cold source authority permits an unchanged reference view only",
             )
         current_inputs = FlextInfraMiseArtifactsVerification.publication_input_states(
-            inputs, self._prior_publications
+            options.inputs, self._prior_publications
         )
         if current_inputs.failure:
             return r[T].from_failure(current_inputs)
         planned = FlextInfraStagedPackage.plan_sources(
             workspace,
             updates,
-            inputs=current_inputs.value,
-            workspaces=workspaces,
-            modes=modes,
+            options=m.Infra.StageSourceOptions(
+                inputs=current_inputs.value,
+                workspaces=options.workspaces,
+                modes=options.modes,
+            ),
         )
         if planned.failure:
             return r[T].from_failure(planned)
         plan = planned.value
         roots = self.capability_roots("stage-inputs", sorted(plan.roots))
-        runtime: t.Pair[Path | None, bool] = (runtime_root, runtime_check)
+        runtime: t.Pair[Path | None, bool] = (
+            options.runtime_root,
+            options.runtime_check,
+        )
         return self.run_files_locked(
             roots,
             lambda scope_root: self._locked_source_preview(
@@ -331,9 +328,11 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
                     else path.relative_to(layout.src_dir).with_suffix("").parts
                 )
                 for layout in layouts
-                for path in (state.path for state in plan.inputs)
+                for state in plan.inputs
+                for path in (state.path,)
                 if path.suffix == c.Infra.EXT_PYTHON
                 and path.is_relative_to(layout.package_dir)
+                and (state.content is not None or plan.updates.get(path) is not None)
                 and (path not in plan.updates or plan.updates[path] is not None)
             })
         )
@@ -385,8 +384,9 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
             "    root = origins.get(namespace)\n"
             "    origin = getattr(module, '__file__', None)\n"
             "    paths = getattr(module, '__path__', ())\n"
-            "    if (root is None or origin is None\n"
-            "        or not Path(origin).resolve().is_relative_to(root)\n"
+            "    if (root is None or (origin is None and not paths)\n"
+            "        or (origin is not None "
+            "and not Path(origin).resolve().is_relative_to(root))\n"
             "        or any(not Path(path).resolve().is_relative_to(root) "
             "for path in paths)):\n"
             "        raise ImportError('unsealed candidate origin: ' "

@@ -162,7 +162,9 @@ class FlextInfraAccessorMigrationReportMixin:
             if plan.desired_content is not None
         }
         staged = FlextInfraStagedPackage.plan_sources(
-            params.repository_root, updates, inputs=plans[0].source_states
+            params.repository_root,
+            updates,
+            options=m.Infra.StageSourceOptions(inputs=plans[0].source_states),
         )
         if staged.failure:
             return result_type.from_failure(staged)
@@ -276,13 +278,15 @@ class FlextInfraAccessorMigrationReportMixin:
             plan.workspace,
             plan.updates,
             validate,
-            inputs=plan.inputs,
-            runtime_root=u.Infra.runtime_environment_dir(
-                scopes[0],
-                runtime_root=type(settings).fetch_global().Infra.runtime_root,
-            ).parent,
-            workspaces=plan.workspaces,
-            modes=plan.modes,
+            options=m.Infra.CodegenSourcePreviewOptions(
+                inputs=plan.inputs,
+                runtime_root=u.Infra.runtime_environment_dir(
+                    scopes[0],
+                    runtime_root=type(settings).fetch_global().Infra.runtime_root,
+                ).parent,
+                workspaces=plan.workspaces,
+                modes=plan.modes,
+            ),
         )
         if previewed.failure:
             return r[

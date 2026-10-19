@@ -407,7 +407,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
             )
 
         def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
-            return cls._rewrite_private_imports(
+            return cls.rewrite_private_imports(
                 path,
                 source,
                 file_specs=specs[path],
@@ -421,7 +421,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         )
 
     @classmethod
-    def _rewrite_private_imports(
+    def rewrite_private_imports(
         cls,
         file_path: Path,
         source: str,

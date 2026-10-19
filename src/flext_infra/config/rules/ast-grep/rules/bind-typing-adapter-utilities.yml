@@ -1,0 +1,38 @@
+id: bind-typing-adapter-utilities
+language: python
+severity: error
+files:
+  - "src/**/*.py"
+  - "tests/**/*.py"
+  - "examples/**/*.py"
+  - "scripts/**/*.py"
+rule:
+  pattern: "from $PACKAGE import $$$NAMES"
+  has:
+    pattern: t
+    stopBy: end
+  inside:
+    kind: module
+    stopBy: end
+    all:
+      - has:
+          stopBy: end
+          any:
+            - pattern: t.$FACTORY($$$ARGS)
+            - pattern: t.Cli.$CONSTANT
+      - not:
+          has:
+            stopBy: end
+            kind: import_from_statement
+            has:
+              pattern: u
+              stopBy: end
+constraints:
+  PACKAGE:
+    regex: "^(?:flext(?:_[a-z0-9_]+)?|tests)$"
+  FACTORY:
+    regex: "^[a-z][a-z0-9_]*_adapter$"
+  CONSTANT:
+    regex: "^JSON_(?:MAPPING|LIST|VALUE)_ADAPTER$"
+fix: "from $PACKAGE import u, $$$NAMES"
+message: Bind the utilities owner before migrating obsolete adapter consumers.

@@ -217,7 +217,11 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
             if cls._external_port(facades["p"], name, package):
                 continue
             candidate = FlextInfraCodegenProtocolModelRender.member(facades["m"], name)
-            if candidate is None:
+            if candidate is None or (
+                u.Infra.py_class(candidate.get_object())
+                and name not in renderer.declarations
+                and any(route.startswith(f"{name}.") for route in renderer.declarations)
+            ):
                 manual = cls._manual_dependencies(
                     renderer,
                     FlextInfraCodegenProtocolModelRender.member(facades["p"], name),
@@ -625,8 +629,10 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
                 updated,
                 annotation_rules,
                 captured=captured,
-                annotation_only=not aliases_only,
-                class_alias_only=aliases_only,
+                options=m.Infra.ContractAdmissionOptions(
+                    annotation_only=not aliases_only,
+                    class_alias_only=aliases_only,
+                ),
             )
             if rewritten.failure:
                 return rewritten

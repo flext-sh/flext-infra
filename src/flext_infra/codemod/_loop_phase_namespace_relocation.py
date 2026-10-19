@@ -28,8 +28,7 @@ class FlextInfraNamespaceRelocationPhase:
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: t.MappingKV[Path, str],
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+        receipt: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Plan selected declarations while retaining the full reference readscope.
 
@@ -38,6 +37,7 @@ class FlextInfraNamespaceRelocationPhase:
 
         """
         cascade = FlextInfraNamespaceRelocationCascade()
+        source_states, declared_files = receipt.inputs, receipt.files
         working = dict(sources)
         originals = {state.path: state for state in source_states}
         effects: t.MutableMappingKV[Path, m.Infra.CodegenFilePlan] = {}
@@ -59,13 +59,18 @@ class FlextInfraNamespaceRelocationPhase:
                 scan_root=root,
             )
             planned = cascade.plan(
-                project_root=project_root,
+                m.Infra.NamespaceRelocationRequest(
+                    project_root=project_root,
+                    findings=findings,
+                    py_files=py_files,
+                    sources=working,
+                    receipt=m.Infra.CodegenPhaseAnalysis(
+                        phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                        inputs=tuple(originals.values()),
+                        files=tuple(declarations.values()),
+                    ),
+                ),
                 rope_project=rope_workspace.rope_project,
-                findings=findings,
-                py_files=py_files,
-                sources=working,
-                source_states=tuple(originals.values()),
-                declared_files=tuple(declarations.values()),
             )
             if planned.failure:
                 return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
@@ -124,7 +129,9 @@ class FlextInfraNamespaceRelocationPhase:
                 for state in states
                 if state.content is not None
             },
-            source_states=states,
+            receipt=m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.SEMANTIC, files=(), inputs=states
+            ),
         )
         if planned.failure:
             return r[bool].from_failure(planned)

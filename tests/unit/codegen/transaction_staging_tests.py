@@ -266,7 +266,9 @@ class TestsFlextInfraTransactionStaging:
             ),
         }
         plan = tm.ok(
-            FlextInfraStagedPackage.plan_sources(root, updates, inputs=originals[:2])
+            FlextInfraStagedPackage.plan_sources(
+                root, updates, options=m.Infra.StageSourceOptions(inputs=originals[:2])
+            )
         )
         tm.that({layout.package_name for layout in plan.layouts}, eq=set(packages))
         owner = transaction.FlextInfraCodegenTransaction(
@@ -310,10 +312,12 @@ class TestsFlextInfraTransactionStaging:
             root,
             updates,
             consume,
-            inputs=plan.inputs,
-            runtime_root=u.Infra.runtime_environment_dir(
-                Path(__file__).resolve().parents[3]
-            ).parent,
+            options=m.Infra.CodegenSourcePreviewOptions(
+                inputs=plan.inputs,
+                runtime_root=u.Infra.runtime_environment_dir(
+                    Path(__file__).resolve().parents[3]
+                ).parent,
+            ),
         )
         if missing:
             tm.fail(outcome, has="missing_candidate_dependency")
@@ -350,10 +354,12 @@ class TestsFlextInfraTransactionStaging:
             root,
             {target: f"__path__ = [{str(package)!r}]\n"},
             checks,
-            inputs=(before,),
-            runtime_root=u.Infra.runtime_environment_dir(
-                Path(__file__).resolve().parents[3]
-            ).parent,
+            options=m.Infra.CodegenSourcePreviewOptions(
+                inputs=(before,),
+                runtime_root=u.Infra.runtime_environment_dir(
+                    Path(__file__).resolve().parents[3]
+                ).parent,
+            ),
         )
         tm.fail(outcome, has="unsealed candidate origin")
         tm.that(
@@ -395,8 +401,10 @@ class TestsFlextInfraTransactionStaging:
             root,
             {target: "VALUE = 2\n"},
             checks,
-            inputs=(before,),
-            runtime_root=root,
+            options=m.Infra.CodegenSourcePreviewOptions(
+                inputs=(before,),
+                runtime_root=root,
+            ),
         )
         tm.fail(
             outcome,
@@ -443,7 +451,10 @@ class TestsFlextInfraTransactionStaging:
 
         tm.fail(
             owner.preview_sources(
-                root, {target: "VALUE = 2\n"}, validate, inputs=(before,)
+                root,
+                {target: "VALUE = 2\n"},
+                validate,
+                options=m.Infra.CodegenSourcePreviewOptions(inputs=(before,)),
             )
         )
         tm.that(
@@ -469,7 +480,9 @@ class TestsFlextInfraTransactionStaging:
         target.write_text("VALUE = 3\n")
         tm.fail(
             FlextInfraStagedPackage.plan_sources(
-                root, {target: "VALUE = 2\n"}, inputs=(before,)
+                root,
+                {target: "VALUE = 2\n"},
+                options=m.Infra.StageSourceOptions(inputs=(before,)),
             ),
             has="original source identity changed",
         )

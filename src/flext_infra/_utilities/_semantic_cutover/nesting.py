@@ -211,7 +211,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         )
         for node in tree.body:
             target, value = (
-                FlextInfraUtilitiesPrivateImportFacades._assigned_target_value(node)
+                FlextInfraUtilitiesPrivateImportFacades.assigned_target_value(node)
             )
             if not isinstance(target, ast.Name) or value is None:
                 continue
@@ -231,7 +231,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 continue
             if target.id not in {policy.expected_alias, singleton}:
                 continue
-            declared = FlextInfraUtilitiesPrivateImportFacades._facade_class_name(value)
+            declared = FlextInfraUtilitiesPrivateImportFacades.facade_class_name(value)
             name = attributes.get(declared) if declared is not None else None
             binding = attributes.get(target.id)
             if (
@@ -241,10 +241,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     name.get_object()
                 )
                 or target.id not in exports
-                or (
-                    policy.expected_family is not None
-                    and declared != policy.expected_family
-                )
+                or not cls._canonical_family_matches(policy, declared)
             ):
                 msg = (
                     f"unproven canonical module alias: {module.get_name()}.{target.id}"
@@ -270,6 +267,12 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             msg = f"invalid native canonical singleton: {module.get_name()}.{target.id}"
             raise ValueError(msg)
         return frozenset(aliases)
+
+    @staticmethod
+    def _canonical_family_matches(
+        policy: m.Infra.NamespaceModulePolicy, declared: str | None
+    ) -> bool:
+        return policy.expected_family is None or declared == policy.expected_family
 
     @staticmethod
     def _is_pytest_module(
@@ -325,6 +328,38 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         return False
 
     @classmethod
+    def _main_guard_body(cls, tree: ast.Module, statement: ast.stmt) -> ast.stmt | None:
+        if not isinstance(statement, ast.If) or statement.orelse:
+            return None
+        test = statement.test
+        if not (
+            isinstance(test, ast.Compare)
+            and len(test.ops) == len(test.comparators) == 1
+            and isinstance(test.ops[0], ast.Eq)
+        ):
+            return None
+        left, right = test.left, test.comparators[0]
+        if not (
+            isinstance(left, ast.Name)
+            and left.id == "__name__"
+            and isinstance(right, ast.Constant)
+            and right.value == "__main__"
+        ) or any("__name__" in cls._scope_bindings(node) for node in tree.body):
+            return None
+        if len(statement.body) != 1:
+            return None
+        body = statement.body[0]
+        if any(
+            isinstance(
+                node,
+                ast.NamedExpr | ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef,
+            )
+            for node in ast.walk(body)
+        ):
+            return None
+        return body
+
+    @classmethod
     def _canonical_main_guard(
         cls,
         project: p.Infra.RopeProject,
@@ -338,33 +373,8 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             Whether the statement is a canonical ``__main__`` guard.
 
         """
-        if not isinstance(statement, ast.If) or statement.orelse:
-            return False
-        test = statement.test
-        if not (
-            isinstance(test, ast.Compare)
-            and len(test.ops) == len(test.comparators) == 1
-            and isinstance(test.ops[0], ast.Eq)
-        ):
-            return False
-        left, right = test.left, test.comparators[0]
-        if not (
-            isinstance(left, ast.Name)
-            and left.id == "__name__"
-            and isinstance(right, ast.Constant)
-            and right.value == "__main__"
-        ) or any("__name__" in cls._scope_bindings(node) for node in tree.body):
-            return False
-        if len(statement.body) != 1:
-            return False
-        body = statement.body[0]
-        if any(
-            isinstance(
-                node,
-                ast.NamedExpr | ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef,
-            )
-            for node in ast.walk(body)
-        ):
+        body = cls._main_guard_body(tree, statement)
+        if body is None:
             return False
         call = (
             body.value
@@ -458,7 +468,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             Whether the statement is a canonical provenance rebind.
 
         """
-        target, value = FlextInfraUtilitiesPrivateImportFacades._assigned_target_value(
+        target, value = FlextInfraUtilitiesPrivateImportFacades.assigned_target_value(
             node
         )
         if not isinstance(target, ast.Attribute) or target.attr != "__module__":
@@ -516,15 +526,86 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         test_module = any(
             fnmatch(file_path.name, pattern) for pattern in pytest_patterns[0]
         )
-        canonical = cls._canonical_module_bindings(
-            project,
-            file_path,
-            tree,
-            convention.module_policy,
+        members = cls._nesting_module_members(project, file_path, tree, convention)
+        if members.failure:
+            return planned.from_failure(members)
+        loose = members.value
+        composition = (test_module or file_path.name == "conftest.py") and (
+            len(classes) != 1
+            or any(
+                isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                and cls._pytest_name_matches(node.name, pytest_patterns[2])
+                for node in tree.body
+            )
         )
-        # Full syntactic collection precedes native canonical admission everywhere.
-        loose = cls._loose_members(tree, values=True, strict=True)
-        loose = tuple(name for name in loose if name not in canonical)
+        if len(classes) <= 1 and not loose and not composition:
+            return planned.ok({})
+        declaration_error = cls._nesting_declaration_error(
+            project, file_path, classes, (tree, loose), convention
+        )
+        if declaration_error is not None:
+            return planned.fail(declaration_error)
+        owned = (
+            cls._test_module_owner(
+                convention,
+                file_path,
+                classes,
+                (pytest_patterns[1], pytest_patterns[2]),
+                collection=(test_module, composition),
+            )
+            if test_module or file_path.name == "conftest.py"
+            else cls._module_owner(
+                convention, file_path, classes, cls._declared_names(tree)
+            )
+        )
+        if owned.failure:
+            return planned.from_failure(owned)
+        return cls._nesting_owned_definitions(
+            convention,
+            (tree, classes, loose),
+            owned.value,
+            collection=(test_module, pytest_patterns[2]),
+        )
+
+    @classmethod
+    def _nesting_owned_definitions(
+        cls,
+        convention: m.Infra.RopeModuleConvention,
+        members: t.Triple[ast.Module, t.MappingKV[str, ast.ClassDef], t.StrTuple],
+        owner: str,
+        *,
+        collection: t.Pair[bool, t.StrSequence],
+    ) -> p.Result[t.StrMapping]:
+        tree, classes, loose = members
+        if collection[0] and cls._suite_lifecycle_risk(
+            tree, classes.get(owner), collection[1]
+        ):
+            planned = r[t.StrMapping]
+            return planned.fail(
+                f"class-nesting cannot add free tests to "
+                f"{convention.module_name}.{owner}: existing suite "
+                "registration or lifecycle would change",
+            )
+        return cls._nesting_members_under_owner(tree, classes, loose, owner, convention)
+
+    @classmethod
+    def _nesting_module_members(
+        cls,
+        project: p.Infra.RopeProject,
+        file_path: Path,
+        tree: ast.Module,
+        convention: m.Infra.RopeModuleConvention,
+    ) -> p.Result[t.StrTuple]:
+        planned = r[t.StrTuple]
+        canonical = cls._canonical_module_bindings(
+            project, file_path, tree, convention.module_policy
+        )
+        # Collect syntax before admitting canonical native bindings.
+        loose = tuple(
+            name
+            for name in cls._loose_members(tree, values=True, strict=True)
+            if name not in canonical
+        )
         unsupported = tuple(
             f"{type(node).__name__}@{node.lineno}"
             for node in tree.body
@@ -564,25 +645,25 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 f"owned module {convention.module_name} requires a single "
                 f"owned assignment target: {', '.join(unowned)}",
             )
-        composition = (test_module or file_path.name == "conftest.py") and (
-            len(classes) != 1 or bool(loose)
-        )
-        if len(classes) <= 1 and not loose and not composition:
-            return planned.ok({})
-        registered_decorators = {"fixture", "hookimpl"} | {
-            alias.asname or alias.name
-            for node in tree.body
-            if isinstance(node, ast.ImportFrom) and node.module == "pytest"
-            for alias in node.names
-            if alias.name in {"fixture", "hookimpl"}
-        }
+        return planned.ok(loose)
+
+    @classmethod
+    def _nesting_declaration_error(
+        cls,
+        project: p.Infra.RopeProject,
+        file_path: Path,
+        classes: t.MappingKV[str, ast.ClassDef],
+        members: t.Pair[ast.Module, t.StrTuple],
+        convention: m.Infra.RopeModuleConvention,
+    ) -> str | None:
+        tree, loose = members
         entities = cls._module_declaration_entities(project, file_path, classes)
         if entities:
-            return planned.fail(
+            return (
                 "class-nesting requires canonical declaration relocation "
                 f"before electing a namespace in {convention.module_name}: "
                 f"{', '.join(sorted(entities))}; data/protocol entities "
-                "cannot own utility behavior",
+                "cannot own utility behavior"
             )
         family = FlextInfraUtilitiesCodegenNamespace.facade_family_of_file(
             file_path.name,
@@ -601,81 +682,78 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 for node in tree.body
             )
         ):
-            return planned.fail(
+            return (
                 f"class-nesting requires utility-owner relocation for behavior in "
-                f"declaration family {convention.module_name}",
+                f"declaration family {convention.module_name}"
             )
-        owned = (
-            cls._test_module_owner(
-                convention,
-                file_path,
-                classes,
-                pytest_patterns[1],
-                pytest_patterns[2],
-                require_collection=test_module,
-                composition=composition,
-            )
-            if test_module or file_path.name == "conftest.py"
-            else cls._module_owner(
-                convention,
-                file_path,
-                classes,
-                cls._declared_names(tree),
-            )
-        )
-        if owned.failure:
-            return planned.from_failure(owned)
-        owner = owned.value
-        suite = classes.get(owner)
-        if (
-            test_module
-            and suite is not None
-            and any(
-                isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
-                and cls._pytest_name_matches(node.name, pytest_patterns[2])
-                for node in tree.body
-            )
-            and (
-                suite.bases
-                or suite.keywords
-                or suite.decorator_list
-                or any(
-                    any(
-                        name in {"__test__", "pytestmark"}
-                        for name in cls._scope_bindings(node)
-                    )
-                    or (
-                        isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
-                        and (
-                            node.name
-                            in {
-                                "__init__",
-                                "__new__",
-                                "setup_class",
-                                "teardown_class",
-                                "setup_method",
-                                "teardown_method",
-                            }
-                            or any(
-                                cls._tail_name(
-                                    decorator.func
-                                    if isinstance(decorator, ast.Call)
-                                    else decorator
-                                )
-                                in registered_decorators
-                                for decorator in node.decorator_list
+        return None
+
+    @classmethod
+    def _suite_lifecycle_risk(
+        cls,
+        tree: ast.Module,
+        suite: ast.ClassDef | None,
+        function_patterns: t.StrSequence,
+    ) -> bool:
+        if suite is None or not any(
+            isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+            and cls._pytest_name_matches(node.name, function_patterns)
+            for node in tree.body
+        ):
+            return False
+        registered_decorators = {"fixture", "hookimpl"} | {
+            alias.asname or alias.name
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom) and node.module == "pytest"
+            for alias in node.names
+            if alias.name in {"fixture", "hookimpl"}
+        }
+        return bool(
+            suite.bases
+            or suite.keywords
+            or suite.decorator_list
+            or any(
+                any(
+                    name in {"__test__", "pytestmark"}
+                    for name in cls._scope_bindings(node)
+                )
+                or (
+                    isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                    and (
+                        node.name
+                        in {
+                            "__init__",
+                            "__new__",
+                            "setup_class",
+                            "teardown_class",
+                            "setup_method",
+                            "teardown_method",
+                        }
+                        or any(
+                            cls._tail_name(
+                                decorator.func
+                                if isinstance(decorator, ast.Call)
+                                else decorator
                             )
+                            in registered_decorators
+                            for decorator in node.decorator_list
                         )
                     )
-                    for node in suite.body
                 )
+                for node in suite.body
             )
-        ):
-            return planned.fail(
-                f"class-nesting cannot add free tests to "
-                f"{convention.module_name}.{owner}: existing suite "
-                "registration or lifecycle would change",
-            )
+        )
+
+    @classmethod
+    def _nesting_members_under_owner(
+        cls,
+        tree: ast.Module,
+        classes: t.MappingKV[str, ast.ClassDef],
+        loose: t.StrTuple,
+        owner: str,
+        convention: m.Infra.RopeModuleConvention,
+    ) -> p.Result[t.StrMapping]:
+        planned = r[t.StrMapping]
         if owner not in classes and any(
             owner in cls._scope_bindings(node) for node in tree.body
         ):
@@ -794,7 +872,6 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             The native rename edits for every local test class.
 
         Raises:
-            TypeError: When a rename plan carries an unsupported shape.
             ValueError: When a rename cannot be proven natively.
 
         """
@@ -843,164 +920,12 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                         "required"
                     )
                     raise ValueError(msg)
-                project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-                    workspace.rope_project,
-                    working,
+                cls._rename_test_class(
+                    workspace, working, path, (declaration, replacement)
                 )
-                try:
-                    root = Path(project.root.real_path)
-                    resource = project.get_resource(path.relative_to(root).as_posix())
-                    module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                        project, resource
-                    )
-                    pending = [module.get_scope()]
-                    defining: p.Infra.RopeScope | None = None
-                    while pending:
-                        scope = pending.pop()
-                        if (
-                            scope.get_kind() == "Class"
-                            and scope.pyobject.get_name() == declaration.name
-                            and scope.get_start() == declaration.lineno
-                        ):
-                            defining = scope.parent
-                            break
-                        pending.extend(scope.get_scopes())
-                    if defining is None:
-                        msg = (
-                            "test class has no unique native defining "
-                            f"scope: {path}:{declaration.name}"
-                        )
-                        raise ValueError(msg)
-                    # Rope's scope ``__getitem__`` raises for absent names; the
-                    # native defined-name contract decides presence first.
-                    # ``get_names`` lazily fills function-scope locals, which
-                    # ``get_defined_names`` reports empty.
-                    defined = defining.get_names()
-                    expected = defined.get(declaration.name)
-                    if expected is None:
-                        msg = (
-                            "test class has no native defining "
-                            f"binding: {path}:{declaration.name}"
-                        )
-                        raise ValueError(msg)
-                    if replacement in defined:
-                        msg = f"test class prefix rename collides: {path}:{replacement}"
-                        raise ValueError(msg)
-                    offset = (
-                        FlextInfraUtilitiesRopeCore.find_identifier_offset_in_lines(
-                            working[path].splitlines(keepends=True),
-                            line=declaration.lineno,
-                            symbol=declaration.name,
-                            pyname=expected,
-                        )
-                    )
-                    if offset is None:
-                        msg = (
-                            "test class has no native identifier: "
-                            f"{path}:{declaration.name}"
-                        )
-                        raise ValueError(msg)
-                    changes = FlextInfraUtilitiesRopeRuntimeRefactors.rename_changes(
-                        project,
-                        resource,
-                        offset,
-                        replacement,
-                        options=m.Infra.RopeRenameOptions(
-                            resources=tuple(
-                                project.get_resource(item.relative_to(root).as_posix())
-                                for item in working
-                            ),
-                            in_hierarchy=True,
-                        ),
-                    )
-                    rewrites: MutableMapping[Path, list[m.Infra.SourceRewrite]] = {}
-                    for change in changes.changes:
-                        if not isinstance(change, p.Infra.RopeChangeContents):
-                            msg = "test class rename produced a non-content effect"
-                            raise TypeError(msg)
-                        consumer = Path(change.resource.real_path).resolve()
-                        if consumer not in working:
-                            msg = (
-                                "test class rename escaped source "
-                                f"inventory: {consumer}"
-                            )
-                            raise ValueError(msg)
-                        rewrites[consumer] = [
-                            m.Infra.SourceRewrite(
-                                start=begin,
-                                end=end,
-                                text=change.new_contents[first:last],
-                            )
-                            for kind, begin, end, first, last in SequenceMatcher(
-                                a=working[consumer],
-                                b=change.new_contents,
-                                autojunk=False,
-                            ).get_opcodes()
-                            if kind != "equal"
-                        ]
-
-                    def quoted_replacement(
-                        current: p.Infra.RopeScope,
-                        expression: str,
-                        declaration: ast.ClassDef = declaration,
-                        expected: p.Infra.RopePyName = expected,
-                        replacement: str = replacement,
-                    ) -> str | None:
-                        parts = expression.split(".")
-                        for count in range(1, len(parts) + 1):
-                            actual = (
-                                FlextInfraUtilitiesRopeRuntimeModules.expression_name(
-                                    current, ".".join(parts[:count])
-                                )
-                            )
-                            if (
-                                parts[count - 1] == declaration.name
-                                and FlextInfraUtilitiesRopeRuntimeModules.same_name(
-                                    expected, actual
-                                )
-                            ):
-                                return ".".join((
-                                    *parts[: count - 1],
-                                    replacement,
-                                    *parts[count:],
-                                ))
-                        return None
-
-                    for consumer, text in working.items():
-                        candidate = project.get_resource(
-                            consumer.relative_to(root).as_posix()
-                        )
-                        quotes = cls._quoted_type_edits(
-                            project, candidate, text, quoted_replacement
-                        )
-                        if quotes:
-                            rewrites.setdefault(consumer, []).extend(quotes)
-                    exports = cls._test_export_rename_edits(
-                        project,
-                        resource,
-                        offset,
-                        replacement,
-                        working,
-                    )
-                    for consumer, edits in exports.items():
-                        rewrites.setdefault(consumer, []).extend(edits)
-                    changed = False
-                    for consumer, edits in rewrites.items():
-                        candidate = project.get_resource(
-                            consumer.relative_to(root).as_posix()
-                        )
-                        updated = (
-                            FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
-                                candidate, working[consumer], edits
-                            ).new_contents
-                        )
-                        changed |= working[consumer] != updated
-                        working[consumer] = updated
-                    if not changed or working[path] == previous_source:
-                        msg = f"native test class rename made no progress: {path}"
-                        raise ValueError(msg)
-                finally:
-                    project.close()
+                if working[path] == previous_source:
+                    msg = f"native test class rename made no progress: {path}"
+                    raise ValueError(msg)
         return tuple(
             m.Infra.SemanticMigrationEdit(
                 file_path=path,
@@ -1011,6 +936,167 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             for path, source in sources.items()
             if working[path] != source
         )
+
+    @staticmethod
+    def _test_class_binding(
+        module: p.Infra.RopePyModule,
+        path: Path,
+        declaration: ast.ClassDef,
+        replacement: str,
+    ) -> p.Infra.RopePyName:
+        pending = [module.get_scope()]
+        defining: p.Infra.RopeScope | None = None
+        while pending:
+            scope = pending.pop()
+            if (
+                scope.get_kind() == "Class"
+                and scope.pyobject.get_name() == declaration.name
+                and scope.get_start() == declaration.lineno
+            ):
+                defining = scope.parent
+                break
+            pending.extend(scope.get_scopes())
+        if defining is None:
+            msg = (
+                "test class has no unique native defining "
+                f"scope: {path}:{declaration.name}"
+            )
+            raise ValueError(msg)
+        # get_names lazily fills function locals; get_defined_names does not.
+        defined = defining.get_names()
+        expected = defined.get(declaration.name)
+        if expected is None:
+            msg = (
+                f"test class has no native defining binding: {path}:{declaration.name}"
+            )
+            raise ValueError(msg)
+        if replacement in defined:
+            msg = f"test class prefix rename collides: {path}:{replacement}"
+            raise ValueError(msg)
+        return expected
+
+    @staticmethod
+    def _test_content_rewrites(
+        changes: p.Infra.RopeChangeSet,
+        working: t.MappingKV[Path, str],
+    ) -> MutableMapping[Path, list[m.Infra.SourceRewrite]]:
+        rewrites: MutableMapping[Path, list[m.Infra.SourceRewrite]] = {}
+        for change in changes.changes:
+            if not isinstance(change, p.Infra.RopeChangeContents):
+                msg = "test class rename produced a non-content effect"
+                raise TypeError(msg)
+            consumer = Path(change.resource.real_path).resolve()
+            if consumer not in working:
+                msg = f"test class rename escaped source inventory: {consumer}"
+                raise ValueError(msg)
+            rewrites[consumer] = [
+                m.Infra.SourceRewrite(
+                    start=begin, end=end, text=change.new_contents[first:last]
+                )
+                for kind, begin, end, first, last in SequenceMatcher(
+                    a=working[consumer], b=change.new_contents, autojunk=False
+                ).get_opcodes()
+                if kind != "equal"
+            ]
+        return rewrites
+
+    @classmethod
+    def _rename_test_class(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        working: t.MutableMappingKV[Path, str],
+        path: Path,
+        rename: t.Pair[ast.ClassDef, str],
+    ) -> None:
+        project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+            workspace.rope_project, working
+        )
+        try:
+            root = Path(project.root.real_path)
+            resource = project.get_resource(path.relative_to(root).as_posix())
+            module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
+            declaration, replacement = rename
+            expected = cls._test_class_binding(module, path, declaration, replacement)
+            offset = FlextInfraUtilitiesRopeCore.find_identifier_offset_in_lines(
+                working[path].splitlines(keepends=True),
+                line=declaration.lineno,
+                symbol=declaration.name,
+                pyname=expected,
+            )
+            if offset is None:
+                msg = f"test class has no native identifier: {path}:{declaration.name}"
+                raise ValueError(msg)
+            changes = FlextInfraUtilitiesRopeRuntimeRefactors.rename_changes(
+                project,
+                resource,
+                offset,
+                replacement,
+                options=m.Infra.RopeRenameOptions(
+                    resources=tuple(
+                        project.get_resource(item.relative_to(root).as_posix())
+                        for item in working
+                    ),
+                    in_hierarchy=True,
+                ),
+            )
+            rewrites = cls._test_content_rewrites(changes, working)
+            cls._test_prefix_quote_edits(
+                project, working, (declaration.name, expected, replacement), rewrites
+            )
+            exports = cls._test_export_rename_edits(
+                project, resource, offset, replacement, working
+            )
+            for consumer, edits in exports.items():
+                rewrites.setdefault(consumer, []).extend(edits)
+            cls._apply_test_prefix_rewrites(project, working, rewrites)
+        finally:
+            project.close()
+
+    @classmethod
+    def _test_prefix_quote_edits(
+        cls,
+        project: p.Infra.RopeProject,
+        working: t.MappingKV[Path, str],
+        rename: t.Triple[str, p.Infra.RopePyName, str],
+        rewrites: MutableMapping[Path, list[m.Infra.SourceRewrite]],
+    ) -> None:
+        original, expected, replacement = rename
+
+        def quoted_replacement(
+            current: p.Infra.RopeScope, expression: str
+        ) -> str | None:
+            parts = expression.split(".")
+            for count in range(1, len(parts) + 1):
+                actual = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
+                    current, ".".join(parts[:count])
+                )
+                if parts[
+                    count - 1
+                ] == original and FlextInfraUtilitiesRopeRuntimeModules.same_name(
+                    expected, actual
+                ):
+                    return ".".join((*parts[: count - 1], replacement, *parts[count:]))
+            return None
+
+        root = Path(project.root.real_path)
+        for consumer, text in working.items():
+            candidate = project.get_resource(consumer.relative_to(root).as_posix())
+            quotes = cls.quoted_type_edits(project, candidate, text, quoted_replacement)
+            if quotes:
+                rewrites.setdefault(consumer, []).extend(quotes)
+
+    @staticmethod
+    def _apply_test_prefix_rewrites(
+        project: p.Infra.RopeProject,
+        working: t.MutableMappingKV[Path, str],
+        rewrites: t.MappingKV[Path, t.SequenceOf[m.Infra.SourceRewrite]],
+    ) -> None:
+        root = Path(project.root.real_path)
+        for consumer, edits in rewrites.items():
+            candidate = project.get_resource(consumer.relative_to(root).as_posix())
+            working[consumer] = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+                candidate, working[consumer], edits
+            ).new_contents
 
     @classmethod
     def _new_suite_collection_risk(
@@ -1171,29 +1257,19 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         flattened = cls._family_flatten_edits(rope_workspace, proposed)
         for edit in flattened:
             proposed[edit.file_path] = edit.updated_source
+        prefixed = cls._test_prefix_edits(rope_workspace, proposed)
+        for edit in prefixed:
+            proposed[edit.file_path] = edit.updated_source
         nested = cls._plan_orphan_nesting(rope_workspace, proposed)
         if nested.failure:
             return planned.from_failure(nested)
-        for edit in (*consolidated, *flattened, *nested.value):
+        for edit in (*consolidated, *flattened, *prefixed, *nested.value):
             previous = merged.get(edit.file_path)
             merged[edit.file_path] = m.Infra.SemanticMigrationEdit(
                 file_path=edit.file_path,
                 original_source=(
                     previous.original_source if previous else edit.original_source
                 ),
-                updated_source=edit.updated_source,
-                changes=(*previous.changes, *edit.changes)
-                if previous
-                else edit.changes,
-            )
-            proposed[edit.file_path] = edit.updated_source
-        for edit in cls._test_prefix_edits(rope_workspace, proposed):
-            previous = merged.get(edit.file_path)
-            merged[edit.file_path] = m.Infra.SemanticMigrationEdit(
-                file_path=edit.file_path,
-                original_source=previous.original_source
-                if previous
-                else edit.original_source,
                 updated_source=edit.updated_source,
                 changes=(*previous.changes, *edit.changes)
                 if previous
@@ -1257,8 +1333,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     raise ValueError(msg)
                 resource = project.get_resource(path.relative_to(root).as_posix())
                 updated = cls._publish_test_bindings(
-                    project,
-                    resource,
+                    (project, resource),
                     source,
                     owners[0].name,
                     original_bindings=None
@@ -1762,7 +1837,6 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         try:
 
             def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
-                module = modules.get(path)
                 definitions = definitions_by_file.get(path, {})
                 updated = cls._rewrite_class_nesting_source(
                     source,
@@ -1772,20 +1846,17 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                             path.relative_to(Path(project.root.real_path)).as_posix(),
                         ),
                     ),
-                    scope=(
-                        module_names.get(path, ""),
-                        module.is_package_init if module is not None else False,
-                    ),
-                    bindings_by_module=bindings_by_module,
-                    providers_by_module=providers_by_module,
-                    definitions=definitions,
+                    bindings=(bindings_by_module, providers_by_module),
                     sources=sources,
-                    is_pytest=bool(definitions)
-                    and cls._is_pytest_module(
-                        project,
-                        path,
-                        ast.parse(source),
-                        pytest_patterns,
+                    selection=(
+                        definitions,
+                        bool(definitions)
+                        and cls._is_pytest_module(
+                            project,
+                            path,
+                            ast.parse(source),
+                            pytest_patterns,
+                        ),
                     ),
                 )
                 if definitions and updated == source:

@@ -31,6 +31,43 @@ from flext_infra._models._config import FlextInfraConfigModels
 class FlextInfraModelsCodegenTransactionModels:
     """Transaction and session models for the codegen pipeline."""
 
+    class CodegenSourcePreviewOptions(FlextInfraModelsBase.FrozenArbitrary):
+        """Authenticated inputs and runtime boundaries for one source preview."""
+
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            default=(), description="Pinned source states authenticated by the preview"
+        )
+        runtime_root: Path | None = m.Field(
+            default=None, description="Explicit physical runtime owner when supplied"
+        )
+        workspaces: t.VariadicTuple[Path] = m.Field(
+            default=(), description="Explicit composition scopes of the staged view"
+        )
+        runtime_check: bool = m.Field(
+            default=True,
+            description="Validate the candidate through its native runtime",
+        )
+        modes: t.MappingKV[Path, int] | None = m.Field(
+            default=None,
+            description="Declared file modes for the staged source updates",
+        )
+
+    class StageSourceOptions(FlextInfraModelsBase.FrozenArbitrary):
+        """Authenticated inputs, topology and declarations for a source candidate."""
+
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            default=(), description="Pinned source states of the staging invocation"
+        )
+        workspaces: t.VariadicTuple[Path] = m.Field(
+            default=(), description="Explicit composition scopes of the staged view"
+        )
+        modes: t.MappingKV[Path, int] | None = m.Field(
+            default=None, description="Declared source modes preserved during staging"
+        )
+        declared_files: t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan] = (
+            m.Field(default=(), description="Authenticated candidate file declarations")
+        )
+
     class StagePackagePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Pinned package/dependency inputs and the declared public facade contract."""
 

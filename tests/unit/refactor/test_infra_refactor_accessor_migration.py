@@ -256,7 +256,11 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
                 preflight,
                 rope,
                 sources=sources,
-                source_states=states,
+                receipt=m.Infra.CodegenPhaseAnalysis(
+                    phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                    inputs=states,
+                    files=(),
+                ),
             ).unwrap()
             tm.that(planned.files, empty=False)
             tm.that(sources, eq=frozen)
