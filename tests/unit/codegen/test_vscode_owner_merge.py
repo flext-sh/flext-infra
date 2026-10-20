@@ -266,7 +266,9 @@ class TestsFlextInfraVscodeOwnerMerge:
         root = tmp_path / "project"
         workspace = u.Tests.standalone_workspace(root)
         u.Tests.copy_tracked_mise_seeds(root)
-        plan = u.Tests.conform_plan(root, workspace)
+        plan = u.Tests.conform_plan(
+            root, workspace, what=c.Infra.CodegenConformSurface.EDITOR
+        )
         governed = next(
             item
             for item in config.Infra.codegen.managed_files
@@ -280,6 +282,35 @@ class TestsFlextInfraVscodeOwnerMerge:
             u.Tests.codegen_file_text(file),
             eq=tm.ok(FlextInfraCodegen.render_vscode_settings(root)),
         )
+
+    @staticmethod
+    @pytest.mark.slow
+    def test_editor_generation_creates_missing_directory_and_converges(
+        tmp_path: Path,
+    ) -> None:
+        """The public editor surface creates its files without a project venv."""
+        root = tmp_path / "project"
+        u.Tests.standalone_workspace(root)
+        u.Tests.copy_tracked_mise_seeds(root)
+        request = m.Infra.CodegenGenerateRequest(
+            root=root,
+            what=c.Infra.CodegenConformSurface.EDITOR,
+            scope=c.Infra.CodegenConformScope.SELF,
+        )
+        first = tm.ok(infra.codegen_generate(request))
+        governed = next(
+            item
+            for item in config.Infra.codegen.managed_files
+            if item.owner == c.Infra.CODEGEN_OWNER_VSCODE
+        )
+        tm.that(root / governed.path in first.written_files, eq=True)
+        rendered = (root / governed.path).read_text(encoding=c.DEFAULT_ENCODING)
+        tm.that(
+            rendered, eq=tm.ok(FlextInfraCodegen.render_vscode_settings(root))
+        )
+        second = tm.ok(infra.codegen_generate(request))
+        tm.that(second.written_files, empty=True)
+        tm.that((root / c.Infra.VENV_DIR).exists(), eq=False)
 
     @staticmethod
     def test_invalid_member_config_keeps_versioned_workspace_settings(

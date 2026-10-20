@@ -604,6 +604,40 @@ class TestsFlextInfraLintRecipes:
         tm.that(repaired, eq=source)
 
     @staticmethod
+    @pytest.mark.parametrize("service_base", sorted(c.Infra.SERVICE_BASE_ROOTS))
+    def test_static_method_recipe_retains_service_operation_findings(
+        service_base: str,
+    ) -> None:
+        """Service operations retain their instance contract and blocking finding."""
+        source = (
+            f"class Service({service_base}[int]):\n"
+            "    def send(self, request: str) -> int:\n"
+            "        return len(request)\n"
+            "\n"
+            "class Helper:\n"
+            "    def size(self, value: str) -> int:\n"
+            "        return len(value)\n"
+        )
+        path = Path("operations.py")
+        findings = tuple(
+            m.Infra.Issue(
+                file=str(path),
+                line=line,
+                column=1,
+                code="no-self-use",
+                message="The receiver is not read",
+            )
+            for line in (2, 6)
+        )
+        retained = u.Infra.service_operation_findings(
+            source,
+            findings,
+            path=path,
+            recipes=config.Infra.tooling.tools.ruff.lint.fix_recipes,
+        )
+        tm.that(retained, eq=(findings[0],))
+
+    @staticmethod
     def test_static_method_leaves_an_override_of_a_parent_method() -> None:
         """A subclass method that redefines its base method keeps its receiver."""
         source = (

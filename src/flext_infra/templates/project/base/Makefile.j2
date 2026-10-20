@@ -715,6 +715,7 @@ endef
 # prerequisite once in this process instead of repeating it in a submake.
 ifeq ($(filter pre-{{ verb.name }} _custom-{{ verb.name }} post-{{ verb.name }},$(CUSTOM_DECLARED_TARGETS)),)
 _activated-{{ verb.name }}: _builtin-{{ verb.name }}
+_builtin-{{ verb.name }}: _builtin_require_environment
 else
 {% endif %}
 {% if verb.name == "status" %}
