@@ -33,7 +33,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
     # The .markdownlint.json projection renders this exact typed SSOT; tests
     # of the markdown contract read it instead of freezing a config literal.
     CANONICAL_MARKDOWNLINT_CONFIG: ClassVar[str] = u.Cli.json_dumps(
-        dict(config.Infra.tooling.tools.markdown.rules),
+        u.Infra.configuration_pairs(config.Infra.tooling.tools.markdown.rules),
     ).unwrap()
 
     @staticmethod

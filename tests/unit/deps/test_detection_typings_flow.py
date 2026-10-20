@@ -10,25 +10,29 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config
+from flext_infra import c
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
-from tests import tm
+from tests import tm, u
 
 
 class TestsFlextInfraDepsDetectionTypingsFlow:
     """Tests for ``FlextInfraDepsDetectionTypingsFlow``."""
 
     @staticmethod
-    def _governed_follow() -> bool:
+    def _governed_follow(root: Path) -> bool:
         """Read the governed mypy policy from the typed tooling SSOT.
 
         Returns:
             The resulting ``bool``.
 
         """
-        return config.Infra.tooling.tools.mypy.boolean_settings.get(
-            c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS,
-            c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS_DEFAULT,
+        document = tm.ok(u.Infra.load_tooling_inputs(root)).document
+        return u.type_adapter(bool).validate_python(
+            u.Infra.native_tool_settings(document, "mypy").get(
+                c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS,
+                c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS_DEFAULT,
+            ),
+            strict=True,
         )
 
     @classmethod
@@ -59,7 +63,7 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
 
     def test_governed_policy_decides_stub_findings(self, tmp_path: Path) -> None:
         """Followed untyped imports make stubs neither required nor removable."""
-        followed = self._governed_follow()
+        followed = self._governed_follow(tmp_path)
         limits = self._typed_reader(tmp_path, follow=followed)
         report = tm.ok(
             FlextInfraDependencyDetectionService().analyze_required_typings(
@@ -76,7 +80,7 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
 
     def test_project_policy_conflict_fails_loud(self, tmp_path: Path) -> None:
         """A project mypy table that diverges from the governed policy is a conflict."""
-        followed = self._governed_follow()
+        followed = self._governed_follow(tmp_path)
         limits = self._typed_reader(tmp_path, follow=not followed)
         tm.fail(
             FlextInfraDependencyDetectionService().analyze_required_typings(
@@ -84,6 +88,39 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
                 limits,
             ),
             has="policy conflict",
+        )
+
+    def test_project_tooling_delta_owns_untyped_import_policy(
+        self, tmp_path: Path
+    ) -> None:
+        """The reader elects this project's declared native policy before comparison."""
+        selected = not self._governed_follow(tmp_path)
+        directory = tmp_path / c.CONFIG_DIR_NAME
+        directory.mkdir()
+        tm.ok(
+            u.Cli.yaml_dump(
+                directory / "tooling.yaml",
+                {
+                    "Infra": {
+                        "tooling": {
+                            "settings": {
+                                "mypy": [
+                                    [c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS, selected]
+                                ]
+                            }
+                        }
+                    }
+                },
+            )
+        )
+        self._typed_reader(tmp_path, follow=selected)
+        tm.that(
+            tm.ok(
+                FlextInfraDependencyDetectionService().untyped_imports_followed(
+                    tmp_path
+                )
+            ),
+            eq=selected,
         )
 
     @staticmethod

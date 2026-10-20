@@ -24,7 +24,7 @@ class FlextInfraModelsDepsToolConfig(
 ):
     """Models for tool configuration loaded from YAML."""
 
-    class ModPhasesConfig(m.FlexibleModel):
+    class ModPhasesConfig(m.ArbitraryTypesModel):
         """Component selection for ``make mod`` phases (toggles are data)."""
 
         import_alignment: Annotated[
@@ -36,14 +36,14 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ] = True
 
-    class ModConfig(m.FlexibleModel):
+    class ModConfig(m.ArbitraryTypesModel):
         """Declarative policy for the unified modernize verb ``mod``."""
 
         phases: FlextInfraModelsDepsToolConfig.ModPhasesConfig = m.Field(
             description="Phase toggles read from config/tooling.yaml.",
         )
 
-    class PytestWorkerCeiling(m.FlexibleModel):
+    class PytestWorkerCeiling(m.ArbitraryTypesModel):
         """Tagged per-project pytest worker ceiling: absolute or CPU fraction.
 
         Exactly one of ``workers`` (absolute count) or ``cpu_fraction``
@@ -105,7 +105,7 @@ class FlextInfraModelsDepsToolConfig(
                 raise ValueError(msg)
             return self
 
-    class PytestConfig(m.FlexibleModel):
+    class PytestConfig(m.ArbitraryTypesModel):
         """Pytest baseline settings loaded from YAML."""
 
         # Every rendered pytest value is validated config data.
@@ -476,7 +476,7 @@ class FlextInfraModelsDepsToolConfig(
                     msg = "pytest reporting args must not override runner-owned policy"
                     raise ValueError(msg)
 
-    class TomlsortConfig(m.FlexibleModel):
+    class TomlsortConfig(m.ArbitraryTypesModel):
         """Process budget for native TOML formatting."""
         process_timeout_seconds: Annotated[
             int,
@@ -488,7 +488,7 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
 
-    class MarkdownConfig(m.FlexibleModel):
+    class MarkdownConfig(m.ArbitraryTypesModel):
         """Markdown lint rules and excluded non-documentation surfaces."""
 
         findings_exit_codes: Annotated[
@@ -498,12 +498,20 @@ class FlextInfraModelsDepsToolConfig(
                 description="Exit statuses with which rumdl reports its findings.",
             ),
         ]
-        rules: t.JsonMapping = m.Field(description="Rumdl-compatible rule mapping.")
+        rules: Annotated[
+            t.Infra.SettingsPairs,
+            m.BeforeValidator(
+                lambda value: tuple(value.items())
+                if isinstance(value, dict)
+                else value
+            ),
+            m.Field(description="Ordered native Markdown rule key/value declarations."),
+        ]
         exclude: t.StrTuple = m.Field(
             description="Glob patterns excluded from Markdown quality checks.",
         )
 
-    class ToolConfigTools(m.FlexibleModel):
+    class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
 
         markdown: FlextInfraModelsDepsToolConfig.MarkdownConfig = m.Field(
@@ -512,16 +520,6 @@ class FlextInfraModelsDepsToolConfig(
         ruff: FlextInfraModelsDepsToolConfig.RuffConfig = m.Field(
             description="Ruff settings",
         )
-        ruff_extend_exclude: Annotated[
-            t.StrTuple,
-            m.Field(
-                validation_alias=m.AliasPath("ruff", "extend-exclude"),
-                description=(
-                    "Workspace exclusions added to Ruff's defaults, read "
-                    "flattened for the tooling runtime projection."
-                ),
-            ),
-        ] = ()
         mypy: FlextInfraModelsDepsToolConfig.MypyConfig = m.Field(
             description="Mypy settings",
         )
@@ -538,7 +536,7 @@ class FlextInfraModelsDepsToolConfig(
             description="Tomlsort settings",
         )
 
-    class LazyInitConfig(m.FlexibleModel):
+    class LazyInitConfig(m.ArbitraryTypesModel):
         """Declarative policy for ``__init__.py`` lazy export generation."""
 
         import_layer_order: Annotated[
@@ -582,13 +580,13 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
 
-    class ToolConfigDocument(m.FlexibleModel):
+    class ToolConfigDocument(m.ContractModel):
         """Root schema for canonical ``config/tooling.yaml`` policy data."""
 
         settings: Annotated[
             t.MappingKV[
                 t.NonEmptyStr,
-                t.VariadicTuple[t.Pair[t.NonEmptyStr, t.JsonValue]],
+                t.Infra.SettingsPairs,
             ],
             m.Field(
                 description=(
@@ -597,6 +595,25 @@ class FlextInfraModelsDepsToolConfig(
                 )
             ),
         ]
+
+        derived_tool_roots: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                alias="derived-tool-roots",
+                description=(
+                    "Native roots whose owner combines declared options with "
+                    "typed topology or execution policy."
+                ),
+            ),
+        ]
+
+        derived_settings: Annotated[
+            t.MappingKV[t.NonEmptyStr, t.VariadicTuple[t.NonEmptyStr]],
+            m.Field(
+                alias="derived-settings",
+                description="Native keys owned by topology and execution policy.",
+            ),
+        ] = {}
         raw_check_receipt_suffix: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -617,6 +634,138 @@ class FlextInfraModelsDepsToolConfig(
             description="Declarative make-mod phase policy.",
         )
 
+        @m.model_validator(mode="after")
+        def validate_native_table_names(self) -> Self:
+            """Require unambiguous native table paths.
+
+            Returns:
+                The unchanged declarations.
+
+            Raises:
+                ValueError: If a table path is not a dotted bare TOML key.
+
+            """
+            if any(
+                not part
+                or not part.isascii()
+                or not all(
+                    character.isalnum() or character in "_-" for character in part
+                )
+                for path in self.settings
+                for part in path.split(".")
+            ):
+                msg = "Native tool settings require dotted bare table names"
+                raise ValueError(msg)
+            return self
+
+        @m.model_validator(mode="after")
+        def validate_mypy_options(self) -> Self:
+            """Preserve Mypy ownership and mandatory Pydantic integration.
+
+            Returns:
+                Native options without changing their values.
+
+            Raises:
+                ValueError: If an option bypasses its policy owner.
+
+            """
+            if "mypy" not in self.settings:
+                msg = "Native Mypy settings must be declared"
+                raise ValueError(msg)
+            options = dict(self.settings["mypy"])
+            if options.keys() & set(self.derived_settings.get("mypy", ())):
+                msg = "Mypy policy cannot be shadowed by native options"
+                raise ValueError(msg)
+            if any(not key.isascii() or not key.isidentifier() for key in options):
+                msg = "Mypy policy requires plain option names, not TOML syntax"
+                raise ValueError(msg)
+            error_codes = options.get("enable_error_code")
+            if error_codes is not None and not (
+                isinstance(error_codes, str)
+                or (
+                    isinstance(error_codes, list)
+                    and all(isinstance(code, str) for code in error_codes)
+                )
+            ):
+                msg = "Mypy enabled error codes must be a string or string array"
+                raise ValueError(msg)
+            if (
+                options.get("ignore_errors") is not None
+                and options["ignore_errors"] is not False
+            ):
+                msg = "Mypy policy cannot ignore diagnostics"
+                raise ValueError(msg)
+            plugins = options.get("plugins")
+            if (
+                not isinstance(plugins, list)
+                or any(not isinstance(plugin, str) for plugin in plugins)
+                or "pydantic.mypy" not in plugins
+                or "pydantic.v1.mypy" in plugins
+            ):
+                msg = "Mypy requires pydantic.mypy and forbids pydantic.v1.mypy"
+                raise ValueError(msg)
+            return self
+
+        @m.model_validator(mode="after")
+        def validate_pytest_options(self) -> Self:
+            """Keep runtime-derived pytest switches out of native addopts.
+
+            Returns:
+                The options with execution policy ownership preserved.
+
+            Raises:
+                ValueError: If addopts override the runtime contract.
+
+            """
+            options = dict(self.settings["pytest.ini_options"])
+            addopts = options.get("addopts")
+            if not isinstance(addopts, list) or any(
+                not isinstance(option, str) for option in addopts
+            ):
+                msg = "pytest addopts must be an ordered string array"
+                raise ValueError(msg)
+            derived = (
+                "--timeout",
+                "--session-timeout",
+                "--dist",
+                "--loadscope-reorder",
+                "--no-loadscope-reorder",
+                "--maxschedchunk",
+                "-n",
+            )
+            if any(
+                isinstance(option, str)
+                and (
+                    option in {"-o", "--override-ini"}
+                    or option.startswith(("-o=", "--override-ini=", *derived))
+                )
+                for option in addopts
+            ):
+                msg = "pytest runtime policy options are derived from typed fields"
+                raise ValueError(msg)
+            return self
+
+        @m.model_validator(mode="after")
+        def validate_pyrefly_options(self) -> Self:
+            """Preserve strict Pyrefly diagnostics for every selected rule.
+
+            Returns:
+                The declarations without enabling diagnostic suppression.
+
+            Raises:
+                ValueError: If a selected rule is weakened or generated code hidden.
+
+            """
+            if any(value != "error" for _, value in self.settings["pyrefly.errors"]):
+                msg = "Pyrefly selected diagnostics must remain errors"
+                raise ValueError(msg)
+            if dict(self.settings["pyrefly"]).get(
+                "ignore-errors-in-generated-code"
+            ) is True:
+                msg = "Pyrefly cannot hide generated-code diagnostics"
+                raise ValueError(msg)
+            return self
+
     class ToolingInputs(m.ContractModel):
         """One elected tooling document and its publication preimages."""
 
@@ -629,9 +778,16 @@ class FlextInfraModelsDepsToolConfig(
             m.Field(description="Captured canonical and project configuration layers."),
         ]
 
-    class ToolingRuntimeContext(m.FlexibleModel):
+    class ToolingRuntimeContext(m.ArbitraryTypesModel):
         """Resolved topology and native tool tables consumed by every template."""
 
+        document: Annotated[
+            FlextInfraModelsDepsToolConfig.ToolConfigDocument | None,
+            m.Field(
+                exclude=True,
+                description="The elected tooling policy shared by every render context.",
+            ),
+        ] = None
         project_kind: Annotated[
             t.NonEmptyStr,
             m.Field(description="Resolved project classification"),
@@ -644,6 +800,13 @@ class FlextInfraModelsDepsToolConfig(
             Mapping[str, t.JsonMapping],
             m.Field(description="Conformed native tables keyed by declared table path"),
         ]
+        sources: Annotated[
+            t.VariadicTuple[m.Cli.AtomicFileState],
+            m.Field(
+                exclude=True,
+                description="Original configuration layers bound to the render",
+            ),
+        ] = ()
 
 
 __all__: list[str] = ["FlextInfraModelsDepsToolConfig"]

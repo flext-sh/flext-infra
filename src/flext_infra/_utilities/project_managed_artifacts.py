@@ -15,59 +15,15 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_core.config_sources import FlextStrictYamlConfigSource
-from pydantic import ValidationError
 
 from flext_infra import c, m, p, r, t
 from flext_infra._config import FlextInfraConfig
 from flext_infra._utilities import FlextInfraUtilitiesGit
+from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooling
 
 
-class FlextInfraUtilitiesProjectManagedArtifacts:
+class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeTooling):
     """Single owner for ``ManagedArtifacts`` across ``config/*.yaml`` files."""
-
-    @staticmethod
-    def configuration_pairs(
-        entries: t.SequenceOf[t.Pair[str, t.JsonValue]],
-    ) -> t.JsonDict:
-        """Elect ordered configuration pairs without changing their values.
-
-        Returns:
-            One value per key, with the last declared pair taking precedence.
-
-        """
-        return dict(entries)
-
-    @staticmethod
-    def native_tool_settings(
-        document: m.Infra.ToolConfigDocument, table: str
-    ) -> t.JsonDict:
-        """Read a native tool table from the shared option catalog.
-
-        Returns:
-            The elected JSON-compatible options for the declared table.
-
-        """
-        return FlextInfraUtilitiesProjectManagedArtifacts.configuration_pairs(
-            document.settings.get(table, {})
-        )
-
-    @staticmethod
-    def native_tool_setting[TValue](
-        document: m.Infra.ToolConfigDocument,
-        table: str,
-        key: str,
-        target: type[TValue],
-    ) -> TValue:
-        """Validate one declared native option at its typed consumer boundary.
-
-        Returns:
-            The configured value validated against the consumer's type.
-
-        """
-        options = FlextInfraUtilitiesProjectManagedArtifacts.native_tool_settings(
-            document, table
-        )
-        return u.validate_value(target, options[key]).unwrap()
 
     @classmethod
     def load_codegen_inputs(
@@ -439,7 +395,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         codegen = u.Cli.json_walk_path(document, ("Infra", "codegen"))
         try:
             return m.Infra.CodegenConfigSpec.model_validate(codegen)
-        except ValidationError as error:
+        except m.ValidationError as error:
             # Config-authoring failures surface as the service contract's own
             # error type, never as a raw third-party validation exception.
             raise ValueError(str(error)) from error
@@ -928,12 +884,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             return r[m.Infra.ProjectManagedArtifactsFragment].ok(
                 m.Infra.ProjectManagedArtifactsFragment(),
             )
-        project_config = m.Infra.ProjectConfigDocument.model_validate({
-            "ManagedArtifacts": managed,
-        })
-        return r[m.Infra.ProjectManagedArtifactsFragment].ok(
-            project_config.ManagedArtifacts,
-        )
+        return u.validate_value(
+            m.Infra.ProjectConfigDocument,
+            {"ManagedArtifacts": managed},
+        ).map(lambda document: document.ManagedArtifacts)
 
     @staticmethod
     def _merge_unique_keys[V](

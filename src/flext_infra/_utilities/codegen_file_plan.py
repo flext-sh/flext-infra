@@ -33,6 +33,49 @@ class FlextInfraUtilitiesCodegenFilePlan:
     """Derive generated-file effects from immutable planning data."""
 
     @staticmethod
+    def unique_states(
+        states: t.VariadicTuple[m.Cli.AtomicFileState],
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        """Preserve the first identity per path and refuse conflicting snapshots.
+
+        Returns:
+            The authenticated ordered union or its first identity conflict.
+
+        """
+        result_type = r[tuple[m.Cli.AtomicFileState, ...]]
+        by_path: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
+        for file_state in states:
+            previous = by_path.setdefault(file_state.path, file_state)
+            if previous != file_state:
+                first_hash = (
+                    u.Cli.sha256_bytes(previous.content)
+                    if previous.content is not None
+                    else None
+                )
+                observed_hash = (
+                    u.Cli.sha256_bytes(file_state.content)
+                    if file_state.content is not None
+                    else None
+                )
+                details = (
+                    f" first={previous.model_dump_json(exclude={'content'})}"
+                    f" observed={file_state.model_dump_json(exclude={'content'})}"
+                    f" first_sha256={first_hash}"
+                    f" observed_sha256={observed_hash}"
+                )
+                if previous.model_dump() == file_state.model_dump():
+                    details += (
+                        f" first_type={type(previous).__module__}."
+                        f"{type(previous).__qualname__}"
+                        f" observed_type={type(file_state).__module__}."
+                        f"{type(file_state).__qualname__}"
+                    )
+                return result_type.fail(
+                    f"planner observed two states for {file_state.path};{details}"
+                )
+        return result_type.ok(tuple(by_path.values()))
+
+    @staticmethod
     def codegen_target_snapshot(
         path: Path,
     ) -> p.Result[cli_m.Cli.AtomicFileState | cli_m.Cli.AtomicDirectoryChainPlan]:
@@ -122,8 +165,10 @@ class FlextInfraUtilitiesCodegenFilePlan:
             c.Infra.JOURNAL_MODE,
         )
         acquired = False
+        waiting = False
+        started = time.monotonic()
         try:
-            deadline = time.monotonic() + wait_seconds
+            deadline = started + wait_seconds
             while True:
                 try:
                     if sys.platform == "win32":
@@ -142,10 +187,24 @@ class FlextInfraUtilitiesCodegenFilePlan:
                         raise (
                             FlextInfraUtilitiesCodegenFilePlan.JournalLeaseTimeoutError
                         )(lock_path) from error
+                    if not waiting:
+                        print(
+                            f"codegen journal lease: waiting for {lock_path}",
+                            file=sys.stderr,
+                            flush=True,
+                        )
+                        waiting = True
                     time.sleep(c.Infra.JOURNAL_LEASE_POLL_SECONDS)
                     continue
                 acquired = True
                 break
+            if waiting:
+                print(
+                    "codegen journal lease: acquired "
+                    f"{lock_path} after {time.monotonic() - started:.3f}s",
+                    file=sys.stderr,
+                    flush=True,
+                )
             yield
         finally:
             try:

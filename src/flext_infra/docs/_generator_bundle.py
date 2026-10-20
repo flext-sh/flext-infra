@@ -430,6 +430,10 @@ class FlextInfraDocGeneratorBundleMixin:
             if configuration.failure:
                 return result_type.from_failure(configuration)
             states.extend(configuration.value.sources)
+            tooling = u.Infra.load_tooling_inputs(root)
+            if tooling.failure:
+                return result_type.from_failure(tooling)
+            states.extend(tooling.value.sources)
         return FlextInfraCodegenPreconditions.unique_states(tuple(states))
 
     @classmethod

@@ -53,6 +53,9 @@ class FlextInfraUtilitiesMiseBinary:
         if requested.failure:
             return r[Path].from_failure(requested)
         if not requested.value:
+            host_binary = shutil.which(selector.split("/")[-1])
+            if host_binary is not None:
+                return r[Path].ok(Path(host_binary))
             return r[Path].fail(f"runtime manifest does not declare {selector}")
         return FlextInfraUtilitiesMiseBinary._managed_mise_path(
             tool.version_probe.binary,

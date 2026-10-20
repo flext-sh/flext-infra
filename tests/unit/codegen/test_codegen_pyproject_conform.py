@@ -1082,7 +1082,14 @@ exclude-dependencies = [{exclusion}]
             lint["ignore"], eq=sorted(config.Infra.tooling.tools.ruff.lint.rule_owners)
         )
         mypy = u.Tests.toml_table_at(rendered, "tool", "mypy")
-        tm.that(mypy, lacks="disable_error_code")
+        policy = config.Infra.tooling.tools.mypy
+        if policy.ruling_disable_error_codes:
+            tm.that(
+                mypy["disable_error_code"],
+                eq=list(policy.ruling_disable_error_codes),
+            )
+        else:
+            tm.that(mypy, lacks="disable_error_code")
         tm.that(mypy, lacks="ignore_errors")
         for entry in u.Tests.toml_list(mypy.get("overrides", [])):
             override = u.Tests.toml_mapping(entry)

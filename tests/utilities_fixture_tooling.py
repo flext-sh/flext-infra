@@ -266,19 +266,16 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         """
         source = root / "checked.py"
         source.write_text("value: int = 1\n", encoding=c.DEFAULT_ENCODING)
-        config_file = root / "mypy.ini"
+        config_file = root / c.PYPROJECT_FILENAME
         # The workload checks through the governed checker settings, so its
         # crash reporting (show_traceback) matches every managed project.
         # Each workload owns its cache inside its root: mypy's default
         # .mypy_cache is relative to the process cwd, which concurrent workers
         # share, and its SQLite metastore then fails with "database is locked".
-        config_source = f"[mypy]\ncache_dir = {root / '.mypy_cache'}\n" + "".join(
-            f"{key} = {value}\n"
-            for key, value in u.Infra.native_tool_settings(
-                config.Infra.tooling, "mypy"
-            ).items()
-            if isinstance(value, bool)
-        )
+        tooling = u.Infra.load_tooling_inputs(root).unwrap().document
+        options = u.Infra.native_tool_configuration(tooling, "mypy")
+        options["cache_dir"] = str(root / ".mypy_cache")
+        options["python_version"] = config.Infra.codegen.toolchain.python_version
         if plugin_body:
             plugin = root / "workload.py"
             plugin.write_text(
@@ -288,8 +285,16 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                 + "\n    return Plugin\n",
                 encoding=c.DEFAULT_ENCODING,
             )
-            config_source += f"plugins = {plugin}\n"
-        config_file.write_text(config_source, encoding=c.DEFAULT_ENCODING)
+            options["plugins"] = [
+                *u.Infra.native_tool_setting(tooling, "mypy", "plugins", t.StrSequence),
+                str(plugin),
+            ]
+        config_file.write_text(
+            u.Cli.toml_dumps(
+                u.Cli.toml_document_from_mapping({"tool": {"mypy": options}})
+            ),
+            encoding=c.DEFAULT_ENCODING,
+        )
         return m.Infra.MypyInvocation(targets=(source,), config_file=config_file)
 
     @staticmethod

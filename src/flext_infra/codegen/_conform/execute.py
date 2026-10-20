@@ -20,7 +20,9 @@ from flext_infra.codegen import (
     FlextInfraCodegenTransaction,
     FlextInfraMiseArtifactsVerification,
 )
-from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteDirected
+from flext_infra.codegen._conform.execute_directed import (
+    FlextInfraCodegenConformExecuteDirected,
+)
 from flext_infra.workspace import FlextInfraWorkspaceNativeReference
 
 

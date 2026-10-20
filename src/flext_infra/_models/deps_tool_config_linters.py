@@ -17,7 +17,7 @@ from flext_infra._models import FlextInfraModelsDepsToolConfigProject
 class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProject):
     """Linters tool configuration models."""
 
-    class RuffTypeCheckingConfig(m.FlexibleModel):
+    class RuffTypeCheckingConfig(m.ArbitraryTypesModel):
         """Ruff flake8-type-checking settings loaded from YAML."""
 
         runtime_evaluated_roots: Annotated[
@@ -33,7 +33,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             ),
         ]
 
-    class RuffLintConfig(m.FlexibleModel):
+    class RuffLintConfig(m.ArbitraryTypesModel):
         """Ruff lint settings loaded from YAML."""
 
         rule_owners: Annotated[
@@ -115,7 +115,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             ),
         ]
 
-    class RuffConfig(m.FlexibleModel):
+    class RuffConfig(m.ArbitraryTypesModel):
         """Ruff top-level settings loaded from YAML."""
 
         findings_exit_codes: Annotated[
@@ -129,7 +129,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             description="Ruff lint configuration",
         )
 
-    class MypyOverrideConfig(m.FlexibleModel):
+    class MypyOverrideConfig(m.ArbitraryTypesModel):
         """Single [[tool.mypy.overrides]] entry."""
 
         modules: Annotated[
@@ -137,7 +137,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             m.Field(description="Module patterns for this override."),
         ]
         settings: Annotated[
-            t.VariadicTuple[t.Pair[t.NonEmptyStr, t.JsonValue]],
+            t.Infra.SettingsPairs,
             m.Field(description="Native override options as ordered key/value pairs."),
         ] = ()
         justification: Annotated[
@@ -152,20 +152,13 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             ),
         ] = ""
 
-    class MypyConfig(m.FlexibleModel):
+    class MypyConfig(m.ArbitraryTypesModel):
         """Execution budget and ownership policy for native Mypy options."""
 
         timeout_seconds: Annotated[
             int,
             m.Field(gt=0, description="Mypy wall-time budget in seconds."),
         ]
-        owned_settings: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                alias="owned-settings",
-                description="Options derived by the policy and topology owners.",
-            ),
-        ] = ()
         ruling_disable_error_codes: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(

@@ -66,7 +66,12 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             runtime.get("runtime-evaluated-base-classes", []),
             strict=True,
         ).unwrap()
-        policy = config.Infra.tooling.tools.ruff.lint.flake8_type_checking
+        tool_config = tooling.document
+        if tool_config is None:
+            msg = "Python source rendering requires elected tooling inputs"
+            raise ValueError(msg)
+        tooling_sources = tooling.sources
+        policy = tool_config.tools.ruff.lint.flake8_type_checking
         runtime_bases = (
             tuple(current_runtime)
             if not any(
@@ -91,11 +96,20 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if first_party == isort.get(c.Infra.KNOWN_FIRST_PARTY_HYPHEN) and list(
             runtime_bases
         ) == list(current_runtime):
-            return render_inputs
+            return render_inputs.model_copy(
+                update={
+                    "tooling_runtime": tooling.model_copy(
+                        update={"sources": tooling_sources}
+                    )
+                }
+            )
         isort[c.Infra.KNOWN_FIRST_PARTY_HYPHEN] = first_party
         runtime["runtime-evaluated-base-classes"] = list(runtime_bases)
         refreshed = FlextInfraPyprojectModernizer.tooling_context_from_payload(
-            payload, project_kind=tooling.project_kind
+            payload,
+            project_kind=tooling.project_kind,
+            tool_config=tool_config,
+            sources=tooling_sources,
         ).unwrap()
         return render_inputs.model_copy(update={"tooling_runtime": refreshed})
 
@@ -189,8 +203,13 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         )
         if composed.failure:
             return r[m.Infra.CodegenArtifactComposition].from_failure(composed)
+        tooling_sources = (
+            ()
+            if render_inputs is None or render_inputs.tooling_runtime is None
+            else render_inputs.tooling_runtime.sources
+        )
         captured = FlextInfraCodegenPreconditions.unique_states(
-            (*source_states, *composed.value.source_states),
+            (*source_states, *tooling_sources, *composed.value.source_states),
         )
         if captured.failure:
             return r[m.Infra.CodegenArtifactComposition].from_failure(captured)
@@ -259,7 +278,17 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if overlaid.failure:
             return result_type.from_failure(overlaid)
         composed_rendered = overlaid.value
-        source_states: list[m.Cli.AtomicFileState] = list(tooling.value.sources)
+        original_tooling_sources = (
+            ()
+            if render_inputs is None or render_inputs.tooling_runtime is None
+            else render_inputs.tooling_runtime.sources
+        )
+        combined_sources = FlextInfraCodegenPreconditions.unique_states(
+            (*original_tooling_sources, *tooling.value.sources),
+        )
+        if combined_sources.failure:
+            return result_type.from_failure(combined_sources)
+        source_states: list[m.Cli.AtomicFileState] = list(combined_sources.value)
         if render_inputs is not None:
             collected = cls._member_declaration_states(
                 repository_root, render_inputs.workspace
@@ -656,8 +685,17 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             c.Infra.MARKDOWNLINT_CONFIG_FILENAME,
             c.Infra.MARKDOWNLINT_IGNORE_FILENAME,
         }:
+            tooling = render_inputs.tooling_runtime
+            if tooling is None or tooling.document is None:
+                return r[p.Model].fail(
+                    "Markdown rendering requires elected tooling inputs"
+                )
+            markdown = tooling.document.tools.markdown
             return r[p.Model].ok(
-                m.Infra.MarkdownLintRenderSpec(tooling=config.Infra.tooling),
+                m.Infra.MarkdownLintRenderSpec(
+                    rules=u.Infra.configuration_pairs(markdown.rules),
+                    exclude=markdown.exclude,
+                ),
             )
         if destination in {c.Infra.MISE_TOML_FILENAME, c.Infra.PYTHON_VERSION_FILENAME}:
             # Computed toolchain fields are projections, not inputs: filter the

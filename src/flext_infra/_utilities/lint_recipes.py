@@ -228,7 +228,12 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintRecipesPart):
                 or marker == "."
                 or len(marker)
                 > FlextInfraUtilitiesProjectManagedArtifacts.native_tool_setting(
-                    config.Infra.tooling, "ruff", "line-length", int
+                    FlextInfraUtilitiesProjectManagedArtifacts.load_tooling_inputs(
+                        root, source_project=source_project
+                    ).unwrap().document,
+                    "ruff",
+                    "line-length",
+                    int,
                 )
             ):
                 marker = identity.stem

@@ -6,9 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra import config
+from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.deps import FlextInfraEnsureRuffConfigPhase
 from tests import m, t, tm, u
 
@@ -18,6 +22,103 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraDepsModernizerTooling:
     """Declarative tests for the Ruff phase and analyzer surface policy."""
+
+    @staticmethod
+    def _yaml_settings_payload(
+        document: m.Infra.ToolConfigDocument,
+    ) -> dict[str, t.JsonPayload]:
+        """Recreate YAML settings lists while retaining unrelated validated fields.
+
+        Returns:
+            A document payload exercising only the native settings ingress.
+
+        """
+        return {
+            "settings": {
+                table: [[key, value] for key, value in pairs]
+                for table, pairs in document.settings.items()
+            },
+            "derived-tool-roots": document.derived_tool_roots,
+            "derived-settings": document.derived_settings,
+            "raw-check-receipt-suffix": document.raw_check_receipt_suffix,
+            "tools": document.tools,
+            "lazy-init": document.lazy_init,
+            "mod": document.mod,
+        }
+
+    @staticmethod
+    def test_native_settings_yaml_pairs_validate_as_tuples(
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
+        """YAML-shaped lists become tuples without changing native option values."""
+        payload = TestsFlextInfraDepsModernizerTooling._yaml_settings_payload(
+            tool_config_document,
+        )
+        validated = m.Infra.ToolConfigDocument.model_validate(payload)
+        tm.that(validated.settings, eq=tool_config_document.settings)
+        for pairs in validated.settings.values():
+            tm.that(type(pairs), eq=tuple)
+            for pair in pairs:
+                tm.that(type(pair), eq=tuple)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "pair",
+        [[], ["option"], ["option", True, False], [1, True], ["", True], "ab"],
+    )
+    def test_native_settings_reject_invalid_pair_shapes(
+        tool_config_document: m.Infra.ToolConfigDocument,
+        pair: t.JsonValue,
+    ) -> None:
+        """Sequence normalization never repairs malformed native declarations."""
+        payload = TestsFlextInfraDepsModernizerTooling._yaml_settings_payload(
+            tool_config_document,
+        )
+        payload["settings"] = {"invalid_table": [pair]}
+        with pytest.raises(m.ValidationError, match=r"settings\.invalid_table"):
+            _ = m.Infra.ToolConfigDocument.model_validate(payload)
+
+    @staticmethod
+    def test_native_tool_configurations_round_trip_without_mutating_policy(
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
+        """Every configured root remains valid native TOML with detached values."""
+        original = deepcopy(tool_config_document.settings)
+        roots = {table.partition(".")[0] for table in original}
+        for root in sorted(roots):
+            native = u.Infra.native_tool_configuration(tool_config_document, root)
+            rendered = u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(native))
+            tm.that(u.Tests.toml_payload(rendered), eq=native)
+            mutable_options: list[t.MutableJsonMapping] = []
+            for table, entries in original.items():
+                owner, separator, nested = table.partition(".")
+                if owner != root:
+                    continue
+                observed = u.Cli.toml_mapping_ensure_path(
+                    native, nested.split(".") if separator else ()
+                )
+                for key, value in u.Infra.configuration_pairs(entries).items():
+                    tm.that(observed[key], eq=value)
+                    if u.mapping(observed[key]):
+                        mutable_options.append(
+                            u.Cli.toml_mapping_ensure_table(observed, key)
+                        )
+            for option in mutable_options:
+                option.clear()
+        tm.that(tool_config_document.settings, eq=original)
+
+    @staticmethod
+    def test_native_tool_configuration_rejects_an_undeclared_root(
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
+        """An unavailable native root cannot become an empty successful policy."""
+        roots = {table.partition(".")[0] for table in tool_config_document.settings}
+        missing = "undeclared_tool"
+        while missing in roots:
+            missing = f"_{missing}"
+        with pytest.raises(KeyError) as rejected:
+            u.Infra.native_tool_configuration(tool_config_document, missing)
+        tm.that(rejected.value.args, eq=(missing,))
 
     @staticmethod
     def _applied(
@@ -135,9 +236,7 @@ class TestsFlextInfraDepsModernizerTooling:
         )
         tm.that(
             ruff["target-version"],
-            eq=u.Infra.native_tool_setting(
-                tool_config_document, "ruff", "target-version", str
-            ),
+            eq="py" + config.Infra.codegen.toolchain.python_version.replace(".", ""),
         )
         # The declared src list stays the SSOT; the projection filters it to
         # roots that exist (a retired tree must not name analyzer entries),
@@ -165,32 +264,43 @@ class TestsFlextInfraDepsModernizerTooling:
                     u.Tests.toml_mapping(lint["pylint"])["allow-dunder-method-names"],
                 ),
             ),
-            eq=sorted(
-                u.Infra.native_tool_setting(
-                    config.Infra.tooling,
-                    "ruff.lint.pylint",
-                    "allow-dunder-method-names",
-                    list[str],
-                )
+            eq=u.Infra.native_tool_setting(
+                config.Infra.tooling,
+                "ruff.lint.pylint",
+                "allow-dunder-method-names",
+                list[str],
             ),
         )
         tm.that(
             list(u.Tests.toml_strings(lint["unfixable"])),
-            eq=sorted(
-                u.Infra.native_tool_setting(
-                    config.Infra.tooling, "ruff.lint", "unfixable", list[str]
-                )
+            eq=u.Infra.native_tool_setting(
+                config.Infra.tooling, "ruff.lint", "unfixable", list[str]
             ),
         )
         tm.that(
             list(u.Tests.toml_strings(lint["extend-safe-fixes"])),
-            eq=sorted(
-                u.Infra.native_tool_setting(
-                    config.Infra.tooling, "ruff.lint", "extend-safe-fixes", list[str]
-                )
+            eq=u.Infra.native_tool_setting(
+                config.Infra.tooling, "ruff.lint", "extend-safe-fixes", list[str]
             ),
         )
-        tm.that(lint["ignore"], eq=sorted(ruff_policy.lint.rule_owners))
+        delegated = FlextInfraGateRegistry.default().delegated_lint_rules(
+            ruff_policy.lint.rule_owners,
+            check_gates=config.Infra.codegen.make.check_gates_default,
+            repair_gates=(
+                *config.Infra.codegen.make.check_gates_fixable,
+                *config.Infra.codegen.make.fmt_gates,
+            ),
+        )
+        tm.that(
+            lint["ignore"],
+            eq=sorted({
+                *delegated,
+                *ruff_policy.lint.ruling_disabled_rules,
+                *u.Infra.native_tool_setting(
+                    tool_config_document, "ruff.lint", "ignore", t.StrSequence
+                ),
+            }),
+        )
         tm.that(
             list(
                 u.Tests.toml_strings(

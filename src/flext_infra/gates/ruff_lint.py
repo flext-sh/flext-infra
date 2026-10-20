@@ -114,7 +114,8 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         execution = super().fix(project_dir, ctx)
         if execution.outcome is c.Infra.ToolOutcome.ERROR:
             return execution
-        lint = config.Infra.tooling.tools.ruff.lint
+        tooling = u.Infra.load_tooling_inputs(project_dir).unwrap().document
+        lint = tooling.tools.ruff.lint
         recipes = lint.fix_recipes
         overridden = self._project_overrides(project_dir, execution.issues, recipes)
         for phase in lint.fix_recipe_phases:
@@ -126,7 +127,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                 hooks,
             )
             if by_file:
-                self._apply_phase(project_dir, by_file, recipes)
+                self._apply_phase(project_dir, by_file, recipes, tooling=tooling)
                 repaired = super().fix(project_dir, ctx)
                 execution = repaired.model_copy(
                     update={
@@ -206,6 +207,8 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         project_dir: Path,
         by_file: t.MappingKV[Path, t.SequenceOf[p.Infra.Issue]],
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
+        *,
+        tooling: m.Infra.ToolConfigDocument,
     ) -> None:
         """Repair every module of one phase, computing all before any write."""
         with self._mutation_lease(project_dir):
@@ -232,6 +235,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                     issues,
                     recipes,
                     import_graph=import_graph,
+                    tooling=tooling,
                 )
                 if repaired.encode(c.DEFAULT_ENCODING) != before.content:
                     planned.append((before, repaired))
@@ -275,6 +279,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
         *,
         import_graph: t.MappingKV[str, frozenset[str]],
+        tooling: m.Infra.ToolConfigDocument,
     ) -> str:
         """Apply one module's recipes: whole-module rewrites, then planned edits.
 
@@ -314,7 +319,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                 source,
                 wrapped,
                 limit=u.Infra.native_tool_setting(
-                    config.Infra.tooling, "ruff", "line-length", int
+                    tooling, "ruff", "line-length", int
                 ),
             )
         planned: t.SequenceOf[p.Infra.Issue] = [

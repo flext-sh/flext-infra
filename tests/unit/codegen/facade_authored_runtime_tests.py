@@ -523,7 +523,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         *,
         relative: bool,
     ) -> None:
-        """Execute short own imports alongside ancestor and external imports."""
+        """Execute elected own imports alongside ancestor and external imports."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         children = (segment,) * depth
         child = package.joinpath(*children)
@@ -537,22 +537,34 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         )
         provider = child / "provider.py"
         tm.ok(
-            u.Cli.atomic_write_text_file(provider, "LOCAL_SENTINEL = 'native-child'\n")
+            u.Cli.atomic_write_text_file(provider, "LOCAL_SENTINEL = object()\n")
         )
+        groups = {
+            (
+                f"{'.' * (depth + 1)}sibling"
+                if relative
+                else f"{package.name}.sibling"
+            ): (("sibling", ""),),
+            "pathlib": (("Path", "Path"),),
+            f"{namespace}.{provider.stem}": (("LOCAL_SENTINEL", "LOCAL_SENTINEL"),),
+        }
+        width = u.Infra.native_tool_setting(
+            config.Infra.tooling, "ruff", "line-length", int
+        )
+        if len(f"    from {namespace}.{provider.stem} import (") > width:
+            with pytest.raises(ValueError, match="Absolute import owner"):
+                FlextInfraCodegenGeneration.generate_type_checking(
+                    groups,
+                    include_flext_types=False,
+                    local_package_root=namespace,
+                )
+            tm.fail((child / c.Infra.INIT_PY).exists())
+            return
         imports = FlextInfraCodegenGeneration.generate_type_checking(
-            {
-                (
-                    f"{'.' * (depth + 1)}sibling"
-                    if relative
-                    else f"{package.name}.sibling"
-                ): (("sibling", ""),),
-                "pathlib": (("Path", "Path"),),
-                f"{namespace}.{provider.stem}": (("LOCAL_SENTINEL", "LOCAL_SENTINEL"),),
-            },
+            groups,
             include_flext_types=False,
             local_package_root=namespace,
         )
-        tm.that("\n".join(imports), has=f"from .{provider.stem} import LOCAL_SENTINEL")
         tm.ok(
             u.Cli.atomic_write_text_file(
                 child / c.Infra.INIT_PY,
@@ -562,10 +574,11 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
             "import pathlib\n"
+            f"import {namespace}.{provider.stem} as provider\n"
             f"from {namespace} import LOCAL_SENTINEL, Path, sibling\n"
             "assert Path is pathlib.Path\n"
             "assert sibling.SENTINEL == 'native-sibling'\n"
-            "assert LOCAL_SENTINEL == 'native-child'\n",
+            "assert LOCAL_SENTINEL is provider.LOCAL_SENTINEL\n",
             cwd=root,
         )
 

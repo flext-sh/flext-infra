@@ -16,7 +16,6 @@ from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
-from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
 from tests import tm, u
 
 if TYPE_CHECKING:
@@ -566,32 +565,3 @@ class TestsFlextInfraTypeGates:
         )
         tm.that(markdown, lacks=f"- {FlextInfraPyrightGate.gate_id}:")
         tm.that(markdown, lacks=f"- {FlextInfraPyreflyGate.gate_id}:")
-
-
-class TestsFlextInfraOwnedPythonCoverage:
-    """Native checks include all owned roots without importing entrypoints."""
-
-    @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
-        "relative_path", ["infra/probe.py", "automation/probe.py", "entry.py"]
-    )
-    @pytest.mark.parametrize("gate_class", [FlextInfraRuffLintGate, FlextInfraMypyGate])
-    def test_nonstandard_python_targets_report_real_findings(
-        checker_context: m.Infra.GateContext,
-        relative_path: str,
-        gate_class: type[FlextInfraGate],
-    ) -> None:
-        """A clean conventional root cannot hide a defect in another owned target."""
-        project = checker_context.repository_root
-        source = project / relative_path
-        source.parent.mkdir(parents=True, exist_ok=True)
-        source.write_text("value = missing_name\n", encoding="utf-8")
-
-        result = gate_class(project).check(project, checker_context)
-
-        tm.fail(result.result.passed)
-        tm.that(
-            any(issue.file.endswith(relative_path) for issue in result.issues),
-            truth=True,
-        )

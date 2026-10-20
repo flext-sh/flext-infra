@@ -37,7 +37,7 @@ class FlextInfraPyprojectModernizerBase(
             The resulting ``t.StrSequence``.
 
         """
-        return u.Infra.native_tool_settings(
+        return u.Infra.native_tool_setting(
             config.Infra.tooling, "tomlsort", "sort_first", t.StrSequence
         )
 

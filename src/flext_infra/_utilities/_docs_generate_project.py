@@ -10,11 +10,13 @@ from pathlib import Path
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsContract,
     FlextInfraUtilitiesDocsGeneratePlanMixin,
     FlextInfraUtilitiesDocsGuidesMixin,
     FlextInfraUtilitiesDocsRender,
+    FlextInfraUtilitiesProjectManagedArtifacts,
 )
 
 
@@ -56,6 +58,8 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
     def docs_project_api_artifacts(
         scope: m.Infra.DocScope,
         source_states: t.SequenceOf[m.Cli.AtomicFileState] | None = None,
+        *,
+        width: int,
     ) -> list[t.Pair[Path, str]]:
         """Render package API pages before their owning tree is pruned.
 
@@ -73,12 +77,12 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
                 api_root / "public-api.md",
                 FlextInfraUtilitiesDocsRender.docs_directive_page(
                     f"{scope.name} Public API",
-                    scope.package_name,
+                    scope.package_name, width=width
                 ),
             ),
             (
                 api_root / "modules/index.md",
-                FlextInfraUtilitiesDocsRender.docs_modules_index(scope, module_names),
+                FlextInfraUtilitiesDocsRender.docs_modules_index(scope, module_names, width=width),
             ),
         ]
         for module_name in module_names:
@@ -90,7 +94,7 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
                 api_root / "modules" / f"{relative}.md",
                 FlextInfraUtilitiesDocsRender.docs_directive_page(
                     module_name,
-                    module_name,
+                    module_name, width=width
                 ),
             ))
         return rendered
@@ -109,6 +113,24 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
                 ``p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]``.
 
         """
+
+        tooling = FlextInfraUtilitiesProjectManagedArtifacts.load_tooling_inputs(
+            scope.path
+        )
+        if tooling.failure:
+            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
+                tooling
+            )
+        bound = FlextInfraUtilitiesCodegenFilePlan.unique_states(
+            (*source_states, *tooling.value.sources)
+        )
+        if bound.failure:
+            return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
+                bound
+            )
+        width = FlextInfraUtilitiesDocsRender.docs_markdown_line_length(
+            tooling.value.document
+        )
         guides = FlextInfraUtilitiesDocsGuidesMixin.docs_project_guides_artifacts(
             scope,
             repository_root=repository_root,
@@ -147,17 +169,17 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
         rendered: list[t.Pair[Path, str]] = [
             (
                 scope.path / "README.md",
-                FlextInfraUtilitiesDocsRender.docs_project_readme(scope, contract),
+                FlextInfraUtilitiesDocsRender.docs_project_readme(scope, contract, width=width),
             ),
             (
                 scope.path / "docs/index.md",
-                FlextInfraUtilitiesDocsRender.docs_project_index(scope, contract),
+                FlextInfraUtilitiesDocsRender.docs_project_index(scope, contract, width=width),
             ),
             (
                 scope.path / "docs/guides/README.md",
                 FlextInfraUtilitiesDocsRender.docs_guides_index(
                     scope,
-                    guide_paths=tuple(sorted(guide_paths)),
+                    guide_paths=tuple(sorted(guide_paths)), width=width
                 ),
             ),
             (
@@ -165,7 +187,7 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
                 FlextInfraUtilitiesDocsRender.docs_api_readme(
                     scope,
                     contract,
-                    module_names,
+                    module_names, width=width
                 ),
             ),
             (
@@ -194,12 +216,12 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
                 FlextInfraUtilitiesDocsRender.docs_overview_page(
                     scope,
                     contract,
-                    module_names,
+                    module_names, width=width
                 ),
             ),
             *FlextInfraUtilitiesDocsGenerateProjectMixin.docs_project_api_artifacts(
                 scope,
-                source_states,
+                source_states, width=width
             ),
         ]
         pruned = (

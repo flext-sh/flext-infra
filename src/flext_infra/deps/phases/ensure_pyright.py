@@ -12,11 +12,11 @@ from typing import TYPE_CHECKING
 from flext_core import FlextRuntime
 
 from flext_infra import c, config, m, r, t, u
+from flext_infra.deps import FlextInfraExtraPathsManager
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra import p
-    from flext_infra.deps import FlextInfraExtraPathsManager
 
 
 class FlextInfraEnsurePyrightConfigPhase:
@@ -585,10 +585,9 @@ class FlextInfraEnsurePyrightConfigPhase:
                 ],
             ),
         )
-        operations.extend(
-            toml.SetOp(key=key, value=value)
-            for key, value in sorted(
-                u.Infra.native_tool_settings(self._tool_config, c.Infra.PYRIGHT).items()
+        operations.append(
+            toml.SetOp(
+                key="pythonVersion", value=self._codegen.toolchain.python_version
             )
         )
         return toml.PhaseConfig(
@@ -611,12 +610,38 @@ class FlextInfraEnsurePyrightConfigPhase:
             The resulting ``t.StrSequence``.
 
         """
-        return u.Infra.apply_toml_phases(
-            payload,
+        desired: t.MutableJsonMapping = {
+            c.Infra.TOOL: {
+                c.Infra.PYRIGHT: u.Infra.native_tool_configuration(
+                    self._tool_config, c.Infra.PYRIGHT
+                )
+            }
+        }
+        u.Infra.apply_toml_phases(
+            desired,
             self._phase(
                 context=context,
                 paths_manager=paths_manager,
                 analysis_exclusions=analysis_exclusions,
+            ),
+        )
+        table = u.Cli.toml_mapping_path(
+            desired, (c.Infra.TOOL, c.Infra.PYRIGHT)
+        )
+        if table is None:
+            msg = "Pyright owner produced no native table"
+            raise ValueError(msg)
+        return u.Infra.apply_toml_phases(
+            payload,
+            m.Infra.DepsToml.PhaseConfig(
+                name=c.Infra.PYRIGHT,
+                table_path=(),
+                operations=(
+                    m.Infra.DepsToml.SetOp(
+                        key=c.Infra.PYRIGHT,
+                        value=FlextRuntime.normalize_to_json_value(table),
+                    ),
+                ),
             ),
         )
 
@@ -636,7 +661,16 @@ class FlextInfraEnsurePyrightConfigPhase:
         if parsed.failure:
             return r[str].from_failure(parsed)
         payload: t.MutableJsonMapping = dict(parsed.value)
-        self.apply_payload(payload, context=context)
+        project_root = context.repository_root if context.is_root else context.project_dir
+        self.apply_payload(
+            payload,
+            context=context,
+            paths_manager=(
+                FlextInfraExtraPathsManager(repository_root=project_root)
+                if project_root is not None
+                else None
+            ),
+        )
         document = u.Cli.toml_parse_text(source)
         if document is None:
             return r[str].fail(

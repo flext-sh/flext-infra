@@ -16,7 +16,7 @@ from flext_infra import c, t
 class FlextInfraModelsDepsToolConfigTypeCheckers:
     """Type checker configuration models."""
 
-    class PyrightConfig(m.FlexibleModel):
+    class PyrightConfig(m.ArbitraryTypesModel):
         """Pyright strict settings loaded from YAML."""
 
         class DiagnosticPathOverride(m.ContractModel):
@@ -69,7 +69,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ),
             ] = ""
 
-        class PathRulesConfig(m.FlexibleModel):
+        class PathRulesConfig(m.ArbitraryTypesModel):
             """Path resolution rules loaded from YAML."""
 
             source_dir: Annotated[
@@ -174,14 +174,28 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
 
         path_rules: Annotated[
             FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.PathRulesConfig,
+            m.BeforeValidator(
+                lambda value: {
+                    "source-dir": "src",
+                    "project-root": ".",
+                    "env-dirs": [],
+                    "test-like-dirs": [],
+                    "default-excludes": [],
+                    "root-typings-paths": [],
+                    "project-typings-paths": [],
+                    "ignored-diagnostic-globs": [],
+                    "diagnostic-path-overrides": [],
+                    **(value or {}),
+                }
+            ),
             m.Field(
                 alias="path-rules",
                 description="Pyright path resolution and execution-env rules.",
             ),
         ]
 
-    class PyreflyConfig(m.FlexibleModel):
-        """Pyrefly strict settings loaded from YAML."""
+    class PyreflyConfig(m.ArbitraryTypesModel):
+        """Pyrefly execution and path policy; native options live in settings."""
 
         findings_exit_codes: Annotated[
             t.VariadicTuple[int],
@@ -191,7 +205,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
             ),
         ] = ()
 
-        class PathRulesConfig(m.FlexibleModel):
+        class PathRulesConfig(m.ArbitraryTypesModel):
             """Path resolution rules loaded from YAML."""
 
             source_dir: Annotated[
@@ -254,61 +268,21 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ),
             ]
 
-        python_version: Annotated[
-            str,
-            m.Field(
-                alias="python-version",
-                description="Pyrefly python-version baseline.",
-            ),
-        ]
-        disable_project_excludes_heuristics: Annotated[
-            bool,
-            m.Field(
-                alias="disable-project-excludes-heuristics",
-                description="Disable implicit project-exclude heuristics in pyrefly.",
-            ),
-        ]
-        use_ignore_files: Annotated[
-            bool,
-            m.Field(
-                alias="use-ignore-files",
-                description="Whether pyrefly should apply .gitignore/.ignore files.",
-            ),
-        ]
-        strict_errors: Annotated[
-            t.StrSequence,
-            m.Field(
-                alias="strict-errors",
-                description="Pyrefly errors enabled as strict defaults.",
-            ),
-        ]
-
-        @m.field_validator("strict_errors")
-        @classmethod
-        def reject_duplicate_strict_errors(cls, errors: t.StrSequence) -> t.StrSequence:
-            """Require one declaration for each rendered diagnostic key.
-
-            Returns:
-                The declared diagnostic sequence without deduplication or reordering.
-
-            Raises:
-                ValueError: If a diagnostic would overwrite another TOML value.
-
-            """
-            if len(errors) != len(set(errors)):
-                msg = "Pyrefly strict-errors rejects duplicate diagnostic declarations"
-                raise ValueError(msg)
-            return errors
-
-        project_exclude_globs: Annotated[
-            t.StrSequence,
-            m.Field(
-                alias="project-exclude-globs",
-                description="Globs excluded from pyrefly project checking.",
-            ),
-        ]
         path_rules: Annotated[
             FlextInfraModelsDepsToolConfigTypeCheckers.PyreflyConfig.PathRulesConfig,
+            m.BeforeValidator(
+                lambda value: {
+                    "source-dir": "src",
+                    "project-root": ".",
+                    "env-dirs": [],
+                    "root-typings-paths": [],
+                    "project-typings-paths": [],
+                    "workspace-include-children": False,
+                    "workspace-include-child-env-dirs": [],
+                    "project-shared-search-paths": [],
+                    **(value or {}),
+                }
+            ),
             m.Field(alias="path-rules", description="Pyrefly search-path rules."),
         ]
 

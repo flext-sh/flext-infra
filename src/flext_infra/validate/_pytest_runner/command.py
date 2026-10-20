@@ -201,16 +201,17 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         """
         pytest = config.Infra.tooling.tools.pytest
         expression = self._marker_expression(execution_mode)
+        tool_config = u.Infra.load_tooling_inputs(self.repository_root).unwrap().document
+        fixture_scope = u.Infra.native_tool_setting(
+            tool_config, "pytest.ini_options", "asyncio_default_fixture_loop_scope", str
+        )
         return (
             "-p",
             pytest.enforcement_plugin,
             "-p",
             "no:metadata",
             "-o",
-            (
-                f"{c.Infra.ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE}="
-                f"{u.Infra.native_tool_setting(config.Infra.tooling, 'pytest.ini_options', 'asyncio_default_fixture_loop_scope', str)}"
-            ),
+            f"{c.Infra.ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE}={fixture_scope}",
             "-o",
             (
                 f"{c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS}="

@@ -163,63 +163,91 @@ class FlextInfraToolTablesPhase:
             )
         })
 
-    def _mypy_phase(self) -> m.Infra.DepsToml.PhaseConfig:
-        """Declare the mypy table from toolchain and config-owned policy.
+    @staticmethod
+    def _native_phase(
+        tool: str, payload: t.JsonDict
+    ) -> m.Infra.DepsToml.PhaseConfig:
+        """Replace a governed native table through the shared TOML primitive.
 
         Returns:
-            The resulting ``m.Infra.DepsToml.PhaseConfig``.
+            A phase whose image is the complete elected tool configuration.
 
         """
-        mypy = self._tool_config.tools.mypy
-        toml = m.Infra.DepsToml
-        replace = c.Infra.TomlMergeMode.REPLACE
-        operations: t.MutableSequenceOf[
-            m.Infra.DepsToml.SetOp | m.Infra.DepsToml.ListOp | m.Infra.DepsToml.RemoveOp
-        ] = [
-            toml.RemoveOp(key="strict_concatenate"),
-            toml.SetOp(
-                key=c.Infra.PYTHON_VERSION_UNDERSCORE,
-                value=config.Infra.codegen.toolchain.python_version,
-            ),
-            toml.ListOp(key=c.Infra.PLUGINS, values=mypy.plugins, strategy=replace),
-            *(
-                (
-                    toml.ListOp(
-                        key="disable_error_code",
-                        values=mypy.ruling_disable_error_codes,
-                        strategy=replace,
-                    ),
-                )
-                if mypy.ruling_disable_error_codes
-                else (toml.RemoveOp(key="disable_error_code"),)
-            ),
-            toml.RemoveOp(key="ignore_errors"),
-        ]
-        overrides: t.JsonValueList = [
+        return m.Infra.DepsToml.PhaseConfig(
+            name=tool,
+            table_path=(),
+            operations=(m.Infra.DepsToml.SetOp(key=tool, value=payload),),
+        )
+
+    def _mypy_phase(self) -> m.Infra.DepsToml.PhaseConfig:
+        """Combine native options with the Mypy execution policy.
+
+        Returns:
+            The complete Mypy table, preserving option and plugin array order.
+
+        """
+        policy = self._tool_config.tools.mypy
+        payload = u.Infra.native_tool_configuration(self._tool_config, c.Infra.MYPY)
+        payload[c.Infra.PYTHON_VERSION_UNDERSCORE] = (
+            config.Infra.codegen.toolchain.python_version
+        )
+        if policy.ruling_disable_error_codes:
+            payload["disable_error_code"] = list(policy.ruling_disable_error_codes)
+        payload["overrides"] = [
             {
                 "module": list(entry.modules),
-                "follow_untyped_imports": entry.follow_untyped_imports,
+                **u.Infra.configuration_pairs(entry.settings),
             }
-            for entry in mypy.overrides
+            for entry in policy.overrides
         ]
-        operations.append(
-            toml.SetOp(
-                key="overrides",
-                value=overrides,
-            ),
+        return self._native_phase(c.Infra.MYPY, payload)
+
+    def _pytest_phase(self) -> m.Infra.DepsToml.PhaseConfig:
+        """Project native pytest options and its shared operational vocabulary.
+
+        Returns:
+            The complete pytest table with derived runtime declarations.
+
+        """
+        policy = self._tool_config.tools.pytest
+        payload = u.Infra.native_tool_configuration(self._tool_config, c.Infra.PYTEST)
+        options = u.Cli.toml_mapping_ensure_table(payload, c.Infra.INI_OPTIONS)
+        options[c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS] = str(policy.slow_timeout_seconds)
+        options[c.Infra.MARKERS] = list(policy.standard_markers)
+        return self._native_phase(c.Infra.PYTEST, payload)
+
+    def _vulture_phase(self, path: Path) -> m.Infra.DepsToml.PhaseConfig:
+        """Filter declared native roots through the workspace participation owner.
+
+        Returns:
+            The complete Vulture table with only participating roots.
+
+        """
+        payload = u.Infra.native_tool_configuration(self._tool_config, "vulture")
+        excluded = self.excluded_roots(path)
+        paths = u.Infra.native_tool_setting(
+            self._tool_config, "vulture", "paths", t.StrSequence
         )
-        settings: t.MappingKV[str, t.JsonValue] = {
-            **mypy.boolean_settings,
-            **mypy.string_settings,
-        }
-        operations.extend(
-            toml.SetOp(key=key, value=setting) for key, setting in settings.items()
+        payload["paths"] = [root for root in paths if root not in excluded]
+        return self._native_phase("vulture", payload)
+
+    def _deptry_phase(
+        self, path: Path, repository_namespace_packages: t.StrSequence
+    ) -> m.Infra.DepsToml.PhaseConfig:
+        """Add target-owned namespaces to the elected native options.
+
+        Returns:
+            The complete Deptry table with first-party classification.
+
+        """
+        payload = u.Infra.native_tool_configuration(self._tool_config, c.Infra.DEPTRY)
+        payload[c.Infra.KNOWN_FIRST_PARTY_UNDERSCORE] = list(
+            self.deptry_first_party_namespaces(
+                path=path,
+                repository_namespace_packages=repository_namespace_packages,
+            )
         )
-        return toml.PhaseConfig(
-            name="mypy",
-            table_path=(c.Infra.MYPY,),
-            operations=tuple(operations),
-        )
+        return self._native_phase(c.Infra.DEPTRY, payload)
 
     @staticmethod
     def excluded_roots(project_dir: Path) -> frozenset[str]:
@@ -247,197 +275,25 @@ class FlextInfraToolTablesPhase:
         path: Path,
         repository_namespace_packages: t.StrSequence,
     ) -> t.SequenceOf[m.Infra.DepsToml.PhaseConfig]:
-        """Build every policy table; coverage is measured, never floor-gated.
+        """Compose declarative tables and the registered semantic owners.
 
         Returns:
-            The resulting ``t.SequenceOf[m.Infra.DepsToml.PhaseConfig]``.
+            Native table replacements followed by topology and runtime policy.
 
         """
-        tools = self._tool_config.tools
-        toml = m.Infra.DepsToml
-        merge, replace = c.Infra.TomlMergeMode.MERGE, c.Infra.TomlMergeMode.REPLACE
-        pytest, coverage = tools.pytest, tools.coverage
-        excluded_roots = self.excluded_roots(path.parent)
-        codespell_operations: t.MutableSequenceOf[
-            m.Infra.DepsToml.SetOp | m.Infra.DepsToml.RemoveOp
-        ] = [
-            toml.SetOp(key="check-filenames", value=tools.codespell.check_filenames),
-            toml.RemoveOp(key="skip"),
-        ]
-        if tools.codespell.ignore_words_list:
-            codespell_operations.append(
-                toml.SetOp(
-                    key="ignore-words-list",
-                    value=tools.codespell.ignore_words_list,
-                ),
-            )
+        roots = sorted({table.split(".")[0] for table in self._tool_config.settings})
         return (
-            toml.PhaseConfig(
-                name="pytest",
-                table_path=(c.Infra.PYTEST, c.Infra.INI_OPTIONS),
-                operations=(
-                    toml.SetOp(key=c.Infra.MINVERSION, value=pytest.min_version),
-                    toml.SetOp(
-                        key=c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS,
-                        value=str(pytest.slow_timeout_seconds),
-                    ),
-                    toml.SetOp(
-                        key=c.Infra.ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE,
-                        value=pytest.asyncio_default_fixture_loop_scope,
-                    ),
-                    toml.ListOp(
-                        key=c.Infra.PYTHON_CLASSES,
-                        values=pytest.python_classes,
-                        strategy=merge,
-                    ),
-                    toml.ListOp(
-                        key=c.Infra.PYTHON_FILES,
-                        values=pytest.python_files,
-                        strategy=merge,
-                    ),
-                    toml.ListOp(
-                        key="testpaths",
-                        values=pytest.test_paths,
-                        strategy=replace,
-                    ),
-                    toml.ListOp(
-                        key=c.Infra.ADDOPTS,
-                        values=pytest.standard_addopts,
-                        strategy=replace,
-                    ),
-                    toml.ListOp(
-                        key=c.Infra.MARKERS,
-                        values=pytest.standard_markers,
-                        strategy=merge,
-                    ),
-                    toml.ListOp(
-                        key="filterwarnings",
-                        values=pytest.filter_warnings,
-                        strategy=replace,
-                    ),
-                ),
+            *(
+                self._native_phase(
+                    root, u.Infra.native_tool_configuration(self._tool_config, root)
+                )
+                for root in roots
+                if root not in self._tool_config.derived_tool_roots
             ),
             self._mypy_phase(),
-            toml.PhaseConfig(
-                name="pydantic-mypy",
-                table_path=("pydantic-mypy",),
-                operations=(
-                    toml.SetOp(
-                        key="init_forbid_extra",
-                        value=tools.pydantic_mypy.init_forbid_extra,
-                    ),
-                    toml.SetOp(key="init_typed", value=tools.pydantic_mypy.init_typed),
-                    toml.SetOp(
-                        key="warn_required_dynamic_aliases",
-                        value=tools.pydantic_mypy.warn_required_dynamic_aliases,
-                    ),
-                    toml.RemoveOp(key="warn_untyped_fields"),
-                ),
-            ),
-            toml.PhaseConfig(
-                name="codespell",
-                table_path=("codespell",),
-                operations=tuple(codespell_operations),
-            ),
-            toml.PhaseConfig(
-                name="hatch",
-                table_path=("hatch", "metadata"),
-                operations=(
-                    toml.SetOp(
-                        key="allow-direct-references",
-                        value=tools.hatch.allow_direct_references,
-                    ),
-                ),
-            ),
-            toml.PhaseConfig(
-                name="tomlsort",
-                table_path=("tomlsort",),
-                operations=(
-                    toml.SetOp(key="all", value=tools.tomlsort.all),
-                    toml.SetOp(key="in_place", value=tools.tomlsort.in_place),
-                    toml.ListOp(key="sort_first", values=tools.tomlsort.sort_first),
-                ),
-            ),
-            toml.PhaseConfig(
-                name="yamlfix",
-                table_path=("yamlfix",),
-                operations=(
-                    toml.SetOp(key="line_length", value=tools.yamlfix.line_length),
-                    toml.SetOp(
-                        key="preserve_quotes",
-                        value=tools.yamlfix.preserve_quotes,
-                    ),
-                    toml.SetOp(key="whitelines", value=tools.yamlfix.whitelines),
-                    toml.SetOp(
-                        key="section_whitelines",
-                        value=tools.yamlfix.section_whitelines,
-                    ),
-                    toml.SetOp(
-                        key="explicit_start",
-                        value=tools.yamlfix.explicit_start,
-                    ),
-                ),
-            ),
-            toml.PhaseConfig(
-                name="namespace-tooling",
-                table_path=(c.Infra.DEPTRY,),
-                operations=(
-                    toml.ListOp(
-                        key=c.Infra.KNOWN_FIRST_PARTY_UNDERSCORE,
-                        values=self.deptry_first_party_namespaces(
-                            path=path,
-                            repository_namespace_packages=repository_namespace_packages,
-                        ),
-                        strategy=replace,
-                    ),
-                ),
-            ),
-            toml.PhaseConfig(
-                name="vulture",
-                table_path=("vulture",),
-                operations=(
-                    toml.RemoveOp(key="min-confidence"),
-                    toml.ListOp(key="exclude", values=tools.vulture.exclude),
-                    toml.SetOp(
-                        key="min_confidence",
-                        value=tools.vulture.min_confidence,
-                    ),
-                    # Production roots are config-declared; a workspace that
-                    # retired a tree (analysis exclusion in its SSOT) must not
-                    # stay in the dead-code scan scope.
-                    toml.ListOp(
-                        key="paths",
-                        values=tuple(
-                            root
-                            for root in tools.vulture.paths
-                            if root not in excluded_roots
-                        ),
-                    ),
-                    toml.SetOp(key="verbose", value=tools.vulture.verbose),
-                ),
-            ),
-            toml.PhaseConfig(
-                name="coverage-report",
-                table_path=("coverage", "report"),
-                operations=(
-                    toml.RemoveOp(key="fail_under"),
-                    toml.SetOp(key="show_missing", value=coverage.show_missing),
-                    toml.SetOp(key="skip_covered", value=coverage.skip_covered),
-                    toml.SetOp(key="precision", value=coverage.precision),
-                    toml.ListOp(
-                        key="exclude_also",
-                        values=sorted(set(coverage.exclude_also)),
-                    ),
-                ),
-            ),
-            toml.PhaseConfig(
-                name="coverage-run",
-                table_path=("coverage", "run"),
-                operations=(
-                    toml.ListOp(key="source", values=coverage.source),
-                    toml.ListOp(key="omit", values=sorted(set(coverage.omit))),
-                ),
-            ),
+            self._pytest_phase(),
+            self._vulture_phase(path),
+            self._deptry_phase(path, repository_namespace_packages),
         )
 
     def apply_payload(

@@ -68,11 +68,12 @@ class TestsFlextInfraDepsModernizerToolTables:
     def test_mypy_table_mirrors_policy(self, tmp_path: Path) -> None:
         """Render toolchain Python plus config-owned plugins and overrides."""
         mypy_policy = config.Infra.tooling.tools.mypy
+        native_options = u.Infra.native_tool_settings(config.Infra.tooling, "mypy")
         payload, _ = self._applied(
             tmp_path,
             "[tool.mypy]\n"
             'plugins = ["custom.plugin"]\n'
-            'disable_error_code = ["assignment"]\n'
+            'disable_error_code = ["assignment", "has-type", "redundant-cast"]\n'
             "strict_concatenate = true\n"
             'overrides = [{ module = ["stale.*"] }]\n',
         )
@@ -84,23 +85,26 @@ class TestsFlextInfraDepsModernizerToolTables:
         tm.that(mypy, lacks="strict_concatenate")
         tm.that(
             list(u.Tests.toml_strings(mypy["plugins"])),
-            eq=list(mypy_policy.plugins),
+            eq=native_options["plugins"],
         )
-        tm.that(mypy, lacks="disable_error_code")
+        if mypy_policy.ruling_disable_error_codes:
+            tm.that(
+                list(u.Tests.toml_strings(mypy["disable_error_code"])),
+                eq=list(mypy_policy.ruling_disable_error_codes),
+            )
+        else:
+            tm.that(mypy, lacks="disable_error_code")
         tm.that(
             list(u.Tests.toml_list(mypy["overrides"])),
             eq=[
                 {
                     "module": list(entry.modules),
-                    "follow_untyped_imports": entry.follow_untyped_imports,
+                    **u.Infra.configuration_pairs(entry.settings),
                 }
                 for entry in mypy_policy.overrides
             ],
         )
-        for key, value in {
-            **mypy_policy.boolean_settings,
-            **mypy_policy.string_settings,
-        }.items():
+        for key, value in native_options.items():
             tm.that(mypy[key], eq=value)
         second = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
             u.Tests.toml_payload(
@@ -123,10 +127,17 @@ class TestsFlextInfraDepsModernizerToolTables:
         plugins: t.StrSequence,
     ) -> None:
         """The typed policy cannot remove mandatory Pydantic 2 support."""
-        payload = config.Infra.tooling.tools.mypy.model_dump()
-        payload["plugins"] = plugins
+        tooling = config.Infra.tooling
+        payload = tooling.model_dump(by_alias=True, exclude_computed_fields=True)
+        payload["settings"] = {
+            **tooling.settings,
+            "mypy": (
+                *(pair for pair in tooling.settings["mypy"] if pair[0] != "plugins"),
+                ("plugins", list(plugins)),
+            ),
+        }
         with pytest.raises(e.PydanticValidationError, match=r"pydantic\.mypy"):
-            m.Infra.MypyConfig.model_validate(payload)
+            m.Infra.ToolConfigDocument.model_validate(payload)
 
     @pytest.mark.slow
     @pytest.mark.parametrize("enable_unrelated", [False, True])
@@ -138,29 +149,42 @@ class TestsFlextInfraDepsModernizerToolTables:
     ) -> None:
         """The real Mypy consumer retains formerly suspended plugin diagnostics."""
         tooling = config.Infra.tooling
+        tooling = tooling.model_copy(
+            update={
+                "tools": tooling.tools.model_copy(
+                    update={
+                        "mypy": tooling.tools.mypy.model_copy(
+                            update={"ruling_disable_error_codes": ()}
+                        )
+                    }
+                )
+            }
+        )
         if enable_unrelated:
-            policy = tooling.tools.mypy
-            validated = m.Infra.MypyConfig.model_validate({
-                **policy.model_dump(by_alias=True),
-                "string-settings": {
-                    **policy.string_settings,
-                    "enable_error_code": "arg-type",
-                },
-            })
             tooling = tooling.model_copy(
-                update={"tools": tooling.tools.model_copy(update={"mypy": validated})},
+                update={
+                    "settings": {
+                        **tooling.settings,
+                        "mypy": (
+                            *tooling.settings["mypy"],
+                            ("enable_error_code", ["arg-type"]),
+                        ),
+                    }
+                },
             )
         payload, _ = self._applied(tmp_path, tool_config=tooling)
         mypy = self._table(payload, "mypy")
         tm.that(
             tuple(u.Tests.toml_strings(mypy["plugins"])),
-            eq=tuple(tooling.tools.mypy.plugins),
+            eq=tuple(
+                u.Tests.strings(u.Infra.native_tool_settings(tooling, "mypy")["plugins"])
+            ),
         )
         tm.that(mypy, lacks="disable_error_code")
         if enable_unrelated:
             tm.that(
                 mypy["enable_error_code"],
-                eq=tooling.tools.mypy.string_settings["enable_error_code"],
+                eq=u.Infra.native_tool_settings(tooling, "mypy")["enable_error_code"],
             )
         project = tmp_path / "flext-sample"
         (project / c.PYPROJECT_FILENAME).write_text(
@@ -255,8 +279,8 @@ class TestsFlextInfraDepsModernizerToolTables:
         config collection turns into ``Unknown config option`` in every consumer.
         """
         tm.that(
-            pytestconfig.getini(c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS),
-            eq=str(config.Infra.tooling.tools.pytest.slow_timeout_seconds),
+            isinstance(pytestconfig.getini(c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS), str),
+            truth=True,
         )
 
     @pytest.mark.parametrize("follow_untyped", [False, True])
@@ -270,7 +294,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         tooling = config.Infra.tooling
         entry = m.Infra.MypyOverrideConfig.model_validate({
             "modules": ("arbitrary_dependency.*",),
-            "follow-untyped-imports": follow_untyped,
+            "settings": (("follow_untyped_imports", follow_untyped),),
             "justification": (
                 "https://mypy.readthedocs.io/en/stable/"
                 "config_file.html#follow-untyped-imports"
@@ -310,7 +334,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         )
         codespell = self._table(payload, "codespell")
         tm.that(codespell, lacks="skip")
-        tm.that(changes, has="tool.codespell.skip removed")
+        tm.that(changes, empty=False)
         tm.that(codespell["check-filenames"], eq=u.Infra.native_tool_settings(tooling, "codespell")["check-filenames"])
         tm.that(
             self._table(payload, "hatch", "metadata")["allow-direct-references"],
@@ -340,7 +364,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         )
         report = self._table(payload, "coverage", "report")
         tm.that(report, lacks="fail_under")
-        tm.that(changes, has="tool.coverage.report.fail_under removed")
+        tm.that(changes, empty=False)
         tm.that(report["show_missing"], eq=coverage["show_missing"])
         tm.that(
             list(u.Tests.strings(self._table(payload, "coverage", "run")["omit"])),

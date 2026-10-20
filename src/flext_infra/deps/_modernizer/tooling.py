@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from flext_core import FlextRuntime
 
-from flext_infra import c, config, m, r, t, u
+from flext_infra import c, m, r, t, u
 from flext_infra.deps import FlextInfraExtraPathsManager
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
 
@@ -50,6 +50,7 @@ class FlextInfraPyprojectModernizerTooling:
             *,
             canonical_dev: t.StrSequence,
             topology: m.Infra.PyprojectDeclaredTopology,
+            tool_config: m.Infra.ToolConfigDocument | None = None,
         ) -> t.StrSequence: ...
 
         def _render_document_state(
@@ -100,6 +101,7 @@ class FlextInfraPyprojectModernizerTooling:
         *,
         path: Path,
         topology: m.Infra.PyprojectDeclaredTopology,
+        tool_config: m.Infra.ToolConfigDocument | None = None,
     ) -> p.Result[t.Pair[m.Infra.PyprojectDocumentState, t.StrSequence]]:
         """Read and apply canonical phases before a consumer chooses rendering.
 
@@ -125,6 +127,7 @@ class FlextInfraPyprojectModernizerTooling:
             state.value,
             canonical_dev=canonical_dev.value,
             topology=topology,
+            tool_config=tool_config,
         )
         return result_type.ok((state.value, changes))
 
@@ -141,6 +144,10 @@ class FlextInfraPyprojectModernizerTooling:
 
         """
         result_type = r[m.Infra.ToolingRuntimeContext]
+        selected = u.Infra.load_tooling_inputs(request.path.parent)
+        if selected.failure:
+            return result_type.from_failure(selected)
+        tool_config = selected.value.document
         conformed = self._conformed_seed_payload(
             request.path,
             request.topology,
@@ -150,6 +157,7 @@ class FlextInfraPyprojectModernizerTooling:
                 request.runtime_dependency_overlay,
                 request.declared_project_dependencies,
             ),
+            tool_config=tool_config,
         )
         if conformed.failure:
             return result_type.from_failure(conformed)
@@ -159,6 +167,7 @@ class FlextInfraPyprojectModernizerTooling:
             project_dir,
             request.topology.declared_python_dirs,
             FlextInfraExtraPathsManager(repository_root=self.root),
+            tool_config,
         )
         mypy = u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, "mypy"))
         if declared_roots or not mypy.get("mypy_path"):
@@ -179,7 +188,7 @@ class FlextInfraPyprojectModernizerTooling:
             u.Infra.runtime_evaluated_base_classes(
                 project_dir,
                 request.planned_sources,
-                config.Infra.tooling.tools.ruff.lint.flake8_type_checking.runtime_evaluated_roots,
+                tool_config.tools.ruff.lint.flake8_type_checking.runtime_evaluated_roots,
                 source_project=source_project,
             ),
         )
@@ -188,6 +197,8 @@ class FlextInfraPyprojectModernizerTooling:
             project_kind=self._project_kind(
                 request.path, payload, request.topology.project_kind
             ),
+            tool_config=tool_config,
+            sources=selected.value.sources,
         )
 
     @staticmethod
@@ -224,6 +235,8 @@ class FlextInfraPyprojectModernizerTooling:
         payload: t.MutableJsonMapping,
         *,
         project_kind: str,
+        tool_config: m.Infra.ToolConfigDocument,
+        sources: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Project every declared table from one conformed native document.
 
@@ -233,7 +246,7 @@ class FlextInfraPyprojectModernizerTooling:
         """
         result_type = r[m.Infra.ToolingRuntimeContext]
         options: dict[str, t.JsonMapping] = {}
-        for table_path in config.Infra.tooling.settings:
+        for table_path in tool_config.settings:
             table = u.Cli.toml_mapping_path(
                 payload, (c.Infra.TOOL, *table_path.split("."))
             )
@@ -244,13 +257,18 @@ class FlextInfraPyprojectModernizerTooling:
         configuration = cls.tooling_configuration(options)
         if configuration.failure:
             return result_type.from_failure(configuration)
-        return u.validate_value(
+        validated: p.Result[m.Infra.ToolingRuntimeContext] = u.validate_value(
             m.Infra.ToolingRuntimeContext,
             {
                 "project_kind": project_kind,
                 "configuration": configuration.value,
                 "tool_options": {key: dict(value) for key, value in options.items()},
             },
+        )
+        return validated.map(
+            lambda context: context.model_copy(
+                update={"sources": sources, "document": tool_config}
+            )
         )
 
     def _live_dev_dependencies(self, path: Path) -> p.Result[t.StrSequence]:
@@ -296,6 +314,8 @@ class FlextInfraPyprojectModernizerTooling:
         scaffold_project: m.Infra.ScaffoldProjectSpec,
         names: t.Pair[t.NonEmptyStr, t.NonEmptyStr],
         overlays: t.Pair[t.StrSequence, t.StrSequence],
+        *,
+        tool_config: m.Infra.ToolConfigDocument,
     ) -> p.Result[t.MutableJsonMapping]:
         """Conform a seeded native document before projecting its managed tables.
 
@@ -340,6 +360,7 @@ class FlextInfraPyprojectModernizerTooling:
             u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(seed)),
             path=path,
             topology=topology,
+            tool_config=tool_config,
         )
         if conformed.failure:
             return result_type.from_failure(conformed)
@@ -351,6 +372,7 @@ class FlextInfraPyprojectModernizerTooling:
         project_dir: Path,
         declared_python_dirs: t.StrSequence,
         seed_manager: FlextInfraExtraPathsManager,
+        tool_config: m.Infra.ToolConfigDocument,
     ) -> t.Pair[t.StrSequence, t.StrSequence]:
         """Derive the declared or discovered analyzer search roots.
 
@@ -358,7 +380,7 @@ class FlextInfraPyprojectModernizerTooling:
             The ``(declared_roots, mypy_path)`` pair.
 
         """
-        path_rules = config.Infra.tooling.tools.pyrefly.path_rules
+        path_rules = tool_config.tools.pyrefly.path_rules
         # A shared search path belongs to the project when the scaffold
         # declares it or the tree already has it — the same rule
         # `pyrefly_search_paths` applies after the write.

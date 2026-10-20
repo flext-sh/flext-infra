@@ -574,7 +574,7 @@ class TestsFlextInfraDepsModernizerPyright:
         first_context = tm.ok(modernizer.resolve_tooling_context(request))
         expected_roots = frozenset((*active_roots, planned_root))
         first_pyright = u.Tests.toml_table_at(
-            first_context.pyright_configuration, "tool", "pyright"
+            first_context.configuration, "tool", "pyright"
         )
         tm.that(
             frozenset(u.Tests.toml_strings(first_pyright["include"])),
@@ -632,8 +632,8 @@ class TestsFlextInfraDepsModernizerPyright:
         )
         second_context = tm.ok(modernizer.resolve_tooling_context(request))
         tm.that(
-            second_context.pyright_configuration,
-            eq=first_context.pyright_configuration,
+            second_context.configuration,
+            eq=first_context.configuration,
         )
         tm.that(
             tm.ok(

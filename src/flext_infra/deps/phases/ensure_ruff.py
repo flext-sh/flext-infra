@@ -144,12 +144,10 @@ class FlextInfraEnsureRuffConfigPhase:
             if directory not in excluded_roots
         }
         toml = m.Infra.DepsToml
-        native_tables = {
-            table: u.Infra.native_tool_settings(self._tool_config, table)
-            for table in self._tool_config.settings
-            if table == c.Infra.RUFF or table.startswith(f"{c.Infra.RUFF}.")
-        }
-        ruff_options = native_tables.pop(c.Infra.RUFF)
+        ruff_options = u.Infra.native_tool_configuration(self._tool_config, c.Infra.RUFF)
+        ruff_options["target-version"] = (
+            "py" + config.Infra.codegen.toolchain.python_version.replace(".", "")
+        )
         declared_excludes = u.Infra.native_tool_setting(
             self._tool_config, "ruff", "extend-exclude", t.StrSequence
         )
@@ -158,21 +156,18 @@ class FlextInfraEnsureRuffConfigPhase:
             "namespace-packages": sorted(existing_namespace_packages),
             "src": sorted(existing_root),
         })
-        native_tables[f"{c.Infra.RUFF}.{c.Infra.LINT_SECTION}"]["ignore"] = sorted({
+        lint_options = u.Cli.toml_mapping_ensure_table(
+            ruff_options, c.Infra.LINT_SECTION
+        )
+        lint_options["ignore"] = sorted({
             *delegated_rules,
             *ruff_cfg.lint.ruling_disabled_rules,
             *u.Infra.native_tool_setting(
                 self._tool_config, "ruff.lint", "ignore", t.StrSequence
             ),
         })
-        native_tables[f"{c.Infra.RUFF}.{c.Infra.LINT_SECTION}.{c.Infra.ISORT}"][
-            c.Infra.KNOWN_FIRST_PARTY_HYPHEN
-        ] = sorted(facts.first_party)
-        for table, options in sorted(native_tables.items()):
-            destination = u.Cli.toml_mapping_ensure_path(
-                ruff_options, tuple(table.split(".")[1:])
-            )
-            destination.update(options)
+        isort_options = u.Cli.toml_mapping_ensure_table(lint_options, c.Infra.ISORT)
+        isort_options[c.Infra.KNOWN_FIRST_PARTY_HYPHEN] = sorted(facts.first_party)
         return toml.PhaseConfig(
             name="ruff",
             operations=(toml.SetOp(key=c.Infra.RUFF, value=ruff_options),),

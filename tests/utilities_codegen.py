@@ -64,13 +64,18 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                 *config.Infra.codegen.make.fmt_gates,
             ),
         )
-        options = u.Infra.native_tool_settings(config.Infra.tooling, "ruff")
-        for table in sorted(config.Infra.tooling.settings):
-            if table.startswith("ruff."):
-                target = u.Cli.toml_mapping_ensure_path(options, table.split(".")[1:])
-                target.update(u.Infra.native_tool_settings(config.Infra.tooling, table))
+        options = u.Infra.native_tool_configuration(config.Infra.tooling, "ruff")
+        options["target-version"] = (
+            "py" + config.Infra.codegen.toolchain.python_version.replace(".", "")
+        )
         lint = u.Cli.toml_mapping_ensure_table(options, "lint")
-        lint["ignore"] = [*sorted({*delegated, *ruff_cfg.lint.ruling_disabled_rules})]
+        lint["ignore"] = sorted({
+            *delegated,
+            *ruff_cfg.lint.ruling_disabled_rules,
+            *u.Infra.native_tool_setting(
+                config.Infra.tooling, "ruff.lint", "ignore", t.StrSequence
+            ),
+        })
         return u.Cli.toml_dumps(
             u.Cli.toml_document_from_mapping({"tool": {"ruff": options}})
         )

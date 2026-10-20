@@ -403,9 +403,13 @@ class FlextInfraModelsCodegenRender:
             strict=True,
         )
 
-        tooling: Annotated[
-            FlextInfraModelsDepsToolConfig.ToolConfigDocument,
-            m.Field(description="Canonical validated tooling policy."),
+        rules: Annotated[
+            t.JsonMapping,
+            m.Field(description="Elected native Markdown rules."),
+        ]
+        exclude: Annotated[
+            t.StrTuple,
+            m.Field(description="Declared non-documentation path patterns."),
         ]
 
     class QltyRenderSpec(m.ContractModel):

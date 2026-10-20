@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, t, u
+from flext_infra import c, config, m, t, u
 
 if TYPE_CHECKING:
     from flext_infra.deps import FlextInfraExtraPathsManager
@@ -76,8 +76,9 @@ class FlextInfraEnsurePyreflyConfigPhase:
             expected_includes = tuple(
                 f"{directory}/**/*.py*" for directory in declared_python_dirs
             )
-        options = u.Infra.native_tool_settings(self._tool_config, c.Infra.PYREFLY)
+        options = u.Infra.native_tool_configuration(self._tool_config, c.Infra.PYREFLY)
         options.update({
+            c.Infra.PYTHON_VERSION_HYPHEN: config.Infra.codegen.toolchain.python_version,
             # Import search order is semantic and stays with the path owner.
             c.Infra.SEARCH_PATH: list(expected_search),
             c.Infra.PROJECT_INCLUDES: sorted(expected_includes),

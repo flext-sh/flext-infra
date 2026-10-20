@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 import pytest
+from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, r, t, u
 from flext_infra.validate._pytest_runner import (
@@ -207,7 +208,10 @@ class FlextInfraPytestRunnerExecution(
         # Exit code 5 is pytest's "no tests ran": testmon selected nothing.
         # For a zero-test project (no test module under the config-owned
         # roots) rc=5 is the DECLARED inventory outcome in both phases.
-        owns_no_tests = self._owns_no_tests()
+        owns_no_tests = (
+            outcome.raw_return_code == pytest.ExitCode.NO_TESTS_COLLECTED
+            and self._owns_no_tests()
+        )
         # A slow phase may own no slow item, and a declared file may sit
         # entirely outside this phase's marker. Both are empty scopes. A
         # whole-suite budgeted inventory that collects nothing stays a failure.
@@ -288,11 +292,14 @@ class FlextInfraPytestRunnerExecution(
         # project whose suites use another declared form (``*_tests.py``)
         # still owns its tests, and a hardcoded copy of the list here would
         # answer "owns no tests" for a live suite again.
+        tool_config = (
+            u.Infra.load_tooling_inputs(self.repository_root).unwrap().document
+        )
         patterns = u.Infra.native_tool_setting(
-            config.Infra.tooling, "pytest.ini_options", "python_files", t.StrSequence
+            tool_config, "pytest.ini_options", "python_files", TypeForm(t.StrSequence)
         )
         roots = u.Infra.native_tool_setting(
-            config.Infra.tooling, "pytest.ini_options", "testpaths", t.StrSequence
+            tool_config, "pytest.ini_options", "testpaths", TypeForm(t.StrSequence)
         )
         for root in roots:
             base = self.repository_root / root

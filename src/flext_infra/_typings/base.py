@@ -43,6 +43,14 @@ class FlextInfraTypesBase(FlextInfraTypesCollections):
     type MutableSetOf[ItemT] = MutableSet[ItemT]
     "An explicitly mutable set contract for operation-owned native state."
 
+    type SettingsPairs = Annotated[
+        tuple[
+            Annotated[tuple[t.NonEmptyStr, t.JsonValue], m.Field(strict=False)], ...
+        ],
+        m.Field(strict=False),
+    ]
+    "Ordered JSON-compatible option pairs with last-declaration precedence."
+
     @staticmethod
     def _reject_blanket_mask(rule: str) -> str:
         """Return the bare Ruff rule name, rejecting ``ALL``, padding and codes.

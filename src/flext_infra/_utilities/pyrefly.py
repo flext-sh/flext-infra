@@ -26,7 +26,7 @@ class FlextInfraUtilitiesPyrefly:
         project_dir: Path,
         discovered_dirs: t.StrSequence,
     ) -> t.StrSequence:
-        """Preserve explicit files; use configured includes for discovered roots.
+        """Check every selected owned target with configured artifact exclusions.
 
         Pyrefly ignores the configured ``project-excludes`` whenever files are
         passed on the command line and reads them only from
@@ -46,26 +46,21 @@ class FlextInfraUtilitiesPyrefly:
         pyrefly = (
             None if tool is None else u.Cli.toml_table_child(tool, c.Infra.PYREFLY)
         )
-        if any((project_dir / target).is_file() for target in discovered_dirs):
-            excludes = (
-                ()
-                if pyrefly is None
-                else u.Cli.toml_as_string_list(
-                    u.Cli.toml_item_child(pyrefly, c.Infra.PROJECT_EXCLUDES),
-                )
+        excludes = (
+            ()
+            if pyrefly is None
+            else u.Cli.toml_as_string_list(
+                u.Cli.toml_item_child(pyrefly, c.Infra.PROJECT_EXCLUDES),
             )
-            return (
-                *discovered_dirs,
-                *(
-                    argument
-                    for glob in excludes
-                    for argument in (c.Infra.PYREFLY_PROJECT_EXCLUDES_FLAG, glob)
-                ),
-            )
-        if pyrefly is None:
-            return discovered_dirs
-        includes = u.Cli.toml_item_child(pyrefly, c.Infra.PROJECT_INCLUDES)
-        return () if includes is not None else discovered_dirs
+        )
+        return (
+            *discovered_dirs,
+            *(
+                argument
+                for glob in excludes
+                for argument in (c.Infra.PYREFLY_PROJECT_EXCLUDES_FLAG, glob)
+            ),
+        )
 
     @staticmethod
     def pyrefly_project_excludes(declared_globs: t.StrSequence) -> t.StrSequence:

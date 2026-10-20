@@ -781,3 +781,17 @@ class TestsFlextInfraVscodeOwnerMerge:
             path.read_text(encoding=c.DEFAULT_ENCODING),
             eq=original,
         )
+    @staticmethod
+    def test_delta_preserves_other_declared_defaults() -> None:
+        """A new option replaces its value without discarding shared options."""
+        spec = config.Infra.codegen.vscode
+        key = "operator.orderedOptions"
+        preferred: t.JsonValue = ["child", "parent"]
+        expected = dict(FlextInfraCodegen.vscode_settings(spec))
+        expected[key] = preferred
+        delta = m.Infra.CodegenVscodeDeclarationDelta(
+            values={"settings": [[key, preferred]]}
+        )
+        composed = tm.ok(FlextInfraCodegen.compose_vscode_delta(spec, delta))
+        tm.that(FlextInfraCodegen.vscode_settings(composed), eq=expected)
+

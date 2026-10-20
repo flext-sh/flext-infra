@@ -472,7 +472,7 @@ class TestsFlextInfraDocsGenerator:
             encoding="utf-8",
         )
         (workspace / "docs/index.md").write_text(
-            u.Infra.docs_directive_page("Runtime API", "docs_example"),
+            u.Infra.docs_directive_page("Runtime API", "docs_example", width=u.Infra.docs_markdown_line_length(config.Infra.tooling)),
             encoding="utf-8",
         )
         (workspace / "mkdocs.yml").write_text(
@@ -540,9 +540,39 @@ class TestsFlextInfraDocsGenerator:
             project_class="library",
             package_name="flext_a",
         )
-        contract = {"version": "1.0", "description": " ".join(["resilient"] * 20)}
+        local_width = u.Infra.docs_markdown_line_length(config.Infra.tooling) + 7
+        (tmp_path / "config").mkdir()
+        tm.ok(
+            u.Cli.yaml_dump(
+                tmp_path / "config" / "tooling.yaml",
+                {
+                    "Infra": {
+                        "tooling": {
+                            "tools": {
+                                "markdown": {
+                                    "rules": [
+                                        ["MD013", {"line_length": local_width}],
+                                        ["MD033", {"allowed_elements": ["div", "span"]}],
+                                        ["MD033", {"allowed_elements": ["aside", "section"]}],
+                                    ],
+                                },
+                            },
+                        },
+                    },
+                },
+            ),
+        )
+        tooling = tm.ok(u.Infra.load_tooling_inputs(tmp_path)).document
+        width = u.Infra.docs_markdown_line_length(tooling)
+        tm.that(width, eq=local_width)
+        elected = u.Infra.configuration_pairs(tooling.tools.markdown.rules)
+        tm.that(elected["MD033"], eq={"allowed_elements": ["aside", "section"]})
+        contract = {
+            "version": "1.0",
+            "description": " ".join(["resilient"] * (width // len("resilient") + 4)),
+        }
 
-        rendered = u.Infra.docs_project_index(scope, contract)
+        rendered = u.Infra.docs_project_index(scope, contract, width=width)
 
         description_lines = [
             line
@@ -550,7 +580,7 @@ class TestsFlextInfraDocsGenerator:
             if line.startswith(("- Description:", "  resilient"))
         ]
         tm.that(
-            max(map(len, description_lines)) <= u.Infra.docs_markdown_line_length(),
+            max(map(len, description_lines)) <= width,
             eq=True,
         )
         tm.that(

@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import FlextRuntime
+from flext_core.config_sources import FlextStrictYamlConfigSource
 
 from flext_infra import c, m, r, t, u
 
@@ -178,7 +179,9 @@ class FlextInfraCodegenVscodeMixin:
         baseline = u.json_mapping_adapter().validate_python(
             spec.model_dump(mode="json"),
         )
-        merged = u.config_merge(dict(baseline), dict(delta.values))
+        merged = FlextStrictYamlConfigSource.merge_values(
+            dict(baseline), dict(delta.values)
+        )
         return r[m.Infra.CodegenVscodeSpec].create_from_callable(
             partial(m.Infra.CodegenVscodeSpec.model_validate, merged),
         )

@@ -449,30 +449,6 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             raise TypeError(message)
         return found
 
-    @override
-    def is_ignored(self, resource: File | Folder) -> bool:
-        """Ignore generated runtime byproducts during native structural scans.
-
-        Rope's native ``Folder.get_children`` asks this predicate only after
-        attempting to resolve every filesystem entry. Keeping ``__pycache__``
-        visible therefore converts a harmless byproduct into a fatal
-        ``ResourceNotFoundError`` during lazy-init base consumption.
-
-        Returns:
-            Whether the resource is generated or ignored by the election.
-
-        """
-        if super().is_ignored(resource):
-            return True
-        name = getattr(resource, "name", "")
-        return name in {
-            "__pycache__",
-            ".pytest_cache",
-            ".mypy_cache",
-            ".pyrefly_cache",
-            ".ruff_cache",
-        }
-
     @staticmethod
     @overload
     def _native_folder(folder: Folder | p.Infra.RopeRoot) -> Folder: ...

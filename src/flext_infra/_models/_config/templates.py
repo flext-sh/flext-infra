@@ -26,7 +26,7 @@ class FlextInfraConfigModelsTemplates:
         """Typed editor declarations shared by target and artifact planning."""
 
         settings: Annotated[
-            t.VariadicTuple[t.Pair[t.NonEmptyStr, t.JsonValue]],
+            t.Infra.SettingsPairs,
             m.Field(description="Ordered VS Code key/value pairs; the last key wins"),
         ] = ()
         map_union_settings: Annotated[

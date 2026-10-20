@@ -44,6 +44,7 @@ class TestsFlextInfraTransactionLease:
             "from pathlib import Path\nimport sys\n"
             + imports
             + "from flext_cli import cli\n"
+            "from flext_tests import tm\n"
             "request = m.Infra.GitRepoRequest(repo_root=Path(sys.argv[1]))\n"
             "assert request.repo_root == Path(sys.argv[1])\n"
             "app = cli.create_app_with_common_params("
@@ -52,7 +53,7 @@ class TestsFlextInfraTransactionLease:
             "    print('public import ready')\n"
             "cli.register_command(app, name='ready',"
             " help_text='Run the public probe', command=ready)\n"
-            "result = cli.invoke_app(app, args=['ready'])\n"
+            "result = tm.ok(cli.invoke_app(app, args=['ready']))\n"
             "assert result.outcome.raw_return_code == 0\n"
             "assert 'public import ready' in result.stdout\n"
         )
