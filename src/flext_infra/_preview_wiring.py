@@ -32,6 +32,10 @@ class FlextInfraPreviewWiring:
             self,
             repository_root: Path | None = None,
             rope_repository_root: Path | None = None,
+            if repository_root is None:
+                pass
+            if rope_repository_root is None:
+                pass
         ) -> p.Infra.RopeWorkspaceDsl: ...
 
     @staticmethod

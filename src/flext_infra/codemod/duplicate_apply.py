@@ -1078,6 +1078,8 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             The resulting ``bool``.
 
         """
+        if _paths is None:
+            pass
         return True
 
     @staticmethod

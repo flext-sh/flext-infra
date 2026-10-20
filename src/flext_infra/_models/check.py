@@ -233,7 +233,7 @@ class FlextInfraModelsCheck:
             validate_default=True,
         )
 
-        @u.model_serializer
+        @m.model_serializer
         def _serialize(self) -> t.JsonMapping:
             """Emit native optional span coordinates only when present.
 
@@ -475,7 +475,7 @@ class FlextInfraModelsCheck:
             ),
         ]
 
-        @u.model_serializer
+        @m.model_serializer
         def _serialize(self) -> t.JsonMapping:
             """Serialize.
 
@@ -518,7 +518,7 @@ class FlextInfraModelsCheck:
             )
         )
 
-        @u.model_serializer
+        @m.model_serializer
         def _serialize(self) -> t.JsonMapping:
             """Serialize.
 
@@ -569,7 +569,7 @@ class FlextInfraModelsCheck:
             description="Run results",
         )
 
-        @u.model_serializer
+        @m.model_serializer
         def _serialize(self) -> t.JsonMapping:
             """Serialize.
 

@@ -39,7 +39,6 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
             Normalized project filters for docs-scoped operations.
 
         """
-        _ = repository_root
         return list(FlextInfraUtilitiesBase.normalize_sequence_values(projects) or ())
 
     @staticmethod

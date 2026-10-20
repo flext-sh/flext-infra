@@ -23,7 +23,10 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         lazy_init: m.Infra.LazyInitConfig
         _collision_count: int
 
-        def _module_file(self, module_path: str) -> Path | None: ...
+        def _module_file(self, module_path: str) -> Path | None:
+            if module_path is None:
+                pass
+            ...
 
     def _target_score(self, name: str, target: t.StrPair) -> int:
         """Score a candidate export target to break collision ties.

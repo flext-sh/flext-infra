@@ -59,7 +59,8 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             The resulting ``t.StrSequence``.
 
         """
-        _ = ctx
+        if ctx is None:
+            pass
         return self._existing_check_dirs(project_dir) or ["."]
 
     @override
@@ -75,7 +76,8 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             The Ruff lint invocation in check mode.
 
         """
-        _ = project_dir
+        if project_dir is None:
+            pass
         return self._lint_command(
             ctx,
             check_dirs,
@@ -95,7 +97,8 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             The resulting ``t.StrSequence``.
 
         """
-        _ = project_dir
+        if project_dir is None:
+            pass
         return self._lint_command(ctx, targets, config.Infra.codegen.make.ruff.lint_fix)
 
     @override
@@ -402,7 +405,8 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             TypeError: If the report is not a list of finding objects.
 
         """
-        _ = ctx
+        if ctx is None:
+            pass
         report = u.Cli.json_parse(result.stdout or "[]").unwrap()
         if not isinstance(report, list):
             msg = f"Ruff JSON report is not a list: {type(report).__name__}"

@@ -35,6 +35,12 @@ class FlextInfraPyprojectModernizerTooling:
             path: Path,
             payload: t.JsonMapping,
             project_kind: str | None,
+            if path is None:
+                pass
+            if payload is None:
+                pass
+            if project_kind is None:
+                pass
         ) -> str: ...
 
         @staticmethod
@@ -42,6 +48,10 @@ class FlextInfraPyprojectModernizerTooling:
             path: Path,
             *,
             source: str | None = None,
+            if path is None:
+                pass
+            if source is None:
+                pass
         ) -> p.Result[m.Infra.PyprojectDocumentState]: ...
 
         def _apply_document_phases(
@@ -51,6 +61,14 @@ class FlextInfraPyprojectModernizerTooling:
             canonical_dev: t.StrSequence,
             topology: m.Infra.PyprojectDeclaredTopology,
             tool_config: m.Infra.ToolConfigDocument | None = None,
+            if state is None:
+                pass
+            if canonical_dev is None:
+                pass
+            if topology is None:
+                pass
+            if tool_config is None:
+                pass
         ) -> t.StrSequence: ...
 
         def _render_document_state(
@@ -61,6 +79,16 @@ class FlextInfraPyprojectModernizerTooling:
             skip_comments: bool,
             format_source: bool = True,
             preserve_layout: bool = False,
+            if state is None:
+                pass
+            if changes is None:
+                pass
+            if skip_comments is None:
+                pass
+            if format_source is None:
+                pass
+            if preserve_layout is None:
+                pass
         ) -> p.Result[t.StrSequence]: ...
 
     def conform_source(

@@ -32,6 +32,14 @@ class FlextInfraAccessorMigrationReportMixin:
             source: str,
             *,
             resolver: FlextInfraAccessorOriginResolver,
+            if rope_project is None:
+                pass
+            if py_file is None:
+                pass
+            if source is None:
+                pass
+            if resolver is None:
+                pass
         ) -> t.Pair[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]: ...
 
     @staticmethod

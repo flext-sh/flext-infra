@@ -39,7 +39,6 @@ class FlextInfraPyrightGate(FlextInfraGate):
             The resulting ``t.StrSequence``.
 
         """
-        _ = ctx
         if self._has_project_pyright_config(project_dir):
             return [c.Infra.PYRIGHT_PROJECT_ARG, c.Infra.PYRIGHT_PROJECT_CONFIG_TARGET]
         return super()._get_check_dirs(project_dir, ctx)
@@ -57,7 +56,8 @@ class FlextInfraPyrightGate(FlextInfraGate):
             The Pyright invocation bound to ``sys.executable``.
 
         """
-        _ = project_dir
+        if project_dir is None:
+            pass
         return self._python_module_command(
             c.Infra.PYRIGHT,
             "--pythonpath",
@@ -101,7 +101,8 @@ class FlextInfraPyrightGate(FlextInfraGate):
             The run's verdict and its diagnostics, stderr failures or lost scan.
 
         """
-        _ = ctx
+        if ctx is None:
+            pass
         if not u.Cli.process_succeeded(result.outcome) and not result.stdout.strip():
             return False, (
                 self._command_error_issue(

@@ -25,9 +25,14 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         def _package_entry(
             self,
             pkg_dir: Path,
+            if pkg_dir is None:
+                pass
         ) -> m.Infra.RopePackageIndexEntry | None: ...
 
-        def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext: ...
+        def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext:
+            if pkg_dir is None:
+                pass
+            ...
 
         _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan]
         _plan_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]
@@ -37,16 +42,35 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             index: t.MutableLazyAliasMap,
             name: str,
             target: t.StrPair,
+            if index is None:
+                pass
+            if name is None:
+                pass
+            if target is None:
+                pass
         ) -> None: ...
 
         @staticmethod
-        def _publish(name: str, *, allow_main: bool) -> bool: ...
+        def _publish(name: str, *, allow_main: bool) -> bool:
+            if name is None:
+                pass
+            if allow_main is None:
+                pass
+            ...
 
         @staticmethod
-        def _is_facade_root(context: m.Infra.LazyInitPackageContext) -> bool: ...
+        def _is_facade_root(context: m.Infra.LazyInitPackageContext) -> bool:
+            if context is None:
+                pass
+            ...
 
         @staticmethod
-        def _is_private_owner(module_path: str, *, root_pkg: str) -> bool: ...
+        def _is_private_owner(module_path: str, *, root_pkg: str) -> bool:
+            if module_path is None:
+                pass
+            if root_pkg is None:
+                pass
+            ...
 
     def _has_live_package_content(
         self,

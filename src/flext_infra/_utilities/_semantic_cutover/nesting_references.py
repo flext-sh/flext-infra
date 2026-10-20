@@ -667,6 +667,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             updated_node: cst.Assign,
         ) -> cst.BaseSmallStatement:
 
+            if original_node is None:
+                pass
             return FlextInfraUtilitiesQualifiedNames.filter_exports(
                 updated_node,
                 self.definitions.keys() | self.retired_imports,
@@ -679,6 +681,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             updated_node: cst.AnnAssign,
         ) -> cst.BaseSmallStatement:
 
+            if original_node is None:
+                pass
             return FlextInfraUtilitiesQualifiedNames.filter_exports(
                 updated_node,
                 self.definitions.keys() | self.retired_imports,

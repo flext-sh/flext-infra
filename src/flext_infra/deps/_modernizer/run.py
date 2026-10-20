@@ -46,6 +46,10 @@ class FlextInfraPyprojectModernizerRun:
             path: Path,
             *,
             source: str | None = None,
+            if path is None:
+                pass
+            if source is None:
+                pass
         ) -> p.Result[m.Infra.PyprojectDocumentState]: ...
 
         def _process_document_state(
@@ -56,6 +60,16 @@ class FlextInfraPyprojectModernizerRun:
             dry_run: bool,
             skip_comments: bool,
             source_migration: m.Infra.GitSourceReferenceMigration | None = None,
+            if state is None:
+                pass
+            if canonical_dev is None:
+                pass
+            if dry_run is None:
+                pass
+            if skip_comments is None:
+                pass
+            if source_migration is None:
+                pass
         ) -> p.Result[t.StrSequence]: ...
 
         def _render_document_state(
@@ -66,6 +80,16 @@ class FlextInfraPyprojectModernizerRun:
             skip_comments: bool,
             format_source: bool = True,
             preserve_layout: bool = False,
+            if state is None:
+                pass
+            if changes is None:
+                pass
+            if skip_comments is None:
+                pass
+            if format_source is None:
+                pass
+            if preserve_layout is None:
+                pass
         ) -> p.Result[t.StrSequence]: ...
 
     def _selected_project_paths(self) -> p.Result[t.SequenceOf[Path]]:

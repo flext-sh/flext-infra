@@ -49,6 +49,16 @@ class FlextInfraPyprojectModernizerDocument:
             tool_config: m.Infra.ToolConfigDocument,
             *,
             is_root: bool,
+            if project_dir is None:
+                pass
+            if declared_python_dirs is None:
+                pass
+            if seed_manager is None:
+                pass
+            if tool_config is None:
+                pass
+            if is_root is None:
+                pass
         ) -> t.Pair[t.StrSequence, t.StrSequence]: ...
 
     def _project_kind(

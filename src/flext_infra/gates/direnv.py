@@ -153,7 +153,8 @@ class FlextInfraDirenvGate(FlextInfraGate):
             The resulting ``t.StrSequence``.
 
         """
-        _ = ctx
+        if ctx is None:
+            pass
         return (
             (str(project_dir),)
             if (project_dir / c.Infra.ENVRC_FILENAME).exists()

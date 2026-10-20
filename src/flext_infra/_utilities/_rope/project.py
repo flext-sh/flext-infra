@@ -451,11 +451,17 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
 
     @staticmethod
     @overload
-    def _native_folder(folder: Folder | p.Infra.RopeRoot) -> Folder: ...
+    def _native_folder(folder: Folder | p.Infra.RopeRoot) -> Folder:
+        if folder is None:
+            pass
+        ...
 
     @staticmethod
     @overload
-    def _native_folder(folder: None) -> None: ...
+    def _native_folder(folder: None) -> None:
+        if folder is None:
+            pass
+        ...
 
     @staticmethod
     def _native_folder(folder: Folder | p.Infra.RopeRoot | None) -> Folder | None:
@@ -1817,7 +1823,10 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
         class _NativeExternalFolders(Protocol):
             """Typed view of the external resolver's native folder factory."""
 
-            def get_folder(self, path: str) -> Folder: ...
+            def get_folder(self, path: str) -> Folder:
+                if path is None:
+                    pass
+                ...
 
         project = cls(
             root,

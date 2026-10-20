@@ -106,6 +106,10 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
     def resolve_pymodule(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
+        if rope_project is None:
+            pass
+        if resource is None:
+            pass
     ) -> t.Infra.RopeSourceModule: ...
 
     @staticmethod
@@ -113,6 +117,10 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
     def resolve_pymodule(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
+        if rope_project is None:
+            pass
+        if resource is None:
+            pass
     ) -> t.Infra.RopeParsedModule: ...
 
     @staticmethod

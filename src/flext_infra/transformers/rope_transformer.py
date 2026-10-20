@@ -31,6 +31,8 @@ class FlextInfraRopeTransformer:
     @abstractmethod
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:
         """Apply transformation to in-memory source."""
+        if source is None:
+            pass
         ...
 
     def transform(
@@ -44,7 +46,8 @@ class FlextInfraRopeTransformer:
             The resulting ``t.Infra.TransformResult``.
 
         """
-        _ = rope_project
+        if rope_project is None:
+            pass
         source = resource.read()
         updated, changes = self.apply_to_source(source)
         if updated != source and changes:

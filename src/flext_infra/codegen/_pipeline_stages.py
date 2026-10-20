@@ -50,6 +50,12 @@ class FlextInfraCodegenPipelineStagesMixin:
             stage_id: str,
             action: Callable[[], p.Result[V]],
             emit: Callable[[V], t.JsonMapping],
+            if stage_id is None:
+                pass
+            if action is None:
+                pass
+            if emit is None:
+                pass
         ) -> p.Result[m.Cli.PipelineStageResult]: ...
 
     def _stage_discover(

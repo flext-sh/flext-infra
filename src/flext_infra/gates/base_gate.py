@@ -206,6 +206,8 @@ class FlextInfraGate:
             The resulting ``m.Infra.Issue``.
 
         """
+        if _project_dir is None:
+            pass
         return m.Infra.Issue(
             file=c.PYPROJECT_FILENAME,
             line=1,
@@ -620,7 +622,8 @@ class FlextInfraGate:
             Directories to check. Default: discover + filter for .py files.
 
         """
-        _ = ctx
+        if ctx is None:
+            pass
         return self._dirs_with_py(project_dir, self._existing_check_dirs(project_dir))
 
     def _build_check_command(
@@ -661,6 +664,12 @@ class FlextInfraGate:
             NotImplementedError: If the concrete gate did not implement parsing.
 
         """
+        if result is None:
+            pass
+        if project_dir is None:
+            pass
+        if ctx is None:
+            pass
         msg = "FlextInfraGate._parse_check_output() must be implemented"
         raise NotImplementedError(msg)
 

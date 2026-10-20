@@ -76,7 +76,8 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
             The owned Python roots, falling back to the project directory.
 
         """
-        _ = ctx
+        if ctx is None:
+            pass
         return self._existing_check_dirs(project_dir) or ["."]
 
     @override
@@ -92,7 +93,8 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
             The run's verdict and one finding per file left unformatted.
 
         """
-        _ = ctx
+        if ctx is None:
+            pass
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         if not u.Cli.process_succeeded(result.outcome) and result.stdout.strip():
             seen: t.Infra.StrSet = set()

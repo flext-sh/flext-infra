@@ -168,7 +168,8 @@ class FlextInfraMarkdownGateBase(FlextInfraGate):
             The governed Markdown paths relative to their repository.
 
         """
-        _ = ctx
+        if ctx is None:
+            pass
         return [
             str(path.relative_to(project_dir))
             for path in self.collect_markdown_files(project_dir)

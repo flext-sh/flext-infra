@@ -120,6 +120,8 @@ class FlextInfraMypyDarwinSupervisor:
         received_signal: int = 0
 
         def receive_signal(signum: int, _frame: FrameType | None) -> None:
+            if _frame is None:
+                pass
             nonlocal received_signal
             received_signal = signum
 

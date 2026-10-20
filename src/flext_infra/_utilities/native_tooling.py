@@ -84,8 +84,9 @@ class FlextInfraUtilitiesNativeTooling:
             The configured value validated against the consumer's type.
 
         """
-        options = FlextInfraUtilitiesNativeTooling.native_tool_settings(document, table)
-        return u.type_adapter(target).validate_python(options[key], strict=True)
+        return u.type_adapter(target).validate_python(
+            dict(document.settings[table])[key], strict=True
+        )
 
 
 __all__ = ["FlextInfraUtilitiesNativeTooling"]

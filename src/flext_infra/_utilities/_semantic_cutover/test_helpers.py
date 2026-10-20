@@ -48,6 +48,8 @@ class FlextInfraUtilitiesSemanticTestHelpers(
                 original_node: N,
                 updated_node: N,
             ) -> N:
+                if original_node is None:
+                    pass
                 return FlextInfraUtilitiesQualifiedNames.filter_exports(
                     updated_node,
                     self.names,

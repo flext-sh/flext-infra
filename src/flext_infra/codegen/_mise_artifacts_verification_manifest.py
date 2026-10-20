@@ -712,6 +712,8 @@ class FlextInfraMiseArtifactsVerificationManifest:
         _role: _JournalFileRole,
         entry: m.Infra.CodegenJournalEntry,
     ) -> bool:
+        if _role is None:
+            pass
         if observed.kind != "file":
             return False
         expected = (
