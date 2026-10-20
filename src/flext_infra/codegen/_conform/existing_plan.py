@@ -444,11 +444,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             True when the exports pass is redundant.
 
         """
-        return (
-            operation == "exports"
-            and operation_index > 0
-            and not produced_new_files
-        )
+        return operation == "exports" and operation_index > 0 and not produced_new_files
 
     def _existing_protocol_sources(
         self,
@@ -489,7 +485,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             # The same export/facade owners run before transfer and again after
             # retirement. Neither stage publishes or replaces the input epoch.
             pass_produced_new_files = False
-            for operation_index, operation in enumerate(("exports", "facade", "exports")):
+            for operation_index, operation in enumerate((
+                "exports",
+                "facade",
+                "exports",
+            )):
                 # Skip a redundant exports pass when the previous pass in this
                 # transfer iteration produced no new plans.
                 if self._skip_redundant_exports_pass(
@@ -502,7 +502,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                     files = self._protocol_projection_pass(root, operation, binding)
                     if files.failure:
                         return result_type.from_failure(files)
-                    _new_files = bool(files.value)
+                    new_files = bool(files.value)
                     changed.update((plan.path, plan) for plan in files.value)
                     staged.update((plan.path, plan) for plan in files.value)
                     captured_inputs = FlextInfraCodegenPreconditions.unique_states((
@@ -517,7 +517,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                     if captured_inputs.failure:
                         return result_type.from_failure(captured_inputs)
                     inputs = captured_inputs.value
-                    pass_produced_new_files = _new_files
+                    pass_produced_new_files = new_files
             if not transfer:
                 continue
             transferred = self._protocol_transfer_plans(
@@ -1725,7 +1725,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         codegen: m.Infra.CodegenConfigSpec,
         *,
         vscode_spec: m.Infra.CodegenVscodeSpec | None = None,
-        codegen_inputs: m.Infra.CodegenInputs | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Plan only bindings selected by their declared artifact policy.
 
@@ -1745,8 +1744,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 for item in codegen.managed_file_specs
                 if item.runtime_binding
             },
-            codegen_inputs=codegen_inputs,
-            migrate_tracking=not self.state.generation_only,
         )
         if planned.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
@@ -1757,9 +1754,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         target: m.Infra.RepositoryConformTarget,
         codegen: m.Infra.CodegenConfigSpec,
         governed_by_path: t.MappingKV[Path, m.Infra.ManagedFileSpec],
-        *,
-        migrate_tracking: bool = False,
-        codegen_inputs: m.Infra.CodegenInputs | None = None,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Plan every unrepresented governed artifact in the mapping.
 
@@ -1768,8 +1762,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             codegen: The codegen configuration governing the artifacts.
             governed_by_path: Governed artifacts keyed by repository-relative
                 path.
-            migrate_tracking: Whether runtime-local editor tracking migrates.
-            codegen_inputs: Captured codegen inputs for migration planning.
 
         Returns:
             The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]``
@@ -1781,12 +1773,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         root = target.root
         profile = target.make_profile
         vscode_spec = target.vscode_spec
-        runtime_root = (
-            root
-            if self.state.initial_workspace is not None
-            and target.repository.name == self.state.initial_workspace.repository.name
-            else None
-        )
         for relative, governed in governed_by_path.items():
             path = root / relative
             if path.exists() and not path.is_file():
@@ -1799,7 +1785,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 continue
             if not self._governed_entry_reachable(codegen, profile, relative):
                 continue
-            if not path.exists() and not governed.runtime_binding:
+            if (
+                not path.exists()
+                and not governed.runtime_binding
+                and governed.policy != "merge"
+            ):
                 continue
             current = self._governed_current_text(path)
             if current.failure:
@@ -1814,29 +1804,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 relative=relative,
                 governed=governed,
                 current=current.value,
-                runtime_root=runtime_root,
                 vscode_spec=vscode_spec,
                 source_states=target.vscode_sources,
             )
-            if (
-                migrate_tracking
-                and governed.tracking == "runtime-local"
-                and governed.owner == c.Infra.CODEGEN_OWNER_VSCODE
-                and runtime_root is None
-            ):
-                migrated = self._vscode_tracking_plans(
-                    request,
-                    codegen_inputs=codegen_inputs,
-                )
-                if migrated.failure:
-                    self._record_file_failure(
-                        path,
-                        migrated.error or "cannot plan runtime tracking migration",
-                        exception=migrated.exception,
-                    )
-                    continue
-                plans.extend(migrated.value)
-                continue
             decided = self._decide_governed_plan(request)
             if decided.failure:
                 self._record_file_failure(
@@ -1849,282 +1819,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             if decided_present and decided_value is not None:
                 plans.append(decided_value)
         return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].ok(tuple(plans))
-
-    @classmethod
-    def _vscode_tracking_plans(
-        cls,
-        request: m.Infra.CodegenGovernedPlanRequest,
-        *,
-        codegen_inputs: m.Infra.CodegenInputs | None = None,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
-        """Plan portable declarations before the captured editor index retirement.
-
-        Returns:
-            Source declaration plans followed by the runtime-local binding plan.
-
-        """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
-        captured = u.Infra.git_capture_index_file(
-            m.Infra.GitRelativePathRequest(
-                repo_root=request.root,
-                relative_path=request.relative.as_posix(),
-            ),
-        )
-        if captured.failure:
-            return result_type.from_failure(captured)
-        state = captured.value
-        if state.entry is None:
-            binding = cls._vscode_merged_plan(request)
-            if binding.failure:
-                return result_type.from_failure(binding)
-            return result_type.ok(
-                () if binding.value[0] is None else (binding.value[0],),
-            )
-        settings = cls._vscode_tracking_settings(request, state)
-        if settings.failure:
-            return result_type.from_failure(settings)
-        projected = cls._vscode_tracking_projection(
-            request, *settings.value, codegen_inputs=codegen_inputs
-        )
-        if projected.failure:
-            return result_type.from_failure(projected)
-        effective, declarations = projected.value
-        return cls._vscode_tracking_binding(request, state, effective, declarations)
-
-    @staticmethod
-    def _vscode_tracking_settings(
-        request: m.Infra.CodegenGovernedPlanRequest,
-        state: m.Infra.GitIndexFileState,
-    ) -> p.Result[t.Pair[t.JsonMapping, t.JsonMapping]]:
-        """Parse the captured index blob and live editor content independently.
-
-        Returns:
-            Indexed and live settings with their original parse failures.
-
-        """
-        result_type = r[t.Pair[t.JsonMapping, t.JsonMapping]]
-        content = state.content
-        if content is None:
-            error = ValueError(
-                f"captured editor index blob is absent: {request.relative}"
-            )
-            return result_type.fail(str(error), exception=error)
-        decoded = r[str].create_from_callable(
-            lambda: content.decode(c.DEFAULT_ENCODING),
-        )
-        if decoded.failure:
-            return result_type.from_failure(decoded)
-        indexed = FlextInfraCodegenVscodeMixin.parse_vscode_settings(decoded.value)
-        live = FlextInfraCodegenVscodeMixin.parse_vscode_settings(request.current)
-        if indexed.failure:
-            return result_type.from_failure(indexed)
-        if live.failure:
-            return result_type.from_failure(live)
-        return result_type.ok((indexed.value, live.value))
-
-    @classmethod
-    def _vscode_tracking_projection(
-        cls,
-        request: m.Infra.CodegenGovernedPlanRequest,
-        indexed: t.JsonMapping,
-        live: t.JsonMapping,
-        *,
-        codegen_inputs: m.Infra.CodegenInputs | None = None,
-    ) -> p.Result[
-        t.Pair[m.Infra.CodegenInputs, t.VariadicTuple[m.Infra.CodegenFilePlan]]
-    ]:
-        """Compose project and local overrides through captured config layers.
-
-        Returns:
-            Effective inputs and guarded source declaration plans.
-
-        """
-        result_type = r[
-            t.Pair[m.Infra.CodegenInputs, t.VariadicTuple[m.Infra.CodegenFilePlan]]
-        ]
-        if codegen_inputs is None:
-            loaded = u.Infra.load_codegen_inputs(request.root)
-            if loaded.failure:
-                return result_type.from_failure(loaded)
-            codegen_inputs = loaded.value
-        project = cls._vscode_project_projection(request.root, codegen_inputs, indexed)
-        if project.failure:
-            return result_type.from_failure(project)
-        projections = project.value
-        composed = u.Infra.project_codegen_inputs(
-            request.root,
-            codegen_inputs,
-            projections=projections,
-        )
-        if composed.failure:
-            return result_type.from_failure(composed)
-        local = FlextInfraCodegenVscodeMixin.vscode_local_declaration_delta(
-            request.root,
-            indexed,
-            live,
-            spec=composed.value.spec.vscode,
-        )
-        if local.failure:
-            return result_type.from_failure(local)
-        if local.value.values:
-            layers = FlextInfraConfig.config_layer_paths_for_repository(
-                request.root,
-                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-            )
-            projections = (
-                *projections,
-                m.Infra.CodegenLayerProjection(
-                    path=layers[2],
-                    values={"Infra": {"codegen": {"vscode": dict(local.value.values)}}},
-                ),
-            )
-        effective = u.Infra.project_codegen_inputs(
-            request.root,
-            codegen_inputs,
-            projections=projections,
-        )
-        if effective.failure:
-            return result_type.from_failure(effective)
-        return cls._vscode_declaration_plans(
-            request.root,
-            codegen_inputs,
-            projections,
-        ).map(lambda declarations: (effective.value, declarations))
-
-    @staticmethod
-    def _vscode_project_projection(
-        root: Path,
-        inputs: m.Infra.CodegenInputs,
-        indexed: t.JsonMapping,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenLayerProjection]]:
-        """Extract a portable project delta without promoting local configuration.
-
-        Returns:
-            A project-layer projection only when indexed settings differ.
-
-        """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenLayerProjection]]
-        baseline = u.Infra.project_codegen_inputs(
-            root,
-            inputs,
-            include_local=False,
-        )
-        if baseline.failure:
-            return result_type.from_failure(baseline)
-        project = FlextInfraCodegenVscodeMixin.vscode_declaration_delta(
-            root,
-            indexed,
-            spec=baseline.value.spec.vscode,
-        )
-        if project.failure:
-            return result_type.from_failure(project)
-        layers = FlextInfraConfig.config_layer_paths_for_repository(
-            root,
-            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-        )
-        if project.value.values and layers[1].resolve() == layers[0].resolve():
-            error = ValueError(
-                "project editor declarations share the distributed defaults: "
-                f"{layers[1]}",
-            )
-            return result_type.fail(str(error), exception=error)
-        return result_type.ok(
-            (
-                m.Infra.CodegenLayerProjection(
-                    path=layers[1],
-                    values={
-                        "Infra": {"codegen": {"vscode": dict(project.value.values)}}
-                    },
-                ),
-            )
-            if project.value.values
-            else ()
-        )
-
-    @classmethod
-    def _vscode_declaration_plans(
-        cls,
-        root: Path,
-        inputs: m.Infra.CodegenInputs,
-        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection],
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
-        """Bind each projected delta to its captured source without touching defaults.
-
-        Returns:
-            Guarded project and local configuration plans in dependency order.
-
-        """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
-        library = FlextInfraConfig.config_layer_paths_for_repository(
-            root,
-            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-        )[0]
-        declarations: list[m.Infra.CodegenFilePlan] = []
-        for projection in projections:
-            path = projection.path
-            if path.resolve() == library.resolve():
-                error = ValueError(
-                    "project editor declarations share the distributed defaults: "
-                    f"{path}",
-                )
-                return result_type.fail(str(error), exception=error)
-            values = u.Cli.json_walk_path(projection.values, ("Infra", "codegen"))
-            validated = u.validate_value(u.json_mapping_adapter(), values)
-            if validated.failure:
-                return result_type.from_failure(validated)
-            planned = cls._codegen_declaration_plan(
-                root,
-                path,
-                validated.value,
-                sources=inputs.sources,
-            )
-            if planned.failure:
-                return result_type.from_failure(planned)
-            declarations.append(planned.value)
-        return result_type.ok(tuple(declarations))
-
-    @classmethod
-    def _vscode_tracking_binding(
-        cls,
-        request: m.Infra.CodegenGovernedPlanRequest,
-        state: m.Infra.GitIndexFileState,
-        effective: m.Infra.CodegenInputs,
-        declarations: t.VariadicTuple[m.Infra.CodegenFilePlan],
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
-        """Retire captured tracking only after its portable declarations are written.
-
-        Returns:
-            Source declarations followed by their guarded editor binding.
-
-        """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
-        binding = cls._vscode_merged_plan(
-            request.model_copy(
-                update={
-                    "vscode_spec": effective.spec.vscode,
-                    "source_states": effective.sources,
-                },
-            ),
-        )
-        if binding.failure:
-            return result_type.from_failure(binding)
-        if binding.value[0] is None:
-            error = ValueError(f"runtime binding plan is absent: {request.relative}")
-            return result_type.fail(str(error), exception=error)
-        return result_type.ok(
-            (
-                *declarations,
-                binding.value[0].model_copy(
-                    update={
-                        "tracking": request.governed.tracking,
-                        "index_before": state.entry,
-                        "tracking_dependencies": tuple(
-                            plan.path for plan in declarations
-                        ),
-                    },
-                ),
-            ),
-        )
 
     @classmethod
     def _governed_entry_reachable(
@@ -2264,7 +1958,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             sources = loaded.value.sources
         merged = FlextInfraCodegenVscodeMixin.render_vscode_settings(
             request.root,
-            runtime_root=request.runtime_root,
             spec=spec,
         )
         if merged.failure:

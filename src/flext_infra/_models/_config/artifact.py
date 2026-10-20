@@ -241,10 +241,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
             str,
             m.Field(description="Current on-disk text; empty when absent"),
         ]
-        runtime_root: Annotated[
-            Path | None,
-            m.Field(description="Runtime root when the artifact belongs to the root"),
-        ] = None
         vscode_spec: Annotated[
             FlextInfraConfigModelsTemplates.CodegenVscodeSpec | None,
             m.Field(description="Declared vscode settings spec when present"),

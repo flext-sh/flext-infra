@@ -1298,7 +1298,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             repository_plan = self.plan_runtime_bindings(
                 target,
                 config_spec,
-                codegen_inputs=inputs,
             )
         elif scaffold:
             repository_plan = self._plan_scaffold_repository(

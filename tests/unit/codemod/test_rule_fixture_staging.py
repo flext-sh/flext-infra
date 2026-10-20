@@ -66,7 +66,14 @@ class TestsFlextInfraModRuleFixtureStaging:
         if regenerate_snapshots:
             del expected[snapshot]
         tm.that((owner / snapshot).read_text(encoding="utf-8"), eq=payloads[snapshot])
-        tm.that({path.relative_to(staged).as_posix(): path.read_text(encoding="utf-8") for path in staged.rglob("*") if path.is_file()}, eq=expected)
+        tm.that(
+            {
+                path.relative_to(staged).as_posix(): path.read_text(encoding="utf-8")
+                for path in staged.rglob("*")
+                if path.is_file()
+            },
+            eq=expected,
+        )
         tm.that((staged / ".venv").exists(), truth=False)
         tm.that((staged / ".agents").is_symlink(), truth=False)
         tm.that((staged / ".git").exists(), truth=False)

@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from contextlib import contextmanager
-from os.path import commonpath
 from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING, Annotated, override

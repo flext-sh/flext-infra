@@ -152,7 +152,9 @@ class TestsFlextInfraDepsGate:
 
         tm.that(result.result.passed, eq=False)
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
-        tm.that(result.issues, truth=True, msg="undeclared import must produce an issue")
+        tm.that(
+            result.issues, truth=True, msg="undeclared import must produce an issue"
+        )
         tm.that(
             result.issues[0].code.startswith(f"{c.Infra.DEPS}-"),
             eq=True,
@@ -200,7 +202,10 @@ class TestsFlextInfraDepsGate:
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.ERROR)
         tm.that(result.result.passed, eq=False)
         tm.that(pyproject.read_bytes(), eq=before)
-        tm.that(any(issue.code.startswith(f"{c.Infra.DEPS}-") for issue in result.issues), truth=True)
+        tm.that(
+            any(issue.code.startswith(f"{c.Infra.DEPS}-") for issue in result.issues),
+            truth=True,
+        )
         tm.that(result.raw_output, has="selected interpreter")
 
     @staticmethod

@@ -488,7 +488,9 @@ class TestsFlextInfraDocsGenerator:
         tm.ok(result)
         pages = tuple(workspace.rglob("index.html"))
         tm.that(pages, truth=True)
-        tm.that(any('id="docs_example"' in page.read_text() for page in pages), truth=True)
+        tm.that(
+            any('id="docs_example"' in page.read_text() for page in pages), truth=True
+        )
 
     @staticmethod
     def test_generated_bundle_is_accepted_by_real_markdown_formatter(
