@@ -166,17 +166,18 @@ class FlextInfraToolTablesPhase:
         })
 
     @staticmethod
-    def _native_phase(tool: str, payload: t.JsonDict) -> m.Infra.DepsToml.PhaseConfig:
+    def _native_phase(tool: str, payload: t.JsonMapping) -> m.Infra.DepsToml.PhaseConfig:
         """Replace a governed native table through the shared TOML primitive.
 
         Returns:
-            A phase whose image is the complete elected tool configuration.
+            A phase whose image is the complete elected declared table.
 
         """
+        path = tool.split(".")
         return m.Infra.DepsToml.PhaseConfig(
             name=tool,
-            table_path=(),
-            operations=(m.Infra.DepsToml.SetOp(key=tool, value=payload),),
+            table_path=tuple(path[:-1]),
+            operations=(m.Infra.DepsToml.SetOp(key=path[-1], value=payload),),
         )
 
     def _mypy_phase(
@@ -285,15 +286,32 @@ class FlextInfraToolTablesPhase:
             Native table replacements followed by topology and runtime policy.
 
         """
-        roots = sorted({table.split(".")[0] for table in self._tool_config.settings})
+        declared_tables = set(self._tool_config.settings)
+        tables = tuple(
+            table
+            for table in sorted(declared_tables)
+            if table.partition(".")[0] not in self._tool_config.derived_tool_roots
+            and not any(
+                ".".join(table.split(".")[:length]) in declared_tables
+                for length in range(1, len(table.split(".")))
+            )
+        )
+        native_roots = {
+            root: u.Infra.native_tool_configuration(self._tool_config, root)
+            for root in sorted({table.partition(".")[0] for table in tables})
+        }
+        native_phases: list[m.Infra.DepsToml.PhaseConfig] = []
+        for table in tables:
+            path_parts = table.split(".")
+            image = u.Cli.toml_mapping_path(
+                native_roots[path_parts[0]], path_parts[1:]
+            )
+            if image is None:
+                msg = f"Declared native tool table is unavailable: {table}"
+                raise KeyError(msg)
+            native_phases.append(self._native_phase(table, image))
         return (
-            *(
-                self._native_phase(
-                    root, u.Infra.native_tool_configuration(self._tool_config, root)
-                )
-                for root in roots
-                if root not in self._tool_config.derived_tool_roots
-            ),
+            *native_phases,
             self._mypy_phase(mypy_search_paths),
             self._pytest_phase(),
             self._vulture_phase(path),

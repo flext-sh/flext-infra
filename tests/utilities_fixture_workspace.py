@@ -968,7 +968,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                 "issue_prefix": issue_prefix,
             }
             if custom_issue_types:
-                custom_types: list[t.JsonValue] = [*custom_issue_types]
+                custom_types: list[str] = [*custom_issue_types]
                 payload["custom_issue_types"] = custom_types
             tm.ok(u.Cli.yaml_dump(path, payload))
             return path

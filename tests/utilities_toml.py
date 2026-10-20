@@ -106,7 +106,9 @@ class TestsFlextInfraUtilitiesTomlMixin:
             TestsFlextInfraUtilitiesTomlMixin.toml_doc(content),
         )
         for segment in path:
-            current = TestsFlextInfraUtilitiesTomlMixin.toml_mapping(current[segment])
+            current = TestsFlextInfraUtilitiesTomlMixin.toml_mapping(
+                cast(t.JsonMapping, current[segment]),
+            )
         return current
 
     @staticmethod

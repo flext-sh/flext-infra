@@ -154,7 +154,9 @@ class FlextInfraConfigModelsWorkspace:
         Recovery targets authorize bounded publication into existing worktrees.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            use_enum_values=False, extra="forbid"
+        )
 
         project: Annotated[
             FlextInfraConfigModelsContexts.ProjectSpec | None,
