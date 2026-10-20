@@ -14,6 +14,7 @@ import pytest
 from flext_tests import tf, tm
 
 from flext_infra import u
+from tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path

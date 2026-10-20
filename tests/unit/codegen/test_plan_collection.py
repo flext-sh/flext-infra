@@ -255,7 +255,7 @@ class TestsFlextInfraPlanCollection:
         config = self._config()
         first = u.Infra.docs_collect_plan_files(tmp_path, config)
         for plan in first.files:
-            assert plan.desired_content is not None
+            tm.that(plan.desired_content, none=False)
             self._write(plan.path, plan.desired_content.decode())
         revision = first.revisions[0]
         generated = (
@@ -282,7 +282,7 @@ class TestsFlextInfraPlanCollection:
         self._write(tmp_path / "input" / "design.md", "# Private source\n")
         published = u.Infra.docs_collect_plan_files(tmp_path, self._config())
         for plan in published.files:
-            assert plan.desired_content is not None
+            tm.that(plan.desired_content, none=False)
             self._write(plan.path, plan.desired_content.decode())
         disabled = m.Infra.PlanCollectionConfig(
             enabled=False,
@@ -369,7 +369,7 @@ class TestsFlextInfraPlanCollection:
         config = _projection_config(projection)
         first = u.Infra.docs_collect_plan_files(tmp_path, config)
         for plan in first.files:
-            assert plan.desired_content is not None
+            tm.that(plan.desired_content, none=False)
             self._write(plan.path, plan.desired_content.decode())
         u.Infra.verify_plan_collection_publication(tmp_path, config, first)
 
@@ -397,7 +397,7 @@ class TestsFlextInfraPlanCollection:
             eq="# Original home plan\n",
         )
         for plan in third.files:
-            assert plan.desired_content is not None
+            tm.that(plan.desired_content, none=False)
             self._write(plan.path, plan.desired_content.decode())
         fourth = u.Infra.docs_collect_plan_files(tmp_path, config)
         tm.that(fourth.revisions, eq=third.revisions)
@@ -477,7 +477,7 @@ class TestsFlextInfraPlanCollection:
         config = _projection_config(projection)
         initial = u.Infra.docs_collect_plan_files(tmp_path, config)
         for plan in initial.files:
-            assert plan.desired_content is not None
+            tm.that(plan.desired_content, none=False)
             self._write(plan.path, plan.desired_content.decode())
         revision = initial.revisions[0]
         attachment = (
@@ -501,7 +501,7 @@ class TestsFlextInfraPlanCollection:
         )
         u.Infra.verify_plan_collection_sources(tmp_path, config, changed)
         for plan in changed.files:
-            assert plan.desired_content is not None
+            tm.that(plan.desired_content, none=False)
             self._write(plan.path, plan.desired_content.decode())
         u.Infra.verify_plan_collection_publication(tmp_path, config, changed)
         stable = u.Infra.docs_collect_plan_files(tmp_path, config)
@@ -533,7 +533,7 @@ class TestsFlextInfraPlanCollection:
             self._write(root / "input" / "design.md", "# Portable source\n")
         first = u.Infra.docs_collect_plan_files(first_root, config)
         for plan in first.files:
-            assert plan.desired_content is not None
+            tm.that(plan.desired_content, none=False)
             self._write(
                 next_root / plan.path.relative_to(first_root),
                 plan.desired_content.decode(),

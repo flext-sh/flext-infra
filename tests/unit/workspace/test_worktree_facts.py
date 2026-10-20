@@ -199,7 +199,7 @@ class TestsFlextInfraWorktreeFacts(u.Tests.WorktreeFixture):
         plan = report.plan
 
         tm.that(len(report.facts), eq=1)
-        assert plan is not None
+        tm.that(plan, none=False)
         tm.that(plan.apply, eq=False)
         tm.that(plan.total_reclaim_bytes, eq=8)
         tm.that(len(plan.actions), eq=1)

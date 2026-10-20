@@ -50,7 +50,7 @@ class TestsFlextInfraRefactorViolationsSweep(
             ),
             eq=False,
         )
-        assert quiet_before.source_states is not None
+        tm.that(quiet_before.source_states, none=False)
         tm.that(
             any(state.path == victim for state in quiet_before.source_states),
             eq=True,
@@ -194,7 +194,7 @@ class TestsFlextInfraRefactorViolationsSweep(
                     observed,
                     options=m.Infra.RuleDeltaOptions(publication_chain=tuple(chain)),
                 )
-                assert observed.source_states is not None
+                tm.that(observed.source_states, none=False)
                 admitted = next(item for item in chain if item.before.path == sample)
                 tm.that(
                     admitted.replacement,
@@ -248,16 +248,16 @@ class TestsFlextInfraRefactorViolationsSweep(
         tm.that(snapshot.text_report is not None, eq=True)
         tm.that(snapshot.observation_errors, empty=False)
         tm.that("\n".join(snapshot.observation_errors), has="invalid")
-        assert snapshot.lint is not None
+        tm.that(snapshot.lint, none=False)
         receipt = next(
             tools[c.Infra.RUFF]
             for tools in snapshot.lint.values()
             if tools[c.Infra.RUFF].execution_error is not None
         )
         tm.that(receipt.errors, eq=())
-        assert receipt.output is not None
+        tm.that(receipt.output, none=False)
         tm.that(u.Cli.process_succeeded(receipt.output.outcome), eq=False)
-        assert snapshot.ast_report is not None
+        tm.that(snapshot.ast_report, none=False)
         tm.that(
             any(
                 entry.rule_id == "sweep-growth" for entry in snapshot.ast_report.entries

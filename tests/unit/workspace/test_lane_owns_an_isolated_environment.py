@@ -100,8 +100,8 @@ class TestsFlextInfraLaneOwnsAnIsolatedEnvironment:
             tm.ok(FlextInfraWorktreeService.setup_lane(lane))
 
         lane_venv = u.Infra.runtime_environment_dir(lane)
-        assert lane_venv.is_dir()
-        assert not lane_venv.is_symlink()
+        tm.that(lane_venv.is_dir(), truth=True)
+        tm.that(lane_venv.is_symlink(), truth=False)
         tm.that(lane_venv == lane.resolve() / c.Infra.ENVIRONMENT_DIRECTORY, truth=True)
         tm.that(
             primary_sentinel.read_text(encoding=c.DEFAULT_ENCODING) == "untouched\n",
@@ -133,7 +133,7 @@ class TestsFlextInfraLaneOwnsAnIsolatedEnvironment:
         tm.that(
             sentinel.read_text(encoding=c.DEFAULT_ENCODING) == "protected\n", truth=True
         )
-        assert lane_venv.is_symlink()
+        tm.that(lane_venv.is_symlink(), truth=True)
 
     def test_setup_initializes_lane_gitlink_without_mutating_primary(
         self,
@@ -152,8 +152,8 @@ class TestsFlextInfraLaneOwnsAnIsolatedEnvironment:
 
         tm.ok(FlextInfraWorktreeService.setup_lane(lane))
 
-        assert (lane / "member" / ".git").exists()
-        assert not (repository / "member" / ".git").exists()
+        tm.that((lane / "member" / ".git").exists(), truth=True)
+        tm.that((repository / "member" / ".git").exists(), truth=False)
 
     def test_existing_real_lane_environment_is_preserved(self, tmp_path: Path) -> None:
         """Test existing real lane environment is preserved."""
@@ -175,6 +175,6 @@ class TestsFlextInfraLaneOwnsAnIsolatedEnvironment:
 
         lane = self._lane(repository, "feature/git-only")
 
-        assert lane.is_dir()
-        assert not u.Infra.runtime_environment_dir(lane).exists()
-        assert not (lane / "setup-runs.log").exists()
+        tm.that(lane.is_dir(), truth=True)
+        tm.that(u.Infra.runtime_environment_dir(lane).exists(), truth=False)
+        tm.that((lane / "setup-runs.log").exists(), truth=False)

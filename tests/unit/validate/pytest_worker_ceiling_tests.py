@@ -111,7 +111,7 @@ class TestsFlextInfraPytestWorkerCeiling:
     ) -> None:
         """The runner resolves the declared project's override from the SSOT."""
         policy = config.Infra.tooling.tools.pytest
-        assert policy.parallel_worker_overrides
+        tm.that(policy.parallel_worker_overrides, truth=True)
         declared_name = next(iter(policy.parallel_worker_overrides))
         runner = u.Tests.PytestRunner.declared_project_runner(
             cached_runner_project, declared_name

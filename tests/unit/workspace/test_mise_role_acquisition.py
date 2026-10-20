@@ -65,28 +65,16 @@ class TestsMiseRoleAcquisition:
     ) -> None:
         """Acquire the declared role and authenticate its installed binary."""
         request = self._request(tmp_path)
-        assert isinstance(request.reader, p.Cli.AtomicFileReceipt)
+        tm.that(isinstance(request.reader, p.Cli.AtomicFileReceipt), truth=True)
         plan = tm.ok(FlextInfraCodegenMiseToolchainProof.plan_role(request))
         result = tm.ok(FlextInfraCodegenMiseToolchainProof.acquire_role(plan))
-        assert result.plan.manifest.sha256 == plan.manifest.sha256
-        assert result.plan.lock.sha256 == plan.lock.sha256
+        tm.that(result.plan.manifest.sha256, eq=plan.manifest.sha256)
+        tm.that(result.plan.lock.sha256, eq=plan.lock.sha256)
         binary = result.executables["node"]
-        assert isinstance(binary, p.Cli.AtomicFileReceipt)
-        assert Path(binary.path).is_relative_to(request.target_root / "data")
-        assert (
-            binary.sha256
-            == tm.ok(
-                u.Cli.atomic_read_binary_file_receipt(binary.path, required=True)
-            ).sha256
-        )
-        assert (
-            tm.ok(
-                u.Cli.atomic_read_binary_file_receipt(
-                    request.reader.path, required=True
-                )
-            )
-            == request.reader
-        )
+        tm.that(isinstance(binary, p.Cli.AtomicFileReceipt), truth=True)
+        tm.that(Path(binary.path).is_relative_to(request.target_root / "data"), truth=True)
+        tm.that(binary.sha256, eq=tm.ok(u.Cli.atomic_read_binary_file_receipt(binary.path, required=True)).sha256)
+        tm.that(tm.ok(u.Cli.atomic_read_binary_file_receipt(request.reader.path, required=True)), eq=request.reader)
 
     def test_changed_declaration_is_denied_before_target_creation(
         self, tmp_path: Path
@@ -103,7 +91,7 @@ class TestsMiseRoleAcquisition:
             FlextInfraCodegenMiseToolchainProof.plan_role(request),
             has="source identity changed",
         )
-        assert not request.target_root.exists()
+        tm.that(request.target_root.exists(), truth=False)
 
     def test_target_outside_explicit_scope_is_denied(self, tmp_path: Path) -> None:
         """Reject installation targets outside the request's declared scope."""
@@ -115,7 +103,7 @@ class TestsMiseRoleAcquisition:
             FlextInfraCodegenMiseToolchainProof.plan_role(outside),
             has="invalid new Mise role target",
         )
-        assert not outside.target_root.exists()
+        tm.that(outside.target_root.exists(), truth=False)
 
     def test_changed_native_lock_cannot_be_used_for_installation(
         self, tmp_path: Path
@@ -133,4 +121,4 @@ class TestsMiseRoleAcquisition:
             FlextInfraCodegenMiseToolchainProof.acquire_role(plan),
             has="source identity changed",
         )
-        assert not (request.target_root / "data" / "installs" / "node").exists()
+        tm.that((request.target_root / "data" / "installs" / "node").exists(), truth=False)

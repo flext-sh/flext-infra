@@ -68,9 +68,7 @@ class TestsFlextInfraExtraPathsArePure:
         extra_paths = manager.pyright_extra_paths(project_dir=consumer, is_root=False)
 
         for entry in (*search_paths, *extra_paths):
-            assert not entry.startswith(".."), (
-                f"generated search path leaves the project: {entry}"
-            )
+            tm.that(entry.startswith(".."), truth=False, msg=f"generated search path leaves the project: {entry}")
         tm.that(search_paths, eq=("src", "."))
 
     @staticmethod

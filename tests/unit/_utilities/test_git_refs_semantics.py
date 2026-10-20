@@ -65,7 +65,7 @@ class TestsFlextInfraGitRefsSemantics:
         )
 
         tm.that(result.failure, truth=True)
-        assert result.error is not None
+        tm.that(result.error, none=False)
 
     @staticmethod
     def test_ref_exists_distinguishes_present_from_absent(tmp_path: Path) -> None:
@@ -148,7 +148,7 @@ class TestsFlextInfraGitRefsSemantics:
         )
 
         tm.that(result.failure, truth=True)
-        assert result.error is not None
+        tm.that(result.error, none=False)
 
     @staticmethod
     def test_show_toplevel_reports_the_current_worktree_root(

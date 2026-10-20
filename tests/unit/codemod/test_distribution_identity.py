@@ -44,7 +44,7 @@ class TestsFlextInfraDistributionIdentity:
         self.distribution(site)
         with tm.scope(python_paths=(str(site), str(site))):
             planned = u.Infra.codemod_rule_plan(tmp_path)
-        assert planned.success, planned.error
+        tm.that(planned.success, truth=True, msg=planned.error)
 
     def test_distinct_duplicate_installations_are_rejected(
         self,

@@ -71,7 +71,7 @@ class TestsFlextInfraPytestRunner:
         tm.that(evidence.commit_sha, eq=identity.head_oid)
         tm.that(evidence.gate, eq=c.Infra.VERB_TEST)
         tm.that(evidence.intent.requested_gates, eq=())
-        assert evidence.intent.test_selection is not None
+        tm.that(evidence.intent.test_selection, none=False)
         tm.that(evidence.intent.test_selection.target, eq=runner.target)
         outcome = m.Cli.ProcessOutcome.model_validate_json(
             (receipts[0].parent / "suite-outcome.json").read_bytes(),
@@ -217,10 +217,7 @@ class TestsFlextInfraPytestRunner:
             "--testmon-env" not in runner.build_coverage_command(report), truth=True
         )
         # Rebuilding any argv reuses the same cached fingerprint.
-        assert (
-            runner.build_command(report)[suite_command.index("--testmon-env") + 1]
-            == names[-1]
-        )
+        tm.that(runner.build_command(report)[suite_command.index("--testmon-env") + 1], eq=names[-1])
 
     @staticmethod
     @pytest.mark.slow
@@ -255,7 +252,7 @@ class TestsFlextInfraPytestRunner:
         warm_accounting = m.Infra.TestmonRunAccounting.model_validate_json(
             (reports / warm_latest / "run-accounting.json").read_text(),
         )
-        assert warm_accounting.cache_restored
+        tm.that(warm_accounting.cache_restored, truth=True)
         tm.that(warm_accounting.executed_count == 0, truth=True)
         tm.that(
             warm_accounting.deselected_count == warm_accounting.inventory_count,
@@ -271,10 +268,7 @@ class TestsFlextInfraPytestRunner:
             (reports / latest / "run-accounting.json").read_text(),
         )
         tm.that(accounting.executed_count == accounting.reported_count, truth=True)
-        assert (
-            accounting.executed_count + accounting.deselected_count
-            == accounting.inventory_count
-        )
+        tm.that(accounting.executed_count + accounting.deselected_count, eq=accounting.inventory_count)
 
     @staticmethod
     def test_declared_project_uses_its_configured_run_wall(
@@ -351,7 +345,7 @@ class TestsFlextInfraPytestRunner:
             profile = reports_root / warm_name / f"{phase}.pstats"
             tm.that(profile.is_file() == profile_collection, truth=True)
             if profile_collection:
-                assert pstats.Stats(str(profile)).get_stats_profile().func_profiles
+                tm.that(pstats.Stats(str(profile)).get_stats_profile().func_profiles, truth=True)
         for receipt in ("cache-before.json", "cache-after.json"):
             warm_state = m.Infra.TestmonCacheState.model_validate_json(
                 tm.ok(u.Cli.files_read_text(reports_root / warm_name / receipt)),
@@ -452,9 +446,7 @@ class TestsFlextInfraPytestRunner:
             "def test_third():\n    assert isinstance(answer(), int)\n",
             encoding="utf-8",
         )
-        assert (
-            tm.ok(u.Tests.PytestRunner.runner_for(cached_runner_project).execute()) == 0
-        )
+        tm.that(tm.ok(u.Tests.PytestRunner.runner_for(cached_runner_project).execute()), eq=0)
         worker_action = (
             "    items.pop()\n"
             if omit_case
@@ -480,9 +472,7 @@ class TestsFlextInfraPytestRunner:
         if omit_case:
             tm.that(exit_code != 0, truth=True)
             logs = [path.read_text() for path in reports_root.glob("*/pytest.log")]
-            assert any(
-                "Runner collection differs from selection" in log for log in logs
-            )
+            tm.that(any("Runner collection differs from selection" in log for log in logs), truth=True)
             return
         tm.that(exit_code == 0, truth=True)
         tm.that(

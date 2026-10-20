@@ -333,7 +333,7 @@ class TestsFlextInfraCodemodGate:
         result = results[0]
         tm.that(result.passed, eq=False)
         receipt = result.gates["codemod"].raw_receipt
-        assert receipt is not None
+        tm.that(receipt, none=False)
         reports = receipt.parents[len(project.relative_to(tmp_path).parts)]
         markdown = (reports / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME).read_text(
             encoding="utf-8",

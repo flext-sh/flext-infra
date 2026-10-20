@@ -61,21 +61,21 @@ class TestsFlextInfraLazyInitProjectionManifest:
         tm.that(one.value, eq=two.value)
         manifest = one.value[0]
         tm.that(manifest.path, eq=tmp_path / ".agents" / "projections.lock.json")
-        assert manifest.desired_content is not None
+        tm.that(manifest.desired_content, none=False)
         parsed = u.Tests.json_payload(manifest.desired_content.decode("utf-8"))
         tm.that(parsed["apiVersion"], eq="flext-infra/projections-lock/v1")
         entries = parsed["entries"]
-        assert isinstance(entries, list)
+        tm.that(isinstance(entries, list), truth=True)
         tm.that(len(entries), eq=2)
         first_entry = entries[0]
-        assert isinstance(first_entry, dict)
+        tm.that(isinstance(first_entry, dict), truth=True)
         second_entry = entries[1]
-        assert isinstance(second_entry, dict)
+        tm.that(isinstance(second_entry, dict), truth=True)
         tm.that(first_entry.get("path"), eq=".agents/aihub-hooks/__init__.py")
         tm.that(second_entry.get("path"), eq=".codex/rules/rule.mdc")
         tm.that(first_entry.get("sha256"), eq=hashlib.sha256(b"alpha").hexdigest())
         tm.that(first_entry.get("bytes"), eq=5)
-        assert manifest.desired_content is not None
+        tm.that(manifest.desired_content, none=False)
         tm.that(manifest.desired_content.endswith(b"\n"), eq=True)
 
     @staticmethod
@@ -95,14 +95,14 @@ class TestsFlextInfraLazyInitProjectionManifest:
         )
         tm.that(result.failure, eq=False)
         tm.that(len(result.value), eq=1)
-        assert result.value[0].desired_content is not None
+        tm.that(result.value[0].desired_content, none=False)
         parsed = u.Tests.json_payload(
             result.value[0].desired_content.decode("utf-8"),
         )
         entries = parsed["entries"]
-        assert isinstance(entries, list)
+        tm.that(isinstance(entries, list), truth=True)
         only_entry = entries[0]
-        assert isinstance(only_entry, dict)
+        tm.that(isinstance(only_entry, dict), truth=True)
         tm.that(only_entry.get("path"), eq=".agents/aihub-hooks/x.py")
 
     @staticmethod

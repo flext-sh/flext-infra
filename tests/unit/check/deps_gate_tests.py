@@ -152,7 +152,7 @@ class TestsFlextInfraDepsGate:
 
         tm.that(result.result.passed, eq=False)
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
-        assert result.issues, "undeclared import must produce an issue"
+        tm.that(result.issues, truth=True, msg="undeclared import must produce an issue")
         tm.that(
             result.issues[0].code.startswith(f"{c.Infra.DEPS}-"),
             eq=True,
@@ -200,7 +200,7 @@ class TestsFlextInfraDepsGate:
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.ERROR)
         tm.that(result.result.passed, eq=False)
         tm.that(pyproject.read_bytes(), eq=before)
-        assert any(issue.code.startswith(f"{c.Infra.DEPS}-") for issue in result.issues)
+        tm.that(any(issue.code.startswith(f"{c.Infra.DEPS}-") for issue in result.issues), truth=True)
         tm.that(result.raw_output, has="selected interpreter")
 
     @staticmethod
@@ -540,7 +540,7 @@ class TestsFlextInfraDepsGate:
 
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
         tm.that(result.result.passed, eq=False)
-        assert any("requests" in issue.message for issue in result.issues)
+        tm.that(any("requests" in issue.message for issue in result.issues), truth=True)
 
     @staticmethod
     def test_invalid_config_is_native_execution_error(tmp_path: Path) -> None:
@@ -554,7 +554,7 @@ class TestsFlextInfraDepsGate:
         )
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.ERROR)
         tm.that(result.result.passed, eq=False)
-        assert result.issues
+        tm.that(result.issues, truth=True)
 
     @staticmethod
     def test_missing_deptry_binary_fails_loud(
@@ -593,7 +593,7 @@ class TestsFlextInfraDepsGate:
         result = m.Infra.GateExecution.model_validate_json(executed.stdout)
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.ERROR)
         tm.that(result.result.passed, eq=False)
-        assert result.issues
+        tm.that(result.issues, truth=True)
         tm.that(c.Infra.DEPTRY in result.issues[0].message, truth=True)
 
     @staticmethod
@@ -613,7 +613,7 @@ class TestsFlextInfraDepsGate:
         )
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.ERROR)
         tm.that(result.result.passed, eq=False)
-        assert result.issues
+        tm.that(result.issues, truth=True)
         tm.that(stale.read_text(encoding="utf-8"), eq="[]")
 
     @staticmethod

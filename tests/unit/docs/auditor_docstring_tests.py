@@ -136,8 +136,8 @@ __all__ = ["documented_fn", "undocumented_fn"]
         )
         checked = metric["checked"]
         percent = metric["percent"]
-        assert isinstance(checked, int)
-        assert isinstance(percent, float)
+        tm.that(isinstance(checked, int), truth=True)
+        tm.that(isinstance(percent, float), truth=True)
         tm.that(checked > 0, eq=True)
         tm.that(0.0 <= percent < self._FULL_COVERAGE_PERCENT, eq=True)
 
@@ -159,7 +159,7 @@ __all__ = ["documented_fn", "undocumented_fn"]
         tm.that(u.Tests.number(summary["issues"]), gt=0)
         coverage = u.Tests.toml_mapping(summary["docstring_coverage"])
         checked = coverage["checked"]
-        assert isinstance(checked, int)
+        tm.that(isinstance(checked, int), truth=True)
         tm.that(checked > 0, eq=True)
 
     def test_default_checks_runs_full_suite(self, tmp_path: Path) -> None:

@@ -207,7 +207,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         )
         distribution = u.Infra.codemod_distributions()["pytest-testmon"]
         installed_files = distribution.files
-        assert installed_files is not None
+        tm.that(installed_files, none=False)
         (batch_owner,) = (
             entry
             for entry in installed_files
@@ -218,7 +218,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
             self._read(batch_source),
             filename=str(batch_source),
         )
-        assert isinstance(tree, ast.Module)
+        tm.that(isinstance(tree, ast.Module), truth=True)
         (declaration,) = (
             statement
             for statement in tree.body
@@ -229,10 +229,10 @@ class TestsFlextInfraPytestRunnerSuiteStop:
             )
         )
         literal = declaration.value
-        assert isinstance(literal, ast.Constant)
+        tm.that(isinstance(literal, ast.Constant), truth=True)
         batch_size = literal.value
-        assert isinstance(batch_size, int)
-        assert not isinstance(batch_size, bool)
+        tm.that(isinstance(batch_size, int), truth=True)
+        tm.that(isinstance(batch_size, bool), truth=False)
         tm.that(batch_size > 0, truth=True)
         target = config.Infra.codegen.make.testmon_cache.target_directory
         (cached_runner_project / target / "test_budget.py").write_text(
