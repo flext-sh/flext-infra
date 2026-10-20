@@ -24,6 +24,12 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
     """Convert resolved lazy-init decisions into immutable publication plans."""
 
     if TYPE_CHECKING:
+        _file_plan_cache: t.MutableMappingKV[
+            str,
+            t.Pair[
+                t.VariadicTuple[m.Infra.CodegenFilePlan], m.Infra.CodegenPhaseAnalysis
+            ],
+        ]
 
         @property
         def source_project(self) -> p.Infra.RopeProject: ...
@@ -196,6 +202,8 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         states: tuple[m.Cli.AtomicFileState, ...],
         directories: tuple[m.Cli.AtomicDirectoryInventory, ...],
         topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...],
+        *,
+        observations: t.MutableMappingKV[Path, m.Cli.AtomicDirectoryInventory],
     ) -> p.Result[bool]:
         """Reverify original evidence via the native verifier, never recapture.
 
@@ -203,12 +211,15 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             The resulting ``p.Result[bool]``.
 
         """
+        runtime_errors: tuple[type[Exception], ...] = (OSError, *c.EXC_BROAD_RUNTIME)
         try:
             verified = u.Cli.atomic_verify_binary_file_states(states)
             if verified.failure:
                 return r[bool].from_failure(verified)
-            return u.Cli.atomic_verify_directory_queries(directories, topology)
-        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+            return u.Cli.atomic_verify_directory_queries(
+                directories, topology, observations=observations
+            )
+        except runtime_errors as exc:
             return r[bool].fail(str(exc), exception=exc)
 
     @classmethod
@@ -269,7 +280,10 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         """
         if project.source_epoch_failure is not cause:
             raise cause
-        scopes = (*analysis.files, *analysis.publications)
+        scopes: tuple[m.Infra.CodegenFilePlan | m.Infra.LazyInitPlan, ...] = (
+            *analysis.files,
+            *analysis.publications,
+        )
         states = m.Infra.CodemodBindingSnapshot(
             states=(
                 *(state for scope in scopes for state in scope.source_states),
@@ -298,26 +312,32 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 ),
             ),
         )
+        observations: t.MutableMappingKV[Path, m.Cli.AtomicDirectoryInventory] = {}
         failed_states = tuple(
             original
             for original in project.consumed_source_states()
-            if cls._verify_original_sources((original,), (), ()).failure
+            if cls._verify_original_sources(
+                (original,), (), (), observations=observations
+            ).failure
         )
         if any(original not in states for original in failed_states):
             raise cause
         failed_directories = tuple(
             original
             for original in project.consumed_source_directories()
-            if cls._verify_original_sources((), (original,), ()).failure
+            if cls._verify_original_sources(
+                (), (original,), (), observations=observations
+            ).failure
         )
         failed_topology = tuple(
             original
             for original in project.consumed_source_topology()
-            if cls._verify_original_sources((), (), (original,)).failure
+            if cls._verify_original_sources(
+                (), (), (original,), observations=observations
+            ).failure
         )
-        candidates = (*directories, *topology)
         if not cls._original_plans_covered(
-            (*failed_directories, *failed_topology), candidates
+            (*failed_directories, *failed_topology), (*directories, *topology)
         ):
             raise cause
         if not (failed_states or failed_directories or failed_topology):
@@ -330,6 +350,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 receipt.inputs,
                 receipt.source_directories,
                 receipt.source_query_topology,
+                observations=observations,
             ).failure
         }
         for file in analysis.files:
@@ -337,6 +358,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 file.source_states,
                 file.source_directories,
                 file.source_query_topology,
+                observations=observations,
             ).success:
                 accepted.append(file)
             else:
@@ -349,6 +371,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                     publication.source_states,
                     publication.source_directories,
                     publication.source_query_topology,
+                    observations=observations,
                 ).failure
             ):
                 affected.add(publication.context.init_path)
@@ -356,7 +379,10 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 publications.append(publication)
         if not affected:
             raise cause
-        retained = (*accepted, *publications)
+        retained: tuple[m.Infra.CodegenFilePlan | m.Infra.LazyInitPlan, ...] = (
+            *accepted,
+            *publications,
+        )
         retained_states = m.Infra.CodemodBindingSnapshot(
             states=tuple(state for scope in retained for state in scope.source_states)
         ).states
@@ -387,6 +413,8 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                             column=0,
                             code=c.Infra.ToolOutcome.ERROR.value,
                             message=str(cause),
+                            locations=(),
+                            related_locations=(),
                         )
                         for path in sorted(affected)
                     ),
@@ -583,16 +611,32 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         """
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         cleanup_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = {}
-        retired = self._retired_support_plans(
-            plans,
-            index,
-            source_receipts,
-            cleanup_receipts=cleanup_receipts,
-        )
-        if retired.failure:
-            return result_type.from_failure(retired)
-        by_path = retired.value
+        by_path: MutableMapping[Path, m.Infra.CodegenFilePlan] = {}
+        retired_by_package: MutableMapping[
+            str, t.VariadicTuple[m.Infra.CodegenFilePlan]
+        ] = {}
         for plan in plans:
+            key = str(plan.context.pkg_dir.resolve())
+            cached = self._file_plan_cache.get(key)
+            if cached is not None:
+                files, receipt = cached
+                self.source_project.replay_source_consumption(receipt)
+                by_path.update((file.path, file) for file in files)
+                continue
+            retired = self._retired_support_plans(
+                (plan,),
+                index,
+                source_receipts,
+                cleanup_receipts=cleanup_receipts,
+            )
+            if retired.failure:
+                return result_type.from_failure(retired)
+            by_path.update(retired.value)
+            retired_by_package[key] = tuple(retired.value.values())
+        for plan in plans:
+            key = str(plan.context.pkg_dir.resolve())
+            if key in self._file_plan_cache:
+                continue
             with self.source_project.source_consumption() as consumption:
                 self.source_project.replay_source_consumption(
                     source_receipts[str(plan.context.pkg_dir.resolve())],
@@ -608,10 +652,15 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 )
             if artifact_plans.failure:
                 return result_type.from_failure(artifact_plans)
-            for artifact_plan in self._bound_file_plans(
+            bound = self._bound_file_plans(
                 artifact_plans.value,
                 consumption.receipt(),
-            ):
+            )
+            self._file_plan_cache[key] = (
+                (*retired_by_package[key], *bound),
+                consumption.receipt(),
+            )
+            for artifact_plan in bound:
                 existing = by_path.get(artifact_plan.path)
                 if existing is not None and existing != artifact_plan:
                     return result_type.fail(

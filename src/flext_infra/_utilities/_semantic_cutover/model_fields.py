@@ -14,8 +14,10 @@ from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor
 
 from flext_infra._utilities import (
+    FlextInfraUtilitiesCodemodProject,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
@@ -38,7 +40,15 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
     def _contract_arguments(
         rule: p.Infra.RopeContractRule,
     ) -> t.MappingKV[str, str | t.StrSequence]:
-        """Constrain ordinary captures before native call admission."""
+        """Constrain ordinary captures before native call admission.
+
+        Returns:
+            The argument constraints that remain applicable to the native call.
+
+        Raises:
+            ValueError: If an ownership transfer lacks one native receiver constraint.
+
+        """
         if rule.ownership_transfer is not None:
             if len(rule.arguments) != 1 or not all(
                 isinstance(value, str) and value.startswith("name=")
@@ -65,7 +75,15 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         module: p.Infra.RopePyModule,
         match: p.Infra.RopeContractMatch,
     ) -> bool:
-        """Prove native model metadata without evaluating authored expressions."""
+        """Prove native model metadata without evaluating authored expressions.
+
+        Returns:
+            Whether the captured field metadata satisfies the native rule.
+
+        Raises:
+            ValueError: If the native field metadata has no original callee AST.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         tree = module.get_ast()
         if rule.call_target is None or not isinstance(tree, ast.AST):
@@ -85,10 +103,12 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
             )
         )
         constraint = rule.arguments.get(rule.call_target)
-        if invocation is None or constraint is None:
-            return False
-        if not FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture(
-            project, module, invocation.func, constraint, name=rule.call_target
+        if (
+            invocation is None
+            or constraint is None
+            or not FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture(
+                project, module, invocation.func, constraint, name=rule.call_target
+            )
         ):
             return False
         declaration = next(
@@ -123,31 +143,252 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         if name.startswith("_"):
             return False
         return (
-            len(invocation.args) <= 1
-            and all(
-                isinstance(argument, ast.Constant) and argument.value is Ellipsis
-                for argument in invocation.args
+            FlextInfraUtilitiesSemanticCutoverModelFields._concrete_field_default(
+                invocation
             )
-            and all(
-                keyword.arg is not None
-                and (
-                    keyword.arg not in {"default", "default_factory"}
-                    or (
-                        isinstance(keyword.value, ast.Constant)
-                        and (
-                            (
-                                keyword.arg == "default"
-                                and keyword.value.value is Ellipsis
-                            )
-                            or (
-                                keyword.arg == "default_factory"
-                                and keyword.value.value is None
+            and len(
+                FlextInfraUtilitiesSemanticCutoverModelFields._field_reordered_calls(
+                    project, rule, module, match
+                )
+            )
+            == 1
+            if rule.defaulted_field
+            else (
+                len(invocation.args) <= 1
+                and all(
+                    isinstance(argument, ast.Constant) and argument.value is Ellipsis
+                    for argument in invocation.args
+                )
+                and all(
+                    keyword.arg is not None
+                    and (
+                        keyword.arg not in {"default", "default_factory"}
+                        or (
+                            isinstance(keyword.value, ast.Constant)
+                            and (
+                                (
+                                    keyword.arg == "default"
+                                    and keyword.value.value is Ellipsis
+                                )
+                                or (
+                                    keyword.arg == "default_factory"
+                                    and keyword.value.value is None
+                                )
                             )
                         )
                     )
+                    for keyword in invocation.keywords
                 )
+            )
+        )
+
+    @staticmethod
+    def _concrete_field_default(invocation: ast.Call) -> bool:
+        """Admit exactly one explicit concrete default, never a factory.
+
+        Returns:
+            Whether extraction preserves an explicit, unambiguous native default.
+
+        """
+        defaults = [
+            *invocation.args,
+            *(
+                keyword.value
+                for keyword in invocation.keywords
+                if keyword.arg == "default"
+            ),
+        ]
+        return (
+            len(defaults) == 1
+            and not isinstance(defaults[0], ast.Starred)
+            and not (
+                isinstance(defaults[0], ast.Constant) and defaults[0].value is Ellipsis
+            )
+            and all(
+                keyword.arg is not None and keyword.arg != "default_factory"
                 for keyword in invocation.keywords
             )
+        )
+
+    @classmethod
+    def _field_contract_templates(
+        cls,
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        resources: t.SequenceOf[p.Infra.RopeResource],
+    ) -> t.SequenceOf[t.Pair[str, str]]:
+        """Specialize explicit argument shapes, leaving matching/writing to Rope.
+
+        Returns:
+            Native pattern/goal pairs retaining each metadata keyword capture.
+
+        """
+        if not rule.defaulted_field:
+            return ((rule.pattern, rule.goal),)
+        templates: t.MutableMappingKV[t.Pair[str, str], None] = {}
+        field = f"${{{rule.call_target}}}"
+        default = f"${{{rule.value_default}}}"
+        for resource in resources:
+            module = project.get_pymodule(resource)
+            tree = module.get_ast()
+            if not isinstance(tree, ast.AST):
+                continue
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.AnnAssign) or not isinstance(
+                    node.value, ast.Call
+                ):
+                    continue
+                call = node.value
+                if not cls._concrete_field_default(call):
+                    continue
+                arguments = [default] if call.args else []
+                metadata: list[str] = []
+                for index, keyword in enumerate(call.keywords):
+                    if keyword.arg == "default":
+                        arguments.append(f"default={default}")
+                    else:
+                        captured = f"{keyword.arg}=${{metadata_{index}}}"
+                        arguments.append(captured)
+                        metadata.append(captured)
+                pattern = rule.pattern.replace(
+                    f"{field}({default})", field + "(" + ", ".join(arguments) + ")"
+                )
+                goal = rule.goal.replace(
+                    f"{field}()", field + "(" + ", ".join(metadata) + ")"
+                )
+                templates[pattern, goal] = None
+        return tuple(templates)
+
+    @classmethod
+    def _field_reordered_calls(
+        cls,
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        module: p.Infra.RopePyModule,
+        match: p.Infra.RopeContractMatch,
+    ) -> t.SequenceOf[t.Pair[int, int]]:
+        """Retain every call lacking an exact native evaluation-safety proof.
+
+        Returns:
+            Calls whose evaluation moves into the field annotation.
+
+        """
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        calls = refactors.word_call_regions(module.source_code, match.get_region())
+        if rule.defaulted_field and rule.value_default is not None:
+            begin, end = refactors.semantic_capture_region(match, rule.value_default)
+            calls = tuple(
+                region for region in calls if not begin <= region[0] < region[1] <= end
+            )
+        if rule.required_field:
+            pure = cls._pure_field_factory_metadata(project, rule, module, match)
+            calls = tuple(
+                region
+                for region in calls
+                if not any(begin <= region[0] < region[1] <= end for begin, end in pure)
+            )
+        return calls
+
+    @classmethod
+    def _pure_field_factory_metadata(
+        cls,
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        module: p.Infra.RopePyModule,
+        match: p.Infra.RopeContractMatch,
+    ) -> t.SequenceOf[t.Pair[int, int]]:
+        """Prove direct SDK metadata that only stores a deferred builtin factory.
+
+        Returns:
+            Pure metadata-call regions whose relative evaluation is unobservable.
+
+        """
+        contract = match.get_ast("contract")
+        if not isinstance(contract, ast.AST):
+            return ()
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        scope = runtime.scope_at(module, match.get_region()[0])
+        annotated = runtime.qualified_name(project, "typing.Annotated")
+        regions: list[t.Pair[int, int]] = []
+        for node in ast.walk(contract):
+            if not isinstance(node, ast.Subscript) or not isinstance(
+                node.slice, ast.Tuple
+            ):
+                continue
+            if not runtime.same_name(
+                annotated, runtime.resolve_symbol(scope, node.value)
+            ):
+                continue
+            reference = ast.unparse(node.value)
+            if not all(
+                FlextInfraUtilitiesCodemodProject.single_reaching_binding(
+                    module, scope, name, runtime.source_offset(module.source_code, node)
+                )
+                for name in dict.fromkeys((reference.partition(".")[0], reference))
+            ):
+                continue
+            for metadata in node.slice.elts[1:]:
+                if not isinstance(
+                    metadata, ast.Call
+                ) or not cls._pure_deferred_field_call(
+                    project, rule, module, (scope, metadata)
+                ):
+                    continue
+                source = ast.get_source_segment(module.source_code, metadata)
+                if source is not None:
+                    begin = runtime.source_offset(module.source_code, metadata)
+                    regions.append((begin, begin + len(source)))
+        return tuple(regions)
+
+    @staticmethod
+    def _pure_deferred_field_call(
+        project: p.Infra.RopeProject,
+        rule: p.Infra.RopeContractRule,
+        module: p.Infra.RopePyModule,
+        candidate: t.Pair[p.Infra.RopeScope, ast.Call],
+    ) -> bool:
+        """Keep builtin factories as values, never evaluate authored callbacks.
+
+        Returns:
+            Whether this exact SDK call has one inert deferred-factory argument.
+
+        """
+        scope, call = candidate
+        if call.args or len(call.keywords) != 1 or rule.call_target is None:
+            return False
+        keyword = call.keywords[0]
+        if keyword.arg != "default_factory" or not isinstance(keyword.value, ast.Name):
+            return False
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        builtin = (
+            FlextInfraUtilitiesRopeRuntimeTypes
+            .require_semantic_module(project.get_module("__builtin__"))
+            .get_attributes()
+            .get(keyword.value.id)
+        )
+        constraint = rule.arguments.get(rule.call_target)
+        if (
+            builtin is None
+            or constraint is None
+            or not runtime.same_name(
+                builtin, runtime.resolve_symbol(scope, keyword.value)
+            )
+        ):
+            return False
+        if FlextInfraUtilitiesCodemodProject.single_reaching_declarations(
+            module, scope, keyword.value.id
+        ):
+            return False
+        if not FlextInfraUtilitiesRopeRuntimeRefactors.semantic_capture(
+            project, module, call.func, constraint, name=rule.call_target
+        ):
+            return False
+        callee = ast.unparse(call.func)
+        return all(
+            FlextInfraUtilitiesCodemodProject.single_reaching_binding(
+                module, scope, name, runtime.source_offset(module.source_code, call)
+            )
+            for name in dict.fromkeys((callee.partition(".")[0], callee))
         )
 
     @classmethod

@@ -16,18 +16,18 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import json
 import sys
 from collections.abc import Generator, Mapping, MutableMapping
 from contextlib import closing, contextmanager
+from contextvars import ContextVar
 from functools import cache, lru_cache
 from importlib.metadata import packages_distributions
 from importlib.util import find_spec
 from pathlib import Path
-from time import monotonic
 from types import MappingProxyType
+from typing import ClassVar
 
-from flext_cli import settings, u
+from flext_cli import u
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, t
@@ -59,26 +59,23 @@ from flext_infra._utilities._rope_analysis.importstate import (
 from flext_infra._utilities._rope_source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
+from flext_infra._utilities._rope_source_bases_runtime import (
+    FlextInfraUtilitiesRopeSourceBasesRuntime,
+)
+from flext_infra._utilities.rope_runtime_matching import (
+    FlextInfraUtilitiesRopeRuntimeMatching,
+)
 
 
 class FlextInfraUtilitiesCodemodProject(
-    FlextInfraUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain
+    FlextInfraUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain,
+    FlextInfraUtilitiesImportLaw,
 ):
     """Evaluate rule context over project facts: packages, layers, graphs."""
 
-    @staticmethod
-    def codemod_progress(message: str, due: float = 0) -> float:
-        """Report active source work at the configured heartbeat interval.
-
-        Returns:
-            The next monotonic deadline for an interval progress row.
-
-        """
-        now = monotonic()
-        if now < due:
-            return due
-        u.Cli.info(f"mod: {message}")
-        return now + settings.cli_process_heartbeat_seconds
+    _module_role_cache: ClassVar[ContextVar[t.MutableMappingKV[Path, int] | None]] = (
+        ContextVar("codemod_module_role_cache", default=None)
+    )
 
     @classmethod
     def project_import_graph(
@@ -180,6 +177,8 @@ class FlextInfraUtilitiesCodemodProject(
                     name,
                     path,
                     resource.read(),
+                    project=project,
+                    pymodule=pymodule,
                 )
             )
             aliases.update({
@@ -441,6 +440,7 @@ class FlextInfraUtilitiesCodemodProject(
             c.Infra.CodemodContextPredicate.PAYLOAD_DECLARATION,
             c.Infra.CodemodContextPredicate.PROTOCOL_DECLARATION,
             c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE,
+            c.Infra.CodemodContextPredicate.LATER_LAYER,
             c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER,
             c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION,
         }
@@ -486,91 +486,29 @@ class FlextInfraUtilitiesCodemodProject(
         defect and raises; the syntactic match alone never stands in for it.
 
         ``admission.facts`` is the admission pass's project snapshot; it must
-        have been built for every predicate the rule names.
+        have been built for every predicate the rule names. Missing facts raise
+        ValueError at the snapshot validation boundary.
 
         Returns:
             Whether one finding satisfies its rule's project context.
-
-        Raises:
-            ValueError: If the facts were not built for a predicate of the rule.
 
         """
         root = admission.root
         rule = admission.rule
         captures = admission.captures
         facts = admission.facts
-        missing = {condition.predicate for condition in rule.context} - facts.predicates
-        if missing:
-            msg = (
-                f"{rule.id}: project facts were not built for predicates "
-                f"{sorted(missing)}"
-            )
-            raise ValueError(msg)
+        cls._require_context_facts(admission)
         source = cls.codemod_source_path(root, admission.file_path)
         for condition in rule.context:
             # Alternative syntax branches bind only their own metavariables.
             # This also applies before native declaration/binding evaluation.
             if condition.variable not in captures:
                 continue
-            if (
-                condition.predicate
-                is c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION
-            ):
-                if (
-                    admission.snapshot is None
-                    or project is None
-                    or sources is None
-                    or source not in sources
-                ):
-                    msg = (
-                        f"{rule.id}: execution context requires its "
-                        "original native epoch"
-                    )
-                    raise ValueError(msg)
-                if (
-                    cls._isolated_execution_holds(project, condition, source, sources)
-                    is not condition.holds
-                ):
-                    return False
-                continue
-            if (
-                condition.predicate
-                is c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER
-            ):
-                if (
-                    admission.snapshot is None
-                    or project is None
-                    or sources is None
-                    or source not in sources
-                ):
-                    msg = f"{rule.id}: implementation context requires its native epoch"
-                    raise ValueError(msg)
-                if (
-                    source
-                    in cls._implementation_owner_modules(project, condition, sources)
-                ) is not condition.holds:
-                    return False
-                continue
-            if (
-                condition.predicate is c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE
-                and project is not None
-            ):
-                if (
-                    admission.snapshot is None
-                    or sources is None
-                    or source not in sources
-                ):
-                    msg = f"{rule.id}: layer-zero context requires its captured source"
-                    raise ValueError(msg)
-                resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
-                    project.get_resource(source.relative_to(root.resolve()).as_posix()),
-                    source,
-                )
-                module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
-                if (
-                    FlextInfraUtilitiesImportLaw.import_module_role(module.get_name())
-                    == "layer0"
-                ) is not condition.holds:
+            native = cls._native_context_holds(
+                admission, condition, source, project, sources
+            )
+            if native is not None:
+                if native is not condition.holds:
                     return False
                 continue
             if condition.predicate in {
@@ -619,7 +557,118 @@ class FlextInfraUtilitiesCodemodProject(
         return True
 
     @staticmethod
+    def _require_context_facts(admission: m.Infra.CodemodAdmission) -> None:
+        """Require the pass snapshot to cover every configured predicate.
+
+        Raises:
+            ValueError: If a rule predicate has no project facts.
+
+        """
+        missing = {
+            condition.predicate for condition in admission.rule.context
+        } - admission.facts.predicates
+        if missing:
+            msg = (
+                f"{admission.rule.id}: project facts were not built for predicates "
+                f"{sorted(missing)}"
+            )
+            raise ValueError(msg)
+
+    @classmethod
+    def _native_context_holds(
+        cls,
+        admission: m.Infra.CodemodAdmission,
+        condition: m.Infra.CodemodContextCondition,
+        source: Path,
+        project: p.Infra.RopeProject | None,
+        sources: t.MappingKV[Path, str] | None,
+    ) -> bool | None:
+        """Evaluate native execution and implementation predicates.
+
+        Returns:
+            The native verdict, or None for a different predicate.
+
+        Raises:
+            ValueError: If a native predicate lacks its original source epoch.
+
+        """
+        if (
+            condition.predicate is c.Infra.CodemodContextPredicate.LATER_LAYER
+            and project is not None
+            and sources is not None
+        ):
+            return cls._later_layer(
+                admission.root,
+                source,
+                cls._captured_text(
+                    admission.rule, condition.variable, admission.captures, source
+                ),
+                condition,
+                binding=(project, sources),
+            )
+        if (
+            condition.predicate is c.Infra.CodemodContextPredicate.LAYER_ZERO_FILE
+            and project is not None
+        ):
+            return cls._layer_zero_context(admission, source, project, sources)
+        messages = {
+            c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION: (
+                f"{admission.rule.id}: execution context requires its "
+                "original native epoch"
+            ),
+            c.Infra.CodemodContextPredicate.IMPLEMENTATION_OWNER: (
+                f"{admission.rule.id}: implementation context requires its native epoch"
+            ),
+        }
+        if condition.predicate not in messages:
+            return None
+        if (
+            admission.snapshot is None
+            or project is None
+            or sources is None
+            or source not in sources
+        ):
+            raise ValueError(messages[condition.predicate])
+        if condition.predicate is c.Infra.CodemodContextPredicate.ISOLATED_EXECUTION:
+            return cls._isolated_execution_holds(project, condition, source, sources)
+        return source in cls.implementation_owner_modules(project, condition, sources)
+
+    @staticmethod
+    def _layer_zero_context(
+        admission: m.Infra.CodemodAdmission,
+        source: Path,
+        project: p.Infra.RopeProject,
+        sources: t.MappingKV[Path, str] | None,
+    ) -> bool:
+        """Resolve a layer-zero predicate from its captured native module.
+
+        Returns:
+            Whether the captured module has the layer-zero role.
+
+        Raises:
+            ValueError: If the captured source epoch is missing.
+
+        """
+        if admission.snapshot is None or sources is None or source not in sources:
+            msg = (
+                f"{admission.rule.id}: layer-zero context requires its captured source"
+            )
+            raise ValueError(msg)
+        resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            project.get_resource(
+                source.relative_to(admission.root.resolve()).as_posix()
+            ),
+            source,
+        )
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
+        return (
+            FlextInfraUtilitiesImportLaw.import_module_role(module.get_name())
+            == "layer0"
+        )
+
+    @classmethod
     def _isolated_execution_holds(
+        cls,
         project: p.Infra.RopeProject,
         condition: p.Infra.CodemodContextOperands,
         source: Path,
@@ -678,57 +727,9 @@ class FlextInfraUtilitiesCodemodProject(
                 scope.get_body_start() <= node.lineno <= scope.get_end()
             ):
                 continue
-            fields = {keyword.arg: keyword.value for keyword in node.keywords}
-            if set(fields) != set(m.Cli.PythonScriptExecution.model_fields):
-                continue
-            position = runtime.source_offset(module.source_code, node.func)
-            lexical = runtime.scope_at(module, position)
-            if lexical is not scope:
-                continue
-            constructor = runtime.resolve_symbol(lexical, node.func)
-            if constructor is None or not types.py_class(constructor.get_object()):
-                continue
-            contract = m.Cli.PythonScriptExecution
-            expected = runtime.qualified_name(
-                project, contract.__qualname__, module_name=contract.__module__
+            target_path = cls._execution_entrypoint(
+                project, module, scope, node, sources
             )
-            if not runtime.same_name(constructor, expected):
-                continue
-            entry, role = (
-                fields["module"],
-                fields["role"],
-            )
-            if not (
-                isinstance(entry, ast.Attribute)
-                and entry.attr == "__module__"
-                and isinstance(role, ast.Constant)
-                and isinstance(role.value, str)
-            ):
-                msg = (
-                    "execution metadata requires native entrypoint identity "
-                    "and its declared role"
-                )
-                raise ValueError(msg)
-            binding = runtime.resolve_symbol(lexical, entry.value)
-            if binding is None or not types.py_class(binding.get_object()):
-                msg = "execution entrypoint is not a native class declaration"
-                raise ValueError(msg)
-            target = binding.get_object().get_module()
-            if target is None or (target_resource := target.get_resource()) is None:
-                msg = "execution entrypoint has no original source resource"
-                raise ValueError(msg)
-            _ = m.Cli.PythonScriptExecution.model_validate_json(
-                json.dumps({
-                    "module": target.get_name(),
-                    "role": role.value,
-                }),
-            )
-            target_path = Path(target_resource.real_path)
-            if target_path not in sources:
-                msg = (
-                    f"execution entrypoint is outside the captured epoch: {target_path}"
-                )
-                raise ValueError(msg)
             if target_path == source:
                 found = True
         if not found:
@@ -747,7 +748,72 @@ class FlextInfraUtilitiesCodemodProject(
         )
 
     @staticmethod
-    def _implementation_owner_modules(
+    def _execution_entrypoint(
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopePyModule,
+        scope: p.Infra.RopeScope,
+        node: ast.Call,
+        sources: t.MappingKV[Path, str],
+    ) -> Path | None:
+        """Resolve one native execution metadata constructor's entrypoint.
+
+        Returns:
+            Its source path, or None for an unrelated constructor.
+
+        Raises:
+            ValueError: If the metadata or its entrypoint identity is invalid.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        fields = {keyword.arg: keyword.value for keyword in node.keywords}
+        if set(fields) != set(m.Cli.PythonScriptExecution.model_fields):
+            return None
+        position = runtime.source_offset(module.source_code, node.func)
+        lexical = runtime.scope_at(module, position)
+        if lexical is not scope:
+            return None
+        constructor = runtime.resolve_symbol(lexical, node.func)
+        if constructor is None or not types.py_class(constructor.get_object()):
+            return None
+        contract = m.Cli.PythonScriptExecution
+        expected = runtime.qualified_name(
+            project, contract.__qualname__, module_name=contract.__module__
+        )
+        if not runtime.same_name(constructor, expected):
+            return None
+        entry, role = fields["module"], fields["role"]
+        if not (
+            isinstance(entry, ast.Attribute)
+            and entry.attr == "__module__"
+            and isinstance(role, ast.Constant)
+            and isinstance(role.value, str)
+        ):
+            msg = (
+                "execution metadata requires native entrypoint identity "
+                "and its declared role"
+            )
+            raise ValueError(msg)
+        binding = runtime.resolve_symbol(lexical, entry.value)
+        if binding is None or not types.py_class(binding.get_object()):
+            msg = "execution entrypoint is not a native class declaration"
+            raise ValueError(msg)
+        target = binding.get_object().get_module()
+        if target is None or (target_resource := target.get_resource()) is None:
+            msg = "execution entrypoint has no original source resource"
+            raise ValueError(msg)
+        _ = m.Cli.PythonScriptExecution.model_validate(
+            {"module": target.get_name(), "role": role.value},
+        )
+        target_path = Path(target_resource.real_path)
+        if target_path not in sources:
+            msg = f"execution entrypoint is outside the captured epoch: {target_path}"
+            raise ValueError(msg)
+        return target_path
+
+    @classmethod
+    def implementation_owner_modules(
+        cls,
         project: p.Infra.RopeProject,
         condition: p.Infra.PrimitiveOwnerCondition,
         sources: t.MappingKV[t.Infra.RopeSourcePath, str],
@@ -762,8 +828,6 @@ class FlextInfraUtilitiesCodemodProject(
             The declaring module paths of the implementation owner closure.
 
         Raises:
-            TypeError: When the primitive is not a source callable or has no
-                native declaring module.
             ValueError: When the condition argument shape is wrong.
 
         """
@@ -795,64 +859,107 @@ class FlextInfraUtilitiesCodemodProject(
             if id(target) in visited:
                 continue
             visited.add(id(target))
-            module = target.get_module()
-            scope = target.get_scope()
-            if module is None or scope is None or not types.source_module(module):
+            discovered = cls._implementation_target(target, namespace, sources)
+            if discovered is None:
                 continue
-            resource = module.get_resource()
-            if resource is None:
-                msg = "native implementation declaration has no source resource"
-                raise ValueError(msg)
-            path = Path(resource.real_path)
-            if path not in sources:
-                msg = (
-                    f"native implementation source is outside the "
-                    f"captured epoch: {path}"
-                )
-                raise ValueError(msg)
+            path, related = discovered
             owners.add(path)
-            if types.py_class(target):
-                pending.extend(
-                    base for base in target.get_superclasses() if types.py_class(base)
-                )
-                pending.extend(
-                    child.pyobject
-                    for child in scope.get_scopes()
-                    if child.get_kind()
-                    in {
-                        c.Infra.RopeScopeKind.FUNCTION,
-                        c.Infra.RopeScopeKind.CLASS,
-                    }
-                )
-                continue
-            parent = scope.parent
-            if parent is not None and parent.get_kind() == c.Infra.RopeScopeKind.CLASS:
-                pending.append(parent.pyobject)
-            tree = module.get_ast()
-            if not isinstance(tree, ast.AST):
-                msg = "native implementation module has no supported Python AST"
-                raise TypeError(msg)
-            for node in ast.walk(tree):
-                if not isinstance(node, ast.Call) or not (
-                    scope.get_body_start() <= node.lineno <= scope.get_end()
-                ):
-                    continue
-                offset = runtime.source_offset(sources[path], node.func)
-                lexical = runtime.scope_at(module, offset)
-                if lexical is not scope:
-                    continue
-                binding = runtime.resolve_symbol(lexical, node.func)
-                if binding is None:
-                    continue
-                helper = binding.get_object()
-                provider = helper.get_module()
-                if (
-                    (types.py_function(helper) or types.py_class(helper))
-                    and provider is not None
-                    and provider.get_name().partition(".")[0] == namespace
-                ):
-                    pending.append(helper)
+            pending.extend(related)
         return frozenset(owners)
+
+    @staticmethod
+    def _implementation_target(
+        target: p.Infra.RopePyObject,
+        namespace: str,
+        sources: t.MappingKV[Path, str],
+    ) -> t.Pair[Path, list[p.Infra.RopePyObject]] | None:
+        """Collect native implementation edges of one callable or class.
+
+        Returns:
+            The source path and related native declarations, when source-defined.
+
+        Raises:
+            ValueError: If its source is absent from the captured epoch.
+            TypeError: If the module has no supported AST.
+
+        """
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        pending: list[p.Infra.RopePyObject] = []
+        module = target.get_module()
+        scope = target.get_scope()
+        if module is None or scope is None or not types.source_module(module):
+            return None
+        resource = module.get_resource()
+        if resource is None:
+            msg = "native implementation declaration has no source resource"
+            raise ValueError(msg)
+        path = Path(resource.real_path)
+        if path not in sources:
+            msg = f"native implementation source is outside the captured epoch: {path}"
+            raise ValueError(msg)
+        if types.py_class(target):
+            pending.extend(
+                base for base in target.get_superclasses() if types.py_class(base)
+            )
+            pending.extend(
+                child.pyobject
+                for child in scope.get_scopes()
+                if child.get_kind()
+                in {c.Infra.RopeScopeKind.FUNCTION, c.Infra.RopeScopeKind.CLASS}
+            )
+            return path, pending
+        parent = scope.parent
+        if parent is not None and parent.get_kind() == c.Infra.RopeScopeKind.CLASS:
+            pending.append(parent.pyobject)
+        tree = module.get_ast()
+        if not isinstance(tree, ast.AST):
+            msg = "native implementation module has no supported Python AST"
+            raise TypeError(msg)
+        pending.extend(
+            FlextInfraUtilitiesCodemodProject._implementation_calls(
+                module, scope, tree, sources[path], namespace
+            )
+        )
+        return path, pending
+
+    @staticmethod
+    def _implementation_calls(
+        module: p.Infra.RopePyModule,
+        scope: p.Infra.RopeScope,
+        tree: ast.AST,
+        source: str,
+        namespace: str,
+    ) -> list[p.Infra.RopePyObject]:
+        """Resolve same-namespace calls within one exact lexical scope.
+
+        Returns:
+            Native helper declarations reachable from calls in the scope.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        pending: list[p.Infra.RopePyObject] = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not (
+                scope.get_body_start() <= node.lineno <= scope.get_end()
+            ):
+                continue
+            offset = runtime.source_offset(source, node.func)
+            lexical = runtime.scope_at(module, offset)
+            if lexical is not scope:
+                continue
+            binding = runtime.resolve_symbol(lexical, node.func)
+            if binding is None:
+                continue
+            helper = binding.get_object()
+            provider = helper.get_module()
+            if (
+                (types.py_function(helper) or types.py_class(helper))
+                and provider is not None
+                and provider.get_name().partition(".")[0] == namespace
+            ):
+                pending.append(helper)
+        return pending
 
     @classmethod
     def _declaration_condition_admits(
@@ -1019,9 +1126,10 @@ class FlextInfraUtilitiesCodemodProject(
             )
         )
 
-    @staticmethod
+    @classmethod
     @contextmanager
     def codemod_binding_project(
+        cls,
         root: Path,
         epoch: m.Infra.CodemodSourceEpoch,
     ) -> Generator[t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]]]:
@@ -1041,7 +1149,14 @@ class FlextInfraUtilitiesCodemodProject(
             ) as project,
             project.frozen_layout(),
         ):
-            yield project, sources
+            token = cls._type_payload_cache.set({})
+            roles = cls._module_role_cache.set({})
+            try:
+                with FlextInfraUtilitiesRopeRuntimeMatching.semantic_matching_context():
+                    yield project, sources
+            finally:
+                cls._module_role_cache.reset(roles)
+                cls._type_payload_cache.reset(token)
 
     @classmethod
     def codemod_binding_snapshot(
@@ -1415,11 +1530,7 @@ class FlextInfraUtilitiesCodemodProject(
             if owner is None:
                 message = f"project owner is unresolved: {file_path}"
                 raise ValueError(message)
-            namespace = FlextInfraUtilitiesImportLaw.import_namespace(owner, file_path)
-            if namespace is None:
-                # Root-level files retain the existing project-package scope.
-                return FlextInfraUtilitiesPyproject.project_package_name(owner)
-            own = cls._top_module(namespace[1])
+            return FlextInfraUtilitiesPyproject.project_package_name(owner)
         return own
 
     @classmethod
@@ -1806,6 +1917,8 @@ class FlextInfraUtilitiesCodemodProject(
         file_path: Path,
         imported: str,
         condition: p.Infra.CodemodContextOperands,
+        *,
+        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]] | None = None,
     ) -> bool:
         """Return whether an import reaches a later layer than its module's.
 
@@ -1828,11 +1941,141 @@ class FlextInfraUtilitiesCodemodProject(
         if condition.arg:
             owner = cls._layer_rank(order, frozenset(condition.arg))
         else:
-            namespace = ".".join(file_path.relative_to(root).with_suffix("").parts)
-            owner = FlextInfraUtilitiesImportLaw.module_import_layer(namespace)
+            owner = cls._resolved_module_layer(root, file_path, binding)
         if owner is None:
             message = f"import comparison layer is undeclared: {condition.arg!r}"
             raise ValueError(message)
+        return cls._import_target_later(
+            root, file_path, imported, condition, (owner, binding)
+        )
+
+    @classmethod
+    def _resolved_module_layer(
+        cls,
+        root: Path,
+        path: Path,
+        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]] | None,
+    ) -> int:
+        """Resolve fallback service roles from the pass's authenticated native graph.
+
+        Returns:
+            The explicit path layer or its proven service implementation role.
+
+        """
+        order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
+        namespace = ".".join(path.relative_to(root).with_suffix("").parts)
+        rank = FlextInfraUtilitiesImportLaw.module_import_layer(namespace)
+        if rank != order.index("other") or binding is None:
+            return rank
+        cache = cls._module_role_cache.get()
+        cached = None if cache is None else cache.get(path)
+        if cached is not None:
+            return cached
+        resolved = cls._native_service_layer(root, path, binding)
+        rank = order.index("services") if resolved else rank
+        if cache is not None:
+            cache[path] = rank
+        return rank
+
+    @staticmethod
+    def _native_service_layer(
+        root: Path,
+        path: Path,
+        binding: t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]],
+    ) -> bool:
+        """Prove service ancestry using the existing authenticated source C3 owner.
+
+        Returns:
+            Whether a module-defined class derives from its own service root.
+
+        """
+        project, sources = binding
+        if path not in sources:
+            return False
+        native_paths = frozenset(FlextInfraUtilitiesRopeCore.python_file_paths(project))
+        if path not in native_paths:
+            return False
+        modules: t.MutableMappingKV[str, t.Pair[Path, str]] = {}
+        roots: list[m.Infra.SourceClassReference] = []
+        declarations: list[m.Infra.SourceClassReference] = []
+        order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
+        for source_path, text in sources.items():
+            if (
+                source_path.suffix != c.Infra.EXT_PYTHON
+                or not source_path.is_relative_to(root)
+                or source_path not in native_paths
+            ):
+                continue
+            module = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
+                project.get_pymodule(
+                    project.get_resource(source_path.relative_to(root).as_posix())
+                )
+            )
+            name = module.get_name()
+            modules[name] = source_path, text
+            namespace = ".".join(source_path.relative_to(root).with_suffix("").parts)
+            if (
+                FlextInfraUtilitiesImportLaw.module_import_layer(namespace)
+                == order.index("base")
+                and "s" in module.get_attributes()
+                and FlextInfraUtilitiesRopeRuntimeTypes.py_class(
+                    module.get_attribute("s").get_object()
+                )
+            ):
+                roots.append(
+                    m.Infra.SourceClassReference(
+                        target=name, attributes=("s",), qualified_base=f"{name}.s"
+                    )
+                )
+            if source_path == path:
+                class_names = dict.fromkeys(
+                    value.get_name()
+                    for attribute in module.get_attributes().values()
+                    if FlextInfraUtilitiesRopeRuntimeTypes.py_class(
+                        value := attribute.get_object()
+                    )
+                    and value.get_module() is module
+                )
+                declarations.extend(
+                    m.Infra.SourceClassReference(
+                        target=name,
+                        attributes=(class_name,),
+                        qualified_base=f"{name}.{class_name}",
+                    )
+                    for class_name in class_names
+                )
+        if not declarations:
+            return False
+        return any(
+            FlextInfraUtilitiesRopeSourceBasesRuntime.source_class_order(
+                project, modules, (service, *declarations)
+            )[0]
+            != service.qualified_base
+            for service in roots
+        )
+
+    @classmethod
+    def _import_target_later(
+        cls,
+        root: Path,
+        file_path: Path,
+        imported: str,
+        condition: p.Infra.CodemodContextOperands,
+        comparison: t.Pair[
+            int, t.Pair[p.Infra.RopeProject, t.MappingKV[Path, str]] | None
+        ],
+    ) -> bool:
+        """Compare an import target with its resolved source layer.
+
+        Returns:
+            Whether the target occupies a later layer.
+
+        Raises:
+            ValueError: If the target layer or project namespace is undeclared.
+
+        """
+        owner, binding = comparison
+        order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         if not condition.as_:
             layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
             if layout is None:
@@ -1851,8 +2094,7 @@ class FlextInfraUtilitiesCodemodProject(
                     return False
                 target_rank = FlextInfraUtilitiesImportLaw.module_import_layer(imported)
                 return target_rank > owner
-            namespace = ".".join(target.relative_to(root).with_suffix("").parts)
-            return FlextInfraUtilitiesImportLaw.module_import_layer(namespace) > owner
+            return cls._resolved_module_layer(root, target, binding) > owner
         target_rank = cls._layer_rank(order, target_layers)
         if target_rank is None:
             message = f"import target layer is undeclared: {condition.as_!r}"

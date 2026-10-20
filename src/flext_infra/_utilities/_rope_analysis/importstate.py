@@ -29,7 +29,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     """Rope semantic import state, class discovery, and project-backed probes."""
 
     _SEMANTIC_STATE_CACHE: ClassVar[
-        MutableMapping[t.Triple[str, str, int], m.Infra.ModuleSemanticState]
+        MutableMapping[t.Triple[str, str, str], m.Infra.ModuleSemanticState]
     ] = {}
 
     @staticmethod

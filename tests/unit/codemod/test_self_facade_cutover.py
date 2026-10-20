@@ -187,7 +187,10 @@ class TestsFlextInfraSelfFacadeCutover:
         imported = (
             f"import {package.name} as namespace\n"
             if reference == "namespace.u"
-            else f"from {package.name} import u as {reference.split('.', maxsplit=1)[0]}\n"
+            else (
+                f"from {package.name} import u as "
+                f"{reference.split('.', maxsplit=1)[0]}\n"
+            )
         )
         sources = {
             package / c.Infra.INIT_PY: (
@@ -286,7 +289,8 @@ class TestsFlextInfraSelfFacadeCutover:
                         "assert second.values == []\n"
                         "assert first.value == 'MODEL'\n"
                         "assert first.literal == 'LITERAL'\n"
-                        "assert Consumer.model_validate_json(first.model_dump_json()) == first\n"
+                        "assert Consumer.model_validate_json("
+                        "first.model_dump_json()) == first\n"
                         "assert TEXT == 'u.normalize stays a string'\n"
                         "class Local:\n"
                         "    def normalize(self, value): return value\n"
@@ -358,12 +362,14 @@ class TestsFlextInfraSelfFacadeCutover:
                         "assert isinstance(first.children, list)\n"
                         "first.children.append(Outer.Child(value='child'))\n"
                         "assert second.children == []\n"
-                        "restored = Outer.Consumer.model_validate_json(first.model_dump_json())\n"
+                        "restored = Outer.Consumer.model_validate_json("
+                        "first.model_dump_json())\n"
                         "assert restored == first\n"
                         "assert isinstance(restored.children[0], Outer.Child)\n"
                         "try: Outer.Consumer(children=[{'value': []}])\n"
                         "except ValidationError: pass\n"
-                        "else: raise AssertionError('native child validation missing')\n"
+                        "else: raise AssertionError("
+                        "'native child validation missing')\n"
                         "print('native-factory-proven')\n"
                     ),
                 ),
@@ -383,7 +389,8 @@ class TestsFlextInfraSelfFacadeCutover:
         source = (
             "from __future__ import annotations\n"
             "from typing import Protocol, runtime_checkable\n"
-            "from pydantic import BaseModel, ConfigDict, Field, PydanticSchemaGenerationError\n"
+            "from pydantic import (BaseModel, ConfigDict, Field, "
+            "PydanticSchemaGenerationError)\n"
             "from flext_core import m, t\n"
             "@runtime_checkable\n"
             "class Capability(Protocol):\n    value: str\n"
@@ -415,7 +422,8 @@ class TestsFlextInfraSelfFacadeCutover:
                     sys.executable,
                     "-c",
                     (
-                        f"from {package.name}.models import Arbitrary, STRICT_REJECTED\n"
+                        f"from {package.name}.models import "
+                        "Arbitrary, STRICT_REJECTED\n"
                         "assert STRICT_REJECTED\n"
                         "class Collaborator:\n    value = 'real capability'\n"
                         "port = Collaborator()\n"

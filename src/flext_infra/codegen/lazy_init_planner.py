@@ -56,36 +56,36 @@ class FlextInfraCodegenLazyInitPlanner(
     _module_exports_cache: MutableMapping[
         tuple[str, bool, bool, bool, bool, bool],
         t.LazyAliasMap,
-    ] = u.PrivateAttr(
+    ] = m.PrivateAttr(
         default_factory=dict[tuple[str, bool, bool, bool, bool, bool], t.LazyAliasMap],
     )
-    _package_exports_cache: MutableMapping[str, frozenset[str]] = u.PrivateAttr(
+    _package_exports_cache: MutableMapping[str, frozenset[str]] = m.PrivateAttr(
         default_factory=dict[str, frozenset[str]],
     )
-    _source_exports_cache: MutableMapping[str, frozenset[str]] = u.PrivateAttr(
+    _source_exports_cache: MutableMapping[str, frozenset[str]] = m.PrivateAttr(
         default_factory=dict[str, frozenset[str]],
     )
-    _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan] = u.PrivateAttr(
+    _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan] = m.PrivateAttr(
         default_factory=dict[str, m.Infra.LazyInitPlan],
     )
-    _plan_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = u.PrivateAttr(
-        default_factory=dict,
+    _plan_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = m.PrivateAttr(
+        default_factory=dict[str, m.Infra.CodegenPhaseAnalysis],
     )
-    _parent_package_cache: MutableMapping[str, t.StrSequence] = u.PrivateAttr(
+    _parent_package_cache: MutableMapping[str, t.StrSequence] = m.PrivateAttr(
         default_factory=dict[str, t.StrSequence],
     )
-    _module_file_by_name: MutableMapping[str, Path] = u.PrivateAttr(
+    _module_file_by_name: MutableMapping[str, Path] = m.PrivateAttr(
         default_factory=dict[str, Path],
     )
     _project_layout_cache: MutableMapping[Path, m.Infra.RopeProjectLayout] = (
-        u.PrivateAttr(
+        m.PrivateAttr(
             default_factory=dict[Path, m.Infra.RopeProjectLayout],
         )
     )
-    _version_module_name: str = u.PrivateAttr(
+    _version_module_name: str = m.PrivateAttr(
         default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py",
     )
-    _collision_count: int = u.PrivateAttr(default_factory=int)
+    _collision_count: int = m.PrivateAttr(default_factory=int)
 
     def plan_all_inits(
         self,
@@ -114,8 +114,13 @@ class FlextInfraCodegenLazyInitPlanner(
                     else pkg_dir
                 )
                 u.Cli.info(f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}")
-            plan, receipt = self._isolated_plan(pkg_dir, dir_exports=dir_exports)
             package_key = str(pkg_dir.resolve())
+            plan = self._source_plan_cache.get(package_key)
+            if plan is None:
+                plan, receipt = self._isolated_plan(pkg_dir, dir_exports=dir_exports)
+            else:
+                receipt = self.source_receipt(pkg_dir)
+                self.rope_workspace.rope_project.replay_source_consumption(receipt)
             self._source_plan_cache[package_key] = plan
             self._plan_receipts[package_key] = receipt
             if report_progress:
@@ -169,19 +174,34 @@ class FlextInfraCodegenLazyInitPlanner(
         with (
             project.source_consumption() as consumption,
             project.source_consumer() as consumer,
-            FlextInfraRopeWorkspace.open_workspace(
-                self.rope_workspace.repository_root,
-                rope_repository_root=self.rope_workspace.rope_repository_root,
-                source_project=consumer,
-                workspace_index=self.rope_workspace.workspace_index,
-                index_receipt=self.rope_workspace.source_index_receipt,
-            ) as workspace,
         ):
+            # Reuse the existing workspace instead of creating a new one per
+            # package; the consumer context above already isolates this pass's
+            # source observations while the shared workspace avoids repeated
+            # Rope indexing and cache reconstruction.
+            workspace = self.rope_workspace
             planner = type(self)(rope_workspace=workspace, lazy_init=self.lazy_init)
-            planner._source_plan_cache.update(self._source_plan_cache)
-            planner._plan_receipts.update(self._plan_receipts)
+            planner.seed_source_plans(self._source_plan_cache, self._plan_receipts)
+            # Seed every planner cache so identical structural and alias
+            # analysis is never repeated across the 57+ package passes.
+            planner._module_exports_cache.update(self._module_exports_cache)
+            planner._package_exports_cache.update(self._package_exports_cache)
+            planner._source_exports_cache.update(self._source_exports_cache)
+            planner._parent_package_cache.update(self._parent_package_cache)
+            planner._module_file_by_name.update(self._module_file_by_name)
+            planner._project_layout_cache.update(self._project_layout_cache)
+            planner._collision_count = self._collision_count
             plan = planner.build_plan(pkg_dir, dir_exports=dir_exports)
-            self._collision_count += planner._collision_count
+            self._collision_count += planner.collision_count
+            # Propagate newly populated caches back to the shared parent.
+            self._module_exports_cache.update(planner._module_exports_cache)
+            self._package_exports_cache.update(planner._package_exports_cache)
+            self._source_exports_cache.update(planner._source_exports_cache)
+            self._source_plan_cache.update(planner._source_plan_cache)
+            self._plan_receipts.update(planner._plan_receipts)
+            self._parent_package_cache.update(planner._parent_package_cache)
+            self._module_file_by_name.update(planner._module_file_by_name)
+            self._project_layout_cache.update(planner._project_layout_cache)
         receipt = consumption.receipt()
         return plan.model_copy(
             update={
@@ -190,6 +210,25 @@ class FlextInfraCodegenLazyInitPlanner(
                 "source_query_topology": receipt.source_query_topology,
             }
         ), receipt
+
+    @property
+    def collision_count(self) -> int:
+        """The export collisions observed by this isolated planner."""
+        return self._collision_count
+
+    def seed_source_plans(
+        self,
+        plans: t.MappingKV[str, m.Infra.LazyInitPlan],
+        receipts: t.MappingKV[str, m.Infra.CodegenPhaseAnalysis],
+    ) -> None:
+        """Seed prior package decisions without copying native semantic caches."""
+        self._source_plan_cache.update(plans)
+        self._plan_receipts.update(receipts)
+
+    @property
+    def source_plans(self) -> t.MappingKV[str, m.Infra.LazyInitPlan]:
+        """Expose immutable decisions, never native semantic cache objects."""
+        return self._source_plan_cache
 
     def source_receipt(self, package_dir: Path) -> m.Infra.CodegenPhaseAnalysis:
         """Return only the sealed receipt minted for an actual package decision.
@@ -462,8 +501,44 @@ class FlextInfraCodegenLazyInitPlanner(
             plan = plan.model_copy(
                 update={"ownership": "generator", "disposition": "planned"},
             )
+        self._consume_exported_bases(plan)
         self._source_plan_cache[str(plan.context.pkg_dir.resolve())] = plan
         return plan
+
+    def _consume_exported_bases(self, plan: m.Infra.LazyInitPlan) -> None:
+        """Attribute native class ancestry before sealing a package's source receipt.
+
+        Explicit export-name inventories do not evaluate Rope's lazy base bindings.
+        Resolve only this package's published local bindings; child decisions already
+        replay their own receipts, and unrelated supplier modules are not traversed.
+
+        Raises:
+            ValueError: A published dependency source has no workspace resource.
+
+        """
+        project = self.rope_workspace.rope_project
+        pending: list[p.Infra.RopePyObject] = []
+        for module_name, name in dict.fromkeys(plan.lazy_map.values()):
+            source = self._module_file(module_name)
+            if source is None or source.parent != plan.context.pkg_dir:
+                continue
+            resource = self.rope_workspace.resource(source)
+            if resource is None:
+                msg = f"unindexed publication dependency source: {source}"
+                raise ValueError(msg)
+            module = u.Infra.resolve_pymodule(project, resource).get_module()
+            binding = module.get_attributes().get(name)
+            if binding is not None:
+                pending.append(binding.get_object())
+        visited: set[int] = set()
+        while pending:
+            owner = pending.pop()
+            if u.Infra.instance_object(owner):
+                owner = owner.get_type()
+            if not u.Infra.abstract_class(owner) or id(owner) in visited:
+                continue
+            visited.add(id(owner))
+            pending.extend(owner.get_superclasses())
 
     @override
     def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext:

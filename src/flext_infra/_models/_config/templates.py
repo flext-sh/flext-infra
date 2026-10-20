@@ -62,10 +62,10 @@ class FlextInfraConfigModelsTemplates:
                 The normalized additional settings mapping.
 
             """
-            normalized: dict = {}
+            normalized: t.JsonDict = {}
             for key, entry in value.items():
                 if isinstance(entry, list):
-                    seen: list = []
+                    seen: t.JsonValueList = []
                     for item in entry:
                         if item not in seen:
                             seen.append(item)

@@ -11,6 +11,7 @@ from collections.abc import Callable
 from os.path import commonpath
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import MappingProxyType
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen import (
@@ -160,6 +161,56 @@ class FlextInfraStagedPackage:
         return r[dict[Path, str | None]].ok(updates)
 
     @classmethod
+    def seal_sources(
+        cls,
+        plan: m.Infra.StageSourcePlan,
+        updates: t.MappingKV[Path, str | None],
+    ) -> p.Result[m.Infra.StageSourcePlan]:
+        """Close preparation with original evidence and immutable desired bytes.
+
+        Returns:
+            The prepared receipt without any new live source observations.
+
+        """
+        if set(updates) != set(plan.updates):
+            return r[m.Infra.StageSourcePlan].fail(
+                "prepared source destinations changed"
+            )
+        current = cls.source_inputs_current(plan)
+        if current.failure:
+            return r[m.Infra.StageSourcePlan].from_failure(current)
+        return r[m.Infra.StageSourcePlan].ok(
+            plan.model_copy(
+                update={
+                    "updates": MappingProxyType(dict(updates)),
+                    "modes": MappingProxyType(dict(plan.modes)),
+                    "prepared_hashes": tuple(
+                        (
+                            path,
+                            None
+                            if content is None
+                            else u.Cli.sha256_bytes(content.encode(c.DEFAULT_ENCODING)),
+                        )
+                        for path, content in sorted(updates.items())
+                    ),
+                    "declared_files": tuple(
+                        file.model_copy(
+                            update={
+                                "desired_content": (
+                                    None
+                                    if (content := updates[file.path]) is None
+                                    else content.encode(c.DEFAULT_ENCODING)
+                                ),
+                                "prepared_sources": None,
+                            }
+                        )
+                        for file in plan.declared_files
+                    ),
+                }
+            )
+        )
+
+    @classmethod
     def materialize_sources(
         cls,
         plan: m.Infra.StageSourcePlan,
@@ -240,81 +291,158 @@ class FlextInfraStagedPackage:
         workspace: Path,
         updates: t.MappingKV[Path, str | None],
         *,
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
-        workspaces: t.VariadicTuple[Path] = (),
-        modes: t.MappingKV[Path, int] | None = None,
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+        options: m.Infra.StageSourceOptions | None = None,
     ) -> p.Result[m.Infra.StageSourcePlan]:
-        """Pin real project inputs for preview without writing live source.
+        """Authenticate original inputs before electing the candidate closure.
 
         Args:
             workspace: The root of the Git workspace containing the projects.
             updates: Desired content by live path; None retires an artifact.
-            inputs: Original caller snapshots, never replaced by a fresh observation.
-            workspaces: Explicit non-overlapping composition roots for a joint view.
-            modes: Desired file-effect modes derived from captured module move sources.
-            declared_files: Original native file/absence witnesses for
-            current virtual effects.
+            options: Original snapshots, composition roots and native file effects.
 
         Returns:
             A result wrapping the planned stage source or the first failure encountered.
 
         """
+        options = options or m.Infra.StageSourceOptions()
         result_type = r[m.Infra.StageSourcePlan]
         workspace = workspace.resolve()
-        validated = cls._validated_effect_modes(declared_files, updates, modes)
+        originals = m.Infra.CodemodBindingSnapshot(
+            states=(
+                *options.inputs,
+                *(
+                    state
+                    for file in options.declared_files
+                    for state in file.source_states
+                ),
+                *(
+                    file.before
+                    for file in options.declared_files
+                    if isinstance(file.before, m.Cli.AtomicFileState)
+                ),
+            ),
+        ).states
+        current = FlextInfraMiseArtifactsVerification.states_current(originals)
+        if current.failure:
+            return result_type.from_failure(current)
+        try:
+            directories, topology = u.Cli.atomic_merge_directory_query_receipts(
+                (
+                    *options.source_directories,
+                    *(
+                        item
+                        for file in options.declared_files
+                        for item in file.source_directories
+                    ),
+                ),
+                (
+                    *options.source_query_topology,
+                    *(
+                        item
+                        for file in options.declared_files
+                        for item in file.source_query_topology
+                    ),
+                ),
+            )
+            queried = u.Cli.atomic_verify_directory_queries(directories, topology)
+            if queried.failure:
+                return result_type.from_failure(queried)
+        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+            return result_type.fail(str(exc), exception=exc)
+        validated = cls._validated_effect_modes(
+            options.declared_files, updates, options.modes
+        )
         if validated.failure:
             return result_type.from_failure(validated)
         modes = validated.value
-        if workspaces:
+        if options.workspaces:
             return cls._composed_scope_plan(
                 updates,
-                inputs,
-                workspaces,
+                originals,
+                options.workspaces,
                 modes,
-                declared_files,
+                options.declared_files,
+                directories,
+                topology,
             )
-        discovered = cls._normalized_updates(
-            workspace,
-            updates,
-        ).flat_map(
-            lambda normalized: cls._workspace_layouts(workspace).map(
-                lambda layouts: (normalized, layouts),
-            )
-        )
-        if discovered.failure:
-            return result_type.from_failure(discovered)
-        normalized, layouts = discovered.value
-        pinned = cls._pinned_source_closure(workspace, normalized, layouts, inputs)
-        if pinned.failure:
-            return result_type.from_failure(pinned)
-        selected, states = pinned.value
-        return result_type.ok(
-            m.Infra.StageSourcePlan(
-                workspace=workspace,
-                roots=tuple(
-                    dict.fromkeys((
-                        workspace,
-                        *(item.project_root for item in selected),
-                    ))
+        root = u.Cli.atomic_plan_directory_chain(workspace)
+        if root.failure:
+            return result_type.from_failure(root)
+        try:
+            with u.Infra.facade_source_project(
+                workspace,
+                declared_files=options.declared_files,
+                source_states=originals,
+                planned_sources=updates,
+                project_roots=tuple(
+                    dict.fromkeys(
+                        file.project
+                        for file in options.declared_files
+                        if file.project.is_relative_to(workspace)
+                    )
                 ),
-                inputs=tuple(states.values()),
-                updates=normalized,
-                modes=modes,
-                declared_files=cls._declared_source_effects(
-                    workspace,
-                    normalized,
-                    states,
-                    modes,
-                    declared_files,
-                ),
-                layouts=tuple(selected),
-                workspace_packages=tuple(sorted(layouts)),
-            )
-        )
+            ) as (source_project, _, _):
+                discovered = cls._normalized_updates(workspace, updates).flat_map(
+                    lambda normalized: cls._workspace_layouts(
+                        workspace, source_project=source_project
+                    ).map(lambda layouts: (normalized, layouts))
+                )
+                if discovered.failure:
+                    return result_type.from_failure(discovered)
+                normalized, layouts = discovered.value
+                pinned = cls._pinned_source_closure(
+                    workspace, normalized, layouts, originals, source_project
+                )
+                if pinned.failure:
+                    return result_type.from_failure(pinned)
+                selected, states = pinned.value
+                states = {
+                    state.path: state
+                    for state in m.Infra.CodemodBindingSnapshot(
+                        states=(
+                            *states.values(),
+                            *source_project.consumed_source_states(),
+                        )
+                    ).states
+                }
+                directories, topology = u.Cli.atomic_merge_directory_query_receipts(
+                    (
+                        *directories,
+                        *source_project.consumed_source_directories(),
+                    ),
+                    (
+                        root.value,
+                        *topology,
+                        *source_project.consumed_source_topology(),
+                    ),
+                )
+                source_project.verify_source_states()
+                plan = m.Infra.StageSourcePlan(
+                    workspace=workspace,
+                    roots=tuple(
+                        dict.fromkeys((
+                            workspace,
+                            *(item.project_root for item in selected),
+                        ))
+                    ),
+                    inputs=tuple(states.values()),
+                    source_directories=directories,
+                    source_query_topology=topology,
+                    updates=MappingProxyType(dict(normalized)),
+                    modes=MappingProxyType(dict(modes)),
+                    declared_files=cls._declared_source_effects(
+                        workspace, normalized, states, modes, options.declared_files
+                    ),
+                    layouts=tuple(selected),
+                    workspace_packages=tuple(sorted(layouts)),
+                )
+                return cls.source_inputs_current(plan).map(lambda _: plan)
+        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+            return result_type.fail(str(exc), exception=exc)
 
-    @staticmethod
+    @classmethod
     def _validated_effect_modes(
+        cls,
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
         updates: t.MappingKV[Path, str | None],
         modes: t.MappingKV[Path, int] | None,
@@ -342,16 +470,12 @@ class FlextInfraStagedPackage:
         }
         if modes is not None:
             effect_modes.update(modes)
-        modes = effect_modes
-        for plan in declared_files:
-            if (
-                isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan)
-                and u.Cli.atomic_plan_directory_chain(plan.before.target) != plan.before
-            ):
-                return result_type.fail(f"virtual source ancestry changed: {plan.path}")
-        if modes is not None and not set(modes).issubset(updates):
+        ancestry = cls._declared_ancestry_current(declared_files)
+        if ancestry.failure:
+            return result_type.from_failure(ancestry)
+        if not set(effect_modes).issubset(updates):
             return result_type.fail("candidate mode has no declared file effect")
-        return result_type.ok(modes)
+        return result_type.ok(effect_modes)
 
     @classmethod
     def _composed_scope_plan(
@@ -361,6 +485,8 @@ class FlextInfraStagedPackage:
         workspaces: t.VariadicTuple[Path],
         modes: t.MappingKV[Path, int],
         declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory],
+        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan],
     ) -> p.Result[m.Infra.StageSourcePlan]:
         """Compose one joint plan from explicit non-overlapping scope roots.
 
@@ -370,6 +496,8 @@ class FlextInfraStagedPackage:
             workspaces: Explicit non-overlapping composition roots for a joint view.
             modes: Validated file-effect modes covering every declared effect.
             declared_files: Original native file/absence witnesses.
+            source_directories: Original native namespace observations.
+            source_query_topology: Original native physical root and ancestry proofs.
 
         Returns:
             The composed joint plan, or the first scope composition failure.
@@ -394,18 +522,20 @@ class FlextInfraStagedPackage:
                     for path, source in updates.items()
                     if path.is_relative_to(root)
                 },
-                inputs=tuple(
-                    state for state in inputs if state.path.is_relative_to(root)
-                ),
-                modes=None
-                if modes is None
-                else {
-                    path: mode
-                    for path, mode in modes.items()
-                    if path.is_relative_to(root)
-                },
-                declared_files=tuple(
-                    file for file in declared_files if file.path.is_relative_to(root)
+                options=m.Infra.StageSourceOptions(
+                    inputs=inputs,
+                    modes={
+                        path: mode
+                        for path, mode in modes.items()
+                        if path.is_relative_to(root)
+                    },
+                    declared_files=tuple(
+                        file
+                        for file in declared_files
+                        if file.path.is_relative_to(root)
+                    ),
+                    source_directories=source_directories,
+                    source_query_topology=source_query_topology,
                 ),
             )
             if planned.failure:
@@ -421,6 +551,10 @@ class FlextInfraStagedPackage:
                     return result_type.fail(
                         f"ambiguous elected candidate package: {layout.package_name}"
                     )
+        directories, topology = u.Cli.atomic_merge_directory_query_receipts(
+            tuple(item for plan in plans for item in plan.source_directories),
+            tuple(item for plan in plans for item in plan.source_query_topology),
+        )
         return result_type.ok(
             m.Infra.StageSourcePlan(
                 workspace=Path(commonpath(scopes)),
@@ -431,14 +565,16 @@ class FlextInfraStagedPackage:
                 inputs=m.Infra.CodemodBindingSnapshot(
                     states=tuple(state for plan in plans for state in plan.inputs)
                 ).states,
-                updates={
+                source_directories=directories,
+                source_query_topology=topology,
+                updates=MappingProxyType({
                     path: source
                     for plan in plans
                     for path, source in plan.updates.items()
-                },
-                modes={
+                }),
+                modes=MappingProxyType({
                     path: mode for plan in plans for path, mode in plan.modes.items()
-                },
+                }),
                 declared_files=tuple(
                     file for plan in plans for file in plan.declared_files
                 ),
@@ -456,16 +592,18 @@ class FlextInfraStagedPackage:
         normalized: t.MappingKV[Path, str | None],
         layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout],
         inputs: t.VariadicTuple[m.Cli.AtomicFileState],
+        source_project: p.Infra.RopeProject,
     ) -> p.Result[
         t.Pair[list[m.Infra.RopeProjectLayout], dict[Path, m.Cli.AtomicFileState]]
     ]:
-        """Pin every governed source of one workspace into its states mapping.
+        """Extend the open closure without replacing an authenticated original.
 
         Args:
             workspace: Resolved root of the Git workspace containing the projects.
             normalized: Elected physical destinations of the desired sources.
             layouts: Retained provider layouts keyed by package name.
             inputs: Original caller snapshots, never replaced by a fresh observation.
+            source_project: The authenticated open source epoch of this repository.
 
         Returns:
             The elected layouts with their pinned source states.
@@ -478,7 +616,9 @@ class FlextInfraStagedPackage:
             ]
         ]
         selected: list[m.Infra.RopeProjectLayout] = []
-        states: dict[Path, m.Cli.AtomicFileState] = {}
+        states: dict[Path, m.Cli.AtomicFileState] = {
+            state.path: state for state in inputs
+        }
         source_paths = dict.fromkeys((
             *normalized,
             *(
@@ -505,7 +645,7 @@ class FlextInfraStagedPackage:
                 # A common Python source needs the native gates, not a rope
                 # closure: repair groups it by the workspace cwd, so only its
                 # own original bytes are pinned here.
-                unowned = cls._pin_unowned_source(path, states)
+                unowned = cls._pin_unowned_source(path, states, source_project)
                 if unowned.failure:
                     return result_type.from_failure(unowned)
                 continue
@@ -517,17 +657,21 @@ class FlextInfraStagedPackage:
                 layouts,
                 states,
                 updates=normalized,
+                source_project=source_project,
             )
             if pinned.failure:
                 return result_type.from_failure(pinned)
             selected.extend(pinned.value)
-        metadata = cls._pin_workspace_metadata(workspace, states)
+        metadata = cls._pin_workspace_metadata(
+            workspace, states, source_project=source_project
+        )
         if metadata.failure:
             return result_type.from_failure(metadata)
-        verified = cls._verified_input_originals(states, inputs, normalized)
+        verified = FlextInfraMiseArtifactsVerification.states_current(
+            tuple(states.values())
+        )
         if verified.failure:
             return result_type.from_failure(verified)
-        states.update((state.path, state) for state in inputs)
         return result_type.ok((selected, states))
 
     @staticmethod
@@ -586,44 +730,6 @@ class FlextInfraStagedPackage:
                     )
                 )
         return tuple(effects)
-
-    @staticmethod
-    def _verified_input_originals(
-        states: t.MappingKV[Path, m.Cli.AtomicFileState],
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
-        normalized: t.MappingKV[Path, str | None],
-    ) -> p.Result[bool]:
-        """Verify every caller input kept its pinned original identity.
-
-        Args:
-            states: Freshly pinned states keyed by path.
-            inputs: Original caller snapshots to verify.
-            normalized: Rewrite targets of the candidate.
-
-        Returns:
-            Whether every original input kept its identity, or the first
-            identity failure.
-
-        """
-        for before in inputs:
-            observed = states.get(before.path)
-            if observed is None:
-                # Evidence-only input: never pinned (installed packages and
-                # scratch views live outside every rope layout), so it owns
-                # no fresh observation. A rewrite target always has one.
-                if before.path in normalized:
-                    return r[bool].fail(
-                        f"candidate original source identity changed: {before.path}",
-                    )
-                continue
-            if observed != before:
-                return r[bool].fail(
-                    f"candidate original source identity changed: {before.path}; "
-                    f"content_changed={observed.content != before.content}; "
-                    f"expected={before.model_dump_json(exclude={'content'})}; "
-                    f"observed={observed.model_dump_json(exclude={'content'})}",
-                )
-        return r[bool].ok(value=True)
 
     @staticmethod
     def _normalized_updates(
@@ -724,76 +830,49 @@ class FlextInfraStagedPackage:
         current = FlextInfraMiseArtifactsVerification.states_current(plan.inputs)
         if current.failure:
             return current
-        layouts = {layout.package_name: layout for layout in plan.layouts}
-        owners: set[Path] = set()
-        for path in plan.updates:
-            owner = cls._source_layout(path, layouts)
-            if not owner.failure:
-                owners.add(owner.value.project_root)
-        actual = cls._actual_source_inventory(plan, owners)
-        if actual.failure:
-            return r[bool].from_failure(actual)
-        ancestry = cls._declared_ancestry_current(plan)
+        ancestry = cls._declared_ancestry_current(
+            plan.declared_files, plan.directory_publications
+        )
         if ancestry.failure:
             return r[bool].from_failure(ancestry)
-        expected = {item.path for item in plan.inputs if item.content is not None}
-        # Every original (including explicitly consulted external inputs) was
-        # verified above; inventory additionally rejects newly appearing members.
-        if not actual.value.issubset(expected):
-            return r[bool].fail("candidate original source inventory changed")
-        return r[bool].ok(value=True)
-
-    @classmethod
-    def _actual_source_inventory(
-        cls,
-        plan: m.Infra.StageSourcePlan,
-        owners: set[Path],
-    ) -> p.Result[set[Path]]:
-        """Collect the physical source paths the governed inventory admits.
-
-        Args:
-            plan: The planned candidate sources pinned to original states.
-            owners: Project roots whose rewrite targets elect governed layouts.
-
-        Returns:
-            Every existing source and metadata path of the candidate.
-
-        """
-        result_type = r[set[Path]]
-        actual: set[Path] = set()
-        for layout in plan.layouts:
-            paths = cls._source_paths(layout, governed=layout.project_root in owners)
-            if paths.failure:
-                return result_type.from_failure(paths)
-            actual.update(path for path in paths.value if path.is_file())
-        actual.update(path for path in plan.updates if path.is_file())
-        for workspace in plan.workspaces or (plan.workspace,):
-            metadata = cls._workspace_metadata_paths(workspace)
-            if metadata.failure:
-                return result_type.from_failure(metadata)
-            actual.update(path for path in metadata.value if path.is_file())
-        return result_type.ok(actual)
+        try:
+            return u.Cli.atomic_verify_directory_queries(
+                plan.source_directories,
+                plan.source_query_topology,
+                directory_publications=plan.directory_publications,
+            )
+        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+            return r[bool].fail(str(exc), exception=exc)
 
     @staticmethod
     def _declared_ancestry_current(
-        plan: m.Infra.StageSourcePlan,
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        directory_publications: t.VariadicTuple[m.Cli.AtomicDirectoryState] = (),
     ) -> p.Result[bool]:
         """Reprove every declared virtual effect's directory-chain ancestry.
 
         Args:
-            plan: The planned candidate sources pinned to original states.
+            declared_files: Candidate effects pinned to their original ancestry.
+            directory_publications: The current state of published directories.
 
         Returns:
-            Acceptance while every declared preimage keeps its ancestry.
+            Acceptance while every declared preimage keeps its ancestry, or
+            the original directory planning failure.
 
         """
-        for effect in plan.declared_files:
-            if (
-                isinstance(effect.before, m.Cli.AtomicDirectoryChainPlan)
-                and u.Cli.atomic_plan_directory_chain(effect.before.target)
-                != effect.before
-            ):
-                return r[bool].fail(f"virtual source ancestry changed: {effect.path}")
+        for effect in declared_files:
+            if not isinstance(effect.before, m.Cli.AtomicDirectoryChainPlan):
+                continue
+            try:
+                verified = u.Cli.atomic_verify_directory_queries(
+                    (),
+                    (effect.before,),
+                    directory_publications=directory_publications,
+                )
+            except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+                return r[bool].fail(str(exc), exception=exc)
+            if verified.failure:
+                return r[bool].from_failure(verified)
         return r[bool].ok(value=True)
 
     @staticmethod
@@ -848,6 +927,8 @@ class FlextInfraStagedPackage:
     @staticmethod
     def _workspace_layouts(
         workspace: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[t.MutableMappingKV[str, m.Infra.RopeProjectLayout]]:
         """Retain Python providers independently of their generation participation.
 
@@ -872,7 +953,7 @@ class FlextInfraStagedPackage:
             )
             if applicability.failure:
                 return result_type.from_failure(applicability)
-            layout = u.Infra.layout(repository)
+            layout = u.Infra.layout(repository, rope_project=source_project)
             if layout is not None:
                 if layout.package_name in layouts:
                     return result_type.fail(
@@ -886,12 +967,14 @@ class FlextInfraStagedPackage:
         layout: m.Infra.RopeProjectLayout,
         *,
         governed: bool = False,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[list[Path]]:
         """Collect the physical paths of one layout's governed source closure.
 
         Args:
             layout: The provider layout whose source paths are collected.
             governed: Whether rewrite targets elect the governed closure walk.
+            source_project: The open native epoch, absent for package previews.
 
         Returns:
             The collected physical paths, or the first symlink failure.
@@ -920,16 +1003,22 @@ class FlextInfraStagedPackage:
                     for target in u.Infra.discover_python_targets(
                         layout.project_root,
                         workspace_excluded_top_dirs=frozenset(),
+                        source_project=source_project,
                     )
                 ),
             )
         walked = FlextInfraStagedPackage._physical_directory_paths(
             directories,
             governed=governed,
+            source_project=source_project,
         )
         if walked.failure:
             return r[list[Path]].from_failure(walked)
         paths.extend(walked.value)
+        if source_project is not None:
+            for path in paths:
+                source_project.source_children(path.parent, follow_aliases=False)
+                source_project.source_query(path, "isfile")
         return r[list[Path]].ok(sorted(set(paths)))
 
     @staticmethod
@@ -937,12 +1026,14 @@ class FlextInfraStagedPackage:
         directories: t.VariadicTuple[Path],
         *,
         governed: bool,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[list[Path]]:
         """Walk declared directories rejecting symlinks and excluded members.
 
         Args:
             directories: Physical directories admitted for the closure.
             governed: Whether the governed walk applies exclusion pruning.
+            source_project: Existing native namespace authority of the open epoch.
 
         Returns:
             The walked directory paths, or the first symlink failure.
@@ -954,15 +1045,25 @@ class FlextInfraStagedPackage:
                 return r[list[Path]].fail(
                     f"candidate source directory is a symlink: {directory}"
                 )
-            if directory.is_dir():
-                if not governed:
+            is_directory = (
+                directory.is_dir()
+                if source_project is None
+                else source_project.source_query(directory, "isdir")
+            )
+            if is_directory:
+                if not governed and source_project is None:
                     paths.extend(
                         path
                         for path in directory.rglob("*")
                         if "__pycache__" not in path.parts
                     )
                     continue
-                for parent, children, files in directory.walk():
+                walk = (
+                    directory.walk()
+                    if source_project is None
+                    else source_project.source_walk(directory)
+                )
+                for parent, children, files in walk:
                     for name in (*children, *files):
                         if (parent / name).is_symlink():
                             return r[list[Path]].fail(
@@ -971,9 +1072,19 @@ class FlextInfraStagedPackage:
                     children[:] = [
                         name
                         for name in children
-                        if name not in config.Infra.codegen.analysis_excluded_dirs
-                        and not name.startswith(".")
-                        and not (parent / name / c.PYPROJECT_FILENAME).is_file()
+                        if (not governed and name != "__pycache__")
+                        or (
+                            governed
+                            and name not in config.Infra.codegen.analysis_excluded_dirs
+                            and not name.startswith(".")
+                            and not (
+                                (parent / name / c.PYPROJECT_FILENAME).is_file()
+                                if source_project is None
+                                else source_project.source_query(
+                                    parent / name / c.PYPROJECT_FILENAME, "isfile"
+                                )
+                            )
+                        )
                     ]
                     paths.extend(parent / name for name in files)
             elif directory.is_file():
@@ -1020,20 +1131,41 @@ class FlextInfraStagedPackage:
         *,
         updates: t.MappingKV[Path, str | None] | None = None,
         originals: t.MappingKV[Path, m.Cli.AtomicFileState] | None = None,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[tuple[str, ...]]:
-        """Pin one layout's sources and collect their runtime imports.
+        """Pin declared checker inputs and collect their package dependencies.
+
+        A rewritten project receives the full native checker, not a file gate.
+        Its non-effect sources therefore remain positive admission inputs.
 
         Args:
             layout: The provider layout whose sources are pinned.
             states: Mutable pinned state mapping extended by each source.
             updates: Desired sources keyed by live path; None retires an artifact.
             originals: Original caller receipts required for every member.
+            source_project: The open native epoch; sealed replay uses originals only.
 
         Returns:
             The runtime imports of the pinned sources.
 
         """
-        paths = cls._source_paths(layout, governed=bool(updates))
+        paths = (
+            r[list[Path]].ok(
+                sorted(
+                    path
+                    for path in originals
+                    if path == layout.project_root / c.PYPROJECT_FILENAME
+                    or path.is_relative_to(layout.package_dir)
+                    or path.is_relative_to(
+                        layout.project_root / c.Infra.CODEGEN_CONFIG_DIR
+                    )
+                )
+            )
+            if originals is not None
+            else cls._source_paths(
+                layout, governed=bool(updates), source_project=source_project
+            )
+        )
         if paths.failure:
             return r[tuple[str, ...]].from_failure(paths)
         modules: list[str] = []
@@ -1041,15 +1173,27 @@ class FlextInfraStagedPackage:
         if updates is not None:
             source_paths.update(updates)
         for path in sorted(source_paths):
-            if path.is_symlink():
+            if originals is None and path.is_symlink():
                 return r[tuple[str, ...]].fail(f"candidate source is a symlink: {path}")
-            if not path.is_file() and (updates is None or path not in updates):
+            present = (
+                path.is_file()
+                if originals is None
+                else path in originals and originals[path].content is not None
+            )
+            if not present and (updates is None or path not in updates):
                 continue
-            observed = cls._pinned_source_state(path, updates, originals)
-            if observed.failure:
-                return r[tuple[str, ...]].from_failure(observed)
-            state = observed.value
-            states[path] = state
+            state = states.get(path)
+            if state is None:
+                if source_project is not None:
+                    state = source_project.source_state(
+                        path, required=updates is None or path not in updates
+                    )
+                else:
+                    observed = cls._pinned_source_state(path, updates, originals)
+                    if observed.failure:
+                        return r[tuple[str, ...]].from_failure(observed)
+                    state = observed.value
+                states[path] = state
             content = state.content
             if updates is not None and path in updates:
                 desired = updates[path]
@@ -1102,6 +1246,7 @@ class FlextInfraStagedPackage:
     def _pin_unowned_source(
         path: Path,
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+        source_project: p.Infra.RopeProject,
     ) -> p.Result[bool]:
         """Pin one common source outside any package closure by its own receipt.
 
@@ -1111,10 +1256,9 @@ class FlextInfraStagedPackage:
         """
         if path.is_symlink():
             return r[bool].fail(f"candidate source is a symlink: {path}")
-        observed = u.Cli.atomic_read_binary_file_state(path, required=False)
-        if observed.failure:
-            return r[bool].from_failure(observed)
-        states[path] = observed.value
+        if path in states:
+            return r[bool].ok(value=True)
+        states[path] = source_project.source_state(path, required=False)
         return r[bool].ok(value=True)
 
     @classmethod
@@ -1126,6 +1270,7 @@ class FlextInfraStagedPackage:
         *,
         updates: t.MappingKV[Path, str | None] | None = None,
         originals: t.MappingKV[Path, m.Cli.AtomicFileState] | None = None,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[t.VariadicTuple[m.Infra.RopeProjectLayout]]:
         """Pin one layout's native closure and return its elected layouts.
 
@@ -1135,6 +1280,7 @@ class FlextInfraStagedPackage:
             states: Mutable pinned state mapping extended by the closure.
             updates: Desired sources keyed by live path; None retires an artifact.
             originals: Original caller receipts required for every closure member.
+            source_project: The native epoch extending the initial closure, if open.
 
         Returns:
             The elected layouts of the traversed dependency closure.
@@ -1157,7 +1303,13 @@ class FlextInfraStagedPackage:
                         ].from_failure(owner)
                     if owner.value.project_root == layout.project_root:
                         owned[path] = content
-            pinned = cls._pin_layout(layout, states, updates=owned, originals=originals)
+            pinned = cls._pin_layout(
+                layout,
+                states,
+                updates=owned,
+                originals=originals,
+                source_project=source_project,
+            )
             if pinned.failure:
                 return r[t.VariadicTuple[m.Infra.RopeProjectLayout]].from_failure(
                     pinned,
@@ -1218,12 +1370,17 @@ class FlextInfraStagedPackage:
     def _pin_workspace_metadata(
         workspace: Path,
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[bool]:
         paths = FlextInfraStagedPackage._workspace_metadata_paths(workspace)
         if paths.failure:
             return r[bool].from_failure(paths)
         for path in paths.value:
             if path in states:
+                continue
+            if source_project is not None:
+                states[path] = source_project.source_state(path, required=False)
                 continue
             observed = u.Cli.atomic_read_binary_file_state(path, required=False)
             if observed.failure:

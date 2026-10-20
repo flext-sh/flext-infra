@@ -219,12 +219,12 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         tm.that(changes, eq=(f"created {snapshot}",))
         tm.ok(FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, (rule,)))
         snapshots = tm.ok(u.Cli.yaml_safe_load(snapshot))["snapshots"]
-        assert isinstance(snapshots, Mapping)
+        tm.that(isinstance(snapshots, Mapping), truth=True)
         for source, projection in snapshots.items():
-            assert isinstance(source, str)
-            assert isinstance(projection, Mapping)
+            tm.that(isinstance(source, str), truth=True)
+            tm.that(isinstance(projection, Mapping), truth=True)
             fixed = projection["fixed"]
-            assert isinstance(fixed, str)
+            tm.that(isinstance(fixed, str), truth=True)
             _ = ast.parse(source)
             _ = ast.parse(fixed)
         tm.that((tmp_path / c.Infra.CODEMOD_CONFIG_RELPATH).exists(), eq=False)
@@ -265,13 +265,13 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         snapshots = tm.ok(u.Cli.yaml_safe_load(self._snapshot(tmp_path, rule_id)))[
             "snapshots"
         ]
-        assert isinstance(snapshots, Mapping)
+        tm.that(isinstance(snapshots, Mapping), truth=True)
         tests = tmp_path / "tests"
         tm.ok(u.Cli.ensure_dir(tests))
         sample = tests / "test_consumer.py"
         for source, snapshot in snapshots.items():
-            assert isinstance(source, str)
-            assert isinstance(snapshot, Mapping)
+            tm.that(isinstance(source, str), truth=True)
+            tm.that(isinstance(snapshot, Mapping), truth=True)
             tm.that("fixed" in snapshot, eq=False)
             _ = ast.parse(source)
             tm.ok(u.Cli.atomic_write_text_file(sample, source))
@@ -493,12 +493,12 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         snapshots = tm.ok(u.Cli.yaml_safe_load(self._snapshot(tmp_path, rule_id)))[
             "snapshots"
         ]
-        assert isinstance(snapshots, Mapping)
+        tm.that(isinstance(snapshots, Mapping), truth=True)
         runtime_consumers = 0
         for snapshot in snapshots.values():
-            assert isinstance(snapshot, Mapping)
+            tm.that(isinstance(snapshot, Mapping), truth=True)
             fixed = snapshot["fixed"]
-            assert isinstance(fixed, str)
+            tm.that(isinstance(fixed, str), truth=True)
             _ = ast.parse(fixed)
             if "class Payload(m.ArbitraryTypesModel):" in fixed:
                 outcome = tm.ok(u.Cli.run_raw((sys.executable, "-c", fixed)))
@@ -570,12 +570,12 @@ class TestsFlextInfraModRuleFixtureSnapshots:
                 snapshots = tm.ok(
                     u.Cli.yaml_safe_load(self._snapshot(root, rule_id)),
                 )["snapshots"]
-                assert isinstance(snapshots, Mapping)
+                tm.that(isinstance(snapshots, Mapping), truth=True)
                 tm.that(len(snapshots), eq=1)
                 snapshot = next(iter(snapshots.values()))
-                assert isinstance(snapshot, Mapping)
+                tm.that(isinstance(snapshot, Mapping), truth=True)
                 fixed = snapshot["fixed"]
-                assert isinstance(fixed, str)
+                tm.that(isinstance(fixed, str), truth=True)
                 source = fixed
             _ = ast.parse(source)
             staged.append((root, demo, rule, rule_id))
@@ -655,25 +655,25 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         tm.ok(FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, tuple(rules)))
         for rule in rules[1:]:
             rule_id = tm.ok(u.Cli.yaml_safe_load(rule))["id"]
-            assert isinstance(rule_id, str)
+            tm.that(isinstance(rule_id, str), truth=True)
             cases = tm.ok(
                 u.Cli.yaml_safe_load(
                     self._catalog(tmp_path) / "tests" / f"{rule_id}-test.yml",
                 ),
             )["valid"]
-            assert isinstance(cases, list)
+            tm.that(isinstance(cases, list), truth=True)
             for source in cases:
-                assert isinstance(source, str)
+                tm.that(isinstance(source, str), truth=True)
                 _ = ast.parse(source)
             snapshots = tm.ok(u.Cli.yaml_safe_load(self._snapshot(tmp_path, rule_id)))[
                 "snapshots"
             ]
-            assert isinstance(snapshots, Mapping)
+            tm.that(isinstance(snapshots, Mapping), truth=True)
             fixed_cases = ""
             for snapshot in snapshots.values():
-                assert isinstance(snapshot, Mapping)
+                tm.that(isinstance(snapshot, Mapping), truth=True)
                 fixed = snapshot["fixed"]
-                assert isinstance(fixed, str)
+                tm.that(isinstance(fixed, str), truth=True)
                 _ = ast.parse(fixed)
                 fixed_cases += "  - |\n" + "".join(
                     f"    {line}\n" for line in fixed.splitlines()
@@ -808,7 +808,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             pyproject.read_text(encoding=c.DEFAULT_ENCODING), "project"
         )
         version = project["version"]
-        assert isinstance(version, str)
+        tm.that(isinstance(version, str), truth=True)
         dependencies = u.type_adapter(TypeForm(t.StrSequence)).validate_python(
             project["dependencies"],
         )

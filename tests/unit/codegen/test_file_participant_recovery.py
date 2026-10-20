@@ -618,7 +618,7 @@ class TestsFlextInfraFileParticipantRecovery:
                 repository_root=view_root,
                 packages=(package.name,),
             ).execute(),
-            inputs=(before,),
+            options=m.Infra.CodegenSourcePreviewOptions(inputs=(before,)),
         )
         tm.ok(candidate)
         failed = candidate.value

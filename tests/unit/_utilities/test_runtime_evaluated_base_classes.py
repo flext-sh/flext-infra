@@ -573,7 +573,7 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
     )
     @pytest.mark.parametrize("initialized", [True, False])
     @pytest.mark.parametrize(
-        ("package_path", "module", "parts"),
+        "package_binding",
         [
             ("src/binding_contract", "binding_contract", "parts"),
             ("tests/unit", "tests.unit", "_parts"),
@@ -583,13 +583,12 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
         self,
         tmp_path: Path,
         import_statement: str,
-        package_path: str,
-        module: str,
-        parts: str,
+        package_binding: tuple[str, str, str],
         *,
         initialized: bool,
     ) -> None:
         """Private and namespace submodules do not require initializer exports."""
+        package_path, module, parts = package_binding
         package = tmp_path / package_path
         planned = {
             package / parts / "document.py": u.Tests.runtime_root_import()

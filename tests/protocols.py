@@ -28,22 +28,34 @@ class TestsFlextInfraProtocols(FlextTestsProtocols, FlextInfraProtocols):
             """Declared runner inputs consumed by the real profiling launcher."""
 
             @property
-            def repository_root(self) -> Path: ...
+            def repository_root(self) -> Path:
+                """Root directory of the repository being profiled."""
+                ...
 
             @property
-            def target(self) -> Path: ...
+            def target(self) -> Path:
+                """Selected test target within the repository."""
+                ...
 
             @property
-            def target_file(self) -> Path | None: ...
+            def target_file(self) -> Path | None:
+                """Explicit test file, when a single-file run is selected."""
+                ...
 
             @property
-            def reports(self) -> Path: ...
+            def reports(self) -> Path:
+                """Destination directory for profiling reports."""
+                ...
 
             @property
-            def testmon_db(self) -> Path: ...
+            def testmon_db(self) -> Path:
+                """Persistent testmon database used by the runner."""
+                ...
 
             @property
-            def started_at_monotonic(self) -> float: ...
+            def started_at_monotonic(self) -> float:
+                """Monotonic timestamp at the beginning of the profiling run."""
+                ...
 
         class NativeConsumer(Protocol):
             """Run an actual isolated Python consumer with explicit source inputs."""

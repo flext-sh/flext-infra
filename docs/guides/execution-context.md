@@ -197,6 +197,13 @@ base order declared in their configured private family. Protocol projection keep
 its consumer-based ownership resolution. The utility path delegates directly to
 the declaration planner. Static and runtime consumer checks retain their own
 import-failure verdicts.
+Generated protocol and model namespace assignments are derived output, not new
+contract declarations. When an assignment resolves to an exact inherited class,
+projection removes that binding and inherits the canonical private owners in C3
+order, including their declared overrides. A stale renamed alias cannot publish
+itself or shadow a different inherited contract. The generated ownership marker
+and native class identity are both required; unrelated namespace members remain
+unchanged, and contradictory authored class bindings still fail before publication.
 Generated Python imports use their absolute native package owner. The planner
 selects exports once; rendering groups those declarations without another
 name-based exclusion policy. Compact lazy-loader targets remain loader data.
@@ -638,6 +645,9 @@ configured view paths while the workspace supplies the UV binary and Python
 runtime. Final convergence reconciles those locks without advancing dependency
 references again. Only the elected workspace runtime receives an installation;
 member runtimes are not provisioned separately.
+Editable-supplier upgrades use that same member-lock stage without bumping or
+provisioning the root supplier's tools. Preserving the shared runtime's pins does
+not exempt a writable member's standalone lock from its declared tool manifest.
 It runs generation's producer half, relocks the projected manifests, reinstalls
 and verifies the resulting runtime before generation's activation half. A
 requirement or Mise self-management release that only the upgraded generator
@@ -711,6 +721,17 @@ with their existing editable policy. Authored native workspace declarations and
 custom sources are preserved rather than erased by a generic FLEXT rewrite.
 Regenerate the owner with `make gen` and update its locks with `make upg` when
 the declared composition changes.
+
+Resolver-wide source election is explicit policy in
+`Infra.codegen.toolchain.uv_override_dependencies`, not inferred from an installed
+SDK or a direct requirement. The strict library, project and local config layers
+append their declarations in that order. Rendering elects the last global override
+for each normalized distribution and marker, preserving other marker variants and
+native scoped tables. An editable supplier cannot replace the resolution root's
+global policy for a distribution. The same elected policy reaches package metadata
+and every native resolution view; no repository-specific resolver branch is needed.
+Unconfigured conflicting direct and transitive sources remain native UV failures.
+
 Runtime requirements are calculated from the target's import use through the native
 dependency analysis. Generation consumes the target's authenticated PEP 621
 projection; neither a project-name catalog nor an upstream dependency profile may
@@ -793,6 +814,19 @@ an explicitly declared root is not re-elected through Git attachment. Managed ba
 interpreter symlinks inside a physical environment are valid, but the candidate process
 must retain that environment's `sys.prefix`. A symlinked environment or an interpreter
 borrowed from another checkout fails before candidate checks or publication.
+
+The conflict-marker gate consumes the explicit `GateContext.candidate_files` inventory
+of an authenticated candidate when its runtime owner is explicit. A staged source tree
+does not contain a Git index. Ordinary checkout checks retain the tracked and
+unpublished Git inventory; both routes reject an empty inventory and use the same
+marker scanner.
+
+Pyright environment bindings come from `ToolingContextRequest.environment_dir`.
+Existing checkouts use the canonical runtime owner: attached members share their
+workspace environment, while independent checkouts and worktrees own theirs.
+Scaffolds declare their future local environment explicitly. The tooling context
+projects its directory name and a relative `venvPath`; analyzer-path phases preserve
+that binding.
 
 ## Mise toolchain
 
@@ -1221,6 +1255,20 @@ Selected functional gates remain blocking. `make check` fails when the selection
 contains no projects or when a selected project has no `pyproject.toml`; no project is
 skipped silently.
 
+`make check-pyright` runs the selected project's complete Pyright configuration
+through the native gate capture service and retains its raw report and exit status.
+From a workspace root, `make -f <member>/Makefile check-pyright` selects that
+member's declared configuration and the containing workspace's physical environment.
+It is a diagnosis verb; full `make check` remains the acceptance boundary.
+
+`make mod-types` applies the AST migrations declared by
+`make.type_contract_rules` to the complete selected project. The native AST engine
+verifies rule fixtures, resolves bindings, and repeats safe rewrites to its fixed
+point. Source models and protocols own the resulting contracts: consumers pass
+declared state models directly, and field defaults remain visible to both Pydantic
+and synthesized constructors. Required private attributes use their annotations;
+attributes with actual defaults or factories retain those declarations.
+
 Local runs, CI, and hooks derive their gates from the same active set: `CI=N make check`
 and `make check` without `CI` run the complete active set. `CI=Y make check` excludes
 only the declared `make.ci.local_check_gates` (Pyrefly remains in CI). The
@@ -1588,14 +1636,32 @@ source view.
 A nonempty admitted file phase with no required byte, permission, or directory
 effects publishes a fresh observation under the same root lease. It still verifies
 its producer, input and output identities, and rejects pending journals or foreign
-residue. It does not materialize a candidate source view or a publication staging
-tree. Equal desired bytes alone do not authorize this path.
+residue. It does not materialize a publication staging tree. Mandatory runtime
+admission still consumes the sealed candidate in its read-only view, including
+unchanged Python proposals. Equal desired bytes alone do not authorize this path.
+
+Generation seals the exact bytes proposed by its renderer, without running source
+repairs or the full workspace checker. Its physical runtime authentication, sealed
+import origins and runtime census remain mandatory; a negative census report is
+rejected even when the subprocess itself succeeded. Semantic publication explicitly
+selects normalization before sealing and adds every native default check inside
+the guarded candidate consumer. Reusing a sealed receipt never removes that
+operation's selected preparation or admission policy. Both operations retain
+source, membership, inode, candidate-tree, lease and journal verification. The
+independent `make check` surface continues to own its complete configured gates.
 
 Journal footprint inspection and authorization hold the same root journal lease
 as publication. Authorization observes the current journal under that lease;
 an earlier read-only snapshot does not become a global generation precondition.
-Planning releases the lease, then reports a newly authorized observation. Recovery
-and publication retain their own exact journal receipts and physical-state guards.
+The public footprint diagnostic authorizes the recorded effects against current
+physical participant policy, then returns that current observation with its journal
+identity and pending-effect fields. It never invokes prospective conform planning,
+source scans or report publication; its root-only request has no generation
+selectors. The native journal lease retains its persistent lock identity, but no
+participant lease or recovery is acquired. Recovery and publication retain their
+own exact journal receipts and physical-state guards. Generation planning reports
+continue to use the compact `CodegenPlanningReport` evidence projection rather than
+serializing native file-plan authorization snapshots.
 
 Documentation generation publishes one scope batch before capturing and rendering
 the next scope. A member batch captures its own sources, the shared root guides and
@@ -1638,6 +1704,14 @@ All profiler output paths use one stdlib-only atomic publisher: native marshal
 data is staged on the destination filesystem, flushed and replaced atomically.
 An interrupted write preserves the previous readable profile. Corruption still
 fails the report reader explicitly; neither profiling nor reporting skips it.
+The infrastructure CLI profiler starts before importing its public CLI facade.
+Each completed invocation retains a uniquely named raw profile beside the latest
+profile through that same publisher. It also retains the previous completed
+artifact before replacing the latest path, including profiles from older launchers
+that did not yet retain per-invocation artifacts. Termination checkpoints have their own
+invocation-owned artifact and never overwrite the last completed profile.
+Make parsing, guards, hooks and subprocess internals remain outside that Python
+window, so comparable generation measurements also record external elapsed time.
 
 The root facade export rule preserves literal tuple values and order while removing
 an unnecessary type-only annotation dependency. It does not change classes, aliases

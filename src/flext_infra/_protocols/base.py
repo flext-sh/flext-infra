@@ -12,12 +12,40 @@ from types import FunctionType
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    import ast
+
     from flext_infra import c, m, p, t
 
 
 @runtime_checkable
 class FlextInfraProtocolsBase(Protocol):
     """Base protocols for flext-infra project."""
+
+    @runtime_checkable
+    class CodegenProtocolModelRenderer(Protocol):
+        """Source-bound annotation resolver consumed by model selection."""
+
+        @property
+        def workspace(self) -> p.Infra.RopeWorkspaceDsl: ...
+
+        @property
+        def declarations(self) -> t.MappingKV[str, p.Infra.RopePyName]: ...
+
+        @property
+        def dependencies(self) -> set[str]: ...
+
+        @property
+        def imports(self) -> t.MutableMappingKV[str, str]: ...
+
+        def alias_definition(
+            self, binding: p.Infra.RopePyName
+        ) -> t.Pair[ast.TypeAlias, p.Infra.RopeScope] | None: ...
+
+        def source(self, annotation: str, scope: p.Infra.RopeScope) -> str: ...
+
+        def render_protocol(
+            self, name: str, model: p.Infra.RopePyName, scope: p.Infra.RopeScope
+        ) -> str: ...
 
     @runtime_checkable
     class CommandPayloadContext(Protocol):
@@ -108,6 +136,50 @@ class FlextInfraProtocolsBase(Protocol):
         def desired_content(self) -> bytes | None: ...
 
     @runtime_checkable
+    class StageSourceReceipt(Protocol):
+        """Closed prepared-source evidence carried without a model dependency cycle."""
+
+        @property
+        def version(self) -> Literal[1]: ...
+
+        @property
+        def workspace(self) -> Path: ...
+
+        @property
+        def workspaces(self) -> t.VariadicTuple[Path]: ...
+
+        @property
+        def roots(self) -> t.VariadicTuple[Path]: ...
+
+        @property
+        def inputs(self) -> t.VariadicTuple[m.Cli.AtomicFileState]: ...
+
+        @property
+        def source_directories(
+            self,
+        ) -> t.VariadicTuple[m.Cli.AtomicDirectoryInventory]: ...
+
+        @property
+        def source_query_topology(
+            self,
+        ) -> t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan]: ...
+
+        @property
+        def updates(self) -> t.MappingKV[Path, str | None]: ...
+
+        @property
+        def modes(self) -> t.MappingKV[Path, int]: ...
+
+        @property
+        def prepared_hashes(self) -> t.VariadicTuple[t.Pair[Path, str | None]]: ...
+
+        @property
+        def layouts(self) -> t.VariadicTuple[m.Infra.RopeProjectLayout]: ...
+
+        @property
+        def workspace_packages(self) -> t.VariadicTuple[str]: ...
+
+    @runtime_checkable
     class CodegenPlanOutcome(Protocol):
         """Public plan membership, separate from the internal publication schema."""
 
@@ -173,6 +245,16 @@ class FlextInfraProtocolsBase(Protocol):
         ) -> FlextInfraProtocolsBase.CodegenConformPorts | None: ...
 
     @runtime_checkable
+    class CodegenHandlerContext(CodegenExecutionContext, Protocol):
+        """API handler context that also exposes native conform execution."""
+
+        def codegen_conform(
+            self,
+            request: FlextInfraProtocolsBase.CodegenConformRequest,
+            initial_workspace: p.Infra.WorkspaceSpec | None = None,
+        ) -> p.Result[FlextInfraProtocolsBase.CodegenResult]: ...
+
+    @runtime_checkable
     class FunctionDescriptor(Protocol):
         """Native descriptor capability used to authenticate its defining function."""
 
@@ -195,6 +277,22 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class SourceImportNormalizer(Protocol):
+        """Normalize source imports through the caller's explicit service binding."""
+
+        def __call__(
+            self,
+            *,
+            project_root: Path,
+            file_path: Path,
+            source: str,
+            import_graph: t.MappingKV[str, frozenset[str]],
+            sources: t.MappingKV[Path, str],
+        ) -> str | None:
+            """Return normalized source, or None when no import changes are needed."""
+            ...
+
+    @runtime_checkable
     class SourcePreview(Protocol):
         """Consumer-owned capability for validating authenticated source views."""
 
@@ -204,11 +302,7 @@ class FlextInfraProtocolsBase(Protocol):
             updates: t.MappingKV[Path, str | None],
             validator: Callable[[Path, t.MappingKV[Path, Path]], T],
             *,
-            inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
-            runtime_root: Path | None = None,
-            workspaces: t.VariadicTuple[Path] = (),
-            runtime_check: bool = True,
-            modes: t.MappingKV[Path, int] | None = None,
+            options: m.Infra.CodegenSourcePreviewOptions | None = None,
         ) -> p.Result[T]:
             """Validate staged updates and retirements while preserving live sources."""
             ...
@@ -380,8 +474,7 @@ class FlextInfraProtocolsBase(Protocol):
             rope_workspace: p.Infra.RopeWorkspaceDsl,
             *,
             sources: t.MappingKV[Path, str],
-            source_states: t.VariadicTuple[m.Cli.AtomicFileState],
-            declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+            receipt: m.Infra.CodegenPhaseAnalysis,
         ) -> p.Result[m.Infra.CodegenPhaseAnalysis]: ...
 
         def apply(
@@ -603,12 +696,6 @@ class FlextInfraProtocolsBase(Protocol):
 
         def prepare_bundle(self) -> p.Result[m.Infra.DocsGenerationBundle]:
             """Freeze one configured inventory and its consumed inputs."""
-            ...
-
-        def prepare_batches(
-            self,
-        ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
-            """Render the next protected scope after publication of the previous one."""
             ...
 
         def required_directories(

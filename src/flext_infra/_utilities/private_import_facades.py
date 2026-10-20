@@ -503,7 +503,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
         }
 
     @staticmethod
-    def _assigned_target_value(
+    def assigned_target_value(
         node: ast.stmt,
     ) -> t.Pair[ast.expr | None, ast.expr | None]:
         """Return one single-target assignment's target and value, if any.
@@ -519,7 +519,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
         return None, None
 
     @staticmethod
-    def _facade_class_name(value: ast.expr | None) -> str | None:
+    def facade_class_name(value: ast.expr | None) -> str | None:
         """Return the facade class one declaration value names, if any.
 
         The canonical facade singleton form is
@@ -553,8 +553,8 @@ class FlextInfraUtilitiesPrivateImportFacades:
         """
         owners: set[t.Pair[str, str]] = set()
         for node in tree.body:
-            target, value = cls._assigned_target_value(node)
-            facade_class = cls._facade_class_name(value)
+            target, value = cls.assigned_target_value(node)
+            facade_class = cls.facade_class_name(value)
             if (
                 isinstance(target, ast.Name)
                 and len(target.id) == 1

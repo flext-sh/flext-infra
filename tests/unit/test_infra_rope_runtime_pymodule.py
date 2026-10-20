@@ -57,7 +57,7 @@ class TestsFlextInfraRopeRuntimePymodule:
             if warm_ast:
                 tm.that(
                     bool(u.Infra.semantic_regions(module, "before", arguments={})),
-                    is_true=True,
+                    eq=True,
                 )
             start = source.index("r(token)")
             tm.that(
@@ -133,7 +133,7 @@ class TestsFlextInfraRopeRuntimePymodule:
 
     @staticmethod
     @pytest.mark.parametrize("captured", [False, True])
-    def test_relative_lookup_preserves_native_folder_and_absent_context(
+    def test_relative_lookup_preserves_native_folder_and_missing_module(
         tmp_path: Path,
         *,
         captured: bool,
@@ -181,9 +181,9 @@ class TestsFlextInfraRopeRuntimePymodule:
                 .get_name(),
                 eq="PublishedContract",
             )
-            tm.that(project.find_relative_module("owner", None, 1), none=True)
+            tm.that(project.find_relative_module("missing", folder, 1), none=True)
             with pytest.raises(u.Infra.rope_module_not_found_error_types()):
-                project.get_relative_module("owner", None, 1)
+                project.get_relative_module("missing", folder, 1)
 
     @staticmethod
     def test_blocked_stdlib_module_preserves_native_import_state(
@@ -393,7 +393,7 @@ class TestsFlextInfraRopeRuntimePymodule:
             )
             tm.that(u.Infra.require_parsed_module(pymodule) is pymodule)
             tm.that(u.Infra.require_parsed_module(pypackage) is pypackage)
-            assert pypackage.get_attribute("VALUE") is not None
+            tm.that(pypackage.get_attribute("VALUE"), none=False)
             for name, member in (
                 ("plain", "VALUE"),
                 ("pkg", "VALUE"),

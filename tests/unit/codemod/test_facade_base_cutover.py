@@ -579,11 +579,11 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
         tmp_path: Path,
         sources: t.MappingKV[Path, str],
         child: Path,
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+    ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
         """Plan the facade-base phase for the detector finding in ``child``.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
+            The originating immutable result view of semantic migration edits.
 
         """
         with infra.rope_workspace(tmp_path) as rope:
@@ -600,7 +600,7 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
         tmp_path: Path,
         sources: t.MappingKV[Path, str],
         child: Path,
-    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+    ) -> t.VariadicTuple[p.Infra.SemanticMigrationEdit]:
         """Return the successful plan's edits.
 
         Returns:

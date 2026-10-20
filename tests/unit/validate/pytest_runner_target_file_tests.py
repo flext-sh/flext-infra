@@ -50,8 +50,9 @@ class TestsFlextInfraPytestTargetFile:
         )
         make = config.Infra.codegen.make
         probe = f"file_phase_probe_{budgeted}_{slow}_{failure or 'passed'}"
-        filename = config.Infra.tooling.tools.pytest.python_files[0].replace("*", probe)
-        relative = Path(make.testmon_cache.target_directory) / filename
+        relative = Path(make.testmon_cache.target_directory) / (
+            config.Infra.tooling.tools.pytest.python_files[0].replace("*", probe)
+        )
         proof = root / f"{probe}.log"
         source, expected = TestsFlextInfraPytestTargetFile._probe_source(
             proof,
@@ -61,7 +62,9 @@ class TestsFlextInfraPytestTargetFile:
         )
         (root / relative).write_text(source, encoding=c.Infra.ENCODING_DEFAULT)
         # An unrelated failing module proves FILE remains the complete scope.
-        (root / relative.with_name(filename.replace("probe", "unrelated"))).write_text(
+        (
+            root / relative.with_name(relative.name.replace("probe", "unrelated"))
+        ).write_text(
             "def test_unrelated() -> None:\n    assert False\n",
             encoding=c.Infra.ENCODING_DEFAULT,
         )

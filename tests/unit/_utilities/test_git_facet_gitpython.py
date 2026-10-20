@@ -58,7 +58,7 @@ class TestsFlextInfraGitFacet:
                 ),
             ),
         )
-        assert captured.entry is not None
+        tm.that(captured.entry, none=False)
         tm.ok(
             u.Infra.git_retire_index_file(
                 m.Infra.GitIndexRetirementRequest(
@@ -115,7 +115,7 @@ class TestsFlextInfraGitFacet:
                 ),
             ),
         )
-        assert captured.entry is not None
+        tm.that(captured.entry, none=False)
         artifact.write_text('{"new": true}\n', encoding=c.DEFAULT_ENCODING)
         u.Tests.git_run(repository, "add", "--", artifact.name)
         before = self._lane_bytes(repository)
@@ -545,10 +545,10 @@ class TestsFlextInfraGitFacet:
         )
 
     @staticmethod
-    def test_tracked_scope_refreshes_after_filesystem_mutation(
+    def test_tracked_scope_refreshes_after_index_mutation(
         tmp_path: Path,
     ) -> None:
-        """Tracked-scope discovery must not retain a stale dirty-file inventory."""
+        """Only indexed files enter tracked scope, with no stale index inventory."""
         repository = u.Tests.git_repository(tmp_path)
         scope = repository / "src"
         scope.mkdir()
@@ -557,13 +557,33 @@ class TestsFlextInfraGitFacet:
         created = scope / "created.py"
         created.write_text("VALUE = 1\n", encoding="utf-8")
 
+        tm.that(u.Infra.git_tracked_scope_paths(scope), eq=[])
+        _ = u.Tests.git_run(repository, "add", "--", "src/created.py")
         tm.that(u.Infra.git_tracked_scope_paths(scope), eq=[created])
+        created.unlink()
+        tm.that(u.Infra.git_tracked_scope_paths(scope), eq=[])
 
     @staticmethod
-    def test_invalid_nested_git_marker_does_not_borrow_parent_index(
+    def test_source_scope_refreshes_after_filesystem_mutation(
         tmp_path: Path,
     ) -> None:
-        """An explicit invalid Git boundary falls back to filesystem discovery."""
+        """Source inventory includes unpublished files without staging them."""
+        repository = u.Tests.git_repository(tmp_path)
+        scope = repository / "src"
+        scope.mkdir()
+        tm.that(u.Infra.git_source_scope_paths(scope), eq=())
+
+        created = scope / "created.py"
+        created.write_text("VALUE = 1\n", encoding="utf-8")
+
+        tm.that(u.Infra.git_source_scope_paths(scope), eq=(created,))
+        tm.that(u.Infra.git_tracked_scope_paths(scope), eq=[])
+
+    @staticmethod
+    def test_invalid_nested_git_marker_matches_native_tracked_scope(
+        tmp_path: Path,
+    ) -> None:
+        """An empty Git marker never turns untracked files into tracked sources."""
         repository = u.Tests.git_repository(tmp_path)
         project = repository / "project"
         project.mkdir()
@@ -572,10 +592,15 @@ class TestsFlextInfraGitFacet:
         source.mkdir(parents=True)
         created = source / "module.py"
         created.write_text("VALUE = 1\n", encoding="utf-8")
+        sibling = repository / "tracked.py"
+        sibling.write_text("VALUE = 2\n", encoding="utf-8")
+        _ = u.Tests.git_run(repository, "add", "--", sibling.name)
+        native = u.Tests.git_capture(repository, "ls-files", "--", "project/src")
 
         tracked = u.Infra.git_tracked_scope_paths(project / "src")
 
-        tm.that(tracked, eq=[created])
+        tm.that(native.strip(), eq="")
+        tm.that(tracked, eq=[])
 
     @staticmethod
     def test_tracked_scope_does_not_borrow_an_ignoring_parent_repository(
@@ -634,7 +659,7 @@ class TestsFlextInfraGitFacet:
         tm.that(head.value.oid, length=c.Infra.GIT_OID_HEX_LENGTH_SHA1)
         status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=real_git_repo))
         tm.that(status.success, truth=True)
-        assert isinstance(status.value.porcelain, str)
+        tm.that(isinstance(status.value.porcelain, str), truth=True)
         assert status.value.dirty is False
         primary = u.Infra.git_primary_worktree_root(
             m.Infra.GitRepoRequest(repo_root=real_git_repo),
@@ -643,7 +668,7 @@ class TestsFlextInfraGitFacet:
         tm.that(primary.value.primary_root == real_git_repo.resolve(), truth=True)
         report = FlextInfraGitService(repository_root=real_git_repo).execute()
         tm.that(report.success, truth=True)
-        assert isinstance(report.value, m.Infra.GitStatusReport)
+        tm.that(isinstance(report.value, m.Infra.GitStatusReport), truth=True)
         tm.that(report.value.repo_root == real_git_repo.resolve(), truth=True)
         assert report.value.dirty is False
 
@@ -654,7 +679,7 @@ class TestsFlextInfraGitFacet:
         bare_root.mkdir()
         init_result = u.Cli.run_checked([c.Infra.GIT, "init", "--bare"], cwd=bare_root)
         tm.that(init_result.success, truth=True)
-        assert (bare_root / "HEAD").is_file()
+        tm.that((bare_root / "HEAD").is_file(), truth=True)
         captured = u.Cli.capture([c.Infra.GIT, "rev-parse", "--git-dir"], cwd=bare_root)
         tm.that(captured.success, truth=True)
         tm.that(captured.value.strip() in {".", str(bare_root.resolve())}, truth=True)
@@ -893,7 +918,7 @@ class TestsFlextInfraGitFacet:
         with tm.scope(env={"PATH": str(empty_path)}):
             result = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=tmp_path))
         tm.that(result.failure, truth=True)
-        assert result.error is not None
+        tm.that(result.error, none=False)
         tm.that("git executable not found" in result.error, truth=True)
 
     @staticmethod
@@ -933,30 +958,14 @@ class TestsFlextInfraGitFacet:
             has="retirement refused",
         )
 
-        assert lane.is_dir()
-        assert (repository / "member").is_dir()
+        tm.that(lane.is_dir(), truth=True)
+        tm.that((repository / "member").is_dir(), truth=True)
         tm.that(
             (repository / ".gitmodules").read_text(encoding="utf-8") == gitmodules,
             truth=True,
         )
-        assert (
-            tm.ok(
-                u.Cli.capture(
-                    (c.Infra.GIT, "ls-files", "--stage", "member"),
-                    cwd=repository,
-                ),
-            )
-            == gitlink
-        )
-        assert (
-            tm.ok(
-                u.Cli.capture(
-                    (c.Infra.GIT, "config", "--get", "submodule.member.url"),
-                    cwd=repository,
-                ),
-            )
-            == configured
-        )
+        tm.that(tm.ok(u.Cli.capture((c.Infra.GIT, "ls-files", "--stage", "member"), cwd=repository)), eq=gitlink)
+        tm.that(tm.ok(u.Cli.capture((c.Infra.GIT, "config", "--get", "submodule.member.url"), cwd=repository)), eq=configured)
 
     def test_remove_clean_worktree_refuses_dirty_nested_submodule(
         self,
@@ -977,7 +986,7 @@ class TestsFlextInfraGitFacet:
         result = u.Infra.git_remove_clean_worktree(repository, lane)
 
         tm.fail(result, has="dirty nested submodule")
-        assert lane.is_dir()
+        tm.that(lane.is_dir(), truth=True)
 
     @staticmethod
     def test_remove_clean_worktree_refuses_locked_worktree(
@@ -990,7 +999,7 @@ class TestsFlextInfraGitFacet:
         result = u.Infra.git_remove_clean_worktree(repository, lane)
 
         tm.fail(result, has="locked worktree")
-        assert lane.is_dir()
+        tm.that(lane.is_dir(), truth=True)
 
     @staticmethod
     def test_is_ancestor_proves_any_pair_and_defaults_to_head(
@@ -1060,7 +1069,7 @@ class TestsFlextInfraGitFacet:
         )
 
         tm.that(result.failure, truth=True)
-        assert result.error is not None
+        tm.that(result.error, none=False)
 
     @staticmethod
     def test_has_staged_changes_tracks_the_index(tmp_path: Path) -> None:

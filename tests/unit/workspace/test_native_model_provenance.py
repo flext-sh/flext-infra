@@ -10,7 +10,6 @@ from inspect import getfile, isclass, isfunction, ismethod
 from pathlib import Path
 
 import pytest
-from flext_core import m
 from pydantic import RootModel
 from ruamel.yaml import YAML
 from typing_inspection.introspection import AnnotationSource, inspect_annotation
@@ -18,11 +17,44 @@ from typing_inspection.introspection import AnnotationSource, inspect_annotation
 from flext_infra.codegen import FlextInfraMiseArtifactsFiles
 from flext_infra.docs import FlextInfraDocGenerator
 from flext_infra.validate import FlextInfraValidateFreshImport
-from tests import p, tm, u
+from tests import m, p, tm, u
 
 
 class TestsFlextInfraNativeModelProvenance:
     """Conditional metaclasses and nested presets keep their real runtime contract."""
+
+    @staticmethod
+    def test_native_observation_defaults_preserve_mutable_evidence_contract() -> None:
+        """Public contexts isolate defaults and validate incoming evidence records."""
+        first = m.Infra.NativeObservationContext(paths=())
+        second = m.Infra.NativeObservationContext(paths=())
+        tm.that(first.evidence, eq=[])
+        tm.that(first.evidence is not second.evidence, truth=True)
+
+        record = m.Infra.NativeBindingEvidence(
+            binding="builtins.len",
+            kind="builtin",
+            supplier="builtins",
+            name="len",
+            qualname="len",
+        )
+        first.evidence.append(record)
+        tm.that(first.evidence, eq=[record])
+        tm.that(second.evidence, eq=[])
+        provided = m.Infra.NativeObservationContext(paths=(), evidence=[record])
+        tm.that(provided.evidence, eq=[record])
+
+        converted = m.Infra.NativeObservationContext.model_validate({
+            "paths": (),
+            "evidence": (),
+        })
+        converted.evidence.append(record)
+        tm.that(converted.evidence, eq=[record])
+        with pytest.raises(m.ValidationError, match="evidence"):
+            m.Infra.NativeObservationContext.model_validate({
+                "paths": (),
+                "evidence": [{}],
+            })
 
     @staticmethod
     def test_real_namespace_provider_retains_authenticated_native_sources() -> None:
@@ -193,14 +225,14 @@ assert changed.read_text(encoding='utf-8') == replacement
         tm.that(inspection.type, eq=str)
         preset = m.ContractModel.model_validate({})
         tm.that(preset.model_dump(), eq={})
-        assert isclass(entrypoint) or isfunction(entrypoint) or ismethod(entrypoint)
+        tm.that(isclass(entrypoint) or isfunction(entrypoint) or ismethod(entrypoint), truth=True)
         expected_source = Path(getfile(entrypoint)).resolve()
         admission = tm.ok(
             FlextInfraValidateFreshImport.capture_producer(
                 Path.cwd(), entrypoint=entrypoint
             )
         )
-        assert admission.generator_reference is not None
+        tm.that(admission.generator_reference, none=False)
         sources = admission.generator_reference.sources
         tm.that(sources, empty=False)
         tm.that(

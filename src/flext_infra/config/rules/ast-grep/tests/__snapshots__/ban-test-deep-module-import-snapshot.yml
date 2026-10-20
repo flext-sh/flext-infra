@@ -6,6 +6,18 @@ snapshots:
       style: primary
       start: 0
       end: 59
+  from flext_core.lazy.helpers import install_lazy_exports:
+    labels:
+    - source: from flext_core.lazy.helpers import install_lazy_exports
+      style: primary
+      start: 0
+      end: 56
+  from flext_core.lazy_internal import install_lazy_exports:
+    labels:
+    - source: from flext_core.lazy_internal import install_lazy_exports
+      style: primary
+      start: 0
+      end: 57
   from flext_core.services import FlextServiceRegistry:
     labels:
     - source: from flext_core.services import FlextServiceRegistry

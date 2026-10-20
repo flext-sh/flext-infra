@@ -12,6 +12,7 @@ import pytest
 
 from flext_infra import c
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
+from tests import tm
 
 
 class TestsFlextInfraModRuleFixtureStaging:
@@ -64,15 +65,11 @@ class TestsFlextInfraModRuleFixtureStaging:
         snapshot = f"fixtures/{c.Infra.CODEMOD_SNAPSHOT_DIRNAME}/rule-snapshot.yml"
         if regenerate_snapshots:
             del expected[snapshot]
-        assert (owner / snapshot).read_text(encoding="utf-8") == payloads[snapshot]
-        assert {
-            path.relative_to(staged).as_posix(): path.read_text(encoding="utf-8")
-            for path in staged.rglob("*")
-            if path.is_file()
-        } == expected
-        assert not (staged / ".venv").exists()
-        assert not (staged / ".agents").is_symlink()
-        assert not (staged / ".git").exists()
+        tm.that((owner / snapshot).read_text(encoding="utf-8"), eq=payloads[snapshot])
+        tm.that({path.relative_to(staged).as_posix(): path.read_text(encoding="utf-8") for path in staged.rglob("*") if path.is_file()}, eq=expected)
+        tm.that((staged / ".venv").exists(), truth=False)
+        tm.that((staged / ".agents").is_symlink(), truth=False)
+        tm.that((staged / ".git").exists(), truth=False)
 
     @staticmethod
     @pytest.mark.parametrize("declaration", [".", "../outside", "/outside"])
@@ -96,7 +93,7 @@ class TestsFlextInfraModRuleFixtureStaging:
                 temp_root=staged,
             )
 
-        assert not staged.exists()
+        tm.that(staged.exists(), truth=False)
 
     @staticmethod
     @pytest.mark.parametrize("linked_directory", [False, True])
@@ -128,4 +125,4 @@ class TestsFlextInfraModRuleFixtureStaging:
                 temp_root=staged,
             )
 
-        assert not staged.exists()
+        tm.that(staged.exists(), truth=False)

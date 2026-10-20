@@ -68,6 +68,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         *,
         inputs: t.VariadicTuple[m.Cli.AtomicFileState] = (),
         workspaces: t.VariadicTuple[Path] = (),
+        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.StageSourcePlan]:
         """Prepare composed sources before sealing their publication identity.
 
@@ -76,13 +77,44 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         """
         planned = codegen.FlextInfraStagedPackage.plan_sources(
-            repository_root, updates, inputs=inputs, workspaces=workspaces
+            repository_root,
+            updates,
+            options=m.Infra.StageSourceOptions(
+                inputs=inputs,
+                workspaces=workspaces,
+                declared_files=declared_files,
+                source_directories=tuple(
+                    item for file in declared_files for item in file.source_directories
+                ),
+                source_query_topology=tuple(
+                    item
+                    for file in declared_files
+                    for item in file.source_query_topology
+                ),
+            ),
         )
         if planned.failure:
             return r[m.Infra.StageSourcePlan].from_failure(planned)
+        return cls.normalize_source_plan(planned.value)
+
+    @classmethod
+    def normalize_source_plan(
+        cls,
+        plan: m.Infra.StageSourcePlan,
+    ) -> p.Result[m.Infra.StageSourcePlan]:
+        """Normalize an authenticated proposal without reopening its source election.
+
+        Returns:
+            Sealed repaired bytes retaining the original physical evidence.
+
+        """
         return codegen.FlextInfraStagedPackage.prepare_sources(
-            planned.value, cls._repair_staged_sources
-        ).map(lambda prepared: planned.value.model_copy(update={"updates": prepared}))
+            plan, cls._repair_staged_sources
+        ).flat_map(
+            lambda prepared: codegen.FlextInfraStagedPackage.seal_sources(
+                plan, prepared
+            )
+        )
 
     @classmethod
     def _repair_staged_sources(
@@ -642,6 +674,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
         if tool_name == c.Infra.RUFF:
             environment[c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE] = str(
                 FlextInfraUtilitiesResourceLimits.ruff_cache_directory(command_cwd)
+            )
+        elif tool_name == c.Infra.MYPY:
+            environment[c.Infra.MypyCacheEnvironment.CACHE_DIR.value] = str(
+                FlextInfraUtilitiesResourceLimits.mypy_cache_directory(command_cwd)
             )
         run_result = u.Cli.run_raw(
             cmd,

@@ -741,10 +741,8 @@ class TestsFlextInfraCodegenConform:
         )
         if first_result.plan is None:
             pytest.fail("generation did not return its actual plan")
-        editor_settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-            tm.ok(
-                u.Cli.json_parse(settings_path.read_text(encoding=c.DEFAULT_ENCODING))
-            ),
+        editor_settings = u.Cli.JSON_MAPPING_ADAPTER.validate_json(
+            settings_path.read_text(encoding=c.DEFAULT_ENCODING),
         )
         TestsFlextInfraCodegenConform._assert_editor_settings(
             settings_path,
@@ -906,9 +904,7 @@ class TestsFlextInfraCodegenConform:
         )
         tm.ok(migrated)
         actual_tree = TestsFlextInfraConformSupport.project_tree(existing_root)
-        assert actual_tree == expected_tree, (
-            TestsFlextInfraConformSupport.project_tree_diff(expected_tree, actual_tree)
-        )
+        tm.that(actual_tree, eq=expected_tree, msg=TestsFlextInfraConformSupport.project_tree_diff(expected_tree, actual_tree))
 
     @staticmethod
     @pytest.mark.slow

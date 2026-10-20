@@ -33,7 +33,7 @@ from flext_infra.deps import (
 
 
 def execute_codegen_generate(
-    request: m.Infra.CodegenGenerateRequest,
+    request: p.Infra.CodegenGenerateRequest,
 ) -> p.Result[t.Cli.ResultValue]:
     """Erase the typed generation receipt for the declarative CLI route.
 
@@ -49,7 +49,7 @@ def execute_codegen_generate(
 
 
 def execute_codegen_conform(
-    request: m.Infra.CodegenConformRequest,
+    request: p.Infra.CodegenConformRequest,
 ) -> p.Result[t.Cli.ResultValue]:
     """Erase the typed conformance receipt for the declarative CLI route.
 
@@ -124,8 +124,11 @@ class FlextInfraCodegenRoutes:
             ),
             m.Cli.ResultCommandRoute(
                 name="footprint",
-                help_text="Read the actual generation journal and plan without effects",
-                model_cls=m.Infra.CodegenConformRequest,
+                help_text=(
+                    "Inspect recorded generation effects "
+                    "without planning or publication"
+                ),
+                model_cls=m.Infra.CodegenFootprintRequest,
                 handler=infra.codegen_footprint,
             ),
             *(

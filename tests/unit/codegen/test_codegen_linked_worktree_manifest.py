@@ -68,7 +68,13 @@ class TestsFlextInfraCodegenLinkedWorktreeManifest:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         plan = tm.ok(
-            FlextInfraCodegenConform(repository_root=lane, request=request).plan(
+            FlextInfraCodegenConform(
+                repository_root=lane,
+                state=m.Infra.CodegenConformState(
+                    repository_root=lane,
+                    request=request,
+                ),
+            ).plan(
                 request,
             ),
         )

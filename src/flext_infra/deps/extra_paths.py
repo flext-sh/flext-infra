@@ -48,7 +48,7 @@ class FlextInfraExtraPathsManager(
         ),
     ] = ()
 
-    _workspace_project_names: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
+    _workspace_project_names: t.Infra.StrSet = m.PrivateAttr(default_factory=set)
 
     @override
     def model_post_init(self, __context: t.MappingKV[str, p.AttributeProbe], /) -> None:
@@ -208,15 +208,8 @@ class FlextInfraExtraPathsManager(
             shared_search_paths=rules.project_shared_search_paths,
             include_generated_roots=True,
         )
-        # Why: inclusion and resolution derive from the same declared set —
-        # every analysis root that project-includes carries also joins the
-        # search path (after ``source_dir``, before ``project_root``), so a
-        # scripts-rooted module tree (``from lib...`` with the module root at
-        # ``scripts/``) resolves. pyrefly resolves first-match, so the extra
-        # roots cannot mask ``source_dir``; mypy keeps its separate derivation
-        # above precisely because it enumerates roots and aborts on a file
-        # reached under two module names.
-        paths.update(self._included_pyrefly_env_dirs(project_dir=project_dir))
+        # Analysis inclusion does not create another import identity.
+        # Additional search roots come only from the declared path rules.
         paths.discard(rules.source_dir)
         paths.discard(rules.project_root)
         has_source_root = (

@@ -49,10 +49,12 @@ class TestsFlextInfraRuntimeRoot:
 
         if malformed_parent_git:
             tm.that(observed.failure, eq=True)
+            tm.that(u.Infra.runtime_owner_root(root).failure, eq=True)
         else:
             context = tm.ok(observed)
             tm.that(context.project_root, eq=root.resolve())
             tm.that(context.runtime_root, eq=root.resolve())
+            tm.that(u.Infra.runtime_environment_dir(root), eq=context.environment_path)
 
     @staticmethod
     def test_root_context_is_available_before_managed_toml_recovery(
@@ -113,7 +115,7 @@ class TestsFlextInfraRuntimeRoot:
 
             observed = tm.ok(FlextInfraWorkspaceDetector.resolution_context(child))
 
-            owner = child if excluded else root
+            owner = child if excluded or hosted else root
             directory = (
                 policy.standalone_directory if hosted else policy.local_directory
             )
@@ -179,6 +181,11 @@ class TestsFlextInfraRuntimeRoot:
             observed.runtime_root,
             eq=(root if association == "member" else child).resolve(),
         )
+        tm.that(u.Infra.runtime_environment_dir(child), eq=observed.environment_path)
+        tm.that(
+            u.Infra.runtime_python(child).parent.parent,
+            eq=observed.environment_path,
+        )
 
     @pytest.mark.parametrize("attached", [False, True])
     @pytest.mark.parametrize("hosted", [False, True])
@@ -194,6 +201,10 @@ class TestsFlextInfraRuntimeRoot:
         workspace = tmp_path / "runtime"
         workspace.mkdir()
         u.Tests.initialize_git_repo(workspace)
+        (workspace / c.PYPROJECT_FILENAME).write_text(
+            "[project]\nname = 'fixture-runtime'\nversion = '1.0'\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
         project = workspace
         if attached:
             origin = tmp_path / "origin"
@@ -214,6 +225,10 @@ class TestsFlextInfraRuntimeRoot:
                 ),
             )
             project = workspace / "member"
+            (project / c.PYPROJECT_FILENAME).write_text(
+                "[project]\nname = 'fixture-member'\nversion = '1.0'\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
         policy = config.Infra.codegen.make.uv_resolution
         gates = config.Infra.codegen.make.ci
         previous_hosted = os.environ.get(policy.hosted_variable)
@@ -228,13 +243,12 @@ class TestsFlextInfraRuntimeRoot:
             directory = (
                 policy.standalone_directory if hosted else policy.local_directory
             )
-            expected = workspace.resolve() / directory
+            owner = project if hosted else workspace
+            expected = owner.resolve() / directory
 
             tm.that(observed.project_root, eq=project.resolve())
-            tm.that(observed.runtime_root, eq=workspace.resolve())
-            tm.that(
-                observed.environment_path, eq=workspace / c.Infra.ENVIRONMENT_DIRECTORY
-            )
+            tm.that(observed.runtime_root, eq=owner.resolve())
+            tm.that(observed.environment_path, eq=owner / c.Infra.ENVIRONMENT_DIRECTORY)
             tm.that(observed.resolution_root, eq=expected)
             tm.that(observed.pyproject_path, eq=expected / c.PYPROJECT_FILENAME)
             tm.that(observed.lock_path, eq=expected / c.Infra.UV_LOCK_FILENAME)

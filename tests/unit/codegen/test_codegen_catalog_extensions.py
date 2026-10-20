@@ -628,7 +628,9 @@ class TestsFlextInfraCodegenCatalogExtensions:
         declared_gitmodules = gitmodules.read_bytes()
         # Topology rendering must not require the fixture member to be installed
         # for the unrelated Pyproject provenance surface selected by ALL.
-        result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
+        result = FlextInfraCodegenConform(
+            state=m.Infra.CodegenConformState(initial_workspace=workspace),
+        ).plan(
             u.Tests.conform_request(
                 repository_root,
                 what=c.Infra.CodegenConformSurface.MAKEFILE,

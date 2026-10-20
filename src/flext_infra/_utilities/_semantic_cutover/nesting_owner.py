@@ -7,13 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import os
 import typing
 from fnmatch import fnmatch
-from shlex import split
 from typing import TYPE_CHECKING
 
 import pytest
-from _pytest.config.findpaths import determine_setup
 from flext_cli import u
 
 from flext_infra import p, r, t
@@ -45,30 +44,37 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             collection pattern tuples.
 
         """
-        _root, _path, configured, _ignored = determine_setup(
-            inifile=None,
-            override_ini=[],
-            args=[str(root)],
-            rootdir_cmd_arg=None,
-            invocation_dir=root,
-        )
         manager = pytest.PytestPluginManager()
-        manager.import_plugin("python")
-        defaults = pytest.Config(manager)
+        for plugin in ("main", "helpconfig", "python"):
+            manager.import_plugin(plugin)
+        # Blocking precedes native consider_env, which otherwise imports these
+        # modules even when entry-point autoload and conftest loading are disabled.
+        for plugin in os.environ.get("PYTEST_PLUGINS", "").split(","):
+            if plugin and not manager.has_plugin(plugin):
+                manager.set_blocked(plugin)
+        arguments = [
+            str(root),
+            "--disable-plugin-autoload",
+            "--noconftest",
+            "-o",
+            "pythonpath=",
+            "-o",
+            "required_plugins=",
+            "-o",
+            "minversion=",
+        ]
+        configured = pytest.Config(
+            manager,
+            invocation_params=pytest.Config.InvocationParams(
+                args=arguments, plugins=None, dir=root
+            ),
+        )
+        # This is configuration discovery, not test startup: no consumer addopts,
+        # sys.path mutation, plugin prerequisites, or assertion-rewrite plugin.
+        configured.parse(arguments, addopts=False)
 
         def patterns(key: str) -> t.StrTuple:
-            configured_value = configured.get(key)
-            value = (
-                configured_value.value
-                if configured_value is not None
-                else defaults.getini(key)
-            )
-            if (
-                isinstance(value, str)
-                and configured_value is not None
-                and configured_value.mode == "ini"
-            ):
-                return tuple(split(value))
+            value = configured.getini(key)
             if isinstance(value, list) and all(isinstance(item, str) for item in value):
                 return tuple(item for item in value if isinstance(item, str))
             msg = f"pytest collection setting {key} must contain strings"
@@ -163,14 +169,17 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
                 for alias in statement.names
             ):
                 return True
-            if isinstance(statement, ast.ImportFrom) and statement.module == "pytest":
-                if any(
+            if (
+                isinstance(statement, ast.ImportFrom)
+                and statement.module == "pytest"
+                and any(
                     alias.name == "mark"
                     and isinstance(mark, ast.Name)
                     and mark.id == (alias.asname or alias.name)
                     for alias in statement.names
-                ):
-                    return True
+                )
+            ):
+                return True
         return False
 
     @classmethod
@@ -179,11 +188,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         convention: m.Infra.RopeModuleConvention,
         file_path: Path,
         classes: t.MappingKV[str, ast.ClassDef],
-        patterns: t.StrSequence,
-        function_patterns: t.StrSequence,
+        patterns: t.Pair[t.StrSequence, t.StrSequence],
         *,
-        require_collection: bool,
-        composition: bool = False,
+        collection: t.Pair[bool, bool],
     ) -> p.Result[str]:
         """Elect an existing collected suite, otherwise derive Tests<Unit>.
 
@@ -192,6 +199,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             collection is ambiguous or the derived suite is not collected.
 
         """
+        class_patterns, function_patterns = patterns
+        require_collection, composition = collection
         elected = r[str]
         prefix = convention.module_policy.project_prefix
         prefix = prefix if prefix.startswith("Tests") else f"Tests{prefix}"
@@ -209,7 +218,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         suites = [
             name
             for name, node in classes.items()
-            if cls._pytest_name_matches(name, patterns)
+            if cls._pytest_name_matches(name, class_patterns)
             and any(
                 isinstance(member, ast.FunctionDef | ast.AsyncFunctionDef)
                 and cls._pytest_name_matches(member.name, function_patterns)
@@ -221,9 +230,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
                 f"class-nesting requires exactly one collected suite for "
                 f"{convention.module_name}: {', '.join(suites)}",
             )
-        if suites and suites[0].startswith(prefix):
-            return elected.ok(suites[0])
         if suites:
+            if suites[0].startswith(prefix):
+                return elected.ok(suites[0])
             return elected.fail(
                 f"class-nesting requires native Rope prefix rename before electing "
                 f"{convention.module_name}.{suites[0]} (required prefix {prefix})",
@@ -231,7 +240,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         if len(classes) == 1:
             existing = next(iter(classes))
             if existing.startswith(prefix) and (
-                not require_collection or cls._pytest_name_matches(existing, patterns)
+                not require_collection
+                or cls._pytest_name_matches(existing, class_patterns)
             ):
                 return elected.ok(existing)
         stem = (
@@ -240,6 +250,25 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             .removesuffix("_tests")
             .removesuffix("_test")
         )
+        return cls._derived_test_owner(
+            convention,
+            stem,
+            prefix,
+            class_patterns,
+            require_collection=require_collection,
+        )
+
+    @classmethod
+    def _derived_test_owner(
+        cls,
+        convention: m.Infra.RopeModuleConvention,
+        stem: str,
+        prefix: str,
+        patterns: t.StrSequence,
+        *,
+        require_collection: bool,
+    ) -> p.Result[str]:
+        elected = r[str]
         owner = (
             prefix if prefix.startswith("Tests") else f"Tests{prefix}"
         ) + u.derive_class_stem(stem)
@@ -546,8 +575,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             if isinstance(name, ast.Name) and isinstance(name.ctx, ast.Load)
         )
 
-    @staticmethod
+    @classmethod
     def _module_owner(
+        cls,
         convention: m.Infra.RopeModuleConvention,
         file_path: Path,
         classes: t.MappingKV[str, ast.ClassDef],
@@ -566,36 +596,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         directory_family = namespace.facade_family_of_directory(file_path.parent.name)
         file_family = namespace.facade_family_of_file(file_path.name)
         if directory_family is None and file_family is None:
-            owner = policy.expected_family
-            if owner is not None and owner in classes:
-                return derived.ok(owner)
-            owner = policy.project_prefix + u.derive_class_stem(
-                file_path.stem.strip("_")
-                if policy.project_prefix
-                else convention.module_name,
-            )
-            if owner in classes:
-                return derived.ok(owner)
-            if len(classes) == 1:
-                return derived.ok(next(iter(classes)))
-            candidates = sorted(name for name in classes if name in exports)
-            if not candidates:
-                candidates = sorted(
-                    name for name in classes if not name.startswith("_")
-                )
-            if len(candidates) == 1:
-                return derived.ok(candidates[0])
-            if candidates:
-                return derived.fail(
-                    "class-nesting requires exactly one declared module owner for "
-                    f"{convention.module_name}; discovered: {', '.join(candidates)}",
-                )
-            if not owner.isidentifier():
-                return derived.fail(
-                    "class-nesting cannot derive a valid owner for "
-                    f"{convention.module_name}",
-                )
-            return derived.ok(owner)
+            return cls._ordinary_module_owner(convention, file_path, classes, exports)
         if directory_family is not None:
             suffix_root = families[directory_family].suffix
             suffix = suffix_root + u.derive_class_stem(file_path.stem.strip("_"))
@@ -636,11 +637,49 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             for name in classes
             if name.startswith(family_prefix) and name in exports
         )
-        if rivals:
-            return derived.fail(
+        return (
+            derived.fail(
                 "class-nesting requires exactly one declared module owner for "
                 f"{convention.module_name}; discovered: {', '.join(rivals)} "
                 f"(derived owner {owner})",
+            )
+            if rivals
+            else derived.ok(owner)
+        )
+
+    @staticmethod
+    def _ordinary_module_owner(
+        convention: m.Infra.RopeModuleConvention,
+        file_path: Path,
+        classes: t.MappingKV[str, ast.ClassDef],
+        exports: frozenset[str],
+    ) -> p.Result[str]:
+        derived = r[str]
+        policy = convention.module_policy
+        owner = policy.expected_family
+        if owner is not None and owner in classes:
+            return derived.ok(owner)
+        owner = policy.project_prefix + u.derive_class_stem(
+            file_path.stem.strip("_")
+            if policy.project_prefix
+            else convention.module_name,
+        )
+        if owner in classes or len(classes) == 1:
+            return derived.ok(owner if owner in classes else next(iter(classes)))
+        candidates = sorted(name for name in classes if name in exports)
+        if not candidates:
+            candidates = sorted(name for name in classes if not name.startswith("_"))
+        if len(candidates) == 1:
+            return derived.ok(candidates[0])
+        if candidates:
+            return derived.fail(
+                "class-nesting requires exactly one declared module owner for "
+                f"{convention.module_name}; discovered: {', '.join(candidates)}",
+            )
+        if not owner.isidentifier():
+            return derived.fail(
+                "class-nesting cannot derive a valid owner for "
+                f"{convention.module_name}",
             )
         return derived.ok(owner)
 

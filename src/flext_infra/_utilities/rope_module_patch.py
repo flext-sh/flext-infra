@@ -138,13 +138,13 @@ class FlextInfraUtilitiesRopeModulePatch:
         )
         if alias not in exports:
             return source
-        return cls._rewrite_all_declaration(
+        return cls.rewrite_all_declaration(
             source,
             names=[name for name in exports if name != alias],
         )
 
     @staticmethod
-    def _rewrite_all_declaration(source: str, *, names: list[str]) -> str:
+    def rewrite_all_declaration(source: str, *, names: list[str]) -> str:
         """Publish exactly ``names`` through the canonical ``__all__`` rewrite.
 
         Returns:

@@ -69,8 +69,7 @@ class FlextInfraDuplicateApplyPhase:
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: t.MappingKV[Path, str],
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+        receipt: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Preserve native duplicate effects and unresolved diagnostic plans.
 
@@ -79,6 +78,7 @@ class FlextInfraDuplicateApplyPhase:
 
         """
         del preflight
+        source_states, declared_files = receipt.inputs, receipt.files
         captured = FlextInfraCodegenPreconditions.unique_states((
             *source_states,
             *(state for plan in declared_files for state in plan.source_states),
@@ -91,8 +91,7 @@ class FlextInfraDuplicateApplyPhase:
             rope_workspace,
             FlextInfraDuplicateApplyPhase._duplicate_groups(rope_workspace),
             sources=sources,
-            source_states=source_states,
-            declared_files=declared_files,
+            receipt=receipt.model_copy(update={"inputs": source_states}),
         )
         if planned.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)

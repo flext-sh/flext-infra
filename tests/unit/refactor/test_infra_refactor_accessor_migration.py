@@ -185,7 +185,6 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             ).unwrap(),
         )
         workspace, project, package = u.Tests.namespace_workspace(tmp_path)
-        consumer = package / "consumer.py"
         source = "from flext_infra import m\n\n"
         program = (
             "import sys\n"
@@ -234,19 +233,18 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             "def payload():\n"
             f"    return {literal!r}\n"
         )
-        consumer.write_text(source, encoding="utf-8")
+        (package / "consumer.py").write_text(source, encoding="utf-8")
         u.Tests.provision_checkout(workspace)
         with infra.rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
             phase = FlextInfraAccessorRenamePhase(
                 source_preview=infra.source_preview(workspace),
             )
-            paths = u.Infra.iter_python_files(
-                m.Infra.SourceScanRequest(project_roots=(project,)),
-            ).unwrap()
             states = tuple(
                 u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
-                for path in paths
+                for path in u.Infra.iter_python_files(
+                    m.Infra.SourceScanRequest(project_roots=(project,)),
+                ).unwrap()
             )
             sources = {
                 state.path: tm.not_none(state.content).decode(c.DEFAULT_ENCODING)
@@ -258,7 +256,11 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
                 preflight,
                 rope,
                 sources=sources,
-                source_states=states,
+                receipt=m.Infra.CodegenPhaseAnalysis(
+                    phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                    inputs=states,
+                    files=(),
+                ),
             ).unwrap()
             tm.that(planned.files, empty=False)
             tm.that(sources, eq=frozen)
@@ -279,13 +281,18 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             f"assert consumer.payload() == {literal!r}\n"
             "print('consumer_verified')\n"
         )
-        output = u.Cli.run(
-            (sys.executable, "-c", program, str(package.parent)),
-        ).unwrap()
-        tm.that(output.stdout, eq="consumer_verified\n")
+        tm.that(
+            u.Cli
+            .run(
+                (sys.executable, "-c", program, str(package.parent)),
+            )
+            .unwrap()
+            .stdout,
+            eq="consumer_verified\n",
+        )
         with infra.rope_workspace(project) as rope:
             tm.that(phase.apply(project, preflight, rope).unwrap(), eq=False)
-        receipt = (
+        planned = (
             FlextInfraAccessorMigrationOrchestrator(
                 source_preview=infra.source_preview(workspace),
                 repository_root=workspace,
@@ -294,8 +301,8 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             .execute()
             .unwrap()
         )
-        tm.that(receipt.automated_change_count, eq=0)
-        tm.that(receipt.warning_count, eq=0)
+        tm.that(planned.automated_change_count, eq=0)
+        tm.that(planned.warning_count, eq=0)
 
     @staticmethod
     def test_removed_accessor_with_unknown_receiver_fails_before_publication(

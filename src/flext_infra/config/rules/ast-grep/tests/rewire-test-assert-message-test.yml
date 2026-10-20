@@ -1,0 +1,10 @@
+id: rewire-test-assert-message
+valid:
+  - assert result.success
+  - |
+    if not result.success:
+        raise AssertionError(result.error)
+invalid:
+  - assert result.success, result.error
+  - assert value == expected, f"Unexpected value {value!r}"
+  - assert value is not None, "A value is required"

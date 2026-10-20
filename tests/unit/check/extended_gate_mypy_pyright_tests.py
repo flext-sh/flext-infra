@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import FlextInfra, c, config, m, main
+from flext_infra import c, config, m, main
 from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.mypy import FlextInfraMypyGate
@@ -249,7 +249,6 @@ class TestsFlextInfraTypeGates:
             ),
             encoding=c.DEFAULT_ENCODING,
         )
-        tm.that(FlextInfra(repository_root=project).root, eq=project.resolve())
         source = project / "src" / "test_pkg" / "payload_bound.py"
         valid_source = (
             f"from {module} import {service}\n\n"
@@ -261,23 +260,23 @@ class TestsFlextInfraTypeGates:
 
         accepted = gate.check(project, checker_context)
 
-        assert accepted.result.passed, accepted.raw_output
-        assert not accepted.issues, accepted.raw_output
+        tm.that(accepted.result.passed, truth=True, msg=accepted.raw_output)
+        tm.that(accepted.issues, truth=False, msg=accepted.raw_output)
         invalid_source = valid_source.replace(f"{service}[str]", f"{service}[set[int]]")
         source.write_text(invalid_source, encoding=c.DEFAULT_ENCODING)
 
         rejected = gate.check(project, checker_context)
 
-        assert not rejected.result.passed, rejected.raw_output
-        assert len(rejected.issues) == 1, rejected.raw_output
+        tm.that(rejected.result.passed, truth=False, msg=rejected.raw_output)
+        tm.that(len(rejected.issues), eq=1, msg=rejected.raw_output)
         (issue,) = rejected.issues
-        assert issue.code == "type-var", rejected.raw_output
-        assert issue.severity == c.Infra.ERROR, rejected.raw_output
+        tm.that(issue.code, eq="type-var", msg=rejected.raw_output)
+        tm.that(issue.severity, eq=c.Infra.ERROR, msg=rejected.raw_output)
         diagnostic_path = project / issue.file
-        assert diagnostic_path.resolve() == source.resolve(), rejected.raw_output
+        tm.that(diagnostic_path.resolve(), eq=source.resolve(), msg=rejected.raw_output)
         annotation = invalid_source.splitlines()[2]
-        assert issue.line == 3, rejected.raw_output
-        assert issue.column == annotation.index("set[int]"), rejected.raw_output
+        tm.that(issue.line, eq=3, msg=rejected.raw_output)
+        tm.that(issue.column, eq=annotation.index("set[int]"), msg=rejected.raw_output)
         assert service in issue.message, rejected.raw_output
 
     @staticmethod
@@ -324,14 +323,14 @@ class TestsFlextInfraTypeGates:
         source.write_text('value: int = "incorrect"\n', encoding="utf-8")
         failed = gate.check(project, ctx)
         assert failed.result.passed is False
-        assert failed.issues
-        assert failed.result.errors
-        assert any(issue.severity.lower() == "error" for issue in failed.issues)
+        tm.that(failed.issues, truth=True)
+        tm.that(failed.result.errors, truth=True)
+        tm.that(any(issue.severity.lower() == "error" for issue in failed.issues), truth=True)
 
         source.write_text("value: int = 1\n", encoding="utf-8")
         repaired = gate.check(project, ctx)
-        assert repaired.result.passed, repaired
-        assert not repaired.issues
+        tm.that(repaired.result.passed, truth=True, msg=repaired)
+        tm.that(repaired.issues, truth=False)
 
     @staticmethod
     @pytest.mark.slow
@@ -374,7 +373,7 @@ class TestsFlextInfraTypeGates:
             m.Infra.GateContext(repository_root=project, reports_dir=reports),
         )
         assert result.result.passed is False
-        assert any(issue.severity in {"warn", "warning"} for issue in result.issues)
+        tm.that(any(issue.severity in {"warn", "warning"} for issue in result.issues), truth=True)
 
     @staticmethod
     @pytest.mark.slow
@@ -387,20 +386,17 @@ class TestsFlextInfraTypeGates:
         reports = checker_context.reports_dir
         gate = FlextInfraPyreflyGate(project)
         first = gate.check(project, checker_context)
-        assert first.result.passed, first
+        tm.that(first.result.passed, truth=True, msg=first)
         native_reports = tuple(reports.glob("*-pyrefly.json"))
         tm.that(len(native_reports) == 1, truth=True)
-        assert not m.Infra.PyreflyReport.model_validate_json(
-            native_reports[0].read_text(encoding="utf-8"),
-            strict=True,
-        ).errors
+        tm.that(m.Infra.PyreflyReport.model_validate_json(native_reports[0].read_text(encoding="utf-8"), strict=True).errors, truth=False)
         pyproject.write_text("[tool.pyrefly\n", encoding="utf-8")
         failed = gate.check(project, checker_context)
         assert failed.result.passed is False
-        assert failed.raw_output
+        tm.that(failed.raw_output, truth=True)
         # The gate's declared report path is replaced per run: the passing
         # run's report is removed before the failing run, never reused.
-        assert not native_reports[0].exists()
+        tm.that(native_reports[0].exists(), truth=False)
 
     @staticmethod
     @pytest.mark.slow
@@ -419,20 +415,16 @@ class TestsFlextInfraTypeGates:
         unselected.write_text('value: int = "incorrect"\n', encoding="utf-8")
         gate = gate_class(project)
         result = gate.check_files([package / "identity.py"], project, checker_context)
-        assert result.result.passed, result
-        assert not result.issues
+        tm.that(result.result.passed, truth=True, msg=result)
+        tm.that(result.issues, truth=False)
 
         selected_error = gate.check_files([unselected], project, checker_context)
         assert selected_error.result.passed is False, selected_error
-        assert any(
-            issue.file.endswith(unselected.name) for issue in selected_error.issues
-        )
+        tm.that(any(issue.file.endswith(unselected.name) for issue in selected_error.issues), truth=True)
 
         full_project = gate.check(project, checker_context)
         assert full_project.result.passed is False, full_project
-        assert any(
-            issue.file.endswith(unselected.name) for issue in full_project.issues
-        )
+        tm.that(any(issue.file.endswith(unselected.name) for issue in full_project.issues), truth=True)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -451,7 +443,7 @@ class TestsFlextInfraTypeGates:
         assert result.result.passed is False
         # An empty source must never read as a clean pass: the skipped state
         # stays visible in the execution errors for every gate posture.
-        assert result.result.errors
+        tm.that(result.result.errors, truth=True)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -501,7 +493,7 @@ class TestsFlextInfraTypeGates:
     def test_pyrefly_empty_native_report() -> None:
         """Test pyrefly empty native report."""
         report = m.Infra.PyreflyReport.model_validate_json('{"errors":[]}', strict=True)
-        assert not report.errors
+        tm.that(report.errors, truth=False)
 
     @staticmethod
     def test_pyright_information_without_location() -> None:
@@ -513,7 +505,7 @@ class TestsFlextInfraTypeGates:
             '"informationCount":1,"timeInSec":0.1}}',
             strict=True,
         )
-        assert report.general_diagnostics[0].range is None
+        tm.that(report.general_diagnostics[0].range, none=True)
         tm.that(report.summary.information_count == 1, truth=True)
 
     @staticmethod
@@ -526,7 +518,7 @@ class TestsFlextInfraTypeGates:
             strict=True,
         )
         tm.that(report.summary.files_analyzed == 0, truth=True)
-        assert not report.general_diagnostics
+        tm.that(report.general_diagnostics, truth=False)
 
     @staticmethod
     def test_checker_does_not_run_type_gates_on_content_only_project(

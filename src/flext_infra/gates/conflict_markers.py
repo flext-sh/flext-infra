@@ -27,21 +27,24 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
-        """Check every owned Git index and unpublished path read-only.
+        """Check the owned Git inventory or a sealed candidate's physical tree.
 
         Returns:
             The complete scan receipt with every unresolved control line.
 
         Raises:
-            ValueError: If the project has no Git inventory or no source files.
+            ValueError: If the selected inventory has no source files.
 
         """
-        _ = ctx
-        paths = u.Infra.git_tracked_scope_paths(project_dir)
-        if paths is None or not paths:
-            message = (
-                f"conflict-marker gate requires a nonempty Git inventory: {project_dir}"
+        paths = (
+            tuple(
+                path for path in ctx.candidate_files if path.is_relative_to(project_dir)
             )
+            if ctx.runtime_root is not None
+            else u.Infra.git_source_scope_paths(project_dir)
+        )
+        if paths is None or not paths:
+            message = f"conflict-marker gate requires a nonempty source inventory: {project_dir}"
             raise ValueError(message)
         return self._check_paths(paths, project_dir)
 

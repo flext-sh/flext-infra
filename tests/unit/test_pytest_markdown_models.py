@@ -1,10 +1,14 @@
-"""Public Markdown observation models retain typed, session-local collections."""
+"""Public Markdown observation models retain typed, session-local collections.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
 import pytest
 
-from tests import m
+from tests import m, tm
 
 
 def test_markdown_collection_defaults_are_independent() -> None:
@@ -20,18 +24,18 @@ def test_markdown_collection_defaults_are_independent() -> None:
     item = m.Infra.PytestMarkdownItem(node_id="example.md::fence", origin=origin)
     first.eligible.append(origin)
     first.collected.append(item)
-    assert first.eligible == [origin]
-    assert first.collected == [item]
-    assert not second.eligible
-    assert not second.collected
+    tm.that(first.eligible, eq=[origin])
+    tm.that(first.collected, eq=[item])
+    tm.that(second.eligible, truth=False)
+    tm.that(second.collected, truth=False)
     first_report = m.Infra.DiagResult()
     second_report = m.Infra.DiagResult()
     first_report.markdown_items.append(item)
     first_report.markdown_attempts.append(
         m.Infra.PytestMarkdownAttempt(node_id=item.node_id, attempts=1)
     )
-    assert not second_report.markdown_items
-    assert not second_report.markdown_attempts
+    tm.that(second_report.markdown_items, truth=False)
+    tm.that(second_report.markdown_attempts, truth=False)
 
 
 def test_markdown_collection_validates_nested_origins() -> None:

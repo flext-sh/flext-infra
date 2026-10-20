@@ -376,6 +376,7 @@ class FlextInfraPyprojectModernizerDocument:
                 path=path,
                 analysis_exclusions=topology.analysis_exclusions,
                 generated_python_roots=topology.declared_python_dirs,
+                repository_namespace_packages=topology.repository_namespace_packages,
             ),
             *FlextInfraEnsurePackagingPhase().apply_payload(
                 payload,

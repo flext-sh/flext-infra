@@ -1,7 +1,7 @@
 # Reusable guard: an assert statement that carries an explicit failure message
-# (`assert <cond>, <msg>`). The message encodes author intent, so the assert->tm
-# codemods skip it (referenced via `not: { matches: assert-has-message }`) and
-# leave it for human review rather than dropping the message.
+# (`assert <cond>, <msg>`). Observation codemods skip it through
+# `not: { matches: assert-has-message }`; rewire-test-assert-message owns its
+# explicit failure and preserves lazy message evaluation.
 id: assert-has-message
 language: Python
 rule:

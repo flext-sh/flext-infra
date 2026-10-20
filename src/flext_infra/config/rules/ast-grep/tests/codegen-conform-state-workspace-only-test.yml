@@ -1,0 +1,7 @@
+id: codegen-conform-state-workspace-only
+valid:
+  - |
+    FlextInfraCodegenConform(state=m.Infra.CodegenConformState(initial_workspace=workspace))
+invalid:
+  - |
+    FlextInfraCodegenConform(initial_workspace=workspace)

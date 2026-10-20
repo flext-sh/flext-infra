@@ -69,6 +69,8 @@ Infra:
       evidence: "name: flext-strict-jsonvalue-session-continuation"
     # Fresh import probes are independent subprocesses within one validation.
     fresh_import_workers: 3
+    # Bound concurrent-edit convergence without discarding independent plans.
+    source_replan_limit: 3
     # Protected-edit lint snapshots run their gate subprocesses in this many
     # threads per level (paths, then gates per path); mypy keeps its own
     # resource-limited deadline, so the bound caps concurrent type checkers.
@@ -131,12 +133,13 @@ Infra:
       # Keep reasons here; an empty list removes constraints from all projections.
       # Dependency compatibility is resolved from the declared project graph;
       # upstream packages own any bounds their public contracts require.
-      # mypy 2.4.0 crashes internally (AssertionError "Must not defer during
-      # final iteration", mypy semanal.py) on the fleet's nested ldif model
-      # inference — held below 2.4.0 until upstream fixes the deferral bug.
-      # Bead trail: flext-0ftd.3 family + flext-mlr2m root parser finding.
-      uv_constraint_dependencies:
-      - mypy<2.4.0
+      uv_constraint_dependencies: []
+      # Explicit resolver-wide SDK source election. Repository/local declarations
+      # of the same normalized name and marker take precedence at rendering.
+      # The fork release repairs region coverage for try/else/finally matching;
+      # stale transitive metadata must not select the earlier broken source.
+      uv_override_dependencies:
+      - rope @ git+https://github.com/marlon-costa-dc/rope.git@1.15.0%2Bdc.4
       # Moving selectors consumed by generated .mise.toml and CI. Only
       # `make upg` resolves them to the newest release and writes mise.lock;
       # setup installs exactly what the committed lock pins, and only these
@@ -605,6 +608,18 @@ Infra:
       pre_push: true
       # Public refactor violations-sweep default; custom sequences use verbs below.
       violations_sweep_repair_verbs: [ fix, fmt, mod ]
+      type_contract_rules:
+      - bind-typing-adapter-utilities
+      - rewire-cli-json-mapping-adapter
+      - rewire-cli-json-list-adapter
+      - pydantic-field-positional-default
+      - pydantic-unset-private-attribute
+      - codegen-conform-state-request-workspace
+      - codegen-conform-state-workspace-request
+      - codegen-conform-state-request
+      - codegen-conform-state-workspace
+      - codegen-conform-state-workspace-only
+      - codegen-conform-state-ports
       workflow:
       - { verb: setup, contexts: [ local, ci ] }
       - { verb: gen, contexts: [ local, ci ] }
@@ -709,6 +724,8 @@ Infra:
         description: Run this repository's explicitly declared public runtime examples module.
       - name: check
         description: Check the configured quality gates and projection conformance without writes.
+      - name: check-pyright
+        description: Run the complete configured Pyright analysis and retain its native gate receipt.
       - name: census
         description: Inventory constants, duplicate declarations and placement across every declared first-party project.
       - name: census-constants
@@ -786,7 +803,7 @@ Infra:
         description: Regenerate declared projections with guarded publication per participant, without repairing authored inputs or resolving locks.
         requires_activation: false
       - name: gen-footprint
-        description: Inspect the pending generation journal and declared physical effect footprint without leases, recovery, or publication.
+        description: Inspect the pending generation journal and physical effect footprint without generation planning, participant leases, recovery, or publication.
         requires_activation: false
       - name: initialize
         description: Bootstrap this target's own declaration and canonical Makefile.
@@ -796,6 +813,8 @@ Infra:
         requires_activation: false
       - name: mod
         description: Apply the declared structural codemods; committed rule-test snapshots are verified, never rewritten.
+      - name: mod-types
+        description: Apply the declared source type-contract migrations through the native AST fixed point.
       - name: mod-rules
         description: Evaluate the declared AST and text rule catalogs across every governed project without rewriting sources; publish occurrence evidence by rule and repository.
       - name: mod-text

@@ -12,7 +12,6 @@ from typing import ClassVar
 from flext_cli import cli
 
 from flext_infra import c, infra, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenProtocolModels
 from flext_infra.codemod import (
     FlextInfraCodemodAstScan,
     FlextInfraCodemodSemanticApply,
@@ -263,6 +262,21 @@ class FlextInfraRefactorRoutes:
         return infra.mod(request, FlextInfraCliModProgress())
 
     @staticmethod
+    def execute_protocol_models(
+        request: p.Infra.CommandPayloadContext,
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Project model contracts through the public API's bound capabilities.
+
+        Returns:
+            The original failure or the CLI's successful completion marker.
+
+        """
+        projected = infra.codegen_protocol_models(request)
+        if projected.failure:
+            return r[t.Cli.ResultValue].from_failure(projected)
+        return r[t.Cli.ResultValue].ok(value=True)
+
+    @staticmethod
     def execute_mod_text(
         request: m.Infra.ModTextCommand,
     ) -> p.Result[t.Cli.ResultValue]:
@@ -350,8 +364,8 @@ class FlextInfraRefactorRoutes:
                 "Assemble the member's generated structural protocols from "
                 "its validated models; dry-run reports drift"
             ),
-            model_cls=FlextInfraCodegenProtocolModels,
-            handler=FlextInfraCodegenProtocolModels.execute_command,
+            model_cls=m.Infra.CommandContext,
+            handler=execute_protocol_models,
         ),
         m.Cli.ResultCommandRoute(
             name="mod",

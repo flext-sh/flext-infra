@@ -548,7 +548,8 @@ class TestsFlextInfraCodemodContextOwnPackage:
             "loggings.py": "import structlog\nclass NativeLogging:\n    pass\n",
             "consumer.py": "from .logging_api import Utilities\nimport structlog\n",
             "shadow.py": (
-                "from .logging_api import Utilities\nUtilities = None\nimport structlog\n"
+                "from .logging_api import Utilities\n"
+                "Utilities = None\nimport structlog\n"
             ),
         }
         for relative, text in contents.items():
@@ -795,10 +796,12 @@ class TestsFlextInfraCodemodContextOwnPackage:
             ("other_package._support", True),
         ],
     )
+    @pytest.mark.parametrize("surface", ["tests", "scripts", "examples"])
     def test_internal_tiers_are_own_namespaces(
         self,
         tmp_path: Path,
         module: str,
+        surface: str,
         *,
         admitted: bool,
     ) -> None:
@@ -809,7 +812,10 @@ class TestsFlextInfraCodemodContextOwnPackage:
             pyproject='[project]\nname = "demo"\nversion = "0.1.0"\n',
             with_src=True,
         )
-        consumer = project / "tests" / "unit" / "consumer_tests.py"
+        tier = project / surface
+        tier.mkdir(exist_ok=True)
+        (tier / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
+        consumer = tier / "unit" / "consumer_tests.py"
         consumer.parent.mkdir(parents=True)
         consumer.write_text(f"from {module} import Helper\n", encoding="utf-8")
 

@@ -38,7 +38,9 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         implementation = package / "_pieces"
         implementation.mkdir()
         (implementation / c.Infra.INIT_PY).write_text(
-            '"""Original implementation package."""\n',
+            '"""Original implementation package."""\n'
+            "from .owned import DeclaredOwner\n\n"
+            "__all__ = ('DeclaredOwner',)\n",
             encoding=c.DEFAULT_ENCODING,
         )
         source = implementation / "owned.py"
@@ -231,7 +233,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             FlextInfraSemanticPublication.publish_semantic_artifact_plans(
                 plans,
                 repository_root=root,
-                projection_roots=(root,),
+                options=m.Infra.SemanticPublicationOptions(projection_roots=(root,)),
             ),
         )
         tm.that(source.exists(), eq=False)
@@ -273,7 +275,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             FlextInfraSemanticPublication.publish_semantic_artifact_plans(
                 plans,
                 repository_root=root,
-                projection_roots=(root,),
+                options=m.Infra.SemanticPublicationOptions(projection_roots=(root,)),
             ),
         )
         tm.that(source.read_bytes(), eq=newer)

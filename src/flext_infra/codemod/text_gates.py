@@ -505,8 +505,9 @@ class FlextInfraModTextGateEngine:
             and Path(pattern).suffix != ".md"
         )
 
-    @staticmethod
+    @classmethod
     def _source_paths(
+        cls,
         root: Path,
         rules: t.VariadicTuple[m.Infra.ModTextRule],
         *,
@@ -525,6 +526,37 @@ class FlextInfraModTextGateEngine:
                 paths.update(candidate.rglob(f"*{c.Infra.EXT_PYTHON}"))
             else:
                 paths.add(candidate)
+        markdown = cls._markdown_source_paths(root, rules, sources)
+        if markdown.failure:
+            return markdown
+        paths.update(markdown.value)
+        members = tuple(
+            project
+            for project in u.Infra.governed_project_roots(root)
+            if project != root
+        )
+        return r[t.VariadicTuple[Path]].ok(
+            tuple(
+                path
+                for path in sorted(paths)
+                if not any(path.is_relative_to(member) for member in members)
+            )
+        )
+
+    @classmethod
+    def _markdown_source_paths(
+        cls,
+        root: Path,
+        rules: t.VariadicTuple[m.Infra.ModTextRule],
+        sources: t.MappingKV[Path, str] | None,
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Authenticate the explicitly elected Markdown sources.
+
+        Returns:
+            The declared physical or staged Markdown paths.
+
+        """
+        paths: set[Path] = set()
         for rule in rules:
             for pattern in rule.include:
                 declared = Path(pattern)
@@ -553,27 +585,26 @@ class FlextInfraModTextGateEngine:
                     if sources is not None and path in sources:
                         paths.add(path)
                         continue
-                    if (
-                        not path.is_file()
-                        or path.is_symlink()
-                        or path.resolve() != path.absolute()
-                        or path.stat().st_nlink != 1
-                    ):
+                    if not cls._physical_markdown_source(path):
                         return r[t.VariadicTuple[Path]].fail(
                             f"text Markdown source must be physical: {path}",
                         )
                     paths.add(path)
-        members = tuple(
-            project
-            for project in u.Infra.governed_project_roots(root)
-            if project != root
-        )
-        return r[t.VariadicTuple[Path]].ok(
-            tuple(
-                path
-                for path in sorted(paths)
-                if not any(path.is_relative_to(member) for member in members)
-            )
+        return r[t.VariadicTuple[Path]].ok(tuple(paths))
+
+    @staticmethod
+    def _physical_markdown_source(path: Path) -> bool:
+        """Check that a Markdown source has one physical, non-symlink identity.
+
+        Returns:
+            Whether the source is a regular, unaliased file.
+
+        """
+        return (
+            path.is_file()
+            and not path.is_symlink()
+            and path.resolve() == path.absolute()
+            and path.stat().st_nlink == 1
         )
 
     @classmethod
@@ -694,14 +725,15 @@ class FlextInfraModTextGateEngine:
     def _scan_paths(
         cls,
         root: Path,
-        paths: t.SequenceOf[Path],
-        rules: t.VariadicTuple[m.Infra.ModTextRule],
-        base_states: t.VariadicTuple[m.Cli.AtomicFileState],
+        inventory: t.Triple[
+            t.SequenceOf[Path],
+            t.VariadicTuple[m.Infra.ModTextRule],
+            t.VariadicTuple[m.Cli.AtomicFileState],
+        ],
         *,
         fix: bool,
         sources: t.MappingKV[Path, str] | None = None,
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+        receipt: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[
         t.Pair[
             m.Infra.ModTextReport,
@@ -713,18 +745,14 @@ class FlextInfraModTextGateEngine:
         Returns:
             Reported matches and the canonical phase analysis with its first cause.
 
-        Raises:
-            ValueError: If a planning source lacks its original receipt.
-
         """
+        paths, rules, base_states = inventory
         entries: list[m.Infra.ModTextFinding] = []
-        files: set[Path] = set()
-        actionable = 0
         plans: list[m.Infra.CodegenFilePlan] = []
         issues: list[m.Infra.Issue] = []
         first_exception: BaseException | None = None
-        originals = {state.path: state for state in source_states}
-        declarations = {plan.path: plan for plan in declared_files}
+        originals = {state.path: state for state in receipt.inputs}
+        declarations = {plan.path: plan for plan in receipt.files}
         consumed: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {
             state.path: state for state in base_states
         }
@@ -734,104 +762,44 @@ class FlextInfraModTextGateEngine:
                 continue
             declaration = declarations.get(path)
             try:
-                before: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan
-                if sources is None:
-                    prepared = cls._authenticated_source(root, path)
-                    if prepared.failure:
-                        issues.append(cls._source_issue(path, str(prepared.error)))
-                        first_exception = first_exception or prepared.exception
-                        continue
-                    before, source, relative = prepared.value
-                else:
-                    if path not in sources or (
-                        path not in originals and declaration is None
-                    ):
-                        msg = f"text planning source lacks its original receipt: {path}"
-                        raise ValueError(msg)
-                    before = (
-                        declaration.before
-                        if declaration is not None
-                        else originals[path]
-                    )
-                    source = sources[path]
-                if isinstance(before, m.Cli.AtomicFileState):
-                    if consumed.setdefault(path, before) != before:
-                        msg = f"text planning original receipts disagree: {path}"
-                        raise ValueError(msg)
-                if declaration is not None:
-                    for state in declaration.source_states:
-                        if consumed.setdefault(state.path, state) != state:
-                            msg = (
-                                f"text declaration original "
-                                f"receipts disagree: {state.path}"
-                            )
-                            raise ValueError(msg)
-            except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
-                first_exception = first_exception or exc
-                issues.append(cls._source_issue(path, str(exc), exception=exc))
-                continue
-            try:
-                updated, target_entries, target_actionable = cls._rewrite_source(
-                    source, relative, rules
+                prepared = cls._prepare_text_source(
+                    (root, path), sources, (originals, declaration), consumed
                 )
             except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
                 first_exception = first_exception or exc
                 issues.append(cls._source_issue(path, str(exc), exception=exc))
                 continue
-            entries.extend(target_entries)
-            actionable += target_actionable
-            if target_entries:
-                files.add(Path(relative))
-            if updated != source and source.startswith(c.Infra.AUTOGEN_HEADERS):
-                issues.append(
-                    cls._source_issue(
-                        path,
-                        "generated findings require canonical generator repair",
-                    )
-                )
+            if prepared.failure:
+                issues.append(cls._source_issue(path, str(prepared.error)))
+                first_exception = first_exception or prepared.exception
                 continue
-            if updated != source and path.suffix == c.Infra.EXT_PYTHON:
-                try:
-                    ast.parse(updated, filename=str(path))
-                except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
-                    first_exception = first_exception or exc
-                    issues.append(cls._source_issue(path, str(exc), exception=exc))
-                    continue
-            if fix and updated != source:
-                if declaration is not None:
-                    plans.append(
-                        declaration.model_copy(
-                            update={
-                                "desired_content": updated.encode(c.DEFAULT_ENCODING),
-                                "source_states": (
-                                    *base_states,
-                                    *declaration.source_states,
-                                ),
-                                "owner": "mod-text",
-                            }
-                        )
-                    )
-                    continue
-                if not isinstance(before, m.Cli.AtomicFileState):
-                    return r[
-                        t.Pair[m.Infra.ModTextReport, m.Infra.CodegenPhaseAnalysis]
-                    ].fail(f"text declaration lacks its original file plan: {path}")
-                plans.append(
-                    cls._rewrite_plan(root, path, before, updated, base_states),
-                )
-        report = m.Infra.ModTextReport(
-            findings=len(entries),
-            actionable=actionable,
-            files=frozenset(files),
-            entries=tuple(entries),
-        )
+            rewritten = cls._plan_text_rewrite(
+                (root, path),
+                prepared.value,
+                rules,
+                (base_states, declaration),
+                fix=fix,
+            )
+            if rewritten.failure:
+                return r[
+                    t.Pair[m.Infra.ModTextReport, m.Infra.CodegenPhaseAnalysis]
+                ].from_failure(rewritten)
+            entries.extend(rewritten.value[0])
+            plans.extend(rewritten.value[1].files)
+            issues.extend(rewritten.value[1].issues)
+            first_exception = first_exception or rewritten.value[1].exception
         return r[
             t.Pair[
                 m.Infra.ModTextReport,
                 m.Infra.CodegenPhaseAnalysis,
             ]
         ].ok((
-            report,
+            m.Infra.ModTextReport(
+                findings=len(entries),
+                actionable=sum(entry.text != entry.replacement for entry in entries),
+                files=frozenset(entry.file for entry in entries),
+                entries=tuple(entries),
+            ),
             m.Infra.CodegenPhaseAnalysis(
                 phase=c.Infra.CodegenStagedFilePhase.MOD_TEXT,
                 files=tuple(plans),
@@ -840,6 +808,192 @@ class FlextInfraModTextGateEngine:
                 exception=first_exception,
             ),
         ))
+
+    @classmethod
+    def _plan_text_rewrite(
+        cls,
+        location: t.Pair[Path, Path],
+        prepared: t.Triple[
+            m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan, str, str
+        ],
+        rules: t.VariadicTuple[m.Infra.ModTextRule],
+        evidence: t.Pair[
+            t.VariadicTuple[m.Cli.AtomicFileState], m.Infra.CodegenFilePlan | None
+        ],
+        *,
+        fix: bool,
+    ) -> p.Result[
+        t.Pair[t.VariadicTuple[m.Infra.ModTextFinding], m.Infra.CodegenPhaseAnalysis]
+    ]:
+        """Retain findings even when their target cannot safely publish.
+
+        Returns:
+            The target findings and its independent publication analysis.
+
+        """
+        outcome = r[
+            t.Pair[
+                t.VariadicTuple[m.Infra.ModTextFinding], m.Infra.CodegenPhaseAnalysis
+            ]
+        ]
+        try:
+            updated, entries, _actionable = cls._rewrite_source(
+                prepared[1], prepared[2], rules
+            )
+        except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
+            return outcome.ok((
+                (),
+                m.Infra.CodegenPhaseAnalysis(
+                    phase=c.Infra.CodegenStagedFilePhase.MOD_TEXT,
+                    files=(),
+                    inputs=(),
+                    issues=(cls._source_issue(location[1], str(exc), exception=exc),),
+                    exception=exc,
+                ),
+            ))
+        return cls._text_target_analysis(
+            location, (prepared[0], prepared[1]), updated, evidence, fix=fix
+        ).map(lambda analysis: (tuple(entries), analysis))
+
+    @classmethod
+    def _text_target_analysis(
+        cls,
+        location: t.Pair[Path, Path],
+        original: t.Pair[m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan, str],
+        updated: str,
+        evidence: t.Pair[
+            t.VariadicTuple[m.Cli.AtomicFileState], m.Infra.CodegenFilePlan | None
+        ],
+        *,
+        fix: bool,
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Validate one rewritten target and bind its native publication plan.
+
+        Returns:
+            The independent target plan or its causal validation issue.
+
+        """
+        outcome = r[m.Infra.CodegenPhaseAnalysis]
+        root, path = location
+        before, source = original
+        base_states, declaration = evidence
+        analysis = m.Infra.CodegenPhaseAnalysis(
+            phase=c.Infra.CodegenStagedFilePhase.MOD_TEXT, files=(), inputs=()
+        )
+        if updated != source and source.startswith(c.Infra.AUTOGEN_HEADERS):
+            return outcome.ok(
+                analysis.model_copy(
+                    update={
+                        "issues": (
+                            cls._source_issue(
+                                path,
+                                "generated findings require canonical generator repair",
+                            ),
+                        )
+                    }
+                )
+            )
+        if updated != source and path.suffix == c.Infra.EXT_PYTHON:
+            try:
+                ast.parse(updated, filename=str(path))
+            except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
+                return outcome.ok(
+                    analysis.model_copy(
+                        update={
+                            "issues": (
+                                cls._source_issue(path, str(exc), exception=exc),
+                            ),
+                            "exception": exc,
+                        }
+                    )
+                )
+        if not fix or updated == source:
+            return outcome.ok(analysis)
+        if declaration is not None:
+            return outcome.ok(
+                analysis.model_copy(
+                    update={
+                        "files": (
+                            declaration.model_copy(
+                                update={
+                                    "desired_content": updated.encode(
+                                        c.DEFAULT_ENCODING
+                                    ),
+                                    "source_states": (
+                                        *base_states,
+                                        *declaration.source_states,
+                                    ),
+                                    "owner": "mod-text",
+                                }
+                            ),
+                        )
+                    }
+                )
+            )
+        if not isinstance(before, m.Cli.AtomicFileState):
+            return outcome.fail(
+                f"text declaration lacks its original file plan: {path}"
+            )
+        return outcome.ok(
+            analysis.model_copy(
+                update={
+                    "files": (
+                        cls._rewrite_plan(root, path, before, updated, base_states),
+                    )
+                }
+            )
+        )
+
+    @classmethod
+    def _prepare_text_source(
+        cls,
+        location: t.Pair[Path, Path],
+        sources: t.MappingKV[Path, str] | None,
+        evidence: t.Pair[
+            t.MappingKV[Path, m.Cli.AtomicFileState], m.Infra.CodegenFilePlan | None
+        ],
+        consumed: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+    ) -> p.Result[
+        t.Triple[m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan, str, str]
+    ]:
+        """Authenticate one physical or declared source and retain its dependencies.
+
+        Returns:
+            The original receipt, source text and repository-relative name.
+
+        Raises:
+            ValueError: If a source or dependency receipt is absent or inconsistent.
+
+        """
+        outcome = r[
+            t.Triple[m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan, str, str]
+        ]
+        root, path = location
+        originals, declaration = evidence
+        before: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan
+        if sources is None:
+            prepared = cls._authenticated_source(root, path)
+            if prepared.failure:
+                return outcome.from_failure(prepared)
+            before, source, relative = prepared.value
+        else:
+            if path not in sources or (path not in originals and declaration is None):
+                msg = f"text planning source lacks its original receipt: {path}"
+                raise ValueError(msg)
+            before = declaration.before if declaration is not None else originals[path]
+            source, relative = sources[path], path.relative_to(root).as_posix()
+        if (
+            isinstance(before, m.Cli.AtomicFileState)
+            and consumed.setdefault(path, before) != before
+        ):
+            msg = f"text planning original receipts disagree: {path}"
+            raise ValueError(msg)
+        if declaration is not None:
+            for state in declaration.source_states:
+                if consumed.setdefault(state.path, state) != state:
+                    msg = f"text declaration original receipts disagree: {state.path}"
+                    raise ValueError(msg)
+        return outcome.ok((before, source, relative))
 
     @staticmethod
     def _source_issue(
@@ -895,8 +1049,11 @@ class FlextInfraModTextGateEngine:
                     project,
                     fix=True,
                     sources=sources,
-                    source_states=source_states,
-                    declared_files=declared_files,
+                    receipt=m.Infra.CodegenPhaseAnalysis(
+                        phase=c.Infra.CodegenStagedFilePhase.MOD_TEXT,
+                        inputs=source_states,
+                        files=declared_files,
+                    ),
                     validate_receipts=validate_receipts,
                 )
             except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
@@ -1047,8 +1204,7 @@ class FlextInfraModTextGateEngine:
         fix: bool,
         validate_receipts: bool,
         sources: t.MappingKV[Path, str] | None = None,
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
+        receipt: m.Infra.CodegenPhaseAnalysis | None = None,
     ) -> p.Result[
         t.Pair[
             m.Infra.ModTextReport,
@@ -1081,28 +1237,33 @@ class FlextInfraModTextGateEngine:
             ].from_failure(paths)
         scanned = cls._scan_paths(
             root,
-            tuple(
-                sorted(
-                    set(paths.value)
-                    | {
-                        path
-                        for path in sources or ()
-                        if path.is_relative_to(root)
-                        and path.suffix == c.Infra.EXT_PYTHON
-                        and not any(
-                            path.is_relative_to(member)
-                            for member in u.Infra.governed_project_roots(root)
-                            if member != root
-                        )
-                    }
-                )
+            (
+                tuple(
+                    sorted(
+                        set(paths.value)
+                        | {
+                            path
+                            for path in sources or ()
+                            if path.is_relative_to(root)
+                            and path.suffix == c.Infra.EXT_PYTHON
+                            and not any(
+                                path.is_relative_to(member)
+                                for member in u.Infra.governed_project_roots(root)
+                                if member != root
+                            )
+                        }
+                    )
+                ),
+                rules,
+                (*catalogues, identity),
             ),
-            rules,
-            (*catalogues, identity),
             fix=fix,
             sources=sources,
-            source_states=source_states,
-            declared_files=declared_files,
+            receipt=receipt
+            if receipt is not None
+            else m.Infra.CodegenPhaseAnalysis(
+                phase=c.Infra.CodegenStagedFilePhase.MOD_TEXT, inputs=(), files=()
+            ),
         )
         if scanned.failure:
             return scanned

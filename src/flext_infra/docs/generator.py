@@ -171,7 +171,6 @@ class FlextInfraDocGenerator(
             return report_type.from_failure(written)
         return self._generation_reports(
             bundle,
-            plans.value,
             frozenset(written.value),
         )
 
@@ -288,12 +287,6 @@ class FlextInfraDocGenerator(
             self._configured_request(),
             publication_receipts=publication_receipts,
         )
-
-    def prepare_batches(
-        self,
-    ) -> Iterator[p.Result[m.Infra.DocsGenerationBundle]]:
-        """Yield one rendered scope at a time for immediate guarded publication."""
-        return self._prepare_batches(self._configured_request())
 
     @override
     def execute(self) -> p.Result[bool]:

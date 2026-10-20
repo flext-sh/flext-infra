@@ -206,7 +206,11 @@ class TestsFlextInfraCodemodDuplicateApply:
                     rope,
                     (group,),
                     sources=sources,
-                    source_states=states,
+                    receipt=m.Infra.CodegenPhaseAnalysis(
+                        phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                        inputs=states,
+                        files=(),
+                    ),
                 )
             )
             tm.that(planned.edits, empty=False)
@@ -448,7 +452,7 @@ class TestsFlextInfraCodemodDuplicateApply:
         tm.that(outcome.plans, length=1)
         plan = outcome.plans[0]
         tm.that(plan.origin, eq="jscpd")
-        assert plan.reason
+        tm.that(plan.reason, truth=True)
         tm.that(plan.edits[0].action == c.Infra.DUPLICATE_KEEP_ACTION, truth=True)
         tm.that(plan.edits[1].action == c.Infra.DUPLICATE_DELETE_ACTION, truth=True)
         tm.that(plan.owner_file_path, eq=owner)

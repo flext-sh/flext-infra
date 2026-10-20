@@ -10,6 +10,7 @@ from collections import defaultdict
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
+from flext_infra import config, p, u
 from flext_infra.codegen import FlextInfraCodegenGenerationImportsMixin
 
 if TYPE_CHECKING:
@@ -20,6 +21,75 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
     FlextInfraCodegenGenerationImportsMixin,
 ):
     """TYPE_CHECKING block generation helper methods."""
+
+    @classmethod
+    def _owned_child_imports(
+        cls,
+        mod: str,
+        items: t.StrPairSequence,
+        *,
+        source_project: p.Infra.RopeProject,
+        occupied_names: set[str],
+    ) -> t.StrSequence:
+        """Bind a proven child module's exports without importing its parent.
+
+        Returns:
+            Absolute module imports followed by identity-preserving static aliases.
+
+        Raises:
+            ValueError: If a binding is not declared by its owner or cannot fit.
+
+        """
+        owner = u.Infra.require_parsed_module(source_project.get_module(mod))
+        parent_module = u.Infra.require_parsed_module(
+            source_project.get_module(mod.rpartition(".")[0])
+        )
+        # Reuse this module's existing binding so a second render is byte-stable.
+        blocked = occupied_names | {
+            name
+            for name, binding in parent_module.get_scope().get_names().items()
+            if not u.Infra.pymodule(value := binding.get_object()) or value is not owner
+        }
+        index = 0
+        while (alias := f"_owner_{index}") in blocked:
+            index += 1
+        occupied_names.add(alias)
+        lines = list(cls._format_type_checking_module_alias_import("    ", mod, alias))
+        for export_name, attr_name in sorted(items, key=cls._import_item_sort_key):
+            member = owner.get_attributes().get(attr_name)
+            target = member.get_object() if member is not None else None
+            if target is None or target.get_module() is not owner:
+                message = (
+                    "Owned child static export is not declared by its module: "
+                    f"{mod}.{attr_name}"
+                )
+                raise ValueError(message)
+            expression = f"{alias}.{attr_name}"
+            compact = f"    {export_name} = {expression}"
+            lines.extend(
+                (compact,)
+                if len(compact) <= config.Infra.tooling.tools.ruff.line_length
+                else (f"    {export_name} = (", f"        {expression}", "    )")
+            )
+        if any(
+            len(line) > config.Infra.tooling.tools.ruff.line_length for line in lines
+        ):
+            message = f"Owned child static binding exceeds Ruff line length: {mod}"
+            raise ValueError(message)
+        attributes = u.Infra.build_string_module(
+            source_project,
+            "\n".join(line.removeprefix("    ") for line in lines) + "\n",
+        ).get_attributes()
+        for export_name, attr_name in items:
+            binding = attributes.get(export_name)
+            if (
+                binding is None
+                or binding.get_object()
+                is not owner.get_attributes()[attr_name].get_object()
+            ):
+                message = f"Owned child static identity changed: {mod}.{attr_name}"
+                raise ValueError(message)
+        return tuple(lines)
 
     @staticmethod
     def _collapse_to_children(
@@ -114,8 +184,26 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         items: t.StrPairSequence,
         lines: t.MutableSequenceOf[str],
         module_exports: frozenset[str],
+        context: tuple[str | None, p.Infra.RopeProject | None, set[str]],
     ) -> None:
         """Emit one TYPE_CHECKING import from its resolved owner."""
+        local_package_root, source_project, occupied_names = context
+        if (
+            len(f"    from {mod} import (")
+            > config.Infra.tooling.tools.ruff.line_length
+            and mod.rpartition(".")[0] == local_package_root
+            and source_project is not None
+            and all(attr for _name, attr in items)
+        ):
+            lines.extend(
+                FlextInfraCodegenGenerationTypeCheckingMixin._owned_child_imports(
+                    mod,
+                    items,
+                    source_project=source_project,
+                    occupied_names=occupied_names,
+                ),
+            )
+            return
         parts: t.MutableSequenceOf[str] = []
         for export_name, attr_name in sorted(
             items,
@@ -161,6 +249,30 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             The resulting ``t.StrSequence``.
 
         """
+        return cls._generate_type_checking(
+            groups,
+            (include_flext_types, child_packages, local_package_root, root_names),
+        )
+
+    @classmethod
+    def _generate_type_checking(
+        cls,
+        groups: t.MappingKV[str, t.StrPairSequence],
+        publication: tuple[
+            bool, t.StrSequence | None, str | None, frozenset[str] | None
+        ],
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> t.StrSequence:
+        """Render the public import contract against its optional frozen source view.
+
+        Returns:
+            The canonical static imports and proven owned-child class bindings.
+
+        """
+        include_flext_types, child_packages, local_package_root, root_names = (
+            publication
+        )
         if not groups and not include_flext_types:
             return ()
         if not groups:
@@ -182,14 +294,6 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             name for items in collapsed.values() for name, attr in items if not attr
         )
         merged_groups = cls._merge_root_alias_groups(collapsed)
-        if local_package_root:
-            prefix = f"{local_package_root}."
-            merged_groups = {
-                (
-                    f".{mod.removeprefix(prefix)}" if mod.startswith(prefix) else mod
-                ): items
-                for mod, items in merged_groups.items()
-            }
         # With include_flext_types=False the collapsed groups are the only
         # content the block would carry; a package whose references collapsed
         # away (its re-exported children moved elsewhere) must render no
@@ -197,13 +301,16 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         # invalid Python and breaks every conform that follows.
         if not merged_groups and not include_flext_types:
             return ()
-        root_name = "" if not local_package_root else local_package_root.split(".")[0]
         # Derive the set of first-party roots for isort sectioning. When the
         # caller provides an explicit root_names (e.g. test facades need both
         # "tests" and the project package), use it; otherwise fall back to the
         # single root_name so non-test packages are unaffected.
         effective_root_names = (
-            root_names if root_names is not None else frozenset({root_name})
+            root_names
+            if root_names is not None
+            else frozenset({
+                "" if not local_package_root else local_package_root.split(".")[0]
+            })
         )
         lines: t.MutableSequenceOf[str] = ["if TYPE_CHECKING:"]
         flext_types_emitted = include_flext_types and not cls._has_flext_types(
@@ -215,7 +322,9 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         def type_checking_module_key(mod: str) -> t.StrPair:
             return cls._type_checking_sort_key(mod, effective_root_names)
 
-        sorted_mods = sorted(merged_groups, key=type_checking_module_key)
+        occupied_names = {
+            name for items in merged_groups.values() for name, _attr in items
+        }
         # ``from flext_core import FlextTypes`` (when emitted above) is the
         # leading absolute import; seed the previous section so the first loop
         # group only separates on a real ruff isort section transition rather
@@ -226,17 +335,20 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             if flext_types_emitted
             else None
         )
-        for mod in sorted_mods:
-            current_section = type_checking_module_key(mod)[0]
-            if previous_section is not None and current_section != previous_section:
+        for mod in sorted(merged_groups, key=type_checking_module_key):
+            if (
+                previous_section is not None
+                and type_checking_module_key(mod)[0] != previous_section
+            ):
                 lines.append("")
             cls._emit_type_checking_module(
                 mod,
                 merged_groups[mod],
                 lines,
                 module_exports,
+                (local_package_root, source_project, occupied_names),
             )
-            previous_section = current_section
+            previous_section = type_checking_module_key(mod)[0]
         return () if len(lines) == 1 else lines
 
 

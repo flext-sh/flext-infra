@@ -19,17 +19,60 @@ from flext_infra._models import (
     FlextInfraModelsCheck,
     FlextInfraModelsCodegenToolchain,
     FlextInfraModelsRope,
-    FlextInfraModelsWorkspace,
 )
 from flext_infra._models._codegen import (
     FlextInfraModelsCodegenJournalModels,
     FlextInfraModelsCodegenPipelineModels,
 )
 from flext_infra._models._config import FlextInfraConfigModels
+from flext_infra._models.workspace import FlextInfraModelsWorkspace
 
 
 class FlextInfraModelsCodegenTransactionModels:
     """Transaction and session models for the codegen pipeline."""
+
+    class CodegenSourcePreviewOptions(FlextInfraModelsBase.FrozenArbitrary):
+        """Authenticated inputs and runtime boundaries for one source preview."""
+
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            default=(), description="Pinned source states authenticated by the preview"
+        )
+        runtime_root: Path | None = m.Field(
+            default=None, description="Explicit physical runtime owner when supplied"
+        )
+        workspaces: t.VariadicTuple[Path] = m.Field(
+            default=(), description="Explicit composition scopes of the staged view"
+        )
+        runtime_check: bool = m.Field(
+            default=True,
+            description="Validate the candidate through its native runtime",
+        )
+        modes: t.MappingKV[Path, int] | None = m.Field(
+            default=None,
+            description="Declared file modes for the staged source updates",
+        )
+
+    class StageSourceOptions(FlextInfraModelsBase.FrozenArbitrary):
+        """Authenticated inputs, topology and declarations for a source candidate."""
+
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+            default=(), description="Pinned source states of the staging invocation"
+        )
+        workspaces: t.VariadicTuple[Path] = m.Field(
+            default=(), description="Explicit composition scopes of the staged view"
+        )
+        modes: t.MappingKV[Path, int] | None = m.Field(
+            default=None, description="Declared source modes preserved during staging"
+        )
+        declared_files: t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan] = (
+            m.Field(default=(), description="Authenticated candidate file declarations")
+        )
+        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
+            default=(), description="Original native source election receipts"
+        )
+        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
+            m.Field(default=(), description="Original native source query ancestry")
+        )
 
     class StagePackagePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Pinned package/dependency inputs and the declared public facade contract."""
@@ -57,6 +100,7 @@ class FlextInfraModelsCodegenTransactionModels:
     class StageSourcePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Pinned project closure and desired bytes for effect-free validation."""
 
+        version: Literal[1] = m.Field(default=1, description="Source receipt version")
         workspace: Path = m.Field(description="Canonical source workspace root")
         workspaces: t.VariadicTuple[Path] = m.Field(
             default=(),
@@ -67,6 +111,18 @@ class FlextInfraModelsCodegenTransactionModels:
         )
         inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
             description="Exact source and configuration observations"
+        )
+        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
+            default=(), description="Native directory elections of this source epoch"
+        )
+        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
+            m.Field(default=(), description="Native root and source query identities")
+        )
+        prepared_hashes: t.VariadicTuple[t.Pair[Path, str | None]] = m.Field(
+            default=(), description="Exact prepared update digests; None retires a file"
+        )
+        directory_publications: t.VariadicTuple[m.Cli.AtomicDirectoryState] = m.Field(
+            default=(), description="Journal-proven own directory births for admission"
         )
         updates: t.MappingKV[Path, str | None] = m.Field(
             description=(
@@ -344,8 +400,13 @@ class FlextInfraModelsCodegenTransactionModels:
                 msg = "codegen journal directory has no project participant"
                 raise ValueError(msg)
 
+    class CodegenFootprintRequest(m.Value):
+        """Inspect recorded generation authority, not prospective generation inputs."""
+
+        root: Path = m.Field(description="Repository or workspace coordination root")
+
     class CodegenFootprint(m.Value):
-        """Effect-free observed journal and requested publication footprint."""
+        """Observed journal identity and recorded physical effect footprint."""
 
         scope_root: Path = m.Field(description="Authenticated coordination root")
         journal_path: Path = m.Field(description="Canonical journal anchor")
@@ -382,14 +443,6 @@ class FlextInfraModelsCodegenTransactionModels:
         )
         pending_staging: t.VariadicTuple[Path] = m.Field(
             description="Absolute recorded staging paths",
-        )
-        planned_roots: t.VariadicTuple[Path] = m.Field(
-            default=(),
-            description="Roots selected by the public conform plan",
-        )
-        planned_destinations: t.VariadicTuple[Path] = m.Field(
-            default=(),
-            description="Absolute requested publication paths",
         )
         journal: (
             FlextInfraModelsCodegenTransactionModels.CodegenTransactionJournal | None

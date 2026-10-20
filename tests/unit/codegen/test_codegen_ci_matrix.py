@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraGitService, c, config, infra, m, t
+from flext_infra import FlextInfraGitService, c, config, infra, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from tests import tm, u
@@ -195,11 +195,11 @@ class TestsFlextInfraCodegenCiMatrix:
         workflow = u.Cli.yaml_load_mapping(
             rendered_project / ".github" / "workflows" / "ci.yml",
         )
-        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
-        ci_job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["ci"])
+        jobs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
+        ci_job = u.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["ci"])
         steps = [
-            t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
-            for value in t.Cli.JSON_LIST_ADAPTER.validate_python(ci_job["steps"])
+            u.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
+            for value in u.Cli.JSON_LIST_ADAPTER.validate_python(ci_job["steps"])
         ]
         make = config.Infra.codegen.make
         prefix = f"{make.ci.variable}={make.ci.value} make "
@@ -214,7 +214,7 @@ class TestsFlextInfraCodegenCiMatrix:
         )
         tm.that(observed, eq=expected)
         tm.that(workflow.get("permissions"), eq=None)
-        permissions = t.Cli.JSON_MAPPING_ADAPTER.validate_python(ci_job["permissions"])
+        permissions = u.Cli.JSON_MAPPING_ADAPTER.validate_python(ci_job["permissions"])
         tm.that(permissions["contents"], eq="read")
         tm.that("merge-guard" in jobs, eq=False)
 
@@ -254,11 +254,11 @@ class TestsFlextInfraCodegenCiMatrix:
         workflow = u.Cli.yaml_load_mapping(
             rendered_project / ".github" / "workflows" / "ci.yml",
         )
-        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
-        ci_job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["ci"])
+        jobs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
+        ci_job = u.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["ci"])
         steps = [
-            t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
-            for value in t.Cli.JSON_LIST_ADAPTER.validate_python(ci_job["steps"])
+            u.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
+            for value in u.Cli.JSON_LIST_ADAPTER.validate_python(ci_job["steps"])
         ]
         make = config.Infra.codegen.make
         test_run = f"{make.ci.variable}={make.ci.value} make {c.Infra.VERB_TEST}"
@@ -271,7 +271,7 @@ class TestsFlextInfraCodegenCiMatrix:
             if step.get("uses") == f"{action.repository}/restore@{action.version}"
             and step.get("name") == "Restore testmon database"
         )
-        restore_inputs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(restore["with"])
+        restore_inputs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(restore["with"])
         tm.that(
             restore_inputs["path"],
             eq=f"${{{{ steps.{resolver['id']}.outputs.database }}}}",
@@ -287,7 +287,7 @@ class TestsFlextInfraCodegenCiMatrix:
             return
         tm.that(saves, len=1)
         save = saves[0]
-        save_inputs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(save["with"])
+        save_inputs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(save["with"])
         tm.that(
             save_inputs["path"],
             eq=f"${{{{ steps.{test_step['id']}.outputs.testmon_database }}}}",
@@ -355,16 +355,16 @@ class TestsFlextInfraCodegenCiMatrix:
         root = rendered_project
         workflow = root / ".github" / "workflows" / "ci.yml"
         document = u.Cli.yaml_load_mapping(workflow)
-        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(document["jobs"])
+        jobs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(document["jobs"])
         parsed = 0
         for raw_job in jobs.values():
-            job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_job)
+            job = u.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_job)
             steps = job["steps"]
             if not isinstance(steps, list):
                 msg = "workflow job steps must be a sequence"
                 raise TypeError(msg)
             for raw_step in steps:
-                step = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_step)
+                step = u.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_step)
                 script = step.get("run")
                 if not isinstance(script, str):
                     continue
@@ -386,10 +386,10 @@ class TestsFlextInfraCodegenCiMatrix:
             rendered_project / ".pre-commit-config.yaml",
         )
         hooks = [
-            t.Cli.JSON_MAPPING_ADAPTER.validate_python(hook)
-            for repository in t.Cli.JSON_LIST_ADAPTER.validate_python(document["repos"])
-            for hook in t.Cli.JSON_LIST_ADAPTER.validate_python(
-                t.Cli.JSON_MAPPING_ADAPTER.validate_python(repository)["hooks"],
+            u.Cli.JSON_MAPPING_ADAPTER.validate_python(hook)
+            for repository in u.Cli.JSON_LIST_ADAPTER.validate_python(document["repos"])
+            for hook in u.Cli.JSON_LIST_ADAPTER.validate_python(
+                u.Cli.JSON_MAPPING_ADAPTER.validate_python(repository)["hooks"],
             )
         ]
         make = config.Infra.codegen.make
@@ -495,15 +495,15 @@ class TestsFlextInfraCodegenCiMatrix:
         days = config.Infra.codegen.toolchain.dependency_cooldown_days
 
         document = u.Cli.yaml_load_mapping(root / ".github" / "dependabot.yml")
-        updates = t.Cli.JSON_LIST_ADAPTER.validate_python(document["updates"])
+        updates = u.Cli.JSON_LIST_ADAPTER.validate_python(document["updates"])
         ecosystems = {
-            str(t.Cli.JSON_MAPPING_ADAPTER.validate_python(item)["package-ecosystem"])
+            str(u.Cli.JSON_MAPPING_ADAPTER.validate_python(item)["package-ecosystem"])
             for item in updates
         }
         tm.that(ecosystems, eq={"github-actions", "pip"})
         for item in updates:
-            update = t.Cli.JSON_MAPPING_ADAPTER.validate_python(item)
-            cooldown = t.Cli.JSON_MAPPING_ADAPTER.validate_python(update["cooldown"])
+            update = u.Cli.JSON_MAPPING_ADAPTER.validate_python(item)
+            cooldown = u.Cli.JSON_MAPPING_ADAPTER.validate_python(update["cooldown"])
             tm.that(cooldown["default-days"], eq=days)
 
     @staticmethod
@@ -559,14 +559,14 @@ class TestsFlextInfraCodegenCiMatrix:
         rendered = u.Cli.template_render(template, spec)
         tm.ok(rendered)
         rendered_text: str = rendered.value
-        document = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+        document = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
             tm.ok(u.Cli.yaml_parse(rendered_text)),
         )
-        updates = t.Cli.JSON_LIST_ADAPTER.validate_python(document["updates"])
+        updates = u.Cli.JSON_LIST_ADAPTER.validate_python(document["updates"])
         tm.that(len(updates), eq=3)
         for item in updates:
-            update = t.Cli.JSON_MAPPING_ADAPTER.validate_python(item)
-            cooldown = t.Cli.JSON_MAPPING_ADAPTER.validate_python(update["cooldown"])
+            update = u.Cli.JSON_MAPPING_ADAPTER.validate_python(item)
+            cooldown = u.Cli.JSON_MAPPING_ADAPTER.validate_python(update["cooldown"])
             tm.that(cooldown["default-days"], eq=days)
             if update["package-ecosystem"] == "pip":
                 tm.that(list(excluded), eq=cooldown["exclude"])
@@ -674,7 +674,7 @@ class TestsFlextInfraCodegenCiMatrix:
         workflow = root / ".github" / "workflows" / "ci-matrix.yml"
         tm.that(workflow.is_file(), eq=True)
         content = u.Cli.yaml_load_mapping(workflow)
-        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(content["jobs"])
+        jobs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(content["jobs"])
         for leg in ("distro-matrix", "macos", "windows"):
             tm.that(jobs, has=leg)
         tm.that(jobs, lacks="wsl")
@@ -710,14 +710,14 @@ class TestsFlextInfraCodegenCiMatrix:
             workflow = u.Cli.yaml_load_mapping(
                 root / ".github" / "workflows" / filename,
             )
-            jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
+            jobs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
             for value in jobs.values():
-                job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
-                steps = t.Cli.JSON_LIST_ADAPTER.validate_python(job["steps"])
+                job = u.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
+                steps = u.Cli.JSON_LIST_ADAPTER.validate_python(job["steps"])
                 commands = tuple(
                     step["run"]
                     for raw in steps
-                    if (step := t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw)).get(
+                    if (step := u.Cli.JSON_MAPPING_ADAPTER.validate_python(raw)).get(
                         "run",
                     )
                 )
@@ -726,10 +726,10 @@ class TestsFlextInfraCodegenCiMatrix:
                     for command in commands
                 )
                 if invokes_make:
-                    environment = t.Cli.JSON_MAPPING_ADAPTER.validate_python(job["env"])
+                    environment = u.Cli.JSON_MAPPING_ADAPTER.validate_python(job["env"])
                     tm.that(environment["GITHUB_TOKEN"], eq="${{ github.token }}")
                 elif "env" in job:
-                    environment = t.Cli.JSON_MAPPING_ADAPTER.validate_python(job["env"])
+                    environment = u.Cli.JSON_MAPPING_ADAPTER.validate_python(job["env"])
                     tm.that(environment, lacks="GITHUB_TOKEN")
 
     def test_workflow_ci_policy_matrix_default_dispatch_only(
@@ -769,8 +769,8 @@ class TestsFlextInfraCodegenCiMatrix:
                 ),
             ),
         )
-        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
-        ci = t.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["ci"])
+        jobs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
+        ci = u.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["ci"])
         tm.that(ci["if"], has="github.event.pull_request.draft == false")
         tm.that("merge-guard" in jobs, eq=False)
 
@@ -795,22 +795,22 @@ class TestsFlextInfraCodegenCiMatrix:
         workflow = u.Cli.yaml_load_mapping(
             rendered_project / ".github" / "workflows" / "ci.yml",
         )
-        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
+        jobs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
         action = config.Infra.codegen.github_actions["upload-artifact"]
         uploads = [
             step
             for payload in jobs.values()
             for step in (
-                t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
-                for value in t.Cli.JSON_LIST_ADAPTER.validate_python(
-                    t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload)["steps"],
+                u.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
+                for value in u.Cli.JSON_LIST_ADAPTER.validate_python(
+                    u.Cli.JSON_MAPPING_ADAPTER.validate_python(payload)["steps"],
                 )
             )
             if step.get("uses") == f"{action.repository}@{action.version}"
         ]
         tm.that(uploads, empty=False)
         for upload in uploads:
-            inputs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(upload["with"])
+            inputs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(upload["with"])
             paths = str(inputs["path"]).splitlines()
             tm.that(paths, empty=False)
             tm.that(
@@ -832,11 +832,11 @@ class TestsFlextInfraCodegenCiMatrix:
         workflow = u.Cli.yaml_load_mapping(
             rendered_project / ".github" / "workflows" / "docs.yml",
         )
-        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
-        docs_job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["docs-quality"])
+        jobs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
+        docs_job = u.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["docs-quality"])
         steps = [
-            t.Cli.JSON_MAPPING_ADAPTER.validate_python(step)
-            for step in t.Cli.JSON_LIST_ADAPTER.validate_python(docs_job["steps"])
+            u.Cli.JSON_MAPPING_ADAPTER.validate_python(step)
+            for step in u.Cli.JSON_LIST_ADAPTER.validate_python(docs_job["steps"])
         ]
         docs_step = next(
             step for step in steps if step.get("name") == "Docs lifecycle (blocking)"
@@ -849,7 +849,7 @@ class TestsFlextInfraCodegenCiMatrix:
         tm.that(docs_step.get("run"), eq="make docs")
         tm.that(docs_step.get("continue-on-error"), eq=None)
         tm.that(upload["if"], eq="failure()")
-        upload_with = t.Cli.JSON_MAPPING_ADAPTER.validate_python(upload["with"])
+        upload_with = u.Cli.JSON_MAPPING_ADAPTER.validate_python(upload["with"])
         tm.that(upload_with["include-hidden-files"], eq=True)
         tm.that(upload_with["if-no-files-found"], eq="error")
         report_paths = str(upload_with["path"]).splitlines()

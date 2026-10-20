@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, override
 
 from flext_cli import cli
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, m, p, r, t
 from flext_infra.codegen import (
     FlextInfraCodegenExecutionBase,
     FlextInfraCodegenPipelineStagesMixin,
@@ -31,7 +31,7 @@ class FlextInfraCodegenPipeline(
         description="Docs and fresh-import ports the toolchain conform crosses into",
     )
 
-    _state: m.Infra.CodegenPipelineState = u.PrivateAttr(
+    _state: m.Infra.CodegenPipelineState = m.PrivateAttr(
         default_factory=m.Infra.CodegenPipelineState,
     )
 

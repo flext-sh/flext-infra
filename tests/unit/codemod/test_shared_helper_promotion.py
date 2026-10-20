@@ -117,7 +117,7 @@ class TestsFlextInfraSharedHelperPromotion:
         quoted = root / c.Infra.DIR_TESTS / "unit" / "quoted.py"
         with infra.rope_workspace(root) as rope:
             resource = rope.resource(quoted)
-            assert resource is not None
+            tm.that(resource, none=False)
             _, binding = u.Infra.import_binding(
                 rope.rope_project,
                 u.Infra.resolve_pymodule(
@@ -131,7 +131,7 @@ class TestsFlextInfraSharedHelperPromotion:
         primary = ast.parse(binding, mode="eval").body
         while isinstance(primary, ast.Attribute):
             primary = primary.value
-        assert isinstance(primary, ast.Name)
+        tm.that(isinstance(primary, ast.Name), truth=True)
         quoted.write_text(
             quoted.read_text(encoding="utf-8")
             + f"\nclass Local:\n    {primary.id} = str\n    value: 'Shared'\n",

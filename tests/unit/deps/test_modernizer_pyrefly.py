@@ -277,9 +277,11 @@ class TestsFlextInfraModernizerPyrefly:
         topology = m.Infra.PyprojectDeclaredTopology(
             declared_python_dirs=(source_dir,),
             declared_python_dirs_are_complete=False,
+            project_kind="core",
         )
 
         request = m.Infra.ToolingContextRequest(
+            environment_dir=tmp_path / c.Infra.ENVIRONMENT_DIRECTORY,
             planned_sources={},
             project_name=project_dir.name,
             package_name=u.Tests.project_spec(project_dir.name).package_name,

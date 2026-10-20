@@ -677,7 +677,8 @@ class FlextInfraModGateEngine:
             due = 0.0
             for index, entry in enumerate(report.entries, start=1):
                 due = FlextInfraModGateEngine._progress(
-                    f"admission {index}/{len(report.entries)} rule={entry.rule_id} file={entry.file}",
+                    f"admission {index}/{len(report.entries)} "
+                    f"rule={entry.rule_id} file={entry.file}",
                     due,
                 )
                 # A drifted source carries no authenticated state: it stays
@@ -1119,6 +1120,28 @@ class FlextInfraModGateEngine:
                 return r[m.Infra.ModScanReport].fail(
                     f"finding source changed during admission: {state.path}",
                     error_code=c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE,
+                    error_data={
+                        "same_content": observed.content == state.content,
+                        "same_path": observed.path == state.path,
+                        "same_parent": (
+                            observed.parent_device,
+                            observed.parent_inode,
+                        )
+                        == (state.parent_device, state.parent_inode),
+                        "same_leaf": (
+                            observed.device,
+                            observed.inode,
+                            observed.link_count,
+                        )
+                        == (state.device, state.inode, state.link_count),
+                        "same_permissions": (
+                            observed.mode,
+                            observed.file_attributes,
+                            observed.reparse_tag,
+                        )
+                        == (state.mode, state.file_attributes, state.reparse_tag),
+                        "same_model_type": type(observed) is type(state),
+                    },
                 )
             authenticated_states[state.path] = state
         return r.ok(
@@ -1571,7 +1594,6 @@ class FlextInfraModGateEngine:
         """
         plan = u.Infra.codemod_rule_plan(root).unwrap()
         rules_by_id = {rule.id: rule for rule in plan.rules}
-        targets = u.Infra.ast_grep_scan_targets(root)
         updates: dict[Path, bytes] = {}
         for path, source in candidate.updates.items():
             if source is None:
@@ -1621,7 +1643,11 @@ class FlextInfraModGateEngine:
         ) as directory:
             ruleset = u.Infra.codemod_stage_scan_ruleset(plan, Path(directory))
             scanned = cls._ruleset_report(
-                view_root, ruleset, rules_by_id, (targets, context), artifact_root=root
+                view_root,
+                ruleset,
+                rules_by_id,
+                (u.Infra.ast_grep_scan_targets(root), context),
+                artifact_root=root,
             )
             if scanned.failure:
                 return r[m.Infra.ModScanReport].from_failure(scanned)

@@ -297,7 +297,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
                 if item.name.endswith("/infra/pulumi/__main__.py")
             )
             stream = archive.extractfile(member)
-            assert stream is not None
+            tm.that(stream, none=False)
             with stream:
                 tm.that(stream.read(), eq=source.read_bytes())
 
@@ -541,7 +541,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             }
             for name, content in expected.items():
                 stream = archive.extractfile(members[name])
-                assert stream is not None
+                tm.that(stream, none=False)
                 with stream:
                     tm.that(stream.read(), eq=content)
             tm.that(ignored in members, eq=False)

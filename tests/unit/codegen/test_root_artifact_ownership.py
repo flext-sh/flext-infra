@@ -174,16 +174,21 @@ class TestsFlextInfraRootArtifactOwnership:
             ),
         )
 
-        first = infra.codegen_conform(request)
-        result = tm.ok(first)
-        tm.that(result.plan is not None, eq=True)
-        if result.plan is None:
-            pytest.fail("conform did not return its actual plan")
-        governed = tuple(file for file in result.plan.files if file.policy is not None)
+        plan = tm.ok(
+            FlextInfraCodegenConform(
+                repository_root=root,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    request=request,
+                ),
+            ).plan(request)
+        )
+        governed = tuple(file for file in plan.files if file.policy is not None)
         tm.that(
             {file.path: file.policy for file in governed},
             eq=configured_policies,
         )
+        result = tm.ok(infra.codegen_conform(request))
         tm.that(result.written_files, eq=())
         after = tuple(
             sorted(
@@ -242,7 +247,13 @@ class TestsFlextInfraRootArtifactOwnership:
             (root.parent / "origin.git").rename(root.parent / "origin.git.removed")
             request = m.Infra.CodegenConformRequest(root=root)
             tm.ok(
-                FlextInfraCodegenConform(repository_root=root, request=request).plan(
+                FlextInfraCodegenConform(
+                    repository_root=root,
+                    state=m.Infra.CodegenConformState(
+                        repository_root=root,
+                        request=request,
+                    ),
+                ).plan(
                     request,
                 ),
             )

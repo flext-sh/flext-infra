@@ -19,6 +19,7 @@ from flext_infra._utilities._semantic_cutover.facade_bases import (
 )
 from flext_infra._utilities.import_law import FlextInfraUtilitiesImportLaw
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -144,6 +145,7 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
                     utility_imports=elected,
                     declaration_imports=eligible,
                 ),
+                native_project=project,
             )
             for node in ast.parse(updated, filename=str(path)).body:
                 if (
@@ -160,14 +162,15 @@ class FlextInfraUtilitiesSemanticCutoverSelfFacade(
                     raise ValueError(msg)
             return updated, changes
 
-        return cls._semantic_edits(
-            tuple(
-                item
-                for item in cls._editable_sources(sources)
-                if item[0] in selected or item[0] in declarations
-            ),
-            rewrite,
-        )
+        with FlextInfraUtilitiesRopeCore.open_import_project(root) as project:
+            return cls._semantic_edits(
+                tuple(
+                    item
+                    for item in cls._editable_sources(sources)
+                    if item[0] in selected or item[0] in declarations
+                ),
+                rewrite,
+            )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticCutoverSelfFacade"]

@@ -346,7 +346,7 @@ class TestsFlextInfraSmellsGate:
         )
         execution = projects[0].gates[c.Infra.SMELLS]
         native = u.Cli.json_as_mapping(tm.ok(u.Cli.json_parse(execution.raw_output)))
-        assert execution.raw_receipt is not None
+        tm.that(execution.raw_receipt, none=False)
         report_path = (
             execution.raw_receipt.parent.parent / c.Infra.CHECK_REPORT_SARIF_FILENAME
         )

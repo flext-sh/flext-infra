@@ -13,6 +13,7 @@ import pytest
 
 from flext_infra import c, m, u
 from flext_infra._utilities import FlextInfraUtilitiesCodegenFilePlan
+from tests import tm
 
 
 class TestsFlextInfraCodegenFilePlanState:
@@ -110,26 +111,14 @@ class TestsFlextInfraCodegenFilePlanState:
         if state.failure:
             raise AssertionError(state.error)
 
-        assert FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(
-            state.value,
-            desired_content=b"",
-            desired_mode=state.value.mode,
-        )
-        assert not FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(
-            state.value,
-            desired_content=None,
-            desired_mode=state.value.mode,
-        )
+        tm.that(FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(state.value, desired_content=b"", desired_mode=state.value.mode), truth=True)
+        tm.that(FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(state.value, desired_content=None, desired_mode=state.value.mode), truth=False)
 
     def test_empty_file_requires_deletion(self, tmp_path: Path) -> None:
         """Test empty file requires deletion."""
         before = self._observed_state(tmp_path, content=b"")
 
-        assert FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(
-            before,
-            desired_content=None,
-            desired_mode=None,
-        )
+        tm.that(FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(before, desired_content=None, desired_mode=None), truth=True)
 
     @pytest.mark.parametrize(
         ("content", "desired_content"),

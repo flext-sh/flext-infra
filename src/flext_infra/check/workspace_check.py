@@ -29,9 +29,9 @@ class FlextInfraWorkspaceChecker(
 ):
     """Run workspace quality gates and generate reports."""
 
-    _repository_root: Path = u.PrivateAttr()
-    _registry: FlextInfraGateRegistry = u.PrivateAttr()
-    _default_reports_dir: Path = u.PrivateAttr()
+    _repository_root: Path
+    _registry: FlextInfraGateRegistry
+    _default_reports_dir: Path
     model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
         validate_by_name=True,
         validate_by_alias=True,
@@ -108,6 +108,7 @@ class FlextInfraWorkspaceChecker(
         source_plan: m.Infra.StageSourcePlan,
         *,
         project_root: Path,
+        runtime_report: m.Infra.ValidationReport,
     ) -> p.Result[bool]:
         """Check a sealed candidate using its original physical runtime owner.
 
@@ -129,6 +130,20 @@ class FlextInfraWorkspaceChecker(
         checked = self._execute_payload(
             params,
             runtime_root=runtime_directory.parent,
+            candidate_runtime_report=runtime_report,
+            candidate_files=tuple(
+                sorted({
+                    params.repository_root / source.relative_to(project_root)
+                    for source in (
+                        *(state.path for state in source_plan.inputs),
+                        *source_plan.updates,
+                    )
+                    if source.is_relative_to(project_root)
+                    and (
+                        params.repository_root / source.relative_to(project_root)
+                    ).is_file()
+                })
+            ),
         )
         if checked.failure:
             return r[bool].from_failure(checked)
@@ -229,6 +244,8 @@ class FlextInfraWorkspaceChecker(
         params: m.Infra.RunCommand,
         *,
         runtime_root: Path | None = None,
+        candidate_files: t.VariadicTuple[Path] = (),
+        candidate_runtime_report: m.Infra.ValidationReport | None = None,
     ) -> p.Result[bool]:
         """Execute the same native gates with an optional service-owned runtime.
 
@@ -262,6 +279,8 @@ class FlextInfraWorkspaceChecker(
             ruff_args=tuple(self.parse_tool_args(params.ruff_args)),
             pyright_args=tuple(self.parse_tool_args(params.pyright_args)),
             selected_files=selected_files,
+            candidate_files=candidate_files,
+            candidate_runtime_report=candidate_runtime_report,
             runtime_dependency_collector=FlextInfraRuntimeDependencyCollector(
                 python=(
                     Path(sys.executable)

@@ -11,9 +11,10 @@ import operator
 from collections.abc import MutableMapping
 
 from flext_infra import t
+from flext_infra._utilities import FlextInfraUtilitiesImportLaw
 
 
-class FlextInfraImportNormalizationAstMixin:
+class FlextInfraImportNormalizationAstMixin(FlextInfraUtilitiesImportLaw):
     """Parse, scope and edit module sources for import rewrites."""
 
     @staticmethod
@@ -282,41 +283,6 @@ class FlextInfraImportNormalizationAstMixin:
             and not cls._inside_type_checking(node, parents)
             for node in ast.walk(tree)
         )
-
-    @staticmethod
-    def _module_bindings(tree: ast.Module) -> t.MappingKV[str, ast.stmt]:
-        """Return the module-level statement binding each top-level name.
-
-        Returns:
-            The resulting ``t.MappingKV[str, ast.stmt]``.
-
-        """
-        bindings: MutableMapping[str, ast.stmt] = {}
-        for statement in tree.body:
-            names: list[str] = []
-            match statement:
-                case ast.Import(names=aliases) | ast.ImportFrom(names=aliases):
-                    names = [
-                        alias.asname or alias.name.partition(".")[0]
-                        for alias in aliases
-                    ]
-                case (
-                    ast.FunctionDef(name=name)
-                    | ast.AsyncFunctionDef(name=name)
-                    | ast.ClassDef(name=name)
-                ):
-                    names = [name]
-                case ast.Assign(targets=targets):
-                    names = [
-                        target.id for target in targets if isinstance(target, ast.Name)
-                    ]
-                case ast.AnnAssign(target=ast.Name(id=name)):
-                    names = [name]
-                case _:
-                    pass
-            for bound in names:
-                bindings.setdefault(bound, statement)
-        return bindings
 
     @staticmethod
     def _end_line(node: ast.stmt) -> int:

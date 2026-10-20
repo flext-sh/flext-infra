@@ -386,7 +386,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
 
         execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
 
-        assert execution.result.passed, execution.issues
+        tm.that(execution.result.passed, truth=True, msg=execution.issues)
 
     def test_default_fleet_scope_follows_typed_overrides(self, tmp_path: Path) -> None:
         """An omitted fleet declaration follows the canonical typed default."""

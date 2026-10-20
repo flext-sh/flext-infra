@@ -1,0 +1,93 @@
+id: codegen-conform-state-request-workspace
+language: python
+severity: error
+files: ["tests/**/*.py", "examples/**/*.py", "scripts/**/*.py"]
+rule:
+  pattern: FlextInfraCodegenConform(repository_root=$ROOT, request=$REQUEST, initial_workspace=$WORKSPACE)
+fix: |-
+  FlextInfraCodegenConform(
+      repository_root=$ROOT,
+      state=m.Infra.CodegenConformState(
+          repository_root=$ROOT,
+          request=$REQUEST,
+          initial_workspace=$WORKSPACE,
+      ),
+  )
+message: Pass conform request data through its declared state model.
+---
+id: codegen-conform-state-workspace-request
+language: python
+severity: error
+files: ["tests/**/*.py", "examples/**/*.py", "scripts/**/*.py"]
+rule:
+  pattern: FlextInfraCodegenConform(repository_root=$ROOT, initial_workspace=$WORKSPACE, request=$REQUEST)
+fix: |-
+  FlextInfraCodegenConform(
+      repository_root=$ROOT,
+      state=m.Infra.CodegenConformState(
+          repository_root=$ROOT,
+          initial_workspace=$WORKSPACE,
+          request=$REQUEST,
+      ),
+  )
+message: Pass conform request data through its declared state model.
+---
+id: codegen-conform-state-request
+language: python
+severity: error
+files: ["tests/**/*.py", "examples/**/*.py", "scripts/**/*.py"]
+rule:
+  pattern: FlextInfraCodegenConform(repository_root=$ROOT, request=$REQUEST)
+fix: |-
+  FlextInfraCodegenConform(
+      repository_root=$ROOT,
+      state=m.Infra.CodegenConformState(
+          repository_root=$ROOT,
+          request=$REQUEST,
+      ),
+  )
+message: Pass the request through the conform state model.
+---
+id: codegen-conform-state-workspace
+language: python
+severity: error
+files: ["tests/**/*.py", "examples/**/*.py", "scripts/**/*.py"]
+rule:
+  pattern: FlextInfraCodegenConform(repository_root=$ROOT, initial_workspace=$WORKSPACE)
+fix: |-
+  FlextInfraCodegenConform(
+      repository_root=$ROOT,
+      state=m.Infra.CodegenConformState(
+          repository_root=$ROOT,
+          initial_workspace=$WORKSPACE,
+      ),
+  )
+message: Pass the workspace through the conform state model.
+---
+id: codegen-conform-state-workspace-only
+language: python
+severity: error
+files: ["tests/**/*.py", "examples/**/*.py", "scripts/**/*.py"]
+rule:
+  pattern: FlextInfraCodegenConform(initial_workspace=$WORKSPACE)
+fix: |-
+  FlextInfraCodegenConform(
+      state=m.Infra.CodegenConformState(initial_workspace=$WORKSPACE),
+  )
+message: Pass the workspace through the conform state model.
+---
+id: codegen-conform-state-ports
+language: python
+severity: error
+files: ["tests/**/*.py", "examples/**/*.py", "scripts/**/*.py"]
+rule:
+  pattern: FlextInfraCodegenConform(repository_root=$ROOT, ports=$PORTS)
+fix: |-
+  FlextInfraCodegenConform(
+      repository_root=$ROOT,
+      state=m.Infra.CodegenConformState(
+          repository_root=$ROOT,
+          ports=$PORTS,
+      ),
+  )
+message: Pass conform collaborators through their declared state model.

@@ -230,7 +230,10 @@ class TestsFlextInfraCodegenRuntimeProfiles:
         )
         service = FlextInfraCodegenConform(
             repository_root=request_root,
-            request=request,
+            state=m.Infra.CodegenConformState(
+                repository_root=request_root,
+                request=request,
+            ),
         )
         first = tm.ok(service.plan(request))
         rendered = self._assert_render_retains_requirements(

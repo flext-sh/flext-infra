@@ -69,7 +69,11 @@ class TestsFlextInfraRefactorImportNormalization(
                     project,
                     (target,),
                     sources=working,
-                    source_states=states,
+                    receipt=m.Infra.CodegenPhaseAnalysis(
+                        phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                        inputs=states,
+                        files=(),
+                    ),
                     rope_project=rope,
                 )
             )

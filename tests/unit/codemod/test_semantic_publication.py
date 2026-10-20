@@ -9,6 +9,7 @@ from __future__ import annotations
 import stat
 import sys
 from pathlib import Path
+from types import FrameType
 from typing import TYPE_CHECKING
 
 import pytest
@@ -226,8 +227,7 @@ class TestsFlextInfraSemanticPublication:
                 u.Tests.run_lazy_init_probe(
                     f"from {package}.consumer import VALUE\nprint(VALUE)\n",
                     python_paths=tuple(
-                        str(layout.source_root.parent)
-                        for layout in artifact.candidate.layouts
+                        str(layout.src_dir) for layout in artifact.candidate.layouts
                     ),
                 ),
                 eq=["True"],
@@ -275,7 +275,10 @@ class TestsFlextInfraSemanticPublication:
         source = package / f"{u.Tests.family_public_module(alias)}.py"
         source.write_text("", encoding=c.DEFAULT_ENCODING)
         with infra.rope_workspace(root) as graph:
-            owner = graph.convention(source).implementation_class
+            owner = (
+                graph.convention(source).module_policy.project_prefix
+                + u.Infra.facade_family_declared_by(source.name).suffix
+            )
         source.write_text(
             f'class {owner}:\n    """Native public family owner."""\n\n'
             'class Payload:\n    """Native introducing declaration."""\n'
@@ -595,7 +598,9 @@ class TestsFlextInfraSemanticPublication:
             FlextInfraSemanticPublication.publish_semantic_artifact_plans(
                 plans,
                 repository_root=mod_workspace,
-                projection_roots=(mod_workspace,),
+                options=m.Infra.SemanticPublicationOptions(
+                    projection_roots=(mod_workspace,),
+                ),
             ),
         )
         output = tm.ok(
@@ -753,7 +758,9 @@ class TestsFlextInfraSemanticPublication:
         result = FlextInfraSemanticPublication.publish_semantic_artifact_plans(
             (plan,),
             repository_root=mod_workspace,
-            projection_roots=(mod_workspace,),
+            options=m.Infra.SemanticPublicationOptions(
+                projection_roots=(mod_workspace,),
+            ),
         )
         if foreign_parent:
             tm.fail(result, has="parent chain changed")
@@ -857,7 +864,7 @@ class TestsFlextInfraSemanticPublication:
         published = FlextInfraSemanticPublication.publish_semantic_artifact_plans(
             plans,
             repository_root=mod_workspace,
-            validator=validate,
+            options=m.Infra.SemanticPublicationOptions(validator=validate),
         )
         tm.that(len(previews), eq=1)
         if accepted:
@@ -978,6 +985,112 @@ class TestsFlextInfraSemanticPublication:
                 catalog.read_text(encoding=c.DEFAULT_ENCODING),
                 has="concurrent catalog edit",
             )
+
+    @staticmethod
+    @pytest.mark.parametrize("unchanged", [False, True])
+    def test_semantic_publication_retains_full_native_candidate_checker(
+        tmp_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
+        *,
+        unchanged: bool,
+    ) -> None:
+        """Changed and unchanged semantic plans keep the full default checker."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        checkout = Path(__file__).resolve().parents[3]
+        tm.ok(
+            u.Tests.create_python_environment(
+                root,
+                dependency_projects=(
+                    checkout,
+                    *u.Tests.python_dependency_projects(checkout),
+                ),
+                session_runtime=session_runtime,
+            )
+        )
+        target = package / "consumer.py"
+        notice = u.Infra.copyright_notice(root)
+        header = (
+            f'"""Native semantic checker candidate.\n\n{notice}\n"""\n\n'
+            "from __future__ import annotations\n\n"
+        )
+        source = header + 'value: int = "invalid annotation value"\n'
+        target.write_text(
+            source if unchanged else header + "value: int = 1\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+        calls: list[str] = []
+        commands: list[m.Infra.RunCommand] = []
+
+        def observe(frame: FrameType, event: str, _value: p.AttributeProbe) -> None:
+            if event != "call":
+                return
+            if frame.f_code.co_name in {
+                "normalize_source_plan",
+                "consume_source_runtime",
+                "_check_semantic_sources",
+                "execute_candidate",
+                "_execute_payload",
+                "run_projects",
+            }:
+                calls.append(frame.f_code.co_qualname)
+            if (
+                frame.f_code.co_qualname
+                == "FlextInfraWorkspaceChecker.execute_candidate"
+            ):
+                params = frame.f_locals.get("params")
+                if not isinstance(params, m.Infra.RunCommand):
+                    pytest.fail("Native semantic checker did not receive RunCommand")
+                commands.append(params)
+                tm.that(params.repository_root == root, eq=False)
+                tm.that(params.file, eq=None)
+                tm.that(params.gates, empty=True)
+                tm.that(params.projects, empty=True)
+                tm.that(params.apply, eq=False)
+                tm.that(params.check_only, eq=True)
+                tm.that(params.ruff_args, eq=None)
+                tm.that(params.pyright_args, eq=None)
+                candidate = params.repository_root / target.relative_to(root)
+                tm.that(candidate.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+                tm.that(target.read_bytes(), eq=before.content)
+
+        previous = sys.getprofile()
+        try:
+            sys.setprofile(observe)
+            rejected = FlextInfraSemanticPublication.publish_semantic_file_plans(
+                (
+                    m.Infra.SemanticFilePlan(
+                        project=root,
+                        path=target,
+                        before=before,
+                        desired_content=source.encode(c.DEFAULT_ENCODING),
+                        desired_mode=before.mode,
+                    ),
+                ),
+                repository_root=root,
+            )
+        finally:
+            sys.setprofile(previous)
+        tm.fail(rejected, has="quality checks failed for")
+        tm.that(len(commands), eq=1)
+        for expected in (
+            "FlextInfraUtilitiesProtectedEditLinting.normalize_source_plan",
+            "FlextInfraCodegenTransaction.consume_source_runtime",
+            "FlextInfraSemanticPublication._check_semantic_sources",
+            "FlextInfraWorkspaceChecker.execute_candidate",
+            "FlextInfraWorkspaceChecker._execute_payload",
+            "FlextInfraWorkspaceChecker.run_projects",
+        ):
+            tm.that(expected in calls, eq=True)
+        tm.that(
+            calls.index("FlextInfraCodegenTransaction.consume_source_runtime")
+            < calls.index("FlextInfraWorkspaceChecker.execute_candidate"),
+            eq=True,
+        )
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
+            eq=before,
+        )
 
     @staticmethod
     def test_no_effect_publication_requires_true_acceptance(

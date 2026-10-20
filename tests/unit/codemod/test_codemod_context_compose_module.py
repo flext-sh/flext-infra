@@ -165,6 +165,77 @@ class TestsFlextInfraCodemodContextComposeModule:
         tm.that(admitted, eq=expected)
 
     @staticmethod
+    @pytest.mark.parametrize(
+        ("relative", "service", "expected"),
+        [
+            ("workspace/detector.py", True, False),
+            ("base.py", True, True),
+            ("workspace/detector.py", False, True),
+            ("_utilities/worker.py", True, True),
+            ("base.py", False, False),
+        ],
+    )
+    def test_native_service_role_preserves_both_layer_directions(
+        mod_workspace: Path,
+        relative: str,
+        *,
+        service: bool,
+        expected: bool,
+    ) -> None:
+        """Only actual own-root subclasses refine a fallback module's role."""
+        package = u.Infra.project_package_name(mod_workspace)
+        module_root = mod_workspace / c.Infra.DEFAULT_SRC_DIR / package
+        base = module_root / "base.py"
+        worker = module_root / (
+            "workspace/worker.py" if relative == "base.py" else relative
+        )
+        worker.parent.mkdir(parents=True, exist_ok=True)
+        base.write_text(
+            "from flext_core import s as CoreService\n"
+            "class RootService[T](CoreService[T]):\n    pass\n\ns = RootService\n",
+            encoding="utf-8",
+        )
+        worker.write_text(
+            f"from {package}.base import RootService\n"
+            f"class DetectorService({'RootService[bool]' if service else 'object'}):\n"
+            "    pass\nordinary = 1\nunresolved: Unavailable\n",
+            encoding="utf-8",
+        )
+        source = base if relative == "base.py" else worker
+        target = f"{package}.workspace.worker" if source == base else f"{package}.base"
+        if source == base:
+            with base.open("a", encoding="utf-8") as stream:
+                stream.write(f"from {target} import DetectorService\n")
+        rule = next(
+            rule
+            for rule in u.Infra.codemod_rule_plan(mod_workspace).unwrap().rules
+            if rule.id == "ban-reverse-runtime-import"
+        )
+        snapshot = u.Infra.codemod_binding_snapshot(
+            mod_workspace,
+            tuple(
+                u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+                for path in (base, worker)
+            ),
+        )
+        with u.Infra.codemod_binding_project(
+            mod_workspace, u.Infra.codemod_source_epoch(snapshot)
+        ) as (project, sources):
+            admitted = u.Infra.codemod_context_admits(
+                m.Infra.CodemodAdmission(
+                    root=mod_workspace,
+                    rule=rule,
+                    file_path=source,
+                    captures={"TARGET": {"text": target}},
+                    facts=u.Infra.codemod_project_facts(mod_workspace, (rule,)),
+                    snapshot=snapshot,
+                ),
+                project=project,
+                sources=sources,
+            )
+        tm.that(admitted, eq=expected)
+
+    @staticmethod
     def _admits(root: Path, module: str) -> bool:
         """Admit one probe finding through the compose-module predicate.
 

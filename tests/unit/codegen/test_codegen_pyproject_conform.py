@@ -69,7 +69,7 @@ class TestsFlextInfraCodegenPyprojectConform:
         )
         dev = u.Tests.toml_strings_at(rendered, "dependency-groups", "dev")
         tm.that(dev, has=["fixture-tool>=3", "fixture-checker>=4"])
-        assert workspace.integration is not None
+        tm.that(workspace.integration, none=False)
         tm.that(
             dev,
             has=(

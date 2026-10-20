@@ -101,11 +101,11 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             if (name := u.Infra.dep_name(requirement)) is not None
         }
         targets = tuple(
-            name
+            distribution
             for repository in (workspace.value.repository, *workspace.value.subprojects)
             if repository.package
-            and (name := u.Infra.dep_name(repository.distribution)) is not None
-            and name in declared
+            and (distribution := u.Infra.dep_name(repository.distribution)) is not None
+            and distribution in declared
         )
         if not targets:
             return result_type.fail(
@@ -149,6 +149,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             workspace: Loaded workspace specification.
             planned: Desired file plans of the complete repository plan.
             sources: Mutable source list extended with every consulted state.
+            selected_names: Normalized distribution names selected for resolution.
 
         Returns:
             The owner-first resolution projects, or the first collection

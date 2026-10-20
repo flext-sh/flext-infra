@@ -172,7 +172,7 @@ class TestsFlextInfraDeferredSelfReferenceNormalizer:
     def test_public_normalizer_keeps_call_value_positions_bare() -> None:
         """Names inside nested call arguments are runtime values, not types.
 
-        A field factory reference (``u.Field(default_factory=...)``) resolves
+        A field factory reference (``m.Field(default_factory=...)``) resolves
         through the parent-frame locals at deferred-evaluation time and static
         checkers read it in the class-body scope, where the owner class is not
         yet bound: qualifying it through the owner produced

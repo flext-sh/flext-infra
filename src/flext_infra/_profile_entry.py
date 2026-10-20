@@ -11,7 +11,9 @@ import signal
 import sys
 import traceback
 from pathlib import Path
+from uuid import uuid4
 
+import flext_infra
 from flext_infra._pytest_clock import FlextInfraPytestClock
 
 
@@ -27,19 +29,30 @@ class FlextInfraProfileEntry:
 
         """
         output = Path(sys.argv[1])
+        immutable_output = output.with_stem(f"{output.stem}-{uuid4().hex}")
+        previous_output = output.with_stem(f"{output.stem}.previous-{uuid4().hex}")
         profiler = cProfile.Profile()
         previous = signal.getsignal(signal.SIGTERM)
         status: int | None = None
 
-        FlextInfraPytestClock.register_signal_checkpoint(profiler, output)
+        FlextInfraPytestClock.register_signal_checkpoint(
+            profiler, immutable_output.with_suffix(".checkpoint.pstats")
+        )
+        profiler.enable()
         try:
-            status = profiler.runcall(main, sys.argv[2:])
+            status = flext_infra.main(sys.argv[2:])
             return status
         finally:
+            profiler.disable()
             signal.signal(signal.SIGTERM, previous)
             primary = sys.exception() if status is None else None
             try:
-                FlextInfraPytestClock.publish_profile(profiler, output)
+                FlextInfraPytestClock.publish_profile(
+                    profiler,
+                    output,
+                    immutable_output=immutable_output,
+                    previous_output=previous_output,
+                )
                 profiler.print_stats(sort="cumtime")
             except BaseException as publication_failure:
                 if primary is not None:
@@ -56,6 +69,4 @@ class FlextInfraProfileEntry:
 
 
 if __name__ == "__main__":
-    from flext_infra import main
-
     raise SystemExit(FlextInfraProfileEntry.run())

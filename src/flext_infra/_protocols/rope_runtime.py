@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Set as AbstractSet
 from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, ClassVar, Literal, Protocol, Self, runtime_checkable
 
@@ -241,6 +241,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         @property
         def project(self) -> FlextInfraProtocolsRopeRuntime.RopeProject: ...
 
+        @property
+        def extension_modules(self) -> AbstractSet[str]: ...
+
     @runtime_checkable
     class RopeScope(Protocol):
         """Rope semantic scope shape."""
@@ -283,6 +286,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     @runtime_checkable
     class RopeSemanticModule(Protocol):
         """Module attributes shared by native builtins, packages, and source."""
+
+        def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope: ...
 
         def get_module(
             self,
@@ -358,7 +363,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def find_relative_module(
             self,
             modname: str,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot,
             level: int,
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
 
@@ -395,6 +400,12 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             *,
             consumer_root: Path | None = None,
         ) -> AbstractContextManager[Self]: ...
+
+        def source_successor(self) -> AbstractContextManager[Self]: ...
+
+        def adopt_source_consumption(
+            self, receipt: m.Infra.CodegenPhaseAnalysis
+        ) -> p.Result[m.Infra.CodegenPhaseAnalysis]: ...
 
         @property
         def authenticated_sources(self) -> bool: ...
@@ -494,7 +505,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def get_relative_module(
             self,
             name: str,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot,
             level: int,
         ) -> FlextInfraTypesRopeNative.RopeNativeParsedModule: ...
 
@@ -570,6 +581,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         code_finder: FlextInfraProtocolsRopeRuntime.RopeWordFinder
 
         def get_primary_at(self, offset: int) -> str: ...
+
+        def get_primary_range(self, offset: int) -> tuple[int, int]: ...
 
         def is_a_function_being_called(self, offset: int) -> bool: ...
 

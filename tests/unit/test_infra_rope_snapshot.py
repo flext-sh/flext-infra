@@ -132,7 +132,7 @@ class TestsFlextInfraRopeSnapshot:
                 eq=original,
             )
 
-        with pytest.raises(ValueError, match="atomic source changed") as rejected:
+        def consume_changed_source() -> None:
             with u.Infra.facade_source_project(
                 root, source_states=(original,), declared_files=declarations
             ) as (project, receipts, _):
@@ -153,6 +153,9 @@ class TestsFlextInfraRopeSnapshot:
                     tm.that(receipts()[0], eq=(original,))
                 else:
                     project.source_state(source)
+
+        with pytest.raises(ValueError, match="atomic source changed") as rejected:
+            consume_changed_source()
         tm.that(str(rejected.value), has=str(source))
         tm.that(str(rejected.value), has="content_changed=True")
         tm.that(str(rejected.value), has="same_model_type=True")
@@ -215,7 +218,7 @@ class TestsFlextInfraRopeSnapshot:
                 )
                 tm.ok(u.Cli.atomic_verify_binary_file_states((original,)))
 
-        with pytest.raises(ValueError, match="atomic source changed"):
+        def plan_changed_source() -> None:
             with u.Infra.facade_source_project(
                 root,
                 source_states=(original,),
@@ -227,6 +230,9 @@ class TestsFlextInfraRopeSnapshot:
                     stream.write(proposed)
                     stream.truncate()
                 project.verify_source_states()
+
+        with pytest.raises(ValueError, match="atomic source changed"):
+            plan_changed_source()
 
     @staticmethod
     def test_module_lookup_uses_declared_source_roots(tmp_path: Path) -> None:

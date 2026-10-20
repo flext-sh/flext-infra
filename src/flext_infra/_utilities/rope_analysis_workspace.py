@@ -166,6 +166,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                     init_module,
                     init_path,
                     init_source,
+                    project=source_project,
                 ).items():
                     extra_module_aliases.setdefault(
                         f"{init_module}.{alias}",

@@ -6,19 +6,57 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import io
+import pstats
 import sys
 from pathlib import Path
 
 import pytest
 
-from flext_infra import config
-from flext_infra.services import FlextInfraValidationCommandRoutes
-from flext_infra.validate import FlextInfraCProfileReport
+from flext_infra import config, main, validate
 from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraCProfileReport:
     """Prove real pstats artifacts render through the typed owner."""
+
+    @staticmethod
+    def test_cli_profiles_retain_each_run_and_measure_startup(tmp_path: Path) -> None:
+        """Repeated public CLI launches preserve raw runs including CLI imports."""
+        output = tmp_path / "profile.pstats"
+        original: bytes | None = None
+        for _ in range(2):
+            tm.ok(
+                u.Cli.run_checked(
+                    (
+                        sys.executable,
+                        "-m",
+                        "flext_infra._profile_entry",
+                        str(output),
+                        "--help",
+                    ),
+                    cwd=tmp_path,
+                )
+            )
+            profiles = sorted(tmp_path.glob("profile-*.pstats"))
+            if original is None:
+                tm.that(len(profiles), eq=1)
+                original = profiles[0].read_bytes()
+            else:
+                tm.that(len(profiles), eq=2)
+                tm.that(original in (path.read_bytes() for path in profiles), eq=True)
+                previous = tuple(tmp_path.glob("profile.previous-*.pstats"))
+                tm.that(len(previous), eq=1)
+                tm.that(previous[0].read_bytes(), eq=original)
+            tm.that(
+                output.read_bytes() in (path.read_bytes() for path in profiles), eq=True
+            )
+            for profile in profiles:
+                rendered = io.StringIO()
+                pstats.Stats(str(profile), stream=rendered).print_stats(
+                    r"/flext_infra/cli\.py:\d+\(<module>\)"
+                )
+                tm.that(rendered.getvalue(), has="(<module>)")
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -156,7 +194,7 @@ class TestsFlextInfraCProfileReport:
             ),
         )
         tm.ok(
-            FlextInfraCProfileReport(
+            validate.FlextInfraCProfileReport(
                 repository_root=root,
                 profile=profile,
                 output=output,
@@ -164,12 +202,14 @@ class TestsFlextInfraCProfileReport:
                 limit=1,
             ).execute(),
         )
-        full, focused = output.read_text(encoding=c.DEFAULT_ENCODING).split(
+        full, source_report = output.read_text(encoding=c.DEFAULT_ENCODING).split(
             "Repository source functions:\n",
         )
+        focused, callers = source_report.split("Repository source callers:\n")
         tm.that(full, lacks=str(owned))
         tm.that(focused, has=str(owned))
         tm.that(focused, lacks=str(driver))
+        tm.that(callers, has=str(owned))
 
     @staticmethod
     @pytest.mark.parametrize("absolute_profile", [False, True])
@@ -309,7 +349,7 @@ class TestsFlextInfraCProfileReport:
             ),
         )
 
-        result = FlextInfraCProfileReport(
+        result = validate.FlextInfraCProfileReport(
             repository_root=repository_root,
             profile=profile_path,
             output=output_path,
@@ -328,14 +368,12 @@ class TestsFlextInfraCProfileReport:
         )
 
     @staticmethod
-    def test_validate_route_uses_typed_profile_owner() -> None:
-        """Test validate route uses typed profile owner."""
-        routes = {
-            route.name: route.model_cls
-            for route in FlextInfraValidationCommandRoutes.validate_command_routes
-        }
-
-        tm.that(routes["cprofile-report"], eq=FlextInfraCProfileReport)
+    def test_validate_route_exposes_profile_input(
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """The public CLI exposes the report owner's actual profile option."""
+        tm.that(main(["validate", "cprofile-report", "--help"]), eq=0)
+        tm.that(capsys.readouterr().out, has="--profile")
 
     @staticmethod
     def test_profile_artifacts_cannot_escape_workspace_reports(
@@ -345,7 +383,7 @@ class TestsFlextInfraCProfileReport:
         policy = config.Infra.tooling.tools.pytest
 
         with pytest.raises(ValueError, match="cProfile path must stay under"):
-            FlextInfraCProfileReport(
+            validate.FlextInfraCProfileReport(
                 repository_root=tmp_path,
                 profile=tmp_path / "outside.pstats",
                 output=tmp_path / "outside.txt",

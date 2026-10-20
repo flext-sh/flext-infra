@@ -1,0 +1,17 @@
+id: codegen-conform-state-request
+snapshots:
+  ? |
+    FlextInfraCodegenConform(repository_root=root, request=request)
+  : fixed: |
+      FlextInfraCodegenConform(
+          repository_root=root,
+          state=m.Infra.CodegenConformState(
+              repository_root=root,
+              request=request,
+          ),
+      )
+    labels:
+    - source: FlextInfraCodegenConform(repository_root=root, request=request)
+      style: primary
+      start: 0
+      end: 63

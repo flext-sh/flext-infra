@@ -40,11 +40,36 @@ class FlextInfraCodegenLazyInit(
     Processes bottom-up so child packages are generated before parents.
     """
 
-    _modified_files: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
-    _source_project: p.Infra.RopeProject | None = u.PrivateAttr(default=None)
+    _modified_files: t.Infra.StrSet = m.PrivateAttr(default_factory=set)
+    _source_project: p.Infra.RopeProject | None = m.PrivateAttr(default=None)
+    _source_plans: t.MutableMappingKV[str, m.Infra.LazyInitPlan] = m.PrivateAttr(
+        default_factory=dict[str, m.Infra.LazyInitPlan],
+    )
+    _source_receipts: t.MutableMappingKV[str, m.Infra.CodegenPhaseAnalysis] = (
+        m.PrivateAttr(default_factory=dict[str, m.Infra.CodegenPhaseAnalysis])
+    )
+    _source_indexes: t.MutableMappingKV[
+        Path, t.Pair[m.Infra.RopeWorkspaceIndex, m.Infra.CodegenPhaseAnalysis]
+    ] = m.PrivateAttr(
+        default_factory=dict[
+            Path, t.Pair[m.Infra.RopeWorkspaceIndex, m.Infra.CodegenPhaseAnalysis]
+        ],
+    )
+    _file_plan_cache: t.MutableMappingKV[
+        str,
+        t.Pair[t.VariadicTuple[m.Infra.CodegenFilePlan], m.Infra.CodegenPhaseAnalysis],
+    ] = m.PrivateAttr(
+        default_factory=dict[
+            str,
+            t.Pair[
+                t.VariadicTuple[m.Infra.CodegenFilePlan], m.Infra.CodegenPhaseAnalysis
+            ],
+        ],
+    )
     project_scope_roots: Annotated[
         t.VariadicTuple[Path] | None,
         m.Field(
+            ...,
             description=(
                 "Repository roots selected by conformance; None plans every "
                 "package of the workspace"
@@ -122,6 +147,9 @@ class FlextInfraCodegenLazyInit(
             One complete immutable lazy-init analysis receipt.
 
         """
+        # Preserve cross-call caches keyed by root/identity; each entry is
+        # validated through adopt_source_consumption before reuse. Clearing
+        # them here discarded every cached index and receipt between plans.
         self._modified_files.clear()
         if not (
             self.repository_root.is_dir()
@@ -162,10 +190,14 @@ class FlextInfraCodegenLazyInit(
         transaction owns aggregate evidence publication after verified effects;
         planning has no filesystem effects. File plans, publications and issues
         retain physical attribution, with manifests after ordered root plans.
-        Neither indexes nor semantic caches are shared.
+        Independent immutable decisions and structural indexes survive authenticated
+        epoch succession. Native semantic consumers remain isolated per artifact.
 
         Returns:
             The resulting ``p.Result[m.Infra.CodegenPhaseAnalysis]``.
+
+        Raises:
+            RuntimeError: The convergence loop has no terminal outcome.
 
         """
         roots = (
@@ -194,28 +226,73 @@ class FlextInfraCodegenLazyInit(
                 })
             )
         )
-        planned: p.Result[m.Infra.CodegenPhaseAnalysis] | None = None
         project: p.Infra.RopeProject | None = None
-        try:
-            with self._source_binding(
-                self.repository_root.resolve(), source_project, import_roots
-            ) as binding:
-                project = binding
-                planned = self._plan_attempt(roots, source_project=binding)
-                if source_project is not None:
-                    binding.verify_source_states()
-                return planned
-        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
-            if (
-                planned is None
-                or planned.failure
-                or project is None
-                or project.source_epoch_failure is not exc
-            ):
-                raise
-            return r[m.Infra.CodegenPhaseAnalysis].ok(
-                self.classify_source_conflict(planned.value, project, exc),
+        first_conflict: BaseException | None = None
+        runtime_errors: tuple[type[Exception], ...] = (OSError, *c.EXC_BROAD_RUNTIME)
+        for attempt in range(config.Infra.codegen.source_replan_limit + 1):
+            planned: p.Result[m.Infra.CodegenPhaseAnalysis] | None = None
+            predecessor = project
+            context = (
+                self._source_binding(
+                    self.repository_root.resolve(), source_project, import_roots
+                )
+                if predecessor is None
+                else predecessor.source_successor()
             )
+            try:
+                with context as project:
+                    self._adopt_cached_sources(project)
+                    planned = self._plan_attempt(roots, source_project=project)
+                    if source_project is not None:
+                        project.verify_source_states()
+                    return planned
+            except runtime_errors as exc:
+                if (
+                    planned is None
+                    or planned.failure
+                    or project is None
+                    or project.source_epoch_failure is not exc
+                ):
+                    raise
+                # Classification proves that the failing global observations
+                # belong to genuine scoped decisions, not arbitrary IO errors.
+                classified = self.classify_source_conflict(planned.value, project, exc)
+                if first_conflict is None:
+                    first_conflict = exc
+                if source_project is not None or planned.value.exception is not None:
+                    return r[m.Infra.CodegenPhaseAnalysis].ok(classified)
+                if attempt == config.Infra.codegen.source_replan_limit:
+                    if first_conflict is exc:
+                        raise
+                    raise first_conflict from exc
+                u.Cli.info(
+                    f"lazy-init: source epoch changed; successor={attempt + 1} "
+                    f"retaining independently valid decisions"
+                )
+        msg = "lazy-init source convergence exhausted without its original failure"
+        raise RuntimeError(msg)
+
+    def _adopt_cached_sources(self, project: p.Infra.RopeProject) -> None:
+        """Adopt only predecessor-issued evidence and retain valid cache identities."""
+        for key, receipt in tuple(self._source_receipts.items()):
+            adopted = project.adopt_source_consumption(receipt)
+            if adopted.failure:
+                del self._source_receipts[key]
+                self._source_plans.pop(key, None)
+            else:
+                self._source_receipts[key] = adopted.value
+        for root, (index, receipt) in tuple(self._source_indexes.items()):
+            adopted = project.adopt_source_consumption(receipt)
+            if adopted.failure:
+                del self._source_indexes[root]
+            else:
+                self._source_indexes[root] = (index, adopted.value)
+        for key, (files, receipt) in tuple(self._file_plan_cache.items()):
+            adopted = project.adopt_source_consumption(receipt)
+            if adopted.failure:
+                del self._file_plan_cache[key]
+            else:
+                self._file_plan_cache[key] = (files, adopted.value)
 
     def _plan_attempt(
         self,
@@ -316,12 +393,18 @@ class FlextInfraCodegenLazyInit(
 
         """
         if source_project is None:
-            root = Path(
-                commonpath((str(root), *(str(project) for project in project_roots)))
+            # Keep the Rope authority scoped to this repository only. Expanding
+            # to the common path of imported project roots pulled in the entire
+            # workspace (superproject) and indexed every submodule, which made
+            # make gen unusably slow. Imported roots outside this repository are
+            # consumed as installed libraries, not indexed sources.
+            root = root.resolve()
+            scoped_project_roots = tuple(
+                project for project in project_roots if project.is_relative_to(root)
             )
             with u.Infra.facade_source_project(
                 root,
-                project_roots=project_roots,
+                project_roots=scoped_project_roots,
             ) as binding:
                 yield binding[0]
             return
@@ -350,37 +433,12 @@ class FlextInfraCodegenLazyInit(
             The resulting ``p.Result[t.Triple[list[m.Infra.CodegenPhaseAnalysis],
                 t.MappingKV[Path, m.Cli.AtomicFileState], int]]``.
 
-        Raises:
-            OSError: When the underlying source state verification fails
-                outside a source-epoch conflict.
-
         """
         analyses: list[m.Infra.CodegenPhaseAnalysis] = []
         inputs: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
-        candidates: t.MutableMappingKV[
-            Path, t.Pair[t.VariadicTuple[Path], p.Infra.RopeSourceConsumption]
-        ] = {}
+        candidates = self._target_repository_candidates(roots, source_project)
+        runtime_errors: tuple[type[Exception], ...] = (OSError, *c.EXC_BROAD_RUNTIME)
         consumption: p.Infra.RopeSourceConsumption | None = None
-        if self.target_module:
-            for root in roots:
-                if (
-                    not root.is_relative_to(self.repository_root.resolve())
-                    or not root.is_dir()
-                ):
-                    continue
-                with (
-                    source_project.source_consumption() as consumption,
-                    source_project.source_consumer(consumer_root=root) as binding,
-                    FlextInfraRopeWorkspace.open_workspace(
-                        root,
-                        rope_repository_root=Path(binding.root.real_path),
-                        source_project=binding,
-                    ) as rope,
-                ):
-                    candidates[root] = (
-                        self._target_package_dirs(rope.workspace_index, root),
-                        consumption,
-                    )
         target_roots = sum(len(paths) for paths, _ in candidates.values())
         for root in roots:
             analyzed: p.Result[m.Infra.CodegenPhaseAnalysis | None] | None = None
@@ -394,6 +452,7 @@ class FlextInfraCodegenLazyInit(
                     f"{self.repository_root.resolve()}: {root}",
                 )
             else:
+                indexed = self._source_indexes.get(root)
                 try:
                     with (
                         source_project.source_consumption() as consumption,
@@ -402,6 +461,8 @@ class FlextInfraCodegenLazyInit(
                             root,
                             rope_repository_root=Path(binding.root.real_path),
                             source_project=binding,
+                            workspace_index=indexed[0] if indexed is not None else None,
+                            index_receipt=indexed[1] if indexed is not None else None,
                         ) as rope,
                     ):
                         if root in candidates:
@@ -413,7 +474,11 @@ class FlextInfraCodegenLazyInit(
                             root,
                             analyses=analyses,
                         )
-                except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+                        self._source_indexes[root] = (
+                            rope.workspace_index,
+                            rope.source_index_receipt,
+                        )
+                except runtime_errors as exc:
                     partial = (
                         analyzed.value
                         if analyzed is not None and analyzed.success
@@ -448,6 +513,8 @@ class FlextInfraCodegenLazyInit(
                             code=c.Infra.ToolOutcome.ERROR.value,
                             message=analyzed.error
                             or f"lazy-init analysis failed: {root}",
+                            locations=(),
+                            related_locations=(),
                         ),
                     ),
                     exception=analyzed.exception,
@@ -478,6 +545,8 @@ class FlextInfraCodegenLazyInit(
                                     "lazy-init target module is ambiguous: "
                                     f"{self.target_module}"
                                 ),
+                                locations=(),
+                                related_locations=(),
                             ),
                         ),
                     }
@@ -546,21 +615,66 @@ class FlextInfraCodegenLazyInit(
     ) -> t.MutableMappingKV[Path, m.Cli.AtomicFileState]:
         """Fold one repository's input states into the shared per-path mapping.
 
-        Raises:
-            OSError: When the folded snapshot fails and an earlier analysis
-                recorded the original exception.
+        Returns:
+            The unique captured states indexed by their physical paths.
 
         """
+        runtime_errors: tuple[type[Exception], ...] = (OSError, *c.EXC_BROAD_RUNTIME)
         try:
             merged = m.Infra.CodemodBindingSnapshot(
                 states=(*inputs.values(), *analysis.inputs)
             ).states
-        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+        except runtime_errors as exc:
             original = FlextInfraCodegenLazyInit._first_recorded_exception(analyses)
             if original is not None:
                 raise original from exc
             raise
         return {state.path: state for state in merged}
+
+    def _target_repository_candidates(
+        self,
+        roots: t.VariadicTuple[Path],
+        source_project: p.Infra.RopeProject,
+    ) -> t.MutableMappingKV[
+        Path, t.Pair[t.VariadicTuple[Path], p.Infra.RopeSourceConsumption]
+    ]:
+        """Capture the selected target packages before repository analysis.
+
+        Returns:
+            Candidate paths and their original native source consumption.
+
+        """
+        candidates: t.MutableMappingKV[
+            Path, t.Pair[t.VariadicTuple[Path], p.Infra.RopeSourceConsumption]
+        ] = {}
+        if self.target_module:
+            for root in roots:
+                if (
+                    not root.is_relative_to(self.repository_root.resolve())
+                    or not root.is_dir()
+                ):
+                    continue
+                indexed = self._source_indexes.get(root)
+                with (
+                    source_project.source_consumption() as consumption,
+                    source_project.source_consumer(consumer_root=root) as binding,
+                    FlextInfraRopeWorkspace.open_workspace(
+                        root,
+                        rope_repository_root=Path(binding.root.real_path),
+                        source_project=binding,
+                        workspace_index=indexed[0] if indexed is not None else None,
+                        index_receipt=indexed[1] if indexed is not None else None,
+                    ) as rope,
+                ):
+                    candidates[root] = (
+                        self._target_package_dirs(rope.workspace_index, root),
+                        consumption,
+                    )
+                    self._source_indexes[root] = (
+                        rope.workspace_index,
+                        rope.source_index_receipt,
+                    )
+        return candidates
 
     def _target_package_dirs(
         self,
@@ -718,6 +832,7 @@ class FlextInfraCodegenLazyInit(
             rope_workspace=rope,
             lazy_init=config.Infra.tooling.lazy_init,
         )
+        planner.seed_source_plans(self._source_plans, self._source_receipts)
         u.Cli.info(f"lazy-init: planning {len(package_dirs)} package dirs")
         package_plans = planner.plan_all_inits(
             package_dirs,
@@ -725,6 +840,10 @@ class FlextInfraCodegenLazyInit(
         )
         if package_plans.failure:
             return result_type.from_failure(package_plans)
+        self._source_plans.update(planner.source_plans)
+        self._source_receipts.update(
+            (key, planner.source_receipt(Path(key))) for key in planner.source_plans
+        )
         file_plans = self._build_file_plans(
             package_plans.value,
             index=workspace_index,
@@ -746,7 +865,19 @@ class FlextInfraCodegenLazyInit(
                 inputs=rope.rope_project.consumed_source_states(),
                 source_directories=rope.rope_project.consumed_source_directories(),
                 source_query_topology=rope.rope_project.consumed_source_topology(),
-                publications=package_plans.value,
+                publications=tuple(
+                    plan.model_copy(
+                        update={
+                            "source_states": receipt.inputs,
+                            "source_directories": receipt.source_directories,
+                            "source_query_topology": receipt.source_query_topology,
+                        }
+                    )
+                    for plan in package_plans.value
+                    for receipt in (
+                        self._file_plan_cache[str(plan.context.pkg_dir.resolve())][1],
+                    )
+                ),
             ),
         )
 

@@ -67,14 +67,18 @@ object graph. Same-spelled factories and declarations outside those model
 scopes retain their behavior. The six builtin empty-factory rules require a
 read-only collection origin from the configured `readonly_origins`. Rope follows
 PEP 695 aliases at their declaring scope; a name's spelling never determines
-mutability. Mutable contracts retain native factories, including their identity.
-Typed constructors and authored callbacks are not builtin empty factories.
-The native replacement captures the proven builtin once in a defaulted callback
-parameter. Pydantic invokes it without validated field data and applies the
-original complete field schema with its unchanged `validate_default` policy.
-This preserves fresh values, constraints, validators, and field error locations.
-No standalone adapter, utility import, or repeated annotation is introduced, so
-deferred outer-owner annotations stay owned by the model's native schema.
+mutability. Only raw mutable builtin factories (`list`, `set`, `dict`) on those
+contracts require repair. Mutable contracts and correct native immutable
+`tuple`/`frozenset` factories retain their identity. Typed constructors and
+authored callbacks are not builtin empty factories.
+The replacement uses the existing typed
+`u.empty(contract_factory=lambda: TypeForm(<full annotation>))` overload.
+The canonical helper resolves the actual complete contract on first value,
+caches its native adapter and seed, and returns validated fresh values even when
+the field's `validate_default` policy is false. The normalizer does not clone an
+adapter, wrap a raw constructor to hide its identity, or change field flags.
+Full-contract validation may correctly reject a formerly unvalidated invalid
+default; a test's preferred field error location does not redefine that contract.
 Destination imports use Rope's import manager and reject competing lexical
 bindings before publication. Configured defaults and factories remain policy
 data; projects do not carry copied detectors or symbol mapping tables.
@@ -96,12 +100,31 @@ When a replacement repeats or reorders annotation evaluation, the rule declares 
 effect. The existing Rope word finder supplies call coordinates for the matched
 region; authored calls prevent automatic duplication or reordering of their effects.
 This proof is separate from collection mutability and destination import
-availability. An enclosing class still under construction prevents automatic
-runtime reuse. The empty-factory rules avoid that operation altogether; an
-unproven collection origin is not applicable to automatic normalization. No
-namespace recovery is attempted. A source repair must preserve the native
-field's full schema and `validate_default` semantics; an origin-only adapter is
-not an equivalent field validator.
+availability. An enclosing class still under construction prevents eager runtime
+reuse. `deferred_contract` instead requires native binding proof in the factory's
+actual closure, following aliases at their original owner. Quoted type positions,
+unproven closure bindings, and authored evaluation effects fail with a declaring-
+source repair diagnostic; no string unquoting or namespace recovery is attempted.
+The existing native payload classifier preserves `Literal` values and `Annotated`
+metadata as data. Canonical `Field` metadata construction remains metadata, not
+permission to repeat arbitrary callbacks. An unproven collection origin is not
+applicable to automatic normalization and does not suppress a native finding.
+
+Binding stability is not validation-effect safety. The canonical empty factory
+validates the full contract before the owning field may validate its default
+again. Native `Annotated` metadata is therefore checked separately throughout
+the alias-owner walk. Opaque metadata, validator callbacks, and custom schema
+hooks require an explicit declaring-source repair; the normalizer does not
+attempt to prove arbitrary Python callbacks pure or idempotent.
+Declarative constraints are identified from the native SDK's
+`FieldInfo.metadata_lookup` owner through Rope, not copied class-name lists or
+metadata execution. Inline native `Field` and registered constraint constructors
+require declarative arguments. Named constructed constraints additionally require
+the SDK's native frozen-dataclass declaration. Mutable metadata aliases and
+unregistered grouped metadata remain unsupported rather than being silently
+approved. Literal payloads and inert metadata literals retain their meaning;
+full metadata and field default-validation flags are never removed or changed
+to bypass this proof.
 
 Moving a sole `Field` metadata item out of `Annotated` retains the callable,
 field position and arguments. A factory that receives previously validated field

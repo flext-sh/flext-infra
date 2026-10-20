@@ -15,9 +15,9 @@ from typing import TYPE_CHECKING
 {% endif %}
 __all__: tuple[str, ...] = {{ exports_tuple }}
 
-__getattr__ = install_lazy_exports(
+install_lazy_exports(
     __name__,
     globals(),
 {{ lazy_export_mapping }}
     public_exports=__all__,
-)[0]
+)

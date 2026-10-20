@@ -121,6 +121,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 path=source,
                 before=original,
                 desired_content=None,
+                desired_mode=None,
                 source_states=(incoming,),
             ),
             m.Infra.CodegenFilePlan(
@@ -128,6 +129,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 path=binary,
                 before=opaque,
                 desired_content=b"\xff\x00",
+                desired_mode=opaque.mode,
                 source_states=(incoming,),
             ),
         )
@@ -268,6 +270,82 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 tm.that(inventories[0].membership_queried, eq=False)
 
     @staticmethod
+    @pytest.mark.parametrize("absent_parent", [False, True])
+    def test_aggregate_source_queries_coalesce_roots_without_widening_consumers(
+        tmp_path: Path,
+        *,
+        absent_parent: bool,
+    ) -> None:
+        """Union repeated parent witnesses only at the aggregate receipt boundary."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        parent = package / "absent" if absent_parent else package
+        with u.Infra.facade_source_project(root) as (project, _, _):
+            with project.source_consumption() as first:
+                tm.that(project.source_query(parent / "first.py", "exists"), eq=False)
+            with project.source_consumption() as separate:
+                tm.that(project.source_query(parent / "second.py", "isfile"), eq=False)
+                tm.that(project.source_query(parent / "first.py", "isdir"), eq=False)
+                if absent_parent:
+                    with pytest.raises(FileNotFoundError):
+                        project.source_children(parent)
+                else:
+                    project.source_children(parent)
+            with project.source_consumption() as repeated:
+                project.replay_source_consumption(first.receipt())
+                tm.that(project.source_query(parent / "first.py", "exists"), eq=False)
+            for scope in (first, repeated):
+                receipts = (
+                    tuple(
+                        item
+                        for item in scope.receipt().source_query_topology
+                        if item.target == parent
+                    )
+                    if absent_parent
+                    else tuple(
+                        item
+                        for item in scope.receipt().source_directories
+                        if item.root.path == parent
+                    )
+                )
+                tm.that(len(receipts), eq=1)
+                tm.that(receipts[0].queries, eq=(("first.py", "exists"),))
+                tm.that(receipts[0].membership_queried, eq=False)
+            aggregate = (
+                tuple(
+                    item
+                    for item in project.consumed_source_topology()
+                    if item.target == parent
+                )
+                if absent_parent
+                else tuple(
+                    item
+                    for item in project.consumed_source_directories()
+                    if item.root.path == parent
+                )
+            )
+            tm.that(len(aggregate), eq=1)
+            tm.that(
+                aggregate[0].queries,
+                eq=(
+                    ("first.py", "exists"),
+                    ("first.py", "isdir"),
+                    ("second.py", "isfile"),
+                ),
+            )
+            tm.that(aggregate[0].membership_queried, eq=True)
+            separate_receipts = (
+                separate.receipt().source_query_topology
+                if absent_parent
+                else separate.receipt().source_directories
+            )
+            tm.that(
+                any(
+                    ("first.py", "exists") in item.queries for item in separate_receipts
+                ),
+                eq=False,
+            )
+
+    @staticmethod
     def test_source_scopes_reject_unissued_and_incomplete_receipts(
         tmp_path: Path,
     ) -> None:
@@ -374,6 +452,19 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             with u.Infra.facade_source_project(root) as (project, _, _):
                 with project.source_consumption() as provider:
                     expected = project.source_state(source)
+                    tm.that(project.source_query(source, "isfile"), eq=True)
+                with project.source_consumption():
+                    tm.that(project.source_query(source, "exists"), eq=True)
+                inventories = tuple(
+                    item
+                    for item in project.consumed_source_directories()
+                    if item.root.path == package
+                )
+                tm.that(len(inventories), eq=1)
+                tm.that(
+                    inventories[0].queries,
+                    eq=((source.name, "exists"), (source.name, "isfile")),
+                )
                 with source.open("wb") as handle:
                     handle.write(b"__all__ = ['diverged']\n")
                 tm.that(source.stat().st_ino, eq=expected.inode)

@@ -1310,7 +1310,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "result = authenticate(module.__name__, "
             "source_root=pathlib.Path(sys.argv[3]))\n"
             "if sys.argv[4] == 'declared':\n"
-            "    assert result.success, result.error\n"
+            "    tm.ok(result.success), result.error\n"
             "    with module.operation() as value:\n"
             "        assert value == 'authenticated'\n"
             "else:\n"

@@ -81,7 +81,7 @@ class FlextInfraUtilitiesMiseBinary:
         if selected is None:
             return r[Path].fail("Mise executable is absent; run make setup")
         reader = Path(selected)
-        return FlextInfraUtilitiesMiseBinary._committed_mise_self_release(
+        return FlextInfraUtilitiesMiseBinary.committed_mise_self_release(
             owner_root,
         ).flat_map(
             lambda declared: FlextInfraUtilitiesMiseBinary._qualified_mise_reader(
@@ -106,14 +106,14 @@ class FlextInfraUtilitiesMiseBinary:
         """
         if not declared:
             return r[Path].ok(reader.resolve(strict=True))
-        return FlextInfraUtilitiesMiseBinary._locked_mise_version(
+        return FlextInfraUtilitiesMiseBinary.locked_mise_version(
             owner_root,
             config.Infra.codegen.toolchain.mise_selector,
             declared[0],
         ).flat_map(
             lambda pinned: (
                 FlextInfraUtilitiesMiseBinary
-                ._mise_self_identity(reader, pinned, owner_root)
+                .mise_self_identity(reader, pinned, owner_root)
                 .flat_map(
                     lambda qualified: FlextInfraUtilitiesMiseBinary._managed_mise_path(
                         c.Infra.MISE,
@@ -123,7 +123,7 @@ class FlextInfraUtilitiesMiseBinary:
                     ),
                 )
                 .flat_map(
-                    lambda installed: FlextInfraUtilitiesMiseBinary._mise_self_identity(
+                    lambda installed: FlextInfraUtilitiesMiseBinary.mise_self_identity(
                         installed,
                         pinned,
                         owner_root,
@@ -133,7 +133,7 @@ class FlextInfraUtilitiesMiseBinary:
         )
 
     @staticmethod
-    def _committed_mise_self_release(
+    def committed_mise_self_release(
         owner_root: Path,
     ) -> p.Result[tuple[str] | tuple[()]]:
         """Return the self-managed Mise release the committed manifest declares.
@@ -200,7 +200,7 @@ class FlextInfraUtilitiesMiseBinary:
         return r[tuple[str] | tuple[()]].ok((release,))
 
     @staticmethod
-    def _mise_self_identity(
+    def mise_self_identity(
         binary: Path, pinned: str, owner_root: Path
     ) -> p.Result[Path]:
         """Check the physical reader without invoking a lock-consuming command.
@@ -250,7 +250,7 @@ class FlextInfraUtilitiesMiseBinary:
         return r[Path].ok(binary.resolve(strict=True))
 
     @classmethod
-    def _locked_mise_version(
+    def locked_mise_version(
         cls,
         execution_root: Path,
         tool: str,

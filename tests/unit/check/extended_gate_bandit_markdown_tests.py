@@ -10,7 +10,6 @@ import shutil
 from typing import TYPE_CHECKING, ClassVar
 
 import pytest
-from flext_cli import cli
 
 from flext_infra import config, m, t
 from flext_infra.gates.bandit import FlextInfraBanditGate
@@ -33,7 +32,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
     LONG_LINE = "# Test\n\n" + " ".join(["word"] * 30) + "\n"
     # The .markdownlint.json projection renders this exact typed SSOT; tests
     # of the markdown contract read it instead of freezing a config literal.
-    CANONICAL_MARKDOWNLINT_CONFIG: ClassVar[str] = cli.json_dumps(
+    CANONICAL_MARKDOWNLINT_CONFIG: ClassVar[str] = u.Cli.json_dumps(
         dict(config.Infra.tooling.tools.markdown.rules),
     ).unwrap()
 

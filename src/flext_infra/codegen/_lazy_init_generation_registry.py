@@ -20,7 +20,9 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
     """Describe stale generated sidecars without publishing any effect."""
 
     if TYPE_CHECKING:
-        source_project: p.Infra.RopeProject
+
+        @property
+        def source_project(self) -> p.Infra.RopeProject: ...
 
         @staticmethod
         def _is_generated(content: bytes | None) -> bool: ...

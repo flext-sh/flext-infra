@@ -18,13 +18,8 @@ from shlex import quote
 
 import pytest
 
-from flext_infra import config, infra
-from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.workspace import (
-    FlextInfraWorkspaceDetector,
-    FlextInfraWorkspaceEnvironmentProvenance,
-)
-from tests import c, m, p, t, tm, u
+from flext_infra import codegen, config, infra, workspace
+from tests import c, m, p, r, t, tm, u
 
 _FIXTURES_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -39,7 +34,7 @@ def native_consumer(tmp_path: Path) -> p.Tests.NativeConsumer:
 
     """
     runtime = tm.ok(
-        FlextInfraWorkspaceDetector.resolution_context(_PROJECT_ROOT)
+        workspace.FlextInfraWorkspaceDetector.resolution_context(_PROJECT_ROOT)
     ).runtime_root
     prelude = (
         "import importlib, pathlib, sys\n"
@@ -80,6 +75,48 @@ def declaration_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
 
     """
     return u.Tests.create_lazy_init_workspace(tmp_path)
+
+
+@pytest.fixture
+def source_preview_workspace(
+    tmp_path: Path,
+    session_runtime: p.Tests.SessionRuntime,
+) -> t.Pair[Path, Path]:
+    """Provide source preview with its own physical runtime and real dependencies.
+
+    Returns:
+        The workspace root and its source package.
+
+    """
+    root = tmp_path.with_name(f"{tmp_path.name}-source-preview")
+    root.mkdir()
+    u.Tests.initialize_git_repo(root)
+    package = u.Tests.src_package(
+        root,
+        "sample",
+        pyproject=(
+            "[project]\nname = 'sample'\nversion = '1.0.0'\n"
+            f'dependencies = ["{config.Infra.name}"]\n'
+        ),
+    )
+    tm.ok(
+        u.Tests.create_python_environment(
+            root,
+            dependency_projects=u.Tests.python_dependency_projects(root),
+            session_runtime=session_runtime,
+        ),
+    )
+    transaction = codegen.FlextInfraCodegenTransaction(
+        codegen.FlextInfraCodegenMiseArtifacts(repository_root=root),
+    )
+    # Authenticate the real transaction control plane before source receipts.
+    tm.ok(
+        transaction.run_files_locked(
+            transaction.capability_roots("fixture-source", (root,)),
+            lambda _: r[bool].ok(value=True),
+        ),
+    )
+    return root, package
 
 
 @pytest.fixture
@@ -324,10 +361,13 @@ def _provision_consumer_template(
         root,
         what=c.Infra.CodegenConformSurface.MAKEFILE,
     )
-    conform = FlextInfraCodegenConform(
+    conform = codegen.FlextInfraCodegenConform(
         repository_root=root,
-        initial_workspace=workspace,
-        request=conform_request,
+        state=m.Infra.CodegenConformState(
+            repository_root=root,
+            initial_workspace=workspace,
+            request=conform_request,
+        ),
     )
     planned = conform.plan(conform_request)
     plan = tm.ok(planned)
@@ -453,7 +493,7 @@ def native_fleet_signal_hook(installed_fleet_workspace: Path) -> Path:
         )
     root = installed_fleet_workspace
     members = tm.ok(
-        FlextInfraWorkspaceEnvironmentProvenance.editable_members(root),
+        workspace.FlextInfraWorkspaceEnvironmentProvenance.editable_members(root),
     )
     ordered = u.Infra.workspace_dependency_order(root, members)
     provider = next(member for member in members if member.distribution == ordered[0])

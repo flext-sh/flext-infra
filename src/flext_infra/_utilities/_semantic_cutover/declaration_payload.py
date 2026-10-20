@@ -336,13 +336,11 @@ class FlextInfraUtilitiesDeclarationPayload:
         statements = cls._admitted_payload_statements(module, value, scope)
         if statements is None:
             return None
-        finder = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_finder(module)
         for member_scope in scope.get_scopes():
             if (
                 member_scope.get_kind() == c.Infra.RopeScopeKind.FUNCTION
                 and not cls._payload_method(
                     project,
-                    finder,
                     member_scope.pyobject,
                     statements,
                 )
@@ -528,7 +526,6 @@ class FlextInfraUtilitiesDeclarationPayload:
     def _payload_method(
         cls,
         project: p.Infra.RopeProject,
-        finder: p.Infra.RopeSimilarFinder,
         method: p.Infra.RopePyObject,
         statements: t.SequenceOf[m.Infra.LogicalStatement],
     ) -> bool:

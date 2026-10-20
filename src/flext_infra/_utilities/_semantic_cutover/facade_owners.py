@@ -15,7 +15,7 @@ from __future__ import annotations
 import ast
 from collections.abc import MutableMapping
 from functools import lru_cache
-from importlib.util import resolve_name
+from importlib.util import find_spec, resolve_name
 from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING
@@ -36,7 +36,7 @@ from flext_infra._utilities._rope_source_bases_inventory_collector import (
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from flext_infra import t
+    from flext_infra import p, t
 
 
 class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
@@ -77,13 +77,22 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         if indexed is None:
             msg = f"facade package is not importable for derivation: {package}"
             raise ValueError(msg)
+        if source_root is None:
+            spec = find_spec(package)
+            if spec is None or spec.origin is None:
+                msg = f"facade package has no source origin: {package}"
+                raise ValueError(msg)
+            source_root = Path(spec.origin).parent.parent
         classes: MutableMapping[str, str] = {}
-        for name in FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-            indexed[0],
-        ):
-            owner = cls._facade_letter_class(modules, package, name)
-            if owner is not None:
-                classes[name] = owner
+        with FlextInfraUtilitiesRopeCore.open_import_project(source_root) as project:
+            for name in FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                indexed[0],
+            ):
+                owner = cls._facade_letter_class(
+                    modules, package, name, project=project
+                )
+                if owner is not None:
+                    classes[name] = owner
         return classes
 
     @classmethod
@@ -92,6 +101,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         modules: t.MappingKV[str, t.Pair[str, bool]],
         module: str,
         letter: str,
+        *,
+        project: p.Infra.RopeProject,
     ) -> str:
         """Return the class ``letter`` names, or raise with the missing proof.
 
@@ -102,7 +113,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             ValueError: If ``owner is None``.
 
         """
-        resolved = cls._facade_declared_class(modules, module, letter, frozenset())
+        resolved = cls._facade_declared_class(
+            modules, module, letter, frozenset(), project=project
+        )
         if resolved is not None and resolved[1] == letter:
             owner_module, owner_name = resolved
             exported_here = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
@@ -117,7 +130,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
                 else None
             )
         else:
-            owner = cls._facade_letter_class(modules, module, letter)
+            owner = cls._facade_letter_class(modules, module, letter, project=project)
         if owner is None:
             msg = (
                 f"{module}.{letter} is not declared with its facade class in the "
@@ -132,6 +145,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         modules: t.MappingKV[str, t.Pair[str, bool]],
         module: str,
         letter: str,
+        *,
+        project: p.Infra.RopeProject,
     ) -> str | None:
         """Return the declared class of a letter that ``module`` publishes.
 
@@ -143,7 +158,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
                 frozenset()) != resolved``.
 
         """
-        resolved = cls._facade_declared_class(modules, module, letter, frozenset())
+        resolved = cls._facade_declared_class(
+            modules, module, letter, frozenset(), project=project
+        )
         if resolved is None:
             return None
         owner_module, owner = resolved
@@ -154,7 +171,12 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         )
         if letter not in exports or owner not in exports:
             return None
-        if cls._facade_declared_class(modules, module, owner, frozenset()) != resolved:
+        if (
+            cls._facade_declared_class(
+                modules, module, owner, frozenset(), project=project
+            )
+            != resolved
+        ):
             msg = f"{module} does not publish {owner_module}.{owner} as {owner}"
             raise ValueError(msg)
         return owner
@@ -267,6 +289,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         module: str,
         name: str,
         visiting: frozenset[str],
+        *,
+        project: p.Infra.RopeProject,
     ) -> t.Pair[str, str] | None:
         """Follow the last module-scope binding of ``name`` to its class.
 
@@ -290,7 +314,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         if declared:
             return module, name
         # The generated lazy publication has one reader: the rope aliases owner.
-        lazy = cls._facade_lazy_bindings(source, module, is_package=is_package)
+        lazy = cls._facade_lazy_bindings(
+            source, module, is_package=is_package, project=project
+        )
         if target is None and name in lazy:
             # A lazy entry binds the name through its provider module;
             # resolution continues where that module defines it.
@@ -298,7 +324,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         # A submodule import binds a module, never a facade class.
         if target is None or ".".join(target) in modules:
             return None
-        return cls._facade_declared_class(modules, *target, visiting | {identity})
+        return cls._facade_declared_class(
+            modules, *target, visiting | {identity}, project=project
+        )
 
     @staticmethod
     @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
@@ -325,21 +353,21 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         )
 
     @staticmethod
-    @lru_cache(maxsize=256)
     def _facade_lazy_bindings(
         source: str,
         module: str,
         *,
         is_package: bool,
+        project: p.Infra.RopeProject,
     ) -> t.StrMapping:
-        """Index the generated lazy publication of one module source once.
+        """Index generated lazy publication within its owning import project.
 
         The lazy publication IS a binding statement: every name the
         ``install_lazy_exports`` map lists resolves through its provider
         module, exactly as it resolves at runtime. The map has one reader
         (``FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases``),
-        which understands the generated shape; the key is the exact source
-        text, so an edited module is a new key.
+        which understands the generated shape and resolves native imports in
+        the same project as the facade derivation.
 
         Returns:
             Published name to absolute provider module.
@@ -353,6 +381,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
                 module,
                 path,
                 source,
+                project=project,
             ),
         )
 

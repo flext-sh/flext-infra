@@ -506,7 +506,7 @@ class FlextInfraModelsCheck:
                 description="Result message",
             ),
         ]
-        locations: list[FlextInfraModelsCheck.SarifLocation] = m.Field(
+        locations: t.VariadicTuple[FlextInfraModelsCheck.SarifLocation] = m.Field(
             description="Result locations",
         )
         related_locations: t.VariadicTuple[FlextInfraModelsCheck.SarifLocation] = (

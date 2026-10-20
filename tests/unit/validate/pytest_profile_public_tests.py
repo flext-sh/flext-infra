@@ -517,11 +517,11 @@ class TestsFlextInfraPytestProfile:
         profile = tmp_path / "collection.pstats"
         result = u.Tests.PytestRunner.profile_collection(profile, arguments)
         tm.that(result.outcome.raw_return_code == expected_exit, truth=True)
-        assert not result.outcome.timed_out
-        assert result.outcome.forwarded_signal is None
+        tm.that(result.outcome.timed_out, truth=False)
+        tm.that(result.outcome.forwarded_signal, none=True)
         if expected_exit == pytest.ExitCode.USAGE_ERROR:
             tm.that(arguments[0] in result.stderr, truth=True)
-        assert pstats.Stats(str(profile)).get_stats_profile().func_profiles
+        tm.that(pstats.Stats(str(profile)).get_stats_profile().func_profiles, truth=True)
 
     @staticmethod
     @pytest.mark.slow
@@ -531,8 +531,8 @@ class TestsFlextInfraPytestProfile:
         output.mkdir()
         result = u.Tests.PytestRunner.profile_collection(output, ("--version",))
         tm.that(result.outcome.raw_return_code != 0, truth=True)
-        assert not result.outcome.timed_out
-        assert result.outcome.forwarded_signal is None
+        tm.that(result.outcome.timed_out, truth=False)
+        tm.that(result.outcome.forwarded_signal, none=True)
         tm.that("IsADirectoryError" in result.stderr, truth=True)
 
     @staticmethod
@@ -613,10 +613,7 @@ class TestsFlextInfraPytestProfile:
             ),
             eq=True,
         )
-        assert any(
-            "_pytest" in function.file_name
-            for function in stats.get_stats_profile().func_profiles.values()
-        )
+        tm.that(any("_pytest" in function.file_name for function in stats.get_stats_profile().func_profiles.values()), truth=True)
         parent_stats = pstats.Stats(str(parent_profile)).get_stats_profile()
         # The class body runs on import, unlike its methods: this proves the
         # public runner was first imported while the parent profiler was active.
@@ -645,7 +642,7 @@ class TestsFlextInfraPytestProfile:
         # The profiled incremental operation is bounded, so its receipt names
         # a deadline.
         deadline = receipt.deadline_monotonic
-        assert deadline is not None
+        tm.that(deadline, none=False)
         receipt_path.write_text(
             receipt.model_copy(
                 update={"deadline_monotonic": deadline + 1},
@@ -711,7 +708,7 @@ class TestsFlextInfraPytestProfile:
                 reports_root,
                 latest_name,
             )
-        assert not (reports_root / latest_name / "testmon-inventory.pstats").exists()
+        tm.that((reports_root / latest_name / "testmon-inventory.pstats").exists(), truth=False)
         summary = tm.ok(
             u.Cli.files_read_text(reports_root / latest_name / "summary.txt"),
         )

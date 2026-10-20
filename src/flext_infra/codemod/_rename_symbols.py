@@ -116,7 +116,6 @@ class FlextInfraRenameSymbols:
 
         Raises:
             ValueError: If identity, input, destination, or independent edits conflict.
-            TypeError: If Rope emits an unsupported native effect.
 
         """
         rewrites: t.MutableMappingKV[
@@ -125,137 +124,14 @@ class FlextInfraRenameSymbols:
         moves: dict[Path, Path] = {}
         selected: set[t.Pair[Path, str]] = set()
         for decision in decisions:
-            if not decision.replacement_name.isidentifier():
-                msg = "native rename requires one Python identifier"
-                raise ValueError(msg)
-            declaration = decision.declaration
-            producer = max(
-                (
-                    project
-                    for project in projects
-                    if Path(declaration.file_path).is_relative_to(
-                        Path(project.root.real_path)
-                    )
-                ),
-                key=lambda project: len(Path(project.root.real_path).parts),
+            cls._plan_native_decision(
+                projects, sources, decision, selected, (rewrites, moves)
             )
-            signature = (
-                cls._candidate_signature(producer, sources, declaration)
-                if declaration.kind != "module"
-                else None
-            )
-            for item in (declaration, *decision.contracts):
-                path = Path(item.file_path).resolve()
-                identity = (path, item.scope_path)
-                if identity in selected:
-                    msg = f"native rename repeats an introducing identity: {identity}"
-                    raise ValueError(msg)
-                selected.add(identity)
-                if (
-                    item != declaration
-                    and cls._candidate_signature(producer, sources, item, contract=True)
-                    != signature
-                ):
-                    msg = f"semantic rename has incompatible contract: {identity}"
-                    raise ValueError(msg)
-                root = Path(producer.root.real_path)
-                resource = producer.get_resource(path.relative_to(root).as_posix())
-                owner, _, name = item.scope_path.rpartition(".")
-                offset = None
-                if item.kind != "module":
-                    binding = cls.resolve_member(
-                        producer, f"{item.module_name}.{owner}".rstrip("."), name
-                    )
-                    if binding is None:
-                        msg = f"declaration rename binding disappeared: {identity}"
-                        raise ValueError(msg)
-                    if (
-                        cls.resolve_member(
-                            producer,
-                            f"{item.module_name}.{owner}".rstrip("."),
-                            decision.replacement_name,
-                        )
-                        is not None
-                    ):
-                        msg = f"declaration rename destination is occupied: {identity}"
-                        raise ValueError(msg)
-                    offset = u.Infra.find_identifier_offset_in_lines(
-                        sources[path].splitlines(keepends=True),
-                        line=item.line,
-                        symbol=item.name,
-                        pyname=binding,
-                    )
-                    if offset is None:
-                        msg = f"declaration rename has no identifier: {identity}"
-                        raise ValueError(msg)
-                ordered = (
-                    producer,
-                    *(project for project in projects if project is not producer),
-                )
-                for project, changes in u.Infra.rename_all_changes(
-                    ordered, resource, offset, decision.replacement_name
-                ):
-                    for change in changes.changes:
-                        if isinstance(change, p.Infra.RopeChangeContents):
-                            cls._record_campaign_change(
-                                change,
-                                context=(project, sources),
-                                identity=(),
-                                planned=rewrites,
-                                rename_definitions=True,
-                            )
-                        elif isinstance(change, p.Infra.RopeMoveResource):
-                            origin = Path(change.resource.real_path).resolve()
-                            target = Path(change.new_resource.real_path).resolve()
-                            if origin not in sources or change.resource.is_folder():
-                                msg = (
-                                    f"native module move escapes "
-                                    f"authenticated file inventory: {origin}"
-                                )
-                                raise ValueError(msg)
-                            if origin in moves and moves[origin] == target:
-                                continue
-                            if origin in moves or target in moves.values():
-                                msg = f"native module moves conflict: {origin}"
-                                raise ValueError(msg)
-                            if not target.is_relative_to(root) or target.exists():
-                                msg = (
-                                    f"native module destination "
-                                    f"is occupied or foreign: {target}"
-                                )
-                                raise ValueError(msg)
-                            moves[origin] = target
-                        else:
-                            msg = "native rename produced an unsupported effect"
-                            raise TypeError(msg)
-                    cls._plan_quoted_rename(
-                        project,
-                        sources,
-                        {
-                            Path(candidate.real_path): candidate
-                            for candidate in project.get_python_files()
-                        },
-                        (
-                            item.module_name.rpartition(".")[0]
-                            if item.kind == "module"
-                            else f"{item.module_name}.{owner}".rstrip("."),
-                            item.name,
-                            decision.replacement_name,
-                        ),
-                        rewrites,
-                    )
         updates: dict[Path, str | None] = {}
         for path, edits in rewrites.items():
             if not edits:
                 continue
-            project = max(
-                (
-                    project
-                    for project in projects
-                    if path.is_relative_to(Path(project.root.real_path))
-                ),
-                key=lambda project: len(Path(project.root.real_path).parts),
-            )
+            project = cls._native_producer(projects, path)
             updates[path] = u.Infra.content_change(
                 project.get_resource(
                     path.relative_to(Path(project.root.real_path)).as_posix()
@@ -270,6 +146,205 @@ class FlextInfraRenameSymbols:
             updates[target] = updates.get(origin, sources[origin])
             updates[origin] = None
         return dict(sorted(updates.items())), tuple(sorted(moves.items()))
+
+    @staticmethod
+    def _native_producer(
+        projects: t.SequenceOf[p.Infra.RopeProject], path: Path
+    ) -> p.Infra.RopeProject:
+        """Elect the deepest project containing a native declaration.
+
+        Returns:
+            The owning Rope project.
+
+        """
+        return max(
+            (
+                project
+                for project in projects
+                if path.is_relative_to(Path(project.root.real_path))
+            ),
+            key=lambda project: len(Path(project.root.real_path).parts),
+        )
+
+    @classmethod
+    def _plan_native_decision(
+        cls,
+        projects: t.SequenceOf[p.Infra.RopeProject],
+        sources: t.MappingKV[Path, str],
+        decision: m.Infra.SemanticRenameDecision,
+        selected: set[t.Pair[Path, str]],
+        effects: t.Pair[
+            t.MutableMappingKV[Path, t.MutableSequenceOf[p.Infra.SourceRewrite]],
+            t.MutableMappingKV[Path, Path],
+        ],
+    ) -> None:
+        """Validate one introducing identity before planning its native effects.
+
+        Raises:
+            ValueError: If names, identities or callable contracts conflict.
+
+        """
+        if not decision.replacement_name.isidentifier():
+            msg = "native rename requires one Python identifier"
+            raise ValueError(msg)
+        declaration = decision.declaration
+        producer = cls._native_producer(projects, Path(declaration.file_path))
+        signature = (
+            cls._candidate_signature(producer, sources, declaration)
+            if declaration.kind != "module"
+            else None
+        )
+        for item in (declaration, *decision.contracts):
+            identity = (Path(item.file_path).resolve(), item.scope_path)
+            if identity in selected:
+                msg = f"native rename repeats an introducing identity: {identity}"
+                raise ValueError(msg)
+            selected.add(identity)
+            if (
+                item != declaration
+                and cls._candidate_signature(producer, sources, item, contract=True)
+                != signature
+            ):
+                msg = f"semantic rename has incompatible contract: {identity}"
+                raise ValueError(msg)
+            cls._plan_native_item(
+                (
+                    producer,
+                    *[project for project in projects if project is not producer],
+                ),
+                sources,
+                item,
+                decision.replacement_name,
+                effects,
+            )
+
+    @classmethod
+    def _native_identifier_offset(
+        cls,
+        producer: p.Infra.RopeProject,
+        sources: t.MappingKV[Path, str],
+        item: m.Infra.Object,
+        replacement: str,
+    ) -> int | None:
+        """Resolve the introducing identifier and reject occupied destinations.
+
+        Returns:
+            The native identifier offset, or no offset for module renames.
+
+        Raises:
+            ValueError: If the binding, destination or identifier is invalid.
+
+        """
+        if item.kind == "module":
+            return None
+        path = Path(item.file_path).resolve()
+        identity = (path, item.scope_path)
+        owner, _, name = item.scope_path.rpartition(".")
+        owner = f"{item.module_name}.{owner}".rstrip(".")
+        binding = cls.resolve_member(producer, owner, name)
+        if binding is None:
+            msg = f"declaration rename binding disappeared: {identity}"
+            raise ValueError(msg)
+        if cls.resolve_member(producer, owner, replacement) is not None:
+            msg = f"declaration rename destination is occupied: {identity}"
+            raise ValueError(msg)
+        offset = u.Infra.find_identifier_offset_in_lines(
+            sources[path].splitlines(keepends=True),
+            line=item.line,
+            symbol=item.name,
+            pyname=binding,
+        )
+        if offset is None:
+            msg = f"declaration rename has no identifier: {identity}"
+            raise ValueError(msg)
+        return offset
+
+    @classmethod
+    def _plan_native_item(
+        cls,
+        projects: t.SequenceOf[p.Infra.RopeProject],
+        sources: t.MappingKV[Path, str],
+        item: m.Infra.Object,
+        replacement: str,
+        effects: t.Pair[
+            t.MutableMappingKV[Path, t.MutableSequenceOf[p.Infra.SourceRewrite]],
+            t.MutableMappingKV[Path, Path],
+        ],
+    ) -> None:
+        """Collect authenticated native changes and quoted-reference rewrites.
+
+        Raises:
+            TypeError: If Rope emits an unsupported native effect.
+
+        """
+        producer = projects[0]
+        root = Path(producer.root.real_path)
+        resource = producer.get_resource(
+            Path(item.file_path).resolve().relative_to(root).as_posix()
+        )
+        offset = cls._native_identifier_offset(producer, sources, item, replacement)
+        owner = item.scope_path.rpartition(".")[0]
+        for project, changes in u.Infra.rename_all_changes(
+            projects, resource, offset, replacement
+        ):
+            for change in changes.changes:
+                if isinstance(change, p.Infra.RopeChangeContents):
+                    cls._record_campaign_change(
+                        change,
+                        context=(project, sources),
+                        identity=(),
+                        planned=effects[0],
+                        rename_definitions=True,
+                    )
+                elif isinstance(change, p.Infra.RopeMoveResource):
+                    cls._record_native_move(change, sources, effects[1], root)
+                else:
+                    msg = "native rename produced an unsupported effect"
+                    raise TypeError(msg)
+            cls._plan_quoted_rename(
+                project,
+                sources,
+                {
+                    Path(candidate.real_path): candidate
+                    for candidate in project.get_python_files()
+                },
+                (
+                    item.module_name.rpartition(".")[0]
+                    if item.kind == "module"
+                    else f"{item.module_name}.{owner}".rstrip("."),
+                    item.name,
+                    replacement,
+                ),
+                effects[0],
+            )
+
+    @staticmethod
+    def _record_native_move(
+        change: p.Infra.RopeMoveResource,
+        sources: t.MappingKV[Path, str],
+        moves: t.MutableMappingKV[Path, Path],
+        root: Path,
+    ) -> None:
+        """Record a unique native move inside its authenticated producer root.
+
+        Raises:
+            ValueError: If the move escapes inventory or conflicts with another effect.
+
+        """
+        origin = Path(change.resource.real_path).resolve()
+        target = Path(change.new_resource.real_path).resolve()
+        if origin not in sources or change.resource.is_folder():
+            msg = f"native module move escapes authenticated file inventory: {origin}"
+            raise ValueError(msg)
+        if origin in moves and moves[origin] == target:
+            return
+        if origin in moves or target in moves.values():
+            msg = f"native module moves conflict: {origin}"
+            raise ValueError(msg)
+        if not target.is_relative_to(root) or target.exists():
+            msg = f"native module destination is occupied or foreign: {target}"
+            raise ValueError(msg)
+        moves[origin] = target
 
     @staticmethod
     def _member_paths(source: str, path: Path) -> frozenset[tuple[str, ...]]:
@@ -377,8 +452,7 @@ class FlextInfraRenameSymbols:
                 changes = cls.plan(
                     project,
                     sources,
-                    ((name, decision.replacement_name),),
-                    {"": (identity[0],)},
+                    (((name, decision.replacement_name),), {"": (identity[0],)}),
                     rename_definitions=True,
                 )
                 for path, edits in changes.items():
@@ -652,8 +726,9 @@ class FlextInfraRenameSymbols:
         cls,
         project: p.Infra.RopeProject,
         sources: t.MappingKV[Path, str],
-        pairs: t.SequenceOf[t.Pair[str, str]],
-        bindings: t.MappingKV[str, t.StrSequence],
+        campaign: t.Pair[
+            t.SequenceOf[t.Pair[str, str]], t.MappingKV[str, t.StrSequence]
+        ],
         *,
         rename_definitions: bool = False,
         resource_paths: t.SequenceOf[Path] | None = None,
@@ -670,6 +745,7 @@ class FlextInfraRenameSymbols:
                 inventory; or if Rope CSV edit has no single authenticated member span.
 
         """
+        pairs, bindings = campaign
         root = Path(project.root.real_path)
         ordered_paths = tuple(sorted(sources))
         members = {
@@ -925,7 +1001,7 @@ class FlextInfraRenameSymbols:
                 if (expected is not None and u.Infra.same_name(expected, actual)) or (
                     module_object is not None
                     and actual is not None
-                    and actual.get_object() is module_object
+                    and id(actual.get_object()) == id(module_object)
                 ):
                     return ".".join((*parts[: count - 1], new_suffix, *parts[count:]))
             return None
@@ -947,7 +1023,7 @@ class FlextInfraRenameSymbols:
                 old_suffix in exports
                 and replacement(module.get_scope(), old_suffix) is not None
             ):
-                changed = FlextInfraUtilitiesRopeModulePatch._rewrite_all_declaration(
+                changed = FlextInfraUtilitiesRopeModulePatch.rewrite_all_declaration(
                     changed,
                     names=[
                         new_suffix if name == old_suffix else name for name in exports

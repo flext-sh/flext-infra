@@ -31,19 +31,20 @@ class FlextInfraModelsBase:
             validate_default=True,
             description="Repository root",
         )
-        apply_changes: bool = m.Field(
-            default=False,
-            alias="apply",
-            description="Apply changes",
-            json_schema_extra={
-                "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS)
-            },
-        )
-        check_only: bool = m.Field(
-            default=False,
-            alias="check",
-            description="Check mode",
-        )
+        apply_changes: Annotated[
+            bool,
+            m.Field(
+                alias="apply",
+                description="Apply changes",
+                json_schema_extra={
+                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS)
+                },
+            ),
+        ] = False
+        check_only: Annotated[
+            bool,
+            m.Field(alias="check", description="Check mode"),
+        ] = False
         dry_run: Annotated[bool, m.Field(description="Dry-run mode")] = False
         output_format: Annotated[
             str,
@@ -54,22 +55,26 @@ class FlextInfraModelsBase:
             str | None,
             m.Field(description="Project filter (comma-separated)", exclude=True),
         ] = None
-        target_module: str | None = m.Field(
-            default=None,
-            alias="module",
-            description=(
-                "Dotted module path to scope the verb to a single module "
-                "(e.g. flext_core.result). Composes with --repository-root/--projects."
+        target_module: Annotated[
+            str | None,
+            m.Field(
+                alias="module",
+                description=(
+                    "Dotted module path to scope the verb to a single module "
+                    "(e.g. flext_core.result). Composes with --repository-root/--projects."
+                ),
             ),
-        )
-        target_namespace: str | None = m.Field(
-            default=None,
-            alias="namespace",
-            description=(
-                "Alias namespace (c|m|p|t|u|r|e|h|s|x[.<Domain>]) to scope the "
-                "verb to a single facade slot."
+        ] = None
+        target_namespace: Annotated[
+            str | None,
+            m.Field(
+                alias="namespace",
+                description=(
+                    "Alias namespace (c|m|p|t|u|r|e|h|s|x[.<Domain>]) to scope the "
+                    "verb to a single facade slot."
+                ),
             ),
-        )
+        ] = None
         report_path: Annotated[
             Path | None,
             m.Field(description="Report output path", exclude=True),

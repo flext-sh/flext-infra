@@ -1,0 +1,9 @@
+id: rewire-cli-json-mapping-adapter
+valid:
+- |
+  from flext_core import u
+  value = u.json_mapping_adapter().validate_python(payload)
+invalid:
+- |
+  from flext_cli import t, u
+  value = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload)

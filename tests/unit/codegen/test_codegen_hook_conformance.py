@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config, infra, m, t
+from flext_infra import config, infra, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import c, tm, u
 
@@ -184,14 +184,14 @@ class TestsFlextInfraCodegenHookConformance:
         tm.ok(u.Cli.atomic_write_text_file(hook_config, rendered))
         document = u.Cli.yaml_load_mapping(hook_config)
         repositories = document["repos"]
-        assert isinstance(repositories, list)
-        repository = t.Cli.JSON_MAPPING_ADAPTER.validate_python(repositories[0])
+        tm.that(isinstance(repositories, list), truth=True)
+        repository = u.Cli.JSON_MAPPING_ADAPTER.validate_python(repositories[0])
         hooks = repository["hooks"]
-        assert isinstance(hooks, list)
+        tm.that(isinstance(hooks, list), truth=True)
         tm.that(len(hooks), eq=1)
-        hook = t.Cli.JSON_MAPPING_ADAPTER.validate_python(hooks[0])
+        hook = u.Cli.JSON_MAPPING_ADAPTER.validate_python(hooks[0])
         entry = hook["entry"]
-        assert isinstance(entry, str)
+        tm.that(isinstance(entry, str), truth=True)
         process = tm.ok(
             u.Cli.run_raw(
                 shlex.split(entry),

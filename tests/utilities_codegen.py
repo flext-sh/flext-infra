@@ -313,6 +313,9 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         """
         repository_root = tmp_path / project_name
         project = TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(project_name)
+        upstream = TestsFlextInfraUtilitiesProjectFixtureMixin.flext_source(
+            project.upstream,
+        )
         package_root = repository_root / c.Infra.DEFAULT_SRC_DIR / package_name
         package_root.mkdir(parents=True)
         (repository_root / "Makefile").write_text(
@@ -322,6 +325,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         (repository_root / c.PYPROJECT_FILENAME).write_text(
             (
                 f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n'
+                f'dependencies = ["{upstream}"]\n'
                 f'license = "{project.license}"\n'
                 f'authors = [{{name = "{project.author_name}", '
                 f'email = "{project.author_email}"}}]\n\n'
@@ -403,6 +407,9 @@ class TestsFlextInfraUtilitiesCodegenMixin:
 
         Returns:
             The probe's standard output lines.
+
+        Raises:
+            ValueError: If an installed project probe injects Python source paths.
 
         """
         if runtime_root is not None:

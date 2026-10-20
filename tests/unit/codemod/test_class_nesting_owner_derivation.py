@@ -258,7 +258,7 @@ __all__: list[str] = ["LIMIT", "write"]
                 )
             )
         )
-        tm.that(ast.literal_eval(exports.value), eq=[root_owner.name])
+        tm.that(u.Infra.literal_string_sequence(exports.value), eq=(root_owner.name,))
         tm.that(self._top_level(updated[module]), eq=(root_owner.name,))
         tm.that(updated[consumer], has="payload = 'TestBehavior.Nested'")
         tm.that(updated[consumer], lacks="import TestBehavior as Subject")
@@ -866,7 +866,7 @@ __all__: list[str] = ["LIMIT", "write"]
         if "_DESTINATION_" in sources[consumer]:
             with infra.rope_workspace(root) as rope:
                 resource = rope.resource(consumer)
-                assert resource is not None
+                tm.that(resource, none=False)
                 _, binding = u.Infra.import_binding(
                     rope.rope_project,
                     u.Infra.resolve_pymodule(
@@ -879,7 +879,7 @@ __all__: list[str] = ["LIMIT", "write"]
             primary = ast.parse(binding, mode="eval").body
             while isinstance(primary, ast.Attribute):
                 primary = primary.value
-            assert isinstance(primary, ast.Name)
+            tm.that(isinstance(primary, ast.Name), truth=True)
             sources[consumer] = sources[consumer].replace("_DESTINATION_", primary.id)
             tm.ok(u.Cli.atomic_write_text_file(consumer, sources[consumer]))
         with infra.rope_workspace(root) as rope:

@@ -213,7 +213,10 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             tm.ok(
                 FlextInfraCodegenConform(
                     repository_root=root,
-                    initial_workspace=workspace,
+                    state=m.Infra.CodegenConformState(
+                        repository_root=root,
+                        initial_workspace=workspace,
+                    ),
                 ).plan(request),
             ).issues,
             empty=True,
@@ -233,7 +236,10 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         plan = tm.ok(
             FlextInfraCodegenConform(
                 repository_root=root,
-                initial_workspace=workspace,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    initial_workspace=workspace,
+                ),
             ).plan(request),
         )
 
@@ -390,7 +396,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         before = tm.ok(u.Infra.codegen_target_snapshot(destination))
         planner = FlextInfraCodegenConform(
             repository_root=root,
-            ports=None,
+            state=m.Infra.CodegenConformState(repository_root=root, ports=None),
         )
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root),

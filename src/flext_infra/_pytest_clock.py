@@ -11,6 +11,7 @@ import errno
 import marshal
 import os
 import signal
+import stat
 import sys
 import tempfile
 import time
@@ -87,6 +88,7 @@ class FlextInfraPytestClock:
         output: Path,
         *,
         immutable_output: Path | None = None,
+        previous_output: Path | None = None,
     ) -> None:
         """Publish native pstats atomically without exposing an incomplete artifact.
 
@@ -94,6 +96,7 @@ class FlextInfraPytestClock:
             profile: The real profiler whose current stats are recorded.
             output: The destination elected by the profiling invocation.
             immutable_output: Optional invocation-owned link to the staged inode.
+            previous_output: Optional retained link to the previous completed artifact.
 
         """
         descriptor, name = tempfile.mkstemp(
@@ -112,6 +115,19 @@ class FlextInfraPytestClock:
             FlextInfraPytestClock._guard_staging_identity(staging, identity)
             if immutable_output is not None:
                 immutable_output.hardlink_to(staging)
+            if previous_output is not None:
+                try:
+                    previous = output.lstat()
+                except FileNotFoundError:
+                    previous = None
+                if previous is not None:
+                    if not stat.S_ISREG(previous.st_mode):
+                        msg = "previous profile artifact is not a regular file"
+                        raise OSError(errno.EINVAL, msg)
+                    os.link(output, previous_output, follow_symlinks=False)
+                    FlextInfraPytestClock._guard_staging_identity(
+                        previous_output, previous
+                    )
             Path(staging).replace(output)
         finally:
             FlextInfraPytestClock._discard_staging(staging, identity)

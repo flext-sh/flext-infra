@@ -26,6 +26,205 @@ class TestsFlextInfraUvNativeResolution:
     """Resolve real local Git packages without external-service prerequisites."""
 
     @staticmethod
+    def test_override_layers_elect_local_source_without_losing_inherited_policy(
+        tmp_path: Path,
+    ) -> None:
+        """Compose real config layers and render only the elected global source."""
+        repository = u.Tests.repository_ref("override-layer-consumer")
+        sdk = u.Tests.repository_ref("override-layer-sdk")
+        inherited = config.Infra.codegen.toolchain.uv_override_dependencies
+        project_source = (
+            f"{sdk.distribution.replace('-', '_').upper()} @ "
+            f"git+{sdk.url}@project-policy"
+        )
+        local_source = f"{sdk.distribution} @ git+{sdk.url}@local-policy"
+        marked = f'{sdk.distribution}>=2 ; sys_platform == "other-platform"'
+        scoped: t.JsonDict = {
+            "package": {"name": "override-layer-provider"},
+            "dependencies": ["override-layer-leaf>=1"],
+        }
+        layers: t.VariadicTuple[t.Pair[str, t.JsonValueList]] = (
+            ("codegen.yaml", [project_source, scoped, marked]),
+            ("codegen.local.yaml", [local_source]),
+        )
+        for filename, entries in layers:
+            tm.ok(
+                u.Cli.yaml_dump(
+                    tmp_path / "config" / filename,
+                    {
+                        "Infra": {
+                            "codegen": {
+                                "toolchain": {"uv_override_dependencies": entries}
+                            }
+                        }
+                    },
+                )
+            )
+        toolchain = tm.ok(u.Infra.load_codegen_inputs(tmp_path)).spec.toolchain
+        u.Tests.write_native_resolution_project(tmp_path, repository.distribution)
+        source = (tmp_path / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
+        resolution = m.Infra.UvResolutionSpec(
+            link_mode=toolchain.uv_link_mode,
+            constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
+            override_dependencies=tuple(toolchain.uv_override_dependencies),
+            environments=tuple(toolchain.uv_environments),
+        )
+        options = u.Infra.PyprojectConformOptions(
+            flext_line=u.Tests.integration().model_copy(
+                update={"base_url": u.Tests.provider().base_url}
+            )
+        )
+        rendered = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                workspace=u.Tests.workspace_spec(repository),
+                required_dev_dependencies=(),
+                uv_resolution=resolution,
+                options=options,
+            )
+        )
+        observed = u.Tests.toml_list(
+            u.Tests.toml_table_at(rendered, "tool", "uv")["override-dependencies"]
+        )
+        for entry in inherited:
+            expected = (
+                entry
+                if isinstance(entry, str)
+                else entry.model_dump(mode="json", exclude_none=True)
+            )
+            tm.that(observed, has=expected)
+        tm.that(observed, has=local_source)
+        tm.that(observed, lacks=project_source)
+        tm.that(observed, has=scoped)
+        tm.that(observed, has=marked)
+        tm.that(
+            tm.ok(
+                u.Infra.pyproject_conform(
+                    rendered,
+                    workspace=u.Tests.workspace_spec(repository),
+                    required_dev_dependencies=(),
+                    uv_resolution=resolution,
+                    options=options,
+                )
+            ),
+            eq=rendered,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("consumer", ["root", "member", "supplier"])
+    @pytest.mark.parametrize("configured", [False, True])
+    def test_explicit_sdk_override_replaces_stale_transitive_git_source(
+        tmp_path: Path,
+        consumer: str,
+        *,
+        configured: bool,
+    ) -> None:
+        """Only explicit root policy replaces conflicting real Git SDK revisions."""
+        root = tmp_path / "consumer"
+        sdk = tmp_path / "sdk"
+        provider = tmp_path / "provider"
+        u.Tests.write_native_resolution_project(sdk, "source-election-sdk")
+        u.Tests.initialize_git_repo(sdk)
+        previous = tm.ok(
+            u.Cli.capture([c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=sdk)
+        ).strip()
+        tm.ok(u.Cli.atomic_write_text_file(sdk / "revision.txt", "repaired SDK\n"))
+        u.Tests.commit_git_changes(sdk, "Publish repaired SDK")
+        current = tm.ok(
+            u.Cli.capture([c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=sdk)
+        ).strip()
+        stale = f"source-election-sdk @ git+{sdk.as_uri()}@{previous}"
+        selected = f"source-election-sdk @ git+{sdk.as_uri()}@{current}"
+        u.Tests.write_native_resolution_project(
+            provider, "source-election-provider", dependencies=(stale,)
+        )
+        repository = u.Tests.repository_ref("source-election-root")
+        leaf = u.Tests.repository_ref("source-election-leaf")
+        requirements = (selected, f"source-election-provider @ {provider.as_uri()}")
+        u.Tests.write_native_resolution_project(
+            root,
+            repository.distribution,
+            dependencies=requirements if consumer == "root" else (leaf.distribution,),
+            uv=(
+                f"[tool.uv]\noverride-dependencies = {json.dumps([stale, selected])}\n"
+                if configured
+                else ""
+            ),
+        )
+        members: list[m.Infra.UvResolutionProject] = []
+        if consumer != "root":
+            u.Tests.write_native_resolution_project(
+                tmp_path / "leaf",
+                leaf.distribution,
+                dependencies=requirements,
+                uv=(
+                    f"[tool.uv]\noverride-dependencies = {json.dumps([stale])}\n"
+                    if consumer == "supplier" and configured
+                    else ""
+                ),
+            )
+            members.append(
+                m.Infra.UvResolutionProject(
+                    role="supplier" if consumer == "supplier" else "member",
+                    repository=leaf,
+                    directory=tmp_path / "leaf",
+                    document=u.Tests.toml_doc(
+                        (tmp_path / "leaf" / c.PYPROJECT_FILENAME).read_text(
+                            encoding="utf-8"
+                        )
+                    ),
+                )
+            )
+        owner = m.Infra.UvResolutionProject(
+            repository=repository,
+            directory=root,
+            document=u.Tests.toml_doc(
+                (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
+            ),
+        )
+        originals = [u.Cli.toml_dumps(item.document) for item in (owner, *members)]
+        directory = root / config.Infra.codegen.make.uv_resolution.local_directory
+        directory.mkdir(parents=True)
+        tm.ok(
+            u.Cli.toml_write_document(
+                directory / c.PYPROJECT_FILENAME,
+                tm.ok(
+                    u.Infra.pyproject_native_resolution_view(
+                        owner,
+                        workspace=u.Tests.workspace_spec(repository),
+                        members=members,
+                        directory=directory,
+                        policy=config.Infra.codegen.make.uv_resolution,
+                    )
+                ),
+            )
+        )
+        process = tm.ok(u.Tests.resolve_native_identity_fixture(directory))
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=configured,
+            msg=process.stdout + process.stderr,
+        )
+        if configured:
+            tm.that(
+                TestsFlextInfraUvNativeResolution._provider_source_locator(
+                    directory, "source-election-sdk"
+                )["git"],
+                has=current,
+                lacks=previous,
+            )
+        else:
+            tm.that(
+                process.stdout + process.stderr,
+                has="Requirements contain conflicting URLs for package "
+                "`source-election-sdk`",
+            )
+        tm.that(
+            [u.Cli.toml_dumps(item.document) for item in (owner, *members)],
+            eq=originals,
+        )
+
+    @staticmethod
     @pytest.mark.parametrize("invalid", ["relative-supplier", "same-directory"])
     def test_editable_resolution_policy_rejects_ambiguous_paths(invalid: str) -> None:
         """Invalid opt-ins cannot silently select a default graph."""
@@ -35,7 +234,7 @@ class TestsFlextInfraUvNativeResolution:
             payload["editable_supplier_root"] = Path("relative")
         else:
             payload["editable_directory"] = policy.local_directory
-        with pytest.raises(ValueError, match="absolute path|distinct directories"):
+        with pytest.raises(ValueError, match=r"absolute path|distinct directories"):
             m.Infra.MakeUvResolutionSpec.model_validate(payload)
 
     @staticmethod
@@ -95,11 +294,10 @@ class TestsFlextInfraUvNativeResolution:
         locked = TestsFlextInfraUvNativeResolution._resolved_identity_lock(
             directory, editable
         )
-        package = next(
-            item for item in locked.package if item.name == supplier.distribution
-        )
         tm.that(
-            package.source.editable,
+            next(
+                item for item in locked.package if item.name == supplier.distribution
+            ).source.editable,
             eq=supplier_root.relative_to(directory, walk_up=True).as_posix(),
         )
         tm.that(u.Cli.toml_dumps(default), eq=default_text)
