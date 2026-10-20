@@ -56,8 +56,6 @@ class FlextInfraPyrightGate(FlextInfraGate):
             The Pyright invocation bound to ``sys.executable``.
 
         """
-        if project_dir is None:
-            pass
         return self._python_module_command(
             c.Infra.PYRIGHT,
             "--pythonpath",
@@ -101,8 +99,6 @@ class FlextInfraPyrightGate(FlextInfraGate):
             The run's verdict and its diagnostics, stderr failures or lost scan.
 
         """
-        if ctx is None:
-            pass
         if not u.Cli.process_succeeded(result.outcome) and not result.stdout.strip():
             return False, (
                 self._command_error_issue(

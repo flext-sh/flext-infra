@@ -521,8 +521,6 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         # The native uv workspace provisions the members (`uv sync
         # --all-packages`); no extra dependency group and no editable overlay
         # plan exist any more.
-        if workspace is None:
-            pass
         groups: t.VariadicTuple[str] = ("dev", "codegen")
         return m.Infra.UvEnvironmentPlan(
             project_root=root,

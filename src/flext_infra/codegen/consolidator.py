@@ -199,8 +199,6 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
             The selected projects.
 
         """
-        if rope_workspace is None:
-            pass
         discovered = u.Infra.projects(self.repository_root)
         if discovered.failure:
             return r[t.SequenceOf[p.Infra.ProjectInfo]].from_failure(discovered)

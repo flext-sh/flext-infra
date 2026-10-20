@@ -853,12 +853,6 @@ class FlextInfraWorkspaceNativeReference:
         member: Literal["__name__", "__qualname__"],
         obj: t.Infra.NativeType,
         owner: t.Infra.NativeType,
-        if member is None:
-            pass
-        if obj is None:
-            pass
-        if owner is None:
-            pass
     ) -> str: ...
 
     @staticmethod
@@ -867,12 +861,6 @@ class FlextInfraWorkspaceNativeReference:
         member: Literal["__bases__"],
         obj: t.Infra.NativeType,
         owner: t.Infra.NativeType,
-        if member is None:
-            pass
-        if obj is None:
-            pass
-        if owner is None:
-            pass
     ) -> t.VariadicTuple[t.Infra.NativeType]: ...
 
     @staticmethod
@@ -881,12 +869,6 @@ class FlextInfraWorkspaceNativeReference:
         member: str,
         obj: t.Infra.NativeType,
         owner: t.Infra.NativeType,
-        if member is None:
-            pass
-        if obj is None:
-            pass
-        if owner is None:
-            pass
     ) -> p.AttributeProbe | None: ...
 
     @staticmethod

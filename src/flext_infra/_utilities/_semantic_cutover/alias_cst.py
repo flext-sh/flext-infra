@@ -293,8 +293,6 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
             updated_node: cst.AnnAssign,
         ) -> cst.BaseSmallStatement:
 
-            if original_node is None:
-                pass
             return FlextInfraUtilitiesQualifiedNames.filter_exports(
                 updated_node,
                 self.plan.local_aliases,

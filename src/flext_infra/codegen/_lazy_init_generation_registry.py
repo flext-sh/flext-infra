@@ -25,10 +25,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         def source_project(self) -> p.Infra.RopeProject: ...
 
         @staticmethod
-        def _is_generated(content: bytes | None) -> bool:
-            if content is None:
-                pass
-            ...
+        def _is_generated(content: bytes | None) -> bool: ...
 
     def _optional_state(self, path: Path) -> p.Result[m.Cli.AtomicFileState]:
         """Read one optional physical file state through the atomic owner.

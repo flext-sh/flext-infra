@@ -39,8 +39,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
 
         @override
         def visit_ClassDef(self, node: cst.ClassDef) -> bool:
-            if node is None:
-                pass
             self.depth += 1
             return True
 
@@ -65,8 +63,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
 
         @override
         def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
-            if node is None:
-                pass
             self.depth += 1
             return True
 
@@ -76,8 +72,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
             original_node: cst.FunctionDef,
             updated_node: cst.FunctionDef,
         ) -> cst.FunctionDef:
-            if original_node is None:
-                pass
             self.depth -= 1
             return updated_node
 

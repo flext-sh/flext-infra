@@ -41,8 +41,6 @@ class FlextInfraMarkdownGate(FlextInfraMarkdownGateBase):
             The rumdl check invocation.
 
         """
-        if ctx is None:
-            pass
         return self._rumdl_command(project_dir, "check", check_dirs)
 
     @override
@@ -58,8 +56,6 @@ class FlextInfraMarkdownGate(FlextInfraMarkdownGateBase):
             The resulting ``t.StrSequence``.
 
         """
-        if ctx is None:
-            pass
         return self._rumdl_command(project_dir, "check", targets, "--fix")
 
     @override
@@ -75,8 +71,6 @@ class FlextInfraMarkdownGate(FlextInfraMarkdownGateBase):
             The resulting ``t.Pair[bool, t.SequenceOf[m.Infra.Issue]]``.
 
         """
-        if ctx is None:
-            pass
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for line in (result.stdout + "\n" + result.stderr).splitlines():
             match = c.Infra.MARKDOWN_RE.match(line.strip())

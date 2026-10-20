@@ -22,41 +22,22 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         lazy_init: m.Infra.LazyInitConfig
         _parent_package_cache: MutableMapping[str, t.StrSequence]
 
-        def _source_package_name(self, pkg_dir: Path, inherited_key: str) -> str:
-            if pkg_dir is None:
-                pass
-            if inherited_key is None:
-                pass
-            ...
+        def _source_package_name(self, pkg_dir: Path, inherited_key: str) -> str: ...
 
         def _package_entry(
             self,
             pkg_dir: Path,
-            if pkg_dir is None:
-                pass
         ) -> m.Infra.RopePackageIndexEntry | None: ...
 
-        def _export_names_for_package(self, package_name: str) -> frozenset[str]:
-            if package_name is None:
-                pass
-            ...
+        def _export_names_for_package(self, package_name: str) -> frozenset[str]: ...
 
-        def _package_name_from_target(self, target: str) -> str:
-            if target is None:
-                pass
-            ...
+        def _package_name_from_target(self, target: str) -> str: ...
 
         def _parents_from_constants_module(
             self,
             module_path: Path,
             current_pkg: str,
             visited: set[str] | None = None,
-            if module_path is None:
-                pass
-            if current_pkg is None:
-                pass
-            if visited is None:
-                pass
         ) -> t.StrSequence: ...
 
         def _resolve_inherited_alias_source(
@@ -65,12 +46,6 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             alias_name: str,
             *,
             current_pkg: str,
-            if package_names is None:
-                pass
-            if alias_name is None:
-                pass
-            if current_pkg is None:
-                pass
         ) -> str: ...
 
     def _resolve_aliases(

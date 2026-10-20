@@ -1756,8 +1756,6 @@ class FlextInfraCodemodSemanticApply:
             ValueError: If authenticated source disappeared during mod preflight.
 
         """
-        if _preflight is None:
-            pass
         root = root.resolve()
         # Findings cannot introduce foreign or generated paths into semantic input.
         paths = {

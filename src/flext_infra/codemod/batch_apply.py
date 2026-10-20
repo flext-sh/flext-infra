@@ -322,8 +322,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         def scan(
             view_root: Path, _paths: t.MappingKV[Path, Path]
         ) -> m.Infra.ModScanReport:
-            if _paths is None:
-                pass
             return FlextInfraModGateEngine.scan_candidate(
                 root, view_root, candidate
             ).unwrap()

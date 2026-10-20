@@ -164,8 +164,6 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         selected = {(root / finding.file).resolve() for finding in findings}
 
         def rewrite(_path: Path, source: str) -> t.Infra.TransformResult:
-            if _path is None:
-                pass
             tree = ast.parse(source)
             bindings = Counter(
                 name for node in ast.walk(tree) for name in cls.bound_identifiers(node)

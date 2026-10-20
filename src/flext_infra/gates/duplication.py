@@ -49,8 +49,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             The resulting ``m.Infra.GateExecution``.
 
         """
-        if ctx is None:
-            pass
         started = time.monotonic()
         overrides = self._read_project_config(project_dir)
         fleet_enabled = overrides.success and overrides.value.fleet

@@ -75,8 +75,6 @@ class FlextInfraMarkdownFormatGate(FlextInfraMarkdownGateBase):
             The resulting ``t.StrSequence``.
 
         """
-        if ctx is None:
-            pass
         return self._rumdl_command(project_dir, "fmt", check_dirs, "--check")
 
     @override
@@ -92,8 +90,6 @@ class FlextInfraMarkdownFormatGate(FlextInfraMarkdownGateBase):
             The resulting ``t.StrSequence``.
 
         """
-        if ctx is None:
-            pass
         return self._rumdl_command(project_dir, "fmt", targets)
 
     @override
@@ -114,8 +110,6 @@ class FlextInfraMarkdownFormatGate(FlextInfraMarkdownGateBase):
             The resulting ``t.Pair[bool, t.SequenceOf[m.Infra.Issue]]``.
 
         """
-        if ctx is None:
-            pass
         old_header, new_header = c.Infra.MARKDOWN_FORMAT_DIFF_HEADERS
         lines = result.stdout.splitlines()
         issues: t.MutableSequenceOf[m.Infra.Issue] = [

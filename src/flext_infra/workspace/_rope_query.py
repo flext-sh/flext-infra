@@ -42,10 +42,6 @@ class FlextInfraRopeQueryMixin:
             *,
             preserve_indexes: bool = False,
             validate_project: bool = True,
-            if preserve_indexes is None:
-                pass
-            if validate_project is None:
-                pass
         ) -> m.Infra.RopeWorkspaceSession: ...
 
         def reload(self) -> m.Infra.RopeWorkspaceSession: ...
@@ -57,12 +53,6 @@ class FlextInfraRopeQueryMixin:
             _exc_type: type[BaseException] | None,
             _exc: BaseException | None,
             _tb: TracebackType | None,
-            if _exc_type is None:
-                pass
-            if _exc is None:
-                pass
-            if _tb is None:
-                pass
         ) -> None: ...
 
         def close(self) -> None: ...
@@ -79,16 +69,6 @@ class FlextInfraRopeQueryMixin:
             source_project: t.Infra.RopeProject | None = None,
             workspace_index: m.Infra.RopeWorkspaceIndex | None = None,
             index_receipt: m.Infra.CodegenPhaseAnalysis | None = None,
-            if repository_root is None:
-                pass
-            if rope_repository_root is None:
-                pass
-            if source_project is None:
-                pass
-            if workspace_index is None:
-                pass
-            if index_receipt is None:
-                pass
         ) -> Self: ...
 
         @property
@@ -102,16 +82,11 @@ class FlextInfraRopeQueryMixin:
 
         def projects(self) -> t.SequenceOf[p.Infra.ProjectInfo]: ...
 
-        def layout(self, project_root: Path) -> m.Infra.RopeProjectLayout | None:
-            if project_root is None:
-                pass
-            ...
+        def layout(self, project_root: Path) -> m.Infra.RopeProjectLayout | None: ...
 
         def package_context(
             self,
             package_dir: Path,
-            if package_dir is None:
-                pass
         ) -> m.Infra.LazyInitPackageContext: ...
 
         def policy(
@@ -120,12 +95,6 @@ class FlextInfraRopeQueryMixin:
             *,
             rel_path: Path | None = None,
             current_pkg: str = "",
-            if file_path is None:
-                pass
-            if rel_path is None:
-                pass
-            if current_pkg is None:
-                pass
         ) -> m.Infra.NamespaceModulePolicy: ...
 
         def convention(
@@ -133,10 +102,6 @@ class FlextInfraRopeQueryMixin:
             file_path: Path,
             *,
             rel_path: Path | None = None,
-            if file_path is None:
-                pass
-            if rel_path is None:
-                pass
         ) -> m.Infra.RopeModuleConvention: ...
 
         def exports(
@@ -144,10 +109,6 @@ class FlextInfraRopeQueryMixin:
             file_path: Path,
             *,
             export_options: m.Infra.ExportOptions | None = None,
-            if file_path is None:
-                pass
-            if export_options is None:
-                pass
         ) -> t.StrSequence: ...
 
         _resource_cache: MutableMapping[str, t.Infra.RopeFile | None]
@@ -166,8 +127,6 @@ class FlextInfraRopeQueryMixin:
 
         def _resource_for(self, file_path: Path) -> t.Infra.RopeFile:
             """Require a resource inside the active Rope workspace."""
-            if file_path is None:
-                pass
             ...
 
     def semantic(self, file_path: Path) -> p.Infra.ModuleSemanticState:

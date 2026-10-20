@@ -563,6 +563,11 @@ alphabetically sorting that array changes import resolution and is prohibited.
 templates and runtime consumers. The full pyproject template consumes its native
 TOML serialization rather than reconstructing tool options through model fields.
 Markdown rules use the same pair contract in their Markdown owner.
+Native values preserve whitespace and nulls through validation and projection;
+option names must satisfy their declared grammar without trimming invalid input.
+Single-option readers validate the elected value directly. Mutable tables are
+detached when handed to projection consumers, keeping the canonical document
+unchanged without copying every table for each option lookup.
 
 Models retain execution budgets, topology and justified rule policy. Derived
 options belong to those owners; native pairs cannot shadow protected policy keys.

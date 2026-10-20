@@ -31,8 +31,6 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         def _package_entry(
             self,
             pkg_dir: Path,
-            if pkg_dir is None:
-                pass
         ) -> m.Infra.RopePackageIndexEntry | None: ...
 
         def _add(
@@ -40,12 +38,6 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             index: t.MutableLazyAliasMap,
             name: str,
             target: t.StrPair,
-            if index is None:
-                pass
-            if name is None:
-                pass
-            if target is None:
-                pass
         ) -> None: ...
 
     def _package_exports(

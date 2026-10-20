@@ -326,8 +326,6 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
         def leave_Module(
             self, original_node: cst.Module, updated_node: cst.Module
         ) -> cst.Module:
-            if original_node is None:
-                pass
             body, footer = self._prune(updated_node.body)
             return updated_node.with_changes(
                 body=body, footer=footer + tuple(updated_node.footer)
@@ -337,8 +335,6 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
         def leave_IndentedBlock(
             self, original_node: cst.IndentedBlock, updated_node: cst.IndentedBlock
         ) -> cst.IndentedBlock:
-            if original_node is None:
-                pass
             body, footer = self._prune(updated_node.body)
             return updated_node.with_changes(
                 body=body, footer=footer + tuple(updated_node.footer)

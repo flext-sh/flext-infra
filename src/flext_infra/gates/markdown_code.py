@@ -421,8 +421,6 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             The resulting ``m.Infra.GateExecution``.
 
         """
-        if ctx is None:
-            pass
         started = time.monotonic()
         ran, passed, issues = self._run_extracted(project_dir, fix=False)
         if not ran:

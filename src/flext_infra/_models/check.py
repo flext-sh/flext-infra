@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import m, u
+from flext_cli import m
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMixins

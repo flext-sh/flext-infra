@@ -540,8 +540,6 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             The outer owner, payload node and its binding, or ``None``.
 
         """
-        if _source is None:
-            pass
         root = Path(project.root.real_path)
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
@@ -1790,8 +1788,6 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         names: set[str] = set()
 
         def collect(_scope: p.Infra.RopeScope, expression: str) -> None:
-            if _scope is None:
-                pass
             names.add(expression.partition(".")[0])
 
         FlextInfraUtilitiesSemanticFamilyTypeReferences.rewrite_type_source(

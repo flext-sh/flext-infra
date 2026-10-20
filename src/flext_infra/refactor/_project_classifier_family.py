@@ -32,10 +32,7 @@ class FlextInfraProjectClassifierFamilyMixin:
         _src_path: Path
 
         @staticmethod
-        def _normalize_dependency_name(raw_name: str) -> str:
-            if raw_name is None:
-                pass
-            ...
+        def _normalize_dependency_name(raw_name: str) -> str: ...
 
     def _discover_facade_inheritance(
         self,

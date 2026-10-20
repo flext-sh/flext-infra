@@ -28,22 +28,12 @@ class FlextInfraRefactorCensusCollectMixin:
             project_reports: t.VariadicTuple[m.Infra.ProjectReport],
             *,
             source_preview: p.Infra.SourcePreview,
-            if rope is None:
-                pass
-            if project_reports is None:
-                pass
-            if source_preview is None:
-                pass
         ) -> t.VariadicTuple[m.Infra.ProjectReport]: ...
 
         @staticmethod
         def project_name_for_module(
             module: m.Infra.RopeModuleIndexEntry,
             convention: m.Infra.RopeModuleConvention,
-            if module is None:
-                pass
-            if convention is None:
-                pass
         ) -> str: ...
         @staticmethod
         def _include_object(
@@ -51,24 +41,14 @@ class FlextInfraRefactorCensusCollectMixin:
             *,
             selected_families: frozenset[str],
             selected_kinds: frozenset[str] | None,
-            if item is None:
-                pass
-            if selected_families is None:
-                pass
-            if selected_kinds is None:
-                pass
         ) -> bool: ...
         @staticmethod
         def duplicate_groups(
             project_objects: t.VariadicTuple[t.SequenceOf[m.Infra.Object]],
-            if project_objects is None:
-                pass
         ) -> t.VariadicTuple[m.Infra.DuplicateGroup]: ...
         @staticmethod
-        def _object_key(item: m.Infra.Object) -> str:
-            if item is None:
-                pass
-            ...
+        def _object_key(item: m.Infra.Object) -> str: ...
+
         def _project_report(
             self,
             project: str,
@@ -76,14 +56,6 @@ class FlextInfraRefactorCensusCollectMixin:
             findings: m.Infra.ScanFindings,
             duplicate_keys: frozenset[str],
             scan_config: m.Infra.ScanConfig,
-            if project is None:
-                pass
-            if findings is None:
-                pass
-            if duplicate_keys is None:
-                pass
-            if scan_config is None:
-                pass
         ) -> m.Infra.ProjectReport: ...
 
     def _scan_module(

@@ -201,10 +201,6 @@ class FlextInfraPytestCollection:
 
         def start(self, _code: CodeType, _instruction_offset: int) -> None:
             """Count every entry into the already-selected SDK runner."""
-            if _code is None:
-                pass
-            if _instruction_offset is None:
-                pass
             self.attempts += 1
 
         def unwind(
@@ -214,8 +210,6 @@ class FlextInfraPytestCollection:
             exception: BaseException,
         ) -> None:
             """Retain the first exception before the plugin can retry it."""
-            if _instruction_offset is None:
-                pass
             if code is self.code and self.first_error is None:
                 self.first_error = exception
 
