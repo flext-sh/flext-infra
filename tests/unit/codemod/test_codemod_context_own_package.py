@@ -881,17 +881,24 @@ class TestsFlextInfraCodemodContextOwnPackage:
     @staticmethod
     @pytest.mark.parametrize("same_generic", [True, False])
     @pytest.mark.parametrize("bind_import", [True, False])
+    @pytest.mark.parametrize("package_owner", [True, False])
     def test_generic_specialization_requires_original_binding(
         mod_workspace: Path,
         binding_probe_rule: m.Infra.CodemodRule,
         *,
         same_generic: bool,
         bind_import: bool,
+        package_owner: bool,
     ) -> None:
         """A same-named alias of another generic is never a migration target."""
         namespace = u.Infra.project_package_name(mod_workspace)
-        module_name = f"{namespace}.generic_owner"
-        owner = mod_workspace / c.Infra.DEFAULT_SRC_DIR / namespace / "generic_owner.py"
+        module_name = namespace if package_owner else f"{namespace}.generic_owner"
+        owner = (
+            mod_workspace
+            / c.Infra.DEFAULT_SRC_DIR
+            / namespace
+            / (c.Infra.INIT_PY if package_owner else "generic_owner.py")
+        )
         selected = "Value" if same_generic else "Other"
         owner.write_text(
             "class Types:\n"

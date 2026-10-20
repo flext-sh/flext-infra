@@ -21,6 +21,7 @@ import flext_cli
 
 from flext_infra import c, m, p, r, settings, t, u
 from flext_infra._config import FlextInfraConfig
+from flext_infra._utilities import FlextInfraUtilitiesCodegenFacades
 from flext_infra.codemod import (
     FlextInfraCodemodSnapshotReconciler,
     FlextInfraModReplacements,
@@ -1610,11 +1611,13 @@ class FlextInfraModGateEngine:
             )
             for state in candidate.inputs
         )
+        owned_sources = FlextInfraUtilitiesCodegenFacades._facade_original_sources(
+            root.resolve(), states
+        )
         source_states = tuple(
             state
             for state in states
-            if state.content is not None
-            and state.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+            if state.path in owned_sources
         )
         physical = {
             view_root

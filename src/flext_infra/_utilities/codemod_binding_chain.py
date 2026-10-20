@@ -121,9 +121,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                     start=start,
                     end=end,
                 )
-            ):
-                return False
-            if cls._type_payload_occurrence(module, text, start, end):
+            ) or cls._type_payload_occurrence(module, text, start, end):
                 return False
             if (
                 condition.predicate
@@ -193,7 +191,11 @@ class FlextInfraUtilitiesCodemodBindingChain:
             target_frame = frame
             target_start = start
             if namespace is not None:
-                target_module = project.get_module(namespace)
+                target_module = (
+                    FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
+                        project.get_module(namespace)
+                    ).get_module()
+                )
                 if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(target_module):
                     message = (
                         f"generic specialization requires a source module: {namespace}"
@@ -203,11 +205,6 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 if target_source is None:
                     return False
                 target_scope = target_module.get_scope()
-                if not isinstance(target_scope, p.Infra.RopeScope):
-                    message = (
-                        f"generic specialization has no lexical scope: {namespace}"
-                    )
-                    raise TypeError(message)
                 target_frame = (project, target_module, target_scope)
                 target_start = len(target_source[1])
             if not (

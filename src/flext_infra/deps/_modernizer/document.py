@@ -242,21 +242,14 @@ class FlextInfraPyprojectModernizerDocument:
                 preserve_layout=True,
             )
         else:
-            inputs = u.Infra.load_codegen_inputs(state.pyproject_path.parent).flat_map(
-                lambda declared: u.Infra.load_workspace_manifest(
-                    state.pyproject_path.parent
-                ).map(lambda manifests: (declared, manifests))
-            )
+            inputs = u.Infra.load_codegen_inputs(state.pyproject_path.parent)
             if inputs.failure:
                 return r[t.StrSequence].from_failure(inputs)
-            declared, manifests = inputs.value
-            repository = declared.spec.repository
+            repository = inputs.value.spec.repository
             project = repository.project
-            if not manifests:
-                return r[t.StrSequence].fail(
-                    "Repository packaging identity is required"
-                )
-            identity = manifests[0].repository
+            packaging = m.Infra.ProjectPackagingDeclaration.model_validate(
+                state.payload
+            )
             topology = m.Infra.PyprojectDeclaredTopology.model_validate({
                 **(
                     project.model_dump(
@@ -276,7 +269,7 @@ class FlextInfraPyprojectModernizerDocument:
                                 u.Infra.docs_meta_from_payload(state.payload),
                             )
                         ),
-                        package=identity.package,
+                        package=u.Infra.project_package_participation(packaging),
                     )
                 ),
             })
@@ -289,11 +282,12 @@ class FlextInfraPyprojectModernizerDocument:
                 ),
                 skip_comments=skip_comments,
             )
-        if rendered.failure:
-            return rendered
-        if state.rendered == state.original_rendered.rstrip() + "\n":
+        if (
+            rendered.success
+            and state.rendered == state.original_rendered.rstrip() + "\n"
+        ):
             return r[t.StrSequence].ok(())
-        if not dry_run:
+        if rendered.success and not dry_run:
             u.write_file(
                 state.pyproject_path, state.rendered, encoding=c.DEFAULT_ENCODING
             )

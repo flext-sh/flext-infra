@@ -393,36 +393,46 @@ class TestsFlextInfraInfraRopeService:
             eq=(f"nested {extra_class_name} under {owner}",),
         )
 
-    def test_workspace_indexes_declared_members_and_keeps_member_boundary(
+    def test_workspace_indexes_only_each_repositorys_own_sources(
         self,
         tmp_path: Path,
     ) -> None:
-        """The workspace indexes declared members; a member excludes its siblings."""
-        monorepo_root = tmp_path / "repo"
-        monorepo_root.mkdir()
+        """Planning targets stay local while member repositories remain importable."""
+        monorepo_root, owned_package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="repo", package_name="workspace_root"
+        )
         u.Tests.declare_workspace_projects(monorepo_root, ("flext-infra", "flext-demo"))
+        owned_module_path = owned_package_root / "owned.py"
+        owned_module_path.write_text(
+            "class WorkspaceOwned:\n    pass\n", encoding=c.DEFAULT_ENCODING
+        )
         (
             repository_root,
             package_root,
             module_path,
-            sibling_root,
+            _sibling_root,
             sibling_module_path,
         ) = self._paired_namespace_projects(monorepo_root)
 
         for call_root in (monorepo_root, repository_root, package_root):
             workspace_scope = call_root == monorepo_root
             expected_root = monorepo_root if workspace_scope else repository_root
-            expected_projects = {repository_root.resolve()}
-            if workspace_scope:
-                expected_projects.add(sibling_root.resolve())
+            expected_projects = {expected_root.resolve()}
             with flext_infra.infra.rope_workspace(call_root) as rope:
                 tm.that(rope.rope_repository_root, eq=expected_root.resolve())
                 tm.that(
                     {entry.project_root for entry in rope.modules()},
                     eq=expected_projects,
                 )
-                tm.that(rope.module(module_path), none=False)
-                tm.that(rope.module(sibling_module_path), none=not workspace_scope)
+                tm.that(rope.module(module_path), none=workspace_scope)
+                tm.that(rope.module(sibling_module_path), none=True)
+                tm.that(rope.module(owned_module_path), none=not workspace_scope)
+                if workspace_scope:
+                    dependency = u.Infra.resolve_pymodule(
+                        rope.rope_project,
+                        tm.not_none(rope.resource(sibling_module_path)),
+                    )
+                    tm.not_none(dependency.get_attribute("FlextDemoModels"))
 
     def test_open_standalone_keeps_local_project_scope(self, tmp_path: Path) -> None:
         """Without a workspace context, sibling projects remain outside Rope."""

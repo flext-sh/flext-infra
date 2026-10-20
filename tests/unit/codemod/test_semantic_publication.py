@@ -20,7 +20,10 @@ from flext_infra.codegen import (
     FlextInfraCodegenPreconditions,
     FlextInfraCodegenTransaction,
 )
-from flext_infra.codemod import FlextInfraCodemodSemanticApply
+from flext_infra.codemod import (
+    FlextInfraCodemodSemanticApply,
+    FlextInfraModGateEngine,
+)
 from flext_infra.refactor import (
     FlextInfraAccessorMigrationReportMixin,
     FlextInfraImportNormalization,
@@ -210,6 +213,43 @@ class TestsFlextInfraSemanticPublication:
             for state in artifact.candidate.inputs
             if state.path.name == "service.py"
         )
+        with infra.rope_workspace(root) as workspace:
+            rebuilt = tm.ok(
+                FlextInfraCodemodSemanticApply.build_rename_plan(
+                    root,
+                    workspace,
+                    FlextInfraCodemodSemanticApply.rename_selections(artifact),
+                )
+            )
+        tm.ok(any(effect.source_states for effect in rebuilt.candidate.declared_files))
+        tm.ok(all(not effect.source_states for effect in artifact.candidate.declared_files))
+        current_fields = rebuilt.model_dump(mode="python")
+        artifact_fields = artifact.model_dump(mode="python")
+        for name, expected in artifact_fields.items():
+            pending = [(name, expected, current_fields[name])]
+            while pending:
+                field, before, after = pending.pop()
+                if type(before) is type(after) and before == after:
+                    continue
+                if isinstance(before, dict) and isinstance(after, dict):
+                    assert before.keys() == after.keys(), field
+                    pending.extend(
+                        (f"{field}.{key}", value, after[key])
+                        for key, value in reversed(tuple(before.items()))
+                    )
+                elif type(before) is type(after) and isinstance(before, (tuple, list)):
+                    assert len(before) == len(after), (
+                        f"{field}: before length={len(before)}, after length={len(after)}"
+                    )
+                    pending.extend(
+                        (f"{field}[{index}]", before[index], after[index])
+                        for index in reversed(range(len(before)))
+                    )
+                else:
+                    pytest.fail(
+                        f"{field}: before={before!r} ({type(before).__name__}), "
+                        f"after={after!r} ({type(after).__name__})"
+                    )
         tm.ok(
             infra.mod(
                 m.Infra.ModCommand(
@@ -258,6 +298,171 @@ class TestsFlextInfraSemanticPublication:
             )
         )
         tm.ok(u.Cli.atomic_verify_binary_file_states(published))
+        tm.that(driver.path.read_bytes(), eq=driver.content)
+
+    @staticmethod
+    def test_mod_rejects_changed_persisted_rename_payload(
+        tmp_path: Path, mod_progress: p.Infra.ModProgress
+    ) -> None:
+        """Ephemeral receipt exclusion never permits a different persisted edit plan."""
+        artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(
+            tmp_path, kind="class"
+        )
+        tm.that(artifact.edits, empty=False)
+        changed = artifact.model_copy(update={"edits": ()})
+        tm.ok(u.Cli.atomic_write_text_file(driver.path, changed.model_dump_json()))
+        observed_driver = tm.ok(
+            u.Cli.atomic_read_binary_file_state(driver.path, required=True)
+        )
+        tm.fail(
+            infra.mod(
+                m.Infra.ModCommand(
+                    repository_root=artifact.candidate.workspace,
+                    apply=True,
+                    rename_plan=driver.path,
+                ),
+                mod_progress,
+            ),
+            has="fields=edits",
+        )
+        tm.ok(
+            u.Cli.atomic_verify_binary_file_states(
+                (*artifact.candidate.inputs, *artifact.source_states, observed_driver)
+            )
+        )
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize("needs_ast", [False, True])
+    def test_source_campaign_applies_ast_without_a_rename_artifact(
+        tmp_path: Path,
+        mod_progress: p.Infra.ModProgress,
+        *,
+        needs_ast: bool,
+    ) -> None:
+        """The public pipeline accepts real automatic work and its no-op repeat."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.provision_checkout(root)
+        u.Tests.provision_runtime_environment(root)
+        u.Tests.declare_codemod_rules(
+            root,
+            {
+                "source-campaign": (
+                    "id: source-campaign\n"
+                    "language: Python\n"
+                    "rule:\n"
+                    "  pattern: 'value: int = 1'\n"
+                    "fix: 'value: int = 2'\n"
+                    "severity: warning\n"
+                )
+            },
+        )
+        source = package / "service.py"
+        notice = u.Infra.copyright_notice(root)
+        source.write_text(
+            f'"""Automatic source campaign.\n\n{notice}\n"""\n\n'
+            "from __future__ import annotations\n\n"
+            f"value: int = {1 if needs_ast else 2}\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        before = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
+        tm.that(bool(before.actionable), eq=needs_ast)
+        request = m.Infra.ModCommand(repository_root=root, apply=True)
+        tm.ok(infra.mod(request, mod_progress))
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                f"from {package.name}.service import value\nprint(value)\n",
+                python_paths=(str(package.parent),),
+            ),
+            eq=["2"],
+        )
+        tm.that(tm.ok(FlextInfraModGateEngine.scan(root, fix=False)).findings, eq=0)
+        published = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+        tm.ok(infra.mod(request, mod_progress))
+        tm.ok(u.Cli.atomic_verify_binary_file_states((published,)))
+
+    @staticmethod
+    @pytest.mark.parametrize("retire", [False, True])
+    def test_source_effect_rejects_unpaired_content_and_mode(
+        tmp_path: Path, *, retire: bool
+    ) -> None:
+        """A deletion clears mode; a write always declares its actual mode."""
+        source = tmp_path / "source.py"
+        source.write_text("value = 1\n", encoding=c.DEFAULT_ENCODING)
+        original = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+        with pytest.raises(ValueError, match="desired bytes and mode"):
+            m.Infra.CodegenFilePlan(
+                project=tmp_path,
+                path=source,
+                before=original,
+                desired_content=None if retire else original.content,
+                desired_mode=original.mode if retire else None,
+            )
+        tm.ok(u.Cli.atomic_verify_binary_file_states((original,)))
+
+    @staticmethod
+    @pytest.mark.parametrize("drift", ["none", "source", "directory", "same-byte"])
+    def test_composed_module_rename_preserves_mode_and_original_receipts(
+        tmp_path: Path, drift: str
+    ) -> None:
+        """Composition preserves strict rename intent, executable mode and CAS."""
+        artifact, driver = TestsFlextInfraSemanticPublication._rename_artifact(
+            tmp_path, kind="module", executable=True
+        )
+        root = artifact.candidate.workspace
+        origin, target = artifact.moves[0]
+        originals = {state.path: state for state in artifact.candidate.inputs}
+        composed = tm.ok(
+            FlextInfraCodemodSemanticApply.compose_candidate(
+                artifact,
+                m.Infra.CodegenPhaseAnalysis(
+                    phase=c.Infra.CodegenStagedFilePhase.SEMANTIC,
+                    inputs=(driver,),
+                    files=(
+                        m.Infra.CodegenFilePlan(
+                            project=root,
+                            path=target,
+                            before=originals[target],
+                            desired_content=tm.not_none(
+                                artifact.candidate.updates[target]
+                            ).encode(c.DEFAULT_ENCODING),
+                            desired_mode=artifact.candidate.modes[target],
+                            source_states=artifact.source_states,
+                            source_directories=artifact.source_directories,
+                            source_query_topology=artifact.source_query_topology,
+                        ),
+                    ),
+                ),
+            )
+        )
+        tm.ok(isinstance(composed, m.Infra.SemanticRenamePlan))
+        tm.that(composed.decisions, eq=artifact.decisions)
+        tm.that(composed.edits, eq=artifact.edits)
+        tm.that(composed.moves, eq=artifact.moves)
+        tm.that(composed.candidate.modes[target], eq=originals[origin].mode)
+        tm.ok(driver in composed.source_states)
+        if drift == "source":
+            origin.write_bytes(tm.not_none(originals[origin].content) + b"\n")
+        elif drift == "directory":
+            (origin.parent / "new_consumer.py").write_text(
+                "value = 1\n", encoding=c.DEFAULT_ENCODING
+            )
+        elif drift == "same-byte":
+            foreign = origin.with_suffix(".foreign")
+            foreign.write_bytes(tm.not_none(originals[origin].content))
+            foreign.chmod(tm.not_none(originals[origin].mode))
+            foreign.replace(origin)
+        observed = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in originals
+        )
+        published = FlextInfraCodemodSemanticApply.publish_candidate(root, composed)
+        if drift == "none":
+            tm.ok(published)
+            tm.fail(origin.exists())
+            tm.that(stat.S_IMODE(target.stat().st_mode), eq=originals[origin].mode)
+        else:
+            tm.fail(published)
+            tm.ok(u.Cli.atomic_verify_binary_file_states(observed))
         tm.that(driver.path.read_bytes(), eq=driver.content)
 
     @staticmethod

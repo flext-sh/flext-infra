@@ -195,39 +195,19 @@ class FlextInfraModelsRefactor(
             description="Explicit external consumer checkout roots for this run",
         )
 
-    class SemanticRenamePlan(m.ImmutableValueModel):
+    class SemanticRenamePlan(
+        FlextInfraModelsCodegenTransactionModels.SemanticSourcePlan
+    ):
         """Reversible native rename artifact with its complete authenticated closure."""
 
         decisions: t.VariadicTuple[FlextInfraModelsRefactor.SemanticRenameDecision] = (
             m.Field(
-                description=(
-                    "Resolved declarations and their domain naming decisions; "
-                    "empty for an authenticated automatic phase seed"
-                ),
+                min_length=1,
+                description="Resolved declarations and their domain naming decisions",
             )
         )
         edits: t.VariadicTuple[FlextInfraModelsTransformers.SemanticMigrationEdit] = (
             m.Field(description="Exact source bytes before and after the native rename")
-        )
-        candidate: FlextInfraModelsCodegenTransactionModels.StageSourcePlan = m.Field(
-            description="Authenticated complete source and runtime candidate closure"
-        )
-        consumer_roots: t.VariadicTuple[Path] = m.Field(
-            default=(),
-            description="External scopes elected before producer publication",
-        )
-        source_states: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
-            default=(), description="Original physical binding and consumption epoch"
-        )
-        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
-            default=(),
-            description="Original native directory-election receipts",
-        )
-        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
-            m.Field(
-                default=(),
-                description="Original native path-election topology receipts",
-            )
         )
         moves: t.VariadicTuple[t.Pair[Path, Path]] = m.Field(
             default=(), description="Native module source and destination effects"

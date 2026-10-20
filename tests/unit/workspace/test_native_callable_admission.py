@@ -15,6 +15,75 @@ class TestsFlextInfraNativeCallableAdmission:
     """Inherited dict and slots callables preserve behavior and binding evidence."""
 
     @staticmethod
+    def test_global_hook_alias_retains_actual_supplier_boundary(
+        real_python_package: t.DirectoryPath,
+    ) -> None:
+        """Ambient imports preserve capture; a reached hook replacement does not."""
+        root = real_python_package / "src"
+        u.Tests.write_package_init(
+            root / "test_pkg",
+            """import threading
+def execute():
+    return threading.excepthook
+def replacement(args):
+    return 'replacement hook'
+""",
+        )
+        u.Tests.run_lazy_init_probe(
+            """import importlib
+import sys
+import threading
+from flext_infra import m
+from flext_infra.workspace.native_reference import (
+    FlextInfraWorkspaceNativeReference as native,
+)
+import test_pkg as module
+assert 'pytest' not in sys.modules
+selection = (m.Infra.SourceClassReference(
+    target=module.__name__, attributes=('execute',)
+),)
+original_hook = threading.excepthook
+assert module.execute() is original_hook
+before = native.capture(selection).unwrap()
+importlib.import_module('fractions')
+stable = native.capture(selection).unwrap()
+compared = native.compare(before, stable)
+assert compared.success, compared.error
+try:
+    threading.excepthook = module.replacement
+    assert module.execute() is module.replacement
+    assert module.execute()(None) == 'replacement hook'
+    changed = native.capture(selection).unwrap()
+    for observation, hook in (
+        (before, original_hook), (stable, original_hook),
+        (changed, module.replacement),
+    ):
+        producer, = (
+            item for item in observation.bindings
+            if item.kind != 'alias' and item.supplier == module.__name__
+            and item.qualname == 'execute'
+        )
+        edge, = (
+            item for item in observation.bindings
+            if item.binding == producer.binding + '.global.threading.excepthook'
+        )
+        assert edge.kind == 'alias', edge.model_dump_json()
+        target, = (value for name, value in edge.operands if name == 'target')
+        body, = (item for item in observation.bindings if item.binding == target)
+        assert body.supplier == hook.__module__, body.model_dump_json()
+        assert body.qualname == hook.__qualname__, body.model_dump_json()
+    compared = native.compare(before, changed)
+    assert compared.failure, 'a reached replacement hook was admitted'
+    assert compared.error, 'hook replacement refusal has no diagnostic'
+finally:
+    threading.excepthook = original_hook
+assert module.execute() is original_hook
+""",
+            python_paths=(str(root),),
+            cwd=real_python_package,
+        )
+
+    @staticmethod
     @pytest.mark.parametrize("expression", ["value", "Consumer.offset + value"])
     def test_unrelated_generated_function_is_not_a_class_state_writer(
         real_python_package: t.DirectoryPath,

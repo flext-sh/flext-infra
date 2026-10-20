@@ -147,15 +147,11 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         # republished site-packages/flext_cli/utilities.py otherwise).
         sources = {
             **{
-                state.path: state.content.decode(c.DEFAULT_ENCODING)
-                for state in source_states
-                if state.path.is_relative_to(root)
-                and state.path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
-                if state.content is not None
-                and state.path not in retired
-                and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
-                    root, state.path
-                )
+                path: source
+                for path, source in FlextInfraUtilitiesCodegenFacades._facade_original_sources(
+                    root, source_states
+                ).items()
+                if path not in retired
             },
             **{
                 plan.path: proposed[plan.path].decode(c.DEFAULT_ENCODING)
@@ -262,6 +258,28 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         return value
 
     @staticmethod
+    def _facade_original_sources(
+        root: Path,
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState],
+    ) -> dict[Path, str]:
+        """Select root-owned Python sources while retaining all inputs as receipts.
+
+        Returns:
+            The canonical original source view shared by native planning owners.
+
+        """
+        return {
+            state.path: state.content.decode(c.DEFAULT_ENCODING)
+            for state in source_states
+            if state.content is not None
+            and state.path.is_relative_to(root)
+            and state.path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
+            and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                root, state.path
+            )
+        }
+
+    @staticmethod
     def _facade_declared_sources(
         root: Path,
         source_states: t.VariadicTuple[m.Cli.AtomicFileState],
@@ -302,9 +320,13 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 before=chain if chain.directories else original,
                 desired_content=content,
                 desired_mode=(
-                    original.mode
-                    if original.mode is not None
-                    else config.Infra.codegen.modes.file_default
+                    None
+                    if content is None
+                    else (
+                        original.mode
+                        if original.mode is not None
+                        else config.Infra.codegen.modes.file_default
+                    )
                 ),
             )
         return tuple(originals.values()), tuple(declarations.values())

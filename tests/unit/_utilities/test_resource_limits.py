@@ -127,6 +127,57 @@ class TestsFlextInfraUtilitiesResourceLimits:
         )
 
     @staticmethod
+    @pytest.mark.requires_engine("mypy")
+    @pytest.mark.slow
+    @pytest.mark.parametrize("scenario", ["assignment", "SIGINT", "SIGTERM"])
+    def test_mypy_profile_preserves_failure_and_interruption(
+        tmp_path: Path,
+        scenario: str,
+    ) -> None:
+        """Retain native failure status and readable profiles after termination."""
+        project = u.Tests.mypy_workload(
+            tmp_path,
+            ""
+            if scenario == "assignment"
+            else (
+                "import signal\nfrom pathlib import Path\n"
+                f"Path(__file__).with_suffix('.signal').write_text('{scenario}', "
+                f"encoding={c.DEFAULT_ENCODING!r})\n"
+                f"signal.raise_signal(signal.{scenario})"
+            ),
+        )
+        if scenario == "assignment":
+            project.targets[0].write_text(
+                "value: int = 'invalid'\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        profile = tmp_path / "checker.pstats"
+        result = u.Cli.run_raw(
+            u.Infra.mypy_limited_command(
+                m.Infra.MypyInvocation(
+                    targets=project.targets,
+                    config_file=project.config_file,
+                    profile_output=profile,
+                ),
+            ),
+            timeout=u.Infra.mypy_runner_timeout(),
+        )
+        tm.ok(result)
+        tm.fail(u.Cli.process_succeeded(result.value.outcome))
+        tm.fail(result.value.outcome.timed_out)
+        if scenario == "assignment":
+            tm.that(result.value.stdout, has="Incompatible types in assignment")
+        else:
+            tm.that(
+                (tmp_path / "workload.signal").read_text(encoding=c.DEFAULT_ENCODING),
+                eq=scenario,
+            )
+        tm.that(
+            bool(pstats.Stats(str(profile)).get_stats_profile().func_profiles),
+            eq=True,
+        )
+
+    @staticmethod
     def test_mypy_budget_resolves_the_project_tooling_overlay(
         tmp_path: Path,
     ) -> None:

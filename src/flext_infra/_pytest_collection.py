@@ -15,14 +15,16 @@ from __future__ import annotations
 import time
 from collections.abc import Generator
 from hashlib import sha256
+from importlib.metadata import version
 from pathlib import Path
-from sys import monitoring
+from sys import modules, monitoring
 from traceback import format_exception
-from types import CodeType
+from types import CodeType, ModuleType, SimpleNamespace
 from typing import ClassVar
 from warnings import WarningMessage
 
 import pytest
+from pytest_markdown_docs import plugin as markdown_plugin
 from pytest_markdown_docs.definitions import FenceTestDefinition
 from pytest_markdown_docs.plugin import (
     FenceSyntax,
@@ -117,9 +119,56 @@ class FlextInfraPytestCollection:
                 )
 
     @staticmethod
+    @pytest.hookimpl(wrapper=True, specname="pytest_runtest_call")
+    def pytest_markdown_module(item: pytest.Item) -> Generator[None]:
+        """Scope the unregistered execution module shipped by SDK 0.9.2.
+
+        Remove this compatibility hook when the supplier owns registration.
+        Only its local ``types`` binding changes; the real runner and the
+        interpreter-wide ``types.ModuleType`` remain untouched.
+        """
+        if (
+            not isinstance(item, MarkdownInlinePythonItem)
+            or version("pytest-markdown-docs") != "0.9.2"
+        ):
+            yield
+            return
+        registrations: list[tuple[str, ModuleType, tuple[ModuleType, ...]]] = []
+
+        def registered_module(name: str) -> ModuleType:
+            """Register exactly the module whose dictionary the SDK executes.
+
+            Returns:
+                The native module registered for this execution scope.
+
+            """
+            module = ModuleType(name)
+            previous = (modules[name],) if name in modules else ()
+            registrations.append((name, module, previous))
+            modules[name] = module
+            return module
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(
+                markdown_plugin,
+                "types",
+                SimpleNamespace(ModuleType=registered_module),
+            )
+            try:
+                yield
+            finally:
+                for name, module, previous in reversed(registrations):
+                    if modules.get(name) is not module:
+                        continue
+                    if previous:
+                        modules[name] = previous[0]
+                    else:
+                        del modules[name]
+
+    @staticmethod
     @pytest.hookimpl(wrapper=True)
     def pytest_runtest_call(item: pytest.Item) -> Generator[None]:
-        """Observe the real runner without replacing it or patching the SDK.
+        """Observe the real runner without replacing its execution method.
 
         Raises:
             RuntimeError: If Markdown execution requires exactly one runner attempt.
