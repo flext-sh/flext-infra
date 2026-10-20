@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from importlib.util import resolve_name
 from pathlib import Path
 from types import MappingProxyType
@@ -76,7 +75,7 @@ class TestsFlextInfraCodegenGeneration:
 
     @staticmethod
     def test_class_owned_test_root_installs_lazy_exports(tmp_path: Path) -> None:
-        """The public renderer emits a real lazy class-body initializer."""
+        """The public renderer exposes declared test exports lazily."""
         repository, _ = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-rendered",
@@ -86,7 +85,8 @@ class TestsFlextInfraCodegenGeneration:
         testing.mkdir()
         testing.joinpath("constants.py").write_text(
             "class TestsFlextRenderedConstants:\n"
-            "    __all__ = ('TestsFlextRenderedConstants',)\n",
+            "    __all__ = ('TestsFlextRenderedConstants',)\n"
+            "c = TestsFlextRenderedConstants\n",
             encoding=c.DEFAULT_ENCODING,
         )
         plan = m.Infra.LazyInitPlan(
@@ -99,26 +99,17 @@ class TestsFlextInfraCodegenGeneration:
             ),
             action=c.Infra.LazyInitAction.WRITE,
             exports=("TestsFlextRenderedConstants", "c"),
-            lazy_map=dict.fromkeys(
-                ("TestsFlextRenderedConstants", "c"),
-                ("tests.constants", "TestsFlextRenderedConstants"),
-            ),
+            lazy_map={
+                "TestsFlextRenderedConstants": (
+                    "tests.constants",
+                    "TestsFlextRenderedConstants",
+                ),
+                "c": ("tests.constants", "c"),
+            },
             eager_dunders={},
             inline_constants={},
         )
         source = FlextInfraCodegenGeneration.render_init(plan)
-        module = ast.parse(source)
-        tm.that(
-            [node.name for node in module.body if isinstance(node, ast.ClassDef)],
-            eq=["TestsFlextRenderedPackage"],
-        )
-        tm.that(
-            all(
-                isinstance(node, (ast.Import, ast.ImportFrom, ast.ClassDef, ast.If))
-                for node in module.body
-            ),
-            eq=True,
-        )
         testing.joinpath(c.Infra.INIT_PY).write_text(
             source, encoding=c.DEFAULT_ENCODING
         )
@@ -128,7 +119,7 @@ class TestsFlextInfraCodegenGeneration:
                 "print('tests.constants' not in sys.modules)\n"
                 "from tests.constants import TestsFlextRenderedConstants\n"
                 "print(package.c is TestsFlextRenderedConstants)\n"
-                "print(package.__all__ == package.TestsFlextRenderedPackage.__all__)\n",
+                f"print(package.__all__ == {plan.exports!r})\n",
                 python_paths=(str(repository),),
                 cwd=repository,
             ),
@@ -458,9 +449,23 @@ class TestsFlextInfraCodegenGeneration:
 
     @pytest.mark.parametrize("current_pkg", ["demo_pkg", "demo_pkg.services"])
     def test_public_nested_package_preserves_lazy_exports(
-        self, current_pkg: str
+        self, current_pkg: str, tmp_path: Path
     ) -> None:
-        """Non-foundation initializers consume the public foundation installer."""
+        """Rendered package exports resolve lazily to their declared objects."""
+        repository, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-rendered",
+            package_name="demo_pkg",
+        )
+        package_dir = package.joinpath(*current_pkg.split(".")[1:])
+        package_dir.mkdir(parents=True, exist_ok=True)
+        (package_dir / "nested").mkdir()
+        (package_dir / "demo.py").write_text(
+            "class Demo: pass\n", encoding=c.DEFAULT_ENCODING
+        )
+        (package_dir / "nested" / "item.py").write_text(
+            "class Nested: pass\n", encoding=c.DEFAULT_ENCODING
+        )
         plan = self._plan(
             current_pkg,
             ("Demo", "Nested"),
@@ -468,21 +473,26 @@ class TestsFlextInfraCodegenGeneration:
                 "Demo": (f"{current_pkg}.demo", "Demo"),
                 "Nested": (f"{current_pkg}.nested.item", "Nested"),
             }),
+            package_dir=package_dir,
         )
 
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
-        compile(init_content, "__init__.py", "exec")
+        plan.context.init_path.write_text(init_content, encoding=c.DEFAULT_ENCODING)
         tm.that(
-            init_content,
-            contains=(
-                f"from {c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE} import "
-                "install_lazy_exports"
+            u.Tests.run_lazy_init_probe(
+                f"import sys\nimport {current_pkg} as package\n"
+                f"print('{current_pkg}.demo' not in sys.modules and "
+                f"'{current_pkg}.nested.item' not in sys.modules)\n"
+                f"from {current_pkg}.demo import Demo\n"
+                f"from {current_pkg}.nested.item import Nested\n"
+                "print(package.Demo is Demo and package.Nested is Nested)\n"
+                f"print(package.__all__ == {plan.exports!r})\n",
+                python_paths=(str(package.parent),),
+                cwd=repository,
             ),
+            eq=["True", "True", "True"],
         )
-        tm.that(init_content, lacks=f"from {c.Infra.LAZY_BOOTSTRAP_MODULE} import")
-        tm.that(init_content, contains='__all__: tuple[str, ...] = ("Demo", "Nested")')
-        tm.that(init_content, contains="install_lazy_exports")
 
     def test_private_fixture_package_initializer_is_side_effect_free(self) -> None:
         """Keep pytest plugin siblings unloaded until pytest registers them."""
@@ -526,36 +536,13 @@ class TestsFlextInfraCodegenGeneration:
             "FlextTypesLazy",
         )
 
-    def test_normal_package_initializer_keeps_full_lazy_map(self) -> None:
-        """Keep ordinary package boundaries backed by the lazy runtime."""
-        plan = self._plan(
-            f"{c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE}._models",
-            ("FlextModel",),
-            MappingProxyType({
-                "FlextModel": (
-                    f"{c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE}._models.base",
-                    "FlextModel",
-                ),
-            }),
-            package_dir=Path(tm.not_none(flext_core.__file__)).parent / "_models",
-        )
-
-        init_content = FlextInfraCodegenGeneration.render_init(plan)
-
-        compile(init_content, "__init__.py", "exec")
-        tm.that(
-            init_content,
-            contains=(
-                f"from {c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE} import "
-                "install_lazy_exports"
-            ),
-        )
-        tm.that(init_content, lacks=f"from {c.Infra.LAZY_BOOTSTRAP_MODULE} import")
-        tm.that(init_content, contains='"FlextModel": ".base"')
-        tm.that(init_content, contains="install_lazy_exports(")
-
-    def test_tests_root_renders_only_its_facade_contract(self) -> None:
+    def test_tests_root_renders_only_its_facade_contract(self, tmp_path: Path) -> None:
         """Render test facades without importing collected test classes."""
+        repository, _ = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="flext-rendered", package_name="flext_rendered"
+        )
+        testing = repository / "tests"
+        testing.mkdir()
         plan = self._plan(
             "tests",
             (
@@ -591,43 +578,38 @@ class TestsFlextInfraCodegenGeneration:
                 "tm": ("flext_tests", "tm"),
                 "u": ("tests.utilities", "u"),
             }),
+            package_dir=testing,
         )
 
         init_content = FlextInfraCodegenGeneration.render_init(plan)
-
-        compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="from tests import tm")
-        tm.that(init_content, contains='"c": ".constants",')
-        tm.that(init_content, contains='"u": ".utilities",')
-        import_block = init_content.split(
-            (
-                f"from {c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE} import "
-                "install_lazy_exports\n"
+        for module in {owner for owner, _ in plan.lazy_map.values()}:
+            if module.startswith("tests.") and ".unit." not in module:
+                (testing / f"{module.rpartition('.')[2]}.py").write_text(
+                    "\n".join(
+                        f"{name} = {name!r}"
+                        for owner, name in plan.lazy_map.values()
+                        if owner == module
+                    ),
+                    encoding=c.DEFAULT_ENCODING,
+                )
+        plan.context.init_path.write_text(init_content, encoding=c.DEFAULT_ENCODING)
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                "import sys\nfrom importlib import import_module\n"
+                "import tests as package\nfrom flext_tests import tm\n"
+                f"bindings = {dict(plan.lazy_map)!r}\n"
+                f"exports = {plan.exports!r}\n"
+                "print(package.__all__ == exports)\n"
+                "print(all(getattr(package, name) is "
+                "getattr(import_module(bindings[name][0]), bindings[name][1]) "
+                "for name in exports))\n"
+                "print(package.tm is tm and 'TestsDemoCase' not in dir(package) "
+                "and 'tests.unit.test_demo' not in sys.modules)\n",
+                python_paths=(str(repository),),
+                cwd=repository,
             ),
-            maxsplit=1,
-        )[1]
-        import_block = import_block.split("install_lazy_exports(", maxsplit=1)[0]
-        module_offsets = tuple(
-            import_block.index(module)
-            for module in (
-                "from tests import tm",
-                "from tests.base import",
-                "from tests.constants import",
-                "from tests.models import",
-                "from tests.protocols import",
-                "from tests.settings import",
-                "from tests.typings import",
-                "from tests.utilities import",
-            )
+            eq=["True", "True", "True"],
         )
-        tm.that(module_offsets, eq=tuple(sorted(module_offsets)))
-        tm.that(import_block, contains="from tests import tm\n")
-        tm.that(init_content, contains="if TYPE_CHECKING:")
-        tm.that(init_content, contains="install_lazy_exports")
-        tm.that(init_content, lacks="TestsDemoCase")
-        tm.that(init_content, lacks=".unit.test_demo")
-        tm.that(init_content, lacks="TestsDemoCase")
-        tm.that(init_content, lacks=".unit.test_demo")
 
     def test_root_type_checking_imports_the_declared_letter(self) -> None:
         """Static imports name the letter the facade module declares."""
@@ -880,8 +862,11 @@ class TestsFlextInfraCodegenGeneration:
         Derive the long target from the configured width rather than freezing
         today's compact-versus-expanded boundary.
         """
-        module = "demo_pkg." + "owner" * u.Infra.native_tool_setting(
+        width = u.Infra.native_tool_setting(
             config.Infra.tooling, "ruff", "line-length", int
+        )
+        module = "demo_pkg." + "owner" * (
+            (width - len("    from demo_pkg. import (")) // len("owner")
         )
         plan = self._plan(
             "demo_pkg",

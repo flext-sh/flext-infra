@@ -100,6 +100,20 @@ class TestsFlextInfraDeclarationPayload:
             ),
             (
                 (
+                    "import builtins\n"
+                    "from pydantic import field_validator\n"
+                    "class Holder:\n"
+                    "    class Payload(ForeignBase):\n"
+                    "        value: str\n"
+                    "        @field_validator('value')\n"
+                    "        @builtins.classmethod\n"
+                    "        def normalize(cls, value: str) -> str:\n"
+                    "            return value.strip()\n"
+                ),
+                True,
+            ),
+            (
+                (
                     "from pydantic import field_validator as validate_value\n"
                     "class Holder:\n"
                     "    class Payload(ForeignBase):\n"
@@ -151,6 +165,18 @@ class TestsFlextInfraDeclarationPayload:
                     "    value: T\n"
                     "class Holder:\n"
                     "    class Payload((Parent[list[str]])):\n"
+                    "        pass\n"
+                ),
+                True,
+            ),
+            (
+                (
+                    "class Parent[T](ForeignBase):\n"
+                    "    value: T\n"
+                    "class Holder:\n"
+                    "    class Payload(\n"
+                    "        Parent[list[str]],  # Specialized native base.\n"
+                    "    ):\n"
                     "        pass\n"
                 ),
                 True,
@@ -375,6 +401,17 @@ class TestsFlextInfraDeclarationPayload:
             ),
             (
                 "class Payload[T](Contract[T]):\n    value: T\n",
+                True,
+            ),
+            (
+                (
+                    "from typing import runtime_checkable\n"
+                    "@runtime_checkable\n"
+                    "class Payload[T](\n"
+                    "    Contract[T],  # Multiline generic protocol.\n"
+                    "):\n"
+                    "    value: T\n"
+                ),
                 True,
             ),
             (

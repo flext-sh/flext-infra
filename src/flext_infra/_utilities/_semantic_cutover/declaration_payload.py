@@ -63,9 +63,7 @@ class FlextInfraUtilitiesDeclarationPayload:
         value: p.Infra.RopePyObject,
         scope: p.Infra.RopeScope,
         module: p.Infra.RopePyModule,
-    ) -> (
-        t.Pair[m.Infra.LogicalStatement, t.Triple[p.Infra.RopeWorder, int, int]] | None
-    ):
+    ) -> t.Pair[str, t.Triple[p.Infra.RopeWorder, int, int]] | None:
         """Locate the class header base list through Rope's native reader.
 
         Args:
@@ -74,28 +72,23 @@ class FlextInfraUtilitiesDeclarationPayload:
             module: The source module declaring the class.
 
         Returns:
-            The header statement with its native worder and base-list span,
+            The original header text with its native worder and base-list span,
             or ``None`` when the header has no parenthesized base list.
 
         """
-        headers = tuple(
-            statement
-            for statement in FlextInfraUtilitiesRopeStructure.logical_statements(
-                module.source_code,
-            )
-            if statement.line == scope.get_start()
-            and statement.category == c.Infra.StatementCategory.CLASS_DEF
-        )
-        if len(headers) != 1:
-            return None
-        header = headers[0]
-        words = cls._worder(header.text)
-        _keyword_begin, keyword_end = words.get_word_range(header.indent)
-        name = header.text.index(value.get_name(), keyword_end)
+        first_line, last_line = module.logical_lines.logical_line_in(scope.get_start())
+        lines = module.lines
+        header = module.source_code[
+            lines.get_line_start(first_line) : lines.get_line_end(last_line)
+        ]
+        words = cls._worder(header)
+        indent = len(header) - len(header.lstrip())
+        _keyword_begin, keyword_end = words.get_word_range(indent)
+        name = header.index(value.get_name(), keyword_end)
         _begin, end = words.get_word_range(name)
-        if header.text[end:].lstrip().startswith("["):
+        if header[end:].lstrip().startswith("["):
             _begin, end = words.code_finder.get_word_parens_range(name, "[", "]")
-        if not header.text[end:].lstrip().startswith("("):
+        if not header[end:].lstrip().startswith("("):
             return None
         first, last = words.get_word_parens_range(end - 1)
         return header, (words, first, last)
@@ -126,12 +119,14 @@ class FlextInfraUtilitiesDeclarationPayload:
         if resolved is None:
             return bases
         header, (_words, first, last) = resolved
-        arguments = cls._specialized_arguments(header.text, first, last)
+        arguments = cls._specialized_arguments(header, first, last)
         if not arguments:
             return bases
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         parent = runtime.scope_at(
-            module, header.start_offset, declaration_line=scope.get_start()
+            module,
+            module.lines.get_line_start(scope.get_start()),
+            declaration_line=scope.get_start(),
         )
         subscriptions = tuple(
             item
@@ -379,7 +374,7 @@ class FlextInfraUtilitiesDeclarationPayload:
         located = cls._header_argument_span(value, scope, module)
         if located is not None:
             header, (_words, _first, last) = located
-            inline = header.text[last:].lstrip()
+            inline = header[last:].lstrip()
             if (
                 inline.startswith(":")
                 and inline[1:].strip()
@@ -541,7 +536,7 @@ class FlextInfraUtilitiesDeclarationPayload:
             return False
         module_scope = owning_module.get_scope()
         known_targets = {
-            identity: cls.identity_name(project, identity).get_object()
+            identity: cls.identity_name(project, identity)
             for identity in (
                 *c.Infra.PYDANTIC_PAYLOAD_DECORATORS,
                 *c.Infra.PAYLOAD_DESCRIPTOR_DECORATORS,
@@ -570,7 +565,7 @@ class FlextInfraUtilitiesDeclarationPayload:
                 (
                     candidate
                     for candidate, target in known_targets.items()
-                    if target is resolved
+                    if runtime.same_name(target, resolved)
                 ),
                 None,
             )

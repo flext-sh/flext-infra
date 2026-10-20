@@ -1234,7 +1234,17 @@ authenticated snapshots.
 Lazy-init planners keep native semantic objects and ancestry-receipt caches local
 to each publication consumer. The authenticated structural index can be shared
 with its original selection receipt, but an observation scope alone does not
-isolate native caches. Cross-consumer ancestry reuse requires an independently
+isolate native caches. Each read-only consumer uses the existing `frozen_layout`
+context to resolve its elected source and Python-path folders once during that
+consumer's lifetime; source-consumption receipts and epoch validation remain active.
+Declaration ancestry reads each class header from Rope's existing cached logical-line
+index. It does not rebuild the module's complete statement models for each class;
+payload-body admission still checks the full declaration body.
+Decorator admission compares native names, preserving imported aliases and
+rejecting shadowed declarations. Builtin descriptor wrappers compare their
+underlying Python object by identity because Rope's lexical and imported builtin
+modules can hold different wrappers for the same object.
+Cross-consumer ancestry reuse requires an independently
 captured complete dependency closure: sealing a scope after native resolution has
 already warmed does not recover its earlier provider or negative-query reads.
 Builtin classes have no source scope and are traversed without a source-receipt
