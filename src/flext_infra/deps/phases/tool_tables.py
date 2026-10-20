@@ -166,7 +166,9 @@ class FlextInfraToolTablesPhase:
         })
 
     @staticmethod
-    def _native_phase(tool: str, payload: t.JsonMapping) -> m.Infra.DepsToml.PhaseConfig:
+    def _native_phase(
+        tool: str, payload: t.JsonMapping
+    ) -> m.Infra.DepsToml.PhaseConfig:
         """Replace a governed native table through the shared TOML primitive.
 
         Returns:
@@ -303,9 +305,7 @@ class FlextInfraToolTablesPhase:
         native_phases: list[m.Infra.DepsToml.PhaseConfig] = []
         for table in tables:
             path_parts = table.split(".")
-            image = u.Cli.toml_mapping_path(
-                native_roots[path_parts[0]], path_parts[1:]
-            )
+            image = u.Cli.toml_mapping_path(native_roots[path_parts[0]], path_parts[1:])
             if image is None:
                 msg = f"Declared native tool table is unavailable: {table}"
                 raise KeyError(msg)

@@ -12,6 +12,7 @@ import runpy
 import shutil
 from collections.abc import Mapping
 from pathlib import Path
+from typing import cast
 
 from flext_infra import config, infra, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
@@ -969,7 +970,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             }
             if custom_issue_types:
                 custom_types: list[str] = [*custom_issue_types]
-                payload["custom_issue_types"] = custom_types
+                payload["custom_issue_types"] = cast("t.JsonValue", custom_types)
             tm.ok(u.Cli.yaml_dump(path, payload))
             return path
 
