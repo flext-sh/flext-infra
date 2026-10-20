@@ -173,6 +173,8 @@ class FlextInfraPytestClock:
                     previous(signum, frame)
                 else:
                     signal.raise_signal(signum)
+                # create_stats() disables profiling; returning handlers keep
+                # the command alive and must keep measuring its remaining work.
                 profile.enable()
 
         signal.signal(signal.SIGTERM, checkpoint)

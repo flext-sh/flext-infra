@@ -1069,7 +1069,6 @@ Infra:
         python.analysis.showOnlyDirectDependenciesInAutoImport: false
         python.analysis.supportDocstringTemplate: true
         python.analysis.useDefaultExcludes: true
-        python.analysis.useLibraryCodeForTypes: true
         # Each project's nearest Pyright configuration owns its import roots.
         # Attached projects retain the opened workspace's shared interpreter.
         python.analysis.useNearestConfiguration: true
@@ -1145,6 +1144,7 @@ Infra:
       - python.analysis.include
       - python.analysis.exclude
       - python.analysis.extraPaths
+      - python.analysis.useLibraryCodeForTypes
       # The current Ruff extension always uses its native server.
       - ruff.nativeServer
       stripped_map_keys:

@@ -305,9 +305,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         )
         tm.that(root / governed.path in first.written_files, eq=True)
         rendered = (root / governed.path).read_text(encoding=c.DEFAULT_ENCODING)
-        tm.that(
-            rendered, eq=tm.ok(FlextInfraCodegen.render_vscode_settings(root))
-        )
+        tm.that(rendered, eq=tm.ok(FlextInfraCodegen.render_vscode_settings(root)))
         second = tm.ok(infra.codegen_generate(request))
         tm.that(second.written_files, empty=True)
         tm.that((root / c.Infra.VENV_DIR).exists(), eq=False)

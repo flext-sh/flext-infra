@@ -22,7 +22,7 @@ class TestsFlextInfraCProfileInterruption:
     """Exercise publication and continuation through real Python processes."""
 
     @staticmethod
-    @pytest.mark.parametrize("handler", ["default", "raise", "return"])
+    @pytest.mark.parametrize("handler", ["default", "raise", "return", "ignore"])
     def test_cli_termination_replaces_stale_report_and_preserves_previous_run(
         tmp_path: Path,
         handler: str,
@@ -42,12 +42,16 @@ class TestsFlextInfraCProfileInterruption:
                 else "    return\n"
             )
             + (
-                "signal.signal(signal.SIGTERM, prior_handler)\n"
+                "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+                if handler == "ignore"
+                else "signal.signal(signal.SIGTERM, prior_handler)\n"
                 if handler != "default"
                 else ""
             )
             + "def terminate_import(event, arguments):\n"
-            "    if event == 'exec' and arguments[0].co_filename.endswith('/flext_infra/cli.py'):\n"
+            "    if event == 'exec' and arguments[0].co_filename.endswith(\n"
+            "        '/flext_infra/cli.py'\n"
+            "    ):\n"
             "        os.kill(os.getpid(), signal.SIGTERM)\n"
             "sys.addaudithook(terminate_import)\n"
             "sys.argv = ['flext_infra._profile_entry', sys.argv[1], '--help']\n"
@@ -77,7 +81,7 @@ class TestsFlextInfraCProfileInterruption:
         measured = pstats.Stats(str(output), stream=rendered)
         measured.print_stats("importlib")
         tm.that(rendered.getvalue(), has="import_module")
-        for retained in (*checkpoints, *previous):
+        for retained in tmp_path.glob("*.pstats"):
             tm.that(
                 pstats.Stats(str(retained)).get_stats_profile().func_profiles,
                 truth=True,
@@ -85,8 +89,23 @@ class TestsFlextInfraCProfileInterruption:
         if handler == "raise":
             tm.that(terminated.stderr, has="RuntimeError: native handler failure")
             tm.that(terminated.stderr, lacks="FileExistsError")
-        elif handler == "return":
+        elif handler in {"return", "ignore"}:
             rendered.truncate(0)
             rendered.seek(0)
             measured.print_stats(r"/flext_infra/cli\.py:\d+\(main\)")
             tm.that(rendered.getvalue(), has="(main)")
+        if handler != "default":
+            completed = tuple(
+                path
+                for path in tmp_path.glob("profile-*.pstats")
+                if path != checkpoints[0]
+            )
+            final_previous = tuple(
+                path
+                for path in tmp_path.glob("profile.previous-*.pstats")
+                if path != previous[0]
+            )
+            tm.that(len(completed), eq=1)
+            tm.that(len(final_previous), eq=1)
+            tm.that(completed[0].samefile(output), eq=True)
+            tm.that(final_previous[0].samefile(checkpoints[0]), eq=True)

@@ -182,6 +182,13 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ),
             ]
 
+        boolean_settings: Annotated[
+            t.MappingKV[str, bool],
+            m.Field(
+                alias="boolean-settings",
+                description="Pyright boolean analysis options shared with the editor.",
+            ),
+        ]
         strict_settings: Annotated[
             t.StrMapping,
             m.Field(

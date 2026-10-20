@@ -356,6 +356,8 @@ Infra:
         init_typed: true
         warn_required_dynamic_aliases: true
       pyright:
+        boolean-settings:
+          useLibraryCodeForTypes: true
         strict-settings:
           pythonPlatform: Linux
           pythonVersion: "3.13"

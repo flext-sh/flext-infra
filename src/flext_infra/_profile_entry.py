@@ -24,6 +24,9 @@ class FlextInfraProfileEntry:
     def run() -> int:
         """Retain the profile even when the CLI raises or is interrupted.
 
+        Signal checkpoints update the elected report input and preserve the
+        previous artifact. They describe work up to interruption, not success.
+
         Returns:
             The canonical CLI exit status.
 

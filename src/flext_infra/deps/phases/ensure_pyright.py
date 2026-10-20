@@ -522,6 +522,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         operations.extend(
             toml.SetOp(key=key, value=value)
             for settings in (
+                self._tool_config.tools.pyright.boolean_settings,
                 self._tool_config.tools.pyright.strict_settings,
                 self._tool_config.tools.pyright.extended_settings,
             )

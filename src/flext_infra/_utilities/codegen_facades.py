@@ -106,6 +106,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             for project in project_roots or (root,)
             if project.is_dir()
             for path in iteration.iter_directory_python_files(project)
+            if "tests" not in path.relative_to(project).parts
         }
         source_states = (
             *source_states,
