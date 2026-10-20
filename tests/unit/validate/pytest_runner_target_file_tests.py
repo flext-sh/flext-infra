@@ -231,7 +231,7 @@ class TestsFlextInfraPytestTargetFile:
         runner = u.Tests.PytestRunner.runner_for(
             cached_runner_project, target_file=relative
         )
-        outcome = tm.ok(runner.execute())
+        outcome = tm.ok(runner.execute_file())
         tm.that(outcome, eq=pytest.ExitCode.OK.value)
         tm.that(
             declared.with_suffix(".executed").read_text(encoding="utf-8"),
@@ -254,7 +254,7 @@ class TestsFlextInfraPytestTargetFile:
             runner = u.Tests.PytestRunner.runner_for(
                 cached_runner_project, target_file=relative
             )
-            tm.that(tm.ok(runner.execute()), eq=pytest.ExitCode.OK.value)
+            tm.that(tm.ok(runner.execute_file()), eq=pytest.ExitCode.OK.value)
             report = u.Tests.PytestRunner.summary(
                 cached_runner_project / cache.reports_directory
             )
@@ -282,7 +282,7 @@ class TestsFlextInfraPytestTargetFile:
             runner = u.Tests.PytestRunner.runner_for(
                 cached_runner_project, target_file=relative
             )
-            tm.that(tm.ok(runner.execute()), eq=pytest.ExitCode.OK.value)
+            tm.that(tm.ok(runner.execute_file()), eq=pytest.ExitCode.OK.value)
             report = u.Tests.PytestRunner.summary(
                 cached_runner_project / cache.reports_directory
             )

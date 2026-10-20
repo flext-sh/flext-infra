@@ -693,6 +693,7 @@ endef
 {# Generation can repair activation inputs using its declared physical runtime.
    Operations that consume activation enter direnv before their handlers. -#}
 {% macro public_verb_entry(verb) -%}
+{% set direct_builtin = verb.requires_activation and verb.name not in ("help", "clean", "status", "initialize", "profile-environment", "profile-environment-report") %}
 {% if not verb.requires_activation %}
 # This operation consumes the declared physical runtime without activating the
 # environment file it may itself regenerate.
@@ -709,6 +710,13 @@ endef
 	+@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(SELF_MAKE) _activated-{{ verb.name }},direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-{{ verb.name }})
 
 .PHONY: _activated-{{ verb.name }}
+{% if direct_builtin %}
+# Without hooks, Make resolves the guarded builtin and its environment
+# prerequisite once in this process instead of repeating it in a submake.
+ifeq ($(filter pre-{{ verb.name }} _custom-{{ verb.name }} post-{{ verb.name }},$(CUSTOM_DECLARED_TARGETS)),)
+_activated-{{ verb.name }}: _builtin-{{ verb.name }}
+else
+{% endif %}
 {% if verb.name == "status" %}
 _activated-{{ verb.name }}: _builtin_require_interpreter
 	+@$(SELF_MAKE) _builtin_status_import_observation
@@ -722,6 +730,9 @@ _activated-{{ verb.name }}: _builtin_require_environment
 {{ verb.name }}:
 {% endif %}
 	$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),+@$(SELF_MAKE) _builtin-{{ verb.name }},$(call RUN_PUBLIC,{{ verb.name }}))
+{% if direct_builtin %}
+endif
+{% endif %}
 {% endif %}
 {%- endmacro -%}
 {% macro verb_help_line(verb) %}@printf '  %-16s %s\n' '{{ verb.name }}' '{{ verb.description | replace("\n", " ") | trim | replace("$", "$$") | replace("'", "'\"'\"'") }}'{% endmacro -%}

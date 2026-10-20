@@ -334,17 +334,24 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
         overridden: frozenset[t.Pair[str, str]],
     ) -> t.StrSequence:
-        """Locate the static-method findings the recipe leaves to their owner.
+        """Retain instance-method contracts without suppressing their findings.
 
         Returns:
             ``file:line:code`` of each finding the static-method recipe keeps.
 
         """
-        return FlextInfraRuffLintGate._static_hook_keys(
-            issues,
-            recipes,
-            u.Infra.overridden_findings,
-            overridden=overridden,
+        return (
+            *FlextInfraRuffLintGate._static_hook_keys(
+                issues,
+                recipes,
+                u.Infra.overridden_findings,
+                overridden=overridden,
+            ),
+            *FlextInfraRuffLintGate._static_hook_keys(
+                issues,
+                recipes,
+                u.Infra.service_operation_findings,
+            ),
         )
 
     def _lint_command(
