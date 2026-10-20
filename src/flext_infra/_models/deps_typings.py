@@ -12,6 +12,7 @@ from typing import Annotated
 from flext_cli import m
 
 from flext_infra import t
+from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
 
 
 class FlextInfraModelsDepsTypings:
@@ -64,35 +65,19 @@ class FlextInfraModelsDepsTypings:
             t.NonEmptyStr,
             m.Field(description="Implementation import module published by the stubs."),
         ]
-        entry_point_group: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description="Installed metadata group for generated typing modules."
-            ),
-        ]
-        stub_package: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Import package containing generated stub modules."),
-        ]
         runtime_requirement: Annotated[
             t.NonEmptyStr,
             m.Field(
-                description="Runtime implementation dependency of the stub package."
+                description="Installed implementation identity retained as provenance."
             ),
         ]
         python_required: Annotated[
             t.NonEmptyStr,
             m.Field(description="Python requirement inherited from the toolchain."),
         ]
-        build_backend: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Build backend selected by the packaging policy."),
-        ]
-        build_requires: Annotated[
-            t.StrSequence,
-            m.Field(
-                description="Ordered build requirements from the packaging policy."
-            ),
+        build: Annotated[
+            FlextInfraConfigModelsScaffold.ScaffoldBuildSpec,
+            m.Field(description="Canonical build policy passed by reference."),
         ]
 
 

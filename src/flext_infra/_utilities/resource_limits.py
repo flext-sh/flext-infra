@@ -106,8 +106,6 @@ class FlextInfraUtilitiesResourceLimits:
             ),
             "--no-error-summary",
             "--no-color-output",
-            # Profile the full analysis, never an incidental warm-cache hit.
-            *(("--no-incremental",) if invocation.profile_output is not None else ()),
             *(("--output", c.Infra.OUTPUT_JSON) if invocation.report_json else ()),
             *(("--verbose",) if invocation.verbose else ()),
             "--",
@@ -149,9 +147,9 @@ class FlextInfraUtilitiesResourceLimits:
         if invocation.profile_output is not None:
             return (
                 interpreter,
-                "-m",
-                f"{__package__}._mypy_profile",
-                invocation.model_dump_json(),
+                str(Path(__file__).with_name("_mypy_profile.py")),
+                str(invocation.profile_output.resolve()),
+                *FlextInfraUtilitiesResourceLimits.mypy_arguments(invocation),
             )
         return (
             interpreter,

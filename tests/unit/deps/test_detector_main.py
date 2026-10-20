@@ -10,19 +10,16 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, m, main
-from flext_infra.deps import FlextInfraRuntimeDevDependencyDetector
+from flext_infra import config, deps, m, main
 from tests import c, tm, u
-
-# The fixture resolves and installs a real consumer environment from Git/index
-# sources; this is an external integration boundary owned by ``test-full``.
-pytestmark = [pytest.mark.slow, pytest.mark.remote]
 
 
 class TestsFlextInfraDepsDetectorMain:
     """Tests for ``FlextInfraDepsDetectorMain``."""
 
     @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.remote
     @pytest.mark.parametrize("entrypoint", ["cli", "request"])
     def test_run_without_typings_skips_typings_detection(
         real_detector_project: Path,
@@ -35,7 +32,8 @@ class TestsFlextInfraDepsDetectorMain:
             params = m.Infra.DetectCommand(repository_root=root, no_pip_check=True)
             before_request = params.model_dump()
             tm.that(
-                tm.ok(FlextInfraRuntimeDevDependencyDetector.execute(params)), eq=True
+                tm.ok(deps.FlextInfraRuntimeDevDependencyDetector.execute(params)),
+                eq=True,
             )
             tm.that(params.model_dump(), eq=before_request)
         else:
@@ -46,69 +44,16 @@ class TestsFlextInfraDepsDetectorMain:
                 msg=f"{outcome.stdout}\n{outcome.stderr}",
             )
         tm.that((root / "pyproject.toml").read_bytes(), eq=before)
-        report = tm.ok(
-            u.Cli.json_read(
-                root / ".reports/dependencies/detect-runtime-dev-latest.json",
-            ),
+        report = m.Infra.WorkspaceDependencyReport.model_validate_json(
+            (
+                root / ".reports/dependencies/detect-runtime-dev-latest.json"
+            ).read_bytes(),
         )
-        project = u.Cli.json_as_mapping(
-            u.Cli.json_as_mapping(u.Cli.json_as_mapping(report).get("projects")).get(
-                root.name,
-            ),
-        )
-        tm.that(project, lacks="typings")
-
-    # Why: current `requests` ships its own inline types (`py.typed`), so
-    # mypy no longer reports a missing-stub hint for it and `types-requests`
-    # is retired upstream. `requests` stays imported (it still exercises the
-    # "already-typed import produces no stub requirement" path via the
-    # `feature` extra assertion below) but the stub-detection assertions
-    # here exercise only modules that still lack inline types today.
-    # `requests` stays a listed module (not just the always-declared `feature`
-    # extra) so deptry does not flag it as an unused runtime dependency.
-    # A conformed consumer's dev group already carries every stub the scaffold
-    # declares, so the scenario uses untyped libraries whose stubs it lacks.
-    # The governed mypy policy decides whether those stubs are findings: when
-    # untyped imports are followed, applying typings adds nothing.
-    @staticmethod
-    def _install_typings_and_declare_ignores(root: Path, added: set[str]) -> bytes:
-        """Install the typed stubs and declare their deptry ignore.
-
-        Why: a stub-only `types-*` package is never itself importable, so
-        deptry's own usage scan (current deptry ships no PEP 561 stub
-        awareness) flags every package this run just installed as unused
-        on the very next scan. A project that carries a `typings` extra
-        declares this exact deptry ignore for it; replicate that real
-        configuration here instead of asserting a scan deptry cannot pass.
-
-        Returns:
-            The pyproject snapshot taken after the ignore was appended.
-
-        """
-        installed = tm.ok(
-            u.Cli.capture(
-                [
-                    str(root / ".venv/bin/python"),
-                    "-c",
-                    (
-                        "import importlib.metadata,sys; "
-                        "[print(importlib.metadata.version(name))"
-                        " for name in sys.argv[1:]]"
-                    ),
-                    *sorted(added),
-                ],
-                cwd=root,
-            ),
-        )
-        tm.that(len(installed.splitlines()), eq=len(added))
-        with (root / "pyproject.toml").open("a", encoding="utf-8") as stream:
-            stream.write(
-                "\n[tool.deptry.per_rule_ignores]\n"
-                f"DEP002 = {sorted(added)!r}\n".replace("'", '"'),
-            )
-        return (root / "pyproject.toml").read_bytes()
+        tm.that(report.projects[root.name].typings, eq=None)
 
     @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.remote
     @pytest.mark.parametrize(
         "real_detector_project",
         c.Tests.DETECTOR_MODULE_SCENARIOS[1:],
@@ -119,15 +64,8 @@ class TestsFlextInfraDepsDetectorMain:
     ) -> None:
         """Test apply typings follows governed policy and preserves source."""
         root = real_detector_project
-        tooling = tm.ok(u.Infra.load_tooling_inputs(root)).document
-        followed = u.type_adapter(bool).validate_python(
-            u.Infra.native_tool_settings(tooling, "mypy").get(
-                c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS,
-                c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS_DEFAULT,
-            ),
-            strict=True,
-        )
         before = u.Tests.toml_payload((root / "pyproject.toml").read_text())
+        lock_before = (root / "uv.lock").read_bytes()
         expected = {"pytz": "types-pytz", "six": "types-six"}
         declared_dev = {
             u.Infra.dep_name(item)
@@ -150,24 +88,18 @@ class TestsFlextInfraDepsDetectorMain:
             msg=f"{outcome.stdout}\n{outcome.stderr}",
         )
         after = u.Tests.toml_payload((root / "pyproject.toml").read_text())
-        # `requests` (when present) needs no stub package; only the
-        # still-untyped requirements below drive the typings-group assertion.
         requirements = [
             item
             for item in u.Infra.project_dependency_names_from_payload(before)
             if item in expected
         ]
-        added: set[str] = (
-            set() if followed else {expected[item] for item in requirements}
-        )
+        added = {expected[item] for item in requirements}
         typing_specs = u.Tests.toml_strings(
-            u.Tests.toml_mapping(
-                u.Tests.toml_mapping(after["project"])["optional-dependencies"],
-            ).get("typings", []),
+            u.Tests.toml_mapping(after["dependency-groups"])["dev"],
         )
         tm.that(
             {u.Infra.dep_name(item) for item in typing_specs},
-            eq=added,
+            eq=declared_dev | added,
             msg=(
                 f"{outcome.outcome}\n{outcome.stdout}\n{outcome.stderr}\n"
                 + (
@@ -175,22 +107,9 @@ class TestsFlextInfraDepsDetectorMain:
                 ).read_text(encoding="utf-8")
             ),
         )
-        tm.that(after["dependency-groups"], eq=before["dependency-groups"])
-        original_project = u.Tests.toml_mapping(before["project"])
-        updated_project = u.Tests.toml_mapping(after["project"])
-        for key, value in original_project.items():
-            if key != "optional-dependencies":
-                tm.that(updated_project[key], eq=value)
-        tm.that(
-            u.Tests.toml_mapping(
-                u.Tests.toml_mapping(after["project"])["optional-dependencies"],
-            )["feature"],
-            eq=["requests"],
-        )
-        snapshot = TestsFlextInfraDepsDetectorMain._install_typings_and_declare_ignores(
-            root,
-            added,
-        )
+        tm.that(after["project"], eq=before["project"])
+        tm.that((root / "uv.lock").read_bytes(), eq=lock_before)
+        snapshot = (root / "pyproject.toml").read_bytes()
         repeated = tm.ok(
             u.Tests.run_real_detector(
                 root,
@@ -207,6 +126,8 @@ class TestsFlextInfraDepsDetectorMain:
         tm.that((root / "pyproject.toml").read_bytes(), eq=snapshot)
 
     @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.remote
     def test_apply_typings_dry_run_preserves_source_and_lock(
         real_detector_project: Path,
     ) -> None:
@@ -225,18 +146,16 @@ class TestsFlextInfraDepsDetectorMain:
         tm.that(tuple(path.read_bytes() for path in paths), eq=before)
 
     @staticmethod
-    def test_main_returns_failure_code_on_run_failure() -> None:
-        """Test main returns failure code on run failure."""
-        tm.that(
+    def test_main_preserves_repository_failure(tmp_path: Path) -> None:
+        """Preserve the native repository error at the public CLI boundary."""
+        with pytest.raises(OSError, match="cannot open git repository"):
             main([
                 "deps",
                 "detect",
                 "--repository-root",
-                "/nonexistent/path",
+                str(tmp_path / "missing"),
                 "--no-pip-check",
-            ]),
-            eq=1,
-        )
+            ])
 
     # Why: `requests` ships inline types now and never needs a stub add;
     # `pyyaml` still lacks inline types, so it is what actually exercises
@@ -252,6 +171,8 @@ class TestsFlextInfraDepsDetectorMain:
     # binaries. This rewrites the retired "authoritative parent environment"
     # expectation to the current, intentional contract.
     @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.remote
     def test_member_without_own_venv_fails_closed_not_parent_environment(
         real_detector_project: Path,
     ) -> None:

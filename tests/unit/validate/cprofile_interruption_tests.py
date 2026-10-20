@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pytest
 
+from flext_infra import FlextInfraPytestClock
 from tests import tm, u
 
 
@@ -28,8 +29,14 @@ class TestsFlextInfraCProfileInterruption:
     ) -> None:
         """The flat public owner publishes readable invocation-owned evidence."""
         output = tmp_path / "command.pstats"
-        tm.that(u.Infra.profile_command(lambda: status, output), eq=status)
-        tm.that(pstats.Stats(str(output)).total_calls, gt=0)
+        tm.that(
+            FlextInfraPytestClock.profile_command(lambda: status, output),
+            eq=status,
+        )
+        tm.that(
+            pstats.Stats(str(output)).get_stats_profile().func_profiles,
+            truth=True,
+        )
         retained = tuple(tmp_path.glob("command-*.pstats"))
         tm.that(len(retained), eq=1)
         tm.ok(retained[0].samefile(output))
@@ -43,7 +50,9 @@ class TestsFlextInfraCProfileInterruption:
             raise failure
 
         with pytest.raises(RuntimeError) as raised:
-            u.Infra.profile_command(command, tmp_path / "missing" / "command.pstats")
+            FlextInfraPytestClock.profile_command(
+                command, tmp_path / "missing" / "command.pstats"
+            )
         tm.ok(raised.value is failure)
         tm.that("\n".join(failure.__notes__), has="profile publication failed")
         tm.fail((tmp_path / "missing").exists())

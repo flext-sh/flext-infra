@@ -1365,14 +1365,14 @@ class FlextInfraUtilitiesCodemodProject(
         """
         key = (
             name,
-            resource.parent.real_path if level else project.root.real_path,
+            resource.parent.real_path,
             level,
         )
         if key not in lookup:
             lookup[key] = (
                 project.find_relative_module(name, resource.parent, level)
                 if level
-                else project.find_module(name)
+                else project.find_module(name, resource.parent)
             )
         return lookup[key]
 

@@ -668,9 +668,9 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         if (
             isinstance(expected_object, builtin_types)
             and isinstance(actual_object, builtin_types)
-            and (native := getattr(expected_object, "builtin")) is not None
+            and (native := expected_object.builtin) is not None
         ):
-            return native is getattr(actual_object, "builtin")
+            return native is actual_object.builtin
         unknown = cls.runtime_callable("rope.base.pyobjects", "get_unknown")()
         if (
             expected_object is unknown

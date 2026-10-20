@@ -28,6 +28,28 @@ class TestsFlextInfraSymbolicTextCutover:
     """Exercise native findings, binding admission, and public publication."""
 
     @staticmethod
+    def test_unresolved_imports_do_not_share_symbol_identity(tmp_path: Path) -> None:
+        """Distinct unresolved imports cannot authorize a semantic rewrite."""
+        consumer = tmp_path / "consumer.py"
+        consumer.write_text(
+            "from unavailable_first import first\n"
+            "from unavailable_second import second\n",
+            encoding="utf-8",
+        )
+        state = tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True))
+        snapshot = u.Infra.codemod_binding_snapshot(tmp_path, (state,))
+        with u.Infra.codemod_binding_project(
+            tmp_path, u.Infra.codemod_source_epoch(snapshot)
+        ) as (project, _sources):
+            module = u.Infra.resolve_pymodule(
+                project, project.get_resource(consumer.name)
+            )
+            scope = tm.not_none(module.get_scope())
+            first = tm.not_none(u.Infra.expression_name(scope, "first"))
+            second = tm.not_none(u.Infra.expression_name(scope, "second"))
+            tm.fail(u.Infra.same_name(first, second))
+
+    @staticmethod
     def _observe_native_class_scope(
         root: Path,
         source: str,
@@ -451,15 +473,26 @@ class TestsFlextInfraSymbolicTextCutover:
         consumer = importing / "consumer.py"
         consumer.write_text("from search_owner import child\n", encoding="utf-8")
 
+        with u.Infra.open_project(mod_workspace) as project:
+            resource = project.get_resource(
+                consumer.relative_to(mod_workspace).as_posix()
+            )
+            owner = project.find_module("search_owner", resource.parent)
+            imported_child = project.find_module("search_owner.child", resource.parent)
         snapshot = u.Infra.codemod_binding_snapshot(
             mod_workspace,
             (tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True)),),
         )
         captured = {state.path: state.content for state in snapshot.states}
-        tm.that(earlier in captured, eq=layout == "importing-folder")
-        if layout == "importing-folder":
+        tm.that(
+            earlier in captured,
+            eq=owner is not None and owner.real_path == str(earlier),
+        )
+        if earlier in captured:
             tm.that(captured[earlier], eq=earlier.read_bytes())
-        tm.that(captured[child], eq=child.read_bytes())
+        tm.that(child in captured, eq=imported_child is not None)
+        if child in captured:
+            tm.that(captured[child], eq=child.read_bytes())
 
     @staticmethod
     def test_snapshot_closes_declared_module_owners(mod_workspace: Path) -> None:

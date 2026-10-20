@@ -23,8 +23,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         lazy_init: m.Infra.LazyInitConfig
         _collision_count: int
 
-        def _module_file(self, module_path: str) -> Path | None:
-            del module_path
+        def _module_file(self, module_path: str) -> Path | None: ...
 
     def _target_score(self, name: str, target: t.StrPair) -> int:
         """Score a candidate export target to break collision ties.
@@ -404,7 +403,8 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         return frozenset(
             (index, part)
             for index, part in enumerate(parts[1:], start=1)
-            if part.startswith("_") and not part.startswith("__")
+            if part.startswith("_")
+            and not (part.startswith("__") and part.endswith("__"))
         )
 
     @classmethod

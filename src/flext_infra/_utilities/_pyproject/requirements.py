@@ -72,12 +72,10 @@ class FlextInfraUtilitiesPyprojectRequirements:
         generated: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
         custom: t.SequenceOf[str | m.Infra.DependencyGroupInclude],
     ) -> t.VariadicTuple[str | m.Infra.DependencyGroupInclude]:
-        """Lead generated floors and retire authored pins of one identity.
+        """Lead missing complete requirements and preserve authored entries.
 
-        SSOT floors win over existing same-name pins: the first occurrence per
-        extras/marker/origin identity is kept, so authored entries replaced by
-        a leading floor are dropped. Authored direct sources and include groups
-        carry a different identity and always survive.
+        Packaging owns requirement identity, including version constraints.
+        Explicit retirement policy determines which authored entries are removed.
 
         Returns:
             The resulting ``t.VariadicTuple[str | m.Infra.DependencyGroupInclude]``.
@@ -100,34 +98,19 @@ class FlextInfraUtilitiesPyprojectRequirements:
             if not isinstance(entry, str)
         }
         additions: list[str | m.Infra.DependencyGroupInclude] = []
-        seen: set[tuple[t.Pair[str, str], t.Pair[str | None, str | None]],] = set()
-        replaced: set[tuple[t.Pair[str, str], t.Pair[str | None, str | None]],] = set()
         for entry in generated:
             if isinstance(entry, str):
-                identity = cls._development_requirement_identity(entry)
-                if identity in seen:
-                    continue
-                seen.add(identity)
                 parsed = Requirement(entry)
                 if parsed in requirements:
                     continue
                 requirements.add(parsed)
-                replaced.add(identity)
             else:
                 included = canonicalize_name(entry.include_group)
                 if included in inclusions:
                     continue
                 inclusions.add(included)
             additions.append(entry)
-        return (
-            *additions,
-            *(
-                entry
-                for entry in authored
-                if not isinstance(entry, str)
-                or cls._development_requirement_identity(entry) not in replaced
-            ),
-        )
+        return (*additions, *authored)
 
     @staticmethod
     def _development_requirement_identity(
@@ -659,13 +642,8 @@ class FlextInfraUtilitiesPyprojectRequirements:
         dev_name = FlextInfraUtilitiesPyproject.dependency_group_name(
             groups, str(c.Infra.DEV)
         )
-        # SSOT required floors win over existing same-name pins: dedupe_specs
-        # keeps the first occurrence, so toolchain floors must lead the merge.
-        # Otherwise stale member pins override the declared fleet floor. One
-        # exception is structural: a bare internal floor name carries no Git
-        # source and no version to enforce, so a live requirement that declares
-        # its own direct source is the authority for that dependency and the
-        # floor yields to it.
+        # A bare internal requirement carries no source or version constraint.
+        # Preserve its declared direct source when composing the policy floor.
         live = cls._normalized_live_group_entries(
             groups,
             dev_name,

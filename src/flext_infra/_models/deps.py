@@ -588,7 +588,7 @@ class FlextInfraModelsDeps(
         lines: Annotated[
             t.StrSequence,
             m.Field(description="Pip check output lines"),
-        ] = m.Field(default_factory=tuple)
+        ] = ()
 
     class DeptryIssueGroups(m.ArbitraryTypesModel):
         """Deptry issue grouping model by error code (DEP001-DEP004)."""
@@ -687,10 +687,9 @@ class FlextInfraModelsDeps(
             ),
         ]
 
-    class ProjectRuntimeReport(m.ArbitraryTypesModel):
+    class ProjectRuntimeReport(ProjectDependencyReport):
         """Project runtime dependency and typings report."""
 
-        deptry: FlextInfraModelsDeps.DeptryReport = m.Field(description="Deptry report")
         typings: FlextInfraModelsDeps.TypingsReport | None = m.Field(
             None,
             description="Typings report",
@@ -706,11 +705,11 @@ class FlextInfraModelsDeps(
 
         workspace: Annotated[str, m.Field(description="Workspace name")]
         generated_typings: Annotated[
-            t.StrSequence,
+            t.VariadicTuple[Path],
             m.Field(description="Declared generated PEP 561 source directories"),
-        ] = m.Field(default_factory=tuple)
-        projects: t.MappingKV[str, FlextInfraModelsDeps.ProjectRuntimeReport] = m.Field(
-            description="Per-project reports",
+        ] = ()
+        projects: t.MutableMappingKV[str, FlextInfraModelsDeps.ProjectRuntimeReport] = (
+            m.Field(description="Per-project reports")
         )
         pip_check: FlextInfraModelsDeps.PipCheckReport | None = m.Field(
             None,

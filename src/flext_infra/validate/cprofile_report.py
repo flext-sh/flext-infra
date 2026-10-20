@@ -94,8 +94,9 @@ class FlextInfraCProfileReport(s[bool]):
         ):
             msg = "profile run receipt has no valid report directory"
             raise ValueError(msg)
+        context_path = directory / "run-context.json"
         context = m.Infra.PytestRunContext.model_validate_json(
-            (directory / "run-context.json").read_text(encoding="utf-8"),
+            context_path.read_text(encoding="utf-8"),
         )
         if (
             context.report_directory != directory
@@ -107,7 +108,12 @@ class FlextInfraCProfileReport(s[bool]):
         policy = config.Infra.tooling.tools.pytest
         suite = directory / policy.profile_suite_filename
         plan_path = directory / "selection-plan.json"
-        if plan_path.is_file():
+        if parent.testmon_lease_acquired is False:
+            if any(entry != context_path for entry in directory.iterdir()):
+                msg = "unacquired Testmon lease carries execution artifacts"
+                raise ValueError(msg)
+            profiles = (self.profile,)
+        elif plan_path.is_file():
             plan = m.Infra.PytestSelectionPlan.model_validate_json(
                 plan_path.read_text(encoding="utf-8"),
             )

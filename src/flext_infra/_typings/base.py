@@ -161,9 +161,6 @@ class FlextInfraTypesBase:
     type NativeInvocationFacts = t.Pair[NativeCompilationFacts, NativeInstructionFacts]
     "The two immutable fact caches scoped to one native observation invocation."
 
-    type ModelFieldSpec = m.FieldInfo
-    "Field metadata a model-field factory returns, from the m facade."
-
     type InfraValue = t.JsonValue
     "Canonical infrastructure payload contract from flext-cli JSON typing."
     type FacadeFamily = str

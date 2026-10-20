@@ -269,7 +269,7 @@ class FlextInfraCodegenLazyInit(
                     raise first_conflict from exc
                 u.Cli.info(
                     f"lazy-init: source epoch changed; successor={attempt + 1} "
-                    f"retaining independently valid decisions"
+                    f"retaining independently valid decisions; cause={exc}"
                 )
         msg = "lazy-init source convergence exhausted without its original failure"
         raise RuntimeError(msg)

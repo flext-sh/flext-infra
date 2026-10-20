@@ -26,6 +26,30 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture
+def native_cprofile(tmp_path: Path) -> Path:
+    """Create real pstats outside any profiler owned by the pytest worker.
+
+    Returns:
+        The independently measured native profile.
+
+    """
+    profile = tmp_path / c.Infra.REPORTS_DIR_NAME / "fixture.pstats"
+    profile.parent.mkdir(parents=True, exist_ok=True)
+    tm.ok(
+        u.Cli.run_checked(
+            (
+                sys.executable,
+                "-c",
+                ("import cProfile, sys\ncProfile.run('sum(range(3))', sys.argv[1])\n"),
+                str(profile),
+            ),
+            cwd=tmp_path,
+        )
+    )
+    return profile
+
+
+@pytest.fixture
 def native_consumer(tmp_path: Path) -> p.Tests.NativeConsumer:
     """Exercise public native authentication against real fixture source trees.
 
@@ -919,8 +943,14 @@ def real_detector_project(
             ).is_file(),
             eq=True,
         )
-        (root / "limits.toml").write_text(
-            "[typing_libraries]\nexclude = []\n", encoding="utf-8"
+        (root / "limits.toml").write_bytes(
+            (
+                _PROJECT_ROOT
+                / "src"
+                / "flext_infra"
+                / "deps"
+                / c.Infra.DEPENDENCY_LIMITS_FILENAME
+            ).read_bytes(),
         )
         yield root
 

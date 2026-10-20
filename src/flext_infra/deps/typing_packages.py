@@ -30,8 +30,8 @@ class FlextInfraDependencyTypingPackages:
         cls,
         repository_root: Path,
         modules: t.StrSequence,
-        policy: p.Infra.TypingGenerationPolicy,
-    ) -> p.Result[t.StrSequence]:
+        policy: m.Infra.TypingGenerationPolicy,
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Refresh generated packages and declare their native path dependencies.
 
         Returns:
@@ -51,7 +51,7 @@ class FlextInfraDependencyTypingPackages:
             )
         }
         if not roots:
-            return r[t.StrSequence].ok(())
+            return r[t.VariadicTuple[Path]].ok(())
         u.Cli.info(f"typings: generating {len(roots)} external package(s)")
         providers = packages_distributions()
         destination = repository_root / policy.directory
@@ -74,7 +74,6 @@ class FlextInfraDependencyTypingPackages:
                     "--group",
                     c.Infra.DEV,
                     "--frozen",
-                    "--no-sync",
                     "--no-workspace",
                     "--",
                     *(str(path) for path in packages),
@@ -83,15 +82,15 @@ class FlextInfraDependencyTypingPackages:
                 timeout=c.Infra.TIMEOUT_MEDIUM,
             )
             if installed.failure:
-                return r[t.StrSequence].from_failure(installed)
-        return r[t.StrSequence].ok(tuple(str(path) for path in packages))
+                return r[t.VariadicTuple[Path]].from_failure(installed)
+        return r[t.VariadicTuple[Path]].ok(packages)
 
     @classmethod
     def _generate_typing_package(
         cls,
         root: Path,
         module: str,
-        policy: p.Infra.TypingGenerationPolicy,
+        policy: m.Infra.TypingGenerationPolicy,
         providers: t.StrSequence,
     ) -> Path:
         """Publish one generated distribution from its real installed source.
@@ -117,22 +116,25 @@ class FlextInfraDependencyTypingPackages:
             msg = f"typing implementation has no source origin: {module}"
             raise ValueError(msg)
         source = Path(spec.origin)
-        import_root = (
-            source.parent.parent
-            if spec.submodule_search_locations is not None
-            else source.parent
-        )
-        name = canonicalize_name(policy.distribution_prefix + module)
+        name = canonicalize_name(policy.distribution_prefix + module, validate=True)
         package_root = root / policy.directory / name
         stub_package = f"{module}-stubs"
         u.Cli.info(f"typings: Pyright generation for {module}")
         with TemporaryDirectory(dir=root, prefix=".typing-package-") as scratch:
-            stage = Path(scratch)
-            native = stage / "native"
-            native_config = stage / "pyrightconfig.json"
+            native = Path(scratch) / "native"
+            native_config = Path(scratch) / "pyrightconfig.json"
             u.Cli.json_write(
                 native_config,
-                {"stubPath": str(native), "extraPaths": [str(import_root)]},
+                {
+                    "stubPath": str(native),
+                    "extraPaths": [
+                        str(
+                            source.parent.parent
+                            if spec.submodule_search_locations is not None
+                            else source.parent,
+                        ),
+                    ],
+                },
             ).unwrap()
             u.Cli.run(
                 [
@@ -167,19 +169,15 @@ class FlextInfraDependencyTypingPackages:
             for relative, content in files.items():
                 digest.update(relative.as_posix().encode(c.DEFAULT_ENCODING))
                 digest.update(content)
-            build = config.Infra.codegen.scaffold.build
             context = m.Infra.TypingPackageRenderContext(
                 distribution=name,
                 version=f"{Version(implementation.version).public}+{digest.hexdigest()}",
                 module=module,
-                entry_point_group=c.Infra.TYPING_STUB_ENTRY_POINT_GROUP,
-                stub_package=stub_package,
                 runtime_requirement=(
                     f"{implementation.metadata['Name']}=={implementation.version}"
                 ),
                 python_required=config.Infra.codegen.toolchain.python_required_version,
-                build_backend=build.backend,
-                build_requires=build.requirements,
+                build=config.Infra.codegen.scaffold.build,
             )
             template = (
                 Path(__file__).resolve().parent.parent

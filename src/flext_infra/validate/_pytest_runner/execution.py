@@ -772,6 +772,17 @@ class FlextInfraPytestRunnerExecution(
         # Selection, execution, and integrity inspection share one database.
         # Serialize competing worktrees within this invocation's typed deadline.
         deadline = self._process_deadline()
+        report_dir = self._report_directory()
+        context = m.Infra.PytestRunContext(
+            execution_mode=execution_mode,
+            testmon_db=self.testmon_db,
+            testmon_lease_acquired=False,
+            deadline_monotonic=(
+                None if deadline is None else deadline.expires_at_monotonic
+            ),
+            report_directory=report_dir,
+        )
+        self._write_run_context(report_dir, context)
         wait_seconds = (
             c.Infra.JOURNAL_LEASE_WAIT_SECONDS
             if deadline is None
@@ -789,6 +800,10 @@ class FlextInfraPytestRunnerExecution(
             self.testmon_db,
             wait_seconds=wait_seconds,
         ):
+            self._write_run_context(
+                report_dir,
+                context.model_copy(update={"testmon_lease_acquired": True}),
+            )
             sys.stderr.write(
                 "pytest cache lease: acquired "
                 f"after {time.monotonic() - lease_started:.3f}s\n",
@@ -796,6 +811,7 @@ class FlextInfraPytestRunnerExecution(
             result = self._execute_testmon_leased(
                 complete=complete,
                 execution_mode=execution_mode,
+                report_dir=report_dir,
             )
         # Only the parent publishes, after SQLite closure and lease release.
         self._publish_cache_output()
@@ -833,6 +849,7 @@ class FlextInfraPytestRunnerExecution(
         *,
         complete: bool,
         execution_mode: c.Infra.PytestExecutionMode,
+        report_dir: Path,
     ) -> p.Result[int]:
         """Run one testmon phase while holding the database lease.
 
@@ -845,19 +862,6 @@ class FlextInfraPytestRunnerExecution(
                 cache.
 
         """
-        report_dir = self._report_directory()
-        deadline = self._process_deadline()
-        self._write_run_context(
-            report_dir,
-            m.Infra.PytestRunContext(
-                execution_mode=execution_mode,
-                testmon_db=self.testmon_db,
-                deadline_monotonic=(
-                    None if deadline is None else deadline.expires_at_monotonic
-                ),
-                report_directory=report_dir,
-            ),
-        )
         pre_digest = FlextInfraTestmonDbInspector.digest_file(self.testmon_db)
         cache_restored = False
         if pre_digest is not None:
@@ -1014,6 +1018,7 @@ class FlextInfraPytestRunnerExecution(
             m.Infra.PytestRunContext(
                 execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
                 testmon_db=None,
+                testmon_lease_acquired=None,
                 deadline_monotonic=(
                     None if deadline is None else deadline.expires_at_monotonic
                 ),

@@ -58,11 +58,11 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         self,
         project_name: str,
         deptry_issues: t.SequenceOf[t.JsonMapping],
-    ) -> m.Infra.ProjectDependencyReport:
+    ) -> m.Infra.ProjectRuntimeReport:
         """Build a project dependency report from classified deptry issues.
 
         Returns:
-            The resulting ``m.Infra.ProjectDependencyReport``.
+            The project's native dependency report, retained through serialization.
 
         """
         classified = self.classify_issues(deptry_issues)
@@ -82,7 +82,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
                 if (val := item.get(c.Infra.MODULE)) is not None
             ]
 
-        return m.Infra.ProjectDependencyReport(
+        return m.Infra.ProjectRuntimeReport(
             project=project_name,
             deptry=m.Infra.DeptryReport(
                 missing=_module_names(classified.dep001),

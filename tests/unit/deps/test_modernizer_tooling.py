@@ -197,13 +197,12 @@ class TestsFlextInfraDepsModernizerTooling:
             for item in config.Infra.codegen.templates.entries
             if item.destination == c.PYPROJECT_FILENAME
         )
-        assert entry.source is not None
         source = tm.ok(
             u.Cli.template_render(
                 FlextInfraConfig.ssot_config_dir().parent
                 / "templates"
                 / config.Infra.codegen.templates.root
-                / entry.source,
+                / tm.not_none(entry.source),
                 m.RootModel[t.JsonDict].model_validate({
                     **project.model_dump(mode="json", exclude_computed_fields=True),
                     "dist": workspace.repository.distribution,

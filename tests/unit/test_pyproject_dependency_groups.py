@@ -6,9 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import json
-from typing import cast
-
 import pytest
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
@@ -17,7 +14,7 @@ from flext_infra import config
 from tests import c, m, p, t, tm, u
 
 
-class TestsPyprojectDependencyGroups:
+class TestsFlextInfraPyprojectDependencyGroups:
     """Exercise the same public TOML boundary consumed by native resolution."""
 
     @pytest.mark.parametrize("variant", ["same", "extras", "marker", "origin", "bound"])
@@ -61,7 +58,7 @@ class TestsPyprojectDependencyGroups:
             eq=() if Requirement(authored) == Requirement(floor) else (floor,),
         )
         source = self._source(
-            f"dev = {json.dumps(list(declared))}\n"
+            f"dev = {tm.ok(u.Cli.json_dumps(list(declared)))}\n"
             'examples = [{include-group = "dev"}]',
             project_fields="[project.optional-dependencies]\nfeature = []",
         )
@@ -134,7 +131,7 @@ class TestsPyprojectDependencyGroups:
         workspace = cls._workspace(c.Infra.MakeProfile.STANDALONE)
         return (
             "[project]\n"
-            f"name = {json.dumps(workspace.repository.distribution)}\n"
+            f"name = {tm.ok(u.Cli.json_dumps(workspace.repository.distribution))}\n"
             'version = "0.1.0"\n'
             "dependencies = []\n"
             f"{project_fields}\n"
@@ -156,10 +153,10 @@ class TestsPyprojectDependencyGroups:
         marked = "group-only[feature]>=1.0,<2.0; python_version >= '3.13'"
         optional = "optional-only[feature]>=1.0; python_version >= '3.13'"
         groups = (
-            f"dev = [{json.dumps(development)}, "
+            f"dev = [{tm.ok(u.Cli.json_dumps(development))}, "
             '{include-group = "codegen"}, '
-            f"{json.dumps(marked)}, {json.dumps(marked)}]\n"
-            f"codegen = [{json.dumps(codegen)}]\n"
+            f"{tm.ok(u.Cli.json_dumps(marked))}, {tm.ok(u.Cli.json_dumps(marked))}]\n"
+            f"codegen = [{tm.ok(u.Cli.json_dumps(codegen))}]\n"
             'examples = ["example-only>=1.0", {include-group = "dev"}, '
             '"example-tail<3.0"]\n'
             'nested = [{include-group = "EXAMPLES"}, "nested-only>=1.0"]'
@@ -167,7 +164,7 @@ class TestsPyprojectDependencyGroups:
         source = self._source(
             groups,
             project_fields=(
-                f"[project.optional-dependencies]\nfeature = [{json.dumps(optional)}]"
+                f"[project.optional-dependencies]\nfeature = [{tm.ok(u.Cli.json_dumps(optional))}]"
             ),
         )
         rendered = tm.ok(self._conform(source, role))
@@ -209,7 +206,7 @@ class TestsPyprojectDependencyGroups:
         other = codegen_name if group_name == dev_name else dev_name
         marked = "group-case-preserved[feature]>=1.0,<3.0; sys_platform == 'linux'"
         source = self._source(
-            f"{authored_name} = [{json.dumps(marked)}, "
+            f"{authored_name} = [{tm.ok(u.Cli.json_dumps(marked))}, "
             '{include-group = "base"}]\n'
             f"{other} = []\n"
             "base = []\n"
@@ -315,9 +312,9 @@ class TestsPyprojectDependencyGroups:
         codegen = str(c.Infra.DependencyGroup.CODEGEN)
         authored_name = dev.capitalize()
         source = self._source(
-            f"{authored_name} = [{json.dumps(authored_bound)}, {json.dumps(marked)}, "
+            f"{authored_name} = [{tm.ok(u.Cli.json_dumps(authored_bound))}, {tm.ok(u.Cli.json_dumps(marked))}, "
             '{include-group = "base"}, '
-            f"{json.dumps(extra)}, {json.dumps(direct)}, {json.dumps(marked)}]\n"
+            f"{tm.ok(u.Cli.json_dumps(extra))}, {tm.ok(u.Cli.json_dumps(direct))}, {tm.ok(u.Cli.json_dumps(marked))}]\n"
             f"{codegen} = []\n"
             "base = []\n"
             f'examples = [{{include-group = "{authored_name}"}}]',
@@ -342,22 +339,23 @@ class TestsPyprojectDependencyGroups:
         groups = u.Tests.toml_mapping(
             u.Tests.toml_mapping(u.Tests.toml_doc(conformed))["dependency-groups"],
         )
+        expected: t.JsonList = [
+            floor,
+            authored_bound,
+            marked,
+            {"include-group": "base"},
+            extra,
+            direct,
+            marked,
+        ]
         tm.that(
             u.Tests.toml_list(groups[authored_name]),
-            eq=[
-                floor,
-                authored_bound,
-                marked,
-                {"include-group": "base"},
-                extra,
-                direct,
-                marked,
-            ],
+            len=len(expected),
+            items=[{"eq": entry} for entry in expected],
         )
         tm.that(
             groups["examples"],
-            eq=cast(
-                "t.JsonMapping",
+            eq=u.Tests.toml_mapping(
                 u.Tests.toml_mapping(u.Tests.toml_doc(source))["dependency-groups"],
             )["examples"],
         )
@@ -390,7 +388,7 @@ class TestsPyprojectDependencyGroups:
         dev = str(c.Infra.DEV)
         codegen = str(c.Infra.DependencyGroup.CODEGEN)
         source = self._source(
-            f"{dev} = [{json.dumps(authored)}, "
+            f"{dev} = [{tm.ok(u.Cli.json_dumps(authored))}, "
             '{include-group = "base"}]\n'
             f"{codegen} = []\nbase = []",
         )
@@ -408,7 +406,11 @@ class TestsPyprojectDependencyGroups:
             if variant == "origin"
             else [generated, authored, {"include-group": "base"}]
         )
-        tm.that(u.Tests.toml_list(groups[dev]), eq=expected)
+        tm.that(
+            u.Tests.toml_list(groups[dev]),
+            len=len(expected),
+            items=[{"eq": entry} for entry in expected],
+        )
         observed_requirements = tuple(
             Requirement(entry)
             for entry in u.Tests.toml_list(groups[dev])
@@ -441,15 +443,15 @@ class TestsPyprojectDependencyGroups:
         group_last = "group-only[feature]>=2.0,<5.0; python_version < '3.13'"
         other = "codegen" if name == "dev" else "dev"
         source = self._source(
-            f"{name} = [{json.dumps(group_first)}, "
+            f"{name} = [{tm.ok(u.Cli.json_dumps(group_first))}, "
             '{include-group = "shared"}, '
-            f"{json.dumps(group_last)}, {json.dumps(group_first)}]\n"
+            f"{tm.ok(u.Cli.json_dumps(group_last))}, {tm.ok(u.Cli.json_dumps(group_first))}]\n"
             f"{other} = []\n"
             "shared = []\n"
             f'examples = [{{include-group = "{name}"}}]',
             project_fields=(
                 "[project.optional-dependencies]\n"
-                f"{name} = {json.dumps(optional)}\n"
+                f"{name} = {tm.ok(u.Cli.json_dumps(optional))}\n"
                 'feature = ["independent-extra>=1.0,<2.0"]'
             ),
         )

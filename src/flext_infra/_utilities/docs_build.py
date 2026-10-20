@@ -190,7 +190,7 @@ class FlextInfraUtilitiesDocsBuild:
         """Persist the standard build summary and markdown report."""
         _ = u.Cli.json_write(
             scope.report_dir / "build-summary.json",
-            {c.Infra.RK_SUMMARY: report.model_dump()},
+            {c.Infra.RK_SUMMARY: report.model_dump(mode="json")},
         ).unwrap()
         _ = FlextInfraUtilitiesDocs.write_markdown(
             scope.report_dir / "build-report.md",

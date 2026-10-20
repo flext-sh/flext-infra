@@ -79,7 +79,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
     @pytest.mark.requires_engine("mypy")
     @pytest.mark.slow
     def test_mypy_profile_records_the_real_checker(tmp_path: Path) -> None:
-        """Keep the public profiling contract while removing executable selection."""
+        """Profile the real checker without changing its incremental workload."""
         project = u.Tests.mypy_workload(tmp_path)
         profile = tmp_path / "checker.pstats"
         invocation = m.Infra.MypyInvocation(
@@ -87,6 +87,16 @@ class TestsFlextInfraUtilitiesResourceLimits:
             config_file=project.config_file,
             profile_output=profile,
             verbose=True,
+        )
+        tm.that(
+            u.Infra.mypy_arguments(invocation),
+            eq=u.Infra.mypy_arguments(
+                m.Infra.MypyInvocation(
+                    targets=project.targets,
+                    config_file=project.config_file,
+                    verbose=True,
+                ),
+            ),
         )
         result = u.Cli.run_raw(
             u.Infra.mypy_limited_command(invocation),
@@ -98,15 +108,23 @@ class TestsFlextInfraUtilitiesResourceLimits:
             bool(pstats.Stats(str(profile)).get_stats_profile().func_profiles),
             eq=True,
         )
-        # The second profile must analyze the source even after warming its cache.
+        tm.that(result.value.stderr, has=f"Parsing {project.targets[0]}")
+        # Profiling retains the same warm-cache behavior as the production gate.
         repeated = u.Cli.run_raw(
             u.Infra.mypy_limited_command(invocation),
             timeout=u.Infra.mypy_runner_timeout(),
         )
         tm.ok(repeated)
         tm.ok(u.Cli.process_succeeded(repeated.value.outcome))
-        for output in (result.value, repeated.value):
-            tm.that(output.stderr, has=f"Parsing {project.targets[0]}")
+        tm.that(
+            repeated.value.stderr,
+            has="Metadata fresh for checked:",
+            lacks=f"Parsing {project.targets[0]}",
+        )
+        tm.that(
+            bool(pstats.Stats(str(profile)).get_stats_profile().func_profiles),
+            eq=True,
+        )
 
     @staticmethod
     def test_mypy_budget_resolves_the_project_tooling_overlay(
@@ -568,7 +586,10 @@ class TestsFlextInfraUtilitiesResourceLimits:
         shared = u.Infra.mypy_cache_directory(lane)
         # Every checkout of one project reuses one analysis.
         tm.that(u.Infra.mypy_cache_directory(primary), eq=shared)
-        tm.that(shared.parent.name, eq=Path(spec.external_storage_directory).name)
+        tm.that(
+            shared.is_relative_to(u.Infra.external_cache_directory(spec)),
+            eq=True,
+        )
         # A relock keeps the directory: Mypy revalidates changed modules itself.
         (lane / c.Infra.UV_LOCK_FILENAME).write_text("rotated\n", encoding="utf-8")
         tm.that(u.Infra.mypy_cache_directory(lane), eq=shared)

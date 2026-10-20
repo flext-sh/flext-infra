@@ -128,7 +128,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         self,
         tmp_path: Path,
     ) -> None:
-        """A second run on one shared database fails loud before any effect."""
+        """A blocked run records its identity without touching the leased database."""
         project = self._zero_test_project(tmp_path)
         runner = self._runner(
             project,
@@ -145,7 +145,17 @@ class TestsFlextInfraPytestRunnerZeroTest:
         reports_root = (
             project / config.Infra.codegen.make.testmon_cache.reports_directory
         )
-        tm.that(list(reports_root.glob("*/run-context.json")), eq=[])
+        receipts = tuple(reports_root.glob("*/run-context.json"))
+        tm.that(len(receipts), eq=1)
+        context = m.Infra.PytestRunContext.model_validate_json(receipts[0].read_bytes())
+        tm.that(context.testmon_db, eq=runner.testmon_db)
+        tm.that(context.testmon_lease_acquired, eq=False)
+        tm.that(context.report_directory, eq=receipts[0].parent)
+        tm.that(
+            tuple(path.name for path in receipts[0].parent.iterdir()),
+            eq=("run-context.json",),
+        )
+        tm.fail(runner.testmon_db.exists())
 
     @pytest.mark.slow
     def test_empty_slow_scope_remains_red_with_accounting(

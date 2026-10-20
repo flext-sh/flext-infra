@@ -20,11 +20,48 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from tests import c, tm, u
 
 
 class TestsFlextInfraLazyInitFamilyAggregator:
     """A multi-name aggregator module never wins family/alias ownership."""
+
+    @staticmethod
+    @pytest.mark.parametrize("part_name", ["FlextScope", "FlextScopePart03"])
+    def test_private_split_preserves_public_wrapper(
+        tmp_path: Path, part_name: str
+    ) -> None:
+        """Double-underscore implementation packages never displace their wrapper."""
+        repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        context = package / "_models" / "_context"
+        parts = context / "__scope_parts"
+        parts.mkdir(parents=True)
+        (parts / "flextscope_part_03.py").write_text(
+            f"class {part_name}:\n    marker = True\n__all__ = ['{part_name}']\n",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        (context / "_scope.py").write_text(
+            "from .__scope_parts import flextscope_part_03\n"
+            f"class FlextScope(flextscope_part_03.{part_name}):\n    pass\n"
+            "__all__ = ['FlextScope']\n",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+
+        tm.that(u.Tests.run_lazy_init(repository), eq=0)
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                f"from {package.name}._models._context import FlextScope\n"
+                f"from {package.name}._models._context._scope import "
+                "FlextScope as Declared\n"
+                "print(FlextScope is Declared)\n"
+                "print(FlextScope.marker)\n",
+                python_paths=(str(package.parent),),
+                cwd=repository,
+            ),
+            eq=["True", "True"],
+        )
 
     @staticmethod
     def test_aggregator_sidecar_never_shadows_real_constants_owner(

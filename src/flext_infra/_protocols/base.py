@@ -1309,14 +1309,6 @@ class FlextInfraProtocolsBase(Protocol):
         pip_check: m.Infra.PipCheckReport | None
         dependency_limits: m.Infra.DependencyLimitsInfo | None
 
-        def model_dump(self) -> t.MappingKV[str, t.JsonValue]:
-            """Serialize report model payload."""
-            ...
-
-        def model_dump_json(self, *, indent: int | None = None) -> str:
-            """Serialize the validated report through its canonical Pydantic owner."""
-            ...
-
     @runtime_checkable
     class JsonService(Protocol):
         """Service for JSON serialization and persistence."""
@@ -1327,17 +1319,6 @@ class FlextInfraProtocolsBase(Protocol):
             payload: t.MappingKV[str, t.JsonValue],
         ) -> p.Result[bool]:
             """Write payload to JSON file."""
-            ...
-
-    @runtime_checkable
-    class ProjectReportLike(Protocol):
-        """Protocol for project-level dependency report contracts."""
-
-        @property
-        def deptry(self) -> m.Infra.DeptryReport: ...
-
-        def model_dump(self) -> t.MappingKV[str, t.JsonValue]:
-            """Serialize project report payload."""
             ...
 
     @runtime_checkable
@@ -1365,7 +1346,7 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             project_name: str,
             deptry_issues: t.SequenceOf[t.JsonMapping],
-        ) -> FlextInfraProtocolsBase.ProjectReportLike:
+        ) -> m.Infra.ProjectRuntimeReport:
             """Build project report from deptry issues."""
             ...
 
@@ -1396,8 +1377,8 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             repository_root: Path,
             modules: t.StrSequence,
-            policy: p.Infra.TypingGenerationPolicy,
-        ) -> p.Result[t.StrSequence]:
+            policy: m.Infra.TypingGenerationPolicy,
+        ) -> p.Result[t.VariadicTuple[Path]]:
             """Generate and install PEP 561 packages in the owning environment."""
             ...
 

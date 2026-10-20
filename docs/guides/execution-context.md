@@ -726,6 +726,20 @@ Member contributions include the requirements parsed from captured declarations;
 the composed development group uses the same retirement filter.
 Do not uninstall packages manually or weaken the type checker.
 
+`make typings` discovers missing third-party typing information independently of
+Mypy's normal untyped-import traversal policy. Published stub requirements enter
+the development group through UV. For unmapped modules, the generator uses the
+installed implementation and native Pyright to publish an owned PEP 561 package.
+The generation directory and distribution prefix come from the dependency limits
+policy. Generated packages record implementation provenance and a content-derived
+version, and expose an entry point so subsequent runs refresh them.
+
+The detector declares these requirements without resolving or installing them.
+Make then regenerates the owning runtime manifest, reconciles native locks,
+installs the environment and verifies its provenance. Dependency findings remain
+failures throughout this sequence. Reports pass as validated models between
+stages and serialize directly through Pydantic.
+
 PEP 621 optional extras and PEP 735 dependency groups retain their separate
 categories, including when both declare a name such as `dev` or `codegen`.
 Conformance preserves each extra's requirement strings, bounds, markers and
@@ -1099,6 +1113,14 @@ A missing profile from a completed suite remains an artifact failure.
 Startup instrumentation, the pytest launcher and the profiling entrypoint share
 one process-local profiler. Nested profiling subprocesses retain their own profiles
 and still execute the original site customization.
+Tests that need sample pstats reuse `native_cprofile`, whose stdlib workload runs
+in a separate process so it cannot compete with the worker's active profiler.
+
+The typed run context is published before waiting for the Testmon lease and
+records whether that lease was acquired. An interrupted wait therefore retains
+its parent profile and authenticated invocation identity without inventing a
+child process outcome. A context with an unacquired lease rejects any selection,
+inventory or suite artifact; it proves no test execution.
 
 Profile reports select the nearest project manifest owning the profile artifact.
 This keeps member reports confined to their member when Make starts at the

@@ -19,16 +19,6 @@ class FlextInfraProtocolsDeps(Protocol):
     """Dependency-analysis protocols exposed through ``p.Infra``."""
 
     @runtime_checkable
-    class TypingGenerationPolicy(Protocol):
-        """Configuration consumed by the native typing-package generator."""
-
-        @property
-        def directory(self) -> str: ...
-
-        @property
-        def distribution_prefix(self) -> str: ...
-
-    @runtime_checkable
     class RuntimeDependencyCollector(Protocol):
         """Collect explicit target suppliers for one completed native scan."""
 

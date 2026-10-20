@@ -242,11 +242,21 @@ class FlextInfraPyprojectModernizerDocument:
                 preserve_layout=True,
             )
         else:
-            manifests = u.Infra.load_workspace_manifest(state.pyproject_path.parent)
-            if manifests.failure:
-                return r[t.StrSequence].from_failure(manifests)
-            manifest = manifests.value[0] if manifests.value else None
-            project = manifest.project if manifest is not None else None
+            inputs = u.Infra.load_codegen_inputs(state.pyproject_path.parent).flat_map(
+                lambda declared: u.Infra.load_workspace_manifest(
+                    state.pyproject_path.parent
+                ).map(lambda manifests: (declared, manifests))
+            )
+            if inputs.failure:
+                return r[t.StrSequence].from_failure(inputs)
+            declared, manifests = inputs.value
+            repository = declared.spec.repository
+            project = repository.project
+            if not manifests:
+                return r[t.StrSequence].fail(
+                    "Repository packaging identity is required"
+                )
+            identity = manifests[0].repository
             topology = m.Infra.PyprojectDeclaredTopology.model_validate({
                 **(
                     project.model_dump(
@@ -266,10 +276,8 @@ class FlextInfraPyprojectModernizerDocument:
                                 u.Infra.docs_meta_from_payload(state.payload),
                             )
                         ),
-                        package=manifest.repository.package,
+                        package=identity.package,
                     )
-                    if manifest is not None
-                    else None
                 ),
             })
             rendered = self._render_document_state(

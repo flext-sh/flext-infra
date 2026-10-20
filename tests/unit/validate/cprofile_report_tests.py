@@ -6,36 +6,74 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import cProfile
-import io
-import pstats
 import sys
 from pathlib import Path
 
 import pytest
 
 from flext_infra import config, main, validate
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraCProfileReport:
     """Prove real pstats artifacts render through the typed owner."""
 
     @staticmethod
+    @pytest.mark.parametrize("execution_artifact", [False, True])
+    def test_waiting_lease_profile_has_no_child_execution(
+        tmp_path: Path, native_cprofile: Path, *, execution_artifact: bool
+    ) -> None:
+        """A profiled lease wait renders only authenticated parent evidence."""
+        reports = tmp_path / c.Infra.REPORTS_DIR_NAME
+        directory = reports / "waiting"
+        directory.mkdir(parents=True)
+        profile = native_cprofile
+        context = m.Infra.PytestRunContext(
+            execution_mode=c.Infra.PytestExecutionMode.INCREMENTAL,
+            testmon_db=tmp_path / "testmon",
+            testmon_lease_acquired=False,
+            deadline_monotonic=None,
+            report_directory=directory,
+        )
+        (directory / "run-context.json").write_text(
+            context.model_dump_json(), encoding=c.DEFAULT_ENCODING
+        )
+        profile.with_suffix(".pstats.json").write_text(
+            context.model_copy(
+                update={"profile_sha256": u.Cli.sha256_bytes(profile.read_bytes())}
+            ).model_dump_json(),
+            encoding=c.DEFAULT_ENCODING,
+        )
+        if execution_artifact:
+            (directory / "suite-outcome.json").write_text(
+                "{}\n", encoding=c.DEFAULT_ENCODING
+            )
+        result = validate.FlextInfraCProfileReport(
+            repository_root=tmp_path,
+            profile=profile,
+            output=reports / "profile.txt",
+            sort=config.Infra.tooling.tools.pytest.profile_sort,
+            limit=config.Infra.tooling.tools.pytest.profile_limit,
+            run_receipt=profile.with_suffix(".pstats.json"),
+        ).execute()
+        if execution_artifact:
+            tm.fail(result)
+        else:
+            tm.ok(result)
+
+    @staticmethod
     @pytest.mark.parametrize("exit_code", [0, 1])
     @pytest.mark.parametrize("stage", ["selection", "inventory"])
     def test_selection_profile_without_plan_requires_failed_receipt(
         tmp_path: Path,
+        native_cprofile: Path,
         exit_code: int,
         stage: str,
     ) -> None:
         """Render failed selection evidence without accepting an incomplete success."""
         directory = tmp_path / c.Infra.REPORTS_DIR_NAME / "selection"
         directory.mkdir(parents=True)
-        profile = directory / "parent.pstats"
-        measured = cProfile.Profile()
-        measured.runcall(sum, range(3))
-        measured.dump_stats(str(profile))
+        profile = native_cprofile
         selection = directory / (
             c.Infra.PYTEST_INVENTORY_PROFILE_FILENAME
             if stage == "inventory"
@@ -44,7 +82,8 @@ class TestsFlextInfraCProfileReport:
         selection.write_bytes(profile.read_bytes())
         context = m.Infra.PytestRunContext(
             execution_mode=c.Infra.PytestExecutionMode.INCREMENTAL,
-            testmon_db=None,
+            testmon_db=tmp_path / "testmon",
+            testmon_lease_acquired=True,
             deadline_monotonic=None,
             report_directory=directory,
         )
@@ -97,137 +136,6 @@ class TestsFlextInfraCProfileReport:
             tm.that(output.read_text(encoding=c.DEFAULT_ENCODING), has=str(selection))
         else:
             tm.fail(result)
-
-    @staticmethod
-    def test_cli_profiles_retain_each_run_and_measure_startup(tmp_path: Path) -> None:
-        """Repeated public CLI launches preserve raw runs including CLI imports."""
-        output = tmp_path / "profile.pstats"
-        original: bytes | None = None
-        for _ in range(2):
-            tm.ok(
-                u.Cli.run_checked(
-                    (
-                        sys.executable,
-                        "-m",
-                        "flext_infra._profile_entry",
-                        str(output),
-                        "--help",
-                    ),
-                    cwd=tmp_path,
-                )
-            )
-            profiles = sorted(tmp_path.glob("profile-*.pstats"))
-            if original is None:
-                tm.that(len(profiles), eq=1)
-                original = profiles[0].read_bytes()
-            else:
-                tm.that(len(profiles), eq=2)
-                tm.ok(original in (path.read_bytes() for path in profiles))
-                previous = tuple(tmp_path.glob("profile.previous-*.pstats"))
-                tm.that(len(previous), eq=1)
-                tm.that(previous[0].read_bytes(), eq=original)
-            tm.that(
-                output.read_bytes() in (path.read_bytes() for path in profiles), eq=True
-            )
-            for profile in profiles:
-                rendered = io.StringIO()
-                pstats.Stats(str(profile), stream=rendered).print_stats(
-                    r"/flext_infra/cli\.py:\d+\(<module>\)"
-                )
-                tm.that(rendered.getvalue(), has="(<module>)")
-
-    @staticmethod
-    @pytest.mark.parametrize(
-        "arguments",
-        [("--help",), ("validate", "cprofile-report", "--invalid-profile-option")],
-    )
-    def test_profile_publication_failure_preserves_the_native_cli_status(
-        tmp_path: Path, arguments: t.StrTuple
-    ) -> None:
-        """A real invalid parent cannot replace a failing CLI's returned status."""
-        blocked = tmp_path / "blocked-parent"
-        blocked.write_text("not a directory\n", encoding=c.DEFAULT_ENCODING)
-        reference = tm.ok(
-            u.Cli.run_raw(
-                (sys.executable, "-m", "flext_infra", *arguments), cwd=tmp_path
-            )
-        )
-        profiled = tm.ok(
-            u.Cli.run_raw(
-                (
-                    sys.executable,
-                    "-m",
-                    "flext_infra._profile_entry",
-                    str(blocked / "profile.pstats"),
-                    *arguments,
-                ),
-                cwd=tmp_path,
-            )
-        )
-        tm.that(profiled.stdout, eq=reference.stdout)
-        tm.that(profiled.stderr, has="NotADirectoryError")
-        tm.that(profiled.stderr, has=str(blocked))
-        if u.Cli.process_succeeded(reference.outcome):
-            tm.fail(u.Cli.process_succeeded(profiled.outcome))
-        else:
-            tm.that(
-                profiled.outcome.raw_return_code, eq=reference.outcome.raw_return_code
-            )
-
-    @staticmethod
-    def test_profile_publication_failure_keeps_the_original_cli_exception(
-        tmp_path: Path,
-    ) -> None:
-        """A closed native stdout raises first; a real flush failure remains a note."""
-        blocked = tmp_path / "blocked-parent"
-        blocked.write_text("not a directory\n", encoding=c.DEFAULT_ENCODING)
-        consumer = (
-            "import runpy, sys\n"
-            "from flext_cli import cli\n"
-            "from flext_infra import main\n"
-            "sys.stdout.close()\n"
-            "module = sys.argv[1]\n"
-            "sys.argv = sys.argv[1:]\n"
-            "runpy.run_module(module, run_name='__main__')\n"
-        )
-        reference = tm.ok(
-            u.Cli.run_raw(
-                (sys.executable, "-c", consumer, "flext_infra", "--help"),
-                cwd=tmp_path,
-            )
-        )
-        profiled = tm.ok(
-            u.Cli.run_raw(
-                (
-                    sys.executable,
-                    "-c",
-                    consumer,
-                    "flext_infra._profile_entry",
-                    str(blocked / "profile.pstats"),
-                    "--help",
-                ),
-                cwd=tmp_path,
-            )
-        )
-        tm.fail(u.Cli.process_succeeded(reference.outcome))
-        tm.that(
-            profiled.outcome.raw_return_code,
-            eq=reference.outcome.raw_return_code,
-            msg=reference.stderr + profiled.stderr,
-        )
-        tm.that(reference.stderr, lacks="KeyboardInterrupt")
-        for executed in (reference, profiled):
-            tm.fail(executed.outcome.timed_out)
-            tm.that(executed.outcome.forwarded_signal, eq=None)
-        tm.that(reference.stderr, has="ValueError: I/O operation on closed file.")
-        primary_trace, secondary_trace = profiled.stderr.split(
-            "profile publication failed:\n", maxsplit=1
-        )
-        tm.that(primary_trace, has="ValueError: I/O operation on closed file.")
-        tm.that(primary_trace, lacks="NotADirectoryError")
-        tm.that(secondary_trace, has="NotADirectoryError")
-        tm.that(secondary_trace, has=str(blocked))
-        tm.that(secondary_trace, lacks="ValueError: I/O operation on closed file.")
 
     @staticmethod
     def test_source_view_filters_before_its_row_limit(tmp_path: Path) -> None:
@@ -387,7 +295,8 @@ class TestsFlextInfraCProfileReport:
         tm.ok(profiled)
         context = m.Infra.PytestRunContext(
             execution_mode=c.Infra.PytestExecutionMode.INCREMENTAL,
-            testmon_db=None,
+            testmon_db=tmp_path / "testmon",
+            testmon_lease_acquired=True,
             deadline_monotonic=None,
             report_directory=report_dir,
         )

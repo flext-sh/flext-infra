@@ -371,10 +371,9 @@ class FlextInfraUtilitiesDocsRender:
             "## Collection Rules",
             "",
             (
-                f"Read [`/flext/AGENTS.md`]({agents_link}) §9 — Agent Execution "
-                "Pre-requisites — for the canonical pre-change checklist "
-                "(parent FLEXT chain, Scope bootstrap, skill loading, "
-                "zero-debt baseline, slot registry verification)."
+                f"Read [`/flext/AGENTS.md`]({agents_link}) and this project's "
+                "`AGENTS.md` for the current authority chain, execution "
+                "boundaries and required validation."
             ),
         ]
 
@@ -553,7 +552,8 @@ class FlextInfraUtilitiesDocsRender:
                 c.Infra.GENERATED_HEADER,
                 "",
                 (
-                    f"**Version**: `{version}` | **Python**: 3.13+ | "
+                    f"**Version**: `{version}` | **Python**: see `pyproject.toml` "
+                    "`requires-python` | "
                     f"**Project class**: `{scope.project_class}`"
                 ),
                 "",
@@ -604,7 +604,10 @@ class FlextInfraUtilitiesDocsRender:
                     "- Public extensions exposed by this project: "
                     f"{FlextInfraUtilitiesDocsRender._preview(facades)}."
                 ),
-                "- Library abstraction boundaries: see AGENTS.md §2.7.",
+                (
+                    "- Library abstraction boundaries: see the project `AGENTS.md` "
+                    "and the referenced parent architecture rules."
+                ),
                 "",
                 *FlextInfraUtilitiesDocsRender._quality_gates_lines(
                     scope,

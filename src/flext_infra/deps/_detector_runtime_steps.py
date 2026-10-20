@@ -106,12 +106,9 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         if deptry_result.failure:
             return r[bool].from_failure(deptry_result)
         issues, _ = deptry_result.value
-        project_payload = deps_service.build_project_report(
+        projects_report[project_name] = deps_service.build_project_report(
             project_name,
             issues,
-        )
-        projects_report[project_name] = m.Infra.ProjectRuntimeReport(
-            deptry=project_payload.deptry,
         )
         run_typings_for_project = (
             do_typings and (project_path / c.Infra.DEFAULT_SRC_DIR).is_dir()
@@ -154,8 +151,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         to_add: t.StrSequence = typings_report.to_add
         if not (params.apply_typings and to_add and params.apply):
             return r[bool].ok(value=True)
-        # UV owns the TOML edit, lock, installation and failed-add source recovery.
-        # Inherit Make's UV_PROJECT_ENVIRONMENT; never rebind a parent's runtime.
+        # UV declares the development requirement; Make owns resolution and install.
         run_outcome = u.Cli.run_raw(
             [
                 settings.Infra.uv_executable or c.Infra.UV,
@@ -165,7 +161,6 @@ class FlextInfraDependencyDetectorRuntimeSteps:
                 "--group",
                 c.Infra.DEV,
                 "--frozen",
-                "--no-sync",
                 "--",
                 *to_add,
             ],
