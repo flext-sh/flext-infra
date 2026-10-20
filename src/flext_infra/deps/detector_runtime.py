@@ -29,7 +29,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
         self._detector = detector
         self._deps = deps
 
-    def run(self, params: m.Infra.DetectCommand) -> p.Result[bool]:  # ruff: ignore[too-many-locals]
+    def run(self, params: m.Infra.DetectCommand) -> p.Result[bool]:
         """Execute dependency detection and generate workspace report (orchestrator).
 
         Returns:

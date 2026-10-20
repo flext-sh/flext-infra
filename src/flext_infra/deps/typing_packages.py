@@ -87,7 +87,7 @@ class FlextInfraDependencyTypingPackages:
         return r[t.StrSequence].ok(tuple(str(path) for path in packages))
 
     @classmethod
-    def _generate_typing_package(  # ruff: ignore[too-many-locals]
+    def _generate_typing_package(
         cls,
         root: Path,
         module: str,

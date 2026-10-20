@@ -458,7 +458,7 @@ class FlextInfraMisePublication:
         return r[tuple[m.Infra.CodegenJournalSource, ...]].ok(tuple(outputs))
 
     @staticmethod
-    def publish(  # ruff: ignore[too-many-locals]
+    def publish(
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
         *,
         batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
@@ -641,7 +641,7 @@ class FlextInfraMisePublication:
         )
 
     @staticmethod
-    def _prerequisite_issue(  # ruff: ignore[too-many-arguments]
+    def _prerequisite_issue(
         publication: m.Infra.CodegenStagedFile,
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
         written: list[Path],
@@ -837,7 +837,7 @@ class FlextInfraMisePublication:
         return r[m.Cli.AtomicFileState].ok(receipt.value)
 
     @staticmethod
-    def _source_prerequisites(  # ruff: ignore[too-many-arguments]
+    def _source_prerequisites(
         sources: t.VariadicTuple[m.Cli.AtomicFileState],
         published: t.MappingKV[
             Path, t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileState]

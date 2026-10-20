@@ -34,7 +34,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         @property
         def source_project(self) -> p.Infra.RopeProject: ...
 
-        def _cleanup_generated_support_file_states(  # ruff: ignore[no-self-use]
+        def _cleanup_generated_support_file_states(
             self,
             plan: m.Infra.LazyInitPlan,
         ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:

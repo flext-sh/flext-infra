@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import pytest
@@ -27,9 +28,12 @@ class TestsFlextInfraDocsMainCommands:
     @staticmethod
     @pytest.mark.parametrize("invalid_navigation", [False, True])
     def test_native_mkdocs_strict_build_preserves_its_warning_failure(
-        tmp_path: Path, *, invalid_navigation: bool
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        *,
+        invalid_navigation: bool,
     ) -> None:
-        """The real SDK builds content and rejects warnings in strict mode."""
+        """The SDK exposes warnings and restores logger state after either outcome."""
         content = tmp_path / "content"
         content.mkdir()
         (content / "index.md").write_text(
@@ -53,9 +57,15 @@ class TestsFlextInfraDocsMainCommands:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        logger = logging.getLogger("mkdocs")
+        previous_handlers = tuple(logger.handlers)
+        previous_level = logger.level
+        previous_propagate = logger.propagate
         if invalid_navigation:
-            with pytest.raises(Abort, match="strict mode"):
+            with pytest.raises(Abort, match="strict mode") as caught:
                 u.Infra.docs_run_mkdocs(scope)
+            tm.ok(caught.value.__traceback__ is not None)
+            tm.that(capsys.readouterr().err, has="missing.md")
         else:
             report = u.Infra.docs_run_mkdocs(scope)
             tm.ok(report.passed)
@@ -63,6 +73,9 @@ class TestsFlextInfraDocsMainCommands:
             tm.that(
                 html.read_text(encoding=c.DEFAULT_ENCODING), has="Public build proof"
             )
+        tm.that(tuple(logger.handlers), eq=previous_handlers)
+        tm.that(logger.level, eq=previous_level)
+        tm.that(logger.propagate, eq=previous_propagate)
 
     @staticmethod
     def test_auditor_execute_fails_on_finding(tmp_path: Path) -> None:
