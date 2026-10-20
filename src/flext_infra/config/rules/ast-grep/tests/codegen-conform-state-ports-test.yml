@@ -1,0 +1,7 @@
+id: codegen-conform-state-ports
+valid:
+  - |
+    FlextInfraCodegenConform(repository_root=root, state=m.Infra.CodegenConformState(repository_root=root, ports=ports))
+invalid:
+  - |
+    FlextInfraCodegenConform(repository_root=root, ports=ports)

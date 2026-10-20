@@ -44,24 +44,28 @@ class FlextInfraRopeWorkspace(
         default_factory=lambda: None,
     )
     _project_layout_cache: MutableMapping[str, m.Infra.RopeProjectLayout | None] = (
-        m.PrivateAttr(default_factory=dict)
+        m.PrivateAttr(default_factory=dict[str, m.Infra.RopeProjectLayout | None])
     )
     _package_context_cache: MutableMapping[str, m.Infra.LazyInitPackageContext] = (
-        m.PrivateAttr(default_factory=dict)
+        m.PrivateAttr(default_factory=dict[str, m.Infra.LazyInitPackageContext])
     )
     _module_policy_cache: MutableMapping[
         t.Triple[str, str, str],
         m.Infra.NamespaceModulePolicy,
-    ] = m.PrivateAttr(default_factory=dict)
+    ] = m.PrivateAttr(
+        default_factory=dict[t.Triple[str, str, str], m.Infra.NamespaceModulePolicy]
+    )
     _module_convention_cache: MutableMapping[str, m.Infra.RopeModuleConvention] = (
-        m.PrivateAttr(default_factory=dict)
+        m.PrivateAttr(default_factory=dict[str, m.Infra.RopeModuleConvention])
     )
     _module_object_cache: MutableMapping[
         t.Triple[str, bool, bool],
         t.VariadicTuple[m.Infra.Object],
-    ] = m.PrivateAttr(default_factory=dict)
+    ] = m.PrivateAttr(
+        default_factory=dict[t.Triple[str, bool, bool], t.VariadicTuple[m.Infra.Object]]
+    )
     _resource_cache: MutableMapping[str, t.Infra.RopeFile | None] = m.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict[str, t.Infra.RopeFile | None],
     )
     _name_index: (
         MutableMapping[str, t.VariadicTuple[t.Triple[Path, str, t.VariadicTuple[int]]]]

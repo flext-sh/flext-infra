@@ -372,14 +372,12 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         tm.that(commands["pyrefly"], has=str(config_path))
 
     @staticmethod
+    @pytest.mark.parametrize("gate", [c.Infra.RUFF, c.Infra.MYPY])
     def test_preview_source_writes_preserves_live_sources(
-        tmp_path: Path,
+        source_preview_workspace: t.Pair[Path, Path],
+        gate: str,
     ) -> None:
-        package = u.Tests.src_package(
-            tmp_path,
-            "sample",
-            pyproject="[project]\nname = 'sample'\nversion = '1.0.0'\n",
-        )
+        tmp_path, package = source_preview_workspace
         py_file = package / "sample.py"
         original_source = "def value() -> int:\n    return 1\n"
         updated_source = "def value() -> int:\n    return 2\n"
@@ -390,7 +388,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             {py_file: updated_source},
             workspace=tmp_path,
             source_preview=infra.source_preview(tmp_path),
-            gates=("lint",),
+            gates=(gate,),
         )
 
         tm.that(result[0], eq=True)
@@ -400,14 +398,10 @@ class TestsFlextInfraUtilitiesProtectedEdit:
 
     @staticmethod
     def test_staged_source_consumer_reads_candidate_without_live_writes(
-        tmp_path: Path,
+        source_preview_workspace: t.Pair[Path, Path],
     ) -> None:
         """Expose candidate bytes to the real consumer through public staging."""
-        package = u.Tests.src_package(
-            tmp_path,
-            "sample",
-            pyproject="[project]\nname = 'sample'\nversion = '1.0.0'\n",
-        )
+        tmp_path, package = source_preview_workspace
         py_file = package / "sample.py"
         original = "VALUE = 1\n"
         updated = "VALUE = 2\n"
@@ -431,7 +425,11 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             tmp_path,
             {py_file.resolve(): updated},
             consume_candidate,
+            options=m.Infra.CodegenSourcePreviewOptions(runtime_root=tmp_path),
         )
+        if observed.failure:
+            state = tmp_path / c.Infra.TRANSACTION_STATE_DIRNAME
+            u.Cli.info(f"native preview state effects: {tuple(state.rglob('*'))}")
         tm.ok(observed)
         tm.that(observed.value, eq=(updated, original, before_modified_ns))
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
@@ -439,14 +437,10 @@ class TestsFlextInfraUtilitiesProtectedEdit:
 
     @staticmethod
     def test_source_preview_preserves_parser_exception_and_cleans_staging(
-        tmp_path: Path,
+        source_preview_workspace: t.Pair[Path, Path],
     ) -> None:
         """A real parser failure leaves live bytes untouched for a fresh view."""
-        package = u.Tests.src_package(
-            tmp_path,
-            "sample",
-            pyproject="[project]\nname = 'sample'\nversion = '1.0.0'\n",
-        )
+        tmp_path, package = source_preview_workspace
         py_file = package / "sample.py"
         original = "VALUE = 1\n"
         invalid = "def value(:\n"
@@ -469,6 +463,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
                 tmp_path,
                 {py_file.resolve(): invalid},
                 parse_candidate,
+                options=m.Infra.CodegenSourcePreviewOptions(runtime_root=tmp_path),
             )
         # The staged parse failure is identified by the candidate path it
         # names: this interpreter sources SyntaxError.text from the on-disk
@@ -480,6 +475,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             tmp_path,
             {py_file.resolve(): "VALUE = 2\n"},
             parse_candidate,
+            options=m.Infra.CodegenSourcePreviewOptions(runtime_root=tmp_path),
         )
         tm.ok(fresh)
         tm.that(fresh.value, eq="VALUE = 2\n")

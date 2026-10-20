@@ -11,11 +11,11 @@ import os
 import shutil
 from pathlib import Path
 
-from flext_tests import FlextTestsUtilities, tm
+from flext_tests import FlextTestsUtilities
 
 from flext_infra import FlextInfraUtilities, config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, p, r, t
+from tests import c, m, p, r, t, tm
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
 from tests.utilities_deps import TestsFlextInfraUtilitiesDepsMixin
 from tests.utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixtureMixin

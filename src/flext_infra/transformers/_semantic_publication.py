@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import c, check, config, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenMiseArtifacts,
@@ -564,6 +565,7 @@ class FlextInfraSemanticPublication:
                         staged,
                         plans=analysis.files,
                         workspace=repository_root,
+                        validator=cls._check_semantic_sources,
                     )
                 ),
             ),
@@ -581,6 +583,37 @@ class FlextInfraSemanticPublication:
             published.value,
             published_files=published_files,
         )
+
+    @staticmethod
+    def _check_semantic_sources(
+        root: Path,
+        plan: m.Infra.StageSourcePlan,
+        project: Path,
+        runtime_report: m.Infra.ValidationReport,
+    ) -> p.Result[bool]:
+        """Retain full native checking for the semantic publication operation.
+
+        Returns:
+            The original checker verdict while admission owns the candidate view.
+
+        """
+        relative = project.relative_to(plan.workspace)
+        candidate = root / relative
+        with TemporaryDirectory(
+            prefix="flext-semantic-admission-reports-"
+        ) as directory:
+            return check.FlextInfraWorkspaceChecker(
+                repository_root=candidate
+            ).execute_candidate(
+                m.Infra.RunCommand(
+                    repository_root=candidate,
+                    reports_dir=str(Path(directory) / relative),
+                    check_only=True,
+                ),
+                plan,
+                project_root=project,
+                runtime_report=runtime_report,
+            )
 
     @classmethod
     def _published_paths(
@@ -739,6 +772,7 @@ class FlextInfraSemanticPublication:
         prepared_files = FlextInfraCodegenStaging.prepare_python_plans(
             repository_root,
             analysis.files,
+            prepare=u.Infra.normalize_source_plan,
         )
         if prepared_files.failure:
             return result_type.from_failure(prepared_files)

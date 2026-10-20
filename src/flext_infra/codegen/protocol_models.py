@@ -21,7 +21,11 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
 
     conform: Annotated[
         Callable[[p.Infra.CodegenConformRequest], p.Result[p.Infra.CodegenResult]],
-        m.Field(exclude=True, description="Caller-bound native conformance handler."),
+        m.Field(
+            ...,
+            exclude=True,
+            description="Caller-bound native conformance handler.",
+        ),
     ]
 
     @override
@@ -144,6 +148,7 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
             workspace.rope_project, "BaseModel", module_name="pydantic"
         ).get_object()
         inventory: t.MutableMappingKV[str, p.Infra.RopePyName] = {}
+        admissions: t.MutableMappingKV[p.Infra.RopePyObject, bool] = {}
         pending: list[
             t.Triple[str, p.Infra.RopePyName, t.VariadicTuple[p.Infra.RopePyObject]]
         ] = [("", facade, ())]
@@ -163,32 +168,21 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
                         f"model facade route has no native binding: {route}"
                     )
                 child = binding.get_object()
-                admitted = FlextInfraCodegenProtocolModels._admit_model(
-                    inventory, route, binding, base
-                )
-                if admitted.failure:
-                    return result_type.from_failure(admitted)
+                admitted = admissions.get(child)
+                if admitted is None:
+                    admitted = base in u.Infra.class_ancestry(child)
+                    admissions[child] = admitted
+                if admitted:
+                    previous = inventory.setdefault(route, binding)
+                    if not u.Infra.same_name(previous, binding):
+                        return result_type.fail(
+                            "model facade route has competing native identities: "
+                            f"{route}"
+                        )
                 # Models may also expose nested models through several public routes.
                 if u.Infra.py_class(child):
                     pending.append((f"{route}.", binding, ancestry))
         return result_type.ok(inventory)
-
-    @staticmethod
-    def _admit_model(
-        inventory: t.MutableMappingKV[str, p.Infra.RopePyName],
-        route: str,
-        binding: p.Infra.RopePyName,
-        base: p.Infra.RopePyObject,
-    ) -> p.Result[bool]:
-        if base not in u.Infra.class_ancestry(binding.get_object()):
-            return r[bool].ok(value=False)
-        existing = inventory.get(route)
-        if existing is not None and not u.Infra.same_name(existing, binding):
-            return r[bool].fail(
-                f"model facade route has competing native identities: {route}"
-            )
-        inventory[route] = binding
-        return r[bool].ok(value=True)
 
     @classmethod
     def _select_models(
@@ -873,14 +867,16 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
     ) -> set[str]:
         found: set[str] = set()
         for entry in workspace.modules():
-            if entry.file_path.is_relative_to(workspace.repository_root / directory):
-                continue
             resource = workspace.resource(entry.file_path)
             if resource is None:
                 msg = f"indexed module unavailable: {entry.file_path}"
                 raise ValueError(msg)
             module = u.Infra.resolve_pymodule(workspace.rope_project, resource)
             source = module.source_code
+            if entry.file_path.is_relative_to(
+                workspace.repository_root / directory
+            ) and source.startswith(c.Infra.AUTOGEN_HEADERS):
+                continue
             primaries = (
                 (source[begin:end], u.Infra.scope_at(module, begin))
                 for begin, end in u.Infra.reference_regions(source)

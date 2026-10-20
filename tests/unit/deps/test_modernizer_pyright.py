@@ -17,7 +17,7 @@ from flext_infra.deps import (
     FlextInfraPyprojectModernizer,
 )
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import m, t, tm, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -403,6 +403,7 @@ class TestsFlextInfraDepsModernizerPyright:
         )
 
     @staticmethod
+    @pytest.mark.parametrize("local_environment", [False, True])
     @pytest.mark.parametrize("complete", [False, True])
     @pytest.mark.parametrize(
         ("project_name", "authored_root", "planned_root"),
@@ -418,13 +419,14 @@ class TestsFlextInfraDepsModernizerPyright:
         planned_root: str,
         *,
         complete: bool,
+        local_environment: bool,
     ) -> None:
         """Rendering keeps arbitrary source roots before and after planned writes."""
         rules = config.Infra.tooling.tools.pyright.path_rules
         project_dir = u.Tests.mk_project(
             tmp_path,
             project_name,
-            pyproject=f"[project]\nname='{project_name}'\nversion='0.1.0'\n",
+            pyproject=f"[project]\nname='{project_name}'\nversion='0.1.0'\n[tool.flext.docs]\npackage_name='{u.Tests.project_spec(project_name).package_name}'\n",
         )
         package_name = u.Tests.project_spec(project_name).package_name
         active_roots = (rules.source_dir, "docs", "scripts", "examples", authored_root)
@@ -456,8 +458,11 @@ class TestsFlextInfraDepsModernizerPyright:
         topology = m.Infra.PyprojectDeclaredTopology(
             declared_python_dirs=(rules.source_dir, planned_root),
             declared_python_dirs_are_complete=complete,
+            project_kind="core",
         )
         request = m.Infra.ToolingContextRequest(
+            environment_dir=(project_dir if local_environment else tmp_path)
+            / c.Infra.ENVIRONMENT_DIRECTORY,
             planned_sources={},
             project_name=project_name,
             package_name=package_name,

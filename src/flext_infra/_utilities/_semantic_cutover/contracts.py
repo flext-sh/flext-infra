@@ -189,9 +189,9 @@ class FlextInfraUtilitiesSemanticContracts(
         sources: t.MappingKV[t.Infra.RopeSourcePath, str],
         rules: t.SequenceOf[p.Infra.RopeContractRule],
         captured: p.Infra.CodemodSourceEpoch | None,
-    ) -> dict[t.Infra.RopeSourcePath, str]:
+    ) -> t.MutableMappingKV[t.Infra.RopeSourcePath, str]:
         # Elect receivers without making unrelated generated sources editable.
-        providers: dict[t.Infra.RopeSourcePath, str] = {}
+        providers: t.MutableMappingKV[t.Infra.RopeSourcePath, str] = {}
         for rule in rules:
             if rule.ownership_transfer is None and captured is None:
                 continue
@@ -245,9 +245,9 @@ class FlextInfraUtilitiesSemanticContracts(
         context: tuple[tuple[tuple[Path, str], ...], p.Infra.CodemodSourceEpoch],
         restrictions: tuple[bool, bool],
     ) -> tuple[
-        dict[Path, str],
+        t.MutableMappingKV[Path, str],
         t.MutableMappingKV[Path, t.MutableSequenceOf[str]],
-        dict[str, Path],
+        t.MutableMappingKV[str, Path],
     ]:
         working = dict(context[0])
         relocation = FlextInfraUtilitiesSemanticDeclarationRelocation
@@ -274,36 +274,61 @@ class FlextInfraUtilitiesSemanticContracts(
             implementation_owners: t.MutableMappingKV[
                 t.Pair[str, str], t.Infra.RopeImplementationPaths
             ] = {}
-            for rule in rules:
+            for declared_rule in rules:
                 if project is None:
                     project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
                         workspace.rope_project,
                         {**sources, **working},
                         captured=context[1],
                     )
-                members = cls._contract_rule_members(
-                    project,
-                    rule,
-                    (implementation_owners, context[1], working, owned_modules),
-                    restrictions,
-                )
-                changed = False
-                for change in members:
-                    path = Path(change.resource.real_path).resolve()
-                    proposed = relocation.remove_orphaned_imports(
-                        project, change.resource, working[path], change.new_contents
+                resources = tuple(
+                    project.get_resource(
+                        path.relative_to(Path(project.root.real_path)).as_posix()
                     )
-                    if proposed == working[path]:
-                        continue
-                    working[path] = proposed
-                    applied.setdefault(path, []).append(rule.id)
-                    changed = True
-                cli.display_text(
-                    f"mod: Rope contract {rule.id}: changed_files={len(members)}"
+                    for path in working
                 )
-                if changed:
-                    project.close()
-                    project = None
+                templates = cls._field_contract_templates(
+                    project, declared_rule, resources
+                )
+                for pattern, goal in templates:
+                    rule = (
+                        m.Infra.RopeContractRule.model_validate(
+                            declared_rule, from_attributes=True
+                        ).model_copy(update={"pattern": pattern, "goal": goal})
+                        if declared_rule.defaulted_field
+                        else declared_rule
+                    )
+                    if project is None:
+                        project = (
+                            FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+                                workspace.rope_project,
+                                {**sources, **working},
+                                captured=context[1],
+                            )
+                        )
+                    members = cls._contract_rule_members(
+                        project,
+                        rule,
+                        (implementation_owners, context[1], working, owned_modules),
+                        restrictions,
+                    )
+                    changed = False
+                    for change in members:
+                        path = Path(change.resource.real_path).resolve()
+                        proposed = relocation.remove_orphaned_imports(
+                            project, change.resource, working[path], change.new_contents
+                        )
+                        if proposed == working[path]:
+                            continue
+                        working[path] = proposed
+                        applied.setdefault(path, []).append(rule.id)
+                        changed = True
+                    cli.display_text(
+                        f"mod: Rope contract {rule.id}: changed_files={len(members)}"
+                    )
+                    if changed:
+                        project.close()
+                        project = None
         finally:
             if project is not None:
                 project.close()
@@ -425,9 +450,9 @@ class FlextInfraUtilitiesSemanticContracts(
             bool,
         ],
         result: tuple[
-            dict[Path, str],
+            t.MutableMappingKV[Path, str],
             t.MutableMappingKV[Path, t.MutableSequenceOf[str]],
-            dict[str, Path],
+            t.MutableMappingKV[str, Path],
         ],
     ) -> p.Result[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
         items, epoch, staged_receivers, captured = context
@@ -768,8 +793,20 @@ class FlextInfraUtilitiesSemanticContracts(
     ) -> bool:
         """Prove native receivers, evaluation safety and destination bindings.
 
+        Args:
+            project: The rope project containing the module.
+            rule: The contract rule being evaluated.
+            module: The Python module under consideration.
+            match: The specific contract match instance.
+            context: A tuple containing the current state of implementation owners,
+              sources, and owned modules.
+
         Returns:
             Whether every native admission proof accepts the captured match.
+
+        Raises:
+            ValueError: If the contract cannot be admitted due to assertion lowering
+              requirements.
 
         """
         implementation_owners, sources, owned_modules = context
@@ -791,7 +828,7 @@ class FlextInfraUtilitiesSemanticContracts(
         if not cls._admit_readonly_contract(project, rule, match, scope):
             return False
         cls._require_deferred_annotation(project, rule, module, match, (scope, sources))
-        cls._require_contract_evaluation(rule, module, match, scope)
+        cls._require_contract_evaluation(project, rule, module, match, scope)
         if not cls._admitted_unshadowed_builtins(rule, scope):
             if rule.pattern.startswith("assert "):
                 message = (
@@ -859,7 +896,7 @@ class FlextInfraUtilitiesSemanticContracts(
         module: p.Infra.RopePyModule,
         match: p.Infra.RopeContractMatch,
     ) -> bool:
-        if rule.required_field or rule.private_attribute:
+        if rule.required_field or rule.defaulted_field or rule.private_attribute:
             if not cls._admitted_field_metadata(project, rule, module, match):
                 return False
         elif rule.call_target is not None:
@@ -1064,6 +1101,7 @@ class FlextInfraUtilitiesSemanticContracts(
     @classmethod
     def _require_contract_evaluation(
         cls,
+        project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
         module: p.Infra.RopePyModule,
         match: p.Infra.RopeContractMatch,
@@ -1092,6 +1130,10 @@ class FlextInfraUtilitiesSemanticContracts(
                 f"{statement.lineno if statement is not None else scope.get_start()}"
             )
             line_start = source.rfind("\n", 0, region[0]) + 1
+            partial_line = (
+                source[line_start : region[0]].strip()
+                or source[region[1] :].partition("\n")[0].strip()
+            )
             if (
                 statement is None
                 or statement.msg is not match.get_ast("message")
@@ -1099,8 +1141,7 @@ class FlextInfraUtilitiesSemanticContracts(
                     ast.get_source_segment(source, statement)
                     != source[region[0] : region[1]]
                 )
-                or source[line_start : region[0]].strip()
-                or source[region[1] :].partition("\n")[0].strip()
+                or partial_line
                 or source[:line_start].rstrip("\r\n").endswith("\\")
             ):
                 raise ValueError(message)
@@ -1126,16 +1167,20 @@ class FlextInfraUtilitiesSemanticContracts(
                     )
                 ):
                     raise ValueError(message)
-        for capture in rule.drops:
-            match match.get_ast(capture):
-                case ast.Constant():
-                    pass
-                case _:
-                    message = (
-                        f"{rule.id}: cannot discard authored evaluation of {capture} "
-                        f"in {module.get_name()}:{scope.get_start()}"
-                    )
-                    raise ValueError(message)
+        discarded = next(
+            (
+                capture
+                for capture in rule.drops
+                if not isinstance(match.get_ast(capture), ast.Constant)
+            ),
+            None,
+        )
+        if discarded is not None:
+            message = (
+                f"{rule.id}: cannot discard authored evaluation of {discarded} "
+                f"in {module.get_name()}:{scope.get_start()}"
+            )
+            raise ValueError(message)
         # Only the capture the goal evaluates again must be free of calls; the
         # rest of the declaration (Annotated metadata, the field call) runs once.
         if rule.repeats is not None and refactors.word_call_regions(
@@ -1157,8 +1202,7 @@ class FlextInfraUtilitiesSemanticContracts(
             raise ValueError(message)
         if (
             rule.reorders_annotation
-            and len(refactors.word_call_regions(module.source_code, match.get_region()))
-            != 1
+            and len(cls._field_reordered_calls(project, rule, module, match)) != 1
         ):
             message = (
                 f"{rule.id}: annotation evaluation cannot reorder authored calls "
@@ -1221,7 +1265,7 @@ class FlextInfraUtilitiesSemanticContracts(
         tuple[p.Infra.RopePyName, ...],
         t.Infra.RopeNativeObject,
     ]:
-        builtin_module = project.get_module("builtins")
+        builtin_module = project.get_module("__builtin__")
         names = FlextInfraUtilitiesSemanticContracts._deferred_builtin_names(
             builtin_module
         )
@@ -1871,7 +1915,7 @@ class FlextInfraUtilitiesSemanticContracts(
             for parent in ast.walk(tree)
             for child in ast.iter_child_nodes(parent)
         }
-        nodes: dict[tuple[type[ast.AST], int], ast.AST] = {
+        nodes: t.MutableMappingKV[tuple[type[ast.AST], int], ast.AST] = {
             (type(node), runtime.source_offset(module.source_code, node)): node
             for node in ast.walk(tree)
             if isinstance(node, ast.Call | ast.Name)

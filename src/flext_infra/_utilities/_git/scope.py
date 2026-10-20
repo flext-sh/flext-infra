@@ -122,7 +122,16 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
 
     @classmethod
     def git_source_scope_paths(cls, scope_root: Path) -> t.VariadicTuple[Path] | None:
-        """Inventory tracked and unpublished source paths without following links."""
+        """Inventory tracked and unpublished source paths without following links.
+
+        Args:
+            scope_root: The root path of the scope to inventory.
+
+        Returns:
+            A tuple of tracked and unpublished source paths under the scope, or ``None``
+              if Git is inactive.
+
+        """
         root = cls._git_repo_root(str(scope_root))
         if root is None:
             return None

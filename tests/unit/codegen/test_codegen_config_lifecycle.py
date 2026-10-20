@@ -161,14 +161,23 @@ import sys
 from importlib.metadata import distribution
 from importlib.resources import files
 from pathlib import Path
+from typing import get_protocol_members, get_type_hints, is_protocol
 
 from flext_cli import FlextCliConfig, u
 from flext_core import c
-from flext_demo import FlextDemo, FlextDemoConfig, config, m, settings
+from flext_demo import FlextDemo, FlextDemoConfig, config, m, p, settings
 
 assert FlextDemoConfig.fetch_global() is config
 assert FlextCliConfig.fetch_global() is not config
 assert type(settings).fetch_global() is settings
+for port, namespace, singleton in (
+    (p.Demo.Config, p.Demo.ConfigNamespace, config),
+    (p.Demo.Settings, p.Demo.SettingsNamespace, settings),
+):
+    assert get_type_hints(port, localns={"p": p})["Demo"] is namespace
+    assert is_protocol(namespace)
+    assert get_protocol_members(namespace) == set(type(singleton.Demo).model_fields)
+    assert isinstance(singleton.Demo, namespace)
 assert Path(str(files("flext_demo"))).resolve().is_relative_to(
     Path(sys.prefix).resolve(),
 )
@@ -194,7 +203,7 @@ for runtime in (settings, isolated_settings):
     )
     assert service.settings is runtime
     result = service.ping(m.Demo.PingInput())
-    assert result.success, result.error
+    tm.ok(result.success), result.error
     expected = (
         config.Demo.ping_reply if runtime.Demo.enabled else config.Demo.disabled_reply
     )

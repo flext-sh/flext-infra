@@ -83,6 +83,9 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         if lazy_sources.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(lazy_sources)
         tooling_request = m.Infra.ToolingContextRequest(
+            # A future scaffold owns its declared runtime (standalone), so the
+            # runtime root is pinned to the scaffold root itself.
+            environment_dir=u.Infra.runtime_environment_dir(root, runtime_root=root),
             planned_sources={
                 plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
                 for plan in lazy_sources.value[0]
@@ -382,9 +385,23 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             if inputs.failure:
                 return result_type.from_failure(inputs)
         projected.update((plan.path, plan) for plan in exports.value.files)
+        source_states = inputs.value
+        if contract.custom:
+            project = workspace.project
+            if project is None:
+                return result_type.fail(
+                    f"scaffold workspace has no project metadata: {workspace.name}"
+                )
+            protocols = self._existing_protocol_sources(
+                root, project, (tuple(projected.values()), source_states)
+            )
+            if protocols.failure:
+                return result_type.from_failure(protocols)
+            projected.update((plan.path, plan) for plan in protocols.value[0])
+            source_states = protocols.value[1]
         planned = tuple(projected.values())
         with u.Infra.facade_source_project(
-            root, source_states=inputs.value, declared_files=planned
+            root, source_states=source_states, declared_files=planned
         ) as binding:
             final_inputs = self.planned_source_render_inputs(
                 render_inputs, planned, source_project=binding[0]

@@ -10,6 +10,7 @@ import sys
 from contextlib import ExitStack
 from pathlib import Path
 from re import escape
+from traceback import format_exception
 
 import pytest
 
@@ -233,7 +234,14 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
 
         outcome = owner.run_files_locked(roots, publish)
         tm.that(outcome.failure, eq=True)
-        tm.that(outcome.exception is retained[0].exception, eq=True)
+        assert outcome.exception is retained[0].exception, (
+            outcome.error,
+            outcome.exception,
+            outcome.error_data,
+            format_exception(outcome.exception)
+            if outcome.exception is not None
+            else (),
+        )
         tm.that(
             conftest.read_text(encoding=c.DEFAULT_ENCODING),
             eq=source + "# Concurrent source edit\n",
@@ -249,6 +257,114 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                 cwd=root,
             ),
             eq=["Published"],
+        )
+
+    @staticmethod
+    def test_classify_source_conflict_reports_the_changed_bytes_scope(
+        tmp_path: Path,
+    ) -> None:
+        """Attribute changed bytes to the scope that consumed them."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "service.py"
+        source.write_text(
+            "class Published: pass\n__all__ = ['Published']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        service = u.Tests.create_lazy_init_service(root)
+        with ExitStack() as contexts:
+            binding = contexts.enter_context(
+                u.Infra.facade_source_project(root, project_roots=(root,))
+            )
+            analysis = tm.ok(service.plan_files(source_project=binding[0]))
+            original = next(
+                file
+                for file in analysis.files
+                if file.path == package / c.Infra.INIT_PY
+            )
+            tm.that(
+                source in {state.path for state in original.source_states},
+                eq=True,
+            )
+            source.write_text(
+                "class Published: pass\n__all__ = ['Published']\n# Changed\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            with pytest.raises(ValueError, match=escape(str(source))) as caught:
+                contexts.close()
+        classified = service.classify_source_conflict(
+            analysis, binding[0], caught.value
+        )
+        tm.that(classified.exception is caught.value, eq=True)
+        tm.that(
+            package / c.Infra.INIT_PY in {file.path for file in classified.files},
+            eq=False,
+        )
+        tm.that(
+            any(
+                issue.file == str(package / c.Infra.INIT_PY)
+                for issue in classified.issues
+            ),
+            eq=True,
+        )
+
+    @staticmethod
+    def test_classify_source_conflict_observes_a_fresh_boundary(
+        tmp_path: Path,
+    ) -> None:
+        """Every classification observes the physical directories again."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        published = package / "service.py"
+        published.write_text(
+            "class Published: pass\n__all__ = ['Published']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tests = root / c.Infra.DIR_TESTS
+        tests.mkdir()
+        conftest = tests / "conftest.py"
+        source = "class FixtureProvider: pass\n__all__ = ['FixtureProvider']\n"
+        conftest.write_text(source, encoding=c.DEFAULT_ENCODING)
+        service = u.Tests.create_lazy_init_service(root)
+        with ExitStack() as contexts:
+            binding = contexts.enter_context(
+                u.Infra.facade_source_project(root, project_roots=(root,))
+            )
+            analysis = tm.ok(service.plan_files(source_project=binding[0]))
+            conftest.write_text(
+                source + "# Concurrent source edit\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            with pytest.raises(ValueError, match=escape(str(conftest))) as caught:
+                contexts.close()
+        classified = service.classify_source_conflict(
+            analysis, binding[0], caught.value
+        )
+        tm.that(classified.exception is caught.value, eq=True)
+        tm.that(
+            package / c.Infra.INIT_PY in {file.path for file in classified.files},
+            eq=True,
+        )
+        tm.that(
+            any(
+                issue.file == str(tests / c.Infra.INIT_PY)
+                for issue in classified.issues
+            ),
+            eq=True,
+        )
+        published.write_text(
+            "class Published: pass\n__all__ = ['Published']\n# Later edit\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        repeated = service.classify_source_conflict(analysis, binding[0], caught.value)
+        tm.that(
+            package / c.Infra.INIT_PY in {file.path for file in repeated.files},
+            eq=False,
+        )
+        tm.that(
+            any(
+                issue.file == str(package / c.Infra.INIT_PY)
+                for issue in repeated.issues
+            ),
+            eq=True,
         )
 
     @staticmethod
@@ -483,8 +599,11 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         plan = tm.ok(
             FlextInfraCodegenConform(
                 repository_root=root,
-                initial_workspace=workspace,
-                request=request,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    initial_workspace=workspace,
+                    request=request,
+                ),
             ).plan(request),
         )
 
@@ -605,8 +724,11 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         plan = tm.ok(
             FlextInfraCodegenConform(
                 repository_root=root,
-                request=request,
-                initial_workspace=workspace,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    request=request,
+                    initial_workspace=workspace,
+                ),
             ).plan(request),
         )
         selected = tuple(

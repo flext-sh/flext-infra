@@ -7,15 +7,17 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import stat
-from collections.abc import MutableMapping
+from collections.abc import Callable, MutableMapping
+from os.path import commonpath
 from pathlib import Path
-from tempfile import TemporaryDirectory
+from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import c, check, codegen, m, r, t, u
+from flext_infra import c, codegen, m, r, t, u
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsFiles as files,
     FlextInfraMiseArtifactsProcess as process,
+    FlextInfraMiseArtifactsVerification,
 )
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.codegen.staged_package import FlextInfraStagedPackage
@@ -34,8 +36,14 @@ class FlextInfraCodegenStaging:
         cls,
         workspace: Path,
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        *,
+        prepare: Callable[
+            [m.Infra.StageSourcePlan],
+            p.Result[m.Infra.StageSourcePlan],
+        ]
+        | None = None,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
-        """Prepare each owning project's joint bytes against its planned policy.
+        """Seal each owning project's exact proposal under its producer's policy.
 
         Each project consumes its own complete Python and metadata plans. Shared
         read-only workspace context does not join independent publication groups.
@@ -49,13 +57,10 @@ class FlextInfraCodegenStaging:
         result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
         projects = tuple(dict.fromkeys(plan.project for plan in plans))
         if len(projects) > 1:
-            return cls._prepare_split_project_plans(workspace, plans, projects)
-        if not projects or not any(
-            plan.path.suffix in {".py", ".pyi"} and plan.desired_content is not None
-            for plan in plans
-        ):
+            return cls._prepare_split_project_plans(workspace, plans, projects, prepare)
+        if not projects:
             return result_type.ok(plans)
-        return cls._prepare_single_project_plans(workspace, plans, projects[0])
+        return cls._prepare_single_project_plans(workspace, plans, projects[0], prepare)
 
     @classmethod
     def _prepare_split_project_plans(
@@ -63,6 +68,8 @@ class FlextInfraCodegenStaging:
         workspace: Path,
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         projects: t.VariadicTuple[Path],
+        prepare: Callable[[m.Infra.StageSourcePlan], p.Result[m.Infra.StageSourcePlan]]
+        | None,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Prepare one independent component per declared owning project.
 
@@ -70,6 +77,7 @@ class FlextInfraCodegenStaging:
             workspace: Shared read-only workspace root of every plan.
             plans: Plans of all components in their original order.
             projects: Distinct owning project roots in declaration order.
+            prepare: Optional producer-owned preparation of the pinned proposal.
 
         Returns:
             Prepared plans joined back into their original order.
@@ -79,7 +87,9 @@ class FlextInfraCodegenStaging:
         prepared_by_path: MutableMapping[Path, m.Infra.CodegenFilePlan] = {}
         for project in projects:
             local = cls.prepare_python_plans(
-                workspace, tuple(plan for plan in plans if plan.project == project)
+                workspace,
+                tuple(plan for plan in plans if plan.project == project),
+                prepare=prepare,
             )
             if local.failure:
                 return result_type.from_failure(local)
@@ -92,6 +102,8 @@ class FlextInfraCodegenStaging:
         workspace: Path,
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         project: Path,
+        prepare: Callable[[m.Infra.StageSourcePlan], p.Result[m.Infra.StageSourcePlan]]
+        | None,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Prepare one project's joint Python and metadata bytes together.
 
@@ -99,6 +111,7 @@ class FlextInfraCodegenStaging:
             workspace: Shared read-only workspace root of the plans.
             plans: Plans of the single owning project.
             project: The one distinct owning project root.
+            prepare: Optional producer-owned preparation of the pinned proposal.
 
         Returns:
             Prepared plans with their composed source states.
@@ -115,19 +128,89 @@ class FlextInfraCodegenStaging:
         ))
         if sources.failure:
             return result_type.from_failure(sources)
-        prepared = u.Infra.normalize_sources(
-            workspace,
-            {
-                plan.path: (
+        existing = next(
+            (
+                plan.prepared_sources
+                for plan in plans
+                if plan.prepared_sources is not None
+            ),
+            None,
+        )
+        if existing is not None:
+            if existing.version != 1 or not existing.source_query_topology:
+                return result_type.fail(
+                    "candidate preparation receipt has no root authority"
+                )
+            current = FlextInfraMiseArtifactsVerification.states_current(
+                existing.inputs
+            )
+            if current.failure:
+                return result_type.from_failure(current)
+            try:
+                queried = u.Cli.atomic_verify_directory_queries(
+                    existing.source_directories, existing.source_query_topology
+                )
+            except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+                return result_type.fail(str(exc), exception=exc)
+            if queried.failure:
+                return result_type.from_failure(queried)
+            hashes = dict(existing.prepared_hashes)
+            if set(hashes) != {plan.path for plan in plans} or any(
+                plan.prepared_sources is not existing
+                or plan.source_states != existing.inputs
+                or plan.source_directories != existing.source_directories
+                or plan.source_query_topology != existing.source_query_topology
+                or hashes[plan.path]
+                != (
                     None
                     if plan.desired_content is None
-                    else plan.desired_content.decode(c.DEFAULT_ENCODING)
+                    else u.Cli.sha256_bytes(plan.desired_content)
                 )
+                or plan.desired_mode != existing.modes.get(plan.path)
                 for plan in plans
-            },
-            inputs=sources.value,
-            workspaces=(project,) if not project.is_relative_to(workspace) else (),
-        )
+            ):
+                return result_type.fail("prepared source receipt cannot be reopened")
+            if prepare is None:
+                return result_type.ok(plans)
+            if not isinstance(existing, m.Infra.StageSourcePlan):
+                return result_type.fail(
+                    "prepared source receipt is not a stage source plan"
+                )
+            prepared = prepare(existing)
+        else:
+            planned = FlextInfraStagedPackage.plan_sources(
+                workspace,
+                {
+                    plan.path: (
+                        None
+                        if plan.desired_content is None
+                        else plan.desired_content.decode(c.DEFAULT_ENCODING)
+                    )
+                    for plan in plans
+                },
+                options=m.Infra.StageSourceOptions(
+                    inputs=sources.value,
+                    workspaces=(project,)
+                    if not project.is_relative_to(workspace)
+                    else (),
+                    declared_files=plans,
+                    source_directories=tuple(
+                        item for plan in plans for item in plan.source_directories
+                    ),
+                    source_query_topology=tuple(
+                        item for plan in plans for item in plan.source_query_topology
+                    ),
+                ),
+            )
+            if planned.failure:
+                return result_type.from_failure(planned)
+            prepared = (
+                FlextInfraStagedPackage.seal_sources(
+                    planned.value, planned.value.updates
+                )
+                if prepare is None
+                else prepare(planned.value)
+            )
         if prepared.failure:
             return result_type.from_failure(prepared)
         inputs = FlextInfraCodegenPreconditions.unique_states((
@@ -136,6 +219,8 @@ class FlextInfraCodegenStaging:
         ))
         if inputs.failure:
             return result_type.from_failure(inputs)
+        if inputs.value != prepared.value.inputs:
+            return result_type.fail("prepared source receipt omitted original inputs")
         return result_type.ok(
             tuple(
                 plan.model_copy(
@@ -146,7 +231,10 @@ class FlextInfraCodegenStaging:
                             is None
                             else content.encode(c.DEFAULT_ENCODING)
                         ),
-                        "source_states": inputs.value,
+                        "source_states": prepared.value.inputs,
+                        "source_directories": prepared.value.source_directories,
+                        "source_query_topology": prepared.value.source_query_topology,
+                        "prepared_sources": prepared.value,
                     }
                 )
                 for plan in plans
@@ -160,10 +248,15 @@ class FlextInfraCodegenStaging:
         *,
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         workspace: Path,
+        validator: Callable[
+            [Path, m.Infra.StageSourcePlan, Path, m.Infra.ValidationReport],
+            p.Result[bool],
+        ]
+        | None = None,
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Admit exact composed staged bytes with every native default gate.
+        """Require authenticated runtime admission, then the consumer's own checks.
 
-        Unchanged outputs enter the same runtime and read-only checker.
+        Unchanged outputs enter the same mandatory runtime admission.
         Preparation never occurs inside this authenticated consumer.
 
         Returns:
@@ -185,39 +278,35 @@ class FlextInfraCodegenStaging:
         consume_source_runtime = (
             codegen.FlextInfraCodegenTransaction.consume_source_runtime
         )
-        with TemporaryDirectory(prefix="flext-source-admission-reports-") as directory:
 
-            def validate(root: Path) -> p.Result[bool]:
-                for project in projects:
-                    runtime_root = u.Infra.runtime_environment_dir(project).parent
-                    consumed = consume_source_runtime(
-                        planned.value,
-                        root,
-                        runtime_root,
-                        project_root=project,
+        def validate(root: Path) -> p.Result[bool]:
+            for project in projects:
+                runtime_root = u.Infra.runtime_environment_dir(project).parent
+                consumed = consume_source_runtime(
+                    planned.value,
+                    root,
+                    runtime_root,
+                    project_root=project,
+                )
+                if consumed.failure:
+                    return r[bool].from_failure(consumed)
+                if not consumed.value.passed:
+                    return r[bool].fail(
+                        f"candidate runtime rejected: {project}:\n"
+                        + "\n".join((
+                            consumed.value.summary,
+                            *consumed.value.violations,
+                        ))
                     )
-                    if consumed.failure:
-                        return r[bool].from_failure(consumed)
-                    relative = project.relative_to(planned.value.workspace)
-                    candidate = root / relative
-                    checked = check.FlextInfraWorkspaceChecker(
-                        repository_root=candidate
-                    ).execute_candidate(
-                        m.Infra.RunCommand(
-                            repository_root=candidate,
-                            reports_dir=str(Path(directory) / relative),
-                            check_only=True,
-                        ),
-                        planned.value,
-                        project_root=project,
-                    )
+                if validator is not None:
+                    checked = validator(root, planned.value, project, consumed.value)
                     if checked.failure:
                         return r[bool].from_failure(checked)
                     if not checked.value:
                         return r[bool].fail(f"candidate check rejected: {project}")
-                return r[bool].ok(value=True)
+            return r[bool].ok(value=True)
 
-            checked = FlextInfraStagedPackage.consume_sources(planned.value, validate)
+        checked = FlextInfraStagedPackage.consume_sources(planned.value, validate)
         if checked.failure:
             return result_type.from_failure(checked)
         return result_type.ok(session)
@@ -230,7 +319,7 @@ class FlextInfraCodegenStaging:
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         session: m.Infra.CodegenTransactionSession,
     ) -> p.Result[m.Infra.StageSourcePlan]:
-        """Plan the composed candidate view consumed by native admission.
+        """Consume only sealed preparation receipts, never reopen source election.
 
         Args:
             workspace: Shared read-only workspace root of the plans.
@@ -239,14 +328,40 @@ class FlextInfraCodegenStaging:
             session: Active journal authorizing the candidate input states.
 
         Returns:
-            The planned candidate sources, or the first planning failure.
+            A view descriptor backed only by sealed receipts, or the original rejection.
 
         """
         result_type = r[m.Infra.StageSourcePlan]
-        updates = cls._composed_candidate_updates(staged_files, plans)
-        inputs = FlextInfraCodegenPreconditions.unique_states(
-            tuple(state for plan in plans for state in plan.source_states)
-        )
+        receipts: list[p.Infra.StageSourceReceipt] = []
+        projects = {plan.project for plan in plans}
+        for plan in plans:
+            receipt = plan.prepared_sources
+            if receipt is None:
+                return result_type.fail(
+                    f"candidate has no preparation receipt: {plan.path}"
+                )
+            if (
+                plan.source_states != receipt.inputs
+                or plan.source_directories != receipt.source_directories
+                or plan.source_query_topology != receipt.source_query_topology
+            ):
+                return result_type.fail(
+                    f"candidate source receipt differs: {plan.path}"
+                )
+            if not (
+                receipt.workspace.is_relative_to(workspace)
+                or workspace.is_relative_to(receipt.workspace)
+                or receipt.workspace in projects
+            ):
+                return result_type.fail(
+                    "candidate preparation root differs from its scope"
+                )
+            if all(receipt is not previous for previous in receipts):
+                receipts.append(receipt)
+        inputs = FlextInfraCodegenPreconditions.unique_states((
+            *(state for receipt in receipts for state in receipt.inputs),
+            *(state for plan in plans for state in plan.source_states),
+        ))
         if inputs.failure:
             return result_type.from_failure(inputs)
         current_inputs = (
@@ -256,32 +371,117 @@ class FlextInfraCodegenStaging:
         )
         if current_inputs.failure:
             return result_type.from_failure(current_inputs)
-        projects = tuple(dict.fromkeys(plan.project for plan in plans))
-        scopes: list[Path] = []
-        for project in projects:
-            scope = FlextInfraStagedPackage.workspace_root(project)
-            if scope.failure:
-                return result_type.from_failure(scope)
-            if scope.value not in scopes:
-                scopes.append(scope.value)
-        planned = FlextInfraStagedPackage.plan_sources(
-            workspace,
-            updates,
-            options=m.Infra.StageSourceOptions(
-                inputs=current_inputs.value,
-                workspaces=tuple(
-                    scope
-                    for scope in scopes
-                    if not any(
-                        scope != parent and scope.is_relative_to(parent)
-                        for parent in scopes
+        updates = cls._composed_candidate_updates(staged_files, plans)
+        prepared: dict[Path, str | None] = {}
+        modes: dict[Path, int] = {}
+        layouts: dict[str, m.Infra.RopeProjectLayout] = {}
+        for receipt in receipts:
+            if receipt.version != 1 or not receipt.source_query_topology:
+                return result_type.fail(
+                    "candidate preparation receipt has no root authority"
+                )
+            expected_hashes = tuple(
+                (
+                    path,
+                    None
+                    if content is None
+                    else u.Cli.sha256_bytes(content.encode(c.DEFAULT_ENCODING)),
+                )
+                for path, content in sorted(receipt.updates.items())
+            )
+            if receipt.prepared_hashes != expected_hashes:
+                return result_type.fail("candidate preparation receipt bytes changed")
+            for path, content in receipt.updates.items():
+                if path in prepared and prepared[path] != content:
+                    return result_type.fail(
+                        f"candidate preparation receipts disagree: {path}"
+                    )
+                prepared[path] = content
+            for path, mode in receipt.modes.items():
+                if path in modes and modes[path] != mode:
+                    return result_type.fail(
+                        f"candidate preparation modes disagree: {path}"
+                    )
+                modes[path] = mode
+            for layout in receipt.layouts:
+                previous = layouts.get(layout.package_name)
+                if previous is not None and previous != layout:
+                    return result_type.fail(
+                        "candidate preparation package identity differs: "
+                        f"{layout.package_name}"
+                    )
+                layouts[layout.package_name] = layout
+        if prepared != updates:
+            return result_type.fail(
+                "staged candidate differs from sealed preparation bytes"
+            )
+        if any(
+            plan.desired_mode != modes.get(plan.path)
+            or any(
+                staged.before.path == plan.path
+                and staged.replacement is not None
+                and staged.replacement.mode != plan.desired_mode
+                for staged in staged_files
+            )
+            for plan in plans
+        ):
+            return result_type.fail(
+                "staged candidate differs from sealed preparation modes"
+            )
+        try:
+            directories, topology = u.Cli.atomic_merge_directory_query_receipts(
+                tuple(
+                    item for receipt in receipts for item in receipt.source_directories
+                ),
+                tuple(
+                    item
+                    for receipt in receipts
+                    for item in receipt.source_query_topology
+                ),
+            )
+            scopes = tuple(dict.fromkeys(receipt.workspace for receipt in receipts))
+            candidate = m.Infra.StageSourcePlan(
+                workspace=Path(commonpath(scopes)),
+                workspaces=scopes,
+                roots=tuple(
+                    dict.fromkeys(
+                        root for receipt in receipts for root in receipt.roots
                     )
                 ),
-            ),
-        )
-        if planned.failure:
-            return result_type.from_failure(planned)
-        return planned
+                inputs=current_inputs.value,
+                source_directories=directories,
+                source_query_topology=topology,
+                directory_publications=tuple(
+                    item.created
+                    for item in session.journal.directories
+                    if item.created is not None
+                ),
+                updates=MappingProxyType(prepared),
+                modes=MappingProxyType(modes),
+                prepared_hashes=tuple(
+                    sorted(
+                        (path, digest)
+                        for receipt in receipts
+                        for path, digest in receipt.prepared_hashes
+                    )
+                ),
+                declared_files=tuple(
+                    plan.model_copy(update={"prepared_sources": None}) for plan in plans
+                ),
+                layouts=tuple(layouts.values()),
+                workspace_packages=tuple(
+                    sorted({
+                        name
+                        for receipt in receipts
+                        for name in receipt.workspace_packages
+                    })
+                ),
+            )
+            return FlextInfraStagedPackage.source_inputs_current(candidate).map(
+                lambda _: candidate
+            )
+        except (OSError, *c.EXC_BROAD_RUNTIME) as exc:
+            return result_type.fail(str(exc), exception=exc)
 
     @staticmethod
     def _composed_candidate_updates(

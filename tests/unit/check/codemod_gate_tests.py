@@ -202,7 +202,7 @@ class TestsFlextInfraCodemodGate:
                     "config",
                     "--file",
                     str(declaration),
-                    "submodule.src/vendor.managed",
+                    f"submodule.src/vendor.{c.Infra.GITMODULE_MANAGED_KEY}",
                     "false",
                 ),
                 cwd=project,

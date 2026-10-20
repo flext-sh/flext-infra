@@ -17,7 +17,8 @@ if TYPE_CHECKING:
 
     from flext_core import t
 
-    from flext_infra import m, p
+    from flext_infra import m
+    from flext_infra._protocols.base import FlextInfraProtocolsBase
     from flext_infra._protocols.rope_runtime import FlextInfraProtocolsRopeRuntime
 
 
@@ -105,6 +106,9 @@ class FlextInfraProtocolsRope(Protocol):
 
         @property
         def required_field(self) -> bool: ...
+
+        @property
+        def defaulted_field(self) -> bool: ...
 
         @property
         def private_attribute(self) -> bool: ...
@@ -404,7 +408,7 @@ class FlextInfraProtocolsRope(Protocol):
             include_references: bool = True,
         ) -> t.SequenceOf[m.Infra.Object]: ...
 
-        def projects(self) -> t.SequenceOf[p.Infra.ProjectInfo]: ...
+        def projects(self) -> t.SequenceOf[FlextInfraProtocolsBase.ProjectInfo]: ...
 
         def layout(self, project_root: Path) -> m.Infra.RopeProjectLayout | None: ...
 

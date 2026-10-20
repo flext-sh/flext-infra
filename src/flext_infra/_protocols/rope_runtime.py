@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Set as AbstractSet
 from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, ClassVar, Literal, Protocol, Self, runtime_checkable
 
@@ -241,6 +241,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         @property
         def project(self) -> FlextInfraProtocolsRopeRuntime.RopeProject: ...
 
+        @property
+        def extension_modules(self) -> AbstractSet[str]: ...
+
     @runtime_checkable
     class RopeScope(Protocol):
         """Rope semantic scope shape."""
@@ -397,6 +400,12 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             *,
             consumer_root: Path | None = None,
         ) -> AbstractContextManager[Self]: ...
+
+        def source_successor(self) -> AbstractContextManager[Self]: ...
+
+        def adopt_source_consumption(
+            self, receipt: m.Infra.CodegenPhaseAnalysis
+        ) -> p.Result[m.Infra.CodegenPhaseAnalysis]: ...
 
         @property
         def authenticated_sources(self) -> bool: ...

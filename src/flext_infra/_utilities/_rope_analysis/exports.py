@@ -30,7 +30,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
 
     _EXPORT_NAMES_CACHE: ClassVar[
         MutableMapping[
-            tuple[str, str, int, bool, bool, bool, bool, bool],
+            tuple[str, str, str, bool, bool, bool, bool, bool],
             t.StrSequence,
         ]
     ] = {}

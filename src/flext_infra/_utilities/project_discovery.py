@@ -11,13 +11,16 @@ from operator import attrgetter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, r, t
+from flext_cli import u
+
+from flext_infra import c, config, m, r, settings, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
+from flext_infra._utilities.mise_binary import FlextInfraUtilitiesMiseBinary
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -706,8 +709,9 @@ class FlextInfraUtilitiesProjectDiscovery(
                 return None
         return None
 
-    @staticmethod
+    @classmethod
     def runtime_environment_dir(
+        cls,
         project_root: Path,
         *,
         runtime_root: Path | None = None,
@@ -726,11 +730,154 @@ class FlextInfraUtilitiesProjectDiscovery(
 
         """
         if runtime_root is None:
-            runtime = FlextInfraUtilitiesGit.git_repository_root(
-                m.Infra.GitRepoRequest(repo_root=project_root),
-            ).unwrap()
-            runtime_root = runtime.repository_root
+            runtime_root = cls.runtime_owner_root(project_root).unwrap()
         return runtime_root.resolve() / c.Infra.ENVIRONMENT_DIRECTORY
+
+    @classmethod
+    def runtime_owner_root(cls, project_root: Path) -> p.Result[Path]:
+        """Resolve the common native runtime owner without suppressing failures.
+
+        Returns:
+            The elected physical root or the original discovery failure.
+
+        """
+        identity = FlextInfraUtilitiesGit.git_show_toplevel(
+            m.Infra.GitRepoRequest(repo_root=project_root),
+        )
+        if identity.failure:
+            return r[Path].from_failure(identity)
+        git_root = identity.value.repository_root.resolve()
+        submitted = project_root.expanduser().resolve()
+        project = cls.nearest_project_root(git_root, submitted) or git_root
+        inputs = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(project)
+        if inputs.failure:
+            return r[Path].from_failure(inputs)
+        policy = inputs.value.spec.make.uv_resolution
+        if (
+            settings.env_lookup(policy.hosted_variable) or ""
+        ).strip() == policy.hosted_value:
+            return r[Path].ok(project)
+        return cls._local_runtime_root(project, git_root)
+
+    @classmethod
+    def _local_runtime_root(cls, project_root: Path, git_root: Path) -> p.Result[Path]:
+        """Elect the physical runtime from Git attachment and native UV scope.
+
+        Returns:
+            The declared runtime owner or the original discovery failure.
+
+        """
+        runtime = FlextInfraUtilitiesGit.git_repository_root(
+            m.Infra.GitRepoRequest(repo_root=project_root)
+        )
+        if runtime.failure:
+            return r[Path].from_failure(runtime)
+        attached = runtime.value.repository_root.resolve()
+        if attached != git_root and (attached / c.PYPROJECT_FILENAME).is_file():
+            return r[Path].ok(attached)
+        scope = cls._native_resolution_scope(project_root, git_root)
+        if scope.failure:
+            return r[Path].from_failure(scope)
+        if scope.value != project_root:
+            return cls._native_resolution_owner(project_root, scope.value)
+        return r[Path].ok(project_root)
+
+    @classmethod
+    def _native_resolution_scope(
+        cls, project_root: Path, git_root: Path
+    ) -> p.Result[Path]:
+        """Authenticate a Python ancestor before requiring its native reader.
+
+        Returns:
+            The native discovery scope or the original ownership failure.
+
+        """
+        enclosing = next(
+            (
+                parent
+                for parent in project_root.parents
+                if (project_root == git_root or parent.is_relative_to(git_root))
+                and (parent / c.PYPROJECT_FILENAME).is_file()
+            ),
+            None,
+        )
+        if enclosing is None:
+            return r[Path].ok(project_root)
+        return cls._enclosing_git_scope(project_root, enclosing)
+
+    @staticmethod
+    def _enclosing_git_scope(project_root: Path, enclosing: Path) -> p.Result[Path]:
+        """Reconcile an enclosing manifest with its authenticated Git ownership.
+
+        Returns:
+            The containing Git scope or the original ownership failure.
+
+        """
+        result_type = r[Path]
+        ownership = FlextInfraUtilitiesGit.git_mutation_scope(
+            m.Infra.GitRepoRequest(repo_root=enclosing),
+        )
+        if ownership.failure:
+            return result_type.from_failure(ownership)
+        if ownership.value.git_dir is None:
+            return result_type.ok(project_root)
+        identity = FlextInfraUtilitiesGit.git_show_toplevel(
+            m.Infra.GitRepoRequest(repo_root=enclosing),
+        )
+        if identity.failure:
+            return result_type.from_failure(identity)
+        scope = identity.value.repository_root.resolve()
+        if not project_root.is_relative_to(scope):
+            return result_type.fail(
+                "native association is outside its containing Git repository",
+            )
+        return result_type.ok(
+            scope if (scope / c.PYPROJECT_FILENAME).is_file() else enclosing,
+        )
+
+    @staticmethod
+    def _native_resolution_owner(
+        project_root: Path, reader_root: Path
+    ) -> p.Result[Path]:
+        """Let managed UV resolve membership, including native exclusions.
+
+        Returns:
+            The authenticated native owner or the original discovery failure.
+
+        """
+        result_type = r[Path]
+        identity = FlextInfraUtilitiesGit.git_show_toplevel(
+            m.Infra.GitRepoRequest(repo_root=reader_root),
+        )
+        if identity.failure:
+            return result_type.from_failure(identity)
+        git_root = identity.value.repository_root.resolve()
+        binary = FlextInfraUtilitiesMiseBinary.managed_mise_binary(
+            c.Infra.UV, reader_root
+        )
+        if binary.failure:
+            return result_type.from_failure(binary)
+        discovered = u.Cli.run_raw(
+            (str(binary.value), "workspace", "dir", "--project", str(project_root)),
+            cwd=project_root,
+            timeout=c.Infra.TIMEOUT_SHORT,
+        )
+        if discovered.failure:
+            return result_type.from_failure(discovered)
+        process = discovered.value
+        if not u.Cli.process_succeeded(process.outcome) or process.stderr.strip():
+            return result_type.fail(process.stderr or process.stdout)
+        owner = Path(process.stdout.strip())
+        if (
+            not owner.is_absolute()
+            or not owner.is_dir()
+            or not owner.resolve().is_relative_to(git_root)
+            or not project_root.is_relative_to(owner.resolve())
+        ):
+            return result_type.fail(
+                f"native UV workspace owner leaves the project's Git boundary: {owner}",
+            )
+        return result_type.ok(owner.resolve())
 
     @classmethod
     def runtime_python(

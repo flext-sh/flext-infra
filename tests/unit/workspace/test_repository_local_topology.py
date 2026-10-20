@@ -493,7 +493,13 @@ class TestsFlextInfraRepositoryLocalTopology:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         first = tm.ok(
-            FlextInfraCodegenConform(repository_root=root, request=request).plan(
+            FlextInfraCodegenConform(
+                repository_root=root,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    request=request,
+                ),
+            ).plan(
                 request,
             ),
         )
@@ -515,7 +521,13 @@ class TestsFlextInfraRepositoryLocalTopology:
 
         after = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         second = tm.ok(
-            FlextInfraCodegenConform(repository_root=root, request=request).plan(
+            FlextInfraCodegenConform(
+                repository_root=root,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    request=request,
+                ),
+            ).plan(
                 request,
             ),
         )
@@ -647,7 +659,13 @@ class TestsFlextInfraRepositoryLocalTopology:
             what=c.Infra.CodegenConformSurface.MAKEFILE,
         )
         plan = tm.ok(
-            FlextInfraCodegenConform(repository_root=root, request=request).plan(
+            FlextInfraCodegenConform(
+                repository_root=root,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    request=request,
+                ),
+            ).plan(
                 request,
             ),
         )

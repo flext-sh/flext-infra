@@ -436,6 +436,10 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             t.StrSequence,
             m.Field(description="Generated python roots to exclude"),
         ]
+        repository_namespace_packages: Annotated[
+            t.StrTuple,
+            m.Field(description="Declared repository-root namespace packages"),
+        ] = ()
 
     class PyprojectDeclaredTopology(m.ContractModel):
         """Project topology a caller declares instead of discovering it on disk.
@@ -712,6 +716,13 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
     class ToolingContextRequest(m.ArbitraryTypesModel):
         """Declared inputs the modernizer resolves into a runtime context."""
 
+        environment_dir: Annotated[
+            Path,
+            m.Field(
+                description="Declared environment directory owned by project runtime"
+            ),
+        ]
+
         planned_sources: Annotated[
             t.MappingKV[Path, str],
             m.Field(
@@ -748,6 +759,23 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             t.StrSequence,
             m.Field(description="Declared project dependency requirement lines"),
         ]
+
+        @m.field_validator("environment_dir")
+        @classmethod
+        def _validate_environment_dir(cls, value: Path) -> Path:
+            """Require an absolute, project-owned environment directory.
+
+            Returns:
+                The validated absolute environment directory.
+
+            Raises:
+                ValueError: If the path is not absolute.
+
+            """
+            if not value.is_absolute():
+                msg = "environment_dir must be an absolute path"
+                raise ValueError(msg)
+            return value.resolve()
 
 
 __all__: list[str] = ["FlextInfraModelsDeps"]

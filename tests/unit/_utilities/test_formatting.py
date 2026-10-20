@@ -23,7 +23,7 @@ class TestsFlextInfraUtilitiesformatting:
         width_factor: int,
     ) -> None:
         """Format and execute candidate bytes without replacing their live receipt."""
-        width = max(1, config.Infra.tooling.tools.ruff.line_length // width_factor)
+        width = config.Infra.tooling.tools.ruff.line_length * width_factor
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         pyproject = root / c.PYPROJECT_FILENAME
         tm.ok(
@@ -51,6 +51,7 @@ class TestsFlextInfraUtilitiesformatting:
         )
         tm.that("import sys" in normalized, eq=False)
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
+        tm.that(all(len(line) <= width for line in normalized.splitlines()), eq=True)
         tm.that(
             tm.ok(u.Infra.normalize_source(root, path, normalized)),
             eq=normalized,
@@ -61,6 +62,30 @@ class TestsFlextInfraUtilitiesformatting:
         tm.that(output.stdout.strip(), eq=str(sum(values)))
         with pytest.raises(SyntaxError):
             u.Infra.normalize_source(root, path, "values = [\n")
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
+
+    @staticmethod
+    def test_incompatible_line_width_rejects_candidate_without_publication(
+        tmp_path: Path,
+    ) -> None:
+        """Unrepairable destination policy fails without changing live source."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        pyproject = root / c.PYPROJECT_FILENAME
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                pyproject,
+                pyproject.read_text(encoding=c.DEFAULT_ENCODING).replace(
+                    "[tool.ruff]\n", "[tool.ruff]\nline-length = 1\n", 1
+                ),
+            )
+        )
+        path = package / "candidate.py"
+        original = "values = []\n"
+        tm.ok(u.Cli.atomic_write_text_file(path, original))
+
+        rejected = u.Infra.normalize_source(root, path, "values = [1, 2]\n")
+
+        tm.fail(rejected, has="E501")
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
 
     @staticmethod

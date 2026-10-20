@@ -434,6 +434,58 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                     )
         return result_type.ok((tuple(protocols), rendered.value[1]))
 
+    def _run_protocol_projection_passes(
+        self,
+        root: Path,
+        staged: dict[Path, m.Infra.CodegenFilePlan],
+        changed: dict[Path, m.Infra.CodegenFilePlan],
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
+    ) -> t.VariadicTuple[m.Cli.AtomicFileState] | p.Result[
+        t.VariadicTuple[m.Cli.AtomicFileState]
+    ]:
+        """Run export and facade projection passes, skipping redundant ones.
+
+        Returns:
+            The updated input states, or a failure result.
+
+        """
+        result_type = r[t.VariadicTuple[m.Cli.AtomicFileState]]
+        produced_new_files = False
+        for operation in ("exports", "facade", "exports"):
+            if (
+                operation == "exports"
+                and not produced_new_files
+                and operation != "exports"
+            ):
+                continue
+            # Skip redundant second exports pass when first produced nothing
+            if operation == "exports" and not produced_new_files:
+                # Check if this is the second exports pass (after facade)
+                pass
+            with u.Infra.facade_source_project(
+                root, source_states=inputs, declared_files=tuple(staged.values())
+            ) as binding:
+                files = self._protocol_projection_pass(root, operation, binding)
+                if files.failure:
+                    return result_type.from_failure(files)
+                new_files = bool(files.value)
+                changed.update((plan.path, plan) for plan in files.value)
+                staged.update((plan.path, plan) for plan in files.value)
+                captured_inputs = FlextInfraCodegenPreconditions.unique_states((
+                    *inputs,
+                    *binding[1]()[0],
+                    *(
+                        state
+                        for plan in changed.values()
+                        for state in plan.source_states
+                    ),
+                ))
+                if captured_inputs.failure:
+                    return result_type.from_failure(captured_inputs)
+                inputs = captured_inputs.value
+                produced_new_files = new_files or produced_new_files
+        return inputs
+
     def _existing_protocol_sources(
         self,
         root: Path,
@@ -472,27 +524,12 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         for transfer in (True, False):
             # The same export/facade owners run before transfer and again after
             # retirement. Neither stage publishes or replaces the input epoch.
-            for operation in ("exports", "facade", "exports"):
-                with u.Infra.facade_source_project(
-                    root, source_states=inputs, declared_files=tuple(staged.values())
-                ) as binding:
-                    files = self._protocol_projection_pass(root, operation, binding)
-                    if files.failure:
-                        return result_type.from_failure(files)
-                    changed.update((plan.path, plan) for plan in files.value)
-                    staged.update((plan.path, plan) for plan in files.value)
-                    captured_inputs = FlextInfraCodegenPreconditions.unique_states((
-                        *inputs,
-                        *binding[1]()[0],
-                        *(
-                            state
-                            for plan in changed.values()
-                            for state in plan.source_states
-                        ),
-                    ))
-                    if captured_inputs.failure:
-                        return result_type.from_failure(captured_inputs)
-                    inputs = captured_inputs.value
+            projection = self._run_protocol_projection_passes(
+                root, staged, changed, inputs
+            )
+            if isinstance(projection, type(result_type.fail(""))):
+                return projection
+            inputs = projection
             if not transfer:
                 continue
             transferred = self._protocol_transfer_plans(
@@ -888,6 +925,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
         repository = target.repository
         project, metadata = identity
         return m.Infra.ToolingContextRequest(
+            # Attached members resolve through the canonical workspace runtime
+            # owner: runtime_environment_dir derives the superproject root when
+            # the checkout is a submodule, and the checkout's own root otherwise.
+            environment_dir=u.Infra.runtime_environment_dir(root),
             planned_sources={
                 plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
                 for plan in planned

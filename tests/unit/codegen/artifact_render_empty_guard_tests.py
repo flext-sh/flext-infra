@@ -10,6 +10,8 @@ import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra import FlextInfraConfig, c, r
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenStaging
@@ -86,7 +88,11 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         )
         planned = FlextInfraCodegenConform(
             repository_root=root,
-            initial_workspace=workspace,
+            state=m.Infra.CodegenConformState(
+                repository_root=root,
+                initial_workspace=workspace,
+                request=request,
+            ),
         ).plan(request)
         return planned, source, root / entry.destination
 
@@ -152,7 +158,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         tm.that(destination.exists(), eq=False)
 
     @staticmethod
-    def test_python_output_is_prepared_under_planned_policy_and_idempotent(
+    def test_semantic_output_is_prepared_under_planned_policy_and_idempotent(
         tmp_path: Path,
     ) -> None:
         """Prepared producer bytes pass configured lint and format immediately."""
@@ -183,29 +189,40 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             )
         )
 
-        prepared = tm.ok(FlextInfraCodegenStaging.prepare_python_plans(root, plans))
+        sealed = tm.ok(FlextInfraCodegenStaging.prepare_python_plans(root, plans))
+        tm.that(
+            tuple(plan.desired_content for plan in sealed),
+            eq=tuple(plan.desired_content for plan in plans),
+        )
+        prepared = tm.ok(
+            FlextInfraCodegenStaging.prepare_python_plans(
+                root, sealed, prepare=u.Infra.normalize_source_plan
+            )
+        )
         emitted = tm.not_none(prepared[1].desired_content)
         tm.that(destination.exists(), eq=False)
         tm.that(metadata.read_text(encoding=c.DEFAULT_ENCODING), eq=before_metadata)
-        tm.that(emitted.decode(c.DEFAULT_ENCODING), has='{"answer": 42}')
+        tm.that(emitted.decode(c.DEFAULT_ENCODING), eq="values = dict(answer=42)\n")
         tm.that("import os" in emitted.decode(c.DEFAULT_ENCODING), eq=False)
+        receipt = tm.not_none(prepared[0].prepared_sources)
+        if not isinstance(receipt, m.Infra.StageSourcePlan):
+            pytest.fail("Preparation did not return the canonical source receipt")
+        tm.that(all(plan.prepared_sources is receipt for plan in prepared), eq=True)
+        tm.that(bool(receipt.source_query_topology), eq=True)
+        tm.that(bool(receipt.source_directories), eq=True)
+        tm.that(
+            dict(receipt.prepared_hashes),
+            eq={
+                plan.path: u.Cli.sha256_bytes(tm.not_none(plan.desired_content))
+                for plan in prepared
+            },
+        )
         repeated = tm.ok(FlextInfraCodegenStaging.prepare_python_plans(root, prepared))
         tm.that(
             tuple(plan.desired_content for plan in repeated),
             eq=tuple(plan.desired_content for plan in prepared),
         )
-
-        stage = tm.ok(
-            FlextInfraStagedPackage.plan_sources(
-                root,
-                {
-                    plan.path: tm.not_none(plan.desired_content).decode(
-                        c.DEFAULT_ENCODING
-                    )
-                    for plan in prepared
-                },
-            )
-        )
+        tm.that(all(plan.prepared_sources is receipt for plan in repeated), eq=True)
 
         def configured_check(view: Path) -> p.Result[bool]:
             tm.that(
@@ -219,10 +236,50 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
                 tm.that(execution.result.passed, eq=True, msg=execution.raw_output)
             return r[bool].ok(value=True)
 
-        tm.ok(FlextInfraStagedPackage.consume_sources(stage, configured_check))
+        tm.ok(FlextInfraStagedPackage.consume_sources(receipt, configured_check))
 
     @staticmethod
-    def test_unrepairable_python_output_is_rejected_without_publication(
+    @pytest.mark.parametrize(
+        "source",
+        ["import os\n\nvalues=dict(answer=42)\n", "result = undeclared_supplier\n"],
+    )
+    def test_generator_seals_exact_proposed_bytes_without_semantic_repair(
+        tmp_path: Path,
+        source: str,
+    ) -> None:
+        """Sealing authenticates bytes; repair and runtime own separate verdicts."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        destination = package / "generated.py"
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(destination, required=False))
+        proposal = m.Infra.CodegenFilePlan(
+            project=root,
+            path=destination,
+            before=before,
+            desired_content=source.encode(c.DEFAULT_ENCODING),
+            desired_mode=c.Infra.CONFIG_SPEC[1],
+        )
+        prepared = tm.ok(
+            FlextInfraCodegenStaging.prepare_python_plans(root, (proposal,))
+        )
+        sealed = prepared[0]
+        receipt = tm.not_none(sealed.prepared_sources)
+        tm.that(sealed.desired_content, eq=proposal.desired_content)
+        tm.that(receipt.updates[destination], eq=source)
+        tm.that(
+            dict(receipt.prepared_hashes)[destination],
+            eq=u.Cli.sha256_bytes(tm.not_none(proposal.desired_content)),
+        )
+        tm.that(bool(receipt.source_query_topology), eq=True)
+        repeated = tm.ok(FlextInfraCodegenStaging.prepare_python_plans(root, prepared))
+        tm.that(repeated[0].desired_content, eq=proposal.desired_content)
+        tm.that(repeated[0].prepared_sources is receipt, eq=True)
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(destination, required=False)),
+            eq=before,
+        )
+
+    @staticmethod
+    def test_unrepairable_semantic_output_is_rejected_without_publication(
         tmp_path: Path,
     ) -> None:
         """An unrepaired native finding stays causal and never reaches live bytes."""
@@ -241,6 +298,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
                     desired_mode=c.Infra.CONFIG_SPEC[1],
                 ),
             ),
+            prepare=u.Infra.normalize_source_plan,
         )
         tm.that(rejected.failure, eq=True)
         tm.that(str(rejected.error), has="undeclared_supplier")
@@ -352,33 +410,43 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
                 )
 
         prepared = tm.ok(
-            FlextInfraCodegenStaging.prepare_python_plans(workspace, tuple(plans))
+            FlextInfraCodegenStaging.prepare_python_plans(
+                workspace, tuple(plans), prepare=u.Infra.normalize_source_plan
+            )
         )
         by_path = {plan.path: plan for plan in prepared}
         first, second = (by_path[path] for path in destinations)
         tm.that(b"import os" in tm.not_none(first.desired_content), eq=False)
         tm.that(b"import os" in tm.not_none(second.desired_content), eq=True)
-        tm.that(
-            metadata_paths[1] in {state.path for state in first.source_states}, eq=False
-        )
-        tm.that(
-            metadata_paths[0] in {state.path for state in second.source_states},
-            eq=False,
-        )
+        for local, foreign_metadata in (
+            (first, metadata_paths[1]),
+            (second, metadata_paths[0]),
+        ):
+            receipt = tm.not_none(local.prepared_sources)
+            tm.that(foreign_metadata in receipt.updates, eq=False)
+            for source in local.source_states:
+                if source.path == foreign_metadata:
+                    tm.that(source.content, eq=foreign_metadata.read_bytes())
         tm.that(
             tuple(plan.dependency_group for plan in prepared),
             eq=tuple(plan.dependency_group for plan in plans),
         )
         tm.that(any(path.exists() for path in destinations), eq=False)
+        updates = {
+            plan.path: tm.not_none(plan.desired_content).decode(c.DEFAULT_ENCODING)
+            for plan in prepared
+        }
+        unselected = tm.ok(FlextInfraStagedPackage.plan_sources(workspace, updates))
+        rejected = FlextInfraStagedPackage.project_layouts(unselected, first.project)
+        tm.that(rejected.failure, eq=True)
+        tm.that(str(rejected.error), has="no original source authority")
         joint = tm.ok(
             FlextInfraStagedPackage.plan_sources(
                 workspace,
-                {
-                    plan.path: tm.not_none(plan.desired_content).decode(
-                        c.DEFAULT_ENCODING
-                    )
-                    for plan in prepared
-                },
+                updates,
+                options=m.Infra.StageSourceOptions(
+                    workspaces=(first.project, second.project),
+                ),
             )
         )
         elected = tm.ok(FlextInfraStagedPackage.project_layouts(joint, first.project))
@@ -407,6 +475,10 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             ),
             source_plan,
             project_root=root,
+            runtime_report=m.Infra.ValidationReport(
+                passed=False,
+                summary="Original physical runtime is absent; admission has not run",
+            ),
         )
         tm.that(rejected.failure, eq=True)
         tm.that(str(rejected.error), has=str(u.Infra.runtime_environment_dir(root)))

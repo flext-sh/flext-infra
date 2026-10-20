@@ -105,6 +105,24 @@ rules:
       Annotated: from typing import Annotated
     bindings:
       Annotated: typing.Annotated
+  - id: pydantic-defaulted-field-metadata
+    phase: contract-normalization
+    reorders_annotation: true
+    defaulted_field: true
+    value_default: default
+    call_target: field
+    model_bases: [pydantic.BaseModel]
+    scope_kinds: [Class]
+    pattern: '${name}: ${contract} = ${field}(${default})'
+    goal: '${name}: Annotated[${contract}, ${field}()] = ${default}'
+    arguments:
+      field:
+        - name=pydantic.Field
+        - name=flext_core.FlextModels.Field
+    imports:
+      Annotated: from typing import Annotated
+    bindings:
+      Annotated: typing.Annotated
   - id: pydantic-unset-private-attribute
     phase: contract-normalization
     private_attribute: true
@@ -158,6 +176,8 @@ rules:
       - typing.AbstractSet
       - builtins.tuple
       - builtins.frozenset
+      - __builtin__.tuple
+      - __builtin__.frozenset
     model_bases: [pydantic.BaseModel]
     pattern: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=${collection})'
     deferred_contract: contract

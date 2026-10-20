@@ -12,7 +12,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m
+from flext_infra import c, m, r
 from flext_infra.gates import FlextInfraGate
 from flext_infra.validate import FlextInfraRuntimeCensusValidator
 
@@ -40,8 +40,20 @@ class FlextInfraRuntimeCensusGate(FlextInfraGate):
             The resulting ``m.Infra.GateExecution``.
 
         """
-        _ = ctx
         started = time.monotonic()
+        if ctx.runtime_root is not None:
+            if ctx.candidate_runtime_report is None:
+                return self._build_project_error_gate_result(
+                    project_dir,
+                    passed=False,
+                    errors=["sealed runtime census report is required"],
+                    started=started,
+                )
+            return self._build_validation_report_result(
+                project_dir,
+                r[m.Infra.ValidationReport].ok(ctx.candidate_runtime_report),
+                started=started,
+            )
         validator = FlextInfraRuntimeCensusValidator.for_project(
             project_dir,
         )

@@ -13,7 +13,7 @@ import pytest
 from flext_infra import config, main
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.services.cli_routes import FlextInfraCliRouteService
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraCliRepositoryRootContract:
@@ -36,10 +36,13 @@ class TestsFlextInfraCliRepositoryRootContract:
         plan = tm.ok(
             FlextInfraCodegenConform(
                 repository_root=tmp_path,
-                request=request,
-                initial_workspace=u.Tests.workspace_spec(
-                    repository,
-                    project=u.Tests.project_spec(repository.name),
+                state=m.Infra.CodegenConformState(
+                    repository_root=tmp_path,
+                    request=request,
+                    initial_workspace=u.Tests.workspace_spec(
+                        repository,
+                        project=u.Tests.project_spec(repository.name),
+                    ),
                 ),
             ).plan(request),
         )

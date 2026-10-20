@@ -27,13 +27,13 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
-        """Check every owned Git index and unpublished path read-only.
+        """Check the owned Git inventory or a sealed candidate's physical tree.
 
         Returns:
             The complete scan receipt with every unresolved control line.
 
         Raises:
-            ValueError: If the project has no Git inventory or no source files.
+            ValueError: If the selected inventory has no source files.
 
         """
         paths = (

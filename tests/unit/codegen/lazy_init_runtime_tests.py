@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 import sys
 from pathlib import Path
+from types import FrameType
 from typing import Literal
 
 import pytest
@@ -1001,11 +1002,14 @@ class TestsFlextInfraLazyInitRuntime:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("cyclic", [False, True])
+    @pytest.mark.parametrize("absent", [False, True])
     def test_public_generation_repairs_existing_and_absent_initializers(
-        tmp_path: Path, cyclic: bool
+        tmp_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
+        *,
+        absent: bool,
     ) -> None:
-        """Generation converges without executing or repairing authored consumers."""
+        """Runtime-valid authored lint defects neither invoke repair nor full check."""
         repository, package = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-source-only",
@@ -1013,29 +1017,29 @@ class TestsFlextInfraLazyInitRuntime:
         )
         u.Tests.write_lazy_init_namespace_module(
             package / "models.py",
-            class_name="PublishedModels",
+            class_name="FlextSourceOnlyModels",
             alias="m",
         )
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         initializer = package / c.Infra.INIT_PY
         original = initializer.read_bytes()
+        if absent:
+            initializer.unlink()
         authored = package / "api.py"
         authored.write_text(
-            (
-                "from flext_source_only.child.api import PublishedChild\n"
-                if cyclic
-                else "raise ModuleNotFoundError('unavailable runtime dependency')\n"
-            )
-            + "class PublishedApi:\n    value: int = 'invalid annotation value'\n"
-            "__all__ = ('PublishedApi',)\n",
+            "import os\n\n"
+            "class FlextSourceOnlyApi:\n"
+            '    """Authored public API with an intentionally unused import."""\n'
+            "__all__ = ('FlextSourceOnlyApi',)\n",
             encoding=c.DEFAULT_ENCODING,
         )
         child = package / "child"
         child.mkdir()
         child.joinpath("api.py").write_text(
-            "from flext_source_only.api import PublishedApi\n"
-            "class PublishedChild:\n    pass\n"
-            "__all__ = ('PublishedChild',)\n",
+            "from flext_source_only.api import FlextSourceOnlyApi\n"
+            "class FlextSourceOnlyChild(FlextSourceOnlyApi):\n"
+            '    """Authored child using the real public parent."""\n'
+            "__all__ = ('FlextSourceOnlyChild',)\n",
             encoding=c.DEFAULT_ENCODING,
         )
         before = {path: path.read_bytes() for path in package.rglob("*.py")}
@@ -1044,35 +1048,148 @@ class TestsFlextInfraLazyInitRuntime:
             what=c.Infra.CodegenConformSurface.LAZY_INIT,
             scope=c.Infra.CodegenConformScope.SELF,
         )
+        checkout = Path(__file__).resolve().parents[3]
+        tm.ok(
+            u.Tests.create_python_environment(
+                repository,
+                dependency_projects=(
+                    checkout,
+                    *u.Tests.python_dependency_projects(checkout),
+                ),
+                session_runtime=session_runtime,
+            )
+        )
+        calls: list[str] = []
 
-        tm.ok(infra.codegen_generate(request))
+        def observe(frame: FrameType, event: str, _value: p.AttributeProbe) -> None:
+            if event == "call" and frame.f_code.co_qualname in {
+                "FlextInfraCodegenStaging.validate_python_plans",
+                "FlextInfraCodegenTransaction.consume_source_runtime",
+                "FlextInfraUtilitiesProtectedEditLinting.normalize_source",
+                "FlextInfraUtilitiesProtectedEditLinting.normalize_sources",
+                "FlextInfraUtilitiesProtectedEditLinting.normalize_source_plan",
+                "FlextInfraWorkspaceChecker.execute_candidate",
+                "FlextInfraWorkspaceChecker._execute_payload",
+            }:
+                calls.append(frame.f_code.co_qualname)
 
-        tm.that(initializer.read_bytes() == original, eq=False)
-        child_initializer = child / c.Infra.INIT_PY
-        tm.that(child_initializer.is_file(), eq=True)
+        previous = sys.getprofile()
+        try:
+            sys.setprofile(observe)
+            tm.ok(infra.codegen_generate(request))
+            tm.that(initializer.read_bytes() == original, eq=False)
+            tm.that((child / c.Infra.INIT_PY).is_file(), eq=True)
+            generated = {
+                path: path.read_bytes() for path in package.rglob(c.Infra.INIT_PY)
+            }
+            first_calls = tuple(calls)
+            tm.ok(infra.codegen_generate(request))
+        finally:
+            sys.setprofile(previous)
+        tm.that({path: path.read_bytes() for path in generated}, eq=generated)
         for path, content in before.items():
             if path != initializer:
                 tm.that(path.read_bytes(), eq=content)
-        generated = {path: path.read_bytes() for path in package.rglob(c.Infra.INIT_PY)}
-        tm.ok(infra.codegen_generate(request))
-        tm.that(
-            {path: path.read_bytes() for path in generated},
-            eq=generated,
-        )
-        error_name = "ImportError" if cyclic else "ModuleNotFoundError"
+        for phase_calls in (first_calls, calls[len(first_calls) :]):
+            tm.that(
+                "FlextInfraCodegenStaging.validate_python_plans" in phase_calls,
+                eq=True,
+            )
+            tm.that(
+                "FlextInfraCodegenTransaction.consume_source_runtime" in phase_calls,
+                eq=True,
+            )
+            tm.that(
+                all(
+                    name.rsplit(".", maxsplit=1)[-1]
+                    in {"validate_python_plans", "consume_source_runtime"}
+                    for name in phase_calls
+                ),
+                eq=True,
+            )
         tm.that(
             u.Tests.run_lazy_init_probe(
-                "import flext_source_only as package\n"
-                "print('PublishedApi' in package.__all__)\n"
-                "print('child' in package.__all__)\n"
-                "try:\n"
-                "    package.PublishedApi\n"
-                "except ImportError as error:\n"
-                f"    print(type(error).__name__ == '{error_name}')\n",
+                "import sys\nimport flext_source_only as package\n"
+                "print('flext_source_only.api' not in sys.modules)\n"
+                "print('flext_source_only.child.api' not in sys.modules)\n"
+                "from flext_source_only.api import FlextSourceOnlyApi\n"
+                "print(package.FlextSourceOnlyApi is FlextSourceOnlyApi)\n"
+                "print(issubclass(package.child.FlextSourceOnlyChild, "
+                "FlextSourceOnlyApi))\n"
+                "print(package.m is package.FlextSourceOnlyModels)\n"
+                "print(dir(package) == list(package.__all__))\n"
+                "print(all(getattr(package, name) is not None "
+                "for name in package.__all__))\n",
                 python_paths=(str(repository / c.Infra.DEFAULT_SRC_DIR),),
             ),
-            eq=["True", "True", "True"],
+            eq=["True"] * 7,
         )
+
+    @staticmethod
+    @pytest.mark.parametrize("cyclic", [False, True])
+    def test_public_generation_rejects_authored_import_failures_before_publication(
+        tmp_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
+        *,
+        cyclic: bool,
+    ) -> None:
+        """Reject missing and cyclic authored imports before publication."""
+        repository, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-source-only",
+            package_name="flext_source_only",
+        )
+        u.Tests.write_lazy_init_namespace_module(
+            package / "models.py", class_name="FlextSourceOnlyModels", alias="m"
+        )
+        tm.that(u.Tests.run_lazy_init(repository), eq=0)
+        authored = package / "api.py"
+        authored.write_text(
+            (
+                "from flext_source_only.child.api import FlextSourceOnlyChild\n"
+                if cyclic
+                else "raise ModuleNotFoundError('unavailable runtime dependency')\n"
+            )
+            + "class FlextSourceOnlyApi:\n    pass\n"
+            "__all__ = ('FlextSourceOnlyApi',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        child = package / "child"
+        child.mkdir()
+        (child / "api.py").write_text(
+            "from flext_source_only.api import FlextSourceOnlyApi\n"
+            "class FlextSourceOnlyChild:\n    pass\n"
+            "__all__ = ('FlextSourceOnlyChild',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        before = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for path in package.rglob("*.py")
+        )
+        checkout = Path(__file__).resolve().parents[3]
+        tm.ok(
+            u.Tests.create_python_environment(
+                repository,
+                dependency_projects=(
+                    checkout,
+                    *u.Tests.python_dependency_projects(checkout),
+                ),
+                session_runtime=session_runtime,
+            )
+        )
+        rejected = infra.codegen_generate(
+            m.Infra.CodegenGenerateRequest(
+                root=repository,
+                what=c.Infra.CodegenConformSurface.LAZY_INIT,
+                scope=c.Infra.CodegenConformScope.SELF,
+            )
+        )
+        tm.fail(
+            rejected,
+            has="ImportError" if cyclic else "unavailable runtime dependency",
+        )
+        tm.ok(u.Cli.atomic_verify_binary_file_states(before))
+        tm.that((child / c.Infra.INIT_PY).exists(), eq=False)
 
     @staticmethod
     def test_conflicted_generated_initializer_is_rebuilt_from_declarations(

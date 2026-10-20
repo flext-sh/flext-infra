@@ -20,6 +20,42 @@ class TestsFlextInfraUtilitiesResourceLimits:
     """Behavior tests for the canonical Mypy resource-limit command."""
 
     @staticmethod
+    def test_candidate_mypy_keeps_persistent_cache_outside_sources(
+        tmp_path: Path,
+    ) -> None:
+        """Use the elected real runtime without modifying candidate membership."""
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+            "[project]\nname = 'fixture-candidate-cache'\nversion = '1.0'\n"
+            "[tool.mypy]\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        source = tmp_path / "candidate.py"
+        source.write_text("value: int = 1\n", encoding=c.DEFAULT_ENCODING)
+        workspace = u.Infra.runtime_environment_dir(Path(__file__).parents[3]).parent
+        cache = u.Infra.mypy_cache_directory(tmp_path)
+        for value in (1, 2):
+            source.write_text(f"value: int = {value}\n", encoding=c.DEFAULT_ENCODING)
+            before = {
+                path.relative_to(tmp_path): path.read_bytes()
+                for path in tmp_path.rglob("*")
+                if path.is_file()
+            }
+            observed = u.Infra.lint_snapshot(source, workspace, gates=(c.Infra.MYPY,))
+            tm.that(u.Infra.lint_execution_errors(observed), empty=True)
+            tm.that(observed[c.Infra.MYPY].errors, empty=True)
+            tm.that(
+                {
+                    path.relative_to(tmp_path): path.read_bytes()
+                    for path in tmp_path.rglob("*")
+                    if path.is_file()
+                },
+                eq=before,
+            )
+            tm.that(cache.is_relative_to(tmp_path), eq=False)
+            tm.that(cache.is_dir(), eq=True)
+            tm.that(any(path.is_file() for path in cache.rglob("*")), eq=True)
+
+    @staticmethod
     @pytest.mark.requires_engine("mypy")
     def test_mypy_command_checks_source_with_memory_and_time_limits(
         tmp_path: Path,

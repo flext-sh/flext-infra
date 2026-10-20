@@ -1,0 +1,26 @@
+id: pydantic-field-positional-default
+valid:
+  - |
+    class Operation(m.ContractModel):
+        kind: Literal["set"] = m.Field(default="set", description="Operation")
+        key: str = m.Field(description="Required key")
+        values: list[str] = m.Field(default_factory=list)
+invalid:
+  - |
+    class Operation(m.ContractModel):
+        kind: Literal["set"] = m.Field("set", description="Operation")
+        locations: tuple[str, ...] = m.Field((), description="Locations")
+        receipt: Path | None = m.Field(None, description="Receipt")
+  - |
+    class Cache(m.Value):
+        backend: str = u.Field("memory", description="Backend")
+  - |
+    class Enabled(m.Value):
+        enabled: bool = m.Field(True)
+  - |
+    class Location(m.ContractModel):
+        start_line: int | None = m.Field(
+            None,
+            validation_alias=m.AliasPath("physicalLocation", "region", "startLine"),
+            description="Start line",
+        )

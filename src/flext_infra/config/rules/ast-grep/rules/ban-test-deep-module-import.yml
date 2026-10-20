@@ -9,11 +9,15 @@ rule:
   pattern: from $MODULE import $$$IMPORTS
 constraints:
   MODULE:
-    regex: "^flext_[a-z0-9_]+\\."
+    all:
+      - regex: "^flext_[a-z0-9_]+\\."
+      - not:
+          regex: "^flext_core\\.lazy$"
 # Detection only: import rewiring belongs to the semantic make mod planner.
 message: |
   Tests must use package-root imports only (e.g., `from flext_ldif import ldif`).
   Deep imports like `from flext_ldif.services import ...` are forbidden.
   Allowed: package-root facade (`<alias>`, `settings`, `config`, `c,t,p,m,u`),
-  `from tests import ...`, `from flext_tests import ...`.
+  `from tests import ...`, `from flext_tests import ...`, and the sanctioned
+  lazy bootstrap module `flext_core.lazy`.
   See: flext.canonical_type_ownership, flext.test_import_law

@@ -12,7 +12,7 @@ import pytest
 
 from flext_infra import c, config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import tm, u
+from tests import m, tm, u
 
 
 class TestsFlextInfraCodegenWorkspaceMemberGroup:
@@ -71,7 +71,10 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        service = FlextInfraCodegenConform(repository_root=root, request=request)
+        service = FlextInfraCodegenConform(
+            repository_root=root,
+            state=m.Infra.CodegenConformState(repository_root=root, request=request),
+        )
         first = tm.ok(service.plan(request))
         members = first.workspace.subprojects
         tm.that(len(members), eq=1)

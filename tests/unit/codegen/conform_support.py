@@ -217,7 +217,10 @@ class TestsFlextInfraConformSupport:
         )
         service = FlextInfraCodegenConform(
             repository_root=root,
-            request=request,
-            initial_workspace=workspace,
+            state=m.Infra.CodegenConformState(
+                repository_root=root,
+                request=request,
+                initial_workspace=workspace,
+            ),
         )
         return service, request

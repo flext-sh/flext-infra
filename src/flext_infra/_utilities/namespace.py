@@ -34,11 +34,10 @@ from flext_infra._utilities._rope_analysis.sourcescan import (
 class FlextInfraUtilitiesCodegenNamespace:
     """Canonical namespace helpers for codegen discovery, parsing, and fixes."""
 
-    # Cache __all__ AST extraction by path+mtime
-    # so the 4-5 redundant _declared_exports calls per policy() hit memory
-    # instead of re-reading + re-parsing the same file from disk each time.
+    # Only syntax-derived values are shared; every lookup still consumes its
+    # actual source snapshot before reusing an identical declaration.
     _declared_exports_cache: ClassVar[
-        MutableMapping[str, t.Pair[int, t.StrSequence]]
+        MutableMapping[str, t.Pair[str, t.StrSequence]]
     ] = {}
 
     @staticmethod
@@ -369,17 +368,16 @@ class FlextInfraUtilitiesCodegenNamespace:
         ):
             return ()
         resolved = file_path.resolve()
-        mtime_ns = resolved.stat().st_mtime_ns if rope_project is None else 0
-        cache_key = str(resolved)
-        cached = cls._declared_exports_cache.get(cache_key)
-        if rope_project is None and cached is not None and cached[0] == mtime_ns:
-            return cached[1]
-        tree = ast.parse(
+        source = (
             file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             if rope_project is None
-            else rope_project.source_text(file_path),
-            filename=str(file_path),
+            else rope_project.source_text(file_path)
         )
+        cache_key = str(resolved)
+        cached = cls._declared_exports_cache.get(cache_key)
+        if cached is not None and cached[0] == source:
+            return cached[1]
+        tree = ast.parse(source, filename=str(file_path))
         result: t.StrSequence = ()
         for node in FlextInfraUtilitiesRopeAnalysisSourceScan.export_declaration_body(
             tree
@@ -398,8 +396,7 @@ class FlextInfraUtilitiesCodegenNamespace:
                     break
                 case _:
                     continue
-        if rope_project is None:
-            cls._declared_exports_cache[cache_key] = (mtime_ns, result)
+        cls._declared_exports_cache[cache_key] = (source, result)
         return result
 
     @classmethod

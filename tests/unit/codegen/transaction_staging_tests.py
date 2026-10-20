@@ -10,12 +10,14 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Event
+from typing import Literal
 
 import pytest
 
 from flext_infra import infra
 from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenStaging,
     FlextInfraMiseArtifactsJournal,
     FlextInfraMiseArtifactsProcess,
     FlextInfraMiseWorkspacePlanner,
@@ -439,7 +441,12 @@ class TestsFlextInfraTransactionStaging:
             FlextInfraCodegenMiseArtifacts(repository_root=root),
         )
 
+        calls = 0
+
         def validate(view_root: Path, candidates: t.MappingKV[Path, Path]) -> bool:
+            nonlocal calls
+            calls += 1
+            tm.that(candidates[target].read_text(), eq="VALUE = 2\n")
             if mutation == "changed":
                 target.write_text("VALUE = 3\n")
             elif mutation == "added":
@@ -454,9 +461,22 @@ class TestsFlextInfraTransactionStaging:
                 root,
                 {target: "VALUE = 2\n"},
                 validate,
-                options=m.Infra.CodegenSourcePreviewOptions(inputs=(before,)),
-            )
+                options=m.Infra.CodegenSourcePreviewOptions(
+                    inputs=(before,),
+                    runtime_root=u.Infra.runtime_environment_dir(
+                        Path(__file__).resolve().parents[3]
+                    ).parent,
+                ),
+            ),
+            has=(
+                "generation authenticated state changed"
+                if mutation == "changed"
+                else "source directory membership changed"
+                if mutation == "added"
+                else "source preview candidate changed during validation"
+            ),
         )
+        tm.that(calls, eq=1)
         tm.that(
             target.read_text(),
             eq="VALUE = 3\n" if mutation == "changed" else "VALUE = 1\n",
@@ -464,10 +484,12 @@ class TestsFlextInfraTransactionStaging:
         tm.that((package / "shared.py").exists(), eq=mutation == "added")
 
     @staticmethod
+    @pytest.mark.parametrize("original_role", ["target", "dependency", "metadata"])
     def test_source_preview_rejects_reobserved_original_identity(
         tmp_path: Path,
+        original_role: Literal["target", "dependency", "metadata"],
     ) -> None:
-        """A fresh read cannot replace the caller's original source authority."""
+        """Original authentication precedes parsing even when live bytes are invalid."""
         root = u.Tests.git_repository(tmp_path)
         package = u.Tests.src_package(
             root,
@@ -476,17 +498,113 @@ class TestsFlextInfraTransactionStaging:
         )
         target = package / "contract.py"
         target.write_text("VALUE = 1\n")
-        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
-        target.write_text("VALUE = 3\n")
-        tm.fail(
+        dependency = package / "provider.py"
+        dependency.write_text("VALUE = 1\n")
+        original = {
+            "target": target,
+            "dependency": dependency,
+            "metadata": root / c.PYPROJECT_FILENAME,
+        }[original_role]
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(original, required=True))
+        changed = b"not a valid source [\n"
+        original.write_bytes(changed)
+
+        refused = FlextInfraStagedPackage.plan_sources(
+            root,
+            {target: "VALUE = 2\n"},
+            options=m.Infra.StageSourceOptions(inputs=(before,)),
+        )
+
+        tm.fail(refused, has="generation authenticated state changed")
+        tm.that(str(refused.error), has=str(original))
+        tm.that(
+            str(refused.error),
+            has=f"expected_sha256={u.Cli.sha256_bytes(tm.not_none(before.content))}",
+        )
+        tm.that(
+            str(refused.error),
+            has=f"observed_sha256={u.Cli.sha256_bytes(changed)}",
+        )
+        tm.that(isinstance(refused.exception, ValueError), eq=True)
+        tm.that(original.read_bytes(), eq=changed)
+
+    @staticmethod
+    def test_source_candidate_reuses_original_receipts_and_checks_full_python_inputs(
+        tmp_path: Path,
+    ) -> None:
+        """Whole-project native gates keep their positive non-effect Python inputs."""
+        root = u.Tests.git_repository(tmp_path)
+        package = u.Tests.src_package(
+            root,
+            "sample",
+            pyproject="[project]\nname = 'sample'\nversion = '1.0.0'\n",
+        )
+        target = package / "contract.py"
+        target.write_text("VALUE = 1\n")
+        helper = root / "tests" / "support.py"
+        helper.parent.mkdir()
+        helper.write_text("VALUE = 1\n")
+        originals = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for path in (target, helper, root / c.PYPROJECT_FILENAME)
+        )
+        plan = tm.ok(
             FlextInfraStagedPackage.plan_sources(
                 root,
                 {target: "VALUE = 2\n"},
-                options=m.Infra.StageSourceOptions(inputs=(before,)),
-            ),
-            has="original source identity changed",
+                options=m.Infra.StageSourceOptions(inputs=originals),
+            )
         )
-        tm.that(target.read_text(), eq="VALUE = 3\n")
+        for original in originals:
+            retained = next(
+                state for state in plan.inputs if state.path == original.path
+            )
+            tm.that(retained is original, eq=True)
+        helper.write_text("VALUE = 3\n")
+
+        tm.fail(
+            FlextInfraStagedPackage.source_inputs_current(plan),
+            has=str(helper),
+        )
+        tm.that(target.read_bytes(), eq=originals[0].content)
+
+    @staticmethod
+    def test_source_candidate_keeps_an_unconsumed_provider_independent(
+        tmp_path: Path,
+    ) -> None:
+        """An unelected sibling's content is not a candidate input."""
+        root = u.Tests.git_repository(tmp_path)
+        package = u.Tests.src_package(
+            root,
+            "sample",
+            pyproject="[project]\nname = 'sample'\nversion = '1.0.0'\n",
+        )
+        provider = root / "provider"
+        provider_package = u.Tests.src_package(
+            provider,
+            "independent",
+            pyproject="[project]\nname = 'independent'\nversion = '1.0.0'\n",
+        )
+        (root / c.Infra.GITMODULES).write_text(
+            '[submodule "provider"]\n\tpath = provider\n',
+        )
+        source = provider_package / c.Infra.INIT_PY
+        source.write_text("VALUE = 1\n")
+        target = package / "contract.py"
+        target.write_text("VALUE = 1\n")
+        plan = tm.ok(
+            FlextInfraStagedPackage.plan_sources(root, {target: "VALUE = 2\n"})
+        )
+        source.write_text("VALUE = 3\n")
+
+        tm.ok(FlextInfraStagedPackage.source_inputs_current(plan))
+        candidate = tmp_path / "candidate"
+        tm.ok(FlextInfraStagedPackage.materialize_sources(plan, candidate))
+        tm.that(
+            (candidate / target.relative_to(root)).read_text(),
+            eq=plan.updates[target],
+        )
+        tm.that(source.read_text(), eq="VALUE = 3\n")
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -503,6 +621,296 @@ class TestsFlextInfraTransactionStaging:
                 "root": tmp_path,
                 selector: "generation-selector",
             })
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "mutation", ["target", "dependency", "metadata", "membership"]
+    )
+    @pytest.mark.parametrize("timing", ["before", "after-consumer"])
+    def test_prepared_receipt_rejects_changes_without_refreshing_authority(
+        tmp_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
+        mutation: Literal["target", "dependency", "metadata", "membership"],
+        timing: Literal["before", "after-consumer"],
+    ) -> None:
+        """A closed native epoch survives cold consumption but never source drift."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        checkout = Path(__file__).resolve().parents[3]
+        tm.ok(
+            u.Tests.create_python_environment(
+                root,
+                dependency_projects=(
+                    checkout,
+                    *u.Tests.python_dependency_projects(checkout),
+                ),
+                session_runtime=session_runtime,
+            )
+        )
+        target = package / "prepared.py"
+        target.write_text("VALUE = 1\n")
+        dependency = package / "provider.py"
+        dependency.write_text("VALUE = 1\n")
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+        owner = transaction.FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        roots = {"@prepared-0": root}
+        changed = {
+            "target": target,
+            "dependency": dependency,
+            "metadata": root / c.PYPROJECT_FILENAME,
+            "membership": package / "arrived.py",
+        }[mutation]
+
+        def validate(scope_root: Path) -> p.Result[bool]:
+            session = tm.ok(owner.begin_files_locked(scope_root, roots, (before,)))
+            prepared = tm.ok(
+                FlextInfraCodegenStaging.prepare_python_plans(
+                    root,
+                    (
+                        m.Infra.CodegenFilePlan(
+                            project=root,
+                            path=target,
+                            before=before,
+                            desired_content=b"VALUE = 2\n",
+                            desired_mode=before.mode,
+                        ),
+                    ),
+                )
+            )
+            receipt = tm.not_none(prepared[0].prepared_sources)
+            if not isinstance(receipt, m.Infra.StageSourcePlan):
+                pytest.fail("Preparation did not return the canonical source receipt")
+            originals = receipt.inputs
+            calls = 0
+
+            def consume(
+                view: Path,
+                candidate: m.Infra.StageSourcePlan,
+                project: Path,
+                runtime_report: m.Infra.ValidationReport,
+            ) -> p.Result[bool]:
+                nonlocal calls
+                calls += 1
+                tm.that(project, eq=root)
+                tm.that(runtime_report.passed, eq=True)
+                tm.that(candidate.inputs, eq=originals)
+                consumed = tm.ok(
+                    u.Cli.run_raw(
+                        (
+                            sys.executable,
+                            "-c",
+                            (
+                                "import runpy, sys; assert runpy.run_path(sys.argv[1])"
+                                "['VALUE'] == 2"
+                            ),
+                            str(view / target.relative_to(root)),
+                        ),
+                        cwd=view,
+                    )
+                )
+                tm.that(u.Cli.process_succeeded(consumed.outcome), eq=True)
+                changed.write_bytes(b"invalid source [\n")
+                return r[bool].ok(value=True)
+
+            if timing == "before":
+                changed.write_bytes(b"invalid source [\n")
+            refused = FlextInfraCodegenStaging.validate_python_plans(
+                session,
+                (),
+                plans=prepared,
+                workspace=root,
+                validator=consume,
+            )
+            tm.fail(
+                refused,
+                has=(
+                    "source directory membership changed"
+                    if mutation == "membership"
+                    else "generation authenticated state changed"
+                ),
+            )
+            tm.that(isinstance(refused.exception, ValueError), eq=True)
+            tm.that(calls, eq=0 if timing == "before" else 1)
+            tm.that(receipt.inputs is originals, eq=True)
+            tm.that(prepared[0].prepared_sources is receipt, eq=True)
+            tm.that(changed.read_bytes(), eq=b"invalid source [\n")
+            if mutation != "target":
+                tm.that(target.read_bytes(), eq=before.content)
+            tm.fail(FlextInfraCodegenStaging.prepare_python_plans(root, prepared))
+            return r[bool].ok(value=True)
+
+        tm.ok(owner.run_files_locked(roots, validate))
+
+    @staticmethod
+    @pytest.mark.parametrize("unchanged", [False, True])
+    @pytest.mark.parametrize(
+        "rejection", ["import", "census", "false", "failure", "candidate"]
+    )
+    def test_staged_admission_keeps_runtime_and_guarded_consumer_failures(
+        tmp_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
+        rejection: str,
+        *,
+        unchanged: bool,
+    ) -> None:
+        """Even no-effect plans require native runtime before read-only callbacks."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        checkout = Path(__file__).resolve().parents[3]
+        tm.ok(
+            u.Tests.create_python_environment(
+                root,
+                dependency_projects=(
+                    checkout,
+                    *u.Tests.python_dependency_projects(checkout),
+                ),
+                session_runtime=session_runtime,
+            )
+        )
+        target = package / "candidate.py"
+        source = (
+            "import missing_admission_dependency\n"
+            if rejection == "import"
+            else "class Plain:\n    pass\n"
+            if rejection == "census"
+            else "VALUE = 2\n"
+        )
+        target.write_text(source if unchanged else "VALUE = 1\n")
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+        prepared = tm.ok(
+            FlextInfraCodegenStaging.prepare_python_plans(
+                root,
+                (
+                    m.Infra.CodegenFilePlan(
+                        project=root,
+                        path=target,
+                        before=before,
+                        desired_content=source.encode(c.DEFAULT_ENCODING),
+                        desired_mode=before.mode,
+                    ),
+                ),
+            )
+        )
+        tm.that(u.Infra.codegen_file_requires_effect(prepared[0]), eq=not unchanged)
+        owner = transaction.FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        roots = owner.capability_roots("admission", (root,))
+        calls = 0
+        original = OSError("native consumer rejected the admitted candidate")
+
+        def reject(
+            view: Path,
+            candidate: m.Infra.StageSourcePlan,
+            project: Path,
+            runtime_report: m.Infra.ValidationReport,
+        ) -> p.Result[bool]:
+            nonlocal calls
+            calls += 1
+            tm.that(runtime_report.passed, eq=True)
+            tm.that(project, eq=root)
+            tm.ok(FlextInfraStagedPackage.source_inputs_current(candidate))
+            destination = view / target.relative_to(root)
+            tm.that(destination.read_text(), eq=source)
+            tm.that(target.read_bytes(), eq=before.content)
+            if rejection == "failure":
+                return r[bool].fail(
+                    str(original), exception=original, error_code="native-consumer"
+                )
+            if rejection == "candidate":
+                destination.write_text("VALUE = 3\n")
+                return r[bool].ok(value=True)
+            return r[bool].ok(value=False)
+
+        def validate(scope_root: Path) -> p.Result[bool]:
+            session = tm.ok(owner.begin_files_locked(scope_root, roots, (before,)))
+            refused = FlextInfraCodegenStaging.validate_python_plans(
+                session,
+                (),
+                plans=prepared,
+                workspace=root,
+                validator=reject,
+            )
+            if rejection == "import":
+                tm.fail(refused, has="missing_admission_dependency")
+                tm.that(str(refused.error), has="candidate runtime consumer failed")
+            elif rejection == "census":
+                tm.fail(refused, has="candidate runtime rejected")
+                tm.that(str(refused.error), has="runtime census found")
+                tm.that(str(refused.error), has="Plain [class_prefix]")
+            elif rejection == "failure":
+                tm.fail(refused, has=str(original))
+                tm.that(refused.exception is original, eq=True)
+                tm.that(refused.error_code, eq="native-consumer")
+            elif rejection == "candidate":
+                tm.fail(
+                    refused, has="source candidate changed during read-only admission"
+                )
+            else:
+                tm.fail(refused, has=f"candidate check rejected: {root}")
+            tm.that(calls, eq=0 if rejection in {"import", "census"} else 1)
+            tm.that(
+                tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
+                eq=before,
+            )
+            return r[bool].ok(value=True)
+
+        tm.ok(owner.run_files_locked(roots, validate))
+
+    @staticmethod
+    @pytest.mark.parametrize("tamper", ["bytes", "mode"])
+    def test_prepared_receipt_rejects_an_altered_effect(
+        tmp_path: Path,
+        tamper: Literal["bytes", "mode"],
+    ) -> None:
+        """Admission consumes the original sealed candidate, not a replacement plan."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        target = package / "prepared.py"
+        target.write_text("VALUE = 1\n")
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+        owner = transaction.FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root),
+        )
+        roots = {"@prepared-0": root}
+
+        def validate(scope_root: Path) -> p.Result[bool]:
+            session = tm.ok(owner.begin_files_locked(scope_root, roots, (before,)))
+            prepared = tm.ok(
+                FlextInfraCodegenStaging.prepare_python_plans(
+                    root,
+                    (
+                        m.Infra.CodegenFilePlan(
+                            project=root,
+                            path=target,
+                            before=before,
+                            desired_content=b"VALUE = 2\n",
+                            desired_mode=before.mode,
+                        ),
+                    ),
+                )
+            )
+            altered = prepared[0].model_copy(
+                update=(
+                    {"desired_content": b"VALUE = 3\n"}
+                    if tamper == "bytes"
+                    else {"desired_mode": tm.not_none(prepared[0].desired_mode) ^ 0o100}
+                )
+            )
+            refused = FlextInfraCodegenStaging.validate_python_plans(
+                session,
+                (),
+                plans=(altered,),
+                workspace=root,
+            )
+            tm.fail(refused, has="differs from sealed preparation")
+            tm.that(
+                tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True)),
+                eq=before,
+            )
+            tm.fail(FlextInfraCodegenStaging.prepare_python_plans(root, (altered,)))
+            return r[bool].ok(value=True)
+
+        tm.ok(owner.run_files_locked(roots, validate))
 
     @staticmethod
     def test_public_footprint_does_not_plan_sources_or_publish_reports(

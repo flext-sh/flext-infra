@@ -211,6 +211,7 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         prepared = FlextInfraCodegenStaging.prepare_python_plans(
             request.root,
             analysis.files,
+            prepare=u.Infra.normalize_source_plan,
         )
         if prepared.failure:
             return r[p.Infra.CodegenResult].from_failure(prepared)
@@ -259,7 +260,31 @@ class FlextInfraCodegenConformExecuteDirected(FlextInfraCodegenConformExecuteSca
         ))
         if inputs.failure:
             return r[p.Infra.CodegenResult].from_failure(inputs)
-        analysis = analysis.model_copy(update={"inputs": inputs.value})
+        directories, topology = u.Cli.atomic_merge_directory_query_receipts(
+            (
+                *analysis.source_directories,
+                *(
+                    directory
+                    for file in analysis.files
+                    for directory in file.source_directories
+                ),
+            ),
+            (
+                *analysis.source_query_topology,
+                *(
+                    chain
+                    for file in analysis.files
+                    for chain in file.source_query_topology
+                ),
+            ),
+        )
+        analysis = analysis.model_copy(
+            update={
+                "inputs": inputs.value,
+                "source_directories": directories,
+                "source_query_topology": topology,
+            }
+        )
         staged = self._directed_stage_inputs(request, analysis)
         if staged.failure:
             return r[p.Infra.CodegenResult].from_failure(staged)

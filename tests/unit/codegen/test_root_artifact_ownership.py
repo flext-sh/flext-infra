@@ -175,9 +175,13 @@ class TestsFlextInfraRootArtifactOwnership:
         )
 
         plan = tm.ok(
-            FlextInfraCodegenConform(repository_root=root, request=request).plan(
-                request
-            )
+            FlextInfraCodegenConform(
+                repository_root=root,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    request=request,
+                ),
+            ).plan(request)
         )
         governed = tuple(file for file in plan.files if file.policy is not None)
         tm.that(
@@ -243,7 +247,13 @@ class TestsFlextInfraRootArtifactOwnership:
             (root.parent / "origin.git").rename(root.parent / "origin.git.removed")
             request = m.Infra.CodegenConformRequest(root=root)
             tm.ok(
-                FlextInfraCodegenConform(repository_root=root, request=request).plan(
+                FlextInfraCodegenConform(
+                    repository_root=root,
+                    state=m.Infra.CodegenConformState(
+                        repository_root=root,
+                        request=request,
+                    ),
+                ).plan(
                     request,
                 ),
             )

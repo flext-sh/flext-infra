@@ -1,0 +1,54 @@
+id: rewire-test-assert-guard
+snapshots:
+  assert isinstance(value, (Entry, Schema)):
+    fixed: |-
+      if not isinstance(value, (Entry, Schema)):
+          raise AssertionError
+    labels:
+    - source: assert isinstance(value, (Entry, Schema))
+      style: primary
+      start: 0
+      end: 41
+    - source: isinstance(value, (Entry, Schema))
+      style: secondary
+      start: 7
+      end: 41
+  assert isinstance(value, Entry):
+    fixed: |-
+      if not isinstance(value, Entry):
+          raise AssertionError
+    labels:
+    - source: assert isinstance(value, Entry)
+      style: primary
+      start: 0
+      end: 31
+    - source: isinstance(value, Entry)
+      style: secondary
+      start: 7
+      end: 31
+  assert value is None:
+    fixed: |-
+      if not value is None:
+          raise AssertionError
+    labels:
+    - source: assert value is None
+      style: primary
+      start: 0
+      end: 20
+    - source: value is None
+      style: secondary
+      start: 7
+      end: 20
+  assert value is not None:
+    fixed: |-
+      if not value is not None:
+          raise AssertionError
+    labels:
+    - source: assert value is not None
+      style: primary
+      start: 0
+      end: 24
+    - source: value is not None
+      style: secondary
+      start: 7
+      end: 24

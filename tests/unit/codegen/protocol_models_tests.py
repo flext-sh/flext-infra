@@ -388,6 +388,7 @@ def _install_member_runtime(
 
 def _verify_member_runtime(root: t.DirectoryPath, supplier_receipt: str) -> None:
     """Compare the installed runtime against the supplier source identities."""
+    package = root / c.Infra.DEFAULT_SRC_DIR / MEMBER
     environment = u.Infra.runtime_environment_dir(root)
     u.Tests.run_lazy_init_probe(
         "import sys\n"
@@ -396,14 +397,21 @@ def _verify_member_runtime(root: t.DirectoryPath, supplier_receipt: str) -> None
         "from importlib.metadata import distribution\n"
         "from flext_infra import m, u\n"
         "from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance\n"
+        "from flext_infra.workspace import FlextInfraWorkspaceDetector\n"
         "from flext_tests import tm\n"
         f"root = Path({str(root)!r})\n"
         f"assert Path(sys.prefix).resolve() == Path({str(environment)!r}).resolve()\n"
         f"package = find_spec({MEMBER!r})\n"
         "assert package is not None and package.origin is not None\n"
-        "assert Path(package.origin).resolve().is_relative_to(Path(sys.prefix).resolve())\n"
+        "assert Path(package.origin).resolve() == "
+        f"Path({str(package / c.Infra.INIT_PY)!r}).resolve()\n"
+        "repository = "
+        "tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root)).repository\n"
+        "installed = distribution(repository.distribution)\n"
+        "receipt = m.Infra.DirectUrlReceipt.model_validate_json("
+        "tm.not_none(installed.read_text('direct_url.json')))\n"
         "assert tm.ok(FlextInfraWorkspaceEnvironmentProvenance."
-        "validate_locked(root)) > 0\n"
+        "validate_editable_installation(repository, root, installed, receipt))\n"
         + supplier_receipt
         + "for module, encoded, identity in "
         "zip(modules, states, identities, strict=True):\n"
@@ -847,17 +855,34 @@ def test_model_namespaces_preserve_nested_contracts(
     )
     _probe(
         member_root,
+        "from cProfile import Profile\n"
         "from flext_infra import u\n"
         "from flext_infra.workspace import FlextInfraRopeWorkspace, "
         "FlextInfraWorkspaceDetector\n"
         "project = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec("
         "root)).project\n"
-        "with u.Infra.facade_source_project(root) as binding:\n"
-        "    with FlextInfraRopeWorkspace.open_workspace(root,\n"
-        "            rope_repository_root=Path(binding[0].root.real_path),\n"
-        "            source_project=binding[0]) as workspace:\n"
-        "        modules, identities = tm.ok(service.render_modules("
-        "project, workspace))\n"
+        f"model_path = root / 'src' / {MEMBER!r} / 'models.py'\n"
+        "source = model_path.read_text()\n"
+        "admissions = []\n"
+        "for duplicate_count in (0, 4):\n"
+        "    aliases = ''.join(\n"
+        f"        f'    Mirror{{index}} = {namespace}\\n'\n"
+        "        for index in range(duplicate_count))\n"
+        "    proposed = source.replace(\n"
+        "        '\\nm = DemoMemberModels', aliases + '\\nm = DemoMemberModels')\n"
+        "    profile = Profile()\n"
+        "    with u.Infra.facade_source_project(root,\n"
+        "            planned_sources={model_path: proposed}) as binding:\n"
+        "        with FlextInfraRopeWorkspace.open_workspace(root,\n"
+        "                rope_repository_root=Path(binding[0].root.real_path),\n"
+        "                source_project=binding[0]) as workspace:\n"
+        "            modules, identities = tm.ok(profile.runcall(\n"
+        "                service.render_modules, project, workspace))\n"
+        "    admissions.append(sum(\n"
+        "        entry.callcount for entry in profile.getstats()\n"
+        "        if not isinstance(entry.code, str)\n"
+        "        and entry.code.co_name == 'class_ancestry'))\n"
+        "assert admissions[0] > 0 and admissions[0] == admissions[1], admissions\n"
         f"assert identities[{namespace + '.Root'!r}] == identities['Mirror.Root']\n"
         "assert modules\n",
         consumer="",

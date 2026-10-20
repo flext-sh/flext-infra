@@ -1,7 +1,7 @@
-{# Config and settings expose the same read-only namespace protocol shape. -#}
+{# Config and settings expose the same direct namespace data protocol shape. -#}
 {%- macro namespace_protocol(kind) -%}
-{%- set property_line = "        def " ~ ns ~ "(self) -> m." ~ ns ~ "." ~ kind ~ "Namespace:" -%}
-{%- set property_declaration = property_line if property_line | length <= tooling.tools.ruff.line_length else "        def " ~ ns ~ "(\n            self,\n        ) -> m." ~ ns ~ "." ~ kind ~ "Namespace:" -%}
+{%- set namespace_line = "        " ~ ns ~ ": p." ~ ns ~ "." ~ kind ~ "Namespace" -%}
+{%- set namespace_declaration = namespace_line if namespace_line | length <= tooling.tools.ruff.line_length else "        " ~ ns ~ ": (\n            p." ~ ns ~ "." ~ kind ~ "Namespace\n        )" -%}
 """Structural {{ kind | lower }} declarations for {{ package_name }}.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
@@ -13,24 +13,22 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-{% if kind == "Settings" %}from flext_core import p
+{% if kind == "Settings" %}from {{ upstream }} import {{ upstream_facades["p"] }}
 
 {% endif %}
 if TYPE_CHECKING:
-    from {{ package_name }} import m
+    from {{ package_name }} import p
 
 
 class {{ class_stem }}Protocols{{ kind }}:
     """Protocol namespace for validated {{ kind | lower }} data."""
 
     @runtime_checkable
-    class {{ kind }}({% if kind == "Settings" %}p.Settings, {% endif %}Protocol):
+    class {{ kind }}({% if kind == "Settings" %}{{ upstream_facades["p"] }}.Settings, {% endif %}Protocol):
         """Direct project {{ kind | lower }} singleton surface."""
 
-        @property
-{{ property_declaration }}
-            """The canonical validated {{ kind | lower }} namespace model."""
-            ...
+{{ namespace_declaration }}
+        """The canonical structural {{ kind | lower }} namespace contract."""
 
 
 __all__: list[str] = ["{{ class_stem }}Protocols{{ kind }}"]

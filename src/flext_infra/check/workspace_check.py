@@ -108,6 +108,7 @@ class FlextInfraWorkspaceChecker(
         source_plan: m.Infra.StageSourcePlan,
         *,
         project_root: Path,
+        runtime_report: m.Infra.ValidationReport,
     ) -> p.Result[bool]:
         """Check a sealed candidate using its original physical runtime owner.
 
@@ -129,6 +130,7 @@ class FlextInfraWorkspaceChecker(
         checked = self._execute_payload(
             params,
             runtime_root=runtime_directory.parent,
+            candidate_runtime_report=runtime_report,
             candidate_files=tuple(
                 sorted({
                     params.repository_root / source.relative_to(project_root)
@@ -243,6 +245,7 @@ class FlextInfraWorkspaceChecker(
         *,
         runtime_root: Path | None = None,
         candidate_files: t.VariadicTuple[Path] = (),
+        candidate_runtime_report: m.Infra.ValidationReport | None = None,
     ) -> p.Result[bool]:
         """Execute the same native gates with an optional service-owned runtime.
 
@@ -277,6 +280,7 @@ class FlextInfraWorkspaceChecker(
             pyright_args=tuple(self.parse_tool_args(params.pyright_args)),
             selected_files=selected_files,
             candidate_files=candidate_files,
+            candidate_runtime_report=candidate_runtime_report,
             runtime_dependency_collector=FlextInfraRuntimeDependencyCollector(
                 python=(
                     Path(sys.executable)

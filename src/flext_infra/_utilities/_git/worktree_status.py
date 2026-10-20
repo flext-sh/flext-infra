@@ -102,7 +102,7 @@ class FlextInfraUtilitiesGitWorktreeStatusMixin(FlextInfraUtilitiesGitRepo):
         cls,
         request: m.Infra.GitRepoRequest,
     ) -> p.Result[t.SequenceOf[Path]]:
-        """Return every existing staged, unstaged, or untracked path in one repo.
+        """Return literal staged, unstaged, and untracked paths without resolving links.
 
         Returns:
             Every existing staged, unstaged, or untracked path in one repo.
@@ -128,7 +128,7 @@ class FlextInfraUtilitiesGitWorktreeStatusMixin(FlextInfraUtilitiesGitRepo):
             tuple(
                 path
                 for relative_path in relative_paths
-                if (path := (repo_path / relative_path).resolve()).is_file()
+                if (path := repo_path / relative_path).is_symlink() or path.is_file()
             ),
         )
 

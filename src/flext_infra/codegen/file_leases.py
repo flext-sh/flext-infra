@@ -11,10 +11,12 @@ from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
-from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
+from flext_infra import c, config, m, r, t, u
+from flext_infra.codegen import FlextInfraMiseArtifactsFiles
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from flext_infra import p
 
 if TYPE_CHECKING:
@@ -37,22 +39,33 @@ class FlextInfraCodegenFileLeases:
         scope = u.Infra.git_mutation_scope(
             m.Infra.GitRepoRequest(repo_root=root),
         ).unwrap()
-        physical = files.physical_directory_identity(scope.root).unwrap()
+        physical = FlextInfraMiseArtifactsFiles.physical_directory_identity(
+            scope.root
+        ).unwrap()
         lease_directory = (
             scope.git_dir
             if scope.git_dir is not None
             else scope.root / c.Infra.TRANSACTION_STATE_DIRNAME
         )
         if lease_directory.is_symlink() or lease_directory.exists():
-            files.physical_directory_identity(lease_directory).unwrap()
+            FlextInfraMiseArtifactsFiles.physical_directory_identity(
+                lease_directory
+            ).unwrap()
         journal = lease_directory / c.Infra.JOURNAL_NAME
         u.Cli.atomic_read_binary_file_state(
             journal.with_name(f"{journal.name}.lock"),
             required=False,
         ).unwrap()
         with u.Infra.codegen_transaction_lease(journal):
-            files.physical_directory_identity(lease_directory).unwrap()
-            if files.physical_directory_identity(scope.root).unwrap() != physical:
+            FlextInfraMiseArtifactsFiles.physical_directory_identity(
+                lease_directory
+            ).unwrap()
+            if (
+                FlextInfraMiseArtifactsFiles.physical_directory_identity(
+                    scope.root
+                ).unwrap()
+                != physical
+            ):
                 msg = f"mutation root changed before lease acquisition: {scope.root}"
                 raise ValueError(msg)
             if (
@@ -123,6 +136,92 @@ class FlextInfraCodegenFileLeases:
                 )
         return r[bool].ok(value=True)
 
+    def _prepare_source_controlplanes(
+        self,
+        roots: t.MappingKV[str, Path],
+        created: t.MutableSequenceOf[m.Cli.AtomicDirectoryState],
+    ) -> None:
+        """Create only authenticated native control planes under existing leases.
+
+        Raises:
+            ValueError: A participant is absent or its physical identity changed.
+
+        """
+        for root in dict.fromkeys(roots.values()):
+            participant = self._file_leases.get(root)
+            if participant is None:
+                message = f"source preview participant has no native lease: {root}"
+                raise ValueError(message)
+            physical = FlextInfraMiseArtifactsFiles.physical_directory_identity(
+                root
+            ).unwrap()
+            if physical != (participant.device, participant.inode):
+                message = f"source preview participant changed before capture: {root}"
+                raise ValueError(message)
+            control = root / c.Infra.TRANSACTION_STATE_DIRNAME
+            self._authorize_roots((root,), (control,)).unwrap()
+            plan = u.Cli.atomic_plan_directory_chain(control).unwrap()
+            created.extend(
+                u.Cli.atomic_create_directory_chain_guarded(
+                    plan,
+                    permission_mode=config.Infra.codegen.modes.directory_private,
+                ).unwrap()
+            )
+
+    @staticmethod
+    def _source_controlplane_cleanup(
+        created: t.SequenceOf[m.Cli.AtomicDirectoryState],
+    ) -> p.Result[bool]:
+        """Remove only the exact empty control-plane directories this run created.
+
+        Returns:
+            Success or the first native identity/emptiness refusal.
+
+        """
+        failure: p.Result[bool] | None = None
+        for state in reversed(created):
+            cleaned = u.Cli.atomic_delete_empty_directory_guarded(state)
+            if failure is None and cleaned.failure:
+                failure = cleaned
+        return failure if failure is not None else r[bool].ok(value=True)
+
+    def _source_controlplane_operation[T](
+        self,
+        roots: t.MappingKV[str, Path],
+        operation: Callable[[], p.Result[T]],
+    ) -> p.Result[T]:
+        """Keep native preparation outside the source epoch and retain first failure.
+
+        Returns:
+            The operation result, with any native cleanup refusal attached.
+
+        """
+        created: list[m.Cli.AtomicDirectoryState] = []
+        try:
+            self._prepare_source_controlplanes(roots, created)
+            outcome = operation()
+        except Exception as exception:
+            cleaned = self._source_controlplane_cleanup(created)
+            if cleaned.failure:
+                exception.add_note(
+                    cleaned.error or "source control-plane cleanup failed"
+                )
+            raise
+        cleaned = self._source_controlplane_cleanup(created)
+        if cleaned.failure:
+            if outcome.failure:
+                return r[T].fail(
+                    outcome.error or "source preview failed",
+                    error_code=outcome.error_code,
+                    exception=outcome.exception,
+                    error_data={
+                        **(outcome.error_data or {}),
+                        "controlplane_cleanup_error": cleaned.error,
+                    },
+                )
+            return r[T].from_failure(cleaned)
+        return outcome
+
     @contextmanager
     def _lease_file_participants(
         self,
@@ -142,7 +241,9 @@ class FlextInfraCodegenFileLeases:
             tuple(participant.transaction_root for participant in participants),
         ).unwrap()
         for participant in participants:
-            physical = files.physical_directory_identity(participant.root).unwrap()
+            physical = FlextInfraMiseArtifactsFiles.physical_directory_identity(
+                participant.root
+            ).unwrap()
             if physical != (participant.device, participant.inode):
                 msg = f"file publication root changed before lease: {participant.root}"
                 raise ValueError(msg)
@@ -163,17 +264,21 @@ class FlextInfraCodegenFileLeases:
                         participant.root / c.Infra.TRANSACTION_STATE_DIRNAME
                     )
                     if lease_directory.is_symlink() or lease_directory.exists():
-                        files.physical_directory_identity(lease_directory).unwrap()
+                        FlextInfraMiseArtifactsFiles.physical_directory_identity(
+                            lease_directory
+                        ).unwrap()
                     lease_path = lease_directory / c.Infra.JOURNAL_NAME
                     u.Cli.atomic_read_binary_file_state(
                         lease_path.with_name(f"{lease_path.name}.lock"),
                         required=False,
                     ).unwrap()
                     stack.enter_context(u.Infra.codegen_transaction_lease(lease_path))
-                    files.physical_directory_identity(lease_directory).unwrap()
+                    FlextInfraMiseArtifactsFiles.physical_directory_identity(
+                        lease_directory
+                    ).unwrap()
                     acquired.add(participant.root)
                     self._file_leases[participant.root] = participant
-                    physical = files.physical_directory_identity(
+                    physical = FlextInfraMiseArtifactsFiles.physical_directory_identity(
                         participant.root,
                     ).unwrap()
                     if physical != (participant.device, participant.inode):

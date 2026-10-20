@@ -182,6 +182,8 @@ class FlextInfraCProfileReport(s[bool]):
             stats.sort_stats(self.sort).print_stats(self.limit)
             stream.write("Repository source functions:\n")
             stats.print_stats(source_filter, self.limit)
+            stream.write("Repository source callers:\n")
+            stats.print_callers(source_filter, self.limit)
 
 
 __all__: list[str] = ["FlextInfraCProfileReport"]
