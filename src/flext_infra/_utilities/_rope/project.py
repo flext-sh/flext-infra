@@ -526,15 +526,17 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             """
             return normpath(str(Path(path).absolute()))
 
-        def _ambient_identity(self, path: str) -> Path | None:
+        def _ambient_identity(self, resolved: Path) -> Path | None:
             """Return the real path when it belongs to an ambient interpreter root.
+
+            Args:
+                resolved: Already normalized path; avoids repeating ``realpath``.
 
             Returns:
                 The normalized real path inside one ambient root, or ``None``
                 for repository-scoped paths the closed inventory owns.
 
             """
-            resolved = Path(self.realpath(path))
             if any(
                 root == resolved or root in resolved.parents
                 for root in self._ambient_roots
@@ -555,7 +557,7 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             resolved = Path(self.realpath(path))
             if resolved in self._sources or resolved in self._directories:
                 return True
-            ambient = self._ambient_identity(path)
+            ambient = self._ambient_identity(resolved)
             return ambient is not None and ambient.exists()
 
         def isfile(self, path: str) -> bool:
@@ -571,7 +573,7 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             resolved = Path(self.realpath(path))
             if resolved in self._sources:
                 return True
-            ambient = self._ambient_identity(path)
+            ambient = self._ambient_identity(resolved)
             return ambient is not None and ambient.is_file()
 
         def isdir(self, path: str) -> bool:
@@ -587,7 +589,7 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             resolved = Path(self.realpath(path))
             if resolved in self._directories:
                 return True
-            ambient = self._ambient_identity(path)
+            ambient = self._ambient_identity(resolved)
             return ambient is not None and ambient.is_dir()
 
         def listdir(self, path: str) -> list[str]:
@@ -607,7 +609,7 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             directory = Path(self.realpath(path))
             if directory in self._directories:
                 return [child.name for child in self._children[directory]]
-            ambient = self._ambient_identity(path)
+            ambient = self._ambient_identity(directory)
             if ambient is not None and ambient.is_dir():
                 return sorted(item.name for item in ambient.iterdir())
             msg = f"Rope snapshot folder is absent: {path}"
@@ -630,7 +632,7 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             source = Path(self.realpath(path))
             if source in self._sources:
                 return self._sources[source]
-            ambient = self._ambient_identity(path)
+            ambient = self._ambient_identity(source)
             if ambient is not None and ambient.is_file():
                 return ambient.read_bytes()
             msg = f"Rope snapshot source is absent: {path}"
@@ -653,7 +655,7 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             source = Path(self.realpath(path))
             if source in self._children:
                 return self._children[source]
-            ambient = self._ambient_identity(path)
+            ambient = self._ambient_identity(source)
             if ambient is not None and ambient.is_dir():
                 return tuple(
                     ambient / item.name

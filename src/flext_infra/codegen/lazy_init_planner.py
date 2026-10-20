@@ -13,6 +13,7 @@ from typing import Annotated, override
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import FlextInfraCodegenLazyInitPlannerPublicRootMixin
+from flext_infra.workspace import FlextInfraRopeWorkspace
 from flext_infra.codegen._lazy_init_planner_aliases import (
     FlextInfraCodegenLazyInitPlannerAliasesMixin,
 )
@@ -31,7 +32,6 @@ from flext_infra.codegen._lazy_init_planner_exports import (
 from flext_infra.codegen._lazy_init_planner_parents import (
     FlextInfraCodegenLazyInitPlannerParentsMixin,
 )
-from flext_infra.workspace import FlextInfraRopeWorkspace
 
 
 class FlextInfraCodegenLazyInitPlanner(
@@ -204,14 +204,14 @@ class FlextInfraCodegenLazyInitPlanner(
             self._parent_package_cache.update(planner._parent_package_cache)
             self._module_file_by_name.update(planner._module_file_by_name)
             self._project_layout_cache.update(planner._project_layout_cache)
-        receipt = consumption.receipt()
-        return plan.model_copy(
-            update={
-                "source_states": receipt.inputs,
-                "source_directories": receipt.source_directories,
-                "source_query_topology": receipt.source_query_topology,
-            }
-        ), receipt
+            receipt = consumption.receipt()
+            return plan.model_copy(
+                update={
+                    "source_states": receipt.inputs,
+                    "source_directories": receipt.source_directories,
+                    "source_query_topology": receipt.source_query_topology,
+                }
+            ), receipt
 
     @property
     def collision_count(self) -> int:

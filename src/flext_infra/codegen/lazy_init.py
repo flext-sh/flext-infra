@@ -147,11 +147,10 @@ class FlextInfraCodegenLazyInit(
             One complete immutable lazy-init analysis receipt.
 
         """
+        # Preserve cross-call caches keyed by root/identity; each entry is
+        # validated through adopt_source_consumption before reuse. Clearing
+        # them here discarded every cached index and receipt between plans.
         self._modified_files.clear()
-        self._source_plans.clear()
-        self._source_receipts.clear()
-        self._source_indexes.clear()
-        self._file_plan_cache.clear()
         if not (
             self.repository_root.is_dir()
             if source_project is None
