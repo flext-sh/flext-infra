@@ -1594,6 +1594,8 @@ class FlextInfraModGateEngine:
             Full-catalog findings authenticated to candidate bytes and bindings.
 
         """
+        root = root.resolve()
+        view_root /= root.relative_to(candidate.workspace)
         plan = u.Infra.codemod_rule_plan(root).unwrap()
         rules_by_id = {rule.id: rule for rule in plan.rules}
         updates: dict[Path, bytes] = {}
@@ -1612,19 +1614,13 @@ class FlextInfraModGateEngine:
             for state in candidate.inputs
         )
         owned_sources = FlextInfraUtilitiesCodegenFacades._facade_original_sources(
-            root.resolve(), states
+            root, states
         )
-        source_states = tuple(
-            state
-            for state in states
-            if state.path in owned_sources
-        )
+        source_states = tuple(state for state in states if state.path in owned_sources)
         physical = {
             view_root
-            / state.path.relative_to(
-                root.resolve()
-            ): u.Cli.atomic_read_binary_file_state(
-                view_root / state.path.relative_to(root.resolve()), required=True
+            / state.path.relative_to(root): u.Cli.atomic_read_binary_file_state(
+                view_root / state.path.relative_to(root), required=True
             ).unwrap()
             for state in source_states
         }

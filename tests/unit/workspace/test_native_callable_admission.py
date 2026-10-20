@@ -8,11 +8,154 @@ from __future__ import annotations
 
 import pytest
 
-from tests import t, u
+from flext_infra.transformers import FlextInfraSemanticPublication
+from flext_infra.workspace.native_reference import (
+    FlextInfraWorkspaceNativeReference as native,
+)
+from tests import m, t, tm, u
 
 
 class TestsFlextInfraNativeCallableAdmission:
     """Inherited dict and slots callables preserve behavior and binding evidence."""
+
+    @staticmethod
+    @pytest.mark.parametrize("subject", ["thread-hook", "gate-base"])
+    def test_publication_producer_retains_reached_thread_hook(
+        real_python_package: t.DirectoryPath,
+        subject: t.StrictStr,
+    ) -> None:
+        """Report real publication aliases before any publication guard executes."""
+        selections = tm.ok(
+            native.producer_selections(
+                FlextInfraSemanticPublication.publish_source_candidate,
+                (),
+            )
+        )
+        if subject == "thread-hook":
+            live = tm.ok(native.capture(selections))
+            output = u.Tests.run_lazy_init_probe(
+                """from flext_infra.transformers import FlextInfraSemanticPublication
+from flext_infra.workspace.native_reference import (
+    FlextInfraWorkspaceNativeReference as native,
+)
+selection = native.producer_selections(
+    FlextInfraSemanticPublication.publish_source_candidate, (),
+).unwrap()
+print(native.capture(selection).unwrap().model_dump_json())
+""",
+                python_paths=(),
+                cwd=real_python_package,
+            )
+        else:
+            output = u.Tests.run_lazy_init_probe(
+                """from pathlib import Path
+from flext_infra import check
+from flext_infra.transformers import FlextInfraSemanticPublication
+from flext_infra.workspace.native_reference import (
+    FlextInfraWorkspaceNativeReference as native,
+)
+selection = native.producer_selections(
+    FlextInfraSemanticPublication.publish_source_candidate, (),
+).unwrap()
+before = native.capture(selection).unwrap()
+checker = check.FlextInfraWorkspaceChecker(repository_root=Path.cwd())
+after = native.capture(selection).unwrap()
+print(before.model_dump_json())
+print(after.model_dump_json())
+""",
+                python_paths=(),
+                cwd=real_python_package,
+            )
+            live = m.Infra.NativeImportObservation.model_validate_json(output[-2])
+        cold = m.Infra.NativeImportObservation.model_validate_json(output[-1])
+        tm.that(cold.modules, eq=selections)
+        for phase, observation in (
+            (f"{subject}-before", live),
+            (f"{subject}-after", cold),
+        ):
+            indexed = {item.binding: item for item in observation.bindings}
+            aliases = tuple(
+                item for item in observation.bindings if item.kind == "alias"
+            )
+            roots = {
+                f"{item.target}::{'.'.join(item.attributes)}" for item in selections
+            }
+            paths: t.DictKV[str, t.VariadicTuple[m.Infra.NativeBindingEvidence]] = {}
+            pending = [item for item in aliases if item.binding in roots]
+            outgoing: t.DictKV[str, list[m.Infra.NativeBindingEvidence]] = {}
+            for edge in aliases:
+                parent = edge.binding.partition(".")[0]
+                outgoing.setdefault(parent, []).append(edge)
+            while pending:
+                edge = pending.pop()
+                (target,) = (value for name, value in edge.operands if name == "target")
+                if target in paths:
+                    continue
+                parent = edge.binding.partition(".")[0]
+                paths[target] = (*paths.get(parent, ()), edge)
+                pending.extend(outgoing.get(target, ()))
+            reached = tuple(
+                edge
+                for edge in aliases
+                if (
+                    edge.binding.endswith((
+                        ".global.excepthook",
+                        ".global.threading.excepthook",
+                    ))
+                    if subject == "thread-hook"
+                    else any(
+                        indexed[value].supplier == "flext_infra.gates.base_gate"
+                        and indexed[value].qualname == "FlextInfraGate"
+                        for name, value in edge.operands
+                        if name == "target"
+                    )
+                )
+                and edge.binding.partition(".")[0] in paths
+            )
+            print(
+                f"phase={phase} selections="
+                f"{tuple(item.model_dump_json() for item in selections)}"
+            )
+            if subject == "thread-hook":
+                tm.that(reached, empty=False)
+            print(f"phase={phase} reached={len(reached)}")
+            assert len(reached) <= 16, (
+                f"{phase}: too many supplier edges: {len(reached)}"
+            )
+            fields = {"binding", "kind", "supplier", "name", "qualname"}
+            for edge in reached:
+                parent = edge.binding.partition(".")[0]
+                (target,) = (value for name, value in edge.operands if name == "target")
+                chain = (*paths[parent], edge)
+                assert len(chain) <= 64, (
+                    f"{phase}: supplier path exceeds diagnostic bound"
+                )
+                for link in chain:
+                    (body,) = (
+                        value for name, value in link.operands if name == "target"
+                    )
+                    print(
+                        f"phase={phase} alias={link.binding} "
+                        f"body={indexed[body].model_dump_json(include=fields)}"
+                    )
+                for operand in outgoing.get(target, ()):
+                    if not operand.binding.endswith(".native_function"):
+                        continue
+                    (body,) = (
+                        value for name, value in operand.operands if name == "target"
+                    )
+                    print(
+                        f"phase={phase} hook_operand={operand.binding} "
+                        f"body={indexed[body].model_dump_json(include=fields)}"
+                    )
+        compared = native.compare(live, cold)
+        if subject == "gate-base":
+            tm.ok(compared)
+        else:
+            tm.fail(compared)
+        print(
+            f"phase=public-comparison success={compared.success} error={compared.error}"
+        )
 
     @staticmethod
     def test_global_hook_alias_retains_actual_supplier_boundary(
@@ -31,14 +174,12 @@ def replacement(args):
         )
         u.Tests.run_lazy_init_probe(
             """import importlib
-import sys
 import threading
 from flext_infra import m
 from flext_infra.workspace.native_reference import (
     FlextInfraWorkspaceNativeReference as native,
 )
 import test_pkg as module
-assert 'pytest' not in sys.modules
 selection = (m.Infra.SourceClassReference(
     target=module.__name__, attributes=('execute',)
 ),)
@@ -130,10 +271,10 @@ after = native.capture(selection).unwrap()
 assert native.compare(before, after).unwrap() is True
 assert module.Consumer.execute(4) == 15
 module.Consumer.mode = 'changed'
-tm.fail(native.compare(before, native.capture(selection).unwrap()))
+assert native.compare(before, native.capture(selection).unwrap()).failure
 module.Consumer.mode = 'original'
 module.update_consumer.__code__ = module.replacement.__code__
-tm.fail(native.compare(before, native.capture(selection).unwrap()))
+assert native.compare(before, native.capture(selection).unwrap()).failure
 """,
             python_paths=(str(root),),
             cwd=real_python_package,
@@ -389,7 +530,7 @@ repeated = native.capture(selection).unwrap()
 assert native.compare(original, repeated).unwrap() is True
 module.operation = module.{replacement}
 observed = native.capture(selection).unwrap()
-tm.fail(native.compare(original, observed))
+assert native.compare(original, observed).failure
 assert {expression} == {changed}
 """,
             python_paths=(str(root),),

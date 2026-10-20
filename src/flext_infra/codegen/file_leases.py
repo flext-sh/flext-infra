@@ -27,6 +27,32 @@ class FlextInfraCodegenFileLeases:
     """Hold destination identities for the lifetime of one transaction."""
 
     @staticmethod
+    def prepare_source_controlplanes(roots: t.SequenceOf[Path]) -> p.Result[bool]:
+        """Initialize native control planes before electing a source epoch.
+
+        These persistent directories become original source observations, not
+        exceptions to a previously captured membership receipt. This operation
+        must not be used to repair a rejected persisted source epoch.
+
+        Returns:
+            Success after each physical root's guarded control-plane creation.
+
+        """
+        try:
+            for root in dict.fromkeys(roots):
+                FlextInfraMiseArtifactsFiles.physical_directory_identity(root).unwrap()
+                plan = u.Cli.atomic_plan_directory_chain(
+                    root / c.Infra.TRANSACTION_STATE_DIRNAME
+                ).unwrap()
+                u.Cli.atomic_create_directory_chain_guarded(
+                    plan,
+                    permission_mode=config.Infra.codegen.modes.directory_private,
+                ).unwrap()
+        except c.EXC_BROAD_RUNTIME_OS as exc:
+            return r[bool].fail(str(exc), exception=exc)
+        return r[bool].ok(value=True)
+
+    @staticmethod
     @contextmanager
     def mutation_lease(root: Path) -> Generator[None]:
         """Serialize one nontransactional writer with its canonical scope owner.

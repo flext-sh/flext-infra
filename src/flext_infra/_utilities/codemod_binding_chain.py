@@ -239,20 +239,20 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
             """
             runtime = FlextInfraUtilitiesRopeRuntimeModules
-            destination_module, line = destination_binding.get_definition_location()
-            if destination_module is None or line is None:
+            context = cls._chain_holder_context(destination_binding, sources)
+            if context is None:
+                return False
+            destination_module, line, text = context
+            if line is None:
                 return False
             if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(
                 destination_module
             ):
                 message = "generic specialization alias requires a source module"
                 raise TypeError(message)
-            source = cls._chain_module_text(destination_module, sources)
-            if source is None:
-                return False
             aliases = tuple(
                 node
-                for node in ast.walk(ast.parse(source[1]))
+                for node in ast.walk(ast.parse(text))
                 if isinstance(node, ast.TypeAlias)
                 and node.lineno == line
                 and isinstance(node.value, ast.Subscript)
@@ -607,7 +607,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 return False
             if (
                 isinstance(expected, p.Infra.RopeAssignedName)
-                and len(expected.assignments) != 1
+                and len(expected.assignments) > 1
             ):
                 return False
             if FlextInfraUtilitiesRopeRuntimeModules.same_name(expected, actual):
@@ -672,7 +672,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             ):
                 return False
             if not cls._chain_alias_and_assignment_proven(
-                project, binding, expression, routes
+                project, binding, expression, routes, sources
             ):
                 return False
             if isinstance(binding, p.Infra.RopeImportedName):
@@ -744,18 +744,20 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 return None
             return path, resource.read()
 
-        @staticmethod
+        @classmethod
         def _chain_alias_and_assignment_proven(
+            cls,
             project: p.Infra.RopeProject,
             binding: p.Infra.RopePyName,
             expression: str,
             routes: t.StrMapping,
+            sources: t.MappingKV[Path, str],
         ) -> bool:
             """Hold the lazy alias route and the single-assignment contract.
 
             Returns:
                 Whether the alias route agrees with the binding and the binding is
-                assigned exactly once.
+                assigned exactly once or declares a lazy type alias.
 
             """
             if expression.isidentifier() and expression in routes:
@@ -772,10 +774,20 @@ class FlextInfraUtilitiesCodemodBindingChain:
                     or target.get_object() is not binding.get_object()
                 ):
                     return False
-            return not (
+            if (
                 isinstance(binding, p.Infra.RopeAssignedName)
                 and len(binding.assignments) != 1
-            )
+            ):
+                context = cls._chain_holder_context(binding, sources)
+                if binding.assignments or context is None:
+                    return False
+                _holder, line, text = context
+                # Rope records no assigned value for lazy PEP 695 aliases.
+                return any(
+                    isinstance(node, ast.TypeAlias) and node.lineno == line
+                    for node in ast.walk(ast.parse(text))
+                )
+            return True
 
         @classmethod
         def chain_imported_binding(
@@ -932,6 +944,24 @@ class FlextInfraUtilitiesCodemodBindingChain:
             chain = cls._chain_module_text(holder, sources)
             if chain is None:
                 return None
+            if line is None:
+                runtime = FlextInfraUtilitiesRopeRuntimeModules
+                aliases = tuple(
+                    node.lineno
+                    for node in ast.walk(ast.parse(chain[1]))
+                    if isinstance(node, ast.TypeAlias)
+                    and runtime.same_name(
+                        binding,
+                        runtime.expression_name(
+                            runtime.scope_at(
+                                holder, holder.lines.get_line_start(node.lineno)
+                            ),
+                            node.name.id,
+                        ),
+                    )
+                )
+                if len(aliases) == 1:
+                    (line,) = aliases
             return holder, line, chain[1]
 
         @classmethod
@@ -1219,6 +1249,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             if row.category not in {
                 c.Infra.StatementCategory.FUNC_DEF,
                 c.Infra.StatementCategory.CLASS_DEF,
+                c.Infra.StatementCategory.TYPE_ALIAS,
             }:
                 return occurrence.is_written()
             prefix = len(row.text) - len(row.text.lstrip())

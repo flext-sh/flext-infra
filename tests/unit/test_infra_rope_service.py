@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 import flext_infra
-from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
@@ -188,8 +187,8 @@ class TestsFlextInfraInfraRopeService:
         tm.that(u.Infra.symbol_has_docstring_source(source, symbol), eq=documented)
 
     @staticmethod
-    def test_open_workspace_materializes_snapshot(tmp_path: Path) -> None:
-        """Public service class exposes one typed workspace snapshot."""
+    def test_public_workspace_materializes_index(tmp_path: Path) -> None:
+        """The public workspace exposes its typed repository index directly."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         module_path = package_root / "models.py"
         u.Tests.write_lazy_init_namespace_module(
@@ -199,13 +198,9 @@ class TestsFlextInfraInfraRopeService:
             docstring="Models.",
         )
 
-        rope = FlextInfraRopeWorkspace.open_workspace(repository_root)
-        try:
-            snapshot_result = rope.execute()
-            tm.ok(snapshot_result)
-            snapshot = snapshot_result.unwrap()
-            tm.that(snapshot.repository_root, eq=repository_root.resolve())
-            tm.that(snapshot.workspace_index.package_dirs, has=package_root)
+        with flext_infra.infra.rope_workspace(repository_root) as rope:
+            tm.that(rope.repository_root, eq=repository_root.resolve())
+            tm.that(rope.workspace_index.package_dirs, has=package_root)
             tm.that(rope.module(module_path), none=False)
             tm.that(rope.package(package_root), none=False)
             exports = rope.exports(
@@ -216,8 +211,6 @@ class TestsFlextInfraInfraRopeService:
             )
             tm.that(exports, has="FlextTestsModels")
             tm.that(exports, has="m")
-        finally:
-            rope.close()
 
     @staticmethod
     def test_script_guard_bindings_are_not_exports(tmp_path: Path) -> None:
@@ -243,8 +236,7 @@ class TestsFlextInfraInfraRopeService:
             encoding=c.DEFAULT_ENCODING,
         )
 
-        rope = FlextInfraRopeWorkspace.open_workspace(repository_root)
-        try:
+        with flext_infra.infra.rope_workspace(repository_root) as rope:
             exports = rope.exports(
                 module_path,
                 export_options=m.Infra.ExportOptions.model_validate({
@@ -252,8 +244,6 @@ class TestsFlextInfraInfraRopeService:
                     "allow_functions": True,
                 }),
             )
-        finally:
-            rope.close()
 
         tm.that(exports, has=["LIMIT", "run"], lacks=["result", "msg"])
 
@@ -324,7 +314,7 @@ class TestsFlextInfraInfraRopeService:
             encoding=c.DEFAULT_ENCODING,
         )
 
-        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
+        with flext_infra.infra.rope_workspace(repository_root) as rope:
             tm.that(rope.workspace_index.package_dirs, has=examples_root)
             module = rope.module(module_path)
             tm.that(module, none=False)

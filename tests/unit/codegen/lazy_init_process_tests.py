@@ -67,6 +67,50 @@ class TestsFlextInfraLazyInitProcessing:
         tm.ok(str(init_path) in service.modified_files)
 
     @staticmethod
+    def test_regeneration_follows_renamed_module_without_renaming_class(
+        tmp_path: Path,
+    ) -> None:
+        """A moved declaration keeps its class identity and gains its real import path."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        utilities = package_root / "_utilities"
+        utilities.mkdir()
+        helpers = utilities / "_acl"
+        helpers.mkdir()
+        old_source = helpers / "acl_formatting.py"
+        declaration = (
+            "class FlextTestsAclFormattingUtilities: pass\n"
+            "__all__ = ('FlextTestsAclFormattingUtilities',)\n"
+        )
+        old_source.write_text(declaration, encoding=c.DEFAULT_ENCODING)
+        service = u.Tests.create_lazy_init_service(repository_root)
+        tm.ok(u.Tests.materialize_lazy_init(service))
+        source = old_source.rename(helpers / "formatting.py")
+
+        planned = service.plan_files()
+        tm.ok(planned)
+        initializer = helpers / c.Infra.INIT_PY
+        tm.ok(str(initializer) in service.modified_files)
+        tm.ok(u.Tests.materialize_codegen_plans(planned.map(lambda phase: phase.files)))
+        tm.that(source.read_text(encoding=c.DEFAULT_ENCODING), eq=declaration)
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                f"from {package_root.name}._utilities._acl import "
+                "FlextTestsAclFormattingUtilities as exported\n"
+                f"from {package_root.name}._utilities._acl.formatting import "
+                "FlextTestsAclFormattingUtilities as declared\n"
+                "print(exported is declared)\n"
+                "print(exported.__module__)\n",
+                python_paths=(str(package_root.parent),),
+                cwd=repository_root,
+            ),
+            eq=["True", f"{package_root.name}._utilities._acl.formatting"],
+        )
+        generated = initializer.read_bytes()
+        tm.ok(u.Tests.materialize_lazy_init(service))
+        tm.that(initializer.read_bytes(), eq=generated)
+        tm.that(service.modified_files, empty=True)
+
+    @staticmethod
     def test_every_nested_level_is_lazy_formatted_and_idempotent(
         tmp_path: Path,
     ) -> None:

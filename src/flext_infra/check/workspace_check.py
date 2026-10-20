@@ -29,9 +29,9 @@ class FlextInfraWorkspaceChecker(
 ):
     """Run workspace quality gates and generate reports."""
 
-    _repository_root: Path
-    _registry: FlextInfraGateRegistry
-    _default_reports_dir: Path
+    _repository_root: Path = m.PrivateAttr()
+    _registry: FlextInfraGateRegistry = m.PrivateAttr()
+    _default_reports_dir: Path = m.PrivateAttr()
     model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
         validate_by_name=True,
         validate_by_alias=True,

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import operator
 from collections.abc import Callable, Generator, MutableMapping
 from contextlib import ExitStack, closing, contextmanager
 from functools import partial
@@ -19,7 +20,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntime,
 )
 from flext_infra.check import FlextInfraWorkspaceChecker
-from flext_infra.codegen import FlextInfraStagedPackage
+from flext_infra.codegen import FlextInfraCodegenFileLeases, FlextInfraStagedPackage
 from flext_infra.codemod._rename_symbols import FlextInfraRenameSymbols
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.refactor import FlextInfraImportNormalization
@@ -36,8 +37,14 @@ class FlextInfraCodemodSemanticApply:
         root: Path,
         workspace: p.Infra.RopeWorkspaceDsl,
         selections: m.Infra.SemanticRenameSelections,
+        *,
+        source_plan: m.Infra.SemanticSourcePlan | None = None,
     ) -> p.Result[m.Infra.SemanticRenamePlan]:
         """Produce exact native edits and closure from explicit domain selections.
+
+        A supplied source plan retains its original directory receipts only after
+        the source owner authenticates them. Fresh native consumption is merged
+        through the same owner, so new selectors still change the rebuilt plan.
 
         Returns:
             A reversible authenticated artifact, without changing live sources.
@@ -51,6 +58,26 @@ class FlextInfraCodemodSemanticApply:
         if elected.failure:
             return r[m.Infra.SemanticRenamePlan].from_failure(elected)
         scopes = elected.value
+        if source_plan is not None:
+            if (
+                source_plan.candidate.workspaces or (source_plan.candidate.workspace,)
+            ) != scopes:
+                return r[m.Infra.SemanticRenamePlan].fail(
+                    "semantic rename source receipt belongs to another scope"
+                )
+            current = FlextInfraStagedPackage.source_inputs_current(
+                source_plan.candidate
+            )
+            if current.failure:
+                return r[m.Infra.SemanticRenamePlan].from_failure(current)
+            current = u.Cli.atomic_verify_binary_file_states(source_plan.source_states)
+            if current.failure:
+                return r[m.Infra.SemanticRenamePlan].from_failure(current)
+            current = u.Cli.atomic_verify_directory_queries(
+                source_plan.source_directories, source_plan.source_query_topology
+            )
+            if current.failure:
+                return r[m.Infra.SemanticRenamePlan].from_failure(current)
         scope = scopes[0]
         with ExitStack() as stack:
             producer_workspace = (
@@ -58,7 +85,9 @@ class FlextInfraCodemodSemanticApply:
                 if workspace.rope_repository_root.resolve() == scope
                 else stack.enter_context(FlextInfraRopeWorkspace.open_workspace(scope))
             )
-            return cls._build_native_rename_plan(producer_workspace, selections, scopes)
+            return cls._build_native_rename_plan(
+                producer_workspace, selections, scopes, source_plan=source_plan
+            )
 
     @classmethod
     def build_source_plan(
@@ -74,7 +103,7 @@ class FlextInfraCodemodSemanticApply:
         """
         return cls._source_scopes(root, consumer_roots).flat_map(
             lambda scopes: cls._build_native_source_plan(scopes, ()).map(
-                lambda planned: planned[0]
+                operator.itemgetter(0)
             )
         )
 
@@ -91,7 +120,9 @@ class FlextInfraCodemodSemanticApply:
         """
         outcome = r[t.VariadicTuple[Path]]
         if any(not path.is_absolute() or not path.is_dir() for path in consumer_roots):
-            return outcome.fail("consumer roots must be existing absolute checkout roots")
+            return outcome.fail(
+                "consumer roots must be existing absolute checkout roots"
+            )
         scope = u.Infra.import_project_roots(root)[0].resolve()
         consumers = tuple(
             dict.fromkeys(
@@ -277,6 +308,8 @@ class FlextInfraCodemodSemanticApply:
         workspace: p.Infra.RopeWorkspaceDsl,
         selections: m.Infra.SemanticRenameSelections,
         scopes: t.VariadicTuple[Path],
+        *,
+        source_plan: m.Infra.SemanticSourcePlan | None = None,
     ) -> p.Result[m.Infra.SemanticRenamePlan]:
         """Capture all elected sources before computing any native candidate.
 
@@ -298,7 +331,9 @@ class FlextInfraCodemodSemanticApply:
             )
             for selection in selections.decisions
         )
-        return cls._build_native_source_plan(scopes, decisions).map(
+        return cls._build_native_source_plan(
+            scopes, decisions, source_plan=source_plan
+        ).map(
             lambda planned: m.Infra.SemanticRenamePlan(
                 decisions=decisions,
                 edits=cls._rename_edits(
@@ -321,6 +356,8 @@ class FlextInfraCodemodSemanticApply:
         cls,
         scopes: t.VariadicTuple[Path],
         decisions: t.VariadicTuple[m.Infra.SemanticRenameDecision],
+        *,
+        source_plan: m.Infra.SemanticSourcePlan | None = None,
     ) -> p.Result[
         t.Pair[m.Infra.SemanticSourcePlan, t.VariadicTuple[t.Pair[Path, Path]]]
     ]:
@@ -333,6 +370,10 @@ class FlextInfraCodemodSemanticApply:
         outcome = r[
             t.Pair[m.Infra.SemanticSourcePlan, t.VariadicTuple[t.Pair[Path, Path]]]
         ]
+        if source_plan is None:
+            prepared = FlextInfraCodegenFileLeases.prepare_source_controlplanes(scopes)
+            if prepared.failure:
+                return outcome.from_failure(prepared)
         captured_sources = cls._authenticated_sources(scopes)
         if captured_sources.failure:
             return outcome.from_failure(captured_sources)
@@ -399,8 +440,16 @@ class FlextInfraCodemodSemanticApply:
         if staged_inputs.failure:
             return outcome.from_failure(staged_inputs)
         directories, topology = u.Cli.atomic_merge_directory_query_receipts(
-            (*baseline.source_directories, *receipts[0]),
-            (*baseline.source_query_topology, *receipts[1]),
+            (
+                *(source_plan.source_directories if source_plan is not None else ()),
+                *baseline.source_directories,
+                *receipts[0],
+            ),
+            (
+                *(source_plan.source_query_topology if source_plan is not None else ()),
+                *baseline.source_query_topology,
+                *receipts[1],
+            ),
         )
         staged = FlextInfraStagedPackage.plan_sources(
             scopes[0],
@@ -950,6 +999,7 @@ class FlextInfraCodemodSemanticApply:
             root,
             workspace,
             cls.rename_selections(artifact),
+            source_plan=artifact,
         )
         if rebuilt.failure:
             return r[bool].from_failure(rebuilt)

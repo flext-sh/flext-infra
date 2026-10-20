@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import Callable
+from multiprocessing import get_context
 from pathlib import Path
 
 from typing_extensions import TypeForm
@@ -393,6 +395,28 @@ class TestsFlextInfraUtilitiesCodegenMixin:
             ('__version__ = "0.1.0"\n__version_info__ = (0, 1, 0)\n'),
             encoding=c.Infra.ENCODING_DEFAULT,
         )
+
+    @staticmethod
+    def run_native_callable[**P](
+        target: Callable[P, None], *args: P.args, **kwargs: P.kwargs
+    ) -> None:
+        """Run a real callable under the native runner's aggregate process wall."""
+        policy = config.Infra.tooling.tools.pytest
+        process = get_context("spawn").Process(target=target, args=args, kwargs=kwargs)
+        process.start()
+        try:
+            process.join()
+            assert process.exitcode == 0, (
+                f"Native test callable exited {process.exitcode}: {target}"
+            )
+        finally:
+            if process.is_alive():
+                process.terminate()
+                process.join(policy.termination_grace_seconds)
+            if process.is_alive():
+                process.kill()
+                process.join(policy.termination_grace_seconds)
+            process.close()
 
     @staticmethod
     def run_lazy_init_probe(

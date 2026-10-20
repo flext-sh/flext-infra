@@ -347,6 +347,10 @@ class TestsFlextInfraCodemodContextOwnPackage:
         ):
             path = package / relative
             path.parent.mkdir(parents=True, exist_ok=True)
+            if path.parent != package:
+                (path.parent / c.Infra.INIT_PY).write_text(
+                    "", encoding=c.DEFAULT_ENCODING
+                )
             path.write_text(source, encoding=c.DEFAULT_ENCODING)
             sources.append(path)
             original[path] = source

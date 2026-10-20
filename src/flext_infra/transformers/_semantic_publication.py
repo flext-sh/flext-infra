@@ -10,7 +10,8 @@ from collections.abc import Callable
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from flext_infra import c, check, config, m, p, r, t, u
+from flext_infra import c, config, m, p, r, t, u
+from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenMiseArtifacts,
@@ -602,7 +603,7 @@ class FlextInfraSemanticPublication:
         with TemporaryDirectory(
             prefix="flext-semantic-admission-reports-"
         ) as directory:
-            return check.FlextInfraWorkspaceChecker(
+            return FlextInfraWorkspaceChecker(
                 repository_root=candidate
             ).execute_candidate(
                 m.Infra.RunCommand(

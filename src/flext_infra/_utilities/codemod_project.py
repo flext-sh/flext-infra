@@ -747,8 +747,9 @@ class FlextInfraUtilitiesCodemodProject(
             if isinstance(node, ast.Import | ast.ImportFrom)
         )
 
-    @staticmethod
+    @classmethod
     def _execution_entrypoint(
+        cls,
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
         scope: p.Infra.RopeScope,
@@ -780,7 +781,7 @@ class FlextInfraUtilitiesCodemodProject(
         expected = runtime.qualified_name(
             project, contract.__qualname__, module_name=contract.__module__
         )
-        if not runtime.same_name(constructor, expected):
+        if not cls._binding_symbols_match(expected, constructor):
             return None
         entry, role = fields["module"], fields["role"]
         if not (
