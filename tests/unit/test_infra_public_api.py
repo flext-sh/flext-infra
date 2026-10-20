@@ -61,8 +61,8 @@ class TestsFlextInfraPublicApi:
         assert second.ports is ports
         tm.that(first.planning_issues, eq=[issue])
         tm.that(second.planning_issues, empty=True)
-        assert second.planning_exception is None
-        assert not second.scaffolded_repository
+        tm.that(second.planning_exception, none=True)
+        tm.that(second.scaffolded_repository, truth=False)
 
     @staticmethod
     def test_codegen_handlers_are_inherited_without_replacing_health(
@@ -92,10 +92,10 @@ class TestsFlextInfraPublicApi:
                     flext_infra.m.Infra.CommandContext(repository_root=root),
                 )
             tm.that(failure.value.filename, eq=str(root))
-            assert not root.exists()
+            tm.that(root.exists(), truth=False)
         tm.that(tm.ok(api.execute()), eq=before)
-        assert not hasattr(api, "request")
-        assert not hasattr(api, "planning_issues")
+        tm.that(hasattr(api, "request"), truth=False)
+        tm.that(hasattr(api, "planning_issues"), truth=False)
 
     @staticmethod
     def test_conform_engine_keeps_explicit_runtime_seeds_and_ports(
@@ -125,14 +125,14 @@ class TestsFlextInfraPublicApi:
             assert engine.initial_context is initial_context
             assert engine.settings is runtime_settings
             assert engine.context is initial_context
-            assert engine.state.request is not None
+            tm.that(engine.state.request, none=False)
             tm.that(engine.state.repository_root, eq=engine.state.request.root)
         assert first is not second
         assert first.state.request is not second.state.request
         first.state.scaffolded_repository = True
         first.state.planning_exception = ValueError("First invocation failure")
-        assert not second.state.scaffolded_repository
-        assert second.state.planning_exception is None
+        tm.that(second.state.scaffolded_repository, truth=False)
+        tm.that(second.state.planning_exception, none=True)
         tm.that(second.state.planning_issues, empty=True)
 
     @staticmethod

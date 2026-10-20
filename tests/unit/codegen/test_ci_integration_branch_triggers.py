@@ -101,11 +101,11 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         """GitHub dispatches the workflow when release-plan's PR title changes."""
         workflow = tm.ok(u.Cli.yaml_parse(self.render_ci(repository_branch="develop")))
         events = workflow["on"]
-        assert isinstance(events, Mapping)
+        tm.that(isinstance(events, Mapping), truth=True)
         pull_request = events["pull_request"]
-        assert isinstance(pull_request, Mapping)
+        tm.that(isinstance(pull_request, Mapping), truth=True)
         activities = pull_request["types"]
-        assert isinstance(activities, list)
+        tm.that(isinstance(activities, list), truth=True)
 
         tm.that(activities, has="edited")
 
@@ -317,8 +317,8 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         save_inputs = u.Cli.json_as_mapping(save["with"])
         primary_key = restore_inputs["key"]
         prefixes_text = restore_inputs["restore-keys"]
-        assert isinstance(primary_key, str)
-        assert isinstance(prefixes_text, str)
+        tm.that(isinstance(primary_key, str), truth=True)
+        tm.that(isinstance(prefixes_text, str), truth=True)
         prefixes = prefixes_text.splitlines()
         tm.that(len(prefixes), eq=2)
         tm.that(primary_key.startswith(prefixes[0]), eq=True)

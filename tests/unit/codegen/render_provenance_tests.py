@@ -83,7 +83,7 @@ class TestsFlextInfraRenderProvenance:
             ),
         )
         declared = distributions[0].files
-        assert declared is not None
+        tm.that(declared, none=False)
         tm.that(
             paths,
             eq=tuple(
@@ -129,7 +129,7 @@ class TestsFlextInfraRenderProvenance:
         candidate = u.Infra.declared_package_dir(
             FlextInfraCodegenPreconditions.__module__.partition(".")[0]
         )
-        assert candidate is not None
+        tm.that(candidate, none=False)
         probe = """
 import importlib
 import sys
@@ -229,7 +229,7 @@ print('physical-provider-proof=' + mutation)
         elif mutation == "removed-root":
             resource_root.rename(tmp_path / "retired-resource-root")
         elif mutation == "mode":
-            assert state.mode is not None
+            tm.that(state.mode, none=False)
             resource.chmod(state.mode ^ stat.S_IXUSR)
         elif mutation == "timestamp":
             before = resource.stat()
@@ -351,7 +351,7 @@ print('physical-provider-proof=' + mutation)
         helper = resources / "helper.py"
         helper.write_bytes(b"VALUE = 'before'\n")
         state = tm.ok(u.Cli.atomic_read_binary_file_state(helper, required=True))
-        assert state.content is not None
+        tm.that(state.content, none=False)
         producer = tm.ok(
             FlextInfraValidateFreshImport.capture_producer(
                 Path.cwd(),

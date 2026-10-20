@@ -57,7 +57,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
             tool,
         )[0]
         version = entry["version"]
-        assert isinstance(version, str), f"mise.lock pins no {tool} version: {entry!r}"
+        tm.that(isinstance(version, str), truth=True, msg=f"mise.lock pins no {tool} version: {entry!r}")
         return version
 
     @staticmethod

@@ -1137,7 +1137,7 @@ class TestsFlextInfraTransactionStaging:
             if mutation == "content":
                 target.write_bytes(b"value = 3\n")
             elif mutation == "inode":
-                assert original.mode is not None
+                tm.that(original.mode, none=False)
                 tm.ok(
                     u.Cli.atomic_write_binary_file_guarded(
                         original,
@@ -1492,7 +1492,7 @@ class TestsFlextInfraTransactionStaging:
                             view.target.path, required=True
                         )
                     )
-                    assert snapshot.mode is not None
+                    tm.that(snapshot.mode, none=False)
                     tm.ok(
                         u.Cli.atomic_write_binary_file_guarded(
                             snapshot,
@@ -1581,7 +1581,7 @@ class TestsFlextInfraTransactionStaging:
                 payloads[:created_count],
                 strict=True,
             ):
-                assert content is not None
+                tm.that(content, none=False)
                 tm.ok(
                     u.Cli.atomic_write_binary_file_guarded(
                         intent.before,
@@ -1593,7 +1593,7 @@ class TestsFlextInfraTransactionStaging:
 
         prepared = tm.ok(owner.run_files_locked(roots, interrupted))
         transaction_root = prepared.plan.layout.file_participants[0].transaction_root
-        assert transaction_root is not None
+        tm.that(transaction_root, none=False)
         tm.that(transaction_root.exists(), eq=True)
         if relocated:
             previous_root = root
@@ -1737,7 +1737,7 @@ class TestsFlextInfraTransactionStaging:
                 path.write_bytes(b"foreign leaf\n")
             tampered = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=False))
             content = planned[index].desired_content
-            assert content is not None
+            tm.that(content, none=False)
             failed = FlextInfraMiseArtifactsProcess.write_new(
                 path,
                 content,

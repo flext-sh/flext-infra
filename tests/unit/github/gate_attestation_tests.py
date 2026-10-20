@@ -188,8 +188,8 @@ class TestsFlextInfraGithubGateAttestation:
                 read_runtime_identity=self._runtime_identity,
             )
         )
-        assert first.receipt is not None
-        assert second.receipt is not None
+        tm.that(first.receipt, none=False)
+        tm.that(second.receipt, none=False)
         tm.that(first.receipt != second.receipt, truth=True)
         first_evidence = m.Infra.GateCommandEvidence.model_validate_json(
             first.receipt.read_bytes(),
@@ -206,11 +206,9 @@ class TestsFlextInfraGithubGateAttestation:
             first_evidence.native_outcome == c.Infra.ToolOutcome.FINDINGS, truth=True
         )
         tm.that(first.process.raw_return_code != 0, truth=True)
-        assert not first.issues
+        tm.that(first.issues, truth=False)
         for report in first_evidence.reports:
-            assert report.path.is_relative_to(
-                first.receipt.parent.relative_to(tmp_path)
-            )
+            tm.that(report.path.is_relative_to(first.receipt.parent.relative_to(tmp_path)), truth=True)
             digest = cli_u.Cli.sha256_bytes((tmp_path / report.path).read_bytes())
             tm.that(report.digest == f"sha256:{digest}", truth=True)
 
@@ -263,7 +261,7 @@ class TestsFlextInfraGithubGateAttestation:
         )
         for item in report.observations:
             tm.that(item.scope, eq="local")
-            assert item.origin is not None
+            tm.that(item.origin, none=False)
             tm.that(item.origin.startswith("file:"), truth=True)
             tm.that(item.process.raw_return_code, eq=0)
         encoded = report.model_dump_json(round_trip=True)
@@ -315,7 +313,7 @@ class TestsFlextInfraGithubGateAttestation:
             m.Infra.GitRepoRequest(repo_root=tmp_path)
         )
         tm.fail(failed)
-        assert failed.error is not None
+        tm.that(failed.error, none=False)
         if payload:
             tm.that(payload not in failed.error, truth=True)
 
@@ -366,7 +364,7 @@ class TestsFlextInfraGithubGateAttestation:
             native.outcome,
             from_attributes=True,
         )
-        assert cli_u.Cli.process_succeeded(process), native.stderr
+        tm.that(cli_u.Cli.process_succeeded(process), truth=True, msg=native.stderr)
         report = m.Infra.GitSigningIdentityReport.model_validate_json(native.stdout)
         tm.that(
             tuple(item.key for item in report.observations)
@@ -385,7 +383,7 @@ class TestsFlextInfraGithubGateAttestation:
             tm.that(
                 observation.scope == (None if declared is None else "local"), truth=True
             )
-            assert (observation.origin is None) == (declared is None)
+            tm.that(observation.origin is None, eq=declared is None)
         tm.that(
             report.signing_format
             == next(
@@ -394,12 +392,12 @@ class TestsFlextInfraGithubGateAttestation:
             ),
             truth=True,
         )
-        assert report.key_path is None
-        assert report.allowed_signers_path is None
-        assert report.public_fingerprint is None
-        assert not report.inline_public_key
+        tm.that(report.key_path, none=True)
+        tm.that(report.allowed_signers_path, none=True)
+        tm.that(report.public_fingerprint, none=True)
+        tm.that(report.inline_public_key, truth=False)
         tm.that('"value"' not in native.stdout, truth=True)
-        assert not isolated.read_bytes()
+        tm.that(isolated.read_bytes(), truth=False)
 
     @pytest.mark.parametrize("key", c.Infra.GIT_SIGNING_CONFIGURATION_KEYS)
     def test_signing_identity_rejects_declared_empty_values(
@@ -431,7 +429,7 @@ class TestsFlextInfraGithubGateAttestation:
             m.Infra.GitRepoRequest(repo_root=tmp_path)
         )
         tm.fail(failed)
-        assert failed.error is not None
+        tm.that(failed.error, none=False)
         tm.that("bad config" in failed.error, truth=True)
 
     def test_signing_identity_rejects_unsupported_native_format(
@@ -477,10 +475,8 @@ class TestsFlextInfraGithubGateAttestation:
                     read_runtime_identity=self._runtime_identity,
                 )
             )
-            assert captured.receipt is not None
-            assert captured.receipt.is_relative_to(
-                tmp_path / inputs.spec.make.gate_receipts_directory,
-            )
+            tm.that(captured.receipt, none=False)
+            tm.that(captured.receipt.is_relative_to(tmp_path / inputs.spec.make.gate_receipts_directory), truth=True)
             evidence = m.Infra.GateCommandEvidence.model_validate_json(
                 captured.receipt.read_bytes(),
             )
@@ -494,7 +490,7 @@ class TestsFlextInfraGithubGateAttestation:
                 lacks=[str(tmp_path), "gate_acceptance_policy:"],
             )
             observed.append(evidence)
-        assert len({item.context_digest for item in observed}) == len(observed)
+        tm.that(len({item.context_digest for item in observed}), eq=len(observed))
         tm.that(len({item.commit_sha for item in observed}) == 1, truth=True)
 
     def test_signing_identity_does_not_open_missing_key_or_trust_files(
@@ -545,9 +541,9 @@ class TestsFlextInfraGithubGateAttestation:
             self._context(tmp_path),
         )
         tm.fail(failed)
-        assert failed.error is not None
+        tm.that(failed.error, none=False)
         tm.that(str(unavailable) in failed.error, truth=True)
-        assert not unavailable.exists()
+        tm.that(unavailable.exists(), truth=False)
         if missing == "trust":
             verification = u.Infra.git_verify_gate_attestation(
                 m.Infra.GateAttestationVerifyRequest(
@@ -562,7 +558,7 @@ class TestsFlextInfraGithubGateAttestation:
                 self._context(tmp_path),
             )
             tm.fail(verification)
-            assert verification.error is not None
+            tm.that(verification.error, none=False)
             tm.that(str(unavailable) in verification.error, truth=True)
 
     def test_dirty_candidate_still_executes_without_reusable_receipt(
@@ -585,9 +581,9 @@ class TestsFlextInfraGithubGateAttestation:
             )
         )
         tm.that(captured.process.raw_return_code != 0, truth=True)
-        assert captured.receipt is None
-        assert captured.issues
-        assert tuple(tmp_path.rglob(c.Infra.CHECK_REPORT_SARIF_FILENAME))
+        tm.that(captured.receipt, none=True)
+        tm.that(captured.issues, truth=True)
+        tm.that(tuple(tmp_path.rglob(c.Infra.CHECK_REPORT_SARIF_FILENAME)), truth=True)
 
     @classmethod
     def _request(cls, root: Path) -> m.Infra.GateAttestationCreateRequest:

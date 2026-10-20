@@ -156,7 +156,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         )
         with u.Infra.facade_source_project(tmp_path) as (project, _, _):
             layout = u.Infra.layout(tmp_path, rope_project=project)
-            assert layout is not None
+            tm.that(layout, none=False)
             implicit = u.Infra.publication_policy(source, rope_project=project)
             explicit = u.Infra.publication_policy(
                 source, rope_project=project, project_layout=layout

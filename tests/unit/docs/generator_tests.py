@@ -487,8 +487,8 @@ class TestsFlextInfraDocsGenerator:
 
         tm.ok(result)
         pages = tuple(workspace.rglob("index.html"))
-        assert pages
-        assert any('id="docs_example"' in page.read_text() for page in pages)
+        tm.that(pages, truth=True)
+        tm.that(any('id="docs_example"' in page.read_text() for page in pages), truth=True)
 
     @staticmethod
     def test_generated_bundle_is_accepted_by_real_markdown_formatter(
@@ -524,7 +524,7 @@ class TestsFlextInfraDocsGenerator:
         )
         _ = FlextInfraMarkdownFormatGate(workspace).fix(project, context)
         tm.that(before == readme.read_text(encoding="utf-8"), truth=True)
-        assert result.result.passed, result.issues
+        tm.that(result.result.passed, truth=True, msg=result.issues)
 
     @staticmethod
     def test_generated_prose_wraps_without_reformatting_directive_blocks(

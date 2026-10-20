@@ -145,7 +145,7 @@ class TestsFlextInfraRopeSignaturePatch:
 
         # A Rope scope is not a payload value; its observable identity is the
         # enclosing function's scope kind.
-        assert scope is not None
+        tm.that(scope, none=False)
         tm.that(scope.get_kind(), eq=c.Infra.RopeScopeKind.FUNCTION)
 
     @staticmethod

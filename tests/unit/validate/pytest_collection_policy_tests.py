@@ -102,12 +102,12 @@ class TestsFlextInfraPytestCollectionPolicy:
         profile = events.parent / "testmon-selection.pstats"
         tm.that(profile.is_file() == profile_collection, truth=True)
         if profile_collection:
-            assert pstats.Stats(str(profile)).get_stats_profile().func_profiles
+            tm.that(pstats.Stats(str(profile)).get_stats_profile().func_profiles, truth=True)
             parent = cached_runner_project / ".reports" / "profiles" / "pytest.pstats"
-            assert pstats.Stats(str(parent)).get_stats_profile().func_profiles
+            tm.that(pstats.Stats(str(parent)).get_stats_profile().func_profiles, truth=True)
             # A blocked collection is a profiled run too: the parent binds the
             # receipt this invocation wrote before the collection failed.
-            assert parent.with_suffix(".pstats.json").is_file()
+            tm.that(parent.with_suffix(".pstats.json").is_file(), truth=True)
 
     @staticmethod
     @pytest.mark.slow

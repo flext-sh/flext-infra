@@ -925,7 +925,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
             for requirement in requirements
             if (name := u.Infra.dep_name(requirement)) and name.startswith("flext-")
         )
-        assert external
+        tm.that(external, truth=True)
         for requirement in external:
             url, ref = tm.ok(u.Infra.declared_git_source(requirement))
             tm.that(url.endswith(f"/{u.Infra.dep_name(requirement)}.git"), truth=True)

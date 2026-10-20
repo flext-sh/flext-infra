@@ -1209,7 +1209,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         for path, source in sources.items():
             self._write(path, source)
         rendered = u.Infra.render_utility_facade(package)
-        assert rendered is not None
+        tm.that(rendered, none=False)
         self._write(facade, rendered)
         sources[facade] = rendered
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
@@ -1223,7 +1223,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         for path, source in proposed.items():
             self._write(path, source)
         rendered = u.Infra.render_utility_facade(package)
-        assert rendered is not None
+        tm.that(rendered, none=False)
         self._write(facade, rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         tm.that(u.Infra.render_utility_facade(package), eq=rendered)
@@ -1304,7 +1304,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         for path, source in sources.items():
             self._write(path, source)
         rendered = u.Infra.render_utility_facade(package)
-        assert rendered is not None
+        tm.that(rendered, none=False)
         self._write(facade, rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         tm.that(u.Infra.render_utility_facade(package), eq=rendered)
@@ -1656,7 +1656,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         self._write(facade, original)
         rendered = u.Infra.render_utility_facade(package)
-        assert rendered is not None
+        tm.that(rendered, none=False)
         tm.that(facade.read_text(), eq=original)
         self._write(facade, rendered)
         tm.ok(
@@ -2215,7 +2215,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         tm.ok(u.Tests.materialize_lazy_init(service))
         updated = u.Infra.render_utility_facade(package, family="p")
 
-        assert updated is not None
+        tm.that(updated, none=False)
         self._write(facade, updated)
         tm.that(u.Infra.render_utility_facade(package, family="p"), eq=updated)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
@@ -2488,7 +2488,7 @@ class TestsFlextInfraUtilityFacadeProjection:
             "completed = True\n",
         )
         rendered = u.Infra.render_utility_facade(package, family="m")
-        assert rendered is not None
+        tm.that(rendered, none=False)
         self._write(facade, rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         entrypoint = root / "consume.py"

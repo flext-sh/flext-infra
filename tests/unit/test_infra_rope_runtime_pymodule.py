@@ -393,7 +393,7 @@ class TestsFlextInfraRopeRuntimePymodule:
             )
             tm.that(u.Infra.require_parsed_module(pymodule) is pymodule)
             tm.that(u.Infra.require_parsed_module(pypackage) is pypackage)
-            assert pypackage.get_attribute("VALUE") is not None
+            tm.that(pypackage.get_attribute("VALUE"), none=False)
             for name, member in (
                 ("plain", "VALUE"),
                 ("pkg", "VALUE"),

@@ -904,9 +904,7 @@ class TestsFlextInfraCodegenConform:
         )
         tm.ok(migrated)
         actual_tree = TestsFlextInfraConformSupport.project_tree(existing_root)
-        assert actual_tree == expected_tree, (
-            TestsFlextInfraConformSupport.project_tree_diff(expected_tree, actual_tree)
-        )
+        tm.that(actual_tree, eq=expected_tree, msg=TestsFlextInfraConformSupport.project_tree_diff(expected_tree, actual_tree))
 
     @staticmethod
     @pytest.mark.slow

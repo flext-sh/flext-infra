@@ -13,6 +13,7 @@ import pytest
 from flext_infra import m, t, u
 from flext_infra.deps import FlextInfraEnsurePyrightConfigPhase
 from flext_infra.gates.pyright import FlextInfraPyrightGate
+from tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -110,4 +111,4 @@ class TestsFlextInfraPyrightPublicContract:
         assert bool(private_issues) is private
         assert result.result.passed is not private, result.raw_output
         if private:
-            assert len(private_issues) == len(roots), result.raw_output
+            tm.that(len(private_issues), eq=len(roots), msg=result.raw_output)

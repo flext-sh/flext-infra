@@ -133,10 +133,10 @@ class TestsFlextInfraTransactionDirectoryJournal:
         template_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(template, required=True),
         )
-        assert template_state.content is not None
+        tm.that(template_state.content, none=False)
         config_sources = tm.ok(u.Infra.snapshot_config_sources(root))
         local_state = next(source for source in config_sources if source.path == local)
-        assert local_state.content is not None
+        tm.that(local_state.content, none=False)
         owner = FlextInfraCodegenMiseArtifacts(repository_root=root)
         planner = FlextInfraMiseWorkspacePlanner(owner)
         layout = tm.ok(planner.layout_from_selectors(root, (".",)))
@@ -281,7 +281,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
             rejected = owner.run_files_locked(roots, publish)
             tm.fail(rejected, has="source dependenc")
             tm.that(rejected.exception is original_errors[0], eq=True)
-            assert rejected.error_data is not None
+            tm.that(rejected.error_data, none=False)
             tm.that(bool(rejected.error_data["cleanup_error"]), eq=True)
         tm.that(target.read_bytes(), eq=before.content)
         tm.that(source_path.read_bytes(), eq=source.content)
@@ -1084,7 +1084,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         tm.that((layout.scope_root / ".state").exists(), eq=False)
         directories = self._materialize(layout, directories)
         transaction_root = layout.projects[0].transaction_root
-        assert transaction_root is not None
+        tm.that(transaction_root, none=False)
         (transaction_root / "partial-download").write_bytes(b"owned staging bytes")
         journal = self._register_manifest(layout, directories)
 
@@ -1137,7 +1137,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         )
         directories = self._materialize(layout, directories)
         transaction_root = layout.projects[0].transaction_root
-        assert transaction_root is not None
+        tm.that(transaction_root, none=False)
         journal = self._register_manifest(layout, directories)
         (transaction_root / "alias").symlink_to(layout.scope_root)
 
@@ -1192,7 +1192,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         )
         journal = self._register_manifest(layout, directories)
         transaction_root = layout.projects[0].transaction_root
-        assert transaction_root is not None
+        tm.that(transaction_root, none=False)
         foreign = transaction_root / "foreign.bin"
         foreign.write_bytes(b"foreign")
 
@@ -1216,7 +1216,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
             tm.ok(FlextInfraMiseArtifactsState.plan_transaction_directories(layout)),
         )
         transaction_root = layout.projects[0].transaction_root
-        assert transaction_root is not None
+        tm.that(transaction_root, none=False)
         payload = transaction_root / "registered.bin"
         payload.write_bytes(b"registered")
         journal = self._register_manifest(layout, directories)
@@ -1241,7 +1241,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
             FlextInfraMiseArtifactsState.plan_transaction_directories(layout),
         )
         transaction_root = layout.projects[0].transaction_root
-        assert transaction_root is not None
+        tm.that(transaction_root, none=False)
         transaction_root.mkdir(parents=True)
         marker = transaction_root / "unknown-owner.bin"
         marker.write_bytes(b"preserve")

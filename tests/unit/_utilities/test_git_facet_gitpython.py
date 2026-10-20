@@ -58,7 +58,7 @@ class TestsFlextInfraGitFacet:
                 ),
             ),
         )
-        assert captured.entry is not None
+        tm.that(captured.entry, none=False)
         tm.ok(
             u.Infra.git_retire_index_file(
                 m.Infra.GitIndexRetirementRequest(
@@ -115,7 +115,7 @@ class TestsFlextInfraGitFacet:
                 ),
             ),
         )
-        assert captured.entry is not None
+        tm.that(captured.entry, none=False)
         artifact.write_text('{"new": true}\n', encoding=c.DEFAULT_ENCODING)
         u.Tests.git_run(repository, "add", "--", artifact.name)
         before = self._lane_bytes(repository)
@@ -659,7 +659,7 @@ class TestsFlextInfraGitFacet:
         tm.that(head.value.oid, length=c.Infra.GIT_OID_HEX_LENGTH_SHA1)
         status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=real_git_repo))
         tm.that(status.success, truth=True)
-        assert isinstance(status.value.porcelain, str)
+        tm.that(isinstance(status.value.porcelain, str), truth=True)
         assert status.value.dirty is False
         primary = u.Infra.git_primary_worktree_root(
             m.Infra.GitRepoRequest(repo_root=real_git_repo),
@@ -668,7 +668,7 @@ class TestsFlextInfraGitFacet:
         tm.that(primary.value.primary_root == real_git_repo.resolve(), truth=True)
         report = FlextInfraGitService(repository_root=real_git_repo).execute()
         tm.that(report.success, truth=True)
-        assert isinstance(report.value, m.Infra.GitStatusReport)
+        tm.that(isinstance(report.value, m.Infra.GitStatusReport), truth=True)
         tm.that(report.value.repo_root == real_git_repo.resolve(), truth=True)
         assert report.value.dirty is False
 
@@ -679,7 +679,7 @@ class TestsFlextInfraGitFacet:
         bare_root.mkdir()
         init_result = u.Cli.run_checked([c.Infra.GIT, "init", "--bare"], cwd=bare_root)
         tm.that(init_result.success, truth=True)
-        assert (bare_root / "HEAD").is_file()
+        tm.that((bare_root / "HEAD").is_file(), truth=True)
         captured = u.Cli.capture([c.Infra.GIT, "rev-parse", "--git-dir"], cwd=bare_root)
         tm.that(captured.success, truth=True)
         tm.that(captured.value.strip() in {".", str(bare_root.resolve())}, truth=True)
@@ -918,7 +918,7 @@ class TestsFlextInfraGitFacet:
         with tm.scope(env={"PATH": str(empty_path)}):
             result = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=tmp_path))
         tm.that(result.failure, truth=True)
-        assert result.error is not None
+        tm.that(result.error, none=False)
         tm.that("git executable not found" in result.error, truth=True)
 
     @staticmethod
@@ -958,30 +958,14 @@ class TestsFlextInfraGitFacet:
             has="retirement refused",
         )
 
-        assert lane.is_dir()
-        assert (repository / "member").is_dir()
+        tm.that(lane.is_dir(), truth=True)
+        tm.that((repository / "member").is_dir(), truth=True)
         tm.that(
             (repository / ".gitmodules").read_text(encoding="utf-8") == gitmodules,
             truth=True,
         )
-        assert (
-            tm.ok(
-                u.Cli.capture(
-                    (c.Infra.GIT, "ls-files", "--stage", "member"),
-                    cwd=repository,
-                ),
-            )
-            == gitlink
-        )
-        assert (
-            tm.ok(
-                u.Cli.capture(
-                    (c.Infra.GIT, "config", "--get", "submodule.member.url"),
-                    cwd=repository,
-                ),
-            )
-            == configured
-        )
+        tm.that(tm.ok(u.Cli.capture((c.Infra.GIT, "ls-files", "--stage", "member"), cwd=repository)), eq=gitlink)
+        tm.that(tm.ok(u.Cli.capture((c.Infra.GIT, "config", "--get", "submodule.member.url"), cwd=repository)), eq=configured)
 
     def test_remove_clean_worktree_refuses_dirty_nested_submodule(
         self,
@@ -1002,7 +986,7 @@ class TestsFlextInfraGitFacet:
         result = u.Infra.git_remove_clean_worktree(repository, lane)
 
         tm.fail(result, has="dirty nested submodule")
-        assert lane.is_dir()
+        tm.that(lane.is_dir(), truth=True)
 
     @staticmethod
     def test_remove_clean_worktree_refuses_locked_worktree(
@@ -1015,7 +999,7 @@ class TestsFlextInfraGitFacet:
         result = u.Infra.git_remove_clean_worktree(repository, lane)
 
         tm.fail(result, has="locked worktree")
-        assert lane.is_dir()
+        tm.that(lane.is_dir(), truth=True)
 
     @staticmethod
     def test_is_ancestor_proves_any_pair_and_defaults_to_head(
@@ -1085,7 +1069,7 @@ class TestsFlextInfraGitFacet:
         )
 
         tm.that(result.failure, truth=True)
-        assert result.error is not None
+        tm.that(result.error, none=False)
 
     @staticmethod
     def test_has_staged_changes_tracks_the_index(tmp_path: Path) -> None:

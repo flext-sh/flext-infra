@@ -89,7 +89,7 @@ class TestsFlextInfraRunProjects:
         tm.ok(result)
         tm.that(tuple(result.value[0].gates), eq=("lint",))
         receipt = result.value[0].gates["lint"].raw_receipt
-        assert receipt is not None
+        tm.that(receipt, none=False)
         tm.that(receipt.parent.name, eq="p1")
         tm.that((receipt.parent.parent / report_name).exists(), eq=True)
         tm.that(receipt.parent.parent.parent, eq=tmp_path / "reports")

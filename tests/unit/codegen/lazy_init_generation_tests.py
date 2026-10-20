@@ -272,7 +272,7 @@ class TestsFlextInfraCodegenGeneration:
             str(Path.cwd() / "pyproject.toml"),
             str(target),
         ])
-        assert formatted.success, formatted.error
+        tm.that(formatted.success, truth=True, msg=formatted.error)
         tm.that(target.read_text(encoding="utf-8") == rendered, truth=True)
 
     @pytest.mark.parametrize("with_eager_version", [False, True])
@@ -309,7 +309,7 @@ class TestsFlextInfraCodegenGeneration:
             project_config,
             str(target),
         ])
-        assert formatted.success, formatted.error
+        tm.that(formatted.success, truth=True, msg=formatted.error)
         tm.that(target.read_text(encoding="utf-8"), eq=rendered)
 
         checked = u.Cli.run([
@@ -321,7 +321,7 @@ class TestsFlextInfraCodegenGeneration:
             project_config,
             str(target),
         ])
-        assert checked.success, checked.error
+        tm.that(checked.success, truth=True, msg=checked.error)
         tm.that(FlextInfraCodegenGeneration.render_init(plan), eq=rendered)
 
     def test_sibling_private_exports_import_their_absolute_owner(self) -> None:

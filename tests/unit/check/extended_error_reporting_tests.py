@@ -59,7 +59,7 @@ class TestsFlextInfraGateErrorReporting:
             eq=sum(len(item.issues) for item in project.gates.values()),
         )
         receipt = project.gates[gates[0]].raw_receipt
-        assert receipt is not None
+        tm.that(receipt, none=False)
         report_path = receipt.parent.parent / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME
         report = report_path.read_text(
             encoding="utf-8",
@@ -134,7 +134,7 @@ class TestsFlextInfraGateErrorReporting:
         tm.that(bool(execution.issues), eq=False)
         tm.that(bool(execution.result.errors), eq=False)
         tm.that(execution.raw_output, has="invalid-line-length")
-        assert execution.raw_receipt is not None
+        tm.that(execution.raw_receipt, none=False)
         tm.that(
             execution.raw_receipt.read_bytes().decode("utf-8"),
             eq=execution.raw_output,
@@ -178,7 +178,7 @@ class TestsFlextInfraGateErrorReporting:
         execution = projects[0].gates[c.Infra.SECURITY]
         tm.that(execution.result.passed, eq=False)
         tm.that(execution.outcome, eq=c.Infra.ToolOutcome.ERROR)
-        assert execution.raw_receipt is not None
+        tm.that(execution.raw_receipt, none=False)
         tm.that(
             execution.raw_receipt,
             eq=execution.raw_receipt.parent
@@ -248,7 +248,7 @@ class TestsFlextInfraGateErrorReporting:
             ),
         )
         receipt = projects[0].gates[c.Infra.SECURITY].raw_receipt
-        assert receipt is not None
+        tm.that(receipt, none=False)
         tm.that(receipt.is_file(), eq=True)
         tm.that(receipt, ne=blocked_receipt)
         tm.that(blocked_receipt.is_dir(), eq=True)
@@ -339,7 +339,7 @@ class TestsFlextInfraGateErrorReporting:
         captured = capsys.readouterr()
         tm.that(f"{captured.out}\n{captured.err}", has=list(expected))
         receipt = result.value[0].gates[c.Infra.MARKDOWN].raw_receipt
-        assert receipt is not None
+        tm.that(receipt, none=False)
         report = m.Infra.SarifReport.model_validate_json(
             (receipt.parent.parent / c.Infra.CHECK_REPORT_SARIF_FILENAME).read_text(
                 encoding="utf-8",

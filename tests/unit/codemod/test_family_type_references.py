@@ -43,7 +43,7 @@ class TestsFlextInfraFamilyTypeReferences:
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         with infra.rope_workspace(root) as rope:
             resource = rope.resource(path)
-            assert resource is not None
+            tm.that(resource, none=False)
             module = u.Infra.resolve_pymodule(rope.rope_project, resource)
             tm.that(
                 tuple(

@@ -52,7 +52,7 @@ class TestsFlextInfraModTextGateEngine:
             m.Infra.ModTextCommand(repository_root=mod_workspace, apply=True),
         )
         tm.fail(result)
-        assert result.error_data is not None
+        tm.that(result.error_data, none=False)
         wire = u.type_adapter(TypeForm(tuple[t.JsonMapping, ...])).validate_json(
             tm.ok(u.Cli.json_dumps(result.error_data["issues"])),
         )
@@ -206,7 +206,7 @@ class TestsFlextInfraModTextGateEngine:
         )
         tm.fail(result)
         exception = result.exception
-        assert isinstance(exception, SyntaxError)
+        tm.that(isinstance(exception, SyntaxError), truth=True)
         tm.that(exception.filename, eq=str(invalid))
         tm.that(invalid.read_text(encoding="utf-8"), eq=malformed)
         _report, analysis = tm.ok(FlextInfraModTextGateEngine.plan(mod_workspace))
@@ -214,7 +214,7 @@ class TestsFlextInfraModTextGateEngine:
         tm.that(isinstance(analysis.exception, SyntaxError), eq=True)
         tm.that(valid.read_text(encoding="utf-8"), eq='value = "before"\n')
         metadata = result.error_data
-        assert metadata is not None
+        tm.that(metadata, none=False)
         tm.that(
             u.type_adapter(TypeForm(t.StrTuple)).validate_python(
                 metadata["written_files"]
@@ -742,7 +742,7 @@ class TestsFlextInfraModTextGateEngine:
         rejected = FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
         tm.fail(rejected, has=str(second))
         native = rejected.exception
-        assert isinstance(native, SyntaxError)
+        tm.that(isinstance(native, SyntaxError), truth=True)
         tm.that(native.args, eq=expected.value.args)
         tm.that(native.filename, eq=expected.value.filename)
         tm.that(native.__traceback__ is not None, eq=True)
