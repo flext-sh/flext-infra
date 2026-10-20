@@ -1,5 +1,16 @@
 # Recovery runbook
 
+<!-- TOC START -->
+
+- [Broken bootstrap (the checkout's Makefile misbehaves)](#broken-bootstrap-the-checkouts-makefile-misbehaves)
+- [Install-mode mismatch](#install-mode-mismatch)
+- [The recovery loop](#the-recovery-loop)
+- [Orphan imports](#orphan-imports)
+- [Racing-lane merges](#racing-lane-merges)
+- [Render provenance](#render-provenance)
+
+<!-- TOC END -->
+
 How to diagnose and heal a checkout whose own tooling is the broken part.
 Every cure here is owned state re-applied by a verb — never a hand patch
 that the next generation cannot reproduce (aihub-l42it.11 consolidation

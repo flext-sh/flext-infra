@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from functools import cache, lru_cache
 from pathlib import Path
+from typing import cast
 
 from flext_cli import u
 from packaging.utils import canonicalize_name
@@ -113,7 +114,7 @@ class FlextInfraUtilitiesPyproject:
         result_type = r[t.VariadicTuple[str | m.Infra.DependencyGroupInclude]]
         values = u.validate_value(
             m.Infra.DependencyGroupEntries,
-            groups.get(group, ()),
+            cast("t.JsonPayload", groups.get(group, ())),
         )
         if values.failure:
             return result_type.from_failure(values)

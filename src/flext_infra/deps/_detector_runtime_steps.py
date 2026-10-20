@@ -88,7 +88,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         venv_bin: Path,
         limits_path: Path,
         params: m.Infra.DetectCommand,
-        projects_report: MutableMapping[str, MutableMapping[str, t.JsonValue]],
+        projects_report: MutableMapping[str, m.Infra.ProjectRuntimeReport],
     ) -> p.Result[bool]:
         """Run deptry + optional typings detection/apply for one project.
 
@@ -110,7 +110,9 @@ class FlextInfraDependencyDetectorRuntimeSteps:
             project_name,
             issues,
         )
-        projects_report[project_name] = dict(project_payload.model_dump())
+        projects_report[project_name] = m.Infra.ProjectRuntimeReport(
+            deptry=project_payload.deptry,
+        )
         run_typings_for_project = (
             do_typings and (project_path / c.Infra.DEFAULT_SRC_DIR).is_dir()
         )
@@ -129,7 +131,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         *,
         limits_path: Path,
         params: m.Infra.DetectCommand,
-        projects_report: MutableMapping[str, MutableMapping[str, t.JsonValue]],
+        projects_report: MutableMapping[str, m.Infra.ProjectRuntimeReport],
     ) -> p.Result[bool]:
         """Declare typing requirements in the development group through native UV.
 
@@ -148,7 +150,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         if typings_result.failure:
             return r[bool].from_failure(typings_result)
         typings_report = typings_result.value
-        projects_report[project_name][c.Infra.DIR_TYPINGS] = typings_report.model_dump()
+        projects_report[project_name].typings = typings_report
         to_add: t.StrSequence = typings_report.to_add
         if not (params.apply_typings and to_add and params.apply):
             return r[bool].ok(value=True)
@@ -162,6 +164,8 @@ class FlextInfraDependencyDetectorRuntimeSteps:
                 str(project_path),
                 "--group",
                 c.Infra.DEV,
+                "--frozen",
+                "--no-sync",
                 "--",
                 *to_add,
             ],

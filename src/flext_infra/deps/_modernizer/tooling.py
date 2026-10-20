@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from copy import deepcopy
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
@@ -188,21 +187,14 @@ class FlextInfraPyprojectModernizerTooling:
             Native TOML with recursively ordered keys and unchanged array order.
 
         """
-        payload: t.JsonDict = {}
-        for table_path, options in sorted(deepcopy(tool_options).items()):
-            path = table_path.split(".")
-            parent = u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, *path[:-1]))
-            parent[path[-1]] = dict(options)
-        ordered = u.Cli.json_dumps(payload, sort_keys=True)
-        if ordered.failure:
-            return r[str].from_failure(ordered)
-        return r[str].ok(
-            u.Cli.toml_dumps(
-                u.Cli.toml_document_from_mapping(
-                    u.json_mapping_adapter().validate_json(ordered.value)
-                )
+        document = u.Cli.toml_document()
+        for table_path, options in sorted(tool_options.items()):
+            table = u.Cli.toml_ensure_path(
+                document, (c.Infra.TOOL, *table_path.split("."))
             )
-        )
+            for key, value in options.items():
+                table[key] = u.Cli.toml_item_from_json_value(value)
+        return r[str].ok(u.Cli.toml_dumps(document, sort_keys=True))
 
     @classmethod
     def tooling_context_from_payload(
@@ -232,8 +224,8 @@ class FlextInfraPyprojectModernizerTooling:
         configuration = cls.tooling_configuration(options)
         if configuration.failure:
             return result_type.from_failure(configuration)
-        return result_type.create_from_callable(
-            lambda: m.Infra.ToolingRuntimeContext(
+        return result_type.ok(
+            m.Infra.ToolingRuntimeContext(
                 project_kind=project_kind,
                 configuration=configuration.value,
                 tool_options=options,
@@ -340,11 +332,11 @@ class FlextInfraPyprojectModernizerTooling:
         tool_config: m.Infra.ToolConfigDocument,
         *,
         is_root: bool,
-    ) -> t.Pair[t.StrSequence, t.StrSequence]:
+    ) -> t.StrSequence:
         """Derive the declared or discovered analyzer search roots.
 
         Returns:
-            The ``(declared_roots, mypy_path)`` pair.
+            The declared or discovered Mypy search paths.
 
         """
         path_rules = tool_config.tools.pyrefly.path_rules
@@ -366,19 +358,14 @@ class FlextInfraPyprojectModernizerTooling:
         )
         # Planned roots apply before the atomic scaffold materializes them.
         # Existing trees use the same Mypy path owner as standalone path sync.
-        derived_search_path: t.StrSequence = (
-            declared_roots
-            or seed_manager.mypy_search_paths(
+        return (
+            tuple(root for root in declared_roots if root != path_rules.project_root)
+            if declared_roots
+            else seed_manager.mypy_search_paths(
                 project_dir=project_dir,
                 is_root=is_root,
             )
         )
-        derived_mypy_path: t.StrSequence = (
-            tuple(root for root in declared_roots if root != path_rules.project_root)
-            if declared_roots
-            else derived_search_path
-        )
-        return (declared_roots, derived_mypy_path)
 
 
 __all__: list[str] = ["FlextInfraPyprojectModernizerTooling"]

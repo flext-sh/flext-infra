@@ -100,7 +100,7 @@ class TestsFlextInfraDepsModernizerTooling:
     @staticmethod
     def test_native_tooling_render_keeps_caller_nested_tables_unchanged() -> None:
         """Missing output tables never become mutations of the caller's tree."""
-        options: dict[str, t.JsonMapping] = {
+        options: t.MappingKV[str, t.JsonMapping] = {
             "fixture_native": {
                 "branch": {
                     "keep": [{"label": "last"}, {"label": "first"}],
@@ -124,9 +124,7 @@ class TestsFlextInfraDepsModernizerTooling:
             eq=options["fixture_native.branch.child"],
         )
         tm.that(
-            u.Tests.toml_table_at(
-                rendered, "tool", "fixture_native", "branch"
-            )["keep"],
+            u.Tests.toml_table_at(rendered, "tool", "fixture_native", "branch")["keep"],
             eq=u.Tests.toml_mapping(options["fixture_native"]["branch"])["keep"],
         )
 

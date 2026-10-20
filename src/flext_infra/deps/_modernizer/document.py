@@ -49,8 +49,7 @@ class FlextInfraPyprojectModernizerDocument:
             tool_config: m.Infra.ToolConfigDocument,
             *,
             is_root: bool,
-        ) -> t.Pair[t.StrSequence, t.StrSequence]:
-            del project_dir, declared_python_dirs, seed_manager, tool_config, is_root
+        ) -> t.StrSequence: ...
 
     def _project_kind(
         self,
@@ -353,7 +352,7 @@ class FlextInfraPyprojectModernizerDocument:
                 FlextInfraExtraPathsManager(repository_root=self.root),
                 tooling,
                 is_root=is_root,
-            )[1]
+            )
         )
         managed_artifacts = self.managed_artifacts
         if managed_artifacts is None:

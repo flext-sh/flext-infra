@@ -22,6 +22,33 @@ class TestsFlextInfraCProfileInterruption:
     """Exercise publication and continuation through real Python processes."""
 
     @staticmethod
+    @pytest.mark.parametrize("status", [0, 7])
+    def test_public_command_retains_status_and_profile(
+        tmp_path: Path, status: int
+    ) -> None:
+        """The flat public owner publishes readable invocation-owned evidence."""
+        output = tmp_path / "command.pstats"
+        tm.that(u.Infra.profile_command(lambda: status, output), eq=status)
+        tm.that(pstats.Stats(str(output)).total_calls, gt=0)
+        retained = tuple(tmp_path.glob("command-*.pstats"))
+        tm.that(len(retained), eq=1)
+        tm.ok(retained[0].samefile(output))
+
+    @staticmethod
+    def test_public_command_preserves_first_exception(tmp_path: Path) -> None:
+        """A real missing output parent cannot replace the command failure."""
+        failure = RuntimeError("command failed")
+
+        def command() -> int:
+            raise failure
+
+        with pytest.raises(RuntimeError) as raised:
+            u.Infra.profile_command(command, tmp_path / "missing" / "command.pstats")
+        tm.ok(raised.value is failure)
+        tm.that("\n".join(failure.__notes__), has="profile publication failed")
+        tm.fail((tmp_path / "missing").exists())
+
+    @staticmethod
     @pytest.mark.parametrize("handler", ["default", "raise", "return", "ignore"])
     def test_cli_termination_replaces_stale_report_and_preserves_previous_run(
         tmp_path: Path,

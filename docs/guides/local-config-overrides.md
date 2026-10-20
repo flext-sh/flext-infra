@@ -3,6 +3,7 @@
 <!-- TOC START -->
 
 - [Mandatory Mypy policy](#mandatory-mypy-policy)
+- [Native Ruff Policy](#native-ruff-policy)
 - [Local dependency binding](#local-dependency-binding)
 - [Generation and recovery](#generation-and-recovery)
 

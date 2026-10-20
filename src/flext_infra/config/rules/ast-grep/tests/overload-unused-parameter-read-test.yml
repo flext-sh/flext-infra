@@ -1,0 +1,46 @@
+id: overload-unused-parameter-read
+valid:
+  - |
+    from typing import overload
+
+    @overload
+    def declaration(value: int) -> int:
+        raise NotImplementedError
+  - |
+    def operation(value: int) -> int:
+        _ = value
+        raise NotImplementedError
+  - |
+    from other_library import overload
+
+    @overload
+    def operation(value: int) -> int:
+        _ = value
+        raise NotImplementedError
+  - |
+    from typing import overload
+
+    @overload
+    def operation(value: int) -> int:
+        _ = touch(value)
+        raise NotImplementedError
+invalid:
+  - |
+    from typing import TYPE_CHECKING, overload
+
+    class Collection:
+        @overload
+        @staticmethod
+        def map[T, U](
+            items: tuple[T, ...],
+            mapper,
+        ) -> tuple[U, ...]:
+            _ = items, mapper
+            raise NotImplementedError
+  - |
+    from typing_extensions import overload
+
+    @overload
+    def declaration(value: int) -> int:
+        _ = (value,)
+        raise NotImplementedError

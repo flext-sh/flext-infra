@@ -10,13 +10,35 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c
+from flext_infra import c, m
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from tests import tm, u
 
 
 class TestsFlextInfraDepsDetectionTypingsFlow:
     """Tests for ``FlextInfraDepsDetectionTypingsFlow``."""
+
+    @staticmethod
+    def _write_policy(root: Path, *, follow: bool) -> None:
+        """Declare this consumer's checker policy through the real tooling owner."""
+        directory = root / c.CONFIG_DIR_NAME
+        directory.mkdir()
+        tm.ok(
+            u.Cli.yaml_dump(
+                directory / "tooling.yaml",
+                {
+                    "Infra": {
+                        "tooling": {
+                            "settings": {
+                                "mypy": [
+                                    [c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS, follow],
+                                ],
+                            },
+                        },
+                    },
+                },
+            ),
+        )
 
     @staticmethod
     def _governed_follow(root: Path) -> bool:
@@ -62,7 +84,7 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
         return limits
 
     def test_governed_policy_decides_stub_findings(self, tmp_path: Path) -> None:
-        """Followed untyped imports make stubs neither required nor removable."""
+        """The discovery report retains the consumer's normal check policy."""
         followed = self._governed_follow(tmp_path)
         limits = self._typed_reader(tmp_path, follow=followed)
         report = tm.ok(
@@ -77,6 +99,67 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
             report.to_remove,
             eq=[] if followed else ["types-pyyaml", "types-requests"],
         )
+
+    @staticmethod
+    @pytest.mark.parametrize("follow", [False, True])
+    def test_published_stubs_are_discovered_under_either_check_policy(
+        tmp_path: Path,
+        follow: bool,
+    ) -> None:
+        """A real Mypy catalog lookup works independently of ambient installed stubs."""
+        TestsFlextInfraDepsDetectionTypingsFlow._write_policy(tmp_path, follow=follow)
+        limits = TestsFlextInfraDepsDetectionTypingsFlow._typed_reader(
+            tmp_path,
+            follow=follow,
+        )
+        source = tmp_path / "src" / "typed_reader" / c.Infra.INIT_PY
+        source.write_text("from six import ensure_str\n", encoding="utf-8")
+        pyproject = tmp_path / c.PYPROJECT_FILENAME
+        with pyproject.open("a", encoding="utf-8") as stream:
+            stream.write("no_site_packages = true\n")
+        before = pyproject.read_bytes()
+        report = tm.ok(
+            FlextInfraDependencyDetectionService().analyze_required_typings(
+                tmp_path,
+                limits,
+            ),
+        )
+        tm.that(report.to_add, has="types-six")
+        tm.that(report.untyped_imports_followed, eq=follow)
+        tm.that(pyproject.read_bytes(), eq=before)
+
+    def test_native_checker_failure_is_not_an_empty_typing_report(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A native configuration failure keeps its original diagnostic and status."""
+        limits = self._typed_reader(
+            tmp_path,
+            follow=self._governed_follow(tmp_path),
+        )
+        pyproject = tmp_path / c.PYPROJECT_FILENAME
+        with pyproject.open("a", encoding="utf-8") as stream:
+            stream.write(f'plugins = ["unavailable_plugin_{u.generate_id()}"]\n')
+        tm.fail(
+            FlextInfraDependencyDetectionService().analyze_required_typings(
+                tmp_path,
+                limits,
+            ),
+            has="Mypy stub discovery failed: exit 2",
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("directory", ["/outside", "..", "."])
+    def test_generated_typing_destination_is_confined(directory: str) -> None:
+        """Generated dependency sources cannot escape or replace their owning root."""
+        policy = FlextInfraDependencyDetectionService().load_dependency_limits()
+        typing = u.Cli.json_as_mapping(policy["typing_libraries"])
+        generation = u.Cli.json_as_mapping(typing["generation"])
+        with pytest.raises(c.ValidationError, match="confined relative path"):
+            m.Infra.TypingGenerationPolicy.model_validate({
+                **generation,
+                "directory": directory,
+            })
 
     def test_project_policy_conflict_fails_loud(self, tmp_path: Path) -> None:
         """A project mypy table that diverges from the governed policy is a conflict."""
@@ -95,24 +178,7 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
     ) -> None:
         """The reader elects this project's declared native policy before comparison."""
         selected = not self._governed_follow(tmp_path)
-        directory = tmp_path / c.CONFIG_DIR_NAME
-        directory.mkdir()
-        tm.ok(
-            u.Cli.yaml_dump(
-                directory / "tooling.yaml",
-                {
-                    "Infra": {
-                        "tooling": {
-                            "settings": {
-                                "mypy": [
-                                    [c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS, selected]
-                                ]
-                            }
-                        }
-                    }
-                },
-            )
-        )
+        self._write_policy(tmp_path, follow=selected)
         self._typed_reader(tmp_path, follow=selected)
         tm.that(
             tm.ok(

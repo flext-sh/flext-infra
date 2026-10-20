@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -126,14 +127,21 @@ class FlextInfraUtilitiesDocsBuild:
     def _run_mkdocs_api(settings: Path, site_dir: Path) -> None:
         """Validate and build through the typed public MkDocs SDK."""
         site_dir.parent.mkdir(parents=True, exist_ok=True)
-        config_obj = FlextInfraUtilitiesDocsBuild._config_sdk(
-            mkdocs.config,
-        ).load_config(
-            config_file=str(settings),
-            site_dir=str(site_dir),
-            strict=True,
-        )
-        mkdocs.commands.build.build(config_obj, dirty=False)
+        logger = logging.getLogger("mkdocs")
+        handler = logging.StreamHandler()
+        logger.addHandler(handler)
+        try:
+            config_obj = FlextInfraUtilitiesDocsBuild._config_sdk(
+                mkdocs.config,
+            ).load_config(
+                config_file=str(settings),
+                site_dir=str(site_dir),
+                strict=True,
+            )
+            mkdocs.commands.build.build(config_obj, dirty=False)
+        finally:
+            logger.removeHandler(handler)
+            handler.close()
 
     @staticmethod
     def docs_serve_mkdocs(

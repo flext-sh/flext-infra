@@ -16,10 +16,10 @@ from typing import TYPE_CHECKING
 from packaging.utils import canonicalize_name
 from packaging.version import Version
 
-from flext_infra import c, config, m, r, settings, u
+from flext_infra import c, config, m, r, settings, t, u
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraDependencyTypingPackages:
@@ -32,10 +32,10 @@ class FlextInfraDependencyTypingPackages:
         modules: t.StrSequence,
         policy: p.Infra.TypingGenerationPolicy,
     ) -> p.Result[t.StrSequence]:
-        """Refresh installed generated packages and materialize missing modules.
+        """Refresh generated packages and declare their native path dependencies.
 
         Returns:
-            The source directories UV installed into the owning environment.
+            Source directories declared for Make's native resolution and install.
 
         """
         roots = {
@@ -52,6 +52,7 @@ class FlextInfraDependencyTypingPackages:
         }
         if not roots:
             return r[t.StrSequence].ok(())
+        u.Cli.info(f"typings: generating {len(roots)} external package(s)")
         providers = packages_distributions()
         destination = repository_root / policy.directory
         with u.Infra.codegen_transaction_lease(destination / "packages"):
@@ -72,6 +73,9 @@ class FlextInfraDependencyTypingPackages:
                     str(repository_root),
                     "--group",
                     c.Infra.DEV,
+                    "--frozen",
+                    "--no-sync",
+                    "--no-workspace",
                     "--",
                     *(str(path) for path in packages),
                 ],
@@ -83,7 +87,7 @@ class FlextInfraDependencyTypingPackages:
         return r[t.StrSequence].ok(tuple(str(path) for path in packages))
 
     @classmethod
-    def _generate_typing_package(
+    def _generate_typing_package(  # ruff: ignore[too-many-locals]
         cls,
         root: Path,
         module: str,
@@ -121,6 +125,7 @@ class FlextInfraDependencyTypingPackages:
         name = canonicalize_name(policy.distribution_prefix + module)
         package_root = root / policy.directory / name
         stub_package = f"{module}-stubs"
+        u.Cli.info(f"typings: Pyright generation for {module}")
         with TemporaryDirectory(dir=root, prefix=".typing-package-") as scratch:
             stage = Path(scratch)
             native = stage / "native"
@@ -136,6 +141,7 @@ class FlextInfraDependencyTypingPackages:
                     str(native_config),
                     "--pythonpath",
                     str(u.Infra.runtime_python(root)),
+                    "--warnings",
                     "--createstub",
                     module,
                 ],
@@ -202,7 +208,12 @@ class FlextInfraDependencyTypingPackages:
 
     @staticmethod
     def _publish_typing_source(path: Path, content: bytes) -> None:
-        """Publish owned changed bytes under their captured physical preconditions."""
+        """Publish owned changed bytes under their captured physical preconditions.
+
+        Raises:
+            ValueError: If typing generation does not own ``path``.
+
+        """
         path.parent.mkdir(parents=True, exist_ok=True)
         before = u.Cli.atomic_read_binary_file_state(path).unwrap()
         if before.content == content:

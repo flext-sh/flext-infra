@@ -707,7 +707,7 @@ class FlextInfraModelsDeps(
         workspace: Annotated[str, m.Field(description="Workspace name")]
         generated_typings: Annotated[
             t.StrSequence,
-            m.Field(description="Installed generated PEP 561 package directories"),
+            m.Field(description="Declared generated PEP 561 source directories"),
         ] = m.Field(default_factory=tuple)
         projects: t.MappingKV[str, FlextInfraModelsDeps.ProjectRuntimeReport] = m.Field(
             description="Per-project reports",

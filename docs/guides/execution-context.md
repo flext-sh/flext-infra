@@ -4,6 +4,8 @@
 
 - [Runtime is the authority](#runtime-is-the-authority)
 - [Canonical architecture checkpoints](#canonical-architecture-checkpoints)
+- [Namespace migration](#namespace-migration)
+- [New projects](#new-projects)
 - [Environment activation](#environment-activation)
 - [Dependency locks](#dependency-locks)
 - [Runtime environment](#runtime-environment)
@@ -15,6 +17,7 @@
 - [Census consumer evidence](#census-consumer-evidence)
 - [Bounded Mypy failure status](#bounded-mypy-failure-status)
 - [Abstraction-boundary project identity](#abstraction-boundary-project-identity)
+- [Service foundation](#service-foundation)
 - [Codemod scanner contract](#codemod-scanner-contract)
 
 <!-- TOC END -->
@@ -563,11 +566,14 @@ alphabetically sorting that array changes import resolution and is prohibited.
 templates and runtime consumers. The full pyproject template consumes its native
 TOML serialization rather than reconstructing tool options through model fields.
 Markdown rules use the same pair contract in their Markdown owner.
-Native values preserve whitespace and nulls through validation and projection;
-option names must satisfy their declared grammar without trimming invalid input.
+Native JSON values preserve whitespace and nulls during validation. Unsupported
+target values, such as TOML nulls, fail at serialization. Option names must satisfy
+their declared grammar without trimming invalid input.
 Single-option readers validate the elected value directly. Mutable tables are
 detached when handed to projection consumers, keeping the canonical document
 unchanged without copying every table for each option lookup.
+Serialization builds its owned TOML document directly and uses native key sorting,
+preserving source tables and array order without a JSON serialization round trip.
 
 Models retain execution budgets, topology and justified rule policy. Derived
 options belong to those owners; native pairs cannot shadow protected policy keys.
@@ -1755,6 +1761,13 @@ journal writer. Changed current-batch inputs reject the affected publication wit
 discarding accepted earlier batches. Generation does not re-render the full workspace
 at commit or run formatting, linting, or test gates; the corresponding Make verbs own
 those operations.
+
+Plan collection uses its own `docs-collection` phase and source topology rather
+than the renderer's input inventory. Publication passes the same durable journal
+to the existing source-state verifier. An absent file's parent identity can change
+only when that journal proves directory creation; published file receipts then
+replace their authenticated preimages. Directory receipts are captured once per
+batch and shared across targets.
 
 Read-only Make verbs never invoke conform, generation, repairs, formatting, or
 codemod application. Audit checks installed dependency and environment provenance;

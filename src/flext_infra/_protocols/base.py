@@ -1313,6 +1313,10 @@ class FlextInfraProtocolsBase(Protocol):
             """Serialize report model payload."""
             ...
 
+        def model_dump_json(self, *, indent: int | None = None) -> str:
+            """Serialize the validated report through its canonical Pydantic owner."""
+            ...
+
     @runtime_checkable
     class JsonService(Protocol):
         """Service for JSON serialization and persistence."""
@@ -1328,6 +1332,9 @@ class FlextInfraProtocolsBase(Protocol):
     @runtime_checkable
     class ProjectReportLike(Protocol):
         """Protocol for project-level dependency report contracts."""
+
+        @property
+        def deptry(self) -> m.Infra.DeptryReport: ...
 
         def model_dump(self) -> t.MappingKV[str, t.JsonValue]:
             """Serialize project report payload."""

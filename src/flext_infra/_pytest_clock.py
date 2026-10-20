@@ -16,9 +16,11 @@ import sys
 import tempfile
 import time
 import traceback
+from collections.abc import Callable
 from pathlib import Path
 from types import FrameType
 from typing import ClassVar
+from uuid import uuid4
 
 
 class FlextInfraPytestClock:
@@ -30,6 +32,54 @@ class FlextInfraPytestClock:
     )
     if profiler is not None:
         profiler.enable()
+
+    @staticmethod
+    def profile_command(command: Callable[[], int], output: Path) -> int:
+        """Profile a command while retaining its native status and first exception.
+
+        Returns:
+            The command exit status.
+
+        """
+        immutable_output = output.with_stem(f"{output.stem}-{uuid4().hex}")
+        previous_output = output.with_stem(f"{output.stem}.previous-{uuid4().hex}")
+        profiler = cProfile.Profile()
+        previous = signal.getsignal(signal.SIGTERM)
+        status: int | None = None
+
+        FlextInfraPytestClock.register_signal_checkpoint(
+            profiler,
+            output,
+            immutable_output=immutable_output.with_suffix(".checkpoint.pstats"),
+            previous_output=previous_output.with_suffix(".checkpoint.pstats"),
+        )
+        profiler.enable()
+        try:
+            status = command()
+            return status
+        finally:
+            profiler.disable()
+            signal.signal(signal.SIGTERM, previous)
+            primary = sys.exception() if status is None else None
+            try:
+                FlextInfraPytestClock.publish_profile(
+                    profiler,
+                    output,
+                    immutable_output=immutable_output,
+                    previous_output=previous_output,
+                )
+            except BaseException as publication_failure:
+                if primary is not None:
+                    primary.add_note(
+                        "profile publication failed:\n"
+                        + "".join(
+                            traceback.format_exception(publication_failure, chain=False)
+                        )
+                    )
+                elif status:
+                    traceback.print_exception(publication_failure)
+                else:
+                    raise
 
     @classmethod
     def start_profiler(cls) -> cProfile.Profile:

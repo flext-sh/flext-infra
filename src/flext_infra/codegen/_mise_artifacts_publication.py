@@ -270,6 +270,7 @@ class FlextInfraMisePublication:
             {},
             directories=analysis.source_directories,
             topology=analysis.source_query_topology,
+            journal=journal,
         )
         if current.failure:
             return result_type.from_failure(current)
@@ -457,7 +458,7 @@ class FlextInfraMisePublication:
         return r[tuple[m.Infra.CodegenJournalSource, ...]].ok(tuple(outputs))
 
     @staticmethod
-    def publish(
+    def publish(  # ruff: ignore[too-many-locals]
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
         *,
         batch_admission: m.Infra.CodegenPhaseOutcome | None = None,
@@ -505,6 +506,13 @@ class FlextInfraMisePublication:
         )
         if prior.failure:
             return result_type.from_failure(prior)
+        directory_publications = (
+            tuple(
+                item.created for item in journal.directories if item.created is not None
+            )
+            if journal is not None
+            else ()
+        )
         for index, publication in enumerate(ordered, start=1):
             u.Cli.emit_raw(
                 f"  publish [{index}/{len(publications)}] {publication.before.path}\n"
@@ -514,13 +522,8 @@ class FlextInfraMisePublication:
                 publications,
                 written,
                 published_states,
-                directory_publications=tuple(
-                    item.created
-                    for item in journal.directories
-                    if item.created is not None
-                )
-                if journal is not None
-                else (),
+                directory_publications=directory_publications,
+                journal=journal,
             )
             if blocking is not None:
                 issues.append(blocking)
@@ -638,7 +641,7 @@ class FlextInfraMisePublication:
         )
 
     @staticmethod
-    def _prerequisite_issue(
+    def _prerequisite_issue(  # ruff: ignore[too-many-arguments]
         publication: m.Infra.CodegenStagedFile,
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
         written: list[Path],
@@ -647,6 +650,7 @@ class FlextInfraMisePublication:
         ],
         *,
         directory_publications: t.VariadicTuple[m.Cli.AtomicDirectoryState] = (),
+        journal: m.Infra.CodegenTransactionJournal | None = None,
     ) -> t.Pair[m.Infra.Issue | None, BaseException | None]:
         """Name the first failed publication prerequisite of one target.
 
@@ -656,6 +660,7 @@ class FlextInfraMisePublication:
             written: Destination paths already written by earlier targets.
             published_states: Before and after states of published targets.
             directory_publications: Directory states published by this batch.
+            journal: Durable owner of the batch's directory creation receipts.
 
         Returns:
             The blocking prerequisite issue with its causal exception, or
@@ -674,6 +679,7 @@ class FlextInfraMisePublication:
                 directories=publication.source_directories,
                 topology=publication.source_query_topology,
                 directory_publications=directory_publications,
+                journal=journal,
             )
         if ready.success:
             return None, None
@@ -831,7 +837,7 @@ class FlextInfraMisePublication:
         return r[m.Cli.AtomicFileState].ok(receipt.value)
 
     @staticmethod
-    def _source_prerequisites(
+    def _source_prerequisites(  # ruff: ignore[too-many-arguments]
         sources: t.VariadicTuple[m.Cli.AtomicFileState],
         published: t.MappingKV[
             Path, t.Pair[m.Cli.AtomicFileState, m.Cli.AtomicFileState]
@@ -840,6 +846,7 @@ class FlextInfraMisePublication:
         directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = (),
         topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (),
         directory_publications: t.VariadicTuple[m.Cli.AtomicDirectoryState] = (),
+        journal: m.Infra.CodegenTransactionJournal | None = None,
     ) -> p.Result[bool]:
         """Verify this target's inputs, rebinding only this phase's own writes.
 
@@ -848,7 +855,15 @@ class FlextInfraMisePublication:
 
         """
         expected: list[m.Cli.AtomicFileState] = []
-        for source in sources:
+        for item in sources:
+            source = item
+            if source.parent_device is None and journal is not None:
+                bound = FlextInfraMiseArtifactsVerification.bind_source_parent(
+                    source, journal
+                )
+                if bound.failure:
+                    return r[bool].from_failure(bound)
+                source = bound.value
             receipt = published.get(source.path)
             if receipt is None:
                 expected.append(source)

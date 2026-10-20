@@ -6,11 +6,25 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from pathlib import Path
+
 from flext_infra import c, p, t
+from flext_infra._pytest_clock import FlextInfraPytestClock
 
 
 class FlextInfraUtilitiesProcess:
     """Normalize external process exits without discarding their status."""
+
+    @staticmethod
+    def profile_command(command: Callable[[], int], output: Path) -> int:
+        """Profile a command through the shared atomic publication lifecycle.
+
+        Returns:
+            The command exit status.
+
+        """
+        return FlextInfraPytestClock.profile_command(command, output)
 
     @staticmethod
     def tool_outcome(

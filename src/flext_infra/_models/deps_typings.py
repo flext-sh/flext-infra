@@ -20,7 +20,10 @@ class FlextInfraModelsDepsTypings:
     class TypingGenerationPolicy(m.ContractModel):
         """Declared destination and distribution identity for generated stubs."""
 
-        directory: Annotated[Path, m.Field(description="Project-relative package root")]
+        directory: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Project-relative package root"),
+        ]
         distribution_prefix: Annotated[
             t.NonEmptyStr,
             m.Field(description="Distribution prefix reserved for generated stubs"),
@@ -28,7 +31,7 @@ class FlextInfraModelsDepsTypings:
 
         @m.field_validator("directory")
         @classmethod
-        def validate_directory(cls, value: Path) -> Path:
+        def validate_directory(cls, value: str) -> str:
             """Require a confined, non-root generation destination.
 
             Returns:
@@ -38,13 +41,14 @@ class FlextInfraModelsDepsTypings:
                 ValueError: If the destination leaves its owning project.
 
             """
-            if value.is_absolute() or ".." in value.parts or value == Path():
+            path = Path(value)
+            if path.is_absolute() or ".." in path.parts or path == Path():
                 msg = "typing package directory must be a confined relative path"
                 raise ValueError(msg)
             return value
 
     class TypingPackageRenderContext(m.ContractModel):
-        """PEP 561 metadata derived from the installed implementation and build owner."""
+        """PEP 561 metadata from the installed implementation and packaging policy."""
 
         distribution: Annotated[
             t.NonEmptyStr,

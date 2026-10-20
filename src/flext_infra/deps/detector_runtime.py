@@ -10,8 +10,6 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core import FlextRuntime
-
 from flext_infra import c, m, p, r, t, u
 from flext_infra.deps import FlextInfraDependencyDetectorRuntimeSteps
 
@@ -31,7 +29,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
         self._detector = detector
         self._deps = deps
 
-    def run(self, params: m.Infra.DetectCommand) -> p.Result[bool]:
+    def run(self, params: m.Infra.DetectCommand) -> p.Result[bool]:  # ruff: ignore[too-many-locals]
         """Execute dependency detection and generate workspace report (orchestrator).
 
         Returns:
@@ -49,7 +47,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
             return r[bool].from_failure(env_result)
         projects, limits_path = env_result.value
         do_typings = params.typings or params.apply_typings
-        projects_report: MutableMapping[str, MutableMapping[str, t.JsonValue]] = {}
+        projects_report: MutableMapping[str, m.Infra.ProjectRuntimeReport] = {}
         report_model = m.Infra.WorkspaceDependencyReport(
             workspace=str(root),
             projects={},
@@ -70,10 +68,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
             )
             if project_result.failure:
                 return r[bool].from_failure(project_result)
-        report_model.projects = {
-            project_name: m.Infra.ProjectRuntimeReport.model_validate(project_payload)
-            for project_name, project_payload in projects_report.items()
-        }
+        report_model.projects = projects_report
         if params.apply and params.apply_typings:
             limits = self._deps.load_dependency_limits(limits_path)
             typing_limits = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
@@ -111,7 +106,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
         self,
         scope: t.Pair[m.Infra.DetectCommand, Path],
         report_model: p.Infra.WorkspaceReport,
-        projects_report: Mapping[str, Mapping[str, t.JsonValue]],
+        projects_report: Mapping[str, m.Infra.ProjectRuntimeReport],
         projects: t.SequenceOf[Path],
         *,
         pip_ok: bool,
@@ -129,7 +124,6 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
             params,
             root,
             report_model,
-            projects_report,
         )
         if write_result.failure:
             return r[bool].from_failure(write_result)
@@ -145,7 +139,6 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
         params: m.Infra.DetectCommand,
         root: Path,
         report_model: p.Infra.WorkspaceReport,
-        projects_report: Mapping[str, Mapping[str, t.JsonValue]],
     ) -> p.Result[Path]:
         """Render and persist the canonical workspace dependency report JSON.
 
@@ -159,18 +152,10 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
             c.Infra.DEPENDENCIES,
             "detect-runtime-dev-latest.json",
         )
-        report_payload: t.JsonDict = {
-            key: FlextRuntime.normalize_to_json_value(value)
-            for key, value in report_model.model_dump().items()
-        }
-        report_payload["projects"] = {
-            project_name: {
-                key: FlextRuntime.normalize_to_json_value(value)
-                for key, value in project_payload.items()
-            }
-            for project_name, project_payload in projects_report.items()
-        }
-        write_result = u.Cli.json_write(out_path, report_payload)
+        write_result = u.Cli.atomic_write_text_file(
+            out_path,
+            report_model.model_dump_json(indent=2) + "\n",
+        )
         if write_result.failure:
             return r[Path].from_failure(write_result)
         if not params.quiet:
@@ -180,7 +165,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
     def _summarize_run(
         self,
         projects: t.SequenceOf[Path],
-        projects_report: Mapping[str, Mapping[str, t.JsonValue]],
+        projects_report: Mapping[str, m.Infra.ProjectRuntimeReport],
         *,
         pip_ok: bool,
         params: m.Infra.DetectCommand,
@@ -192,11 +177,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
 
         """
         total_issues = sum(
-            u.Cli.json_pick_int(
-                u.Cli.json_as_mapping(payload.get(c.Infra.DEPTRY)),
-                "raw_count",
-            )
-            for payload in projects_report.values()
+            report.deptry.raw_count for report in projects_report.values()
         )
         if not params.quiet:
             self._detector.log.info(

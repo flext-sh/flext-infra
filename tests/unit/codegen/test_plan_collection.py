@@ -90,13 +90,13 @@ class TestsFlextInfraPlanCollection:
         configuration_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(configuration_path, required=True),
         )
-        bundle = u.Infra.docs_collect_plan_files(root, configuration)
         request = m.Infra.DocsCollectRequest(
             repository_root=root,
             configuration=configuration_path,
         )
 
         tm.ok(FlextInfraDocCollector.collect(request))
+        bundle = u.Infra.docs_collect_plan_files(root, configuration)
         u.Infra.verify_plan_collection_publication(root, configuration, bundle)
         outputs = tuple(
             tm.ok(u.Cli.atomic_read_binary_file_state(plan.path, required=True))
