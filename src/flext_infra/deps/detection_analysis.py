@@ -115,9 +115,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         selected = u.Infra.load_tooling_inputs(project_path)
         if selected.failure:
             return r[bool].from_failure(selected)
-        options = u.Infra.native_tool_settings(
-            selected.value.document, c.Infra.MYPY
-        )
+        options = u.Infra.native_tool_settings(selected.value.document, c.Infra.MYPY)
         governed = (
             u.Infra.native_tool_setting(
                 selected.value.document, c.Infra.MYPY, key, bool

@@ -47,6 +47,7 @@ class FlextInfraUtilitiesIterationDirectory(FlextInfraUtilitiesGitScopeMixin):
 
         Scoped to one directory (project src, subdirectory, etc.) — unlike
         ``iter_python_files`` which discovers across the whole workspace.
+        Unpublished, nonignored sources participate before Git staging.
 
         Args:
             directory: Root directory to scan.
@@ -59,15 +60,15 @@ class FlextInfraUtilitiesIterationDirectory(FlextInfraUtilitiesGitScopeMixin):
         resolved_directory = directory.resolve()
         if not resolved_directory.is_dir():
             return []
-        tracked_files = FlextInfraUtilitiesGitScopeMixin.git_tracked_scope_paths(
+        source_files = FlextInfraUtilitiesGitScopeMixin.git_source_scope_paths(
             resolved_directory,
         )
         files = (
             sorted(resolved_directory.rglob(c.Infra.EXT_PYTHON_GLOB))
-            if tracked_files is None
+            if source_files is None
             else [
                 file_path
-                for file_path in tracked_files
+                for file_path in source_files
                 if file_path.suffixes == [c.Infra.EXT_PYTHON]
             ]
         )

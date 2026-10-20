@@ -70,6 +70,7 @@ class TestsFlextInfraCProfileInterruption:
             msg=terminated.stderr,
         )
         tm.fail(terminated.outcome.timed_out)
+        tm.that(terminated.stderr, has="terminate_import")
         checkpoints = tuple(tmp_path.glob("profile-*.checkpoint.pstats"))
         previous = tuple(tmp_path.glob("profile.previous-*.checkpoint.pstats"))
         tm.that(len(checkpoints), eq=1)

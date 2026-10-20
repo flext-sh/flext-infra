@@ -107,7 +107,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             for project in project_roots or (root,)
             if project.is_dir()
             for path in iteration.iter_directory_python_files(project)
-            if "tests" not in path.relative_to(project).parts
         }
         source_states = (
             *source_states,
@@ -484,7 +483,11 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             )
         )
         if expected and actual != expected:
-            message = f"native facade source membership differs: {directory}"
+            message = (
+                f"native facade source membership differs: {directory}; "
+                f"added={sorted(set(actual) - set(expected))}; "
+                f"removed={sorted(set(expected) - set(actual))}"
+            )
             raise ValueError(message)
         return actual
 

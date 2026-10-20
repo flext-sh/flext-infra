@@ -334,7 +334,14 @@ class TestsFlextInfraCodegenMain:
             )
             tm.that(
                 ini_options["addopts"],
-                eq=list(u.Infra.native_tool_setting(config.Infra.tooling, "pytest.ini_options", "addopts", t.StrSequence)),
+                eq=list(
+                    u.Infra.native_tool_setting(
+                        config.Infra.tooling,
+                        "pytest.ini_options",
+                        "addopts",
+                        t.StrSequence,
+                    )
+                ),
             )
             tm.fail(journal.exists())
             tm.fail(transaction.exists())

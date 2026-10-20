@@ -31,7 +31,9 @@ class TestsFlextInfraClassNestingSuiteScope:
 
         """
         root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
-        native = u.Infra.native_tool_settings(config.Infra.tooling, "pytest.ini_options")
+        native = u.Infra.native_tool_settings(
+            config.Infra.tooling, "pytest.ini_options"
+        )
         python_files = u.Tests.strings(native["python_files"])
         python_classes = u.Tests.strings(native["python_classes"])
         project = root / c.PYPROJECT_FILENAME

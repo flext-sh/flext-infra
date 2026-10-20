@@ -625,9 +625,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 analysis_exclusions=analysis_exclusions,
             ),
         )
-        table = u.Cli.toml_mapping_path(
-            desired, (c.Infra.TOOL, c.Infra.PYRIGHT)
-        )
+        table = u.Cli.toml_mapping_path(desired, (c.Infra.TOOL, c.Infra.PYRIGHT))
         if table is None:
             msg = "Pyright owner produced no native table"
             raise ValueError(msg)
@@ -661,7 +659,9 @@ class FlextInfraEnsurePyrightConfigPhase:
         if parsed.failure:
             return r[str].from_failure(parsed)
         payload: t.MutableJsonMapping = dict(parsed.value)
-        project_root = context.repository_root if context.is_root else context.project_dir
+        project_root = (
+            context.repository_root if context.is_root else context.project_dir
+        )
         self.apply_payload(
             payload,
             context=context,

@@ -104,29 +104,58 @@ class FlextInfraCProfileReport(s[bool]):
         ):
             msg = "profile run receipt does not match the recorded run context"
             raise ValueError(msg)
-        plan = m.Infra.PytestSelectionPlan.model_validate_json(
-            (directory / "selection-plan.json").read_text(encoding="utf-8"),
-        )
-        if plan.manifest_path.parent.resolve() != directory.resolve():
-            msg = "profile selection plan does not match its run directory"
-            raise ValueError(msg)
         policy = config.Infra.tooling.tools.pytest
         suite = directory / policy.profile_suite_filename
-        profiles = tuple(
-            dict.fromkeys((
-                self.profile,
-                plan.manifest_path.with_suffix(".pstats"),
-                *(
-                    (directory / c.Infra.PYTEST_INVENTORY_PROFILE_FILENAME,)
-                    if plan.inventory_collected
-                    else ()
-                ),
-                *((suite,) if plan.node_ids or suite.is_file() else ()),
-                *sorted(
-                    (directory / policy.profile_process_directory).glob("*.pstats")
-                ),
-            ))
-        )
+        plan_path = directory / "selection-plan.json"
+        if plan_path.is_file():
+            plan = m.Infra.PytestSelectionPlan.model_validate_json(
+                plan_path.read_text(encoding="utf-8"),
+            )
+            if plan.manifest_path.parent.resolve() != directory.resolve():
+                msg = "profile selection plan does not match its run directory"
+                raise ValueError(msg)
+            profiles = tuple(
+                dict.fromkeys((
+                    self.profile,
+                    plan.manifest_path.with_suffix(".pstats"),
+                    *(
+                        (directory / c.Infra.PYTEST_INVENTORY_PROFILE_FILENAME,)
+                        if plan.inventory_collected
+                        else ()
+                    ),
+                    *((suite,) if plan.node_ids or suite.is_file() else ()),
+                    *sorted(
+                        (directory / policy.profile_process_directory).glob("*.pstats")
+                    ),
+                ))
+            )
+        else:
+            inventory_outcome = directory / "inventory-outcome.json"
+            selection_outcome = directory / "selection-outcome.json"
+            outcome = m.Cli.ProcessOutcome.model_validate_json(
+                (
+                    inventory_outcome
+                    if inventory_outcome.is_file()
+                    else selection_outcome
+                    if selection_outcome.is_file()
+                    else directory / "suite-outcome.json"
+                ).read_text(encoding="utf-8"),
+            )
+            if u.Cli.process_succeeded(outcome):
+                msg = "profile selection plan is absent after a successful process"
+                raise ValueError(msg)
+            profiles = tuple(
+                dict.fromkeys((
+                    self.profile,
+                    directory
+                    / (
+                        c.Infra.PYTEST_SELECTION_PROFILE_FILENAME
+                        if selection_outcome.is_file()
+                        and not inventory_outcome.is_file()
+                        else c.Infra.PYTEST_INVENTORY_PROFILE_FILENAME
+                    ),
+                ))
+            )
         for profile in profiles:
             receipt = (
                 parent

@@ -340,7 +340,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         source_dir.mkdir()
         (source_dir / "widget.py").write_text(
             '"""Module.\n\n>>> first=1\n\n"""\n\n'
-            'def sample() -> None:\n'
+            "def sample() -> None:\n"
             '    """Function.\n\n    >>> second = 2\n\n    """\n',
             encoding="utf-8",
         )

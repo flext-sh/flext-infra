@@ -75,9 +75,10 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             return owners
 
         ruling_disabled_rules: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 alias="ruling-disabled-rules",
+                strict=False,
                 description=(
                     "Operator-ruled rules disabled at the SSOT because the "
                     "lazy facade architecture requires what they forbid; "
@@ -119,9 +120,10 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
         """Ruff top-level settings loaded from YAML."""
 
         findings_exit_codes: Annotated[
-            t.VariadicTuple[int],
+            tuple[int, ...],
             m.Field(
                 alias="findings-exit-codes",
+                strict=False,
                 description="Exit statuses with which Ruff reports its findings.",
             ),
         ]
@@ -160,9 +162,10 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             m.Field(gt=0, description="Mypy wall-time budget in seconds."),
         ]
         ruling_disable_error_codes: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 alias="ruling-disable-error-codes",
+                strict=False,
                 description="Operator-authorized suspended diagnostics.",
             ),
         ] = ()

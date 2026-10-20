@@ -10,18 +10,20 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, m, main
-from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.gates.mypy import FlextInfraMypyGate
-from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
-from flext_infra.gates.pyright import FlextInfraPyrightGate
-from tests import tm, u
+from flext_infra import config, main
+from flext_infra._utilities import FlextInfraUtilitiesResourceLimits
+from flext_infra.check import FlextInfraWorkspaceChecker
+from flext_infra.gates import (
+    FlextInfraMypyGate,
+    FlextInfraPyreflyGate,
+    FlextInfraPyrightGate,
+)
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.gates.base_gate import FlextInfraGate
+    from flext_infra.gates import FlextInfraGate
 
 
 class TestsFlextInfraTypeGates:
@@ -241,11 +243,12 @@ class TestsFlextInfraTypeGates:
         """The mandatory plugin accepts payloads and reports native bound errors."""
         project = checker_context.repository_root
         pyproject = project / c.PYPROJECT_FILENAME
+        tooling = tm.ok(u.Infra.load_tooling_inputs(project)).document
+        plugins = u.Infra.native_tool_setting(tooling, "mypy", "plugins", t.StrSequence)
         pyproject.write_text(
             pyproject.read_text(encoding=c.DEFAULT_ENCODING).replace(
                 "[tool.mypy]\n",
-                "[tool.mypy]\n"
-                f"plugins = {list(config.Infra.tooling.tools.mypy.plugins)!r}\n",
+                f"[tool.mypy]\nplugins = {list(plugins)!r}\n",
             ),
             encoding=c.DEFAULT_ENCODING,
         )

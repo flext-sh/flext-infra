@@ -58,7 +58,7 @@ class FlextInfraUtilitiesNativeTooling:
         """
         result: t.JsonDict = {}
         selected = False
-        for table, entries in document.settings.items():
+        for table, entries in sorted(document.settings.items()):
             owner, separator, nested = table.partition(".")
             if owner != root:
                 continue

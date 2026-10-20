@@ -15,6 +15,7 @@ import stat
 import sys
 import tempfile
 import time
+import traceback
 from pathlib import Path
 from types import FrameType
 from typing import ClassVar
@@ -164,6 +165,8 @@ class FlextInfraPytestClock:
         def checkpoint(signum: int, frame: FrameType | None) -> None:
             """Persist the profiler, then delegate the original signal unchanged."""
             try:
+                if frame is not None:
+                    traceback.print_stack(frame)
                 cls.publish_profile(
                     profile,
                     output,

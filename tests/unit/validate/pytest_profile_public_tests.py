@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 import pstats
 import signal
 import sys
@@ -243,6 +244,7 @@ class TestsFlextInfraPytestProfile:
         tm.that(profile.exists(), eq=termination_signal == signal.SIGTERM)
         tm.fail((directory / "run-accounting.json").exists())
         if termination_signal == signal.SIGTERM:
+            policy = config.Infra.tooling.tools.pytest
             receipt = profile.with_suffix(".pstats.json")
             recorded = m.Infra.PytestRunContext.model_validate_json(
                 receipt.read_text(encoding=c.DEFAULT_ENCODING)
@@ -258,11 +260,118 @@ class TestsFlextInfraPytestProfile:
                         profile=profile,
                         run_receipt=receipt,
                         output=output,
+                        sort=policy.profile_sort,
+                        limit=policy.profile_limit,
                     ).execute()
                 ),
                 eq=True,
             )
             tm.that(output.read_text(encoding=c.DEFAULT_ENCODING), has="test_runtime")
+
+    @staticmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize("phase", ["between_children", "suite"])
+    def test_parent_sigterm_publishes_bound_receipts_and_reaps_child(
+        cached_runner_project: Path,
+        phase: str,
+    ) -> None:
+        """Parent termination retains reportable evidence and native child cleanup."""
+        cache = config.Infra.codegen.make.testmon_cache
+        policy = config.Infra.tooling.tools.pytest
+        target = Path(cache.target_directory) / "test_runtime.py"
+        child_pid = cached_runner_project / "interrupted-child.pid"
+        (cached_runner_project / target).write_text(
+            "import os, signal\nfrom pathlib import Path\n"
+            "def test_runtime():\n"
+            f"    Path({str(child_pid)!r}).write_text(str(os.getpid()))\n"
+            "    os.kill(int(os.environ['PROFILE_PARENT_PID']), signal.SIGTERM)\n"
+            "    signal.pause()\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        runner = u.Tests.PytestRunner.runner_for(
+            cached_runner_project, target_file=target
+        )
+        output = (
+            cached_runner_project
+            / ".reports"
+            / "profiles"
+            / policy.profile_suite_filename
+        )
+        script = (
+            "import os, runpy, signal, sys\n"
+            # This probe measures interruption, not cold framework import;
+            # the startup handoff has its own public profiling regression.
+            "from flext_infra import FlextInfraPytestProfile\n"
+            + c.Infra.PYTEST_PROFILE_BOOTSTRAP
+            + "os.environ['PROFILE_PARENT_PID'] = str(os.getpid())\n"
+            "sys.argv = ['flext_infra._pytest_entry', 'profile', sys.argv[1]]\n"
+            "def interrupt(event, arguments):\n"
+            "    if event == 'os.rename' and "
+            "str(arguments[1]).endswith('/command.txt'):\n"
+            "        os.kill(os.getpid(), signal.SIGTERM)\n"
+            + ("sys.addaudithook(interrupt)\n" if phase == "between_children" else "")
+            + "runpy.run_module('flext_infra._pytest_entry', run_name='__main__')\n"
+        )
+        result = tm.ok(
+            u.Cli.run_raw(
+                (sys.executable, "-c", script, str(output)),
+                cwd=cached_runner_project,
+                timeout=policy.slow_timeout_seconds,
+                options=m.Cli.ProcessOptions(
+                    env=u.Cli.process_env(
+                        overrides={
+                            c.Infra.PYTEST_ENV_REPOSITORY_ROOT: str(
+                                runner.repository_root
+                            ),
+                            c.Infra.PYTEST_ENV_TARGET: str(runner.target),
+                            c.Infra.PYTEST_ENV_TARGET_FILE: str(target),
+                            c.Infra.PYTEST_ENV_REPORTS: str(runner.reports),
+                            cache.database_environment_variable: str(runner.testmon_db),
+                        },
+                    ),
+                ),
+            ),
+        )
+        tm.that(
+            result.outcome.timed_out,
+            eq=False,
+            msg=result.stdout + result.stderr,
+        )
+        tm.that(
+            result.outcome.raw_return_code,
+            eq=128 + signal.SIGTERM
+            if phase == "between_children"
+            else (-signal.SIGTERM) % 256,
+        )
+        receipt = output.with_suffix(".pstats.json")
+        context = m.Infra.PytestRunContext.model_validate_json(receipt.read_bytes())
+        tm.that(context.profile_sha256, eq=u.Cli.sha256_bytes(output.read_bytes()))
+        tm.ok(pstats.Stats(str(output)).get_stats_profile().func_profiles)
+        contexts = tuple(
+            (cached_runner_project / runner.reports).glob("*/run-context.json")
+        )
+        tm.that(len(contexts), eq=1)
+        tm.that(context.report_directory, eq=contexts[0].parent)
+        processes = output.parent / policy.profile_process_directory
+        immutable = tuple(processes.glob("*.pstats"))
+        tm.that(len(immutable), eq=1)
+        tm.that(
+            immutable[0].with_suffix(".pstats.json").read_bytes(),
+            eq=receipt.read_bytes(),
+        )
+        if phase == "suite":
+            with pytest.raises(ProcessLookupError):
+                os.kill(int(child_pid.read_text(encoding=c.DEFAULT_ENCODING)), 0)
+            tm.ok(
+                FlextInfraCProfileReport(
+                    repository_root=cached_runner_project,
+                    profile=output,
+                    run_receipt=receipt,
+                    output=output.with_suffix(".txt"),
+                    sort=policy.profile_sort,
+                    limit=policy.profile_limit,
+                ).execute()
+            )
 
     @staticmethod
     @pytest.mark.slow
@@ -300,7 +409,9 @@ class TestsFlextInfraPytestProfile:
         )
         script = (
             "import os, runpy, sys\n"
-            "sys.argv = ['flext_infra._pytest_entry', 'profile', sys.argv[1]]\n"
+            "from flext_infra import FlextInfraPytestProfile\n"
+            + c.Infra.PYTEST_PROFILE_BOOTSTRAP
+            + "sys.argv = ['flext_infra._pytest_entry', 'profile', sys.argv[1]]\n"
             "def close_diagnostic(event, arguments):\n"
             "    if event == 'os.rename' and str(arguments[1]) == "
             f"{str(output.with_suffix('.pstats.json'))!r}:\n"
@@ -337,8 +448,12 @@ class TestsFlextInfraPytestProfile:
                 ),
             ),
         )
+        tm.that(
+            result.outcome.timed_out,
+            eq=False,
+            msg=result.stdout + result.stderr,
+        )
         tm.that(result.outcome.raw_return_code, eq=(-signal.SIGKILL) % 256)
-        tm.fail(result.outcome.timed_out)
         tm.ok(output.is_file())
         tm.that(
             bool(pstats.Stats(str(output)).get_stats_profile().func_profiles),

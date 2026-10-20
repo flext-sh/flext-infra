@@ -35,23 +35,18 @@ class FlextInfraUtilitiesDiscovery(
         MutableMapping[t.Pair[str, bool], t.StrSequence]
     ] = {}
 
-    _project_root_cache: dict[str, str] = {}
-
     @staticmethod
     def _discover_project_root_from_path(
         file_path: str,
         *,
         source_project: p.Infra.RopeProject | None = None,
     ) -> str:
-        """Discover the enclosing project root path cached by file path.
+        """Discover the enclosing project root through the current authority.
 
         Returns:
             The resulting ``str``.
 
         """
-        cached = FlextInfraUtilitiesDiscovery._project_root_cache.get(file_path)
-        if cached is not None:
-            return cached
         resolved = Path(file_path).resolve()
         candidate = (
             resolved.parent
@@ -81,12 +76,8 @@ class FlextInfraUtilitiesDiscovery(
                     not relative.parts
                     or relative.parts[0] in c.Infra.ROOT_WRAPPER_SEGMENTS
                 ):
-                    result = str(current)
-                    FlextInfraUtilitiesDiscovery._project_root_cache[file_path] = result
-                    return result
-        result = str(wrapper_root) if wrapper_root is not None else ""
-        FlextInfraUtilitiesDiscovery._project_root_cache[file_path] = result
-        return result
+                    return str(current)
+        return str(wrapper_root) if wrapper_root is not None else ""
 
     @staticmethod
     def _relative_path_parts(resolved: Path, project_root: Path | None) -> t.StrTuple:

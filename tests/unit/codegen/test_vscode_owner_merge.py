@@ -45,7 +45,9 @@ class TestsFlextInfraVscodeOwnerMerge:
                     "Infra": {
                         "codegen": {
                             "vscode": {
-                                "settings": baseline.settings,
+                                "settings": baseline.model_dump(mode="json")[
+                                    "settings"
+                                ],
                             },
                         },
                     },
@@ -302,7 +304,17 @@ class TestsFlextInfraVscodeOwnerMerge:
         tm.ok(
             u.Cli.yaml_dump(
                 local,
-                {"Infra": {"codegen": {"vscode": {"settings": list(values.items())}}}},
+                {
+                    "Infra": {
+                        "codegen": {
+                            "vscode": {
+                                "settings": [
+                                    [name, value] for name, value in values.items()
+                                ]
+                            }
+                        }
+                    }
+                },
             )
         )
         elected = tm.ok(FlextInfraCodegen.load_vscode_spec(root))
@@ -781,6 +793,7 @@ class TestsFlextInfraVscodeOwnerMerge:
             path.read_text(encoding=c.DEFAULT_ENCODING),
             eq=original,
         )
+
     @staticmethod
     def test_delta_preserves_other_declared_defaults() -> None:
         """A new option replaces its value without discarding shared options."""
@@ -794,4 +807,3 @@ class TestsFlextInfraVscodeOwnerMerge:
         )
         composed = tm.ok(FlextInfraCodegen.compose_vscode_delta(spec, delta))
         tm.that(FlextInfraCodegen.vscode_settings(composed), eq=expected)
-

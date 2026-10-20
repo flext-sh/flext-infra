@@ -35,21 +35,34 @@ class TestsFlextInfraPytestFailClosedConfig:
     ) -> None:
         """Replace ignored roots and warning filters without second-apply drift."""
         policy = config.Infra.tooling.tools.pytest
-        native = u.Infra.native_tool_settings(config.Infra.tooling, "pytest.ini_options")
+        native = u.Infra.native_tool_settings(
+            config.Infra.tooling, "pytest.ini_options"
+        )
         tooling = config.Infra.tooling.model_copy(
             update={
                 "settings": {
                     **config.Infra.tooling.settings,
                     "pytest.ini_options": (
                         *config.Infra.tooling.settings["pytest.ini_options"],
-                        ("python_classes", ["Spec*", *u.Tests.strings(native["python_classes"])]),
-                        ("python_files", ["spec_*.py", *u.Tests.strings(native["python_files"])]),
+                        (
+                            "python_classes",
+                            ["Spec*", *u.Tests.strings(native["python_classes"])],
+                        ),
+                        (
+                            "python_files",
+                            ["spec_*.py", *u.Tests.strings(native["python_files"])],
+                        ),
                     ),
                 },
                 "tools": config.Infra.tooling.tools.model_copy(
                     update={
                         "pytest": policy.model_copy(
-                            update={"standard_markers": (*policy.standard_markers, "custom: stale local marker")},
+                            update={
+                                "standard_markers": (
+                                    *policy.standard_markers,
+                                    "custom: stale local marker",
+                                )
+                            },
                         ),
                     },
                 ),
@@ -82,16 +95,33 @@ class TestsFlextInfraPytestFailClosedConfig:
         )
         tm.that(
             list(u.Tests.strings(ini["filterwarnings"])),
-            eq=list(u.Infra.native_tool_setting(tooling, "pytest.ini_options", "filterwarnings", t.StrSequence)),
+            eq=list(
+                u.Infra.native_tool_setting(
+                    tooling, "pytest.ini_options", "filterwarnings", t.StrSequence
+                )
+            ),
         )
-        tm.that(list(u.Tests.strings(ini["testpaths"])), eq=list(u.Infra.native_tool_setting(tooling, "pytest.ini_options", "testpaths", t.StrSequence)))
+        tm.that(
+            list(u.Tests.strings(ini["testpaths"])),
+            eq=list(
+                u.Infra.native_tool_setting(
+                    tooling, "pytest.ini_options", "testpaths", t.StrSequence
+                )
+            ),
+        )
         tm.that(
             ini["asyncio_default_fixture_loop_scope"],
-            eq=u.Infra.native_tool_setting(tooling, "pytest.ini_options", "asyncio_default_fixture_loop_scope", str),
+            eq=u.Infra.native_tool_setting(
+                tooling, "pytest.ini_options", "asyncio_default_fixture_loop_scope", str
+            ),
         )
         tm.that(
             set(u.Tests.strings(ini["addopts"])),
-            eq=set(u.Infra.native_tool_setting(tooling, "pytest.ini_options", "addopts", t.StrSequence)),
+            eq=set(
+                u.Infra.native_tool_setting(
+                    tooling, "pytest.ini_options", "addopts", t.StrSequence
+                )
+            ),
         )
         tm.that(
             set(u.Tests.strings(ini["markers"])),

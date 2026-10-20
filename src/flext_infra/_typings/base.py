@@ -31,10 +31,8 @@ from jinja2.environment import (
     Template as _JinjaTemplate,
 )
 
-from flext_infra._typings.collections import FlextInfraTypesCollections
 
-
-class FlextInfraTypesBase(FlextInfraTypesCollections):
+class FlextInfraTypesBase:
     """Base typings for flext-infra project."""
 
     type Path = pathlib.Path
@@ -43,11 +41,42 @@ class FlextInfraTypesBase(FlextInfraTypesCollections):
     type MutableSetOf[ItemT] = MutableSet[ItemT]
     "An explicitly mutable set contract for operation-owned native state."
 
+    type SettingsContainerInput = (
+        t.JsonValue | tuple[t.JsonValue | tuple[t.JsonValue, ...], ...]
+    )
+    "Native option ingress before only its declaration containers are frozen."
+
+    @staticmethod
+    def _freeze_settings_container(
+        value: FlextInfraTypesBase.SettingsContainerInput,
+    ) -> FlextInfraTypesBase.SettingsContainerInput:
+        """Freeze one YAML declaration container without rewriting its payload.
+
+        Returns:
+            The same container as a tuple when YAML supplied a list.
+
+        """
+        return tuple(value) if isinstance(value, list) else value
+
     type SettingsPairs = Annotated[
         tuple[
-            Annotated[tuple[t.NonEmptyStr, t.JsonValue], m.Field(strict=False)], ...
+            Annotated[
+                tuple[
+                    Annotated[
+                        str,
+                        t.StringConstraints(
+                            min_length=1,
+                            strip_whitespace=False,
+                            pattern=r"^\S+$",
+                        ),
+                    ],
+                    t.JsonValue,
+                ],
+                m.BeforeValidator(_freeze_settings_container),
+            ],
+            ...,
         ],
-        m.Field(strict=False),
+        m.BeforeValidator(_freeze_settings_container),
     ]
     "Ordered JSON-compatible option pairs with last-declaration precedence."
 

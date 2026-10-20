@@ -13,7 +13,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import config
-
 from tests import m, tm, u
 
 if TYPE_CHECKING:
@@ -45,7 +44,8 @@ class TestsFlextInfraDocsRenderGuidesIndex:
 
         rendered = u.Infra.docs_guides_index(
             self._scope(tmp_path),
-            guide_paths=(guides_dir / "topology-conform.md",), width=u.Infra.docs_markdown_line_length(config.Infra.tooling)
+            guide_paths=(guides_dir / "topology-conform.md",),
+            width=u.Infra.docs_markdown_line_length(config.Infra.tooling),
         )
 
         tm.that(rendered, has="(topology-conform.md)")
@@ -61,7 +61,11 @@ class TestsFlextInfraDocsRenderGuidesIndex:
         """A project without curated guides renders no unresolvable link."""
         (tmp_path / "docs" / "guides").mkdir(parents=True)
 
-        rendered = u.Infra.docs_guides_index(self._scope(tmp_path), guide_paths=(), width=u.Infra.docs_markdown_line_length(config.Infra.tooling))
+        rendered = u.Infra.docs_guides_index(
+            self._scope(tmp_path),
+            guide_paths=(),
+            width=u.Infra.docs_markdown_line_length(config.Infra.tooling),
+        )
 
         tm.fail("(topology-conform.md)" in rendered)
         tm.that(rendered, has="(../api-reference/README.md)")

@@ -350,6 +350,7 @@ class FlextInfraPytestRunnerBase(s[int]):
         run_id = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%S.%fZ") + f"-{os.getpid()}"
         report_dir: Path = self.repository_root / self.reports / run_id
         u.Cli.ensure_dir(report_dir).unwrap()
+        u.Cli.info(f"pytest run receipt: {report_dir}")
         return report_dir
 
 

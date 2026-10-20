@@ -13,10 +13,7 @@ from typing import Annotated, ClassVar, Literal
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models import (
-    FlextInfraModelsDepsToolConfig,
-    FlextInfraModelsMiseToolchain,
-)
+from flext_infra._models import FlextInfraModelsMiseToolchain
 from flext_infra._models._config import (
     FlextInfraConfigModelsContexts,
     FlextInfraConfigModelsContract,

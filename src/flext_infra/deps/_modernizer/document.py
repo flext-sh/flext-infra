@@ -41,6 +41,16 @@ class FlextInfraPyprojectModernizerDocument:
         @property
         def root(self) -> Path: ...
 
+        @staticmethod
+        def _derived_paths(
+            project_dir: Path,
+            declared_python_dirs: t.StrSequence,
+            seed_manager: FlextInfraExtraPathsManager,
+            tool_config: m.Infra.ToolConfigDocument,
+            *,
+            is_root: bool,
+        ) -> t.Pair[t.StrSequence, t.StrSequence]: ...
+
     def _project_kind(
         self,
         path: Path,
@@ -128,13 +138,6 @@ class FlextInfraPyprojectModernizerDocument:
             sort_values=True,
         ):
             changes.append("build-system.requires set to ['hatchling']")
-        metadata = u.Cli.toml_mapping_ensure_path(
-            payload,
-            (c.Infra.TOOL, "hatch", "metadata"),
-        )
-        if metadata.get("allow-direct-references") is not True:
-            metadata["allow-direct-references"] = True
-            changes.append("tool.hatch.metadata.allow-direct-references set to true")
         groups = u.Cli.toml_mapping_path(
             payload,
             (c.Infra.TOOL, c.Infra.POETRY, c.Infra.GROUP),
@@ -340,6 +343,17 @@ class FlextInfraPyprojectModernizerDocument:
             if tool_config is None
             else tool_config
         )
+        mypy_search_paths = (
+            paths_manager.mypy_search_paths(project_dir=path.parent, is_root=is_root)
+            if paths_manager is not None
+            else self._derived_paths(
+                path.parent,
+                topology.declared_python_dirs,
+                FlextInfraExtraPathsManager(repository_root=self.root),
+                tooling,
+                is_root=is_root,
+            )[1]
+        )
         managed_artifacts = self.managed_artifacts
         if managed_artifacts is None:
             managed_artifacts = u.Infra.load_project_managed_artifacts(
@@ -352,6 +366,7 @@ class FlextInfraPyprojectModernizerDocument:
                 payload,
                 path=path,
                 repository_namespace_packages=topology.repository_namespace_packages,
+                mypy_search_paths=mypy_search_paths,
             ),
             # Pyrefly derives its include globs from the canonical Pyright
             # roots, so resolve Pyright first and converge in one pass.
@@ -395,6 +410,7 @@ class FlextInfraPyprojectModernizerDocument:
                     payload,
                     project_dir=path.parent,
                     is_root=is_root,
+                    mypy_search_paths=mypy_search_paths,
                 ),
             )
         return changes

@@ -97,7 +97,7 @@ class TestsFlextInfraConfigLocalOverrides:
     def test_empty_mypy_overlay_keeps_selected_global_policy(
         tmp_path: Path,
     ) -> None:
-        """Empty local lists cannot remove policy supplied by the YAML owner."""
+        """An empty native option layer retains policy supplied by its owner."""
         baseline = FlextInfraConfig.fetch_global().Infra.tooling
         _, _, local = FlextInfraConfig.config_layer_paths_for_repository(
             tmp_path,
@@ -105,21 +105,13 @@ class TestsFlextInfraConfigLocalOverrides:
         )
         local.parent.mkdir(parents=True)
         local.write_text(
-            "Infra:\n  tooling:\n    tools:\n      mypy:\n        plugins: []\n",
+            "Infra:\n  tooling:\n    settings:\n      mypy: []\n",
             encoding="utf-8",
         )
-        document = tm.ok(
-            u.Infra.load_config_document_inputs(
-                tmp_path,
-                filename="tooling.yaml",
-            ),
-        )
-        tooling = type(baseline).model_validate(
-            u.Cli.json_walk_path(document.values, ("Infra", "tooling")),
-        )
+        tooling = tm.ok(u.Infra.load_tooling_inputs(tmp_path)).document
         tm.that(
-            tuple(tooling.tools.mypy.plugins),
-            eq=tuple(baseline.tools.mypy.plugins),
+            u.Infra.native_tool_settings(tooling, "mypy"),
+            eq=u.Infra.native_tool_settings(baseline, "mypy"),
         )
 
     @staticmethod

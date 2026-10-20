@@ -144,7 +144,9 @@ class FlextInfraEnsureRuffConfigPhase:
             if directory not in excluded_roots
         }
         toml = m.Infra.DepsToml
-        ruff_options = u.Infra.native_tool_configuration(self._tool_config, c.Infra.RUFF)
+        ruff_options = u.Infra.native_tool_configuration(
+            self._tool_config, c.Infra.RUFF
+        )
         ruff_options["target-version"] = (
             "py" + config.Infra.codegen.toolchain.python_version.replace(".", "")
         )

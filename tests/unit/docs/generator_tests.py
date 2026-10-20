@@ -472,7 +472,11 @@ class TestsFlextInfraDocsGenerator:
             encoding="utf-8",
         )
         (workspace / "docs/index.md").write_text(
-            u.Infra.docs_directive_page("Runtime API", "docs_example", width=u.Infra.docs_markdown_line_length(config.Infra.tooling)),
+            u.Infra.docs_directive_page(
+                "Runtime API",
+                "docs_example",
+                width=u.Infra.docs_markdown_line_length(config.Infra.tooling),
+            ),
             encoding="utf-8",
         )
         (workspace / "mkdocs.yml").write_text(
@@ -552,8 +556,14 @@ class TestsFlextInfraDocsGenerator:
                                 "markdown": {
                                     "rules": [
                                         ["MD013", {"line_length": local_width}],
-                                        ["MD033", {"allowed_elements": ["div", "span"]}],
-                                        ["MD033", {"allowed_elements": ["aside", "section"]}],
+                                        [
+                                            "MD033",
+                                            {"allowed_elements": ["div", "span"]},
+                                        ],
+                                        [
+                                            "MD033",
+                                            {"allowed_elements": ["aside", "section"]},
+                                        ],
                                     ],
                                 },
                             },

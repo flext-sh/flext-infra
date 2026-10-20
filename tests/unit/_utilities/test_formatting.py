@@ -11,11 +11,22 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, u
-from tests import tm, u
+from flext_infra import c, config
+from tests import m, tm, u
 
 
 class TestsFlextInfraUtilitiesformatting:
+    @staticmethod
+    def test_missing_native_width_never_invents_a_formatting_policy(
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
+        """Missing owned configuration fails instead of fabricating a width."""
+        document = tool_config_document.model_copy(
+            update={"settings": {**tool_config_document.settings, "ruff": ()}}
+        )
+        with pytest.raises(KeyError, match="line-length"):
+            u.Infra.native_tool_setting(document, "ruff", "line-length", int)
+
     @staticmethod
     @pytest.mark.parametrize("width_factor", [1, 2])
     def test_staged_formatting_uses_destination_policy_without_publication(

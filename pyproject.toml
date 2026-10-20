@@ -385,7 +385,7 @@ exclude = [
   ".venv",
   "vendor",
 ]
-extraPaths = ["src", "."]
+extraPaths = [".", "src"]
 include = ["conftest.py", "src", "tests"]
 pythonPlatform = "Linux"
 pythonVersion = "3.13"

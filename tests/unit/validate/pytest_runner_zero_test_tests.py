@@ -48,7 +48,12 @@ class TestsFlextInfraPytestRunnerZeroTest:
                             "ini_options": {
                                 "pythonpath": [c.Infra.DEFAULT_SRC_DIR],
                                 c.Infra.PYTHON_FILES: list(
-                                    u.Infra.native_tool_setting(config.Infra.tooling, "pytest.ini_options", "python_files", t.StrSequence),
+                                    u.Infra.native_tool_setting(
+                                        config.Infra.tooling,
+                                        "pytest.ini_options",
+                                        "python_files",
+                                        t.StrSequence,
+                                    ),
                                 ),
                                 "markers": list(pytest_settings.standard_markers),
                             },

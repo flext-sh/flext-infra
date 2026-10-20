@@ -534,9 +534,7 @@ class TestsFlextInfraCodegenPyprojectConform:
             (
                 ("pytest", "ini_options"),
                 "markers",
-                u.Infra.native_tool_setting(
-                    config.Infra.tooling, "pytest.ini_options", "markers", list[str]
-                ),
+                config.Infra.tooling.tools.pytest.standard_markers,
             ),
         ],
     )
@@ -574,7 +572,10 @@ class TestsFlextInfraCodegenPyprojectConform:
     ) -> None:
         """PEP 735 groups never create references to absent PEP 621 extras."""
         policy = u.Infra.native_tool_setting(
-            config.Infra.tooling, "deptry", "optional_dependencies_dev_groups", list[str]
+            config.Infra.tooling,
+            "deptry",
+            "optional_dependencies_dev_groups",
+            list[str],
         )
         optional: t.JsonDict = {
             group: ["requests"] for group in policy if declare_optional
@@ -1090,11 +1091,11 @@ exclude-dependencies = [{exclusion}]
             )
         else:
             tm.that(mypy, lacks="disable_error_code")
-        tm.that(mypy, lacks="ignore_errors")
+        tm.that(mypy.get("ignore_errors", False), eq=False)
         for entry in u.Tests.toml_list(mypy.get("overrides", [])):
             override = u.Tests.toml_mapping(entry)
             tm.that(override, lacks="disable_error_code")
-            tm.that(override, lacks="ignore_errors")
+            tm.that(override.get("ignore_errors", False), eq=False)
 
     @staticmethod
     def test_scaffold_mypy_policy_matches_ssot_and_converges(tmp_path: Path) -> None:
@@ -1117,9 +1118,7 @@ exclude-dependencies = [{exclusion}]
             tm.that(mypy[key], eq=value)
         tm.that(
             u.Tests.toml_table_at(first, "tool", "pydantic-mypy"),
-            eq=u.Infra.native_tool_settings(
-                config.Infra.tooling, "pydantic-mypy"
-            ),
+            eq=u.Infra.native_tool_settings(config.Infra.tooling, "pydantic-mypy"),
         )
         tm.that(
             u.Tests.scaffold_text(root, c.PYPROJECT_FILENAME, what=surface),
@@ -1143,9 +1142,7 @@ exclude-dependencies = [{exclusion}]
         )
         tm.that(
             u.Tests.toml_table_at(first, "tool", "pyrefly", "errors"),
-            eq=u.Infra.native_tool_settings(
-                config.Infra.tooling, "pyrefly.errors"
-            ),
+            eq=u.Infra.native_tool_settings(config.Infra.tooling, "pyrefly.errors"),
         )
         tm.that(
             u.Tests.scaffold_text(
@@ -1166,7 +1163,9 @@ exclude-dependencies = [{exclusion}]
             ("bad-argument-count", "error"),
         )
         validated = m.Infra.ToolConfigDocument.model_validate({
-            **config.Infra.tooling.model_dump(by_alias=True),
+            **config.Infra.tooling.model_dump(
+                by_alias=True, exclude_computed_fields=True
+            ),
             "settings": registry,
         })
         tm.that(
@@ -1191,7 +1190,7 @@ exclude-dependencies = [{exclusion}]
         registry = dict(policy.settings)
         registry["pyrefly.errors"] = selected
         validated = m.Infra.ToolConfigDocument.model_validate({
-            **policy.model_dump(by_alias=True),
+            **policy.model_dump(by_alias=True, exclude_computed_fields=True),
             "settings": registry,
         })
         tm.that(tuple(validated.settings["pyrefly.errors"]), eq=selected)

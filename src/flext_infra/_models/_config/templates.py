@@ -25,6 +25,8 @@ class FlextInfraConfigModelsTemplates:
     class CodegenVscodeSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed editor declarations shared by target and artifact planning."""
 
+        model_config = m.ConfigDict(extra="forbid")
+
         settings: Annotated[
             t.Infra.SettingsPairs,
             m.Field(description="Ordered VS Code key/value pairs; the last key wins"),

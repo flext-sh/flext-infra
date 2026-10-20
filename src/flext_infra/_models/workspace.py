@@ -813,13 +813,11 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Locked source identity"),
         ]
         dependencies: Annotated[
-            t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency],
+            tuple[FlextInfraModelsWorkspace.LockedDependency, ...],
             m.Field(description="Resolved package edges; absent for a leaf package"),
         ] = ()
         optional_dependencies: Annotated[
-            t.MappingKV[
-                str, t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency]
-            ],
+            dict[str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]],
             m.Field(
                 alias="optional-dependencies",
                 description="Resolved edges by extra; absent when no extras exist",
@@ -831,9 +829,7 @@ class FlextInfraModelsWorkspace:
             validate_default=True,
         )
         dev_dependencies: Annotated[
-            t.MappingKV[
-                str, t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency]
-            ],
+            dict[str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]],
             m.Field(
                 alias="dev-dependencies",
                 description="Resolved edges by development group; absent means none",

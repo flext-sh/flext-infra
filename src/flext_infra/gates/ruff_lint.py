@@ -318,9 +318,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             source = u.Infra.wrap_long_lines(
                 source,
                 wrapped,
-                limit=u.Infra.native_tool_setting(
-                    tooling, "ruff", "line-length", int
-                ),
+                limit=u.Infra.native_tool_setting(tooling, "ruff", "line-length", int),
             )
         planned: t.SequenceOf[p.Infra.Issue] = [
             issue

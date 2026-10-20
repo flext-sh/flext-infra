@@ -51,7 +51,12 @@ class TestsFlextInfraPytestTargetFile:
         make = config.Infra.codegen.make
         probe = f"file_phase_probe_{budgeted}_{slow}_{failure or 'passed'}"
         relative = Path(make.testmon_cache.target_directory) / (
-            u.Infra.native_tool_setting(config.Infra.tooling, "pytest.ini_options", "python_files", t.StrSequence)[0].replace("*", probe)
+            u.Infra.native_tool_setting(
+                config.Infra.tooling,
+                "pytest.ini_options",
+                "python_files",
+                t.StrSequence,
+            )[0].replace("*", probe)
         )
         proof = root / f"{probe}.log"
         source, expected = TestsFlextInfraPytestTargetFile._probe_source(

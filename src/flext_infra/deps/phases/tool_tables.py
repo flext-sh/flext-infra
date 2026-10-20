@@ -14,8 +14,10 @@ from __future__ import annotations
 from contextlib import nullcontext
 from pathlib import Path
 
+from typing_extensions import TypeForm
+
 from flext_infra import c, config, m, p, t, u
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
+from flext_infra.deps import FlextInfraExtraPathsManager
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
@@ -130,7 +132,7 @@ class FlextInfraToolTablesPhase:
                 )
                 if project != project_dir
                 for namespace in (
-                    FlextInfraUtilitiesPyproject.project_package_name(
+                    u.Infra.project_package_name(
                         project, source_project=source_project
                     ),
                 )
@@ -164,9 +166,7 @@ class FlextInfraToolTablesPhase:
         })
 
     @staticmethod
-    def _native_phase(
-        tool: str, payload: t.JsonDict
-    ) -> m.Infra.DepsToml.PhaseConfig:
+    def _native_phase(tool: str, payload: t.JsonDict) -> m.Infra.DepsToml.PhaseConfig:
         """Replace a governed native table through the shared TOML primitive.
 
         Returns:
@@ -179,7 +179,9 @@ class FlextInfraToolTablesPhase:
             operations=(m.Infra.DepsToml.SetOp(key=tool, value=payload),),
         )
 
-    def _mypy_phase(self) -> m.Infra.DepsToml.PhaseConfig:
+    def _mypy_phase(
+        self, mypy_search_paths: t.StrSequence
+    ) -> m.Infra.DepsToml.PhaseConfig:
         """Combine native options with the Mypy execution policy.
 
         Returns:
@@ -191,6 +193,7 @@ class FlextInfraToolTablesPhase:
         payload[c.Infra.PYTHON_VERSION_UNDERSCORE] = (
             config.Infra.codegen.toolchain.python_version
         )
+        payload["mypy_path"] = list(mypy_search_paths)
         if policy.ruling_disable_error_codes:
             payload["disable_error_code"] = list(policy.ruling_disable_error_codes)
         payload["overrides"] = [
@@ -226,7 +229,7 @@ class FlextInfraToolTablesPhase:
         payload = u.Infra.native_tool_configuration(self._tool_config, "vulture")
         excluded = self.excluded_roots(path)
         paths = u.Infra.native_tool_setting(
-            self._tool_config, "vulture", "paths", t.StrSequence
+            self._tool_config, "vulture", "paths", TypeForm(t.StrSequence)
         )
         payload["paths"] = [root for root in paths if root not in excluded]
         return self._native_phase("vulture", payload)
@@ -274,6 +277,7 @@ class FlextInfraToolTablesPhase:
         *,
         path: Path,
         repository_namespace_packages: t.StrSequence,
+        mypy_search_paths: t.StrSequence,
     ) -> t.SequenceOf[m.Infra.DepsToml.PhaseConfig]:
         """Compose declarative tables and the registered semantic owners.
 
@@ -290,7 +294,7 @@ class FlextInfraToolTablesPhase:
                 for root in roots
                 if root not in self._tool_config.derived_tool_roots
             ),
-            self._mypy_phase(),
+            self._mypy_phase(mypy_search_paths),
             self._pytest_phase(),
             self._vulture_phase(path),
             self._deptry_phase(path, repository_namespace_packages),
@@ -302,6 +306,7 @@ class FlextInfraToolTablesPhase:
         *,
         path: Path,
         repository_namespace_packages: t.StrSequence = (),
+        mypy_search_paths: t.StrSequence | None = None,
     ) -> t.StrSequence:
         """Apply every policy table to one normalized payload.
 
@@ -309,11 +314,19 @@ class FlextInfraToolTablesPhase:
             The resulting ``t.StrSequence``.
 
         """
+        elected_mypy_paths = (
+            FlextInfraExtraPathsManager(repository_root=path.parent).mypy_search_paths(
+                project_dir=path.parent, is_root=True
+            )
+            if mypy_search_paths is None
+            else mypy_search_paths
+        )
         return u.Infra.apply_toml_phases(
             payload,
             *self._phases(
                 path=path.parent,
                 repository_namespace_packages=repository_namespace_packages,
+                mypy_search_paths=elected_mypy_paths,
             ),
         )
 

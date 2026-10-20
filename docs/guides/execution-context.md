@@ -549,7 +549,7 @@ The artifact catalog produces file patterns for file artifacts and recursive
 patterns for directories across editor watchers and analyzer exclusions. Git's
 native ignore semantics govern Explorer and search, including negations.
 
-Editor and Pyright overrides use ordered `settings` pairs in their YAML owners.
+Native tool options and editor overrides use ordered `settings` pairs in YAML.
 For example, `- [python.analysis.indexing, true]` declares an editor option;
 values may contain any JSON-compatible scalar, array or object. Adding an option
 does not add a Python model field. Later configuration layers replace the complete
@@ -558,8 +558,18 @@ editor objects; `stripped_keys` explicitly removes inherited or retired settings
 Generated object keys are sorted recursively, while arrays retain their declared
 order. In particular, specific Pyright execution environments precede broad roots;
 alphabetically sorting that array changes import resolution and is prohibited.
-The full pyproject template consumes the native TOML serialization of the conformed
-Pyright table instead of reconstructing a restricted list of scalar options.
+`Infra.tooling.settings` groups native pairs by table path, such as `ruff.format`,
+`pytest.ini_options` or `coverage.run`. One elected document drives modernization,
+templates and runtime consumers. The full pyproject template consumes its native
+TOML serialization rather than reconstructing tool options through model fields.
+Markdown rules use the same pair contract in their Markdown owner.
+
+Models retain execution budgets, topology and justified rule policy. Derived
+options belong to those owners; native pairs cannot shadow protected policy keys.
+Python versions come from `Infra.codegen.toolchain.python_version`, translated
+to each tool's native spelling. Project layers declare only their differences.
+Publication retains the original configuration snapshots, including absent local
+layers, and rejects a changed source before publishing its projections.
 
 Upgrade projects the declared Python requirements before resolving dependency
 locks. This keeps workspace members on one declared source identity when a Git
@@ -1238,6 +1248,12 @@ can retain a bytecode-cache name after the physical cache disappears, and Rope's
 child-resource lookup fails before source verification can run. The physical
 directory-membership receipt remains strict: cache removal still invalidates that
 receipt and is handled as source-epoch drift, not silently accepted.
+
+Directory-query receipt unions retain the elected immutable observation when no
+selector is added. Identity, query, membership and physical-alias checks still
+precede this reuse. The optimization avoids replacement-model allocation; it does
+not extend the lifetime of physical observations or excuse a later conflicting
+fragment.
 
 The census refreshes its Rope inventory after constant-consumer publication and
 declaration removal, before collecting the resulting report. Deleted or added

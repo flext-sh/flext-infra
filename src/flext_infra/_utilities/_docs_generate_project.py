@@ -76,13 +76,14 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
             (
                 api_root / "public-api.md",
                 FlextInfraUtilitiesDocsRender.docs_directive_page(
-                    f"{scope.name} Public API",
-                    scope.package_name, width=width
+                    f"{scope.name} Public API", scope.package_name, width=width
                 ),
             ),
             (
                 api_root / "modules/index.md",
-                FlextInfraUtilitiesDocsRender.docs_modules_index(scope, module_names, width=width),
+                FlextInfraUtilitiesDocsRender.docs_modules_index(
+                    scope, module_names, width=width
+                ),
             ),
         ]
         for module_name in module_names:
@@ -93,8 +94,7 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
             rendered.append((
                 api_root / "modules" / f"{relative}.md",
                 FlextInfraUtilitiesDocsRender.docs_directive_page(
-                    module_name,
-                    module_name, width=width
+                    module_name, module_name, width=width
                 ),
             ))
         return rendered
@@ -113,7 +113,6 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
                 ``p.Result[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]]``.
 
         """
-
         tooling = FlextInfraUtilitiesProjectManagedArtifacts.load_tooling_inputs(
             scope.path
         )
@@ -121,9 +120,10 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
             return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
                 tooling
             )
-        bound = FlextInfraUtilitiesCodegenFilePlan.unique_states(
-            (*source_states, *tooling.value.sources)
-        )
+        bound = FlextInfraUtilitiesCodegenFilePlan.unique_states((
+            *source_states,
+            *tooling.value.sources,
+        ))
         if bound.failure:
             return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
                 bound
@@ -169,25 +169,26 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
         rendered: list[t.Pair[Path, str]] = [
             (
                 scope.path / "README.md",
-                FlextInfraUtilitiesDocsRender.docs_project_readme(scope, contract, width=width),
+                FlextInfraUtilitiesDocsRender.docs_project_readme(
+                    scope, contract, width=width
+                ),
             ),
             (
                 scope.path / "docs/index.md",
-                FlextInfraUtilitiesDocsRender.docs_project_index(scope, contract, width=width),
+                FlextInfraUtilitiesDocsRender.docs_project_index(
+                    scope, contract, width=width
+                ),
             ),
             (
                 scope.path / "docs/guides/README.md",
                 FlextInfraUtilitiesDocsRender.docs_guides_index(
-                    scope,
-                    guide_paths=tuple(sorted(guide_paths)), width=width
+                    scope, guide_paths=tuple(sorted(guide_paths)), width=width
                 ),
             ),
             (
                 scope.path / "docs/api-reference/README.md",
                 FlextInfraUtilitiesDocsRender.docs_api_readme(
-                    scope,
-                    contract,
-                    module_names, width=width
+                    scope, contract, module_names, width=width
                 ),
             ),
             (
@@ -214,14 +215,11 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
             (
                 scope.path / "docs/api-reference/generated/overview.md",
                 FlextInfraUtilitiesDocsRender.docs_overview_page(
-                    scope,
-                    contract,
-                    module_names, width=width
+                    scope, contract, module_names, width=width
                 ),
             ),
             *FlextInfraUtilitiesDocsGenerateProjectMixin.docs_project_api_artifacts(
-                scope,
-                source_states, width=width
+                scope, source_states, width=width
             ),
         ]
         pruned = (

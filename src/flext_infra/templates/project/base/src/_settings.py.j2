@@ -1,14 +1,14 @@
 {# NOTE: precompute exact compact/multiline source with zero render whitespace. -#}
 {%- set settings_constants_line = "from " ~ package_name ~ "._constants.settings import " ~ class_stem ~ "ConstantsSettings" -%}
-{%- set settings_constants_import = settings_constants_line if settings_constants_line | length <= tooling.tools.ruff.line_length else "from " ~ package_name ~ "._constants.settings import (\n    " ~ class_stem ~ "ConstantsSettings,\n)" -%}
+{%- set settings_constants_import = settings_constants_line if settings_constants_line | length <= tooling_runtime.tool_options["ruff"]["line-length"] else "from " ~ package_name ~ "._constants.settings import (\n    " ~ class_stem ~ "ConstantsSettings,\n)" -%}
 {%- set settings_model_line = "from " ~ package_name ~ "._models.settings import " ~ class_stem ~ "SettingsModels" -%}
-{%- set settings_model_import = settings_model_line if settings_model_line | length <= tooling.tools.ruff.line_length else "from " ~ package_name ~ "._models.settings import (\n    " ~ class_stem ~ "SettingsModels,\n)" -%}
+{%- set settings_model_import = settings_model_line if settings_model_line | length <= tooling_runtime.tool_options["ruff"]["line-length"] else "from " ~ package_name ~ "._models.settings import (\n    " ~ class_stem ~ "SettingsModels,\n)" -%}
 {%- set settings_protocol_line = "    from " ~ package_name ~ "._protocols.settings import " ~ class_stem ~ "ProtocolsSettings" -%}
-{%- set settings_protocol_import = settings_protocol_line if settings_protocol_line | length <= tooling.tools.ruff.line_length else "    from " ~ package_name ~ "._protocols.settings import (\n        " ~ class_stem ~ "ProtocolsSettings,\n    )" -%}
+{%- set settings_protocol_import = settings_protocol_line if settings_protocol_line | length <= tooling_runtime.tool_options["ruff"]["line-length"] else "    from " ~ package_name ~ "._protocols.settings import (\n        " ~ class_stem ~ "ProtocolsSettings,\n    )" -%}
 {%- set settings_class_line = "class _" ~ class_stem ~ "Settings(FlextSettings):" -%}
-{%- set settings_class_declaration = settings_class_line if settings_class_line | length <= tooling.tools.ruff.line_length else "class _" ~ class_stem ~ "Settings(\n    FlextSettings\n):" -%}
+{%- set settings_class_declaration = settings_class_line if settings_class_line | length <= tooling_runtime.tool_options["ruff"]["line-length"] else "class _" ~ class_stem ~ "Settings(\n    FlextSettings\n):" -%}
 {%- set settings_singleton_line = "settings: " ~ class_stem ~ "ProtocolsSettings.Settings = _" ~ class_stem ~ "Settings.fetch_global()" -%}
-{%- set settings_singleton_declaration = settings_singleton_line if settings_singleton_line | length <= tooling.tools.ruff.line_length else "settings: " ~ class_stem ~ "ProtocolsSettings.Settings = (\n    _" ~ class_stem ~ "Settings.fetch_global()\n)" -%}
+{%- set settings_singleton_declaration = settings_singleton_line if settings_singleton_line | length <= tooling_runtime.tool_options["ruff"]["line-length"] else "settings: " ~ class_stem ~ "ProtocolsSettings.Settings = (\n    _" ~ class_stem ~ "Settings.fetch_global()\n)" -%}
 """Direct {{ class_stem }} settings singleton export.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.

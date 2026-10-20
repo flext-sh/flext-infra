@@ -536,14 +536,10 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             )
         )
         provider = child / "provider.py"
-        tm.ok(
-            u.Cli.atomic_write_text_file(provider, "LOCAL_SENTINEL = object()\n")
-        )
+        tm.ok(u.Cli.atomic_write_text_file(provider, "LOCAL_SENTINEL = object()\n"))
         groups = {
             (
-                f"{'.' * (depth + 1)}sibling"
-                if relative
-                else f"{package.name}.sibling"
+                f"{'.' * (depth + 1)}sibling" if relative else f"{package.name}.sibling"
             ): (("sibling", ""),),
             "pathlib": (("Path", "Path"),),
             f"{namespace}.{provider.stem}": (("LOCAL_SENTINEL", "LOCAL_SENTINEL"),),

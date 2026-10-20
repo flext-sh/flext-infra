@@ -102,8 +102,18 @@ class TestsFlextInfraCodegenConfigLifecycle:
         test_paths = tuple(
             sorted({
                 path
-                for directory in u.Infra.native_tool_setting(config.Infra.tooling, "pytest.ini_options", "testpaths", t.StrSequence)
-                for pattern in u.Infra.native_tool_setting(config.Infra.tooling, "pytest.ini_options", "python_files", t.StrSequence)
+                for directory in u.Infra.native_tool_setting(
+                    config.Infra.tooling,
+                    "pytest.ini_options",
+                    "testpaths",
+                    t.StrSequence,
+                )
+                for pattern in u.Infra.native_tool_setting(
+                    config.Infra.tooling,
+                    "pytest.ini_options",
+                    "python_files",
+                    t.StrSequence,
+                )
                 for path in (root / directory).rglob(pattern)
                 if path.is_file()
             }),

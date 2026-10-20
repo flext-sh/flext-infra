@@ -165,25 +165,28 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
         progress_args: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 alias="progress-args",
+                strict=False,
                 min_length=1,
                 description="Arguments that expose each pytest item and live progress.",
             ),
         ]
         report_args: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 alias="report-args",
+                strict=False,
                 min_length=1,
                 description="Canonical concise pytest reporting arguments.",
             ),
         ]
         diagnostic_args: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 alias="diagnostic-args",
+                strict=False,
                 min_length=1,
                 description="Canonical expanded pytest diagnostic arguments.",
             ),
@@ -303,9 +306,10 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
         external_gate_markers: Annotated[
-            t.StrTuple,
+            tuple[str, ...],
             m.Field(
                 alias="external-gate-markers",
+                strict=False,
                 description=(
                     "Markers of external-token gates deselected by offline"
                     " verification and reported as NOT EXECUTED; each must be"
@@ -320,16 +324,18 @@ class FlextInfraModelsDepsToolConfig(
             return f"not ({' or '.join(self.external_gate_markers)})"
 
         ci_excluded_markers: Annotated[
-            t.StrTuple,
+            tuple[str, ...],
             m.Field(
                 alias="ci-excluded-markers",
+                strict=False,
                 description="Declared markers deselected in CI and pre-commit only.",
             ),
         ]
         ci_excluded_fixtures: Annotated[
-            t.StrTuple,
+            tuple[str, ...],
             m.Field(
                 alias="ci-excluded-fixtures",
+                strict=False,
                 description="Fixtures that need local-only provisioning",
             ),
         ] = ()
@@ -478,6 +484,7 @@ class FlextInfraModelsDepsToolConfig(
 
     class TomlsortConfig(m.ArbitraryTypesModel):
         """Process budget for native TOML formatting."""
+
         process_timeout_seconds: Annotated[
             int,
             m.Field(
@@ -500,11 +507,6 @@ class FlextInfraModelsDepsToolConfig(
         ]
         rules: Annotated[
             t.Infra.SettingsPairs,
-            m.BeforeValidator(
-                lambda value: tuple(value.items())
-                if isinstance(value, dict)
-                else value
-            ),
             m.Field(description="Ordered native Markdown rule key/value declarations."),
         ]
         exclude: t.StrTuple = m.Field(
@@ -597,9 +599,10 @@ class FlextInfraModelsDepsToolConfig(
         ]
 
         derived_tool_roots: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 alias="derived-tool-roots",
+                strict=False,
                 description=(
                     "Native roots whose owner combines declared options with "
                     "typed topology or execution policy."
@@ -608,12 +611,15 @@ class FlextInfraModelsDepsToolConfig(
         ]
 
         derived_settings: Annotated[
-            t.MappingKV[t.NonEmptyStr, t.VariadicTuple[t.NonEmptyStr]],
+            t.MappingKV[
+                t.NonEmptyStr,
+                Annotated[tuple[t.NonEmptyStr, ...], m.Field(strict=False)],
+            ],
             m.Field(
                 alias="derived-settings",
                 description="Native keys owned by topology and execution policy.",
             ),
-        ] = {}
+        ]
         raw_check_receipt_suffix: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -659,6 +665,56 @@ class FlextInfraModelsDepsToolConfig(
             return self
 
         @m.model_validator(mode="after")
+        def validate_derived_options(self) -> Self:
+            """Reject native pairs that would be overwritten by a semantic owner.
+
+            Returns:
+                The declarations with one writable owner per protected key.
+
+            Raises:
+                ValueError: If a native option shadows a derived setting.
+
+            """
+            for table, protected in self.derived_settings.items():
+                declared = dict(self.settings.get(table, ()))
+                collision = sorted(declared.keys() & set(protected))
+                if collision:
+                    msg = (
+                        f"Native {table} options cannot shadow policy-owned keys: "
+                        f"{', '.join(collision)}"
+                    )
+                    raise ValueError(msg)
+            return self
+
+        @m.model_validator(mode="after")
+        def validate_mypy_overrides(self) -> Self:
+            """Keep native override pairs within the diagnostic policy.
+
+            Returns:
+                The unchanged declaration.
+
+            Raises:
+                ValueError: If an override hides diagnostics or changes owned keys.
+
+            """
+            for override in self.tools.mypy.overrides:
+                override_options = dict(override.settings)
+                ignored = override_options.get("ignore_errors")
+                if ignored is not None and ignored is not False:
+                    msg = "Mypy overrides cannot ignore diagnostics"
+                    raise ValueError(msg)
+                if override_options.keys() & set(self.derived_settings.get("mypy", ())):
+                    msg = "Mypy override cannot shadow policy-owned options"
+                    raise ValueError(msg)
+                if any(
+                    not key.isascii() or not key.isidentifier()
+                    for key in override_options
+                ):
+                    msg = "Mypy override requires plain option names"
+                    raise ValueError(msg)
+            return self
+
+        @m.model_validator(mode="after")
         def validate_mypy_options(self) -> Self:
             """Preserve Mypy ownership and mandatory Pydantic integration.
 
@@ -673,9 +729,6 @@ class FlextInfraModelsDepsToolConfig(
                 msg = "Native Mypy settings must be declared"
                 raise ValueError(msg)
             options = dict(self.settings["mypy"])
-            if options.keys() & set(self.derived_settings.get("mypy", ())):
-                msg = "Mypy policy cannot be shadowed by native options"
-                raise ValueError(msg)
             if any(not key.isascii() or not key.isidentifier() for key in options):
                 msg = "Mypy policy requires plain option names, not TOML syntax"
                 raise ValueError(msg)
@@ -759,9 +812,10 @@ class FlextInfraModelsDepsToolConfig(
             if any(value != "error" for _, value in self.settings["pyrefly.errors"]):
                 msg = "Pyrefly selected diagnostics must remain errors"
                 raise ValueError(msg)
-            if dict(self.settings["pyrefly"]).get(
-                "ignore-errors-in-generated-code"
-            ) is True:
+            if (
+                dict(self.settings["pyrefly"]).get("ignore-errors-in-generated-code")
+                is True
+            ):
                 msg = "Pyrefly cannot hide generated-code diagnostics"
                 raise ValueError(msg)
             return self
@@ -785,7 +839,9 @@ class FlextInfraModelsDepsToolConfig(
             FlextInfraModelsDepsToolConfig.ToolConfigDocument | None,
             m.Field(
                 exclude=True,
-                description="The elected tooling policy shared by every render context.",
+                description=(
+                    "The elected tooling policy shared by every render context."
+                ),
             ),
         ] = None
         project_kind: Annotated[

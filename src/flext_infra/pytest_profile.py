@@ -8,9 +8,11 @@ from __future__ import annotations
 
 import cProfile
 import os
+import signal
 import sys
 import traceback
 from pathlib import Path
+from types import FrameType
 
 from flext_infra import c, config, m, p, r, u
 from flext_infra._pytest_clock import FlextInfraPytestClock
@@ -99,18 +101,32 @@ class FlextInfraPytestProfile:
         preexisting = frozenset(reports_root.glob("*/run-context.json"))
 
         outcome: int | None = None
+
+        def terminate(signum: int, _frame: FrameType | None) -> None:
+            """Unwind through receipt publication between owned child lifetimes."""
+            raise SystemExit(outcome or 128 + signum)
+
+        previous = signal.getsignal(signal.SIGTERM)
+        # Child transports temporarily own forwarding and cleanup; this handler
+        # covers the parent work between them without bypassing finalization.
+        signal.signal(signal.SIGTERM, terminate)
         try:
             outcome = runner.execute().unwrap()
             return outcome
         finally:
             failure = sys.exception()
             try:
-                binding = self._record_context(reports_root, preexisting)
+                try:
+                    binding = self._record_context(reports_root, preexisting)
+                finally:
+                    finished = self._finish(profile)
+                publication_failure = self._publication_failure(binding, finished)
+                if publication_failure is not None:
+                    self._settle_publication_failure(
+                        publication_failure, failure, outcome
+                    )
             finally:
-                finished = self._finish(profile)
-            publication_failure = self._publication_failure(binding, finished)
-            if publication_failure is not None:
-                self._settle_publication_failure(publication_failure, failure, outcome)
+                signal.signal(signal.SIGTERM, previous)
 
     @staticmethod
     def _publication_failure(
@@ -154,7 +170,11 @@ class FlextInfraPytestProfile:
                 + "".join(traceback.format_exception(publication_failure)),
             )
             return
-        traceback.print_exception(publication_failure)
+        try:
+            traceback.print_exception(publication_failure)
+        except (OSError, ValueError) as diagnostic_failure:
+            # A closed diagnostic stream cannot replace the failed child's status.
+            raise SystemExit(outcome) from diagnostic_failure
 
     def _finish(self, profile: cProfile.Profile) -> p.Result[bool]:
         """Keep raw profiles on early failure, but publish only this run's receipt.

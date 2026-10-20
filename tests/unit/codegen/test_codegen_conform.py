@@ -665,7 +665,11 @@ class TestsFlextInfraCodegenConform:
         ]
         tm.that(
             addopts,
-            eq=list(u.Infra.native_tool_setting(config.Infra.tooling, "pytest.ini_options", "addopts", t.StrSequence)),
+            eq=list(
+                u.Infra.native_tool_setting(
+                    config.Infra.tooling, "pytest.ini_options", "addopts", t.StrSequence
+                )
+            ),
         )
 
     @staticmethod
@@ -1114,7 +1118,14 @@ class TestsFlextInfraCodegenConform:
             u.Tests.codegen_file_text(second_pyproject),
             eq=u.Tests.codegen_file_text(first_pyproject),
         )
-        tm.that(addopts, eq=list(u.Infra.native_tool_setting(config.Infra.tooling, "pytest.ini_options", "addopts", t.StrSequence)))
+        tm.that(
+            addopts,
+            eq=list(
+                u.Infra.native_tool_setting(
+                    config.Infra.tooling, "pytest.ini_options", "addopts", t.StrSequence
+                )
+            ),
+        )
         tm.that(report, lacks="fail_under")
 
     @staticmethod

@@ -17,8 +17,6 @@ from tests import c, m, t, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
-
 
 class TestsFlextInfraDepsModernizerWorkspace:
     """Validate helper behavior through public utilities and entrypoints."""
@@ -202,7 +200,9 @@ class TestsFlextInfraDepsModernizerWorkspace:
         package_init.parent.mkdir(parents=True)
         package_init.write_text("", encoding="utf-8")
         expected_order = (
-            u.Infra.native_tool_setting(config.Infra.tooling, "tomlsort", "sort_first", t.StrSequence)
+            u.Infra.native_tool_setting(
+                config.Infra.tooling, "tomlsort", "sort_first", t.StrSequence
+            )
             if sort_first is None
             else sort_first
         )

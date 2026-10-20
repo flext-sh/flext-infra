@@ -57,15 +57,10 @@ class FlextInfraCodegenConformEditor(FlextInfraCodegenConformArtifactRender):
 
         """
         result_type = r[t.Pair[str, t.SequenceOf[m.Cli.AtomicFileState]]]
-        tooling = u.Infra.load_config_document_inputs(
-            target.root, filename="tooling.yaml"
-        )
+        tooling = u.Infra.load_tooling_inputs(target.root)
         if tooling.failure:
             return result_type.from_failure(tooling)
-        namespace = u.json_mapping_adapter().validate_python(
-            tooling.value.values["Infra"]
-        )
-        tool_config = m.Infra.ToolConfigDocument.model_validate(namespace["tooling"])
+        tool_config = tooling.value.document
         if (
             isinstance(captured, m.Cli.AtomicDirectoryChainPlan)
             or captured.content is None

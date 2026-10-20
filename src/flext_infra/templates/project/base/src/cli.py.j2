@@ -1,6 +1,6 @@
 {# NOTE: precompute compact/multiline call arguments from configured line length. -#}
 {%- set app_arguments_line = "            name=config." ~ ns ~ ".name, help_text=config." ~ ns ~ ".description" -%}
-{%- set app_arguments = app_arguments_line if app_arguments_line | length <= tooling.tools.ruff.line_length else "            name=config." ~ ns ~ ".name,\n            help_text=config." ~ ns ~ ".description," -%}
+{%- set app_arguments = app_arguments_line if app_arguments_line | length <= tooling_runtime.tool_options["ruff"]["line-length"] else "            name=config." ~ ns ~ ".name,\n            help_text=config." ~ ns ~ ".description," -%}
 """Declarative CLI router for {{ package_name }}.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.

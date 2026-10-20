@@ -177,7 +177,9 @@ class TestsFlextInfraDepsModernizerToolTables:
         tm.that(
             tuple(u.Tests.toml_strings(mypy["plugins"])),
             eq=tuple(
-                u.Tests.strings(u.Infra.native_tool_settings(tooling, "mypy")["plugins"])
+                u.Tests.strings(
+                    u.Infra.native_tool_settings(tooling, "mypy")["plugins"]
+                )
             ),
         )
         tm.that(mypy, lacks="disable_error_code")
@@ -231,20 +233,30 @@ class TestsFlextInfraDepsModernizerToolTables:
     ) -> None:
         """Replace policy flags while retaining declared discovery extensions."""
         policy = config.Infra.tooling.tools.pytest
-        native = u.Infra.native_tool_settings(config.Infra.tooling, "pytest.ini_options")
+        native = u.Infra.native_tool_settings(
+            config.Infra.tooling, "pytest.ini_options"
+        )
         configured = config.Infra.tooling.model_copy(
             update={
                 "settings": {
                     **config.Infra.tooling.settings,
                     "pytest.ini_options": (
                         *config.Infra.tooling.settings["pytest.ini_options"],
-                        ("python_classes", ["Spec*", *u.Tests.strings(native["python_classes"])]),
+                        (
+                            "python_classes",
+                            ["Spec*", *u.Tests.strings(native["python_classes"])],
+                        ),
                     ),
                 },
                 "tools": config.Infra.tooling.tools.model_copy(
                     update={
                         "pytest": policy.model_copy(
-                            update={"standard_markers": (*policy.standard_markers, "custom: custom marker")},
+                            update={
+                                "standard_markers": (
+                                    *policy.standard_markers,
+                                    "custom: custom marker",
+                                )
+                            },
                         ),
                     },
                 ),
@@ -335,25 +347,48 @@ class TestsFlextInfraDepsModernizerToolTables:
         codespell = self._table(payload, "codespell")
         tm.that(codespell, lacks="skip")
         tm.that(changes, empty=False)
-        tm.that(codespell["check-filenames"], eq=u.Infra.native_tool_settings(tooling, "codespell")["check-filenames"])
+        tm.that(
+            codespell["check-filenames"],
+            eq=u.Infra.native_tool_settings(tooling, "codespell")["check-filenames"],
+        )
         tm.that(
             self._table(payload, "hatch", "metadata")["allow-direct-references"],
-            eq=u.Infra.native_tool_settings(tooling, "hatch.metadata")["allow-direct-references"],
+            eq=u.Infra.native_tool_settings(tooling, "hatch.metadata")[
+                "allow-direct-references"
+            ],
         )
         tomlsort = self._table(payload, "tomlsort")
-        tm.that(tomlsort["all"], eq=u.Infra.native_tool_settings(tooling, "tomlsort")["all"])
+        tm.that(
+            tomlsort["all"], eq=u.Infra.native_tool_settings(tooling, "tomlsort")["all"]
+        )
         tm.that(
             list(u.Tests.toml_strings(tomlsort["sort_first"])),
-            eq=list(u.Infra.native_tool_setting(tooling, "tomlsort", "sort_first", t.StrSequence)),
+            eq=list(
+                u.Infra.native_tool_setting(
+                    tooling, "tomlsort", "sort_first", t.StrSequence
+                )
+            ),
         )
         yamlfix = self._table(payload, "yamlfix")
-        tm.that(yamlfix["line_length"], eq=u.Infra.native_tool_settings(tooling, "yamlfix")["line_length"])
-        tm.that(yamlfix["explicit_start"], eq=u.Infra.native_tool_settings(tooling, "yamlfix")["explicit_start"])
+        tm.that(
+            yamlfix["line_length"],
+            eq=u.Infra.native_tool_settings(tooling, "yamlfix")["line_length"],
+        )
+        tm.that(
+            yamlfix["explicit_start"],
+            eq=u.Infra.native_tool_settings(tooling, "yamlfix")["explicit_start"],
+        )
         pydantic_mypy = self._table(payload, "pydantic-mypy")
         tm.that(pydantic_mypy, lacks="warn_untyped_fields")
-        tm.that(pydantic_mypy["init_typed"], eq=u.Infra.native_tool_settings(tooling, "pydantic-mypy")["init_typed"])
+        tm.that(
+            pydantic_mypy["init_typed"],
+            eq=u.Infra.native_tool_settings(tooling, "pydantic-mypy")["init_typed"],
+        )
         vulture = self._table(payload, "vulture")
-        tm.that(vulture["min_confidence"], eq=u.Infra.native_tool_settings(tooling, "vulture")["min_confidence"])
+        tm.that(
+            vulture["min_confidence"],
+            eq=u.Infra.native_tool_settings(tooling, "vulture")["min_confidence"],
+        )
 
     def test_coverage_report_measures_without_a_floor(self, tmp_path: Path) -> None:
         """Keep reporting policy and drop a floor left by an older projection."""
@@ -368,7 +403,11 @@ class TestsFlextInfraDepsModernizerToolTables:
         tm.that(report["show_missing"], eq=coverage["show_missing"])
         tm.that(
             list(u.Tests.strings(self._table(payload, "coverage", "run")["omit"])),
-            eq=list(u.Infra.native_tool_setting(config.Infra.tooling, "coverage.run", "omit", t.StrSequence)),
+            eq=list(
+                u.Infra.native_tool_setting(
+                    config.Infra.tooling, "coverage.run", "omit", t.StrSequence
+                )
+            ),
         )
 
     def test_coverage_source_round_trips_arbitrary_config(self, tmp_path: Path) -> None:

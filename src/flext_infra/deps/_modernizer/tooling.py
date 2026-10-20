@@ -144,7 +144,9 @@ class FlextInfraPyprojectModernizerTooling:
 
         """
         result_type = r[m.Infra.ToolingRuntimeContext]
-        selected = u.Infra.load_tooling_inputs(request.path.parent)
+        selected = u.Infra.load_tooling_inputs(
+            request.path.parent, source_project=source_project
+        )
         if selected.failure:
             return result_type.from_failure(selected)
         tool_config = selected.value.document
@@ -163,15 +165,6 @@ class FlextInfraPyprojectModernizerTooling:
             return result_type.from_failure(conformed)
         payload = conformed.value
         project_dir = request.path.parent
-        declared_roots, derived_mypy_path = self._derived_paths(
-            project_dir,
-            request.topology.declared_python_dirs,
-            FlextInfraExtraPathsManager(repository_root=self.root),
-            tool_config,
-        )
-        mypy = u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, "mypy"))
-        if declared_roots or not mypy.get("mypy_path"):
-            mypy["mypy_path"] = list(derived_mypy_path)
         deptry = u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, "deptry"))
         deptry["known_first_party"] = list(
             FlextInfraToolTablesPhase.deptry_first_party_namespaces(
@@ -373,6 +366,8 @@ class FlextInfraPyprojectModernizerTooling:
         declared_python_dirs: t.StrSequence,
         seed_manager: FlextInfraExtraPathsManager,
         tool_config: m.Infra.ToolConfigDocument,
+        *,
+        is_root: bool,
     ) -> t.Pair[t.StrSequence, t.StrSequence]:
         """Derive the declared or discovered analyzer search roots.
 
@@ -397,23 +392,17 @@ class FlextInfraPyprojectModernizerTooling:
             if path_rules.source_dir in declared_python_dirs
             else ()
         )
-        # Why: partial disk discovery returns ('.',) before src/ exists, which is
-        # truthy and blocked declared_roots ('src', '.'). Prefer declared roots
-        # for search/mypy whenever scaffolding supplied them; pyright extras keep
-        # discovery order (sorted {'.', 'src'}) so the first write matches sync.
-        # mypy and pyrefly diverge: mypy enumerates
-        # each search-path root as a package root, so roots that re-spell the
-        # same files make it abort with source-file-found-twice; pyrefly
-        # resolves first-match and needs the extra roots.
+        # Planned roots apply before the atomic scaffold materializes them.
+        # Existing trees use the same Mypy path owner as standalone path sync.
         derived_search_path: t.StrSequence = (
             declared_roots
-            or seed_manager.pyrefly_search_paths(
+            or seed_manager.mypy_search_paths(
                 project_dir=project_dir,
-                is_root=True,
+                is_root=is_root,
             )
         )
         derived_mypy_path: t.StrSequence = (
-            tuple(root for root in declared_roots if root != ".")
+            tuple(root for root in declared_roots if root != path_rules.project_root)
             if declared_roots
             else derived_search_path
         )

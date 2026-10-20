@@ -89,7 +89,7 @@ class FlextInfraUtilitiesQualifiedNames:
     @staticmethod
     def without_exports(
         value: cst.BaseExpression,
-        names: t.Infra.Container[str],
+        names: t.Container[str],
     ) -> cst.BaseExpression:
         """Drop ``names`` from a literal ``__all__`` list or tuple expression.
 
@@ -112,7 +112,7 @@ class FlextInfraUtilitiesQualifiedNames:
     @staticmethod
     def filter_exports[N: (cst.Assign, cst.AnnAssign)](
         node: N,
-        names: t.Infra.Container[str],
+        names: t.Container[str],
     ) -> N:
         """Drop ``names`` from an ``__all__`` assignment; other assignments pass.
 
@@ -182,7 +182,7 @@ class FlextInfraUtilitiesQualifiedNames:
     def qualified_name_residue(
         cls,
         source: str,
-        candidates: t.Infra.Container[str],
+        candidates: t.Container[str],
     ) -> frozenset[str]:
         """Return candidate qualified names referenced by Python source.
 
@@ -194,7 +194,7 @@ class FlextInfraUtilitiesQualifiedNames:
         class _ResidueCollector(cst.CSTVisitor):
             METADATA_DEPENDENCIES = (QualifiedNameProvider,)
 
-            def __init__(self, candidates: t.Infra.Container[str]) -> None:
+            def __init__(self, candidates: t.Container[str]) -> None:
                 self.candidates = candidates
                 self.residue: set[str] = set()
 

@@ -34,13 +34,13 @@ class FlextInfraModelsCodegenTransactionModels:
     class CodegenSourcePreviewOptions(FlextInfraModelsBase.FrozenArbitrary):
         """Authenticated inputs and runtime boundaries for one source preview."""
 
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+        inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
             default=(), description="Pinned source states authenticated by the preview"
         )
         runtime_root: Path | None = m.Field(
             default=None, description="Explicit physical runtime owner when supplied"
         )
-        workspaces: t.VariadicTuple[Path] = m.Field(
+        workspaces: tuple[Path, ...] = m.Field(
             default=(), description="Explicit composition scopes of the staged view"
         )
         runtime_check: bool = m.Field(
@@ -55,23 +55,23 @@ class FlextInfraModelsCodegenTransactionModels:
     class StageSourceOptions(FlextInfraModelsBase.FrozenArbitrary):
         """Authenticated inputs, topology and declarations for a source candidate."""
 
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+        inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
             default=(), description="Pinned source states of the staging invocation"
         )
-        workspaces: t.VariadicTuple[Path] = m.Field(
+        workspaces: tuple[Path, ...] = m.Field(
             default=(), description="Explicit composition scopes of the staged view"
         )
         modes: t.MappingKV[Path, int] | None = m.Field(
             default=None, description="Declared source modes preserved during staging"
         )
-        declared_files: t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan] = (
-            m.Field(default=(), description="Authenticated candidate file declarations")
+        declared_files: tuple[FlextInfraConfigModels.CodegenFilePlan, ...] = m.Field(
+            default=(), description="Authenticated candidate file declarations"
         )
-        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
+        source_directories: tuple[m.Cli.AtomicDirectoryInventory, ...] = m.Field(
             default=(), description="Original native source election receipts"
         )
-        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
-            m.Field(default=(), description="Original native source query ancestry")
+        source_query_topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = m.Field(
+            default=(), description="Original native source query ancestry"
         )
 
     class StagePackagePlan(FlextInfraModelsBase.FrozenArbitrary):
@@ -87,10 +87,10 @@ class FlextInfraModelsCodegenTransactionModels:
         members: t.StrSequence = m.Field(
             description="Owner declarations inherited by the public facade"
         )
-        layouts: t.VariadicTuple[FlextInfraModelsRope.RopeProjectLayout] = m.Field(
+        layouts: tuple[FlextInfraModelsRope.RopeProjectLayout, ...] = m.Field(
             description="Pinned package layouts"
         )
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+        inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
             description="Pinned source/resource/metadata states"
         )
         workspace_packages: t.StrSequence = m.Field(
@@ -102,26 +102,26 @@ class FlextInfraModelsCodegenTransactionModels:
 
         version: Literal[1] = m.Field(default=1, description="Source receipt version")
         workspace: Path = m.Field(description="Canonical source workspace root")
-        workspaces: t.VariadicTuple[Path] = m.Field(
+        workspaces: tuple[Path, ...] = m.Field(
             default=(),
             description="Explicit composition scopes, never a parent-directory scan",
         )
-        roots: t.VariadicTuple[Path] = m.Field(
+        roots: tuple[Path, ...] = m.Field(
             description="Discovered project roots covering the pinned source closure"
         )
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+        inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
             description="Exact source and configuration observations"
         )
-        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
+        source_directories: tuple[m.Cli.AtomicDirectoryInventory, ...] = m.Field(
             default=(), description="Native directory elections of this source epoch"
         )
-        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
-            m.Field(default=(), description="Native root and source query identities")
+        source_query_topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = m.Field(
+            default=(), description="Native root and source query identities"
         )
         prepared_hashes: t.VariadicTuple[t.Pair[Path, str | None]] = m.Field(
             default=(), description="Exact prepared update digests; None retires a file"
         )
-        directory_publications: t.VariadicTuple[m.Cli.AtomicDirectoryState] = m.Field(
+        directory_publications: tuple[m.Cli.AtomicDirectoryState, ...] = m.Field(
             default=(), description="Journal-proven own directory births for admission"
         )
         updates: t.MappingKV[Path, str | None] = m.Field(
@@ -133,18 +133,16 @@ class FlextInfraModelsCodegenTransactionModels:
             default_factory=lambda: MappingProxyType[Path, int]({}),
             description="Desired file-effect modes derived from original move sources",
         )
-        declared_files: t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan] = (
-            m.Field(
-                default=(),
-                description=(
-                    "Original file/absence witnesses with the current desired effects"
-                ),
-            )
+        declared_files: tuple[FlextInfraConfigModels.CodegenFilePlan, ...] = m.Field(
+            default=(),
+            description=(
+                "Original file/absence witnesses with the current desired effects"
+            ),
         )
-        layouts: t.VariadicTuple[FlextInfraModelsRope.RopeProjectLayout] = m.Field(
+        layouts: tuple[FlextInfraModelsRope.RopeProjectLayout, ...] = m.Field(
             description="Original project layouts in the desired import closure",
         )
-        workspace_packages: t.VariadicTuple[str] = m.Field(
+        workspace_packages: tuple[str, ...] = m.Field(
             description="Declared workspace namespaces with sealed candidate origins",
         )
 
@@ -157,7 +155,7 @@ class FlextInfraModelsCodegenTransactionModels:
         root: Path = m.Field(
             description="Runtime artifact inside a registered transaction root"
         )
-        layouts: t.VariadicTuple[FlextInfraModelsRope.RopeProjectLayout] = m.Field(
+        layouts: tuple[FlextInfraModelsRope.RopeProjectLayout, ...] = m.Field(
             description="Actual materialized package origins"
         )
         manifest: m.Cli.AtomicPhysicalTreeManifest = m.Field(
@@ -194,15 +192,15 @@ class FlextInfraModelsCodegenTransactionModels:
             m.Field(description="Durable publication transition state"),
         ]
         projects: Annotated[
-            t.VariadicTuple[FlextInfraModelsCodegenJournalModels.CodegenJournalProject],
+            tuple[FlextInfraModelsCodegenJournalModels.CodegenJournalProject, ...],
             m.Field(description="Ordered project selectors owned by this transaction"),
         ]
         file_participants: Annotated[
-            t.VariadicTuple[FlextInfraModelsCodegenToolchain.CodegenFileParticipant],
+            tuple[FlextInfraModelsCodegenToolchain.CodegenFileParticipant, ...],
             m.Field(description="Exact physical file publication capabilities"),
         ] = ()
         sources: Annotated[
-            t.VariadicTuple[FlextInfraModelsCodegenJournalModels.CodegenJournalSource],
+            tuple[FlextInfraModelsCodegenJournalModels.CodegenJournalSource, ...],
             m.Field(description="Source identities used by staging"),
         ]
         outputs: t.VariadicTuple[
@@ -211,7 +209,7 @@ class FlextInfraModelsCodegenTransactionModels:
         generator_sources: t.VariadicTuple[
             FlextInfraModelsCodegenJournalModels.CodegenJournalSource
         ] = m.Field(default=(), description="Captured loaded generator implementation")
-        generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
+        generator_trees: tuple[m.Cli.AtomicPhysicalTreeManifest, ...] = m.Field(
             default=(), description="Producer resource membership before planning"
         )
         generator_modules: t.VariadicTuple[t.Pair[str, Path]] = m.Field(
@@ -223,23 +221,25 @@ class FlextInfraModelsCodegenTransactionModels:
                 description="Immutable native producer epoch before effects",
             )
         )
-        source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
+        source_topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = m.Field(
             default=(),
             description="Source-owner directory witnesses for observation",
         )
-        source_directories: t.VariadicTuple[
-            t.Pair[str, m.Cli.AtomicDirectoryInventory]
-        ] = m.Field(
-            default=(), strict=True, description="Native source election query receipts"
+        source_directories: tuple[t.Pair[str, m.Cli.AtomicDirectoryInventory], ...] = (
+            m.Field(
+                default=(),
+                strict=True,
+                description="Native source election query receipts",
+            )
         )
-        source_query_topology: t.VariadicTuple[
-            t.Pair[str, m.Cli.AtomicDirectoryChainPlan]
+        source_query_topology: tuple[
+            t.Pair[str, m.Cli.AtomicDirectoryChainPlan], ...
         ] = m.Field(
             default=(),
             strict=True,
             description="Historical ancestry inputs of native source queries",
         )
-        scope_roots: t.VariadicTuple[Path] = m.Field(
+        scope_roots: tuple[Path, ...] = m.Field(
             default=(),
             description="Source-owner roots for topology observation",
         )
@@ -256,11 +256,11 @@ class FlextInfraModelsCodegenTransactionModels:
             m.Field(description="Directories whose prior absence authorizes creation"),
         ]
         entries: Annotated[
-            t.VariadicTuple[FlextInfraModelsCodegenJournalModels.CodegenJournalEntry],
+            tuple[FlextInfraModelsCodegenJournalModels.CodegenJournalEntry, ...],
             m.Field(description="Recoverable artifact transitions"),
         ]
         staging_intents: Annotated[
-            t.VariadicTuple[FlextInfraModelsCodegenJournalModels.CodegenStagingIntent],
+            tuple[FlextInfraModelsCodegenJournalModels.CodegenStagingIntent, ...],
             m.Field(description="Durable authority for staging bytes before creation"),
         ] = ()
 
@@ -425,23 +425,23 @@ class FlextInfraModelsCodegenTransactionModels:
         normalized_journal_sha256: str | None = m.Field(
             description="Digest of the parsed journal representation, not disk bytes",
         )
-        authorized_roots: t.VariadicTuple[Path] = m.Field(
+        authorized_roots: tuple[Path, ...] = m.Field(
             default=(),
             description="Physical roots authorized by current topology",
         )
         journal_state: Literal["absent", "staging", "prepared", "committed"] = m.Field(
             description="Observed durable state, never a readiness or green receipt",
         )
-        pending_roots: t.VariadicTuple[Path] = m.Field(
+        pending_roots: tuple[Path, ...] = m.Field(
             description="Actual recorded participant roots",
         )
-        pending_destinations: t.VariadicTuple[str] = m.Field(
+        pending_destinations: tuple[str, ...] = m.Field(
             description="Journal-relative destination selectors",
         )
-        pending_directories: t.VariadicTuple[str] = m.Field(
+        pending_directories: tuple[str, ...] = m.Field(
             description="Journal-relative directory selectors",
         )
-        pending_staging: t.VariadicTuple[Path] = m.Field(
+        pending_staging: tuple[Path, ...] = m.Field(
             description="Absolute recorded staging paths",
         )
         journal: (
@@ -490,7 +490,7 @@ class FlextInfraModelsCodegenTransactionModels:
             m.Field(description="Exact journal CAS state for the next transition"),
         ]
         written_files: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(description="Ordered destinations published by completed phases"),
         ] = ()
         published_files: t.VariadicTuple[
@@ -498,11 +498,11 @@ class FlextInfraModelsCodegenTransactionModels:
         ] = m.Field(
             default=(), exclude=True, description="Actual admitted states across phases"
         )
-        retained_files: t.VariadicTuple[Path] = m.Field(
+        retained_files: tuple[Path, ...] = m.Field(
             default=(),
             description="Authored destinations retained during per-file election",
         )
-        issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
+        issues: tuple[FlextInfraModelsCheck.Issue, ...] = m.Field(
             default=(),
             description="Publication failures retained across successful phases",
         )
@@ -527,13 +527,13 @@ class FlextInfraModelsCodegenTransactionModels:
     ):
         """Caller-owned directories and native admission for one publication."""
 
-        directories: t.VariadicTuple[Path] = m.Field(
+        directories: tuple[Path, ...] = m.Field(
             description="Exact generated directories requested by the caller",
         )
-        source_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = m.Field(
+        source_topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = m.Field(
             default=(), description="Authenticated source directory ancestry"
         )
-        scope_roots: t.VariadicTuple[Path] = m.Field(
+        scope_roots: tuple[Path, ...] = m.Field(
             default=(), description="Source membership roots for this publication"
         )
         source_scope: Path | None = m.Field(

@@ -82,8 +82,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
             (
                 repository_root / "docs/projects/generated/catalog.md",
                 FlextInfraUtilitiesDocsRender.docs_project_catalog_page(
-                    catalog_entries,
-                    exclude_docs=inputs.exclude_docs, width=width
+                    catalog_entries, exclude_docs=inputs.exclude_docs, width=width
                 ),
             ),
         ]
@@ -150,8 +149,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
                 if scope.package_name:
                     root_api.extend(
                         FlextInfraUtilitiesDocsGenerateRootMixin.docs_project_api_artifacts(
-                            scope,
-                            source_states, width=width
+                            scope, source_states, width=width
                         ),
                     )
                 continue
@@ -198,7 +196,8 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
                     class_counts=tuple(
                         m.Infra.DocsClassCount(project_class=name, count=count)
                         for name, count in sorted(class_counts.items())
-                    ), width=width
+                    ),
+                    width=width,
                 ),
             ),
         ]
@@ -230,8 +229,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
             rendered.append((
                 repository_root / "docs/api-reference/generated" / f"{scope.name}.md",
                 FlextInfraUtilitiesDocsRender.docs_directive_page(
-                    f"{scope.name} Public API",
-                    scope.package_name, width=width
+                    f"{scope.name} Public API", scope.package_name, width=width
                 ),
             ))
             module_names = scope_modules.get(scope.name, [])
@@ -243,7 +241,9 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
             )
             rendered.append((
                 modules_root / "index.md",
-                FlextInfraUtilitiesDocsRender.docs_modules_index(scope, module_names, width=width),
+                FlextInfraUtilitiesDocsRender.docs_modules_index(
+                    scope, module_names, width=width
+                ),
             ))
             for module_name in module_names:
                 relative = module_name.removeprefix(f"{scope.package_name}.").replace(
@@ -253,8 +253,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
                 rendered.append((
                     modules_root / f"{relative}.md",
                     FlextInfraUtilitiesDocsRender.docs_directive_page(
-                        module_name,
-                        module_name, width=width
+                        module_name, module_name, width=width
                     ),
                 ))
             projects_index_entries.append(
@@ -346,9 +345,10 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
             return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
                 tooling
             )
-        bound = FlextInfraUtilitiesCodegenFilePlan.unique_states(
-            (*(source_states or ()), *tooling.value.sources)
-        )
+        bound = FlextInfraUtilitiesCodegenFilePlan.unique_states((
+            *(source_states or ()),
+            *tooling.value.sources,
+        ))
         if bound.failure:
             return r[t.VariadicTuple[t.Infra.DocsRenderedArtifactTuple]].from_failure(
                 bound

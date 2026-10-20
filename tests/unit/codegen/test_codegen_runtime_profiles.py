@@ -165,9 +165,7 @@ class TestsFlextInfraCodegenRuntimeProfiles:
         )
         tm.that(
             u.Tests.toml_table_at(rendered, "tool", "pyrefly", "errors"),
-            eq=dict.fromkeys(
-                sorted(set(config.Infra.tooling.tools.pyrefly.strict_errors)), "error"
-            ),
+            eq=dict(config.Infra.tooling.settings["pyrefly.errors"]),
         )
         development = u.Tests.toml_strings_at(rendered, "dependency-groups", "dev")
         dev_names = [
