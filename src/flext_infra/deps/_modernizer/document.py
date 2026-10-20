@@ -41,16 +41,6 @@ class FlextInfraPyprojectModernizerDocument:
         @property
         def root(self) -> Path: ...
 
-        @staticmethod
-        def _derived_paths(
-            project_dir: Path,
-            declared_python_dirs: t.StrSequence,
-            seed_manager: FlextInfraExtraPathsManager,
-            tool_config: m.Infra.ToolConfigDocument,
-            *,
-            is_root: bool,
-        ) -> t.StrSequence: ...
-
     def _project_kind(
         self,
         path: Path,
@@ -343,17 +333,28 @@ class FlextInfraPyprojectModernizerDocument:
             if tool_config is None
             else tool_config
         )
-        mypy_search_paths = (
-            paths_manager.mypy_search_paths(project_dir=path.parent, is_root=is_root)
-            if paths_manager is not None
-            else self._derived_paths(
-                path.parent,
-                topology.declared_python_dirs,
-                FlextInfraExtraPathsManager(repository_root=self.root),
-                tooling,
-                is_root=is_root,
+        path_rules = tooling.tools.pyrefly.path_rules
+        if paths_manager is not None:
+            mypy_search_paths = paths_manager.mypy_search_paths(
+                project_dir=path.parent, is_root=is_root
             )
-        )
+        elif path_rules.source_dir in topology.declared_python_dirs:
+            mypy_search_paths = tuple(
+                root
+                for root in (
+                    path_rules.source_dir,
+                    *path_rules.project_shared_search_paths,
+                )
+                if root != path_rules.project_root
+                and (
+                    root in topology.declared_python_dirs
+                    or (path.parent / root).is_dir()
+                )
+            )
+        else:
+            mypy_search_paths = FlextInfraExtraPathsManager(
+                repository_root=self.root
+            ).mypy_search_paths(project_dir=path.parent, is_root=is_root)
         managed_artifacts = self.managed_artifacts
         if managed_artifacts is None:
             managed_artifacts = u.Infra.load_project_managed_artifacts(

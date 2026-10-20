@@ -24,11 +24,17 @@ rule:
         kind: module
         stopBy: end
         has:
-          pattern: from $TYPING import $$$BEFORE, overload, $$$AFTER
+          kind: import_from_statement
+          regex: '^from[ \t]+typing(_extensions)?[ \t]+import\b'
+          has:
+            pattern: overload
+            not:
+              inside:
+                kind: aliased_import
+                stopBy: end
+            stopBy: end
           stopBy: end
 constraints:
-  TYPING:
-    regex: ^typing(_extensions)?$
   PARAMETERS:
     regex: '^\(?\s*[A-Za-z_]\w*(\s*,\s*[A-Za-z_]\w*)*\s*,?\s*\)?$'
 fix: raise NotImplementedError

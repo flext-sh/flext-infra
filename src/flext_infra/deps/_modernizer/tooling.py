@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
-from flext_infra.deps import FlextInfraExtraPathsManager
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
 
 if TYPE_CHECKING:
@@ -192,9 +191,9 @@ class FlextInfraPyprojectModernizerTooling:
             table = u.Cli.toml_ensure_path(
                 document, (c.Infra.TOOL, *table_path.split("."))
             )
-            for key, value in options.items():
-                table[key] = u.Cli.toml_item_from_json_value(value)
-        return r[str].ok(u.Cli.toml_dumps(document, sort_keys=True))
+            for key, value in sorted(options.items()):
+                table[key] = u.Cli.toml_item_from_json_value(value, sort_keys=True)
+        return r[str].ok(u.Cli.toml_dumps(document))
 
     @classmethod
     def tooling_context_from_payload(
@@ -255,7 +254,7 @@ class FlextInfraPyprojectModernizerTooling:
         )
         group_dev = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
-            groups.get(str(c.Infra.DEV), []),
+            groups.get(c.Infra.DEV, []),
             strict=True,
         )
         if group_dev.failure:
@@ -323,49 +322,6 @@ class FlextInfraPyprojectModernizerTooling:
             return result_type.from_failure(conformed)
         state, _ = conformed.value
         return result_type.ok(state.payload)
-
-    @staticmethod
-    def _derived_paths(
-        project_dir: Path,
-        declared_python_dirs: t.StrSequence,
-        seed_manager: FlextInfraExtraPathsManager,
-        tool_config: m.Infra.ToolConfigDocument,
-        *,
-        is_root: bool,
-    ) -> t.StrSequence:
-        """Derive the declared or discovered analyzer search roots.
-
-        Returns:
-            The declared or discovered Mypy search paths.
-
-        """
-        path_rules = tool_config.tools.pyrefly.path_rules
-        # A shared search path belongs to the project when the scaffold
-        # declares it or the tree already has it — the same rule
-        # `pyrefly_search_paths` applies after the write.
-        declared_roots: t.StrSequence = (
-            (
-                path_rules.source_dir,
-                *(
-                    shared
-                    for shared in path_rules.project_shared_search_paths
-                    if shared in declared_python_dirs or (project_dir / shared).is_dir()
-                ),
-                path_rules.project_root,
-            )
-            if path_rules.source_dir in declared_python_dirs
-            else ()
-        )
-        # Planned roots apply before the atomic scaffold materializes them.
-        # Existing trees use the same Mypy path owner as standalone path sync.
-        return (
-            tuple(root for root in declared_roots if root != path_rules.project_root)
-            if declared_roots
-            else seed_manager.mypy_search_paths(
-                project_dir=project_dir,
-                is_root=is_root,
-            )
-        )
 
 
 __all__: list[str] = ["FlextInfraPyprojectModernizerTooling"]

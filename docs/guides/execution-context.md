@@ -102,13 +102,11 @@ payload bytes, rather than comparing excluded per-effect runtime dependencies.
 Those dependencies are reconstructed from the authenticated aggregate inputs
 before publication; they are not duplicated into the serialized artifact.
 
-For every bounded engine, generation or namespace repair, compose
-[root AGENTS.md](../../../AGENTS.md), the
-[FLEXT session router](../../../.agents/commands/flext-law.md), and the exact
-branch-matched [routing](../../../.agents/skills/flext-context-routing/SKILL.md)
-and [law](../../../.agents/skills/flext-law/SKILL.md) skills. The
-[canonical Make guide](../../../docs/guides/make-commands.md) applies these
-owners to command admission and acceptance; this context is not a parallel law.
+For every bounded engine, generation or namespace repair, compose the
+branch-matched workspace law, router and skills from the
+[canonical governance sources](../index.md#governance-pointer). The canonical
+Make guide applies those owners to command admission and acceptance; this
+context is not a parallel law.
 
 Before planning, use the router's global search-first/YAGNI/SSOT/SOLID/simplify/DRY
 route to identify the existing domain owner, declaration namespace, consumer
@@ -1127,15 +1125,10 @@ codemod gate is their one verdict. Preserve mutability, inheritance, imports, an
 collection; validate the transformation through the public interface before widening
 the batch. Structural refactors go through `make mod`.
 
-The binding owners are the [workspace law](../../../AGENTS.md), branch-matched
-[FLEXT law](../../../.agents/skills/flext-law/SKILL.md),
-[ADR-005](../../../docs/architecture/adr/005-config-settings-constants-templates-schemas-ssot.md),
-[ADR-014 as amended by ADR-018](../../../docs/architecture/adr/014-family-part-shape-rope-codemod-rules.md),
-[ADR-015](../../../docs/architecture/adr/015-consumer-consumption-law.md),
-[ADR-018](../../../docs/architecture/adr/018-generator-declarations.md) and
-[ADR-024](../../../docs/architecture/adr/024-di-config-contract-derived-defaults-minimal-overrides.md).
-Read their linked universal skills; this checklist is an execution checkpoint, not
-another architecture SSOT:
+Follow the [canonical governance sources](../index.md#governance-pointer):
+workspace law, FLEXT law, ADR-005, ADR-014 as amended by ADR-018, ADR-015 and
+ADR-024. Read their linked universal skills; this checklist is an execution
+checkpoint, not another architecture SSOT:
 
 1. Elect one domain/namespace/location owner from live declarations. Preserve
    `c → t → p → m → u`, layer-0 config/settings and pure declaration layers.
