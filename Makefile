@@ -199,7 +199,7 @@ override PYTEST_RUN_TIMEOUT_SECONDS := 1200
 override PYTEST_TERMINATION_GRACE_SECONDS := 2
 override PYTEST_TIMEOUT_EXIT_CODE := 124
 override PYTEST_ENFORCEMENT_PLUGIN := flext_tests_enforcement
-override PYTEST_PROGRESS_ARGS := --verbose
+override PYTEST_PROGRESS_ARGS := --verbose --failed-first
 override PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
 override PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
 override PYTEST_PARALLEL_WORKERS := 1
@@ -453,8 +453,8 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary. A verb exists
 # only in the profiles it declares (make.verbs[].profiles).
-PUBLIC_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check check-pyright census census-constants smells test tests test-full test-file file-gate profile-test profile-test-report profile-environment profile-environment-report profile-lanes profile-lanes-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report profile-codemod profile-codemod-report fmt fix fix-namespace fix-accessors fix-toolchain audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint gen-pyproject gen-editor initialize project-new mod mod-types mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
-BUILTIN_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check check-pyright census census-constants smells test tests test-full test-file file-gate profile-test profile-test-report profile-environment profile-environment-report profile-lanes profile-lanes-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report profile-codemod profile-codemod-report fmt fix fix-namespace fix-accessors fix-toolchain audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint gen-pyproject gen-editor initialize project-new mod mod-types mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
+PUBLIC_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check check-pyright census census-constants smells test tests test-full test-file file-gate profile-test profile-test-report profile-environment profile-environment-report profile-lanes profile-lanes-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report profile-codemod profile-codemod-report fmt fix fix-namespace fix-accessors fix-toolchain audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint gen-pyproject typings gen-editor initialize project-new mod mod-types mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
+BUILTIN_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check check-pyright census census-constants smells test tests test-full test-file file-gate profile-test profile-test-report profile-environment profile-environment-report profile-lanes profile-lanes-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report profile-codemod profile-codemod-report fmt fix fix-namespace fix-accessors fix-toolchain audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint gen-pyproject typings gen-editor initialize project-new mod mod-types mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
 SCRIPT_VERBS :=
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
@@ -2096,6 +2096,33 @@ gen-pyproject: _builtin_require_workspace _builtin_require_interpreter
 
 
 
+
+typings: _builtin_require_workspace
+	@printf '==> %s | project=%s | profile=%s\n' 'typings' "$(PROJECT_ROOT)" 'standalone'
+
+	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-typings,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-typings)
+
+.PHONY: _activated-typings
+
+# Without hooks, Make resolves the guarded builtin and its environment
+# prerequisite once in this process instead of repeating it in a submake.
+ifeq ($(filter pre-typings _custom-typings post-typings,$(CUSTOM_DECLARED_TARGETS)),)
+_activated-typings: _builtin-typings
+_builtin-typings: _builtin_require_environment
+else
+
+
+_activated-typings: _builtin_require_environment
+
+
+	$(if $(filter Y,$(CI)),+@$(SELF_MAKE) _builtin-typings,$(call RUN_PUBLIC,typings))
+
+endif
+
+
+
+
+
 # This operation consumes the declared physical runtime without activating the
 # environment file it may itself regenerate.
 gen-editor: _builtin_require_workspace _builtin_require_interpreter
@@ -2630,6 +2657,10 @@ gen-pyproject:
 	@printf '  %-16s %s\n' 'gen-pyproject' 'Regenerate this project'"'"'s analyzer and dependency metadata through guarded publication.'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make gen-pyproject to execute it.'
 
+typings:
+	@printf '  %-16s %s\n' 'typings' 'Detect published typing dependencies and generate, package, and install missing third-party stubs through native Pyright and UV.'
+	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make typings to execute it.'
+
 gen-editor:
 	@printf '  %-16s %s\n' 'gen-editor' 'Project editor settings, analyzer configuration, and Git ignores without generating Python facades.'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make gen-editor to execute it.'
@@ -2811,6 +2842,8 @@ _builtin-help:
 	@printf '  %-16s %s\n' 'gen-footprint' 'Inspect the pending generation journal and physical effect footprint without generation planning, participant leases, recovery, or publication.';
 
 	@printf '  %-16s %s\n' 'gen-pyproject' 'Regenerate this project'"'"'s analyzer and dependency metadata through guarded publication.';
+
+	@printf '  %-16s %s\n' 'typings' 'Detect published typing dependencies and generate, package, and install missing third-party stubs through native Pyright and UV.';
 
 	@printf '  %-16s %s\n' 'gen-editor' 'Project editor settings, analyzer configuration, and Git ignores without generating Python facades.';
 
@@ -3210,6 +3243,8 @@ _upg_refresh_member_locks:
 # current Makefile selects the new recipes without restarting the upgrade or
 # repeating generation and installation.
 _upg_converge:
+	@$(SELF_MAKE) _builtin-typings
+	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope all
 	@$(SELF_MAKE) _upg_reconcile_locks
 
 	@$(SELF_MAKE) _builtin_setup_environment
@@ -3685,6 +3720,9 @@ _builtin-gen-footprint: _builtin_require_interpreter
 
 _builtin-gen-pyproject: _builtin_require_interpreter
 	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope self
+
+_builtin-typings: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) deps detect --repository-root "$(PROJECT_ROOT)" --apply --apply-typings
 
 _builtin-gen-editor: _builtin_require_interpreter
 	@set -eu; \
