@@ -10,13 +10,9 @@ from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import pytest
+from typing_extensions import TypeForm
 
-from flext_infra import FlextInfraConfig, config
-from flext_infra.check import FlextInfraGateRegistry
-from flext_infra.deps import (
-    FlextInfraEnsureRuffConfigPhase,
-    FlextInfraPyprojectModernizer,
-)
+from flext_infra import FlextInfraConfig, check, config, deps
 from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
@@ -102,6 +98,39 @@ class TestsFlextInfraDepsModernizerTooling:
         tm.that(tool_config_document.settings, eq=original)
 
     @staticmethod
+    def test_native_tooling_render_keeps_caller_nested_tables_unchanged() -> None:
+        """Missing output tables never become mutations of the caller's tree."""
+        options: dict[str, t.JsonMapping] = {
+            "fixture_native": {
+                "branch": {
+                    "keep": [{"label": "last"}, {"label": "first"}],
+                    "ratio": 1.25,
+                }
+            },
+            "fixture_native.branch.child": {
+                "enabled": True,
+                "order": ["zulu", " alpha "],
+            },
+        }
+        original = deepcopy(options)
+        rendered = tm.ok(
+            deps.FlextInfraPyprojectModernizer.tooling_configuration(options)
+        )
+        tm.that(options, eq=original)
+        tm.that(
+            u.Tests.toml_table_at(
+                rendered, "tool", "fixture_native", "branch", "child"
+            ),
+            eq=options["fixture_native.branch.child"],
+        )
+        tm.that(
+            u.Tests.toml_table_at(
+                rendered, "tool", "fixture_native", "branch"
+            )["keep"],
+            eq=u.Tests.toml_mapping(options["fixture_native"]["branch"])["keep"],
+        )
+
+    @staticmethod
     def test_native_tool_configuration_rejects_an_undeclared_root(
         tool_config_document: m.Infra.ToolConfigDocument,
     ) -> None:
@@ -157,7 +186,7 @@ class TestsFlextInfraDepsModernizerTooling:
             )["ordered"],
             eq=ordered,
         )
-        modernizer = FlextInfraPyprojectModernizer(
+        modernizer = deps.FlextInfraPyprojectModernizer(
             repository_root=root,
             skip_comments=True,
             skip_check=True,
@@ -279,7 +308,7 @@ class TestsFlextInfraDepsModernizerTooling:
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
             u.Tests.toml_payload(f'[project]\nname = "{project_dir.name}"\n{source}'),
         )
-        phase = FlextInfraEnsureRuffConfigPhase(
+        phase = deps.FlextInfraEnsureRuffConfigPhase(
             tool_config_document,
         )
         path = project_dir / "pyproject.toml"
@@ -331,7 +360,7 @@ class TestsFlextInfraDepsModernizerTooling:
                     tool_config_document,
                     "pyrefly",
                     "project-excludes",
-                    t.StrSequence,
+                    TypeForm(t.StrSequence),
                 )
             ),
             eq=True,
@@ -427,7 +456,7 @@ class TestsFlextInfraDepsModernizerTooling:
                 config.Infra.tooling, "ruff.lint", "extend-safe-fixes", list[str]
             ),
         )
-        delegated = FlextInfraGateRegistry.default().delegated_lint_rules(
+        delegated = check.FlextInfraGateRegistry.default().delegated_lint_rules(
             ruff_policy.lint.rule_owners,
             check_gates=config.Infra.codegen.make.check_gates_default,
             repair_gates=(
@@ -441,7 +470,10 @@ class TestsFlextInfraDepsModernizerTooling:
                 *delegated,
                 *ruff_policy.lint.ruling_disabled_rules,
                 *u.Infra.native_tool_setting(
-                    tool_config_document, "ruff.lint", "ignore", t.StrSequence
+                    tool_config_document,
+                    "ruff.lint",
+                    "ignore",
+                    TypeForm(t.StrSequence),
                 ),
             }),
         )

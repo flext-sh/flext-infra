@@ -82,6 +82,11 @@ class TestsFlextInfraPlanCollection:
             u.Cli.yaml_dump_str(configuration.model_dump(mode="json")),
         )
         self._write(root / "input" / "plan.md", "# Collected plan\n\nOwned input.\n")
+        guide = root / "docs" / "guides" / "unrelated.md"
+        self._write(guide, "# Independent documentation\n\nNot a collected plan.\n")
+        guide_state = tm.ok(
+            u.Cli.atomic_read_binary_file_state(guide, required=True),
+        )
         configuration_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(configuration_path, required=True),
         )
@@ -112,6 +117,10 @@ class TestsFlextInfraPlanCollection:
                 for state in outputs
             ),
             eq=outputs,
+        )
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(guide, required=True)),
+            eq=guide_state,
         )
 
     @staticmethod

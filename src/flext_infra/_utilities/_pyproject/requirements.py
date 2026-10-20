@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from flext_cli import u
 from packaging.requirements import Requirement
@@ -274,7 +274,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         raw_items = u.Cli.json_as_sequence(raw_value)
         validated_items: p.Result[t.StrSequence] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
-            raw_items,
+            cast("t.JsonPayload", raw_items),
             strict=True,
         )
         if validated_items.failure:

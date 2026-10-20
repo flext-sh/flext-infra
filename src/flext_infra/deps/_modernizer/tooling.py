@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
@@ -188,7 +189,7 @@ class FlextInfraPyprojectModernizerTooling:
 
         """
         payload: t.JsonDict = {}
-        for table_path, options in sorted(tool_options.items()):
+        for table_path, options in sorted(deepcopy(tool_options).items()):
             path = table_path.split(".")
             parent = u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, *path[:-1]))
             parent[path[-1]] = dict(options)
@@ -219,7 +220,7 @@ class FlextInfraPyprojectModernizerTooling:
 
         """
         result_type = r[m.Infra.ToolingRuntimeContext]
-        options: dict[str, t.JsonMapping] = {}
+        options: t.MutableMappingKV[str, t.JsonMapping] = {}
         for table_path in tool_config.settings:
             table = u.Cli.toml_mapping_path(
                 payload, (c.Infra.TOOL, *table_path.split("."))

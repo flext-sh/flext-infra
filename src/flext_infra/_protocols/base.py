@@ -1385,6 +1385,15 @@ class FlextInfraProtocolsBase(Protocol):
             """Run pip check on workspace and return results."""
             ...
 
+        def generate_typing_packages(
+            self,
+            repository_root: Path,
+            modules: t.StrSequence,
+            policy: p.Infra.TypingGenerationPolicy,
+        ) -> p.Result[t.StrSequence]:
+            """Generate and install PEP 561 packages in the owning environment."""
+            ...
+
     @runtime_checkable
     class DetectorRuntime(Protocol):
         """Protocol for the detector command the runtime reports through."""

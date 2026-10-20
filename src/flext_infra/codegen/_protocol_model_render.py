@@ -337,7 +337,7 @@ class FlextInfraCodegenProtocolModelRender(FlextInfraCodegenProtocolModelAnnotat
                 decorator.func if isinstance(decorator, ast.Call) else decorator,
                 lexical,
                 self.project.upstream,
-                "u.computed_field",
+                "m.computed_field",
             ):
                 continue
             if any(

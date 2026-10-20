@@ -308,6 +308,8 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
     class CodegenConfigSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Fully modeled content of ``config/codegen.yaml``."""
 
+        model_config = m.ConfigDict(extra="forbid")
+
         repository: Annotated[
             FlextInfraConfigModelsWorkspace.RepositoryDeltaSpec,
             m.Field(

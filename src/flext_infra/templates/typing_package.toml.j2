@@ -1,0 +1,17 @@
+[build-system]
+requires = {{ build_requires | tojson }}
+build-backend = {{ build_backend | tojson }}
+
+[project]
+name = {{ distribution | tojson }}
+version = {{ version | tojson }}
+requires-python = {{ python_required | tojson }}
+
+[project.entry-points.{{ entry_point_group | tojson }}]
+{{ module | tojson }} = {{ module | tojson }}
+
+[tool.hatch.build.targets.wheel]
+packages = [{{ stub_package | tojson }}]
+
+[tool.flext.typing]
+implementation = {{ runtime_requirement | tojson }}

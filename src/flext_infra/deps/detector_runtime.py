@@ -12,13 +12,11 @@ from typing import TYPE_CHECKING
 
 from flext_core import FlextRuntime
 
-from flext_infra import c, m, p, r, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.deps import FlextInfraDependencyDetectorRuntimeSteps
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, MutableMapping
-
-    from flext_infra import t
 
 
 class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSteps):
@@ -76,6 +74,27 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
             project_name: m.Infra.ProjectRuntimeReport.model_validate(project_payload)
             for project_name, project_payload in projects_report.items()
         }
+        if params.apply and params.apply_typings:
+            limits = self._deps.load_dependency_limits(limits_path)
+            typing_limits = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                limits.get(c.Infra.TYPING_LIBRARIES, {}),
+            )
+            policy = m.Infra.TypingGenerationPolicy.model_validate(
+                typing_limits.get("generation"),
+            )
+            generated = self._deps.generate_typing_packages(
+                venv_bin.parent.parent,
+                tuple(
+                    module
+                    for project in report_model.projects.values()
+                    if project.typings is not None
+                    for module in project.typings.untyped_modules
+                ),
+                policy,
+            )
+            if generated.failure:
+                return r[bool].from_failure(generated)
+            report_model.generated_typings = generated.value
         pip_check_result = self._run_pip_check(root, venv_bin, params, report_model)
         if pip_check_result.failure:
             return r[bool].from_failure(pip_check_result)

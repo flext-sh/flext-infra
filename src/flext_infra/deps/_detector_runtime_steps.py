@@ -131,7 +131,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         params: m.Infra.DetectCommand,
         projects_report: MutableMapping[str, MutableMapping[str, t.JsonValue]],
     ) -> p.Result[bool]:
-        """Declare CUSTOM typing extras and install them through UV's source editor.
+        """Declare typing requirements in the development group through native UV.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -160,8 +160,8 @@ class FlextInfraDependencyDetectorRuntimeSteps:
                 "add",
                 "--project",
                 str(project_path),
-                "--optional",
-                c.Infra.TYPINGS,
+                "--group",
+                c.Infra.DEV,
                 "--",
                 *to_add,
             ],

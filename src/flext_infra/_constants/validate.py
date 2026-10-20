@@ -72,7 +72,10 @@ class FlextInfraConstantsSharedInfra:
         re.IGNORECASE,
     )
     MYPY_STUB_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"Library stubs not installed for ['\"](\S+?)['\"]",
+        r"(?:Library stubs not installed for|Skipping analyzing) ['\"](\S+?)['\"]",
+    )
+    MYPY_UNTYPED_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"Skipping analyzing ['\"](\S+?)['\"]",
     )
     INTERNAL_PREFIXES: ClassVar[t.VariadicTuple[str]] = ("flext_", "flext-")
 

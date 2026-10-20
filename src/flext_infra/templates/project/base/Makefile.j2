@@ -933,6 +933,8 @@ _upg_lifecycle: _builtin_setup_submodules
 	+@$(SELF_MAKE) _upg_resolve_locks
 	@$(SELF_MAKE) _upg_install_runtime
 	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope self
+	@$(SELF_MAKE) _builtin-typings
+	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope self
 	@$(SELF_MAKE) _upg_reconcile_locks
 	@$(SELF_MAKE) _upg_install_runtime
 	@$(PROJECT_FLEXT_INFRA) workspace verify-environment --repository-root "$(RUNTIME_ROOT)"
@@ -978,6 +980,8 @@ _upg_refresh_member_locks:
 # current Makefile selects the new recipes without restarting the upgrade or
 # repeating generation and installation.
 _upg_converge:
+	@$(SELF_MAKE) _builtin-typings
+	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope all
 	@$(SELF_MAKE) _upg_reconcile_locks
 {% for repository in workspace_repositories if repository.kind == "internal_flext" and repository.codegen != "none" and not repository.read_only %}
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(PROJECT_ROOT)" -f "$(PROJECT_ROOT)/{{ repository.path }}/Makefile" _upg_reconcile_locks
@@ -1343,6 +1347,9 @@ _builtin-gen-footprint: _builtin_require_interpreter
 
 _builtin-gen-pyproject: _builtin_require_interpreter
 	@$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope self
+
+_builtin-typings: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) deps detect --repository-root "$(PROJECT_ROOT)" --apply --apply-typings
 
 _builtin-gen-editor: _builtin_require_interpreter
 	@set -eu; \

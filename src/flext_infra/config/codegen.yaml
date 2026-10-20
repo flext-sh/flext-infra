@@ -813,6 +813,8 @@ Infra:
       - name: gen-pyproject
         description: Regenerate this project's analyzer and dependency metadata through guarded publication.
         requires_activation: false
+      - name: typings
+        description: Detect published typing dependencies and generate, package, and install missing third-party stubs through native Pyright and UV.
       - name: gen-editor
         description: Project editor settings, analyzer configuration, and Git ignores without generating Python facades.
         requires_activation: false

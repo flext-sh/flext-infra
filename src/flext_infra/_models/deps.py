@@ -22,6 +22,7 @@ from flext_infra._models._config import (
     FlextInfraConfigModelsRepository,
     FlextInfraConfigModelsScaffold,
 )
+from flext_infra._models.deps_typings import FlextInfraModelsDepsTypings
 
 GitSourceUrlPrefixField = Annotated[
     t.NonEmptyStr | None,
@@ -40,7 +41,11 @@ GitSourceRefToField = Annotated[
 ]
 
 
-class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsToml):
+class FlextInfraModelsDeps(
+    FlextInfraModelsDepsToolConfig,
+    FlextInfraModelsDepsToml,
+    FlextInfraModelsDepsTypings,
+):
     """Models for dependency detection and modernization reporting."""
 
     class ProjectPackagingDeclaration(m.ContractModel):
@@ -275,10 +280,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             bool,
             m.Field(
                 alias="apply-typings",
-                description=(
-                    "Declare project.optional-dependencies.typings "
-                    "and install through UV"
-                ),
+                description=("Declare dependency-groups.dev and install through UV"),
             ),
         ] = False
         no_pip_check: Annotated[
@@ -653,6 +655,10 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             t.StrSequence,
             m.Field(description="Missing modules"),
         ] = m.Field(default_factory=tuple)
+        untyped_modules: Annotated[
+            t.StrSequence,
+            m.Field(description="Installed modules without a published stub hint"),
+        ] = m.Field(default_factory=tuple)
         current: Annotated[t.StrSequence, m.Field(description="Current typings")] = (
             m.Field(default_factory=tuple)
         )
@@ -675,8 +681,8 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             bool,
             m.Field(
                 description=(
-                    "Governed mypy follow_untyped_imports policy; when true, "
-                    "missing stubs are not findings"
+                    "Normal mypy follow_untyped_imports policy; "
+                    "stub discovery is independent of this policy"
                 ),
             ),
         ]
@@ -699,6 +705,10 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
         """
 
         workspace: Annotated[str, m.Field(description="Workspace name")]
+        generated_typings: Annotated[
+            t.StrSequence,
+            m.Field(description="Installed generated PEP 561 package directories"),
+        ] = m.Field(default_factory=tuple)
         projects: t.MappingKV[str, FlextInfraModelsDeps.ProjectRuntimeReport] = m.Field(
             description="Per-project reports",
         )

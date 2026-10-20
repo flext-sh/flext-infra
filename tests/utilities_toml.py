@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import cast
 
 from flext_infra import config, u
 from tests import c, m, p, r, t, tm
@@ -108,7 +107,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
         )
         for segment in path:
             current = TestsFlextInfraUtilitiesTomlMixin.toml_mapping(
-                cast("t.JsonMapping", current[segment]),
+                current[segment],
             )
         return current
 

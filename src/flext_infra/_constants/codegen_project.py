@@ -79,6 +79,7 @@ class FlextInfraConstantsCodegenProject(FlextInfraConfigVocabulary):
         CONFORM = "conform"
         CONFORM_BOOTSTRAP = "conform-bootstrap"
         DOCS = "docs"
+        DOCS_COLLECTION = "docs-collection"
         LAZY_INIT = "lazy-init"
         LAYOUT = "layout"
         MISE = "mise"

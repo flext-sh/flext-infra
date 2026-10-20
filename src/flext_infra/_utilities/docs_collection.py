@@ -456,8 +456,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
             The resulting ``m.Infra.PlanCollectionBundle``.
 
         Raises:
-            ValueError: If undeclared collection destination; or if collection
-                target changed after source read.
+            ValueError: If a destination is undeclared or an original input
+                changes while planning.
 
         """
         canonical = state.canonical
@@ -478,11 +478,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
                 desired_mode=c.Infra.DOCS_ARTIFACT_MODE,
                 source_states=inputs,
             ).unwrap()
-            expected = state.states.get(path)
-            if expected is not None and planned.before != expected:
-                msg = f"collection target changed after source read: {path}"
-                raise ValueError(msg)
             plans.append(planned)
+        u.Cli.atomic_verify_binary_file_states(inputs).unwrap()
         required_directories = tuple(
             sorted(
                 {path.parent for path in state.desired},

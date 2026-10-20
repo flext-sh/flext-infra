@@ -175,7 +175,7 @@ class FlextInfraDocCollector:
             files.append(plan.model_copy(update={"source_states": sources.value}))
         return result_type.ok(
             m.Infra.CodegenPhaseAnalysis(
-                phase=c.Infra.CodegenStagedFilePhase.DOCS,
+                phase=c.Infra.CodegenStagedFilePhase.DOCS_COLLECTION,
                 files=tuple(files),
                 inputs=inputs.value,
             ),
