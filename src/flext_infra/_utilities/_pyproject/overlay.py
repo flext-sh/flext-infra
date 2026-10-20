@@ -46,7 +46,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
             )
         validated_custom: p.Result[t.StrSequence] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
-            live_project[key],
+            live_project.get(key, []),
             strict=True,
         )
         if validated_custom.failure:

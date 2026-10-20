@@ -495,7 +495,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 # Skip a redundant exports pass when the previous pass in this
                 # transfer iteration produced no new plans.
                 if self._skip_redundant_exports_pass(
-                    operation, operation_index, pass_produced_new_files
+                    operation,
+                    operation_index,
+                    produced_new_files=pass_produced_new_files,
                 ):
                     continue
                 with u.Infra.facade_source_project(

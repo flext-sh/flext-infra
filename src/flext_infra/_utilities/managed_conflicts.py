@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 from flext_cli import u
 
 from flext_infra import c, config, m, p, r, t
@@ -14,6 +16,17 @@ from flext_infra._utilities import FlextInfraUtilitiesBase
 
 class FlextInfraUtilitiesManagedConflicts:
     """Recover only merge blocks authorized by the document owner."""
+
+    @staticmethod
+    @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
+    def _valid_toml(content: str) -> bool:
+        """Memoize validity by document bytes without retaining mutable parse results.
+
+        Returns:
+            Whether the exact content is valid TOML.
+
+        """
+        return u.Cli.toml_mapping_from_text(content) is not None
 
     @staticmethod
     def _toml_quote_after_line(line: str, quote: str | None) -> str | None:
@@ -90,7 +103,7 @@ class FlextInfraUtilitiesManagedConflicts:
             The resulting ``p.Result[str]``.
 
         """
-        if u.Cli.toml_mapping_from_text(content) is not None:
+        if FlextInfraUtilitiesManagedConflicts._valid_toml(content):
             return r[str].ok(content)
         recovered: list[str] = []
         pending: list[str] = []

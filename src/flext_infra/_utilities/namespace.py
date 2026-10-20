@@ -399,10 +399,6 @@ class FlextInfraUtilitiesCodegenNamespace:
         cls._declared_exports_cache[cache_key] = (source, result)
         return result
 
-    _layout_cache: dict[
-        tuple[str, int, str | None], m.Infra.RopeProjectLayout | None
-    ] = {}
-
     @classmethod
     def layout(
         cls,
@@ -418,13 +414,6 @@ class FlextInfraUtilitiesCodegenNamespace:
 
         """
         resolved_root = project_root.resolve()
-        cache_key = (
-            str(resolved_root),
-            id(rope_project) if rope_project is not None else 0,
-            project.package_name if project is not None else None,
-        )
-        if cache_key in cls._layout_cache:
-            return cls._layout_cache[cache_key]
         if rope_project is not None and rope_project.authenticated_sources:
             project = None
         else:
@@ -438,7 +427,6 @@ class FlextInfraUtilitiesCodegenNamespace:
             )
         )
         if not package_name:
-            cls._layout_cache[cache_key] = None
             return None
         if project is not None and project.name:
             project_name = project.name
@@ -466,7 +454,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         class_name_source = package_name.split(".", maxsplit=1)[0].replace("_", "-")
         src_dir = resolved_root / c.Infra.DEFAULT_SRC_DIR
         package_dir = src_dir / Path(*package_name.split("."))
-        result = m.Infra.RopeProjectLayout(
+        return m.Infra.RopeProjectLayout(
             project_root=resolved_root,
             project_name=project_name,
             package_name=package_name,
@@ -479,12 +467,6 @@ class FlextInfraUtilitiesCodegenNamespace:
                 package_dir, rope_project=rope_project
             ),
         )
-        cls._layout_cache[cache_key] = result
-        return result
-
-    _resolve_family_cache: dict[
-        tuple[str, int], t.Quad[str | None, str | None, str | None, t.StrSequence]
-    ] = {}
 
     @classmethod
     def _resolve_family(
@@ -503,10 +485,6 @@ class FlextInfraUtilitiesCodegenNamespace:
             ValueError: If facade source is unavailable to Rope.
 
         """
-        cache_key = (str(file_path.resolve()), id(rope_project))
-        cached = cls._resolve_family_cache.get(cache_key)
-        if cached is not None:
-            return cached
         family_alias = cls.facade_family_of_directory(file_path.parent.name)
         declared_exports = cls._declared_exports(file_path, rope_project=rope_project)
         uppercase_names = tuple(name for name in declared_exports if name[:1].isupper())
@@ -556,9 +534,7 @@ class FlextInfraUtilitiesCodegenNamespace:
                 if owner is not None and owner[0] in declared_exports:
                     expected_alias, expected_family = owner
         family_tokens: t.StrSequence = (expected_family,) if expected_family else ()
-        result = (family_alias, expected_family, expected_alias, family_tokens)
-        cls._resolve_family_cache[cache_key] = result
-        return result
+        return (family_alias, expected_family, expected_alias, family_tokens)
 
     @classmethod
     def _resolve_module_flags(

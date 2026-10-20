@@ -366,14 +366,21 @@ class FlextInfraPytestRunnerExecution(
             ),
         ).unwrap()
         self._record_process_outcome(report_dir, "suite", outcome)
-        if self.profile_enabled and (
-            u.Cli.process_succeeded(outcome)
-            or self._completed_failure(outcome, report_dir)
-        ):
-            self._bind_child_profile(
-                report_dir,
-                report_dir / config.Infra.tooling.tools.pytest.profile_suite_filename,
-            )
+        if self.profile_enabled:
+            policy = config.Infra.tooling.tools.pytest
+            suite_profile = report_dir / policy.profile_suite_filename
+            # The process owner has reaped the child before binding its native
+            # checkpoints. An interrupted run retains its failure and real data.
+            if (
+                suite_profile.is_file()
+                or u.Cli.process_succeeded(outcome)
+                or self._completed_failure(outcome, report_dir)
+            ):
+                self._bind_child_profile(report_dir, suite_profile)
+            for profile in sorted(
+                (report_dir / policy.profile_process_directory).glob("*.pstats")
+            ):
+                self._bind_child_profile(report_dir, profile)
         return outcome
 
     @staticmethod

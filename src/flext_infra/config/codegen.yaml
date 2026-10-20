@@ -767,6 +767,11 @@ Infra:
         description: Profile the complete read-only rule diagnostic and retain its native failure outcome.
       - name: profile-mod-rules-report
         description: Render the profile of the complete read-only rule diagnostic.
+      - name: profile-codemod
+        arguments: [ FILE ]
+        description: Profile the canonical read-only codemod gate for one literal FILE, preserving native findings and interruption evidence.
+      - name: profile-codemod-report
+        description: Render the retained profile of the canonical read-only codemod gate.
       - name: fmt
         description: Apply ruff format --preview and every declared formatter gate. Ruff is the rule; change code, never ruff.
       - name: fix
@@ -1008,153 +1013,109 @@ Infra:
       helper_modules:
       - _cov.py
     vscode:
-      # Portable defaults shared by attached and standalone repositories.
-      # VS Code resolves tokens against the opened folder, never another checkout.
-      additional_settings:
-        python-envs.workspaceSearchPaths:
-        - ./.venv
-        terminal.integrated.env.linux:
-          PATH: ${workspaceFolder}/.venv/bin:${env:PATH}
-          VIRTUAL_ENV: ${workspaceFolder}/.venv
-        ruff.interpreter:
-        - ${workspaceFolder}/.venv/bin/python
-        ruff.path:
-        - ${workspaceFolder}/.venv/bin/ruff
-      # Canonical .vscode/settings.json content injected with owner semantics:
-      # scalar/list keys and artifact maps are exact; explicitly declared
-      # non-artifact maps retain project extensions. Recursive "**" venv search
-      # globs are forbidden: they make
-      # the Python Environments locator (pet) walk entire repository trees and
-      # hang interpreter discovery on large monorepos.
-      scalar_settings:
-        editor.mouseWheelZoom: true
-        explorer.excludeGitIgnore: true
-        files.autoSave: afterDelay
-        search.useIgnoreFiles: true
-        search.useGlobalIgnoreFiles: false
-        search.useParentIgnoreFiles: false
-        telemetry.feedback.enabled: false
-        python.analysis.addExtraPathsForPythonProjects: false
-        python.analysis.autoFormatStrings: true
-        python.analysis.autoImportCompletions: true
-        python.analysis.completeFunctionParens: true
-        python.analysis.diagnosticMode: workspace
-        python.analysis.diagnosticsSource: Pylance + Pyright
-        python.analysis.displayEnglishDiagnostics: true
-        python.analysis.enableAsyncProgram: false
-        python.analysis.enableExternalTypeServer: false
-        python.analysis.enableParallelIndexing: false
-        python.analysis.enablePydanticSupport: true
-        python.analysis.enablePyreflyShadowExperiment: false
-        python.analysis.enablePyreflyNotification: false
-        python.analysis.enablePyreflyNotificationForAll: false
-        python.analysis.enableSnippetExtraTelemetry: false
-        python.analysis.findRefsInBackgroundThread: false
-        python.analysis.generateWithTypeAnnotation: true
-        python.analysis.gotoOverrideCodeLens: true
-        python.analysis.includeAliasesFromUserFiles: true
-        python.analysis.includeExtraPathSymbolsInSymbolSearch: true
-        python.analysis.includeVenvInWorkspaceSymbols: false
-        python.analysis.indexing: true
-        python.analysis.inlayHints.callArgumentNames: all
-        python.analysis.inlayHints.functionReturnTypes: true
-        python.analysis.inlayHints.pytestParameters: true
-        python.analysis.inlayHints.variableTypes: true
-        python.analysis.languageServerBackend: default
-        python.analysis.languageServerMode: default
-        python.analysis.logLevel: Information
-        python.analysis.pyrightVersion: fromEnvironment
-        python.analysis.referencesCodeLens: true
-        python.analysis.renameInDocstrings: true
-        python.analysis.showOnlyDirectDependenciesInAutoImport: false
-        python.analysis.supportDocstringTemplate: true
-        python.analysis.useDefaultExcludes: true
-        # Each project's nearest Pyright configuration owns its import roots.
-        # Attached projects retain the opened workspace's shared interpreter.
-        python.analysis.useNearestConfiguration: true
-        python.analysis.usePerProjectEnvironments: false
-        python.analysis.userFileIndexingLimit: -1
-        python.defaultInterpreterPath: ${workspaceFolder}/.venv/bin/python
-        python.languageServer: Pylance
-        python.pyrefly.diagnosticMode: workspace
-        python.pyrefly.disableLanguageServices: true
-        python.pyrefly.disableTypeErrors: false
-        python.pyrefly.syncNotebooks: false
-        python.testing.pytestEnabled: false
-        python.testing.unittestEnabled: false
-        python.terminal.activateEnvInCurrentTerminal: true
-        python.terminal.activateEnvironment: true
-        python.useEnvironmentsExtension: true
-        ruff.configurationPreference: filesystemFirst
-        ruff.format.preview: true
-        ruff.importStrategy: fromEnvironment
-        ruff.lint.preview: true
-        pyrefly.lspPath: ${workspaceFolder}/.venv/bin/pyrefly
-        markdownlint.configFile: .markdownlint.json
-        shellcheck.useWorkspaceRootAsCwd: true
-        shellcheck.useRepositoryRootAsCwd: true
-        git.autoRepositoryDetection: subFolders
-        git.detectSubmodules: true
-        git.detectSubmodulesLimit: 100
-        git.openRepositoryInParentFolders: always
-        git.repositoryScanMaxDepth: 2
-        githubPullRequests.autoRepositoryDetection: true
-        githubPullRequests.ignoreSubmodules: false
-      list_settings:
-        markdownlint.lintWorkspaceGlobs:
-        - "!**/.git/**"
-        - "!**/.planning/**"
-        - "!**/.reports/**"
-        - "!**/.venv/**"
-        - "!**/*.code-search"
-        - "!**/bower_components/**"
-        - "!**/build/**"
-        - "!**/dist/**"
-        - "!**/node_modules/**"
-        - "!**/output/**"
-        - "!**/tmp/**"
-        - "!**/vendor/**"
-        - "**/*.{md,mkd,mdwn,mdown,markdown,markdn,mdtxt,mdtext,workbook}"
-        yaml.disableSchemaDetection:
-        - "**/.github/workflows/*.yml"
-        - "**/.github/workflows/*.yaml"
-        - "**/.gitea/workflows/*.yml"
-        - "**/.gitea/workflows/*.yaml"
-        - "**/.forgejo/workflows/*.yml"
-        - "**/.forgejo/workflows/*.yaml"
+      # Ordered key/value pairs accept every extension setting and JSON value.
+      # Layer composition appends pairs; the final occurrence replaces the whole value.
+      # Environment tokens resolve against the opened workspace or standalone checkout.
+      settings:
+      - [python-envs.workspaceSearchPaths, [./.venv]]
+      - [terminal.integrated.env.linux, {PATH: '${workspaceFolder}/.venv/bin:${env:PATH}', VIRTUAL_ENV: '${workspaceFolder}/.venv'}]
+      - [ruff.interpreter, ['${workspaceFolder}/.venv/bin/python']]
+      - [ruff.path, ['${workspaceFolder}/.venv/bin/ruff']]
+      - [editor.mouseWheelZoom, true]
+      - [explorer.excludeGitIgnore, true]
+      - [files.autoSave, afterDelay]
+      - [search.useIgnoreFiles, true]
+      - [search.useGlobalIgnoreFiles, false]
+      - [search.useParentIgnoreFiles, false]
+      - [telemetry.feedback.enabled, false]
+      - [python.analysis.addExtraPathsForPythonProjects, false]
+      - [python.analysis.autoFormatStrings, true]
+      - [python.analysis.autoImportCompletions, true]
+      - [python.analysis.completeFunctionParens, true]
+      - [python.analysis.diagnosticMode, workspace]
+      - [python.analysis.diagnosticsSource, Pylance + Pyright]
+      - [python.analysis.displayEnglishDiagnostics, true]
+      - [python.analysis.enableAsyncProgram, false]
+      - [python.analysis.enableExternalTypeServer, false]
+      - [python.analysis.enableParallelIndexing, false]
+      - [python.analysis.enablePydanticSupport, true]
+      - [python.analysis.enablePyreflyShadowExperiment, false]
+      - [python.analysis.enablePyreflyNotification, false]
+      - [python.analysis.enablePyreflyNotificationForAll, false]
+      - [python.analysis.enableSnippetExtraTelemetry, false]
+      - [python.analysis.findRefsInBackgroundThread, false]
+      - [python.analysis.generateWithTypeAnnotation, true]
+      - [python.analysis.gotoOverrideCodeLens, true]
+      - [python.analysis.includeAliasesFromUserFiles, true]
+      - [python.analysis.includeExtraPathSymbolsInSymbolSearch, true]
+      - [python.analysis.includeVenvInWorkspaceSymbols, false]
+      - [python.analysis.indexing, true]
+      - [python.analysis.inlayHints.callArgumentNames, all]
+      - [python.analysis.inlayHints.functionReturnTypes, true]
+      - [python.analysis.inlayHints.pytestParameters, true]
+      - [python.analysis.inlayHints.variableTypes, true]
+      - [python.analysis.languageServerBackend, default]
+      - [python.analysis.languageServerMode, default]
+      - [python.analysis.logLevel, Information]
+      - [python.analysis.pyrightVersion, fromEnvironment]
+      - [python.analysis.referencesCodeLens, true]
+      - [python.analysis.renameInDocstrings, true]
+      - [python.analysis.showOnlyDirectDependenciesInAutoImport, false]
+      - [python.analysis.supportDocstringTemplate, true]
+      - [python.analysis.useDefaultExcludes, true]
+      - [python.analysis.useNearestConfiguration, false]
+      - [python.analysis.usePerProjectEnvironments, false]
+      - [python.analysis.userFileIndexingLimit, -1]
+      - [python.defaultInterpreterPath, '${workspaceFolder}/.venv/bin/python']
+      - [python.languageServer, Pylance]
+      - [python.pyrefly.diagnosticMode, workspace]
+      - [python.pyrefly.disableLanguageServices, true]
+      - [python.pyrefly.disableTypeErrors, false]
+      - [python.pyrefly.syncNotebooks, false]
+      - [python.testing.pytestEnabled, false]
+      - [python.testing.unittestEnabled, false]
+      - [python.terminal.activateEnvInCurrentTerminal, true]
+      - [python.terminal.activateEnvironment, true]
+      - [python.useEnvironmentsExtension, true]
+      - [ruff.configurationPreference, filesystemFirst]
+      - [ruff.format.preview, true]
+      - [ruff.importStrategy, fromEnvironment]
+      - [ruff.lint.preview, true]
+      - [pyrefly.lspPath, '${workspaceFolder}/.venv/bin/pyrefly']
+      - [markdownlint.configFile, .markdownlint.json]
+      - [shellcheck.useWorkspaceRootAsCwd, true]
+      - [shellcheck.useRepositoryRootAsCwd, true]
+      - [git.autoRepositoryDetection, subFolders]
+      - [git.detectSubmodules, true]
+      - [git.detectSubmodulesLimit, 100]
+      - [git.openRepositoryInParentFolders, always]
+      - [git.repositoryScanMaxDepth, 2]
+      - [githubPullRequests.autoRepositoryDetection, true]
+      - [githubPullRequests.ignoreSubmodules, false]
+      - [markdownlint.lintWorkspaceGlobs, ['!**/.git/**', '!**/.planning/**', '!**/.reports/**', '!**/.venv/**',
+          '!**/*.code-search', '!**/bower_components/**', '!**/build/**', '!**/dist/**', '!**/node_modules/**',
+          '!**/output/**', '!**/tmp/**', '!**/vendor/**', '**/*.{md,mkd,mdwn,mdown,markdown,markdn,mdtxt,mdtext,workbook}']]
+      - [yaml.disableSchemaDetection, ['**/.github/workflows/*.yml', '**/.github/workflows/*.yaml', '**/.gitea/workflows/*.yml',
+          '**/.gitea/workflows/*.yaml', '**/.forgejo/workflows/*.yml', '**/.forgejo/workflows/*.yaml']]
       map_union_settings:
-        "[python]":
+        '[python]':
           diffEditor.ignoreTrimWhitespace: true
           editor.defaultFormatter: charliermarsh.ruff
           editor.formatOnSave: false
-        # rumdl owns markdown formatting (markdown-format gate: `rumdl fmt`);
-        # the editor extension reads the same generated .markdownlint.json.
-        # Save stays manual: the canonical mutation surface is `make fmt`.
-        "[markdown]":
+        '[markdown]':
           editor.defaultFormatter: rvben.rumdl
           editor.formatOnSave: false
       stripped_keys:
-      # Pylance emits settingsNotOverridable diagnostics (severity=warning) when
-      # these keys appear in .vscode/settings.json alongside a [tool.pyright] section
-      # in pyproject.toml. Each key below is owned canonically by [tool.pyright]
-      # in every governed package; the codegen actively strips them from the
-      # settings projection so the file stays green with no warnings.
       - python.analysis.typeCheckingMode
       - python.analysis.diagnosticSeverityOverrides
       - python.analysis.include
       - python.analysis.exclude
       - python.analysis.extraPaths
       - python.analysis.useLibraryCodeForTypes
-      # The current Ruff extension always uses its native server.
       - ruff.nativeServer
       stripped_map_keys:
-        "[python]":
+        '[python]':
         - editor.codeActionsOnSave.source.organizeImports
-
-      # Declarative project-layout SSOT consumed by
-      # the layout engine (codegen/layout.py) and the layout quality gate. Every
-      # move/archive/gitignore decision derives from this section — the engine
-      # carries zero hardcoded layout knowledge. Every violation fails the check.
     layout:
       version: 1
       # Archive-not-delete root: archived entries land in <archive_root>/<project>/.

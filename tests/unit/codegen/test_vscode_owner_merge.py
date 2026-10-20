@@ -11,10 +11,11 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraConfig, c, config, infra
+from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.services._codegen import (
     FlextInfraCodegenVscodeMixin as FlextInfraCodegen,
 )
-from tests import m, tm, u
+from tests import m, t, tm, u
 
 
 class TestsFlextInfraVscodeOwnerMerge:
@@ -34,8 +35,8 @@ class TestsFlextInfraVscodeOwnerMerge:
             ),
         )
         tm.that(
-            baseline.additional_settings,
-            eq=config.Infra.codegen.vscode.additional_settings,
+            FlextInfraCodegen.vscode_settings(baseline),
+            eq=FlextInfraCodegen.vscode_settings(config.Infra.codegen.vscode),
         )
         tm.ok(
             u.Cli.yaml_dump(
@@ -44,9 +45,7 @@ class TestsFlextInfraVscodeOwnerMerge:
                     "Infra": {
                         "codegen": {
                             "vscode": {
-                                "additional_settings": dict(
-                                    baseline.additional_settings
-                                ),
+                                "settings": baseline.settings,
                             },
                         },
                     },
@@ -54,7 +53,10 @@ class TestsFlextInfraVscodeOwnerMerge:
             ),
         )
         explicit = tm.ok(FlextInfraCodegen.load_vscode_spec(root))
-        tm.that(explicit, eq=baseline)
+        tm.that(
+            FlextInfraCodegen.vscode_settings(explicit),
+            eq=FlextInfraCodegen.vscode_settings(baseline),
+        )
         tm.that(
             tm.ok(
                 FlextInfraCodegen.render_vscode_settings(
@@ -186,29 +188,40 @@ class TestsFlextInfraVscodeOwnerMerge:
         tm.that(corrected, eq={"Infra": {"values": {"nested": ["second"]}}})
 
     @staticmethod
-    def test_portable_declaration_rejects_unrepresentable_list_replacement(
+    @pytest.mark.parametrize("replacement", [["child", "parent"], []])
+    def test_portable_declaration_replaces_lists_in_exact_order(
         tmp_path: Path,
+        replacement: t.JsonValue,
     ) -> None:
-        """The config concatenation contract cannot silently remove prior entries."""
+        """A setting pair replaces an array completely, including its empty value."""
         key = "extension.scopes"
         spec = m.Infra.CodegenVscodeSpec.model_validate({
             **config.Infra.codegen.vscode.model_dump(),
-            "list_settings": {key: ("parent",)},
+            "settings": (
+                *config.Infra.codegen.vscode.settings,
+                (key, ["parent", "retired"]),
+            ),
         })
-        planned = FlextInfraCodegen.vscode_declaration_delta(
-            tmp_path,
-            {key: ["child"]},
-            spec=spec,
+        planned = tm.ok(
+            FlextInfraCodegen.vscode_declaration_delta(
+                tmp_path,
+                {key: replacement},
+                spec=spec,
+            )
         )
-        tm.fail(planned)
-        tm.that(planned.exception, is_=ValueError)
+        tm.that(planned.values, eq={"settings": [[key, replacement]]})
+        composed = tm.ok(FlextInfraCodegen.compose_vscode_delta(spec, planned))
+        rendered = tm.ok(
+            FlextInfraCodegen.render_vscode_settings(tmp_path, spec=composed)
+        )
+        tm.that(u.Tests.json_payload(rendered)[key], eq=replacement)
 
     @staticmethod
     def test_scoped_config_uses_project_then_local_layers(tmp_path: Path) -> None:
         """Two injected repositories retain independent committed and local choices."""
         key = "python.analysis.userFileIndexingLimit"
         baseline = u.type_adapter(int).validate_python(
-            config.Infra.codegen.vscode.scalar_settings[key],
+            FlextInfraCodegen.vscode_settings(config.Infra.codegen.vscode)[key],
         )
         project_choice = baseline + 7
         local_choice = baseline + 13
@@ -221,11 +234,7 @@ class TestsFlextInfraVscodeOwnerMerge:
             tm.ok(
                 u.Cli.yaml_dump(
                     directory / c.Infra.CODEGEN_CONFIG_FILENAME,
-                    {
-                        "Infra": {
-                            "codegen": {"vscode": {"scalar_settings": {key: chosen}}}
-                        }
-                    },
+                    {"Infra": {"codegen": {"vscode": {"settings": [[key, chosen]]}}}},
                 ),
             )
         local = (
@@ -238,17 +247,13 @@ class TestsFlextInfraVscodeOwnerMerge:
         tm.ok(
             u.Cli.yaml_dump(
                 local,
-                {
-                    "Infra": {
-                        "codegen": {"vscode": {"scalar_settings": {key: local_choice}}}
-                    }
-                },
+                {"Infra": {"codegen": {"vscode": {"settings": [[key, local_choice]]}}}},
             ),
         )
         chosen = tm.ok(FlextInfraCodegen.load_vscode_spec(first))
         other = tm.ok(FlextInfraCodegen.load_vscode_spec(second))
-        tm.that(chosen.scalar_settings[key], eq=local_choice)
-        tm.that(other.scalar_settings[key], eq=other_choice)
+        tm.that(FlextInfraCodegen.vscode_settings(chosen)[key], eq=local_choice)
+        tm.that(FlextInfraCodegen.vscode_settings(other)[key], eq=other_choice)
         tm.that(
             FlextInfraConfig.config_sources_for_repository(
                 first,
@@ -258,17 +263,97 @@ class TestsFlextInfraVscodeOwnerMerge:
         )
 
     @staticmethod
+    def test_generic_setting_layers_replace_values_without_merging_arrays(
+        tmp_path: Path,
+    ) -> None:
+        """Project and local pairs retain complete, last-pair-owned JSON values."""
+        root = tmp_path / "project"
+        directory = root / c.CONFIG_DIR_NAME
+        directory.mkdir(parents=True)
+        key = "extension.scopes"
+        project = directory / c.Infra.CODEGEN_CONFIG_FILENAME
+        local = project.with_name(f"{project.stem}.local.yaml")
+        tm.ok(
+            u.Cli.yaml_dump(
+                project,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "vscode": {
+                                "settings": [
+                                    [key, ["project", "removed"]],
+                                    ["operator.payload", {"removed": [1, 2]}],
+                                ]
+                            }
+                        }
+                    }
+                },
+            )
+        )
+        values: t.JsonMapping = {
+            key: [],
+            "operator.payload": {
+                "enabled": True,
+                "ratio": 0.5,
+                "unset": None,
+                "items": [{"name": "second"}, {"name": "first"}],
+            },
+        }
+        tm.ok(
+            u.Cli.yaml_dump(
+                local,
+                {"Infra": {"codegen": {"vscode": {"settings": list(values.items())}}}},
+            )
+        )
+        elected = tm.ok(FlextInfraCodegen.load_vscode_spec(root))
+        rendered = tm.ok(FlextInfraCodegen.render_vscode_settings(root, spec=elected))
+        document = u.Tests.json_payload(rendered)
+        for name, value in values.items():
+            tm.that(FlextInfraCodegen.vscode_settings(elected)[name], eq=value)
+            tm.that(document[name], eq=value)
+
+    @staticmethod
+    def test_generic_declaration_delta_round_trips_null_and_nested_values(
+        tmp_path: Path,
+    ) -> None:
+        """Portable deltas preserve unfamiliar JSON values, including explicit null."""
+        values: t.JsonMapping = {
+            "operator.empty": None,
+            "operator.payload": {
+                "enabled": False,
+                "weight": 1.25,
+                "rules": [{"name": "last"}, {"name": "first"}],
+            },
+        }
+        specification = config.Infra.codegen.vscode
+        delta = tm.ok(
+            FlextInfraCodegen.vscode_declaration_delta(
+                tmp_path, values, spec=specification
+            )
+        )
+        composed = tm.ok(FlextInfraCodegen.compose_vscode_delta(specification, delta))
+        rendered = tm.ok(
+            FlextInfraCodegen.render_vscode_settings(tmp_path, spec=composed)
+        )
+        document = u.Tests.json_payload(rendered)
+        for key, value in values.items():
+            tm.that(document[key], eq=value)
+
+    @staticmethod
     @pytest.mark.slow
     def test_generation_plans_missing_versioned_editor_settings(
         tmp_path: Path,
     ) -> None:
         """The public generation plan includes an absent versioned editor file."""
         root = tmp_path / "project"
-        workspace = u.Tests.standalone_workspace(root)
+        u.Tests.standalone_workspace(root)
         u.Tests.copy_tracked_mise_seeds(root)
-        plan = u.Tests.conform_plan(
-            root, workspace, what=c.Infra.CodegenConformSurface.EDITOR
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            what=c.Infra.CodegenConformSurface.EDITOR,
+            scope=c.Infra.CodegenConformScope.SELF,
         )
+        plan = tm.ok(FlextInfraCodegenConform(repository_root=root).plan(request))
         governed = next(
             item
             for item in config.Infra.codegen.managed_files
@@ -351,9 +436,7 @@ class TestsFlextInfraVscodeOwnerMerge:
                     "Infra": {
                         "codegen": {
                             "vscode": {
-                                "scalar_settings": {
-                                    "operator.invalid": {"cannot": "be a scalar"},
-                                },
+                                "settings": [["", {"invalid": "empty key"}]],
                             },
                         },
                     },
@@ -370,7 +453,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         )
         tm.fail(rejected)
         tm.that(rejected.exception, is_=ValueError, msg=rejected.error)
-        with pytest.raises(ValueError, match=r"operator\.invalid") as raised:
+        with pytest.raises(ValueError, match="settings") as raised:
             rejected.unwrap()
         tm.that(raised.value is rejected.exception, eq=True)
         tm.that(settings_path.read_text(encoding=c.DEFAULT_ENCODING), eq=rendered)
@@ -470,10 +553,10 @@ class TestsFlextInfraVscodeOwnerMerge:
         path.write_text(original, encoding=c.DEFAULT_ENCODING)
         spec = config.Infra.codegen.vscode.model_copy(
             update={
-                "scalar_settings": {
-                    **config.Infra.codegen.vscode.scalar_settings,
-                    "editor.fontLigatures": True,
-                },
+                "settings": (
+                    *config.Infra.codegen.vscode.settings,
+                    ("editor.fontLigatures", True),
+                ),
             },
         )
         rendered = tm.ok(
@@ -505,7 +588,11 @@ class TestsFlextInfraVscodeOwnerMerge:
 
         tm.ok(result)
         doc = u.Cli.JSON_MAPPING_ADAPTER.validate_json(result.value)
-        for key, expected_value in config.Infra.codegen.vscode.scalar_settings.items():
+        for key, expected_value in FlextInfraCodegen.vscode_settings(
+            config.Infra.codegen.vscode
+        ).items():
+            if key in config.Infra.codegen.vscode.stripped_keys:
+                continue
             if key == "python.defaultInterpreterPath":
                 interpreter = u.type_adapter(str).validate_python(doc[key])
                 projected = root / interpreter.removeprefix("${workspaceFolder}/")
@@ -524,7 +611,9 @@ class TestsFlextInfraVscodeOwnerMerge:
         search_paths_key = c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
         tm.that(
             doc[search_paths_key],
-            eq=config.Infra.codegen.vscode.additional_settings[search_paths_key],
+            eq=FlextInfraCodegen.vscode_settings(config.Infra.codegen.vscode)[
+                search_paths_key
+            ],
         )
 
     @staticmethod
@@ -638,9 +727,11 @@ class TestsFlextInfraVscodeOwnerMerge:
         original = path.read_text(encoding=c.DEFAULT_ENCODING)
         rendered = tm.ok(FlextInfraCodegen.render_vscode_settings(member))
         doc = u.Cli.JSON_MAPPING_ADAPTER.validate_json(rendered)
-        for key, expected in config.Infra.codegen.vscode.scalar_settings.items():
-            tm.that(doc[key], eq=expected)
-        for key, expected in config.Infra.codegen.vscode.additional_settings.items():
+        for key, expected in FlextInfraCodegen.vscode_settings(
+            config.Infra.codegen.vscode
+        ).items():
+            if key in config.Infra.codegen.vscode.stripped_keys:
+                continue
             tm.that(doc[key], eq=expected)
         tm.that(
             doc["operator.note"],
@@ -655,8 +746,8 @@ class TestsFlextInfraVscodeOwnerMerge:
             ),
         )
         tm.that(
-            migrated.values["additional_settings"],
-            eq={"operator.note": doc["operator.note"]},
+            migrated.values["settings"],
+            eq=[["operator.note", doc["operator.note"]]],
         )
         standalone = tmp_path / "standalone"
         config_dir = standalone / c.CONFIG_DIR_NAME
@@ -675,13 +766,15 @@ class TestsFlextInfraVscodeOwnerMerge:
         standalone_doc = u.Cli.JSON_MAPPING_ADAPTER.validate_json(standalone_rendered)
         tm.that(
             standalone_doc["terminal.integrated.env.linux"],
-            eq=config.Infra.codegen.vscode.additional_settings[
+            eq=FlextInfraCodegen.vscode_settings(config.Infra.codegen.vscode)[
                 "terminal.integrated.env.linux"
             ],
         )
         tm.that(
             standalone_doc["ruff.interpreter"],
-            eq=config.Infra.codegen.vscode.additional_settings["ruff.interpreter"],
+            eq=FlextInfraCodegen.vscode_settings(config.Infra.codegen.vscode)[
+                "ruff.interpreter"
+            ],
         )
         tm.that(standalone_doc["operator.note"], eq=doc["operator.note"])
         tm.that(

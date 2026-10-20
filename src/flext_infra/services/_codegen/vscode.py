@@ -46,6 +46,16 @@ class FlextInfraCodegenVscodeMixin:
             lambda inputs: inputs.spec.vscode,
         )
 
+    @staticmethod
+    def vscode_settings(spec: m.Infra.CodegenVscodeSpec) -> t.JsonMapping:
+        """Elect ordered declaration pairs without changing array order.
+
+        Returns:
+            Each setting's complete value from its final declared pair.
+
+        """
+        return u.Infra.configuration_pairs(spec.settings)
+
     @classmethod
     def vscode_local_declaration_delta(
         cls,
@@ -70,8 +80,7 @@ class FlextInfraCodegenVscodeMixin:
         retired = {
             key
             for key in original.keys() - current.keys()
-            if key not in spec.scalar_settings
-            and key not in spec.list_settings
+            if key not in cls.vscode_settings(spec)
             and key not in spec.map_union_settings
             and key not in spec.stripped_keys
             and key not in cls._artifact_settings(loaded.value.spec)
@@ -138,105 +147,22 @@ class FlextInfraCodegenVscodeMixin:
         expected: t.JsonMapping,
         codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.MutableJsonMapping]:
-        """Classify portable settings into the four representable delta buckets.
+        """Extract complete values as pairs under the single settings owner.
 
         Returns:
-            The minimal override buckets the canonical merge can reproduce.
+            Ordered setting pairs reproducing the portable document's changes.
 
         """
         artifact_settings = cls._artifact_settings(codegen)
-        buckets: dict[str, dict[str, t.JsonValue]] = {
-            "scalar_settings": {},
-            "list_settings": {},
-            "map_union_settings": {},
-            "additional_settings": {},
-        }
-        for key, value in portable.items():
-            classified = cls._classify_vscode_setting(
-                key,
-                value,
-                spec,
-                expected,
-                artifact_settings,
-            )
-            if classified.failure:
-                return r[t.MutableJsonMapping].from_failure(classified)
-            selected, present = classified.value
-            if present and selected is not None:
-                field, normalized = selected
-                buckets[field][key] = normalized
-        deltas: t.MutableJsonMapping = {}
-        for field, values in buckets.items():
-            if values:
-                deltas[field] = values
+        pairs: t.JsonValueList = [
+            [key, value]
+            for key, value in sorted(portable.items())
+            if key not in spec.stripped_keys
+            and key not in artifact_settings
+            and (key not in expected or value != expected[key])
+        ]
+        deltas: t.MutableJsonMapping = {"settings": pairs} if pairs else {}
         return r[t.MutableJsonMapping].ok(deltas)
-
-    @classmethod
-    def _classify_vscode_setting(
-        cls,
-        key: str,
-        value: t.JsonValue,
-        spec: m.Infra.CodegenVscodeSpec,
-        expected: t.JsonMapping,
-        artifact_settings: t.MappingKV[str, t.MappingKV[str, str | bool]],
-    ) -> p.Result[t.Pair[tuple[str, t.JsonValue] | None, bool]]:
-        """Classify one portable setting into its representable delta bucket.
-
-        Returns:
-            A bucket assignment and explicit presence flag; absence is carried
-            inside a nonempty tuple when the setting is already owned.
-
-        """
-        result_type = r[t.Pair[tuple[str, t.JsonValue] | None, bool]]
-        if (
-            key in spec.stripped_keys
-            or key in artifact_settings
-            or (key in expected and value == expected[key])
-        ):
-            return result_type.ok((None, False))
-        if key in spec.scalar_settings:
-            return result_type.ok((("scalar_settings", value), True))
-        if key in spec.list_settings:
-            baseline = list(spec.list_settings[key])
-            if not isinstance(value, list) or value[: len(baseline)] != baseline:
-                error = ValueError(
-                    "editor list override cannot be represented by "
-                    f"configuration concatenation: {key}",
-                )
-                return result_type.fail(str(error), exception=error)
-            return result_type.ok((("list_settings", value[len(baseline) :]), True))
-        if key in spec.map_union_settings:
-            return cls._union_setting_override(key, value, spec).map(
-                lambda assignment: (assignment, True),
-            )
-        return result_type.ok((("additional_settings", value), True))
-
-    @staticmethod
-    def _union_setting_override(
-        key: str,
-        value: t.JsonValue,
-        spec: m.Infra.CodegenVscodeSpec,
-    ) -> p.Result[tuple[str, t.JsonValue]]:
-        """Return the map-union override value for one union setting.
-
-        Returns:
-            The ``map_union_settings`` bucket assignment, or a representability
-            failure when the value is not a mapping.
-
-        """
-        result_type = r[tuple[str, t.JsonValue]]
-        if not isinstance(value, Mapping):
-            error = ValueError(f"editor union setting must be a mapping: {key}")
-            return result_type.fail(str(error), exception=error)
-        baseline_map = spec.map_union_settings[key]
-        return result_type.ok((
-            "map_union_settings",
-            {
-                item_key: item_value
-                for item_key, item_value in value.items()
-                if item_key not in baseline_map or item_value != baseline_map[item_key]
-            },
-        ))
 
     @staticmethod
     def compose_vscode_delta(
@@ -300,7 +226,7 @@ class FlextInfraCodegenVscodeMixin:
         )
         if applied.failure:
             return r[str].from_failure(applied)
-        serialized = u.Cli.json_dumps(dict(settings), indent=2)
+        serialized = u.Cli.json_dumps(dict(settings), indent=2, sort_keys=True)
         if serialized.failure:
             return r[str].from_failure(serialized)
         return r[str].ok(serialized.value + "\n")
@@ -473,20 +399,12 @@ class FlextInfraCodegenVscodeMixin:
                 return r[bool].from_failure(loaded)
             codegen = loaded.value.spec
         spec = codegen.vscode if spec is None else spec
-        additional_changed = False
-        for key, value in spec.additional_settings.items():
+        changed = cls._apply_union_settings(settings, spec.map_union_settings)
+        for key, value in cls.vscode_settings(spec).items():
             normalized = FlextRuntime.normalize_to_json_value(value)
-            if settings.get(key) != normalized:
+            if key not in settings or settings[key] != normalized:
                 settings[key] = normalized
-                additional_changed = True
-        changed = cls._apply_enforced_settings(
-            settings,
-            scalar_settings=spec.scalar_settings,
-            list_settings=spec.list_settings,
-            repository_root=repository_root,
-        )
-        if changed.failure:
-            return r[bool].from_failure(changed)
+                changed = True
         # The three exclude maps are complete projections of the artifact SSOT.
         # Replacing them removes retired artifacts instead of preserving stale
         # generated keys forever. Only explicitly declared non-artifact maps use
@@ -519,11 +437,7 @@ class FlextInfraCodegenVscodeMixin:
                     settings[key] = FlextRuntime.normalize_to_json_value(retained)
                     stripped_changed = True
         return r[bool].ok(
-            cls._apply_union_settings(settings, spec.map_union_settings)
-            or artifacts_changed
-            or stripped_changed
-            or changed.value
-            or additional_changed,
+            artifacts_changed or stripped_changed or changed,
         )
 
     @staticmethod
@@ -560,49 +474,10 @@ class FlextInfraCodegenVscodeMixin:
                 changed = True
         return changed
 
-    @classmethod
-    def _apply_enforced_settings(
-        cls,
-        settings: t.MutableJsonMapping,
-        *,
-        scalar_settings: Mapping[str, str | bool | int],
-        list_settings: Mapping[str, t.VariadicTuple[str]],
-        repository_root: Path,
-    ) -> p.Result[bool]:
-        """Enforce exact scalar and list VS Code keys from the codegen config.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        changed = False
-        for key, value in scalar_settings.items():
-            normalized = FlextRuntime.normalize_to_json_value(value)
-            if settings.get(key) == normalized:
-                continue
-            settings[key] = normalized
-            changed = True
-        for key, list_value in list_settings.items():
-            entries = cls._resolve_list_setting(
-                key,
-                list_value,
-                repository_root=repository_root,
-            )
-            if entries.failure:
-                return r[bool].from_failure(entries)
-            canonical: list[t.JsonValue] = [
-                FlextRuntime.normalize_to_json_value(entry) for entry in entries.value
-            ]
-            if settings.get(key) == canonical:
-                continue
-            settings[key] = canonical
-            changed = True
-        return r[bool].ok(changed)
-
     @staticmethod
     def _apply_union_settings(
         settings: t.MutableJsonMapping,
-        map_union_settings: Mapping[str, Mapping[str, str | bool | int]],
+        map_union_settings: Mapping[str, t.JsonMapping],
     ) -> bool:
         """Union-merge canonical map keys over existing project entries.
 
@@ -633,45 +508,6 @@ class FlextInfraCodegenVscodeMixin:
             settings[key] = merged
             changed = True
         return changed
-
-    @staticmethod
-    def _apply_exact_map_settings(
-        settings: t.MutableJsonMapping,
-        exact_maps: Mapping[str, Mapping[str, str | bool | int]],
-    ) -> bool:
-        """Replace generated maps so removed SSOT entries leave no residue.
-
-        Returns:
-            The resulting ``bool``.
-
-        """
-        changed = False
-        for key, canonical_map in exact_maps.items():
-            exact = {
-                name: FlextRuntime.normalize_to_json_value(value)
-                for name, value in canonical_map.items()
-            }
-            if settings.get(key) == exact:
-                continue
-            settings[key] = exact
-            changed = True
-        return changed
-
-    @staticmethod
-    def _resolve_list_setting(
-        key: str,
-        base_entries: t.VariadicTuple[str],
-        *,
-        repository_root: Path,
-    ) -> p.Result[t.VariadicTuple[str]]:
-        """Return one canonical list without consulting repository topology.
-
-        Returns:
-            One canonical list without consulting repository topology.
-
-        """
-        del key, repository_root
-        return r[t.VariadicTuple[str]].ok(base_entries)
 
 
 __all__: list[str] = ["FlextInfraCodegenVscodeMixin"]

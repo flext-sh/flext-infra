@@ -25,6 +25,32 @@ from flext_infra._utilities import FlextInfraUtilitiesGit
 class FlextInfraUtilitiesProjectManagedArtifacts:
     """Single owner for ``ManagedArtifacts`` across ``config/*.yaml`` files."""
 
+    @staticmethod
+    def configuration_pairs(
+        entries: t.SequenceOf[t.Pair[str, t.JsonValue]],
+    ) -> t.JsonDict:
+        """Elect ordered configuration pairs without changing their values.
+
+        Returns:
+            One value per key, with the last declared pair taking precedence.
+
+        """
+        return dict(entries)
+
+    @staticmethod
+    def native_tool_settings(
+        document: m.Infra.ToolConfigDocument, table: str
+    ) -> t.JsonDict:
+        """Read a native tool table from the shared option catalog.
+
+        Returns:
+            The elected JSON-compatible options for the declared table.
+
+        """
+        return FlextInfraUtilitiesProjectManagedArtifacts.configuration_pairs(
+            document.settings[table]
+        )
+
     @classmethod
     def load_codegen_inputs(
         cls,

@@ -891,12 +891,15 @@ class FlextInfraMisePublication:
         )
         if effects.failure:
             return effects
-        return u.Cli.atomic_verify_directory_queries(
-            directories,
-            topology,
-            publications=relevant,
-            directory_publications=directory_publications,
-        )
+        try:
+            return u.Cli.atomic_verify_directory_queries(
+                directories,
+                topology,
+                publications=relevant,
+                directory_publications=directory_publications,
+            )
+        except (OSError, ValueError) as exc:
+            return r[bool].fail(str(exc), exception=exc)
 
     @staticmethod
     def _tracking_prerequisites(

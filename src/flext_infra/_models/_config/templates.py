@@ -25,54 +25,17 @@ class FlextInfraConfigModelsTemplates:
     class CodegenVscodeSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed editor declarations shared by target and artifact planning."""
 
-        scalar_settings: Annotated[
-            Mapping[str, str | bool | int],
-            m.Field(description="VS Code scalar keys enforced on every project"),
-        ]
-        list_settings: Annotated[
-            Mapping[str, t.VariadicTuple[str]],
-            m.Field(description="VS Code list keys enforced on every project"),
-        ]
+        settings: Annotated[
+            t.VariadicTuple[t.Pair[t.NonEmptyStr, t.JsonValue]],
+            m.Field(description="Ordered VS Code key/value pairs; the last key wins"),
+        ] = ()
         map_union_settings: Annotated[
-            Mapping[str, Mapping[str, str | bool | int]],
-            m.Field(description="VS Code map keys union-merged over project settings"),
-        ]
-        additional_settings: Annotated[
-            t.JsonMapping,
-            m.Field(description="Portable project-owned extension declarations"),
+            Mapping[str, t.JsonMapping],
+            m.Field(description="VS Code objects union-merged over project settings"),
         ] = m.Field(
-            default_factory=flext_core.u.empty(TypeForm(t.JsonMapping)),
+            default_factory=flext_core.u.empty(TypeForm(Mapping[str, t.JsonMapping])),
             validate_default=True,
         )
-
-        @m.field_validator("additional_settings")
-        @classmethod
-        def _dedupe_additional_settings_lists(
-            cls,
-            value: t.JsonMapping,
-        ) -> t.JsonMapping:
-            """Deduplicate list values in order-declared extension settings.
-
-            Library defaults, runtime projections, and local overlays can
-            declare the same portable list key; layer composition concatenates
-            those declarations, so identical entries collapse here and a local
-            redeclaration of a default stays idempotent.
-
-            Returns:
-                The normalized additional settings mapping.
-
-            """
-            normalized: t.JsonDict = {}
-            for key, entry in value.items():
-                if isinstance(entry, list):
-                    seen: t.JsonValueList = []
-                    for item in entry:
-                        if item not in seen:
-                            seen.append(item)
-                    normalized[key] = seen
-                else:
-                    normalized[key] = entry
-            return normalized
 
         stripped_keys: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
@@ -96,28 +59,34 @@ class FlextInfraConfigModelsTemplates:
         )
 
         @m.model_validator(mode="after")
-        def _validate_setting_ownership(self) -> Self:
-            """Reject extension declarations that compete with managed ownership.
+        def _validate_setting_keys(self) -> Self:
+            """Validate setting-key grammar without an extension-option registry.
 
             Returns:
-                The editor specification with one owner per setting.
+                The declaration with valid ordinary or language-override keys.
 
             Raises:
-                ValueError: If an additional setting redeclares a managed key.
+                ValueError: If a declared key contains invalid setting syntax.
 
             """
-            managed = (
-                set(self.scalar_settings)
-                | set(self.list_settings)
-                | set(self.map_union_settings)
-                | set(self.stripped_keys)
+            keys = (
+                *(key for key, _value in self.settings),
+                *self.map_union_settings,
+                *self.stripped_keys,
+                *self.stripped_map_keys,
             )
-            conflicting = managed.intersection(self.additional_settings)
-            if conflicting:
-                msg = "additional editor settings duplicate managed keys: " + ", ".join(
-                    sorted(conflicting),
+            for key in keys:
+                ordinary = key.split(".")
+                languages = key.removeprefix("[").removesuffix("]").split("][")
+                segments = (
+                    languages if key.startswith("[") and key.endswith("]") else ordinary
                 )
-                raise ValueError(msg)
+                if not all(
+                    segment and all(char.isalnum() or char in "_-+" for char in segment)
+                    for segment in segments
+                ):
+                    msg = f"invalid VS Code setting key: {key}"
+                    raise ValueError(msg)
             return self
 
     class CodegenVscodeDeclarationDelta(

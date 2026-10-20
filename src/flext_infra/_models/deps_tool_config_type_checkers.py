@@ -102,16 +102,6 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     ),
                 ),
             ]
-            workspace_config_discovery_globs: Annotated[
-                t.StrSequence,
-                m.Field(
-                    alias="workspace-config-discovery-globs",
-                    description=(
-                        "Workspace-only include globs that expose member "
-                        "configurations to Pylance discovery."
-                    ),
-                ),
-            ]
             default_excludes: Annotated[
                 t.StrSequence,
                 m.Field(
@@ -182,27 +172,6 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ),
             ]
 
-        boolean_settings: Annotated[
-            t.MappingKV[str, bool],
-            m.Field(
-                alias="boolean-settings",
-                description="Pyright boolean analysis options shared with the editor.",
-            ),
-        ]
-        strict_settings: Annotated[
-            t.StrMapping,
-            m.Field(
-                alias="strict-settings",
-                description="Pyright strict baseline options.",
-            ),
-        ]
-        extended_settings: Annotated[
-            t.StrMapping,
-            m.Field(
-                alias="extended-settings",
-                description="Pyright extended settings options.",
-            ),
-        ]
         path_rules: Annotated[
             FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.PathRulesConfig,
             m.Field(

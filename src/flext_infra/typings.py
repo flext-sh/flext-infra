@@ -34,6 +34,9 @@ class FlextInfraTypes(FlextCliTypes):
 
     Container = FlextInfraTypesCollections.Container
 
+    type PyrightScalarValue = str | bool | int
+    """Scalar value accepted by a Pyright setting."""
+
     class Infra(FlextInfraTypesAdapters, FlextInfraTypesRope, FlextInfraTypesBase):
         """Infrastructure-domain type aliases.
 

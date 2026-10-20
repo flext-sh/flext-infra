@@ -98,6 +98,9 @@ class FlextInfraPytestClock:
             immutable_output: Optional invocation-owned link to the staged inode.
             previous_output: Optional retained link to the previous completed artifact.
 
+        Raises:
+            OSError: If staging identity or atomic publication fails.
+
         """
         descriptor, name = tempfile.mkstemp(
             dir=output.parent,

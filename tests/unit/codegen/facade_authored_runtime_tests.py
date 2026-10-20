@@ -56,8 +56,10 @@ class TestsFlextInfraFacadeAuthoredRuntime:
 
     @staticmethod
     @pytest.mark.parametrize("directory", [False, True])
+    @pytest.mark.parametrize("descendant", ["child.py", "nested/child.py"])
     def test_negative_query_below_original_file_uses_native_ancestor_proof(
         tmp_path: Path,
+        descendant: str,
         *,
         directory: bool,
     ) -> None:
@@ -80,7 +82,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 )
                 for predicate in predicates:
                     tm.that(
-                        project.source_query(source / "child.py", predicate), eq=False
+                        project.source_query(source / descendant, predicate), eq=False
                     )
             tm.that(scope.receipt().inputs, eq=())
             tm.that(

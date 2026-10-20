@@ -42,8 +42,8 @@ class FlextInfraUtilitiesRopeImports:
         """Collect declared imports from Rope's parsed tree in source order.
 
         The parsed import nodes cover every lexical scope and exclude strings
-        and comments. Rope's import tables retain ownership of the resulting
-        records; occurrence inference is not needed to inventory declarations.
+        and comments. Rope's native factories own the resulting records without
+        reparsing declarations or inferring occurrences to inventory them.
 
         Args:
             project: The Rope project instance.
@@ -54,44 +54,61 @@ class FlextInfraUtilitiesRopeImports:
 
         Raises:
             ValueError: If a parsed import has no complete source span.
+            TypeError: If Rope returns a non-native syntax tree.
 
         """
         module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
             project,
             source,
         )
-        imports = sorted(
-            (
-                node
-                for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
-                    module.get_ast(),
-                )
-                if isinstance(node, ast.Import | ast.ImportFrom)
-            ),
-            key=lambda node: (node.lineno, node.col_offset),
-        )
+        tree = module.get_ast()
+        if not isinstance(tree, ast.AST):
+            msg = "Rope import inventory requires a native syntax tree"
+            raise TypeError(msg)
+        pending = [tree]
+        imports: list[t.Infra.PythonImportNode] = []
+        while pending:
+            node = pending.pop()
+            if isinstance(node, ast.Import | ast.ImportFrom):
+                imports.append(node)
+                continue
+            # Imports occur only in statements. Keep every statement container,
+            # including exception handlers and match cases, but not expressions.
+            pending.extend(
+                child
+                for child in ast.iter_child_nodes(node)
+                if isinstance(child, ast.stmt | ast.ExceptHandler | ast.match_case)
+            )
+        imports.sort(key=lambda node: (node.lineno, node.col_offset))
+        # AST columns are UTF-8 byte offsets; index the source once for every import.
+        source_lines = source.encode(c.DEFAULT_ENCODING).splitlines(keepends=True)
         statements: list[p.Infra.RopeImportStatement] = []
         for node in imports:
-            declaration = ast.get_source_segment(source, node)
-            if declaration is None:
+            if node.end_lineno is None or node.end_col_offset is None:
                 msg = "Rope import declaration has no complete source span"
                 raise ValueError(msg)
-            fragment = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
-                project,
-                declaration,
+            selected = source_lines[node.lineno - 1 : node.end_lineno]
+            if len(selected) == 1:
+                selected[0] = selected[0][node.col_offset : node.end_col_offset]
+            else:
+                selected[0] = selected[0][node.col_offset :]
+                selected[-1] = selected[-1][: node.end_col_offset]
+            declaration = b"".join(selected).decode(c.DEFAULT_ENCODING)
+            # Keep Rope's parser and source-line adapter on the same newline form.
+            declaration = declaration.replace("\r\n", "\n").replace("\r", "\n")
+            names = tuple((alias.name, alias.asname) for alias in node.names)
+            import_info = (
+                FlextInfraUtilitiesRopeRuntime.from_import(
+                    node.module or "", node.level, names
+                )
+                if isinstance(node, ast.ImportFrom)
+                else FlextInfraUtilitiesRopeRuntime.normal_import(names)
             )
-            table = FlextInfraUtilitiesRopeRuntimeModules.module_imports_for_pymodule(
-                project,
-                fragment,
+            statements.append(
+                FlextInfraUtilitiesRopeRuntime.import_statement(
+                    import_info, node.lineno, node.end_lineno + 1, declaration
+                )
             )
-            line_offset = node.lineno - 1
-            for statement in cls.import_statements(table):
-                # Every table owns its fragment records. Preserve the native
-                # import-info object and project the record's coordinates back
-                # to the complete immutable source before returning it.
-                statement.start_line += line_offset
-                statement.end_line += line_offset
-                statements.append(statement)
         return tuple(statements)
 
     @staticmethod

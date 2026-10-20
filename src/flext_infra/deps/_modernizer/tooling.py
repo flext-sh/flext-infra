@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_core import FlextRuntime
+
 from flext_infra import c, config, m, r, t, u
 from flext_infra.deps import FlextInfraExtraPathsManager
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
@@ -111,7 +113,9 @@ class FlextInfraPyprojectModernizerTooling:
             return result_type.from_failure(state)
         canonical_dev: p.Result[t.StrSequence] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
-            u.Infra.canonical_dev_dependencies_from_payload(state.value.payload),
+            FlextRuntime.normalize_to_json_value(
+                u.Infra.canonical_dev_dependencies_from_payload(state.value.payload)
+            ),
         )
         if canonical_dev.failure:
             return result_type.fail_op(
@@ -152,9 +156,11 @@ class FlextInfraPyprojectModernizerTooling:
         tools, payload = conformed.value
         declared_python_dirs = request.topology.declared_python_dirs
         project_dir = request.path.parent
-        raw_environments = u.Cli.json_as_sequence(
-            tools.pyright.get("executionEnvironments"),
+        pyright = u.Cli.json_dumps(
+            FlextRuntime.normalize_to_json_value(tools.pyright), sort_keys=True
         )
+        if pyright.failure:
+            return result_type.from_failure(pyright)
         # Seed for a project whose analyzer paths were never synced yet. The
         # manager derives from directories that EXIST, so before src/ is
         # written it returns []. Writing that empty list made the next plan
@@ -166,21 +172,6 @@ class FlextInfraPyprojectModernizerTooling:
             declared_python_dirs,
             seed_manager,
         )
-        scalar_keys = frozenset({
-            c.Infra.EXCLUDE,
-            c.Infra.IGNORE,
-            c.Infra.INCLUDE,
-            c.Infra.EXTRA_PATHS,
-            "executionEnvironments",
-            "venv",
-            "venvPath",
-        })
-        environments = self._pyright_environments(raw_environments)
-        if environments.failure:
-            return result_type.fail_op(
-                "validate pyright execution environment",
-                environments.error,
-            )
         # Absent analyzer-path keys fall back to the DERIVED value: they are
         # written by the analyzer-path sync, so a project that has not run it
         # yet has them missing, and an empty default would make the NEXT plan
@@ -193,8 +184,8 @@ class FlextInfraPyprojectModernizerTooling:
                     payload,
                     request.topology.project_kind,
                 ),
-                "first_party": tools.first_party,
-                "deptry_first_party": tuple(
+                "first_party": list(tools.first_party),
+                "deptry_first_party": list(
                     FlextInfraToolTablesPhase.deptry_first_party_namespaces(
                         path=project_dir,
                         planned_sources=tuple(request.planned_sources),
@@ -203,12 +194,12 @@ class FlextInfraPyprojectModernizerTooling:
                         ),
                     ),
                 ),
-                "mypy_path": (
+                "mypy_path": list(
                     derived_mypy_path
                     if declared_roots
                     else tools.mypy_path or derived_mypy_path
                 ),
-                "ruff_runtime_evaluated_base_classes": (
+                "ruff_runtime_evaluated_base_classes": list(
                     u.Infra.runtime_evaluated_base_classes(
                         project_dir,
                         request.planned_sources,
@@ -216,32 +207,24 @@ class FlextInfraPyprojectModernizerTooling:
                         source_project=source_project,
                     )
                 ),
-                "pyrefly_search_path": tools.pyrefly_search_path,
-                "pyrefly_project_includes": tools.pyrefly_project_includes,
-                "pyrefly_project_excludes": u.Infra.pyrefly_project_excludes(
-                    config.Infra.tooling.tools.pyrefly.project_exclude_globs,
-                ),
-                "pyright_exclude": tools.pyright.get(c.Infra.EXCLUDE, ()),
-                "pyright_ignore": tools.pyright.get(c.Infra.IGNORE, ()),
-                "pyright_include": tools.pyright.get(c.Infra.INCLUDE, ()),
-                "pyright_extra_paths": (
-                    tools.pyright.get(c.Infra.EXTRA_PATHS)
-                    or seed_manager.pyright_extra_paths(
-                        project_dir=project_dir,
-                        is_root=True,
+                "pyrefly_search_path": list(tools.pyrefly_search_path),
+                "pyrefly_project_includes": list(tools.pyrefly_project_includes),
+                "pyrefly_project_excludes": list(
+                    u.Infra.pyrefly_project_excludes(
+                        config.Infra.tooling.tools.pyrefly.project_exclude_globs,
                     )
-                    or declared_roots
                 ),
-                "pyright_settings": [
-                    *(
-                        {"name": key, "value": value}
-                        for key, value in sorted(tools.pyright.items())
-                        if key not in scalar_keys
-                    ),
-                ],
-                "pyright_execution_environments": environments.value,
-                "ruff_src": tools.ruff_src,
-                "ruff_extend_exclude": tools.ruff_extend_exclude,
+                "pyright_configuration": u.Cli.toml_dumps(
+                    u.Cli.toml_document_from_mapping({
+                        "tool": {
+                            "pyright": dict(
+                                u.json_mapping_adapter().validate_json(pyright.value)
+                            )
+                        }
+                    })
+                ),
+                "ruff_src": list(tools.ruff_src),
+                "ruff_extend_exclude": list(tools.ruff_extend_exclude),
             },
         )
         if validated.failure:
@@ -347,7 +330,9 @@ class FlextInfraPyprojectModernizerTooling:
         payload = state.payload
         tools_result: p.Result[m.Infra.ToolingConformedTools] = u.validate_value(
             m.Infra.ToolingConformedTools,
-            u.Cli.toml_mapping_child(payload, c.Infra.TOOL) or {},
+            FlextRuntime.normalize_to_json_value(
+                u.Cli.toml_mapping_child(payload, c.Infra.TOOL) or {}
+            ),
         )
         if tools_result.failure:
             return result_type.fail_op(
@@ -406,49 +391,6 @@ class FlextInfraPyprojectModernizerTooling:
             else derived_search_path
         )
         return (declared_roots, derived_mypy_path)
-
-    @staticmethod
-    def _pyright_environments(
-        raw_environments: t.SequenceOf[t.JsonValue],
-    ) -> p.Result[t.SequenceOf[m.Infra.ToolingPyrightEnvironment]]:
-        """Validate the conformed pyright environments and order them by root.
-
-        Returns:
-            The resulting validated environments sorted by root.
-
-        """
-        environment_keys = frozenset({"root", c.Infra.EXTRA_PATHS})
-        environments: t.MutableSequenceOf[m.Infra.ToolingPyrightEnvironment] = []
-        for raw_environment in raw_environments:
-            environment = u.Cli.json_as_mapping(raw_environment)
-            validated_environment: p.Result[m.Infra.ToolingPyrightEnvironment] = (
-                u.validate_value(
-                    m.Infra.ToolingPyrightEnvironment,
-                    {
-                        "root": environment.get("root"),
-                        "extra_paths": environment.get(c.Infra.EXTRA_PATHS, ()),
-                        "settings": [
-                            {"name": key, "value": value}
-                            for key, value in sorted(environment.items())
-                            if key not in environment_keys
-                        ],
-                    },
-                )
-            )
-            if validated_environment.failure:
-                return r[t.SequenceOf[m.Infra.ToolingPyrightEnvironment]].from_failure(
-                    validated_environment,
-                )
-            environments.append(validated_environment.value)
-        # Why: the canonical pyproject layer orders the
-        # [[tool.pyright.executionEnvironments]] array tables by root, so a
-        # declared order (for example src, tests, skills) re-renders differently
-        # from the formatted output and `make gen` reports drift forever.
-        # Canonicalize by root here so the first write already matches the
-        # formatted file and generation reaches its fixed point.
-        return r[t.SequenceOf[m.Infra.ToolingPyrightEnvironment]].ok(
-            sorted(environments, key=lambda environment: environment.root or ""),
-        )
 
 
 __all__: list[str] = ["FlextInfraPyprojectModernizerTooling"]

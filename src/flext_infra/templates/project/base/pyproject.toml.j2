@@ -262,58 +262,7 @@ use-ignore-files = {{ tooling.tools.pyrefly.use_ignore_files | lower }}
 {{ item }} = "error"
 {% endfor %}
 
-[tool.pyright]
-exclude = [
-{% for item in tooling_runtime.pyright_exclude %}
-  {{ item | tojson }},
-{% endfor %}
-]
-{% if tooling_runtime.pyright_ignore %}
-ignore = [
-{% for item in tooling_runtime.pyright_ignore %}
-  {{ item | tojson }},
-{% endfor %}
-]
-{% endif %}
-include = [
-{% for item in tooling_runtime.pyright_include %}
-  {{ item | tojson }},
-{% endfor %}
-]
-extraPaths = [
-{% for item in tooling_runtime.pyright_extra_paths %}
-  {{ item | tojson }},
-{% endfor %}
-]
-{% for setting in tooling_runtime.pyright_settings %}
-{% if setting.value is boolean %}
-{{ setting.name }} = {{ setting.value | lower }}
-{% elif setting.value is number %}
-{{ setting.name }} = {{ setting.value }}
-{% else %}
-{{ setting.name }} = {{ setting.value | tojson }}
-{% endif %}
-{% endfor %}
-{% for environment in tooling_runtime.pyright_execution_environments %}
-
-[[tool.pyright.executionEnvironments]]
-root = {{ environment.root | tojson }}
-extraPaths = [
-{% for item in environment.extra_paths %}
-  {{ item | tojson }},
-{% endfor %}
-]
-{% for setting in environment.settings %}
-{% if setting.value is boolean %}
-{{ setting.name }} = {{ setting.value | lower }}
-{% elif setting.value is number %}
-{{ setting.name }} = {{ setting.value }}
-{% else %}
-{{ setting.name }} = {{ setting.value | tojson }}
-{% endif %}
-{% endfor %}
-{% endfor %}
-
+{{ tooling_runtime.pyright_configuration }}
 [tool.pytest.ini_options]
 addopts = [
 {% for item in tooling.tools.pytest.standard_addopts %}

@@ -33,10 +33,6 @@ from jinja2.environment import (
 
 from flext_infra._typings.collections import FlextInfraTypesCollections
 
-# mypy defers a PEP 695 bound written as an attribute path and asserts in
-# the final iteration. Callers bind to this module-level name.
-type CliResultValue = t.Cli.ResultValue
-
 
 class FlextInfraTypesBase(FlextInfraTypesCollections):
     """Base typings for flext-infra project."""
@@ -156,6 +152,7 @@ class FlextInfraTypesBase(FlextInfraTypesCollections):
     "Mutable string set (supports .update/.intersection/etc)."
     type CanonicalValue = t.Scalar | t.StrSequence
     "Canonical governance value: scalar payload or string sequence."
+    "Scalar types admitted by declarative tooling settings."
 
     type CensusRecord = t.HeaderMapping
     "Single census record: string keys with str|int values (name, type, usages)."
@@ -253,4 +250,4 @@ class FlextInfraTypesBase(FlextInfraTypesCollections):
     "Git pathspec string (e.g. ``:(exclude)dir``)."
 
 
-__all__: list[str] = ["CliResultValue", "FlextInfraTypesBase"]
+__all__: list[str] = ["FlextInfraTypesBase"]

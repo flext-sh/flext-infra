@@ -29,6 +29,7 @@ class FlextInfraMypyProfiler:
 
         Raises:
             ValueError: If Mypy profiling requires an output destination.
+            RuntimeError: If the native termination handler cannot be observed.
 
         """
         destination = invocation.profile_output

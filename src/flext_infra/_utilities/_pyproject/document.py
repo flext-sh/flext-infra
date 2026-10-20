@@ -893,9 +893,8 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     def _sync_typecheck_paths(document: t.Cli.TomlDocument) -> p.Result[bool]:
         """Remove checkout-absolute type checker interpreter pins.
 
-        Search paths belong to FlextInfraExtraPathsManager. Top-level
-        ``venv`` / ``venvPath`` belong to deps modernize (root vs child
-        runtime). Conform must not strip those or gen oscillates.
+        Search paths belong to the analyzer phase. Preserve its member-local
+        execution environments and their order through full generation.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -912,8 +911,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         if pyright is None:
             return r[bool].ok(value=True)
 
-        # venv / venvPath are owned by deps modernize (workspace vs child
-        # runtime). Conform only strips checkout-absolute interpreter pins.
+        # Environment selection is owned by Make and the opened editor folder.
         interpreter_keys = ("pythonPath", "pythonInterpreterPath")
         for key in interpreter_keys:
             u.Cli.toml_remove_key_if_present(pyright, key)
@@ -928,8 +926,6 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 )
             mapping = u.json_mapping_adapter().validate_python(environment)
             normalized: t.JsonDict = dict(mapping)
-            root = normalized.get("root")
-            normalized[c.Infra.EXTRA_PATHS] = ["src"] if root == "src" else [".", "src"]
             for key in ("venv", "venvPath", "pythonPath", "pythonInterpreterPath"):
                 normalized.pop(key, None)
             normalized_environments.append(normalized)

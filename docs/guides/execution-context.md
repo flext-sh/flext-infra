@@ -528,13 +528,16 @@ Its `${workspaceFolder}` environment tokens remain
 unchanged in workspace members, independent checkouts and linked worktrees.
 Opening the workspace selects its environment; opening an independent project
 selects that project's environment. Setup does not rewrite or untrack editor files.
-Pylance loads the nearest project's `[tool.pyright]` configuration while retaining
-the opened workspace's interpreter. Each member's own import roots disambiguate
-packages such as `tests` and `examples`; separate per-project interpreters are
-disabled. Diagnostic severity and strict checking remain owned by `[tool.pyright]`.
-The workspace includes configuration-discovery patterns rooted inside each
-declared member, so nested configurations are enumerated even when the root's
-Python include list contains only its own source trees.
+The workspace uses one analyzer program and its opened interpreter. Its generated
+`[tool.pyright]` includes every declared member's Python roots and assigns specific
+execution environments to each member's source, tests and other consumer trees.
+Member-local import paths disambiguate packages such as `tests` and `examples`;
+their roots are never added to global import paths. A final environment per member
+owns top-level modules such as `conftest.py`. Independent checkouts retain their
+own equivalent analyzer configuration. Nested virtual workspaces and separate
+per-project interpreters are disabled: creating an analyzer for every manifest
+duplicates dependency programs and exhausts memory in a large editable workspace.
+Diagnostic severity and strict checking remain owned by `[tool.pyright]`.
 
 Editor diagnostics use `Pylance + Pyright` with `pyrightVersion: fromEnvironment`.
 The selected environment's Pyright distribution elects the diagnostic engine
@@ -545,6 +548,18 @@ sources remain available for import typing without becoming workspace symbols.
 The artifact catalog produces file patterns for file artifacts and recursive
 patterns for directories across editor watchers and analyzer exclusions. Git's
 native ignore semantics govern Explorer and search, including negations.
+
+Editor and Pyright overrides use ordered `settings` pairs in their YAML owners.
+For example, `- [python.analysis.indexing, true]` declares an editor option;
+values may contain any JSON-compatible scalar, array or object. Adding an option
+does not add a Python model field. Later configuration layers replace the complete
+value of an earlier pair, including arrays. `map_union_settings` explicitly merges
+editor objects; `stripped_keys` explicitly removes inherited or retired settings.
+Generated object keys are sorted recursively, while arrays retain their declared
+order. In particular, specific Pyright execution environments precede broad roots;
+alphabetically sorting that array changes import resolution and is prohibited.
+The full pyproject template consumes the native TOML serialization of the conformed
+Pyright table instead of reconstructing a restricted list of scalar options.
 
 Upgrade projects the declared Python requirements before resolving dependency
 locks. This keeps workspace members on one declared source identity when a Git
@@ -1201,6 +1216,21 @@ from their authenticated source bytes through the same capture owner.
 Unrestricted snapshot requests retain the complete closure, including inactive
 import suites. Both scan and check use the same typed admissions and
 authenticated snapshots.
+
+Lazy-init planners reuse sealed class-ancestry receipts only within the same
+source epoch, keyed by the declaring resource and native scope position. Replaying
+the receipt attributes the original provider and base-class dependencies to each
+consumer; native semantic objects remain consumer-local. Builtin classes have no
+source scope and are traversed without a source-receipt cache key. A newly built
+package decision is not propagated as sealed evidence before its consumption
+receipt has been issued.
+
+Native source-folder enumeration excludes runtime cache artifacts already
+classified outside the source epoch. Otherwise an authenticated directory listing
+can retain a bytecode-cache name after the physical cache disappears, and Rope's
+child-resource lookup fails before source verification can run. The physical
+directory-membership receipt remains strict: cache removal still invalidates that
+receipt and is handled as source-epoch drift, not silently accepted.
 
 The census refreshes its Rope inventory after constant-consumer publication and
 declaration removal, before collecting the resulting report. Deleted or added

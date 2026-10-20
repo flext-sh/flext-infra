@@ -71,6 +71,11 @@ class FlextInfraCodegenLazyInitPlanner(
     _plan_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = m.PrivateAttr(
         default_factory=dict[str, m.Infra.CodegenPhaseAnalysis],
     )
+    _ancestry_receipts: MutableMapping[
+        tuple[Path, int], m.Infra.CodegenPhaseAnalysis
+    ] = m.PrivateAttr(
+        default_factory=dict[tuple[Path, int], m.Infra.CodegenPhaseAnalysis],
+    )
     _parent_package_cache: MutableMapping[str, t.StrSequence] = m.PrivateAttr(
         default_factory=dict[str, t.StrSequence],
     )
@@ -186,10 +191,12 @@ class FlextInfraCodegenLazyInitPlanner(
         ):
             planner = type(self)(rope_workspace=workspace, lazy_init=self.lazy_init)
             planner.seed_source_plans(self._source_plan_cache, self._plan_receipts)
+            planner.ancestry_receipts.update(self._ancestry_receipts)
             plan = planner.build_plan(pkg_dir, dir_exports=dir_exports)
             self._collision_count += planner.collision_count
-            self._source_plan_cache.update(planner._source_plan_cache)
-            self._plan_receipts.update(planner._plan_receipts)
+            self._source_plan_cache.update(planner.source_plans)
+            self._plan_receipts.update(planner.source_receipts)
+            self._ancestry_receipts.update(planner.ancestry_receipts)
         receipt = consumption.receipt()
         return plan.model_copy(
             update={
@@ -204,6 +211,13 @@ class FlextInfraCodegenLazyInitPlanner(
         """The export collisions observed by this isolated planner."""
         return self._collision_count
 
+    @property
+    def ancestry_receipts(
+        self,
+    ) -> t.MutableMappingKV[tuple[Path, int], m.Infra.CodegenPhaseAnalysis]:
+        """Share sealed same-epoch evidence without native semantic cache objects."""
+        return self._ancestry_receipts
+
     def seed_source_plans(
         self,
         plans: t.MappingKV[str, m.Infra.LazyInitPlan],
@@ -217,6 +231,11 @@ class FlextInfraCodegenLazyInitPlanner(
     def source_plans(self) -> t.MappingKV[str, m.Infra.LazyInitPlan]:
         """Expose immutable decisions, never native semantic cache objects."""
         return self._source_plan_cache
+
+    @property
+    def source_receipts(self) -> t.MappingKV[str, m.Infra.CodegenPhaseAnalysis]:
+        """Expose only sealed decisions, excluding the package still being planned."""
+        return self._plan_receipts
 
     def source_receipt(self, package_dir: Path) -> m.Infra.CodegenPhaseAnalysis:
         """Return only the sealed receipt minted for an actual package decision.
@@ -519,14 +538,43 @@ class FlextInfraCodegenLazyInitPlanner(
             if binding is not None:
                 pending.append(binding.get_object())
         visited: set[int] = set()
-        while pending:
-            owner = pending.pop()
-            if u.Infra.instance_object(owner):
-                owner = owner.get_type()
-            if not u.Infra.abstract_class(owner) or id(owner) in visited:
-                continue
-            visited.add(id(owner))
-            pending.extend(owner.get_superclasses())
+        for owner in pending:
+            self._consume_class_bases(owner, visited)
+
+    def _consume_class_bases(
+        self, owner: p.Infra.RopePyObject, visited: set[int]
+    ) -> None:
+        """Reuse ancestry evidence only within this publication's native consumer."""
+        if u.Infra.instance_object(owner):
+            owner = owner.get_type()
+        if not u.Infra.abstract_class(owner):
+            return
+        module = owner.get_module()
+        resource = module.get_resource() if module is not None else None
+        scope = (
+            owner.get_scope()
+            if resource is not None and isinstance(owner, p.Infra.RopeSourceDefinition)
+            else None
+        )
+        key = (
+            (Path(resource.real_path), scope.get_start())
+            if resource is not None and scope is not None
+            else None
+        )
+        project = self.rope_workspace.rope_project
+        if key is not None and key in self._ancestry_receipts:
+            project.replay_source_consumption(self._ancestry_receipts[key])
+            return
+        if id(owner) in visited:
+            return
+        visited.add(id(owner))
+        with project.source_consumption() as consumption:
+            if resource is not None:
+                project.source_state(Path(resource.real_path))
+            for base in owner.get_superclasses():
+                self._consume_class_bases(base, visited)
+        if key is not None:
+            self._ancestry_receipts[key] = consumption.receipt()
 
     @override
     def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext:

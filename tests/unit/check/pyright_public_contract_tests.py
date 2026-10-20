@@ -10,10 +10,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import m, t, u
+from flext_infra import m, t
 from flext_infra.deps import FlextInfraEnsurePyrightConfigPhase
 from flext_infra.gates.pyright import FlextInfraPyrightGate
-from tests import tm
+from tests import tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -24,7 +24,7 @@ class TestsFlextInfraPyrightPublicContract:
 
     @staticmethod
     @pytest.mark.slow
-    @pytest.mark.parametrize("selected", ["first", "second"])
+    @pytest.mark.parametrize("selected", ["first", "second", "workspace"])
     def test_homonymous_test_facades_resolve_in_their_own_project(
         tmp_path: Path,
         tool_config_document: m.Infra.ToolConfigDocument,
@@ -64,6 +64,7 @@ class TestsFlextInfraPyrightPublicContract:
                 encoding="utf-8",
             )
             payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
+            payload["project"] = {"name": name, "version": "0.1.0"}
             FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply_payload(
                 payload,
                 context=m.Infra.PyprojectAnalyzerContext(
@@ -78,6 +79,22 @@ class TestsFlextInfraPyrightPublicContract:
                 encoding="utf-8",
             )
         project = tmp_path / selected
+        if selected == "workspace":
+            project = tmp_path
+            u.Tests.declare_workspace_projects(tmp_path, ("first", "second"))
+            u.Tests.write_project_beads_config(tmp_path, selected)
+            payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
+            payload["project"] = {"name": selected, "version": "0.1.0"}
+            FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply_payload(
+                payload,
+                context=m.Infra.PyprojectAnalyzerContext(
+                    is_root=True, repository_root=project
+                ),
+            )
+            (project / "pyproject.toml").write_text(
+                u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
+                encoding="utf-8",
+            )
         context = m.Infra.GateContext(
             repository_root=project,
             reports_dir=project / ".reports",

@@ -16,7 +16,7 @@ class FlextInfraModelsMiseToolchainBase(m.ContractModel):
     model_config = m.ConfigDict(
         strict=False,
         frozen=True,
-        extra="forbid",
+        extra="ignore",
         str_strip_whitespace=False,
     )
 

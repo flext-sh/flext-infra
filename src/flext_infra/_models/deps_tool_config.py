@@ -790,6 +790,18 @@ class FlextInfraModelsDepsToolConfig(
     class ToolConfigDocument(m.ArbitraryTypesModel):
         """Root schema for canonical ``config/tooling.yaml`` policy data."""
 
+        settings: Annotated[
+            t.MappingKV[
+                t.NonEmptyStr,
+                t.VariadicTuple[t.Pair[t.NonEmptyStr, t.JsonValue]],
+            ],
+            m.Field(
+                description=(
+                    "Native tool-table paths and ordered option pairs. "
+                    "Later pairs replace complete values without reordering arrays."
+                )
+            ),
+        ]
         raw_check_receipt_suffix: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -809,28 +821,6 @@ class FlextInfraModelsDepsToolConfig(
         mod: FlextInfraModelsDepsToolConfig.ModConfig = m.Field(
             description="Declarative make-mod phase policy.",
         )
-
-    class ToolingScalarSetting(m.ArbitraryTypesModel):
-        """One validated scalar setting rendered into an explicit TOML table."""
-
-        name: Annotated[t.NonEmptyStr, m.Field(description="TOML setting name")]
-        value: Annotated[
-            str,
-            m.Field(description="Validated Pyright diagnostic severity"),
-        ]
-
-    class ToolingPyrightEnvironment(m.ArbitraryTypesModel):
-        """One resolved Pyright execution environment."""
-
-        root: Annotated[t.NonEmptyStr, m.Field(description="Environment root")]
-        extra_paths: Annotated[
-            t.StrTuple,
-            m.Field(description="Resolved environment import paths"),
-        ]
-        settings: Annotated[
-            t.VariadicTuple[FlextInfraModelsDepsToolConfig.ToolingScalarSetting],
-            m.Field(description="Resolved environment diagnostics"),
-        ]
 
     class ToolingConformedTools(m.FlexibleModel):
         """Typed view of the ``[tool]`` tables one conformed pyproject carries."""
@@ -939,29 +929,9 @@ class FlextInfraModelsDepsToolConfig(
                 ),
             ),
         ]
-        pyright_exclude: Annotated[
-            t.StrTuple,
-            m.Field(description="Resolved Pyright exclusions"),
-        ]
-        pyright_ignore: Annotated[
-            t.StrTuple,
-            m.Field(description="Resolved Pyright ignored paths"),
-        ] = ()
-        pyright_include: Annotated[
-            t.StrTuple,
-            m.Field(description="Resolved Pyright production roots"),
-        ]
-        pyright_extra_paths: Annotated[
-            t.StrTuple,
-            m.Field(description="Resolved Pyright import paths"),
-        ]
-        pyright_settings: Annotated[
-            t.VariadicTuple[FlextInfraModelsDepsToolConfig.ToolingScalarSetting],
-            m.Field(description="Resolved Pyright scalar settings"),
-        ]
-        pyright_execution_environments: Annotated[
-            t.VariadicTuple[FlextInfraModelsDepsToolConfig.ToolingPyrightEnvironment],
-            m.Field(description="Resolved Pyright environments"),
+        pyright_configuration: Annotated[
+            str,
+            m.Field(description="Native TOML for the complete conformed Pyright table"),
         ]
         ruff_src: Annotated[
             t.StrTuple,

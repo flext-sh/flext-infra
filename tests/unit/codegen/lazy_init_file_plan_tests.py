@@ -614,10 +614,16 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.that(source, has="PayloadOwner")
         tm.that(source, has="class Sample(ExistingOwner, PayloadOwner)")
         tm.that(source, has="retained = 'unchanged'")
+        declared_inputs = {state.path for state in inputs.sources}
         tm.that(
-            {state.path for state in file.source_states},
-            eq=set(before) | {state.path for state in inputs.sources},
+            {
+                state.path
+                for state in file.source_states
+                if state.path.is_relative_to(root) or state.path in declared_inputs
+            },
+            eq=set(before) | declared_inputs,
         )
+        tm.ok(u.Cli.atomic_verify_binary_file_states(file.source_states))
         tm.that({path: path.read_bytes() for path in before}, eq=before)
 
     @staticmethod

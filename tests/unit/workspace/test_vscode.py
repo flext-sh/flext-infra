@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_infra import config
 from flext_infra.services import FlextInfraCodegenVscodeMixin
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraCodegenVscode:
@@ -50,22 +50,19 @@ class TestsFlextInfraCodegenVscode:
         doc = u.Tests.json_payload(result.value)
         tm.that("python.analysis.typeCheckingMode" in doc, eq=False)
         tm.that("python.analysis.diagnosticSeverityOverrides" in doc, eq=False)
+        declared = FlextInfraCodegenVscodeMixin.vscode_settings(
+            config.Infra.codegen.vscode
+        )
         interpreter = "python.defaultInterpreterPath"
-        tm.that(
-            doc[interpreter],
-            eq=config.Infra.codegen.vscode.scalar_settings[interpreter],
-        )
+        tm.that(doc[interpreter], eq=declared[interpreter])
         search_paths_key = c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
-        tm.that(
-            doc[search_paths_key],
-            eq=config.Infra.codegen.vscode.additional_settings[search_paths_key],
-        )
+        tm.that(doc[search_paths_key], eq=declared[search_paths_key])
         excludes = u.Tests.toml_mapping(doc["files.exclude"])
         tm.that("**/.retired-cache" in excludes, eq=False)
         tm.that(excludes, eq=dict(config.Infra.codegen.vscode_files_exclude_map))
         tm.that(
             doc["python.languageServer"],
-            eq=config.Infra.codegen.vscode.scalar_settings["python.languageServer"],
+            eq=declared["python.languageServer"],
         )
 
     def test_strips_retired_keys_owning_pyright_config(self, tmp_path: Path) -> None:
@@ -94,7 +91,9 @@ class TestsFlextInfraCodegenVscode:
         tm.that("python.analysis.diagnosticSeverityOverrides" in doc, eq=False)
         tm.that(
             doc["python.languageServer"],
-            eq=config.Infra.codegen.vscode.scalar_settings["python.languageServer"],
+            eq=FlextInfraCodegenVscodeMixin.vscode_settings(
+                config.Infra.codegen.vscode
+            )["python.languageServer"],
         )
 
     def test_render_reaches_fixed_point(self, tmp_path: Path) -> None:
@@ -143,7 +142,9 @@ class TestsFlextInfraCodegenVscode:
         search_paths_key = c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
         tm.that(
             doc[search_paths_key],
-            eq=config.Infra.codegen.vscode.additional_settings[search_paths_key],
+            eq=FlextInfraCodegenVscodeMixin.vscode_settings(
+                config.Infra.codegen.vscode
+            )[search_paths_key],
         )
 
     def test_invalid_json_fails_without_producing_a_document(
@@ -219,3 +220,109 @@ class TestsFlextInfraCodegenVscode:
             preferences = u.Tests.toml_mapping(document[language])
             tm.that(preferences["editor.rulers"], eq=[88])
             tm.that(set(keys).isdisjoint(preferences), eq=True)
+
+    @staticmethod
+    def test_unfamiliar_settings_accept_recursive_json_and_preserve_array_order(
+        tmp_path: Path,
+    ) -> None:
+        """Settings remain generic JSON values with deterministic object ordering."""
+        values: t.JsonMapping = {
+            "operator.enabled": True,
+            "operator.ratio": 0.75,
+            "operator.unset": None,
+            "operator.nested": {"zeta": [3, 1], "alpha": {"second": False}},
+            "operator.items": [{"name": "second"}, {"name": "first"}],
+        }
+        specification = m.Infra.CodegenVscodeSpec.model_validate({
+            **config.Infra.codegen.vscode.model_dump(),
+            "settings": (*config.Infra.codegen.vscode.settings, *values.items()),
+        })
+        rendered = tm.ok(
+            FlextInfraCodegenVscodeMixin.render_vscode_settings(
+                tmp_path, spec=specification
+            )
+        )
+        document = u.Tests.json_payload(rendered)
+        for key, value in values.items():
+            tm.that(document[key], eq=value)
+        tm.that(list(document), eq=sorted(document))
+        nested = u.Tests.toml_mapping(document["operator.nested"])
+        tm.that(list(nested), eq=sorted(nested))
+        tm.that(
+            FlextInfraCodegenVscodeMixin.vscode_settings(specification)[
+                "operator.items"
+            ],
+            eq=values["operator.items"],
+        )
+
+    @staticmethod
+    def test_retired_setting_removal_wins_over_declared_values(
+        tmp_path: Path,
+    ) -> None:
+        """The explicit removal declaration wins even over the final setting pair."""
+        key = "operator.retiredSetting"
+        specification = m.Infra.CodegenVscodeSpec.model_validate({
+            **config.Infra.codegen.vscode.model_dump(),
+            "settings": (*config.Infra.codegen.vscode.settings, (key, True)),
+            "stripped_keys": (*config.Infra.codegen.vscode.stripped_keys, key),
+        })
+        rendered = tm.ok(
+            FlextInfraCodegenVscodeMixin.render_vscode_settings(
+                tmp_path, spec=specification
+            )
+        )
+        tm.that(u.Tests.json_payload(rendered), lacks=key)
+
+    def test_explicit_map_union_accepts_recursive_json_and_preserves_local_keys(
+        self, tmp_path: Path
+    ) -> None:
+        """An explicitly merged map supports JSON values beyond scalar options."""
+        key = "[fixture]"
+        local: t.JsonMapping = {"operator.local": [{"name": "retained"}]}
+        declared: t.JsonMapping = {
+            "operator.unset": None,
+            "operator.weight": 0.25,
+            "operator.nested": {"items": [{"name": "last"}, {"name": "first"}]},
+        }
+        self._write_settings(tmp_path, tm.ok(u.Cli.json_dumps({key: local})))
+        specification = m.Infra.CodegenVscodeSpec.model_validate({
+            **config.Infra.codegen.vscode.model_dump(),
+            "map_union_settings": {
+                **config.Infra.codegen.vscode.map_union_settings,
+                key: declared,
+            },
+        })
+        rendered = tm.ok(
+            FlextInfraCodegenVscodeMixin.render_vscode_settings(
+                tmp_path, spec=specification
+            )
+        )
+        tm.that(
+            u.Tests.json_payload(rendered)[key],
+            eq={**local, **declared},
+        )
+
+    def test_explicit_setting_pair_replaces_a_default_merged_map(
+        self, tmp_path: Path
+    ) -> None:
+        """An explicit JSON value owns its full map after default map unions."""
+        key = "[fixture]"
+        self._write_settings(
+            tmp_path,
+            tm.ok(u.Cli.json_dumps({key: {"operator.local": True}})),
+        )
+        replacement: t.JsonMapping = {"operator.items": ["second", "first"]}
+        specification = m.Infra.CodegenVscodeSpec.model_validate({
+            **config.Infra.codegen.vscode.model_dump(),
+            "settings": (*config.Infra.codegen.vscode.settings, (key, replacement)),
+            "map_union_settings": {
+                **config.Infra.codegen.vscode.map_union_settings,
+                key: {"operator.default": True},
+            },
+        })
+        rendered = tm.ok(
+            FlextInfraCodegenVscodeMixin.render_vscode_settings(
+                tmp_path, spec=specification
+            )
+        )
+        tm.that(u.Tests.json_payload(rendered)[key], eq=replacement)

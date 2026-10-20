@@ -528,7 +528,7 @@ context = FlextInfraWorkspaceDetector.resolution_context(root).unwrap()
 lock_state = u.Cli.atomic_read_binary_file_state(
     context.lock_path, required=True,
 ).unwrap()
-assert lock_state.mode is not None
+tm.not_none(lock_state.mode)
 obsolete = root / c.Infra.UV_LOCK_FILENAME
 if obsolete != context.lock_path:
     obsolete_state = u.Cli.atomic_read_binary_file_state(
@@ -566,11 +566,11 @@ metadata, requirements = u.Infra.member_declaration_requirements(
     state,
     repository.distribution,
 ).unwrap()
-assert state.content is not None
+tm.not_none(state.content)
 document = u.Cli.toml_parse_text(state.content.decode(c.DEFAULT_ENCODING))
-assert document is not None
+tm.not_none(document)
 payload = u.Cli.toml_as_mapping(document)
-assert payload is not None
+tm.not_none(payload)
 project = payload["project"]
 assert metadata.dependencies == tuple(project.get("dependencies", ()))
 assert metadata.optional_dependencies == {
@@ -587,7 +587,7 @@ assert {
 assert tuple(requirements) == tuple(
     u.Infra.document_requirement_lines(document).unwrap()
 )
-assert state.mode is not None
+tm.not_none(state.mode)
 u.Cli.atomic_write_binary_file_guarded(
     state,
     state.content + b"\\n",

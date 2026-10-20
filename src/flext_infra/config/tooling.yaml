@@ -2,6 +2,28 @@ Infra:
   tooling:
     # Canonical validated native tooling policy; diagnostics remain blocking.
     raw-check-receipt-suffix: .raw.log
+    # Native options are free key/value pairs, grouped by their tool table.
+    # The same catalog drives modernization and every projected template.
+    settings:
+      pyright:
+      - [ pythonPlatform, Linux ]
+      - [ pythonVersion, "3.13" ]
+      - [ reportCallIssue, error ]
+      - [ reportConstantRedefinition, error ]
+      - [ reportIncompatibleMethodOverride, error ]
+      - [ reportInconsistentConstructor, error ]
+      - [ reportMissingImports, error ]
+      - [ reportMissingModuleSource, error ]
+      - [ reportPrivateUsage, error ]
+      - [ reportUnnecessaryCast, error ]
+      - [ reportUnnecessaryComparison, error ]
+      - [ reportUnnecessaryIsInstance, error ]
+      - [ reportUnusedClass, error ]
+      - [ reportUnusedFunction, error ]
+      - [ reportUnusedImport, error ]
+      - [ reportUnusedVariable, error ]
+      - [ typeCheckingMode, strict ]
+      - [ useLibraryCodeForTypes, true ]
     tools:
       codespell:
         check-filenames: true
@@ -356,27 +378,6 @@ Infra:
         init_typed: true
         warn_required_dynamic_aliases: true
       pyright:
-        boolean-settings:
-          useLibraryCodeForTypes: true
-        strict-settings:
-          pythonPlatform: Linux
-          pythonVersion: "3.13"
-          typeCheckingMode: strict
-        extended-settings:
-          reportCallIssue: error
-          reportConstantRedefinition: error
-          reportIncompatibleMethodOverride: error
-          reportInconsistentConstructor: error
-          reportMissingImports: error
-          reportMissingModuleSource: error
-          reportPrivateUsage: error
-          reportUnnecessaryCast: error
-          reportUnnecessaryComparison: error
-          reportUnnecessaryIsInstance: error
-          reportUnusedClass: error
-          reportUnusedFunction: error
-          reportUnusedImport: error
-          reportUnusedVariable: error
         path-rules:
           # Source and tracked consumer surfaces are all
           # first-class environments so no analyzer can hide their diagnostics.
@@ -384,10 +385,6 @@ Infra:
           project-root: .
           env-dirs: [ src, tests, examples, scripts ]
           test-like-dirs: [ tests, examples, scripts ]
-          # Pylance discovers nested configurations while enumerating include
-          # roots. Visit member manifests without adding their Python sources
-          # to the workspace root's analysis scope.
-          workspace-config-discovery-globs: [ "*.toml", "pyrightconfig.json*" ]
           default-excludes:
           - "**/node_modules"
           - "**/__pycache__"

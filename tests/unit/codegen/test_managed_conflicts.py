@@ -186,6 +186,40 @@ class TestsFlextInfraManagedConflictRecovery:
         tm.that(recovered, eq=content)
 
     @staticmethod
+    def test_recovery_tracks_content_and_section_ownership_changes() -> None:
+        """Repeated reads never reuse validity or recovery for different inputs."""
+        clean = '[tool.fixture]\nvalue = "first"\n'
+        duplicated = clean + 'value = "first"\n'
+        for _ in range(2):
+            tm.that(
+                tm.ok(
+                    u.Infra.recover_managed_toml(
+                        clean,
+                        conflict_sections=("tool.fixture",),
+                    )
+                ),
+                eq=clean,
+            )
+            tm.that(
+                tm.ok(
+                    u.Infra.recover_managed_toml(
+                        duplicated,
+                        conflict_sections=("tool.fixture",),
+                    )
+                ),
+                eq=clean,
+            )
+            tm.that(
+                tm.ok(
+                    u.Infra.recover_managed_toml(
+                        duplicated,
+                        conflict_sections=("tool.other",),
+                    )
+                ),
+                eq=duplicated,
+            )
+
+    @staticmethod
     def test_recovers_identical_managed_multiline_assignments() -> None:
         """Regeneration can read identical duplicated projection assignments."""
         assignment = 'value = [\n  "first",\n  "second",\n]\n'

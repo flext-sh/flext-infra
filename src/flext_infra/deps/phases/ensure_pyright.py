@@ -174,6 +174,77 @@ class FlextInfraEnsurePyrightConfigPhase:
         rules = self._tool_config.tools.pyright.path_rules
         return f"{prefix}/{rules.source_dir}" if prefix else rules.source_dir
 
+    def _workspace_member_roots(
+        self, repository_root: Path
+    ) -> t.SequenceOf[t.Pair[str, t.StrSequence]]:
+        """Discover each declared member's owned Python roots independently.
+
+        Returns:
+            Member-relative paths paired with their owned Python targets.
+
+        """
+        return tuple(
+            (
+                member,
+                u.Infra.analyzer_python_roots(
+                    repository_root / member,
+                    (),
+                    workspace_excluded_top_dirs=(
+                        FlextInfraWorkspaceDetector.analysis_excluded_top_dirs(
+                            repository_root / member
+                        ).unwrap()
+                    ),
+                ),
+            )
+            for member in u.Infra.workspace_project_paths(repository_root)
+        )
+
+    def _workspace_member_envs(
+        self, repository_root: Path
+    ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
+        """Share one analyzer while keeping member package resolution local.
+
+        Returns:
+            Specific member environments followed by each member's root.
+
+        """
+        rules = self._tool_config.tools.pyright.path_rules
+        environments: list[m.Infra.PyrightConfig.ExecutionEnvironment] = []
+        for member, roots in self._workspace_member_roots(repository_root):
+            source = self._project_source_path(prefix=member)
+            environments.extend(
+                self._diagnostic_override_envs(
+                    project_dir=repository_root / member,
+                    root_prefix=Path(member),
+                    source_path=source,
+                )
+            )
+            environments.extend(
+                self._env_entry(
+                    env_dir=env_dir,
+                    root=f"{member}/{env_dir}",
+                    extra_paths=self._extra_paths_for_env(
+                        env_dir=env_dir,
+                        source_path=source,
+                        project_root=member,
+                        source_dir=rules.source_dir,
+                    ),
+                    rules=rules,
+                )
+                for env_dir in roots
+                if (repository_root / member / env_dir).is_dir()
+            )
+            # Top-level modules such as conftest.py still belong to this member.
+            environments.append(
+                self._env_entry(
+                    env_dir=rules.project_root,
+                    root=member,
+                    extra_paths=(member, source),
+                    rules=rules,
+                )
+            )
+        return tuple(environments)
+
     def _expected_envs(
         self,
         *,
@@ -204,9 +275,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 ),
             )
         rules = self._tool_config.tools.pyright.path_rules
-        expected_envs: t.MutableSequenceOf[
-            m.Infra.PyrightConfig.ExecutionEnvironment
-        ] = []
+        expected_envs = list(self._workspace_member_envs(repository_root))
         root_source_path = self._project_source_path()
         member_src_paths = tuple(
             f"{member}/src"
@@ -446,13 +515,10 @@ class FlextInfraEnsurePyrightConfigPhase:
             and repository_root is not None
             and (repository_root / c.Infra.GITMODULES).is_file()
         ):
-            # Each include must start inside a declared member. A wildcard
-            # before the member directory can stop source enumeration at the
-            # workspace root, leaving nested configurations undiscovered.
             expected_includes.extend(
-                f"{member}/{pattern}"
-                for member in u.Infra.workspace_project_paths(repository_root)
-                for pattern in stub_rules.workspace_config_discovery_globs
+                f"{member}/{root}"
+                for member, roots in self._workspace_member_roots(repository_root)
+                for root in roots
             )
         expected_stub_path: str | None = (
             stub_rules.root_typings_paths[0]
@@ -521,12 +587,9 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
         operations.extend(
             toml.SetOp(key=key, value=value)
-            for settings in (
-                self._tool_config.tools.pyright.boolean_settings,
-                self._tool_config.tools.pyright.strict_settings,
-                self._tool_config.tools.pyright.extended_settings,
+            for key, value in sorted(
+                u.Infra.native_tool_settings(self._tool_config, c.Infra.PYRIGHT).items()
             )
-            for key, value in settings.items()
         )
         return toml.PhaseConfig(
             name="pyright",
@@ -583,9 +646,14 @@ class FlextInfraEnsurePyrightConfigPhase:
         expected = u.Cli.toml_mapping_path(payload, (c.Infra.TOOL, c.Infra.PYRIGHT))
         if expected is None:
             return r[str].fail("Pyright projection produced no analyzer table")
-        u.Cli.toml_sync_value(
-            tool, c.Infra.PYRIGHT, FlextRuntime.normalize_to_json_value(expected)
+        ordered = u.Cli.json_dumps(
+            FlextRuntime.normalize_to_json_value(expected), sort_keys=True
         )
+        if ordered.failure:
+            return r[str].from_failure(ordered)
+        # This table is generated in full. Replacing its value also normalizes
+        # nested object keys while retaining semantic list order.
+        tool[c.Infra.PYRIGHT] = u.json_mapping_adapter().validate_json(ordered.value)
         return r[str].ok(u.Cli.toml_dumps(document))
 
 

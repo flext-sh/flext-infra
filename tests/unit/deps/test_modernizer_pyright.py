@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
 import pytest
@@ -25,6 +25,45 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraDepsModernizerPyright:
     """Declarative tests for generated Pyright configuration."""
+
+    @staticmethod
+    def test_generic_pairs_preserve_types_and_semantic_array_order(
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
+        """New tool options round-trip through native TOML without new fields."""
+        additions: t.SequenceOf[t.Pair[str, t.JsonValue]] = (
+            ("defineConstant", {"FEATURE": True, "MODE": "validation"}),
+            ("strict", ["src/z", "src/a"]),
+        )
+        selected = tool_config_document.model_copy(
+            update={
+                "settings": {
+                    **tool_config_document.settings,
+                    c.Infra.PYRIGHT: (
+                        *tool_config_document.settings[c.Infra.PYRIGHT],
+                        *additions,
+                    ),
+                }
+            }
+        )
+        phase = FlextInfraEnsurePyrightConfigPhase(selected)
+        context = m.Infra.PyprojectAnalyzerContext(is_root=False)
+        rendered = tm.ok(
+            phase.render_source("[project]\nname='fixture'\n", context=context)
+        )
+        table = u.Tests.toml_table_at(rendered, "tool", "pyright")
+        for key, value in additions:
+            tm.that(table[key], eq=value)
+        scalar_keys = [
+            key
+            for key, value in table.items()
+            if not isinstance(value, Mapping)
+            and not (
+                isinstance(value, list) and value and isinstance(value[0], Mapping)
+            )
+        ]
+        tm.that(scalar_keys, eq=sorted(scalar_keys))
+        tm.that(tm.ok(phase.render_source(rendered, context=context)), eq=rendered)
 
     @staticmethod
     def test_editor_projection_preserves_other_tables_and_converges(
@@ -51,7 +90,7 @@ class TestsFlextInfraDepsModernizerPyright:
         pyright = u.Tests.toml_mapping(tools["pyright"])
         tm.that(pyright, lacks="venv")
         tm.that(pyright, lacks="venvPath")
-        for key, value in tool_config_document.tools.pyright.strict_settings.items():
+        for key, value in u.Infra.native_tool_settings(tool_config_document, c.Infra.PYRIGHT).items():
             tm.that(pyright[key], eq=value)
 
     @staticmethod
@@ -218,34 +257,39 @@ class TestsFlextInfraDepsModernizerPyright:
             eq=sorted([
                 rules.source_dir,
                 *root_modules,
-                *(
-                    f"{member}/{pattern}"
-                    for member in u.Infra.workspace_project_paths(tmp_path)
-                    for pattern in rules.workspace_config_discovery_globs
-                ),
+                f"flext-core/{rules.source_dir}",
+                "flext-core/tests",
+                f"flext-api/{rules.source_dir}",
             ]),
         )
         discovered_files = {
             path.relative_to(tmp_path).as_posix()
             for pattern in u.Tests.toml_strings(pyright["include"])
             for path in tmp_path.glob(pattern)
-            if path.is_file()
+            if path.is_dir()
         }
         tm.that(
-            {"flext-core/pyproject.toml", "flext-api/pyproject.toml"}
+            {f"flext-core/{rules.source_dir}", f"flext-api/{rules.source_dir}"}
             <= discovered_files,
             eq=True,
         )
-        tm.that("flext-core/tests/test_smoke.py" in discovered_files, eq=False)
+        tm.that("flext-core/tests" in discovered_files, eq=True)
+        environments = {
+            environment["root"]: environment
+            for item in u.Tests.toml_list(pyright["executionEnvironments"])
+            for environment in (u.Tests.toml_mapping(item),)
+        }
         tm.that(
-            pyright["executionEnvironments"],
-            eq=[
-                {
-                    "root": rules.source_dir,
-                    "reportPrivateUsage": rules.source_report_private_usage,
-                    "extraPaths": [rules.source_dir, "flext-core/src", "flext-api/src"],
-                },
-            ],
+            environments["flext-core/tests"]["extraPaths"],
+            eq=["flext-core", f"flext-core/{rules.source_dir}"],
+        )
+        tm.that(
+            environments["flext-api"]["extraPaths"],
+            eq=["flext-api", f"flext-api/{rules.source_dir}"],
+        )
+        tm.that(
+            environments[rules.source_dir]["extraPaths"],
+            eq=[rules.source_dir, "flext-core/src", "flext-api/src"],
         )
 
     def test_root_config_includes_member_src_paths(
@@ -527,20 +571,35 @@ class TestsFlextInfraDepsModernizerPyright:
         )
         first_context = tm.ok(modernizer.resolve_tooling_context(request))
         expected_roots = frozenset((*active_roots, planned_root))
+        first_pyright = u.Tests.toml_table_at(
+            first_context.pyright_configuration, "tool", "pyright"
+        )
         tm.that(
-            frozenset(first_context.pyright_include),
+            frozenset(u.Tests.toml_strings(first_pyright["include"])),
             eq=expected_roots.union(root_modules),
         )
         tm.that(
-            frozenset(env.root for env in first_context.pyright_execution_environments),
+            frozenset(
+                u.Tests.toml_mapping(env)["root"]
+                for env in u.Tests.toml_list(first_pyright["executionEnvironments"])
+            ),
             eq=expected_roots,
         )
         tm.that(
-            set(root_modules).isdisjoint(first_context.pyright_extra_paths),
+            set(root_modules).isdisjoint(
+                u.Tests.toml_strings(first_pyright["extraPaths"])
+            ),
             eq=True,
         )
-        for environment in first_context.pyright_execution_environments:
-            tm.that(set(root_modules).isdisjoint(environment.extra_paths), eq=True)
+        for environment in u.Tests.toml_list(first_pyright["executionEnvironments"]):
+            tm.that(
+                set(root_modules).isdisjoint(
+                    u.Tests.toml_strings(
+                        u.Tests.toml_mapping(environment)["extraPaths"]
+                    )
+                ),
+                eq=True,
+            )
         first = tm.ok(
             modernizer.conform_source(
                 (project_dir / "pyproject.toml").read_text(encoding="utf-8"),
@@ -551,7 +610,7 @@ class TestsFlextInfraDepsModernizerPyright:
         )
         tm.that(
             list(u.Tests.toml_strings_at(first, "tool", "pyright", "include")),
-            eq=list(first_context.pyright_include),
+            eq=list(u.Tests.toml_strings(first_pyright["include"])),
         )
         tm.that(
             sorted(
@@ -570,10 +629,9 @@ class TestsFlextInfraDepsModernizerPyright:
             "VALUE = 1\n", encoding="utf-8"
         )
         second_context = tm.ok(modernizer.resolve_tooling_context(request))
-        tm.that(second_context.pyright_include, eq=first_context.pyright_include)
         tm.that(
-            second_context.pyright_execution_environments,
-            eq=first_context.pyright_execution_environments,
+            second_context.pyright_configuration,
+            eq=first_context.pyright_configuration,
         )
         tm.that(
             tm.ok(
@@ -587,12 +645,12 @@ class TestsFlextInfraDepsModernizerPyright:
             eq=first,
         )
 
-    def test_repository_root_never_adopts_member_analyzer_roots(
+    def test_workspace_shares_analysis_with_member_local_environments(
         self,
         tmp_path: Path,
         tool_config_document: m.Infra.ToolConfigDocument,
     ) -> None:
-        """Keep member projects under their own manifests and native gates."""
+        """One analyzer includes members without merging their package roots."""
         rules = tool_config_document.tools.pyright.path_rules
         self._workspace(tmp_path, "flext-core")
 
@@ -612,12 +670,16 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(declared, eq=fleet)
         tm.that(
             list(u.Tests.toml_strings(declared["include"])),
-            eq=[
-                f"flext-core/{pattern}"
-                for pattern in rules.workspace_config_discovery_globs
-            ],
+            eq=[f"flext-core/{rules.source_dir}"],
         )
-        tm.that(declared["executionEnvironments"], eq=[])
+        environments = [
+            u.Tests.toml_mapping(item)
+            for item in u.Tests.toml_list(declared["executionEnvironments"])
+        ]
+        tm.that(
+            [environment["root"] for environment in environments],
+            eq=[f"flext-core/{rules.source_dir}", "flext-core"],
+        )
 
     def test_expected_envs_cover_every_analyzer_python_root(
         self,

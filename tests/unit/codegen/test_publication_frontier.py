@@ -90,7 +90,7 @@ published = owner.run_files_locked(
         ),
     ),
 )
-assert validated is not None
+tm.not_none(validated)
 if valid_payload:
     tm.that(tm.ok(published), eq=())
     tm.that(tm.ok(validated).repo_root, eq=root)

@@ -453,8 +453,8 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary. A verb exists
 # only in the profiles it declares (make.verbs[].profiles).
-PUBLIC_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check check-pyright census census-constants smells test tests test-full test-file file-gate profile-test profile-test-report profile-environment profile-environment-report profile-lanes profile-lanes-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report fmt fix fix-namespace fix-accessors fix-toolchain audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint gen-pyproject gen-editor initialize project-new mod mod-types mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
-BUILTIN_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check check-pyright census census-constants smells test tests test-full test-file file-gate profile-test profile-test-report profile-environment profile-environment-report profile-lanes profile-lanes-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report fmt fix fix-namespace fix-accessors fix-toolchain audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint gen-pyproject gen-editor initialize project-new mod mod-types mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
+PUBLIC_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check check-pyright census census-constants smells test tests test-full test-file file-gate profile-test profile-test-report profile-environment profile-environment-report profile-lanes profile-lanes-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report profile-codemod profile-codemod-report fmt fix fix-namespace fix-accessors fix-toolchain audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint gen-pyproject gen-editor initialize project-new mod mod-types mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
+BUILTIN_VERBS := help setup pre-commit upg upg-sources validate-lifecycle build examples check check-pyright census census-constants smells test tests test-full test-file file-gate profile-test profile-test-report profile-environment profile-environment-report profile-lanes profile-lanes-report profile-mod profile-mod-report profile-mod-rules profile-mod-rules-report profile-codemod profile-codemod-report fmt fix fix-namespace fix-accessors fix-toolchain audit status verify-clean docs clean bootstrap-candidate release-plan release-version release-tag release-build publication gen gen-footprint gen-pyproject gen-editor initialize project-new mod mod-types mod-rules mod-text mod-text-candidate mod-snapshots waza duplication sonarcloud-sync sonarcloud-issues
 SCRIPT_VERBS :=
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
@@ -1607,6 +1607,60 @@ endif
 
 
 
+profile-codemod: _builtin_require_workspace
+	@printf '==> %s | project=%s | profile=%s\n' 'profile-codemod' "$(PROJECT_ROOT)" 'standalone'
+
+	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-profile-codemod,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-profile-codemod)
+
+.PHONY: _activated-profile-codemod
+
+# Without hooks, Make resolves the guarded builtin and its environment
+# prerequisite once in this process instead of repeating it in a submake.
+ifeq ($(filter pre-profile-codemod _custom-profile-codemod post-profile-codemod,$(CUSTOM_DECLARED_TARGETS)),)
+_activated-profile-codemod: _builtin-profile-codemod
+_builtin-profile-codemod: _builtin_require_environment
+else
+
+
+_activated-profile-codemod: _builtin_require_environment
+
+
+	$(if $(filter Y,$(CI)),+@$(SELF_MAKE) _builtin-profile-codemod,$(call RUN_PUBLIC,profile-codemod))
+
+endif
+
+
+
+
+
+
+profile-codemod-report: _builtin_require_workspace
+	@printf '==> %s | project=%s | profile=%s\n' 'profile-codemod-report' "$(PROJECT_ROOT)" 'standalone'
+
+	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-profile-codemod-report,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-profile-codemod-report)
+
+.PHONY: _activated-profile-codemod-report
+
+# Without hooks, Make resolves the guarded builtin and its environment
+# prerequisite once in this process instead of repeating it in a submake.
+ifeq ($(filter pre-profile-codemod-report _custom-profile-codemod-report post-profile-codemod-report,$(CUSTOM_DECLARED_TARGETS)),)
+_activated-profile-codemod-report: _builtin-profile-codemod-report
+_builtin-profile-codemod-report: _builtin_require_environment
+else
+
+
+_activated-profile-codemod-report: _builtin_require_environment
+
+
+	$(if $(filter Y,$(CI)),+@$(SELF_MAKE) _builtin-profile-codemod-report,$(call RUN_PUBLIC,profile-codemod-report))
+
+endif
+
+
+
+
+
+
 fmt: _builtin_require_workspace
 	@printf '==> %s | project=%s | profile=%s\n' 'fmt' "$(PROJECT_ROOT)" 'standalone'
 
@@ -2492,6 +2546,14 @@ profile-mod-rules-report:
 	@printf '  %-16s %s\n' 'profile-mod-rules-report' 'Render the profile of the complete read-only rule diagnostic.'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make profile-mod-rules-report to execute it.'
 
+profile-codemod:
+	@printf '  %-16s %s\n' 'profile-codemod' 'Profile the canonical read-only codemod gate for one literal FILE, preserving native findings and interruption evidence.'
+	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make profile-codemod to execute it.'
+
+profile-codemod-report:
+	@printf '  %-16s %s\n' 'profile-codemod-report' 'Render the retained profile of the canonical read-only codemod gate.'
+	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make profile-codemod-report to execute it.'
+
 fmt:
 	@printf '  %-16s %s\n' 'fmt' 'Apply ruff format --preview and every declared formatter gate. Ruff is the rule; change code, never ruff.'
 	@printf '%s\n' 'OPTIONS=Y displays this contract without effects; run make fmt to execute it.'
@@ -2707,6 +2769,10 @@ _builtin-help:
 	@printf '  %-16s %s\n' 'profile-mod-rules' 'Profile the complete read-only rule diagnostic and retain its native failure outcome.';
 
 	@printf '  %-16s %s\n' 'profile-mod-rules-report' 'Render the profile of the complete read-only rule diagnostic.';
+
+	@printf '  %-16s %s\n' 'profile-codemod' 'Profile the canonical read-only codemod gate for one literal FILE, preserving native findings and interruption evidence.';
+
+	@printf '  %-16s %s\n' 'profile-codemod-report' 'Render the retained profile of the canonical read-only codemod gate.';
 
 	@printf '  %-16s %s\n' 'fmt' 'Apply ruff format --preview and every declared formatter gate. Ruff is the rule; change code, never ruff.';
 
@@ -3279,6 +3345,19 @@ _builtin_test_file_all: _builtin_require_environment
 export FLEXT_FILE_GATE_FILE := $(value FILE)
 _builtin_file_gate_all: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,format,pyrefly,mypy,pyright,codemod" --file "$$FLEXT_FILE_GATE_FILE"
+
+# Isolate the same read-only codemod gate when diagnosing file-gate preparation.
+_builtin-profile-codemod: _builtin_require_environment
+	@mkdir -p "$(PROFILE_REPORTS_DIR)"
+	@$(PROJECT_INFRA_RUN) -m flext_infra._profile_entry \
+		"$(PROFILE_REPORTS_DIR)/codemod.pstats" check run \
+		--repository-root "$(PROJECT_ROOT)" --gates codemod \
+		--file "$$FLEXT_FILE_GATE_FILE"
+
+_builtin-profile-codemod-report: _builtin_require_environment
+	@cd "$(PROJECT_ROOT)" || exit $$?; \
+		$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \
+		"$(PROFILE_REPORTS_DIR)/codemod.pstats"
 
 # fmt is format-only (single-pass verb law): ruff formats Python, the
 # fmt_gates formatters run once through the checker's apply mode, and every
