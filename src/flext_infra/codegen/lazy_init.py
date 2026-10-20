@@ -393,12 +393,18 @@ class FlextInfraCodegenLazyInit(
 
         """
         if source_project is None:
-            root = Path(
-                commonpath((str(root), *(str(project) for project in project_roots)))
+            # Keep the Rope authority scoped to this repository only. Expanding
+            # to the common path of imported project roots pulled in the entire
+            # workspace (superproject) and indexed every submodule, which made
+            # make gen unusably slow. Imported roots outside this repository are
+            # consumed as installed libraries, not indexed sources.
+            root = root.resolve()
+            scoped_project_roots = tuple(
+                project for project in project_roots if project.is_relative_to(root)
             )
             with u.Infra.facade_source_project(
                 root,
-                project_roots=project_roots,
+                project_roots=scoped_project_roots,
             ) as binding:
                 yield binding[0]
             return

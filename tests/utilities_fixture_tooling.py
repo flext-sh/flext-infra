@@ -335,11 +335,10 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         while pending:
             requirement = pending.pop()
             name = u.Infra.dep_name(requirement)
-            if name in selected:
+            if name in selected or name is None:
                 continue
-            if name is None or name not in projects:
-                msg = f"Fixture dependency has no workspace source owner: {requirement}"
-                raise ValueError(msg)
+            if name not in projects:
+                continue
             project = projects[name]
             selected[name] = project
             dependency = tm.ok(u.Infra.read_project_metadata_result(project))
