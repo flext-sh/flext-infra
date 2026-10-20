@@ -54,9 +54,7 @@ class TestsFlextInfraRuntimeRoot:
             context = tm.ok(observed)
             tm.that(context.project_root, eq=root.resolve())
             tm.that(context.runtime_root, eq=root.resolve())
-            tm.that(
-                u.Infra.runtime_environment_dir(root), eq=context.environment_path
-            )
+            tm.that(u.Infra.runtime_environment_dir(root), eq=context.environment_path)
 
     @staticmethod
     def test_root_context_is_available_before_managed_toml_recovery(
@@ -183,9 +181,7 @@ class TestsFlextInfraRuntimeRoot:
             observed.runtime_root,
             eq=(root if association == "member" else child).resolve(),
         )
-        tm.that(
-            u.Infra.runtime_environment_dir(child), eq=observed.environment_path
-        )
+        tm.that(u.Infra.runtime_environment_dir(child), eq=observed.environment_path)
         tm.that(
             u.Infra.runtime_python(child).parent.parent,
             eq=observed.environment_path,
@@ -252,9 +248,7 @@ class TestsFlextInfraRuntimeRoot:
 
             tm.that(observed.project_root, eq=project.resolve())
             tm.that(observed.runtime_root, eq=owner.resolve())
-            tm.that(
-                observed.environment_path, eq=owner / c.Infra.ENVIRONMENT_DIRECTORY
-            )
+            tm.that(observed.environment_path, eq=owner / c.Infra.ENVIRONMENT_DIRECTORY)
             tm.that(observed.resolution_root, eq=expected)
             tm.that(observed.pyproject_path, eq=expected / c.PYPROJECT_FILENAME)
             tm.that(observed.lock_path, eq=expected / c.Infra.UV_LOCK_FILENAME)

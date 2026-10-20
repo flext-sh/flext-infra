@@ -73,9 +73,9 @@ class FlextInfraUtilitiesCodemodProject(
 ):
     """Evaluate rule context over project facts: packages, layers, graphs."""
 
-    _module_role_cache: ClassVar[
-        ContextVar[t.MutableMappingKV[Path, int] | None]
-    ] = ContextVar("codemod_module_role_cache", default=None)
+    _module_role_cache: ClassVar[ContextVar[t.MutableMappingKV[Path, int] | None]] = (
+        ContextVar("codemod_module_role_cache", default=None)
+    )
 
     @classmethod
     def project_import_graph(
@@ -1992,6 +1992,9 @@ class FlextInfraUtilitiesCodemodProject(
         project, sources = binding
         if path not in sources:
             return False
+        native_paths = frozenset(FlextInfraUtilitiesRopeCore.python_file_paths(project))
+        if path not in native_paths:
+            return False
         modules: t.MutableMappingKV[str, t.Pair[Path, str]] = {}
         roots: list[m.Infra.SourceClassReference] = []
         declarations: list[m.Infra.SourceClassReference] = []
@@ -2000,6 +2003,7 @@ class FlextInfraUtilitiesCodemodProject(
             if (
                 source_path.suffix != c.Infra.EXT_PYTHON
                 or not source_path.is_relative_to(root)
+                or source_path not in native_paths
             ):
                 continue
             module = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
@@ -2024,20 +2028,21 @@ class FlextInfraUtilitiesCodemodProject(
                     )
                 )
             if source_path == path:
+                class_names = dict.fromkeys(
+                    value.get_name()
+                    for attribute in module.get_attributes().values()
+                    if FlextInfraUtilitiesRopeRuntimeTypes.py_class(
+                        value := attribute.get_object()
+                    )
+                    and value.get_module() is module
+                )
                 declarations.extend(
                     m.Infra.SourceClassReference(
                         target=name,
                         attributes=(class_name,),
                         qualified_base=f"{name}.{class_name}",
                     )
-                    for class_name in dict.fromkeys(
-                        value.get_name()
-                        for attribute in module.get_attributes().values()
-                        if FlextInfraUtilitiesRopeRuntimeTypes.py_class(
-                            value := attribute.get_object()
-                        )
-                        and value.get_module() is module
-                    )
+                    for class_name in class_names
                 )
         if not declarations:
             return False

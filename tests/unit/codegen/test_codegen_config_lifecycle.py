@@ -203,7 +203,7 @@ for runtime in (settings, isolated_settings):
     )
     assert service.settings is runtime
     result = service.ping(m.Demo.PingInput())
-    assert result.success, result.error
+    tm.ok(result.success), result.error
     expected = (
         config.Demo.ping_reply if runtime.Demo.enabled else config.Demo.disabled_reply
     )

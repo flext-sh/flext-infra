@@ -1,9 +1,8 @@
 # Migrate comparison observations that preserve evaluation and static typing.
 #
 # This family rewires the mechanically-safe raw `assert` comparison shapes to
-# their `tm` equivalents. Native type guards and assertions with a lazy message
-# remain assertions; replacing them either loses narrowing or adds control flow
-# solely to reproduce the language's existing assertion semantics.
+# their `tm` equivalents. Native type guards and lazy messages belong to
+# rewire-test-assert-guard.yml, which preserves their native control flow.
 #
 # Guard: every fix emits `tm.*`, so a document matches only where the module
 # imports `tm` from a FLEXT facade or the generated tests facade
@@ -17,7 +16,7 @@
 #     one-criterion tm form cannot split without changing what is asserted;
 #   * asserts inside except clauses (expected-failure choreography);
 #   * `len(...)` subjects, owned by the length documents of this family.
-# A trailing message clause stays native so it is evaluated only on failure.
+# A trailing message clause belongs to the explicit-failure rule.
 id: rewire-test-assert-eq
 language: Python
 severity: error

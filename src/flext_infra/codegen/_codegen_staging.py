@@ -37,7 +37,10 @@ class FlextInfraCodegenStaging:
         workspace: Path,
         plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         *,
-        prepare: Callable[[m.Infra.StageSourcePlan], p.Result[m.Infra.StageSourcePlan]]
+        prepare: Callable[
+            [m.Infra.StageSourcePlan],
+            p.Result[m.Infra.StageSourcePlan],
+        ]
         | None = None,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Seal each owning project's exact proposal under its producer's policy.
@@ -169,6 +172,10 @@ class FlextInfraCodegenStaging:
                 return result_type.fail("prepared source receipt cannot be reopened")
             if prepare is None:
                 return result_type.ok(plans)
+            if not isinstance(existing, m.Infra.StageSourcePlan):
+                return result_type.fail(
+                    "prepared source receipt is not a stage source plan"
+                )
             prepared = prepare(existing)
         else:
             planned = FlextInfraStagedPackage.plan_sources(

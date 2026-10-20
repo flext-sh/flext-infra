@@ -1,0 +1,12 @@
+id: rewire-test-assert-guard
+valid:
+  - assert value == expected
+  - assert value is not None, "A value is required"
+  - |
+    if value is None:
+        raise AssertionError
+invalid:
+  - assert value is not None
+  - assert value is None
+  - assert isinstance(value, Entry)
+  - assert isinstance(value, (Entry, Schema))

@@ -64,33 +64,74 @@ class FlextInfraCodegenTransaction(FlextInfraCodegenTransactionGeneration):
         )
         if current_inputs.failure:
             return r[T].from_failure(current_inputs)
-        planned = FlextInfraStagedPackage.plan_sources(
-            workspace,
-            updates,
-            options=m.Infra.StageSourceOptions(
-                inputs=current_inputs.value,
-                workspaces=options.workspaces,
-                modes=options.modes,
-            ),
+        scopes = tuple(
+            dict.fromkeys(root.resolve() for root in options.workspaces)
+        ) or (workspace.resolve(),)
+        participants = set(scopes)
+        for scope in scopes:
+            elected = FlextInfraStagedPackage._workspace_layouts(scope)
+            if elected.failure:
+                return r[T].from_failure(elected)
+            participants.update(
+                layout.project_root for layout in elected.value.values()
+            )
+        roots = self.capability_roots("stage-inputs", sorted(participants))
+        identities = tuple(
+            u.Cli.atomic_plan_directory_chain(root).unwrap() for root in roots.values()
         )
-        if planned.failure:
-            return r[T].from_failure(planned)
-        plan = planned.value
-        roots = self.capability_roots("stage-inputs", sorted(plan.roots))
+        originals = list(current_inputs.value)
+        observed_paths = {state.path for state in originals}
+        for nominated in updates:
+            path = nominated.resolve()
+            if not any(path.is_relative_to(root) for root in scopes):
+                return r[T].fail(f"source replacement is outside workspace: {path}")
+            if path not in observed_paths:
+                captured = u.Cli.atomic_read_binary_file_state(path, required=False)
+                if captured.failure:
+                    return r[T].from_failure(captured)
+                originals.append(captured.value)
+                observed_paths.add(path)
+        source_options = m.Infra.StageSourceOptions(
+            inputs=tuple(originals),
+            workspaces=options.workspaces,
+            modes=options.modes,
+        )
         runtime: t.Pair[Path | None, bool] = (
             options.runtime_root,
             options.runtime_check,
         )
-        return self.run_files_locked(
-            roots,
-            lambda scope_root: self._locked_source_preview(
+
+        def capture(scope_root: Path) -> p.Result[T]:
+            planned = FlextInfraStagedPackage.plan_sources(
+                workspace, updates, options=source_options
+            )
+            if planned.failure:
+                return r[T].from_failure(planned)
+            plan = planned.value
+            if frozenset(plan.roots) != frozenset(participants):
+                return r[T].fail("source preview participants changed before capture")
+            return self._locked_source_preview(
                 scope_root,
                 plan,
                 roots,
                 validator,
                 runtime,
-            ),
-        )
+            )
+
+        def operation(scope_root: Path) -> p.Result[T]:
+            for identity in identities:
+                observed = u.Cli.atomic_plan_directory_chain(identity.target)
+                if observed.failure:
+                    return r[T].from_failure(observed)
+                if observed.value != identity:
+                    return r[T].fail(
+                        f"source preview participant changed before capture: {identity.target}"
+                    )
+            return self._source_controlplane_operation(
+                roots, lambda: capture(scope_root)
+            )
+
+        return self.run_files_locked(roots, operation)
 
     def _locked_source_preview[T](
         self,

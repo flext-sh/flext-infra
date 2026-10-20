@@ -164,9 +164,7 @@ class TestRuntimeCensusSelection:
             root,
             {
                 "pyproject.toml": (
-                    '[project]\n'
-                    'name = "fixturecensussealed"\n'
-                    'version = "0.1.0"\n'
+                    '[project]\nname = "fixturecensussealed"\nversion = "0.1.0"\n'
                 ),
                 "src/fixturecensussealed/__init__.py": (
                     "def __dir__():\n    "

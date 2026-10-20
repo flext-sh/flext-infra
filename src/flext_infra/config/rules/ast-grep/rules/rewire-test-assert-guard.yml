@@ -1,0 +1,45 @@
+# Explicit failure preserves native guard narrowing and lazy message evaluation.
+# The emitted-symbol predicate requires the real built-in exception binding.
+id: rewire-test-assert-message
+language: Python
+severity: error
+metadata:
+  context:
+    COND:
+      is: emitted-symbol
+      arg: AssertionError builtins AssertionError
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  pattern: "assert $COND, $MSG"
+fix: |-
+  if not $COND:
+      raise AssertionError($MSG)
+message: Preserve the lazy assertion message through an explicit native failure.
+---
+id: rewire-test-assert-guard
+language: Python
+severity: error
+metadata:
+  context:
+    COND:
+      is: emitted-symbol
+      arg: AssertionError builtins AssertionError
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $COND"
+    - not:
+        matches: assert-has-message
+    - has:
+        any:
+          - pattern: "$VALUE is None"
+          - pattern: "$VALUE is not None"
+          - pattern: "isinstance($VALUE, $TYPE)"
+fix: |-
+  if not $COND:
+      raise AssertionError
+message: Preserve the native guard through an explicit failure.

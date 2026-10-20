@@ -19,13 +19,13 @@ from flext_infra._models import (
     FlextInfraModelsCheck,
     FlextInfraModelsCodegenToolchain,
     FlextInfraModelsRope,
-    FlextInfraModelsWorkspace,
 )
 from flext_infra._models._codegen import (
     FlextInfraModelsCodegenJournalModels,
     FlextInfraModelsCodegenPipelineModels,
 )
 from flext_infra._models._config import FlextInfraConfigModels
+from flext_infra._models.workspace import FlextInfraModelsWorkspace
 
 
 class FlextInfraModelsCodegenTransactionModels:

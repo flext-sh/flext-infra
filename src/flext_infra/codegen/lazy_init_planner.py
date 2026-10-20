@@ -184,8 +184,26 @@ class FlextInfraCodegenLazyInitPlanner(
         ):
             planner = type(self)(rope_workspace=workspace, lazy_init=self.lazy_init)
             planner.seed_source_plans(self._source_plan_cache, self._plan_receipts)
+            # Seed every planner cache so identical structural and alias
+            # analysis is never repeated across the 57+ package passes.
+            planner._module_exports_cache.update(self._module_exports_cache)
+            planner._package_exports_cache.update(self._package_exports_cache)
+            planner._source_exports_cache.update(self._source_exports_cache)
+            planner._parent_package_cache.update(self._parent_package_cache)
+            planner._module_file_by_name.update(self._module_file_by_name)
+            planner._project_layout_cache.update(self._project_layout_cache)
+            planner._collision_count = self._collision_count
             plan = planner.build_plan(pkg_dir, dir_exports=dir_exports)
             self._collision_count += planner.collision_count
+            # Propagate newly populated caches back to the shared parent.
+            self._module_exports_cache.update(planner._module_exports_cache)
+            self._package_exports_cache.update(planner._package_exports_cache)
+            self._source_exports_cache.update(planner._source_exports_cache)
+            self._source_plan_cache.update(planner._source_plan_cache)
+            self._plan_receipts.update(planner._plan_receipts)
+            self._parent_package_cache.update(planner._parent_package_cache)
+            self._module_file_by_name.update(planner._module_file_by_name)
+            self._project_layout_cache.update(planner._project_layout_cache)
         receipt = consumption.receipt()
         return plan.model_copy(
             update={

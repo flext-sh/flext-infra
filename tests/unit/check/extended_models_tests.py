@@ -33,7 +33,7 @@ class TestsFlextInfraModels:
             start_column=2,
         )
         result = m.Infra.SarifResult(
-            rule_id="similar-code",
+            ruleId="similar-code",
             level="error",
             message="Native comparison",
             locations=(primary,),

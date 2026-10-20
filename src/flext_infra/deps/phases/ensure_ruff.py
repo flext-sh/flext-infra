@@ -138,9 +138,14 @@ class FlextInfraEnsureRuffConfigPhase:
 
         existing_root = tuple(d for d in ruff_cfg.src if _present(d))
         excluded_roots = self._analysis_exclusion_root_set(path.parent)
-        existing_namespace_packages = tuple(
-            d for d in ruff_cfg.namespace_packages if d not in excluded_roots
-        )
+        existing_namespace_packages = {
+            directory
+            for directory in (
+                *ruff_cfg.namespace_packages,
+                *facts.repository_namespace_packages,
+            )
+            if directory not in excluded_roots
+        }
         toml = m.Infra.DepsToml
         return toml.PhaseConfig(
             name="ruff",
@@ -312,6 +317,7 @@ class FlextInfraEnsureRuffConfigPhase:
         path: Path,
         analysis_exclusions: t.StrSequence | None = None,
         generated_python_roots: t.StrSequence = (),
+        repository_namespace_packages: t.StrTuple = (),
     ) -> t.StrSequence:
         """Apply canonical Ruff settings directly to one normalized payload.
 
@@ -333,6 +339,7 @@ class FlextInfraEnsureRuffConfigPhase:
                         ),
                         analysis_exclusions=analysis_exclusions,
                         generated_python_roots=generated_python_roots,
+                        repository_namespace_packages=repository_namespace_packages,
                     ),
                 ),
             ),

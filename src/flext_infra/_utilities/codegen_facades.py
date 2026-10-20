@@ -1060,11 +1060,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                     for attribute in owner.get_attributes().values()
                 )
             )
-            if (
-                family == "model"
-                and source.startswith(c.Infra.AUTOGEN_HEADERS)
-                and inherited_class
-            ):
+            if source.startswith(c.Infra.AUTOGEN_HEADERS) and inherited_class:
                 # A projection cannot turn an inherited declaration into a new
                 # alias or replace a different canonical member with its value.
                 shadows.append(member)

@@ -181,9 +181,7 @@ class TestsFlextInfraRootArtifactOwnership:
                     repository_root=root,
                     request=request,
                 ),
-            ).plan(
-                request
-            )
+            ).plan(request)
         )
         governed = tuple(file for file in plan.files if file.policy is not None)
         tm.that(

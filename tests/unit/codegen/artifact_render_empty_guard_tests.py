@@ -202,9 +202,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         emitted = tm.not_none(prepared[1].desired_content)
         tm.that(destination.exists(), eq=False)
         tm.that(metadata.read_text(encoding=c.DEFAULT_ENCODING), eq=before_metadata)
-        tm.that(
-            emitted.decode(c.DEFAULT_ENCODING), eq="values = dict(answer=42)\n"
-        )
+        tm.that(emitted.decode(c.DEFAULT_ENCODING), eq="values = dict(answer=42)\n")
         tm.that("import os" in emitted.decode(c.DEFAULT_ENCODING), eq=False)
         receipt = tm.not_none(prepared[0].prepared_sources)
         if not isinstance(receipt, m.Infra.StageSourcePlan):
@@ -438,9 +436,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             plan.path: tm.not_none(plan.desired_content).decode(c.DEFAULT_ENCODING)
             for plan in prepared
         }
-        unselected = tm.ok(
-            FlextInfraStagedPackage.plan_sources(workspace, updates)
-        )
+        unselected = tm.ok(FlextInfraStagedPackage.plan_sources(workspace, updates))
         rejected = FlextInfraStagedPackage.project_layouts(unselected, first.project)
         tm.that(rejected.failure, eq=True)
         tm.that(str(rejected.error), has="no original source authority")

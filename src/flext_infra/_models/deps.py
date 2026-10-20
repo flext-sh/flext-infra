@@ -436,6 +436,10 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsT
             t.StrSequence,
             m.Field(description="Generated python roots to exclude"),
         ]
+        repository_namespace_packages: Annotated[
+            t.StrTuple,
+            m.Field(description="Declared repository-root namespace packages"),
+        ] = ()
 
     class PyprojectDeclaredTopology(m.ContractModel):
         """Project topology a caller declares instead of discovering it on disk.

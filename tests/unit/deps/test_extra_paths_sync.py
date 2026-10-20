@@ -10,11 +10,10 @@ import dataclasses
 from pathlib import Path
 
 import pytest
-from flext_tests import tf, tm
 
-from flext_infra import main, t
-from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from tests import u
+from flext_infra import main
+from flext_infra.deps import FlextInfraExtraPathsManager
+from tests import t, tf, tm, u
 
 _TEST_REPOSITORY_ROOT = Path(__file__).resolve().parent
 

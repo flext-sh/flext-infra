@@ -23,7 +23,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
     """TYPE_CHECKING block generation helper methods."""
 
     @classmethod
-    def _owned_child_class_imports(
+    def _owned_child_imports(
         cls,
         mod: str,
         items: t.StrPairSequence,
@@ -31,40 +31,36 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         source_project: p.Infra.RopeProject,
         occupied_names: set[str],
     ) -> t.StrSequence:
-        """Bind a proven child module's classes without importing the parent itself.
+        """Bind a proven child module's exports without importing its parent.
 
         Returns:
             Absolute module imports followed by identity-preserving static aliases.
 
         Raises:
-            ValueError: If a binding is not the declared native class or cannot fit.
+            ValueError: If a binding is not declared by its owner or cannot fit.
 
         """
-        parent, _, _child = mod.rpartition(".")
-        owner = source_project.get_module(mod)
-        parent_module = u.Infra.require_parsed_module(source_project.get_module(parent))
+        owner = u.Infra.require_parsed_module(source_project.get_module(mod))
+        parent_module = u.Infra.require_parsed_module(
+            source_project.get_module(mod.rpartition(".")[0])
+        )
         # Reuse this module's existing binding so a second render is byte-stable.
         blocked = occupied_names | {
             name
             for name, binding in parent_module.get_scope().get_names().items()
-            if binding.get_object() is not owner
+            if not u.Infra.pymodule(value := binding.get_object()) or value is not owner
         }
         index = 0
         while (alias := f"_owner_{index}") in blocked:
             index += 1
         occupied_names.add(alias)
         lines = list(cls._format_type_checking_module_alias_import("    ", mod, alias))
-        width = config.Infra.tooling.tools.ruff.line_length
         for export_name, attr_name in sorted(items, key=cls._import_item_sort_key):
             member = owner.get_attributes().get(attr_name)
             target = member.get_object() if member is not None else None
-            if (
-                target is None
-                or not u.Infra.abstract_class(target)
-                or target.get_module() is not owner
-            ):
+            if target is None or target.get_module() is not owner:
                 message = (
-                    "Owned child static export is not its declared native class: "
+                    "Owned child static export is not declared by its module: "
                     f"{mod}.{attr_name}"
                 )
                 raise ValueError(message)
@@ -72,16 +68,18 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             compact = f"    {export_name} = {expression}"
             lines.extend(
                 (compact,)
-                if len(compact) <= width
+                if len(compact) <= config.Infra.tooling.tools.ruff.line_length
                 else (f"    {export_name} = (", f"        {expression}", "    )")
             )
-        if any(len(line) > width for line in lines):
-            message = f"Owned child static class binding exceeds Ruff line length: {mod}"
+        if any(
+            len(line) > config.Infra.tooling.tools.ruff.line_length for line in lines
+        ):
+            message = f"Owned child static binding exceeds Ruff line length: {mod}"
             raise ValueError(message)
-        candidate = source_project.pycore.get_string_module(
+        attributes = u.Infra.build_string_module(
+            source_project,
             "\n".join(line.removeprefix("    ") for line in lines) + "\n",
-        )
-        attributes = candidate.get_attributes()
+        ).get_attributes()
         for export_name, attr_name in items:
             binding = attributes.get(export_name)
             if (
@@ -89,7 +87,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                 or binding.get_object()
                 is not owner.get_attributes()[attr_name].get_object()
             ):
-                message = f"Owned child static class identity changed: {mod}.{attr_name}"
+                message = f"Owned child static identity changed: {mod}.{attr_name}"
                 raise ValueError(message)
         return tuple(lines)
 
@@ -186,22 +184,19 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         items: t.StrPairSequence,
         lines: t.MutableSequenceOf[str],
         module_exports: frozenset[str],
-        *,
-        local_package_root: str | None = None,
-        source_project: p.Infra.RopeProject | None = None,
-        occupied_names: set[str] | None = None,
+        context: tuple[str | None, p.Infra.RopeProject | None, set[str]],
     ) -> None:
         """Emit one TYPE_CHECKING import from its resolved owner."""
+        local_package_root, source_project, occupied_names = context
         if (
             len(f"    from {mod} import (")
             > config.Infra.tooling.tools.ruff.line_length
             and mod.rpartition(".")[0] == local_package_root
             and source_project is not None
-            and occupied_names is not None
             and all(attr for _name, attr in items)
         ):
             lines.extend(
-                FlextInfraCodegenGenerationTypeCheckingMixin._owned_child_class_imports(
+                FlextInfraCodegenGenerationTypeCheckingMixin._owned_child_imports(
                     mod,
                     items,
                     source_project=source_project,
@@ -235,7 +230,6 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                     "    ",
                     mod,
                     deduped_parts,
-                    local_package_root=local_package_root,
                 ),
             )
 
@@ -248,7 +242,6 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         child_packages: t.StrSequence | None = None,
         local_package_root: str | None = None,
         root_names: frozenset[str] | None = None,
-        source_project: p.Infra.RopeProject | None = None,
     ) -> t.StrSequence:
         """Generate a TYPE_CHECKING import block.
 
@@ -256,6 +249,30 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             The resulting ``t.StrSequence``.
 
         """
+        return cls._generate_type_checking(
+            groups,
+            (include_flext_types, child_packages, local_package_root, root_names),
+        )
+
+    @classmethod
+    def _generate_type_checking(
+        cls,
+        groups: t.MappingKV[str, t.StrPairSequence],
+        publication: tuple[
+            bool, t.StrSequence | None, str | None, frozenset[str] | None
+        ],
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> t.StrSequence:
+        """Render the public import contract against its optional frozen source view.
+
+        Returns:
+            The canonical static imports and proven owned-child class bindings.
+
+        """
+        include_flext_types, child_packages, local_package_root, root_names = (
+            publication
+        )
         if not groups and not include_flext_types:
             return ()
         if not groups:
@@ -284,13 +301,16 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         # invalid Python and breaks every conform that follows.
         if not merged_groups and not include_flext_types:
             return ()
-        root_name = "" if not local_package_root else local_package_root.split(".")[0]
         # Derive the set of first-party roots for isort sectioning. When the
         # caller provides an explicit root_names (e.g. test facades need both
         # "tests" and the project package), use it; otherwise fall back to the
         # single root_name so non-test packages are unaffected.
         effective_root_names = (
-            root_names if root_names is not None else frozenset({root_name})
+            root_names
+            if root_names is not None
+            else frozenset({
+                "" if not local_package_root else local_package_root.split(".")[0]
+            })
         )
         lines: t.MutableSequenceOf[str] = ["if TYPE_CHECKING:"]
         flext_types_emitted = include_flext_types and not cls._has_flext_types(
@@ -302,7 +322,6 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         def type_checking_module_key(mod: str) -> t.StrPair:
             return cls._type_checking_sort_key(mod, effective_root_names)
 
-        sorted_mods = sorted(merged_groups, key=type_checking_module_key)
         occupied_names = {
             name for items in merged_groups.values() for name, _attr in items
         }
@@ -316,20 +335,20 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             if flext_types_emitted
             else None
         )
-        for mod in sorted_mods:
-            current_section = type_checking_module_key(mod)[0]
-            if previous_section is not None and current_section != previous_section:
+        for mod in sorted(merged_groups, key=type_checking_module_key):
+            if (
+                previous_section is not None
+                and type_checking_module_key(mod)[0] != previous_section
+            ):
                 lines.append("")
             cls._emit_type_checking_module(
                 mod,
                 merged_groups[mod],
                 lines,
                 module_exports,
-                local_package_root=local_package_root,
-                source_project=source_project,
-                occupied_names=occupied_names,
+                (local_package_root, source_project, occupied_names),
             )
-            previous_section = current_section
+            previous_section = type_checking_module_key(mod)[0]
         return () if len(lines) == 1 else lines
 
 

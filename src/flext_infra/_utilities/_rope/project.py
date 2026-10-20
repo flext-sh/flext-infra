@@ -1126,12 +1126,6 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
             plan = self._effects.get(path)
             if plan is None:
                 return
-            if path in self._consumed_effects:
-                # The effect's original proof was already attributed; repeating
-                # the verification and receipt merge per re-read turned every
-                # re-query of a virtual resource into a full receipt rebuild.
-                return
-            self._consumed_effects.add(path)
             states = (
                 *plan.source_states,
                 *(
@@ -1140,13 +1134,6 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                     else ()
                 ),
             )
-            for original in states:
-                if self.source_state(original.path, required=False) != original:
-                    msg = (
-                        "Rope overlay effect has conflicting "
-                        f"original input: {original.path}"
-                    )
-                    raise ValueError(msg)
             chains = (
                 *plan.source_query_topology,
                 *(
@@ -1155,6 +1142,23 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                     else ()
                 ),
             )
+            if path in self._consumed_effects:
+                # Reuse the original plan receipt without repeating filesystem
+                # verification; still attribute the declared effect to this
+                # consumer so independent scopes retain their proof.
+                self._record(
+                    directories=plan.source_directories,
+                    topology=chains,
+                )
+                return
+            self._consumed_effects.add(path)
+            for original in states:
+                if self.source_state(original.path, required=False) != original:
+                    msg = (
+                        "Rope overlay effect has conflicting "
+                        f"original input: {original.path}"
+                    )
+                    raise ValueError(msg)
             directories, topology = u.Cli.atomic_merge_directory_query_receipts(
                 (*self._imported_directories.values(), *plan.source_directories),
                 (*self._imported_topology.values(), *chains),

@@ -276,12 +276,14 @@ class FlextInfraCodegenGenerationStandardMixin(
         }
         type_checking_root_names = frozenset(first_party_names)
         type_checking_lines = "\n".join(
-            cls.generate_type_checking(
+            cls._generate_type_checking(
                 cls._group_imports(public_type_checking_imports),
-                include_flext_types=False,
-                child_packages=plan.child_packages_for_lazy,
-                local_package_root=current_pkg,
-                root_names=type_checking_root_names,
+                (
+                    False,
+                    plan.child_packages_for_lazy,
+                    current_pkg,
+                    type_checking_root_names,
+                ),
                 source_project=source_project,
             ),
         )

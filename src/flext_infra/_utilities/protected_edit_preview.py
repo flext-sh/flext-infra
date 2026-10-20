@@ -12,11 +12,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.protected_edit_linting import (
     FlextInfraUtilitiesProtectedEditLinting,
-)
-from flext_infra._utilities.project_discovery import (
-    FlextInfraUtilitiesProjectDiscovery,
 )
 
 if TYPE_CHECKING:
