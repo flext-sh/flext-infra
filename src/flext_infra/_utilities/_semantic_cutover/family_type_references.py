@@ -298,6 +298,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         module: p.Infra.RopePyModule,
     ) -> t.VariadicTuple[tuple[int, int, str, p.Infra.RopeScope]]:
         """Return only string constants occupying native annotation type positions."""
+        del _project
         protected: frozenset[t.Pair[int, int]] | None = None
         literals = FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(source)
         selected: list[tuple[int, int, str, p.Infra.RopeScope]] = []
@@ -430,6 +431,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
                 *,
                 _selected: list[str] = selected,
             ) -> None:
+                del _scope
                 _selected.append(expression)
 
             cls.rewrite_type_source(literal, project, scope, collect)
@@ -612,6 +614,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         *,
         flatten: m.Infra.FamilyWrapperFlatten,
     ) -> t.Pair[bool, str]:
+        del _resource
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         unresolved = False
 

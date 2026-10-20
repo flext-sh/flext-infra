@@ -775,6 +775,7 @@ class FlextInfraUtilitiesDocsRender:
             The managed mkdocs.yml for a project scope.
 
         """
+        del modules
         data = contract
         repo_url = FlextInfraUtilitiesDocsRender._declared_or(
             data,

@@ -17,7 +17,7 @@ from flext_infra.deps import (
     FlextInfraPyprojectModernizer,
 )
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, t, tm, u
+from tests import c, e, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,6 +25,57 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraDepsModernizerPyright:
     """Declarative tests for generated Pyright configuration."""
+
+    @staticmethod
+    @pytest.mark.parametrize("mode", ["basic", "off"])
+    def test_native_options_cannot_weaken_strict_analysis(
+        tool_config_document: m.Infra.ToolConfigDocument,
+        mode: str,
+    ) -> None:
+        """Native option deltas cannot weaken the required analysis contract."""
+        payload = {
+            **tool_config_document.model_dump(
+                by_alias=True, exclude_computed_fields=True
+            ),
+            "settings": {
+                **tool_config_document.settings,
+                c.Infra.PYRIGHT: (
+                    *tool_config_document.settings[c.Infra.PYRIGHT],
+                    ("typeCheckingMode", mode),
+                ),
+            },
+        }
+        with pytest.raises(e.PydanticValidationError, match="strict"):
+            m.Infra.ToolConfigDocument.model_validate(payload)
+
+    @staticmethod
+    def test_native_pairs_can_restore_strict_analysis(
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
+        """The final native pair elects the analysis mode before validation."""
+        expected = u.Infra.native_tool_settings(tool_config_document, c.Infra.PYRIGHT)[
+            "typeCheckingMode"
+        ]
+        payload = {
+            **tool_config_document.model_dump(
+                by_alias=True, exclude_computed_fields=True
+            ),
+            "settings": {
+                **tool_config_document.settings,
+                c.Infra.PYRIGHT: (
+                    *tool_config_document.settings[c.Infra.PYRIGHT],
+                    ("typeCheckingMode", "off"),
+                    ("typeCheckingMode", expected),
+                ),
+            },
+        }
+        validated = m.Infra.ToolConfigDocument.model_validate(payload)
+        tm.that(
+            u.Infra.native_tool_settings(validated, c.Infra.PYRIGHT)[
+                "typeCheckingMode"
+            ],
+            eq=expected,
+        )
 
     @staticmethod
     def test_generic_pairs_preserve_types_and_semantic_array_order(

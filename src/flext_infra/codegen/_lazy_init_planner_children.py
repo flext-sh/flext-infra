@@ -25,9 +25,11 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         def _package_entry(
             self,
             pkg_dir: Path,
-        ) -> m.Infra.RopePackageIndexEntry | None: ...
+        ) -> m.Infra.RopePackageIndexEntry | None:
+            del pkg_dir
 
-        def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext: ...
+        def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext:
+            del pkg_dir
 
         _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan]
         _plan_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis]
@@ -37,16 +39,20 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             index: t.MutableLazyAliasMap,
             name: str,
             target: t.StrPair,
-        ) -> None: ...
+        ) -> None:
+            del index, name, target
 
         @staticmethod
-        def _publish(name: str, *, allow_main: bool) -> bool: ...
+        def _publish(name: str, *, allow_main: bool) -> bool:
+            del name, allow_main
 
         @staticmethod
-        def _is_facade_root(context: m.Infra.LazyInitPackageContext) -> bool: ...
+        def _is_facade_root(context: m.Infra.LazyInitPackageContext) -> bool:
+            del context
 
         @staticmethod
-        def _is_private_owner(module_path: str, *, root_pkg: str) -> bool: ...
+        def _is_private_owner(module_path: str, *, root_pkg: str) -> bool:
+            del module_path, root_pkg
 
     def _has_live_package_content(
         self,

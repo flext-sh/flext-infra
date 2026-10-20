@@ -66,6 +66,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             The resulting ``t.StrSequence``.
 
         """
+        del ctx
         return self._python_targets(project_dir)
 
     @override

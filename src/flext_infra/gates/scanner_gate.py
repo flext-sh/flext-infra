@@ -40,6 +40,7 @@ class FlextInfraScannerGateMixin(FlextInfraGate):
             The resulting ``m.Infra.GateExecution``.
 
         """
+        del ctx
         started = time.monotonic()
         files_result = u.Infra.iter_python_files(
             m.Infra.SourceScanRequest(project_roots=(project_dir,)),

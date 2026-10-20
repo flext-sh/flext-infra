@@ -30,12 +30,16 @@ class FlextInfraRefactorCensusProjectMixin:
             *,
             rule_names: t.StrSequence | None,
             selected_rules: frozenset[str] | None = None,
-        ) -> bool: ...
-        @staticmethod
-        def unused(item: m.Infra.Object) -> bool: ...
+        ) -> bool:
+            del rule, rule_names, selected_rules
 
         @staticmethod
-        def _object_key(item: m.Infra.Object) -> str: ...
+        def unused(item: m.Infra.Object) -> bool:
+            del item
+
+        @staticmethod
+        def _object_key(item: m.Infra.Object) -> str:
+            del item
 
         @staticmethod
         def _violation(
@@ -43,14 +47,17 @@ class FlextInfraRefactorCensusProjectMixin:
             *,
             kind: str,
             description: str,
-        ) -> m.Infra.Violation: ...
+        ) -> m.Infra.Violation:
+            del item, kind, description
+
         @classmethod
         def _removal_candidate(
             cls,
             item: m.Infra.Object,
             *,
             include_unused: bool,
-        ) -> m.Infra.RemovalCandidate | None: ...
+        ) -> m.Infra.RemovalCandidate | None:
+            del item, include_unused
 
     def _project_report(
         self,

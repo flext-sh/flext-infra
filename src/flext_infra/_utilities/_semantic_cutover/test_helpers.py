@@ -48,6 +48,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
                 original_node: N,
                 updated_node: N,
             ) -> N:
+                del original_node
                 return FlextInfraUtilitiesQualifiedNames.filter_exports(
                     updated_node,
                     self.names,

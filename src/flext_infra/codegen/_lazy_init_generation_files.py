@@ -37,7 +37,8 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         def _cleanup_generated_support_file_states(
             self,
             plan: m.Infra.LazyInitPlan,
-        ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]: ...
+        ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+            del plan
 
     @staticmethod
     def _snapshot_paths(

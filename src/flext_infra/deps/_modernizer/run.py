@@ -46,7 +46,8 @@ class FlextInfraPyprojectModernizerRun:
             path: Path,
             *,
             source: str | None = None,
-        ) -> p.Result[m.Infra.PyprojectDocumentState]: ...
+        ) -> p.Result[m.Infra.PyprojectDocumentState]:
+            del path, source
 
         def _process_document_state(
             self,
@@ -56,7 +57,8 @@ class FlextInfraPyprojectModernizerRun:
             dry_run: bool,
             skip_comments: bool,
             source_migration: m.Infra.GitSourceReferenceMigration | None = None,
-        ) -> p.Result[t.StrSequence]: ...
+        ) -> p.Result[t.StrSequence]:
+            del state, canonical_dev, dry_run, skip_comments, source_migration
 
         def _render_document_state(
             self,
@@ -66,7 +68,8 @@ class FlextInfraPyprojectModernizerRun:
             skip_comments: bool,
             format_source: bool = True,
             preserve_layout: bool = False,
-        ) -> p.Result[t.StrSequence]: ...
+        ) -> p.Result[t.StrSequence]:
+            del state, changes, skip_comments, format_source, preserve_layout
 
     def _selected_project_paths(self) -> p.Result[t.SequenceOf[Path]]:
         """Resolve selected names by path, directory basename, or declared name.

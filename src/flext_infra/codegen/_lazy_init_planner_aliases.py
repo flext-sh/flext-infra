@@ -22,23 +22,28 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         lazy_init: m.Infra.LazyInitConfig
         _parent_package_cache: MutableMapping[str, t.StrSequence]
 
-        def _source_package_name(self, pkg_dir: Path, inherited_key: str) -> str: ...
+        def _source_package_name(self, pkg_dir: Path, inherited_key: str) -> str:
+            del pkg_dir, inherited_key
 
         def _package_entry(
             self,
             pkg_dir: Path,
-        ) -> m.Infra.RopePackageIndexEntry | None: ...
+        ) -> m.Infra.RopePackageIndexEntry | None:
+            del pkg_dir
 
-        def _export_names_for_package(self, package_name: str) -> frozenset[str]: ...
+        def _export_names_for_package(self, package_name: str) -> frozenset[str]:
+            del package_name
 
-        def _package_name_from_target(self, target: str) -> str: ...
+        def _package_name_from_target(self, target: str) -> str:
+            del target
 
         def _parents_from_constants_module(
             self,
             module_path: Path,
             current_pkg: str,
             visited: set[str] | None = None,
-        ) -> t.StrSequence: ...
+        ) -> t.StrSequence:
+            del module_path, current_pkg, visited
 
         def _resolve_inherited_alias_source(
             self,
@@ -46,7 +51,8 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             alias_name: str,
             *,
             current_pkg: str,
-        ) -> str: ...
+        ) -> str:
+            del package_names, alias_name, current_pkg
 
     def _resolve_aliases(
         self,

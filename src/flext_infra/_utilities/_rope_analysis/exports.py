@@ -631,6 +631,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
             Top-level parsed statements for one source module.
 
         """
+        del source
         return ()
 
     @staticmethod
@@ -641,6 +642,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
             Parsed nodes reachable from one source module.
 
         """
+        del source
         return ()
 
     class BindingInventory:

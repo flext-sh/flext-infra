@@ -528,6 +528,7 @@ class FlextInfraRopeWorkspace(
         _tb: TracebackType | None,
     ) -> None:
         """Close the Rope project on context-manager exit."""
+        del _exc_type, _exc, _tb
         self.close()
 
     @override

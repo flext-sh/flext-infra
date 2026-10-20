@@ -1314,6 +1314,7 @@ class FlextInfraModGateEngine:
             Current membership and catalog proof, without requiring old output bytes.
 
         """
+        del _candidate_root
         plan = report.rule_plan
         if (
             report.repository_root != root.resolve()

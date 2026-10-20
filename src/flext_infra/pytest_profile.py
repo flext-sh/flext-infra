@@ -104,6 +104,7 @@ class FlextInfraPytestProfile:
 
         def terminate(signum: int, _frame: FrameType | None) -> None:
             """Unwind through receipt publication between owned child lifetimes."""
+            del _frame
             raise SystemExit(outcome or 128 + signum)
 
         previous = signal.getsignal(signal.SIGTERM)

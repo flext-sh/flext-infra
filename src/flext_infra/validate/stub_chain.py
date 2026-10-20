@@ -171,6 +171,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             The resulting ``p.Result[m.Infra.StubAnalysisReport]``.
 
         """
+        del repository_root
         proj = project_dir.resolve()
         mypy_result = self._run_mypy_hints(proj)
         if mypy_result.failure:

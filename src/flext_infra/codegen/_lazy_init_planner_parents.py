@@ -25,11 +25,14 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         _source_exports_cache: MutableMapping[str, frozenset[str]]
         _parent_package_cache: MutableMapping[str, t.StrSequence]
 
-        def _module_file(self, module_path: str) -> Path | None: ...
+        def _module_file(self, module_path: str) -> Path | None:
+            del module_path
 
-        def _parent_packages(self, pkg_dir: Path) -> t.StrSequence: ...
+        def _parent_packages(self, pkg_dir: Path) -> t.StrSequence:
+            del pkg_dir
 
-        def _provider_package_dir(self, package_name: str) -> Path | None: ...
+        def _provider_package_dir(self, package_name: str) -> Path | None:
+            del package_name
 
     def _parents_from_constants_module(
         self,

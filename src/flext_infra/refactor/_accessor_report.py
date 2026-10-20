@@ -32,7 +32,8 @@ class FlextInfraAccessorMigrationReportMixin:
             source: str,
             *,
             resolver: FlextInfraAccessorOriginResolver,
-        ) -> t.Pair[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]: ...
+        ) -> t.Pair[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]:
+            del rope_project, py_file, source, resolver
 
     @staticmethod
     def _accumulate_lint_totals(

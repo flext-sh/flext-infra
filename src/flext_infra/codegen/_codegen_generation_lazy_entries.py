@@ -76,6 +76,7 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
         """
         # The planner is the sole ABI filter; rendering
         # only orders its validated contract and must not reinterpret target paths.
+        del lazy_filtered
         export_candidates = tuple(dict.fromkeys(exports))
         return tuple(
             sorted(

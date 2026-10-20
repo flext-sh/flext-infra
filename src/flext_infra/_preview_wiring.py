@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
@@ -28,11 +28,13 @@ class FlextInfraPreviewWiring:
 
     if TYPE_CHECKING:
 
+        @override
         def rope_workspace(
             self,
             repository_root: Path | None = None,
             rope_repository_root: Path | None = None,
-        ) -> p.Infra.RopeWorkspaceDsl: ...
+        ) -> p.Infra.RopeWorkspaceDsl:
+            del repository_root, rope_repository_root
 
     @staticmethod
     def source_preview(repository_root: Path) -> p.Infra.SourcePreview:

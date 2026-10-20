@@ -78,6 +78,7 @@ class FlextInfraCodegenCensus(s[str]):
             List of CensusReport models, one per scanned project.
 
         """
+        del output_format
         workspace = repository_root or self.repository_root
         return self._run_project_census(workspace, projects=projects)
 

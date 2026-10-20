@@ -77,6 +77,7 @@ class FlextInfraOrphanImport(cst.CSTTransformer):
         original_node: cst.ImportFrom,
         updated_node: cst.ImportFrom,
     ) -> cst.ImportFrom | cst.RemovalSentinel:
+        del original_node
         if self._guarded:
             return updated_node
         module = updated_node.module

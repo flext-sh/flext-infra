@@ -1078,6 +1078,7 @@ class FlextInfraCodemodDuplicateApply(FlextInfraRefactorCensusObjectsMixin):
             The resulting ``bool``.
 
         """
+        del _paths
         return True
 
     @staticmethod

@@ -262,6 +262,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 The resulting ``p.Result[m.Cli.PipelineStageResult]``.
 
             """
+            del _pipeline_ctx
             gate_ctx = ctx.model_copy()
             execution = self._execute_gate(gate_instance, project_dir, gate_ctx)
             raw_receipt = gate_ctx.reports_dir / (

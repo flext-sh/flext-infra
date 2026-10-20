@@ -56,6 +56,7 @@ class FlextInfraIndexDeclarationsGate(FlextInfraGate):
             The resulting ``m.Infra.GateExecution``.
 
         """
+        del ctx
         started = time.monotonic()
         errors = self._collect(project_dir)
         if errors.failure:

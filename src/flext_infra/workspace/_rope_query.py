@@ -42,7 +42,8 @@ class FlextInfraRopeQueryMixin:
             *,
             preserve_indexes: bool = False,
             validate_project: bool = True,
-        ) -> m.Infra.RopeWorkspaceSession: ...
+        ) -> m.Infra.RopeWorkspaceSession:
+            del preserve_indexes, validate_project
 
         def reload(self) -> m.Infra.RopeWorkspaceSession: ...
 
@@ -53,7 +54,8 @@ class FlextInfraRopeQueryMixin:
             _exc_type: type[BaseException] | None,
             _exc: BaseException | None,
             _tb: TracebackType | None,
-        ) -> None: ...
+        ) -> None:
+            del _exc_type, _exc, _tb
 
         def close(self) -> None: ...
 
@@ -69,7 +71,14 @@ class FlextInfraRopeQueryMixin:
             source_project: t.Infra.RopeProject | None = None,
             workspace_index: m.Infra.RopeWorkspaceIndex | None = None,
             index_receipt: m.Infra.CodegenPhaseAnalysis | None = None,
-        ) -> Self: ...
+        ) -> Self:
+            del (
+                repository_root,
+                rope_repository_root,
+                source_project,
+                workspace_index,
+                index_receipt,
+            )
 
         @property
         def project_roots(self) -> t.VariadicTuple[Path]: ...
@@ -82,12 +91,14 @@ class FlextInfraRopeQueryMixin:
 
         def projects(self) -> t.SequenceOf[p.Infra.ProjectInfo]: ...
 
-        def layout(self, project_root: Path) -> m.Infra.RopeProjectLayout | None: ...
+        def layout(self, project_root: Path) -> m.Infra.RopeProjectLayout | None:
+            del project_root
 
         def package_context(
             self,
             package_dir: Path,
-        ) -> m.Infra.LazyInitPackageContext: ...
+        ) -> m.Infra.LazyInitPackageContext:
+            del package_dir
 
         def policy(
             self,
@@ -95,21 +106,24 @@ class FlextInfraRopeQueryMixin:
             *,
             rel_path: Path | None = None,
             current_pkg: str = "",
-        ) -> m.Infra.NamespaceModulePolicy: ...
+        ) -> m.Infra.NamespaceModulePolicy:
+            del file_path, rel_path, current_pkg
 
         def convention(
             self,
             file_path: Path,
             *,
             rel_path: Path | None = None,
-        ) -> m.Infra.RopeModuleConvention: ...
+        ) -> m.Infra.RopeModuleConvention:
+            del file_path, rel_path
 
         def exports(
             self,
             file_path: Path,
             *,
             export_options: m.Infra.ExportOptions | None = None,
-        ) -> t.StrSequence: ...
+        ) -> t.StrSequence:
+            del file_path, export_options
 
         _resource_cache: MutableMapping[str, t.Infra.RopeFile | None]
         _module_object_cache: MutableMapping[
@@ -127,6 +141,7 @@ class FlextInfraRopeQueryMixin:
 
         def _resource_for(self, file_path: Path) -> t.Infra.RopeFile:
             """Require a resource inside the active Rope workspace."""
+            del file_path
             ...
 
     def semantic(self, file_path: Path) -> p.Infra.ModuleSemanticState:

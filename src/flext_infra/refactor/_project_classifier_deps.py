@@ -27,7 +27,8 @@ class FlextInfraProjectClassifierDepsMixin:
         def _as_mapping(
             self,
             raw_value: t.JsonValue | None,
-        ) -> t.MappingKV[str, t.JsonValue]: ...
+        ) -> t.MappingKV[str, t.JsonValue]:
+            del raw_value
 
     def _append_project_dependencies(
         self,

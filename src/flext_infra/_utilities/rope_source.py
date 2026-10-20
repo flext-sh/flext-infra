@@ -238,6 +238,7 @@ class FlextInfraUtilitiesRopeSource:
             TypeError: If the resource is not a Rope file resource.
 
         """
+        del rope_project
         if not FlextInfraUtilitiesRopeRuntime.file_resource(resource):
             msg = f"expected a Rope file resource: {resource.path}"
             raise TypeError(msg)

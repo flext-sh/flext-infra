@@ -31,14 +31,16 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         def _package_entry(
             self,
             pkg_dir: Path,
-        ) -> m.Infra.RopePackageIndexEntry | None: ...
+        ) -> m.Infra.RopePackageIndexEntry | None:
+            del pkg_dir
 
         def _add(
             self,
             index: t.MutableLazyAliasMap,
             name: str,
             target: t.StrPair,
-        ) -> None: ...
+        ) -> None:
+            del index, name, target
 
     def _package_exports(
         self,
