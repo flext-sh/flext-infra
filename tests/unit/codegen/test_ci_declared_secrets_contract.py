@@ -108,4 +108,4 @@ class TestsFlextInfraCiDeclaredSecretsContract:
         tm.that(referenced - set(declared), empty=True)
         for contract in declared.values():
             specification = u.Cli.JSON_MAPPING_ADAPTER.validate_python(contract)
-            tm.that(specification["required"], eq=False)
+            tm.fail(specification["required"])

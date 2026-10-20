@@ -41,7 +41,7 @@ class FlextInfraUtilitiesDiscovery(
         *,
         source_project: p.Infra.RopeProject | None = None,
     ) -> str:
-        """Discover the enclosing project root path cached by file path.
+        """Discover the enclosing project root through the current authority.
 
         Returns:
             The resulting ``str``.

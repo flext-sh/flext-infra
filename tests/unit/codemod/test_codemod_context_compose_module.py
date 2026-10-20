@@ -71,7 +71,7 @@ class TestsFlextInfraCodemodContextComposeModule:
         """The bare package root is not a compose module."""
         package = u.Infra.project_package_name(mod_workspace)
         self._declare_compose_module(mod_workspace, package, "constants")
-        tm.that(self._admits(mod_workspace, module=package), eq=False)
+        tm.fail(self._admits(mod_workspace, module=package))
 
     def test_foreign_runtime_compose_module_is_admitted(
         self, mod_workspace: Path

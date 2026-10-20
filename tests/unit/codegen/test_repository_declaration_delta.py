@@ -36,9 +36,9 @@ class TestsFlextInfraRepositoryDeclarationDelta:
 
                     declaration = tm.ok(u.Infra.repository_declaration_delta(legacy))
 
-                    tm.that(declaration.kind is kind, eq=True)
-                    tm.that(declaration.state is state, eq=True)
-                    tm.that(declaration.codegen is codegen, eq=True)
+                    tm.ok(declaration.kind is kind)
+                    tm.ok(declaration.state is state)
+                    tm.ok(declaration.codegen is codegen)
 
     @pytest.mark.parametrize("read_only", [False, True])
     def test_own_declarations_survive_public_model_roundtrip(
@@ -116,8 +116,8 @@ class TestsFlextInfraRepositoryDeclarationDelta:
             declaration.project,
             eq=m.Infra.ProjectSpec.model_validate_json(project.model_dump_json()),
         )
-        tm.that(declaration.beads_enabled, eq=False)
-        tm.that(declaration.ci_enabled, eq=True)
+        tm.fail(declaration.beads_enabled)
+        tm.ok(declaration.ci_enabled)
 
     def test_foreign_members_do_not_change_own_declaration(
         self,

@@ -318,20 +318,66 @@ variance-mismatch = "error"
 
 [tool.pyright]
 exclude = [
+  "**/*.bak",
+  "**/*.egg-info/**",
+  "**/*.orig",
+  "**/*.rej",
+  "**/*.swp",
   "**/.*",
+  "**/.agents-sync-home/**",
+  "**/.agents/**",
+  "**/.archive/**",
+  "**/.beads/**",
+  "**/.benchmarks/**",
+  "**/.bkp/**",
+  "**/.cache/**",
+  "**/.claude/**",
+  "**/.codex/**",
+  "**/.cursor/**",
+  "**/.gemini/**",
+  "**/.git/**",
+  "**/.hypothesis/**",
+  "**/.kilo/**",
   "**/.mypy_cache",
+  "**/.mypy_cache/**",
+  "**/.omo/**",
+  "**/.opencode/**",
+  "**/.pylance_cache/**",
+  "**/.pyrefly_cache/**",
   "**/.pytest_cache",
+  "**/.pytest_cache/**",
+  "**/.reports/**",
   "**/.ruff_cache",
+  "**/.ruff_cache/**",
+  "**/.serena/**",
+  "**/.snapshots/**",
+  "**/.test-tmp/**",
+  "**/.tmp/**",
+  "**/.tox/**",
   "**/.venv",
+  "**/.venv.*/**",
   "**/.venv/**",
+  "**/.vscode/**",
+  "**/.worktrees/**",
   "**/__pycache__",
+  "**/__pycache__/**",
   "**/__pyrefly_virtual__/**",
+  "**/_tmp_*/**",
+  "**/build/**",
   "**/dist-packages",
   "**/dist-packages/**",
+  "**/dist/**",
+  "**/htmlcov/**",
+  "**/incoming/**",
+  "**/legado/**",
   "**/node_modules",
+  "**/node_modules/**",
   "**/protos/**",
+  "**/reports/**",
   "**/site-packages",
   "**/site-packages/**",
+  "**/site/**",
+  "**/target/**",
   "**/venv",
   "**/venv/**",
   ".git",
@@ -339,8 +385,8 @@ exclude = [
   ".venv",
   "vendor",
 ]
-include = ["src", "tests"]
-extraPaths = ["src", "."]
+extraPaths = [".", "src"]
+include = ["conftest.py", "src", "tests"]
 pythonPlatform = "Linux"
 pythonVersion = "3.13"
 reportCallIssue = "error"
@@ -358,16 +404,17 @@ reportUnusedFunction = "error"
 reportUnusedImport = "error"
 reportUnusedVariable = "error"
 typeCheckingMode = "strict"
+useLibraryCodeForTypes = true
 
 [[tool.pyright.executionEnvironments]]
-root = "src"
 extraPaths = ["src"]
 reportPrivateUsage = "error"
+root = "src"
 
 [[tool.pyright.executionEnvironments]]
-root = "tests"
 extraPaths = [".", "src"]
 reportPrivateUsage = "error"
+root = "tests"
 
 [tool.pytest.ini_options]
 addopts = [

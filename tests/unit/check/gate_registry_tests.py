@@ -24,8 +24,8 @@ class TestsFlextInfraGateRegistry:
         registry = FlextInfraGateRegistry.default()
         for gate_id in c.Infra.ALLOWED_GATES:
             gate_cls = registry.get(gate_id)
-            tm.that(gate_cls is not None, eq=True)
-            tm.that(gate_cls is not None and gate_cls.gate_id == gate_id, eq=True)
+            tm.ok(gate_cls is not None)
+            tm.ok(gate_cls is not None and gate_cls.gate_id == gate_id)
 
     @staticmethod
     def test_check_vocabulary_is_the_whole_registry() -> None:
@@ -37,9 +37,9 @@ class TestsFlextInfraGateRegistry:
         """Default, local-only and fixable gates stay in the check vocabulary."""
         make = config.Infra.codegen.make
         allowed = frozenset(make.check_gates_allowed)
-        tm.that(frozenset(make.check_gates_default) <= allowed, eq=True)
-        tm.that(frozenset(make.ci.local_check_gates) <= allowed, eq=True)
-        tm.that(frozenset(make.check_gates_ci) <= allowed, eq=True)
+        tm.ok(frozenset(make.check_gates_default) <= allowed)
+        tm.ok(frozenset(make.ci.local_check_gates) <= allowed)
+        tm.ok(frozenset(make.check_gates_ci) <= allowed)
         tm.that(
             frozenset(c.Infra.CANONICAL_FIXABLE_GATE_IDS)
             <= frozenset(c.Infra.CANONICAL_GATE_IDS),
@@ -71,9 +71,9 @@ class TestsFlextInfraGateRegistry:
         # formatters (single-pass verb law: one operation per tool per verb).
         fmt_owned = set(config.Infra.codegen.make.fmt_gates)
         tm.that(set(c.Infra.CANONICAL_FIXABLE_GATE_IDS), eq=mutating - fmt_owned)
-        tm.that(fmt_owned & set(c.Infra.CANONICAL_GATE_IDS) <= mutating, eq=True)
-        tm.that(fmt_owned <= mutating, eq=True)
+        tm.ok(fmt_owned & set(c.Infra.CANONICAL_GATE_IDS) <= mutating)
+        tm.ok(fmt_owned <= mutating)
         # `format` applies only through `make fmt`; check runs its read-only
         # side, and fix never formats.
-        tm.that(c.Infra.FORMAT not in c.Infra.CANONICAL_FIXABLE_GATE_IDS, eq=True)
-        tm.that(c.Infra.FORMAT in c.Infra.CANONICAL_GATE_IDS, eq=True)
+        tm.ok(c.Infra.FORMAT not in c.Infra.CANONICAL_FIXABLE_GATE_IDS)
+        tm.ok(c.Infra.FORMAT in c.Infra.CANONICAL_GATE_IDS)

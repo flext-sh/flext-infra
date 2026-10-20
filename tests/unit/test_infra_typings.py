@@ -25,7 +25,7 @@ class TestsFlextInfraInfraTypings:
             "enabled": True,
         })
 
-        tm.that(payload["enabled"], eq=True)
+        tm.ok(payload["enabled"])
         tm.that(payload["tool"], eq={"name": "infra"})
 
     @staticmethod
@@ -39,10 +39,10 @@ class TestsFlextInfraInfraTypings:
     @staticmethod
     def test_public_adapters_reuse_instances_and_reject_bad_shapes() -> None:
         """Cached owner adapters retain validation rather than normalizing failures."""
-        tm.that(u.json_mapping_adapter() is u.json_mapping_adapter(), eq=True)
-        tm.that(u.json_list_adapter() is u.json_list_adapter(), eq=True)
-        tm.that(u.json_value_adapter() is u.json_value_adapter(), eq=True)
-        tm.that(u.str_sequence_adapter() is u.str_sequence_adapter(), eq=True)
+        tm.ok(u.json_mapping_adapter() is u.json_mapping_adapter())
+        tm.ok(u.json_list_adapter() is u.json_list_adapter())
+        tm.ok(u.json_value_adapter() is u.json_value_adapter())
+        tm.ok(u.str_sequence_adapter() is u.str_sequence_adapter())
         with pytest.raises(c.ValidationError):
             u.json_mapping_adapter().validate_python(["not", "a", "mapping"])
         with pytest.raises(c.ValidationError):
@@ -62,7 +62,7 @@ class TestsFlextInfraInfraTypings:
 
         tm.that(payload["python"], eq={"version": python_version})
         tm.that(payload["paths"], eq=["src", "tests"])
-        tm.that(payload["enabled"], eq=True)
+        tm.ok(payload["enabled"])
 
     @staticmethod
     def test_str_seq_adapter_validates_project_name_sequences() -> None:
@@ -81,7 +81,7 @@ class TestsFlextInfraInfraTypings:
         })
 
         tm.that(payload["root"], eq=Path("/var/lib/flext"))
-        tm.that(payload["enabled"], eq=True)
+        tm.ok(payload["enabled"])
         tm.that(payload["retries"], eq=3)
 
     @staticmethod

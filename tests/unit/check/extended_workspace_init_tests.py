@@ -55,7 +55,7 @@ class TestsFlextInfraWorkspaceInit:
     @staticmethod
     def test_resolve_repository_root_or_cwd_returns_absolute_path() -> None:
         """Test resolve repository root or cwd returns absolute path."""
-        tm.that(u.Infra.resolve_repository_root_or_cwd(None).is_absolute(), eq=True)
+        tm.ok(u.Infra.resolve_repository_root_or_cwd(None).is_absolute())
 
     @staticmethod
     def test_run_projects_fails_when_reports_dir_is_not_a_directory(

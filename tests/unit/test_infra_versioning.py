@@ -11,10 +11,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tf, tm
 
-from flext_infra import u
-from tests import tm
+from tests import tf, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -71,13 +71,13 @@ class TestsFlextInfraCodemodGate:
 
         execution = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
 
-        tm.that(execution.result.passed, eq=False)
+        tm.fail(execution.result.passed)
         policy_findings = tuple(
             issue for issue in execution.issues if issue.code == "contract-second"
         )
         tm.that(len(policy_findings), eq=1, msg=execution.raw_output)
         finding = policy_findings[0]
-        tm.that(finding.file.endswith("src/subject.py"), eq=True)
+        tm.ok(finding.file.endswith("src/subject.py"))
         tm.that((finding.line, finding.column), eq=(2, 1))
         tm.that(finding.severity, eq=severity)
         tm.that(
@@ -218,12 +218,12 @@ class TestsFlextInfraCodemodGate:
 
         execution = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
 
-        tm.that(execution.result.passed, eq=False)
+        tm.fail(execution.result.passed)
         findings = tuple(
             issue for issue in execution.issues if issue.code == "contract-second"
         )
         tm.that(len(findings), eq=1)
-        tm.that(findings[0].file.endswith("src/vendor_owned.py"), eq=True)
+        tm.ok(findings[0].file.endswith("src/vendor_owned.py"))
 
     def test_check_files_uses_every_rule_and_only_requested_files(
         self,
@@ -243,12 +243,12 @@ class TestsFlextInfraCodemodGate:
             u.Tests.gate_context(tmp_path),
         )
 
-        tm.that(execution.result.passed, eq=False)
+        tm.fail(execution.result.passed)
         policy_findings = tuple(
             issue for issue in execution.issues if issue.code == "contract-second"
         )
         tm.that(len(policy_findings), eq=1, msg=execution.raw_output)
-        tm.that(policy_findings[0].file.endswith("src/selected.py"), eq=True)
+        tm.ok(policy_findings[0].file.endswith("src/selected.py"))
 
     def test_missing_requested_file_cannot_be_deselected(
         self, tmp_path: Path, installed_dependency_path: Path
@@ -331,7 +331,7 @@ class TestsFlextInfraCodemodGate:
         )
 
         result = results[0]
-        tm.that(result.passed, eq=False)
+        tm.fail(result.passed)
         receipt = result.gates["codemod"].raw_receipt
         tm.that(receipt, none=False)
         reports = receipt.parents[len(project.relative_to(tmp_path).parts)]
@@ -367,7 +367,7 @@ class TestsFlextInfraCodemodGate:
 
         execution = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
 
-        tm.that(execution.result.passed, eq=False)
+        tm.fail(execution.result.passed)
         tm.that(
             any(issue.code == c.Infra.ToolOutcome.ERROR for issue in execution.issues),
             eq=True,
@@ -397,7 +397,7 @@ class TestsFlextInfraCodemodGate:
         finally:
             blocked.chmod(original_mode)
 
-        tm.that(execution.result.passed, eq=False)
+        tm.fail(execution.result.passed)
         tm.that(
             any(issue.code == c.Infra.ToolOutcome.ERROR for issue in execution.issues),
             eq=True,

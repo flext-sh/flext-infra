@@ -85,7 +85,7 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
             ),
             eq=True,
         )
-        tm.that(u.Tests.is_tracked_under(rendered, "vendor/module.go"), eq=False)
+        tm.fail(u.Tests.is_tracked_under(rendered, "vendor/module.go"))
 
     @staticmethod
     def test_declared_projects_are_trackable_under_the_rendered_policy() -> None:

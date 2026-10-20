@@ -134,8 +134,8 @@ class TestsFlextInfraModCliRoute:
             (owner.name, consumer.name),
         )
         planned = tm.ok(u.Infra.codemod_rule_plan(mod_workspace, rule_ids=(rule_id,)))
-        tm.that(rule_id in planned.project_rule_ids[owner.resolve()], eq=False)
-        tm.that(rule_id in planned.project_rule_ids[consumer.resolve()], eq=True)
+        tm.fail(rule_id in planned.project_rule_ids[owner.resolve()])
+        tm.ok(rule_id in planned.project_rule_ids[consumer.resolve()])
         for root in (mod_workspace, consumer):
             exit_code = main([
                 "refactor",
@@ -386,7 +386,7 @@ class TestsFlextInfraModCliRoute:
         tm.that(updated, has="value = dict[str, int]()")
         tm.that(updated, lacks="value = dict()")
         tm.that(updated, lacks="value = {}")
-        tm.that(updated.startswith("from __future__ import annotations"), eq=True)
+        tm.ok(updated.startswith("from __future__ import annotations"))
 
     @staticmethod
     def test_scan_keeps_prefix_rule_ids_exact(mod_workspace: Path) -> None:
@@ -607,7 +607,7 @@ class TestsFlextInfraModCliRoute:
         identity_finding = matches[0]
 
         tm.that(exit_code, ne=0)
-        tm.that(identity_finding.actionable, eq=False)
+        tm.fail(identity_finding.actionable)
         tm.that(
             identity_finding.classification,
             eq=c.Infra.ModScanFindingClass.NON_ACTIONABLE_WITH_FIX,

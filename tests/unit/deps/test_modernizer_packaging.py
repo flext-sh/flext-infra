@@ -172,7 +172,7 @@ class TestsFlextInfraDepsModernizerPackaging:
             eq=f"{root_module}.py",
         )
         included = set(u.Tests.toml_list(sdist["only-include"]))
-        tm.that(package_paths <= included, eq=True)
+        tm.ok(package_paths <= included)
         tm.that(u.Tests.toml_mapping(sdist["force-include"]), has=module_path)
         tm.that(
             u.Tests.toml_mapping(sdist["force-include"])[module_path],

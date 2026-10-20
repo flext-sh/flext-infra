@@ -10,11 +10,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, m, t
+from flext_infra import config
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.deps import FlextInfraEnsureRuffConfigPhase
 from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate
-from tests import tm, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -165,7 +165,14 @@ class TestsFlextInfraRuffProjectPolicy:
         tm.that(
             lint["ignore"], eq=sorted(config.Infra.tooling.tools.ruff.lint.rule_owners)
         )
-        tm.that(lint["select"], eq=sorted(config.Infra.tooling.tools.ruff.lint.select))
+        tm.that(
+            lint["select"],
+            eq=sorted(
+                u.Infra.native_tool_setting(
+                    config.Infra.tooling, "ruff.lint", "select", list[str]
+                )
+            ),
+        )
         tm.that(
             phase.apply_payload(
                 payload,
@@ -176,7 +183,10 @@ class TestsFlextInfraRuffProjectPolicy:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("surface", config.Infra.tooling.tools.ruff.src)
+    @pytest.mark.parametrize(
+        "surface",
+        u.Infra.native_tool_setting(config.Infra.tooling, "ruff", "src", list[str]),
+    )
     def test_native_selected_scope_has_no_hidden_findings(
         tmp_path: Path,
         surface: str,
@@ -206,7 +216,7 @@ class TestsFlextInfraRuffProjectPolicy:
             reports_dir=tmp_path / "reports",
         )
         execution = gate.check_files((selected,), project, context)
-        tm.that(execution.result.passed, eq=False)
+        tm.fail(execution.result.passed)
         tm.that(execution.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
         tm.that([issue.code for issue in execution.issues], has="unused-import")
         tm.that(
@@ -264,18 +274,18 @@ class TestsFlextInfraRuffProjectPolicy:
         lint = FlextInfraRuffLintGate(tmp_path)
         formatter = FlextInfraRuffFormatGate(tmp_path)
         before = formatter.check_files((source,), project, context)
-        tm.that(before.result.passed, eq=False)
+        tm.fail(before.result.passed)
         tm.that(before.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
-        tm.that(lint.fix(project, context).result.passed, eq=True)
-        tm.that(formatter.fix(project, context).result.passed, eq=True)
+        tm.ok(lint.fix(project, context).result.passed)
+        tm.ok(formatter.fix(project, context).result.passed)
         stable = source.read_text(encoding="utf-8")
         for gate in (lint, formatter):
             tm.that(
                 gate.check_files((source,), project, context).result.passed, eq=True
             )
-            tm.that(gate.fix(project, context).result.passed, eq=True)
+            tm.ok(gate.fix(project, context).result.passed)
         tm.that(source.read_text(encoding="utf-8"), eq=stable)
         source.write_text(stable + "\nUNRESOLVED = missing_name\n", encoding="utf-8")
         unresolved = lint.check_files((source,), project, context)
-        tm.that(unresolved.result.passed, eq=False)
+        tm.fail(unresolved.result.passed)
         tm.that([issue.code for issue in unresolved.issues], has="undefined-name")

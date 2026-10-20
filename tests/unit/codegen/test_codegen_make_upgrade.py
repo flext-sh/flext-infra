@@ -83,7 +83,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
             process.stderr,
             has=f"ERROR[setup] uv.lock is missing: {root / policy.editable_directory}",
         )
-        tm.that((root / c.Infra.ENVIRONMENT_DIRECTORY).exists(), eq=False)
+        tm.fail((root / c.Infra.ENVIRONMENT_DIRECTORY).exists())
         tm.that(
             tuple(tm.ok(u.Cli.atomic_read_binary_file_state(path)) for path in paths),
             eq=before,
@@ -96,14 +96,14 @@ class TestsFlextInfraCodegenMakeUpgrade:
         """Public help parses bootstrap recipes without creating an environment."""
         _profile, root = generated_make_template
         environment = root / c.Infra.ENVIRONMENT_DIRECTORY
-        tm.that(environment.exists(), eq=False)
+        tm.fail(environment.exists())
         output = tm.ok(u.Tests.run_isolated_make(["help"], cwd=root))
         tm.that(
             u.Cli.process_succeeded(output.outcome),
             eq=True,
             msg=output.stdout + output.stderr,
         )
-        tm.that(environment.exists(), eq=False)
+        tm.fail(environment.exists())
 
     @staticmethod
     def test_bootstrap_seed_has_native_resolution_inputs_without_lock_writes(
@@ -118,8 +118,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tool_lock = root / c.Infra.MISE_LOCK_FILENAME
         previous_tool_lock = tool_lock.read_bytes()
         for view in views:
-            tm.that(view.is_file(), eq=True)
-            tm.that((view.parent / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
+            tm.ok(view.is_file())
+            tm.fail((view.parent / c.Infra.UV_LOCK_FILENAME).exists())
         help_output = tm.ok(u.Tests.run_isolated_make(["help"], cwd=root))
         tm.that(
             u.Cli.process_succeeded(help_output.outcome),
@@ -138,9 +138,9 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 ),
             )
             tm.that(Path(owner).resolve(), eq=view.parent.resolve())
-            tm.that((view.parent / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
+            tm.fail((view.parent / c.Infra.UV_LOCK_FILENAME).exists())
         tm.that(tool_lock.read_bytes(), eq=previous_tool_lock)
-        tm.that((root / c.Infra.ENVIRONMENT_DIRECTORY).exists(), eq=False)
+        tm.fail((root / c.Infra.ENVIRONMENT_DIRECTORY).exists())
 
     @staticmethod
     def test_setup_installs_dependencies_before_importing_infra(
@@ -158,7 +158,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         admitted = recipe.index("config ls --json")
         installed = recipe.index("$(UV) sync")
         validated = recipe.index("codegen mise-artifacts")
-        tm.that(admitted < installed < validated, eq=True)
+        tm.ok(admitted < installed < validated)
         tm.that(recipe[:installed], lacks="$(PROJECT_FLEXT_INFRA)")
 
     @staticmethod
@@ -312,7 +312,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
             ),
         )
 
-        tm.that(u.Cli.process_succeeded(provisioned.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(provisioned.outcome))
         tm.that(provisioned.stderr, has=c.Infra.UV_LOCK_FILENAME)
         tm.that(lock.read_bytes(), eq=previous_lock)
         tm.that(
@@ -348,8 +348,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
             ),
         )
 
-        tm.that(u.Cli.process_succeeded(upgraded.outcome), eq=False)
-        tm.that(bool(upgraded.stderr.strip()), eq=True)
+        tm.fail(u.Cli.process_succeeded(upgraded.outcome))
+        tm.ok(bool(upgraded.stderr.strip()))
         tm.that(lock.read_bytes(), eq=previous_lock)
 
     @staticmethod
@@ -478,8 +478,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
             observation = u.Tests.command_receipt(parent / name)
             tm.that(observation.stdout, has=f"candidate-source={source[0]}#{source[2]}")
             environment = u.Infra.runtime_environment_dir(project)
-            tm.that(environment.is_symlink(), eq=False)
-            tm.that((environment / "pyvenv.cfg").is_file(), eq=True)
+            tm.fail(environment.is_symlink())
+            tm.ok((environment / "pyvenv.cfg").is_file())
             tm.that(observation.stdout, has=f"candidate-prefix={environment.resolve()}")
 
     def _assert_lock_floor_preserved(
@@ -492,7 +492,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         inputs = tm.ok(u.Infra.load_codegen_inputs(root))
         for manifest in inputs.spec.uv_resolution_pyprojects:
             lock = manifest.with_name(c.Infra.UV_LOCK_FILENAME)
-            tm.that((root / lock).is_file(), eq=True)
+            tm.ok((root / lock).is_file())
             tm.that((checkout / lock).read_bytes(), eq=(root / lock).read_bytes())
             packages = tuple(
                 package
@@ -570,7 +570,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         corrected = first("--what pyproject --scope all")
         reconciled = first("_upg_reconcile_locks")
 
-        tm.that(resolved < installed < corrected < reconciled, eq=True)
+        tm.ok(resolved < installed < corrected < reconciled)
 
     def test_upg_relocks_the_manifest_gen_projected_before_installing(
         self,
@@ -612,9 +612,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
             [step for step in steps[installed:] if "$(SELF_MAKE) gen" in step],
             empty=True,
         )
-        # Setup leaves a runtime-bindings receipt behind; a standalone gen
-        # activation would read it and never cover the gen request. Activation
-        # belongs only to the full gen verb, after it republishes its receipt.
+        # Provisioning never authorizes generation activation. Activation belongs
+        # to the full gen verb after it publishes that request's own receipt.
         tm.that(
             [step for step in steps if "$(call RUN_PUBLIC_ACTIVATE,gen)" in step],
             empty=True,
@@ -752,7 +751,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         before = {path: path.read_bytes() for path in locks}
         drifted_manifest = view.read_bytes()
         environment = u.Infra.runtime_environment_dir(root)
-        tm.that(environment.exists(), eq=False)
+        tm.fail(environment.exists())
         native_environment = {
             **hermetic_git_environment,
             "UV_OFFLINE": "0",
@@ -768,12 +767,12 @@ class TestsFlextInfraCodegenMakeUpgrade:
             eq=True,
             msg=setup.stdout + setup.stderr,
         )
-        tm.that((environment / "pyvenv.cfg").is_file(), eq=True)
+        tm.ok((environment / "pyvenv.cfg").is_file())
         audit = tm.ok(
             u.Tests.run_isolated_make(["audit"], cwd=root, env=native_environment),
         )
         u.Tests.record_dependency_command_output(audit)
-        tm.that(u.Cli.process_succeeded(audit.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(audit.outcome))
         tm.that(audit.stdout + audit.stderr, has=["lock", "make upg"])
         tm.that({path: path.read_bytes() for path in locks}, eq=before)
         tm.that(view.read_bytes(), eq=drifted_manifest)
@@ -826,13 +825,13 @@ class TestsFlextInfraCodegenMakeUpgrade:
             ),
         )
 
-        tm.that(u.Cli.process_succeeded(upgraded.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(upgraded.outcome))
         tm.that(upgraded.stderr, has=["ERROR[upg]", str(workspace.resolve())])
         tm.that(
             member_lock.read_bytes() if member_lock.is_file() else None,
             eq=previous,
         )
-        tm.that(workspace_lock.exists(), eq=False)
+        tm.fail(workspace_lock.exists())
 
     @pytest.mark.remote
     @pytest.mark.slow
@@ -882,9 +881,9 @@ class TestsFlextInfraCodegenMakeUpgrade:
                 cwd=member,
             ),
         )
-        tm.that(u.Cli.process_succeeded(upgraded.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(upgraded.outcome))
         tm.that(upgraded.stderr, has="member pre-upg failed")
-        tm.that(marker.is_file(), eq=False)
+        tm.fail(marker.is_file())
         tm.that(
             root_lock.read_bytes() if root_lock.is_file() else None,
             eq=previous,
@@ -999,5 +998,5 @@ class TestsFlextInfraCodegenMakeUpgrade:
             has=["root-runtime-reconciled", "member-runtime-reconciled"],
         )
         tm.that(process.stderr, has="member-hook-stop")
-        tm.that((root / "root-upgrade-started").exists(), eq=True)
-        tm.that((checkout / ".venv").exists(), eq=False)
+        tm.ok((root / "root-upgrade-started").exists())
+        tm.fail((checkout / ".venv").exists())

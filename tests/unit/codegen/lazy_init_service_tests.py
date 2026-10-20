@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config
+from flext_infra import config, u
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -27,9 +27,9 @@ def expect_read_only_drift(
 ) -> None:
     """Assert one read-only pass reported drift without writing the initializer."""
     package_root = init_path.parent
-    tm.that(result.success, eq=False)
+    tm.fail(result.success)
     tm.that(init_path.read_bytes(), eq=original_init)
-    tm.that((package_root / "__unit__.py").exists(), eq=False)
+    tm.fail((package_root / "__unit__.py").exists())
     tm.that(service.modified_files, eq=(str(init_path),))
 
 
@@ -113,9 +113,9 @@ class TestsFlextInfraCodegenLazyInitService:
 
         tm.ok(result)
         tm.that((selected_root / c.Infra.INIT_PY).read_bytes(), ne=b"")
-        tm.that((selected_root / "__unit__.py").exists(), eq=False)
+        tm.fail((selected_root / "__unit__.py").exists())
         tm.that(unrelated_init.read_bytes(), eq=unrelated_before)
-        tm.that((unrelated_root / "__unit__.py").exists(), eq=False)
+        tm.fail((unrelated_root / "__unit__.py").exists())
         tm.that(service.modified_files, eq=(str(selected_root / c.Infra.INIT_PY),))
 
     @staticmethod
@@ -162,7 +162,7 @@ class TestsFlextInfraCodegenLazyInitService:
             encoding=c.DEFAULT_ENCODING,
         )
 
-        tm.that(result.success, eq=True)
+        tm.ok(result.success)
         tm.that(selected_generated, contains="FlextTestsSelectedModels")
         tm.that(selected_generated, lacks="FlextTestsUnrelatedModels")
         tm.that(unrelated_init.read_bytes(), eq=unrelated_before)
@@ -200,7 +200,7 @@ class TestsFlextInfraCodegenLazyInitService:
             encoding=c.DEFAULT_ENCODING,
         )
 
-        tm.that(result.success, eq=True)
+        tm.ok(result.success)
         tm.that(generated_root, contains="FlextTestsLibraryRunner")
         tm.that(generated_root, contains="FlextTestsDbtServiceBase")
         tm.that(generated_services, contains="FlextTestsDbtServiceBase")
@@ -251,7 +251,7 @@ class TestsFlextInfraCodegenLazyInitService:
             encoding=c.DEFAULT_ENCODING,
         )
 
-        tm.that(result.success, eq=True)
+        tm.ok(result.success)
         tm.that(generated_root, lacks="FlextTestsConversion")
         tm.that(child_init.read_bytes(), eq=child_init_before)
         tm.that(service.modified_files, eq=(str(selected_root / c.Infra.INIT_PY),))
@@ -280,7 +280,7 @@ class TestsFlextInfraCodegenLazyInitService:
         result = u.Tests.materialize_lazy_init(service)
         generated = examples_init.read_text(encoding=c.DEFAULT_ENCODING)
 
-        tm.that(result.success, eq=True)
+        tm.ok(result.success)
         tm.that(
             generated,
             contains=f"from {c.Infra.DIR_EXAMPLES}.demo import ExamplesDemo",
@@ -329,7 +329,7 @@ class TestsFlextInfraCodegenLazyInitService:
         result = u.Tests.materialize_lazy_init(service)
         generated = tests_init.read_text(encoding=c.DEFAULT_ENCODING)
 
-        tm.that(result.success, eq=True)
+        tm.ok(result.success)
         tm.that(generated, contains="TestsFlextTestsConstants")
         tm.that(generated, contains="TestsFlextTestsUtilities")
         tm.that(generated, contains="install_lazy_exports")
@@ -389,11 +389,11 @@ class TestsFlextInfraCodegenLazyInitService:
         check_service.check_only = True
         check_result = check_service.execute()
 
-        tm.that(apply_result.success, eq=True)
-        tm.that(check_result.success, eq=True)
+        tm.ok(apply_result.success)
+        tm.ok(check_result.success)
         tm.that(check_service.modified_files, eq=())
         tm.that(init_path.read_bytes(), eq=generated_init)
-        tm.that((package_root / "__unit__.py").exists(), eq=False)
+        tm.fail((package_root / "__unit__.py").exists())
 
     @staticmethod
     def test_unknown_target_fails_without_workspace_fallback(
@@ -414,9 +414,9 @@ class TestsFlextInfraCodegenLazyInitService:
 
         result = u.Tests.materialize_lazy_init(service)
 
-        tm.that(result.success, eq=False)
+        tm.fail(result.success)
         tm.that(init_path.read_bytes(), eq=original_init)
-        tm.that((package_root / "__unit__.py").exists(), eq=False)
+        tm.fail((package_root / "__unit__.py").exists())
         tm.that(service.modified_files, eq=())
 
     @staticmethod
@@ -458,11 +458,11 @@ class TestsFlextInfraCodegenLazyInitService:
 
         result = u.Tests.materialize_lazy_init(service)
 
-        tm.that(result.success, eq=False)
+        tm.fail(result.success)
         tm.that(first_init.read_bytes(), eq=first_before)
         tm.that(second_init.read_bytes(), eq=second_before)
-        tm.that((first_root / "__unit__.py").exists(), eq=False)
-        tm.that((second_root / "__unit__.py").exists(), eq=False)
+        tm.fail((first_root / "__unit__.py").exists())
+        tm.fail((second_root / "__unit__.py").exists())
         tm.that(service.modified_files, eq=())
 
     # flext-96j2.4 (agent: claude): lint runs as one batched stage at the end of
@@ -486,7 +486,7 @@ class TestsFlextInfraCodegenLazyInitService:
 
         result = u.Tests.materialize_lazy_init(service)
 
-        tm.that(result.success, eq=True)
+        tm.ok(result.success)
         tm.that(service.modified_files, eq=(str(init_path),))
         ruff_check = u.Cli.run_raw([
             c.Infra.RUFF,
@@ -494,7 +494,7 @@ class TestsFlextInfraCodegenLazyInitService:
             "--no-fix",
             str(init_path),
         ])
-        tm.that(ruff_check.success, eq=True)
+        tm.ok(ruff_check.success)
         tm.that(
             u.Cli.process_succeeded(ruff_check.value.outcome),
             eq=True,
@@ -512,7 +512,11 @@ class TestsFlextInfraCodegenLazyInitService:
         first, second = "FlextTestsFirst", "FlextTestsSecond"
         compact = f'__all__: tuple[str, ...] = ("{first}", "{second}")'
         second += "x" * (
-            config.Infra.tooling.tools.ruff.line_length + width_offset - len(compact)
+            u.Infra.native_tool_setting(
+                config.Infra.tooling, "ruff", "line-length", int
+            )
+            + width_offset
+            - len(compact)
         )
         package_root.joinpath("runner.py").write_text(
             f'class {first}:\n    """First export."""\n\n'
@@ -524,7 +528,7 @@ class TestsFlextInfraCodegenLazyInitService:
         service.target_module = "flext_test_project"
         service.apply_changes = True
         result = u.Tests.materialize_lazy_init(service)
-        tm.that(result.success, eq=True)
+        tm.ok(result.success)
 
         formatted = u.Cli.run_raw([
             c.Infra.RUFF,
@@ -533,10 +537,14 @@ class TestsFlextInfraCodegenLazyInitService:
             "--config",
             str(Path(__file__).resolve().parents[3] / c.PYPROJECT_FILENAME),
             "--line-length",
-            str(config.Infra.tooling.tools.ruff.line_length),
+            str(
+                u.Infra.native_tool_setting(
+                    config.Infra.tooling, "ruff", "line-length", int
+                )
+            ),
             str(package_root / c.Infra.INIT_PY),
         ])
-        tm.that(formatted.success, eq=True)
+        tm.ok(formatted.success)
         tm.that(
             u.Cli.process_succeeded(formatted.value.outcome),
             eq=True,
@@ -578,7 +586,7 @@ class TestsFlextInfraCodegenLazyInitService:
 
         result = u.Tests.materialize_lazy_init(service)
 
-        tm.that(result.success, eq=True)
+        tm.ok(result.success)
         generated = unit_root / c.Infra.INIT_PY
         tm.that(
             generated.read_text(encoding=c.DEFAULT_ENCODING),
@@ -592,7 +600,7 @@ class TestsFlextInfraCodegenLazyInitService:
             str(Path(__file__).resolve().parents[3] / c.PYPROJECT_FILENAME),
             str(generated),
         ])
-        tm.that(formatted.success, eq=True)
+        tm.ok(formatted.success)
         tm.that(
             u.Cli.process_succeeded(formatted.value.outcome),
             eq=True,
@@ -625,11 +633,11 @@ class TestsFlextInfraCodegenLazyInitService:
 
         check_result = check_service.execute()
 
-        tm.that(apply_result.success, eq=False)
+        tm.fail(apply_result.success)
         tm.that(apply_result.error, has="publication is owned by codegen conform")
         tm.that(applied_init, eq=original_init)
-        tm.that(materialized.success, eq=True)
-        tm.that(check_result.success, eq=True)
+        tm.ok(materialized.success)
+        tm.ok(check_result.success)
         tm.that(init_path.read_bytes(), ne=original_init)
 
     # flext-udpm5: reproduces flext_ldif.servers._base's exact shape -- a
@@ -686,8 +694,8 @@ class TestsFlextInfraCodegenLazyInitService:
 
         check_result = check_service.execute()
 
-        tm.that(apply_result.success, eq=True)
-        tm.that(check_result.success, eq=True)
+        tm.ok(apply_result.success)
+        tm.ok(check_result.success)
         tm.that(check_service.modified_files, eq=())
         tm.that(applied_init, contains="FlextTestsBaseConstants")
         # The inherited root alias is a redundant upstream re-export, not a
@@ -747,10 +755,10 @@ class TestsFlextInfraCodegenLazyInitService:
 
         check_result = check_service.execute()
 
-        tm.that(apply_result.success, eq=True)
-        tm.that(residue_init.exists(), eq=False)
+        tm.ok(apply_result.success)
+        tm.fail(residue_init.exists())
         tm.that(generated_tests_init, lacks=f".{directory_name}")
         tm.that(generated_tests_init, lacks=f'"{directory_name}"')
-        tm.that((nested_io_root / c.Infra.INIT_PY).exists(), eq=True)
-        tm.that(check_result.success, eq=True)
+        tm.ok((nested_io_root / c.Infra.INIT_PY).exists())
+        tm.ok(check_result.success)
         tm.that(check_service.modified_files, eq=())

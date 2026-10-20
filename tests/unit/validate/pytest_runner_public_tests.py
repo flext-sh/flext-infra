@@ -359,8 +359,8 @@ class TestsFlextInfraPytestRunner:
             warm_state = m.Infra.TestmonCacheState.model_validate_json(
                 tm.ok(u.Cli.files_read_text(reports_root / warm_name / receipt)),
             )
-            tm.that(warm_state.restored_accepted, eq=True)
-            tm.that(warm_state.seed_needed, eq=False)
+            tm.ok(warm_state.restored_accepted)
+            tm.fail(warm_state.seed_needed)
 
     @staticmethod
     @pytest.mark.slow
@@ -539,7 +539,7 @@ class TestsFlextInfraPytestRunner:
             has=outcome.raw_return_code,
         )
         tm.that(outcome.raw_return_code, eq=exit_code)
-        tm.that(outcome.timed_out, eq=False)
+        tm.fail(outcome.timed_out)
         tm.that(outcome.forwarded_signal, none=True)
         tm.that(u.Tests.PytestRunner.summary(reports_root), has=f"failed={failed}")
 
@@ -763,8 +763,8 @@ class TestsFlextInfraPytestRunner:
         tm.that(accounting.deselected_count, eq=0)
         full_summary = (report_dir / "summary.txt").read_text().splitlines()
         tm.that(full_summary, has=["outcome=executed", "exit=0"])
-        tm.that("not_executed_external_gates=" in full_summary, eq=True)
-        tm.that("not_executed_ci_markers=" in full_summary, eq=True)
+        tm.ok("not_executed_external_gates=" in full_summary)
+        tm.ok("not_executed_ci_markers=" in full_summary)
         recorded = (report_dir / "command.txt").read_text()
         tm.that(recorded, has="--testmon-noselect")
         tm.that(recorded, lacks=c.Infra.PYTEST_SUITE_STOP_OPTION)
@@ -814,12 +814,12 @@ class TestsFlextInfraPytestRunner:
             eq=[c.Infra.PytestExecutionMode.INCREMENTAL],
         )
         tm.that({context.testmon_db for context in parsed}, eq={runner.testmon_db})
-        tm.that(runner.testmon_db.is_absolute(), eq=True)
+        tm.ok(runner.testmon_db.is_absolute())
         tm.that(
             runner.testmon_db.is_relative_to(cached_runner_project.resolve()),
             eq=False,
         )
-        tm.that(runner.testmon_db.is_file(), eq=True)
+        tm.ok(runner.testmon_db.is_file())
         tm.that(
             (
                 cached_runner_project
@@ -842,12 +842,12 @@ class TestsFlextInfraPytestRunner:
         accounting = m.Infra.TestmonRunAccounting.model_validate_json(
             (file_report / "run-accounting.json").read_text(),
         )
-        tm.that(accounting.cache_restored, eq=True)
+        tm.ok(accounting.cache_restored)
         for receipt in ("cache-before.json", "cache-after.json"):
             state = m.Infra.TestmonCacheState.model_validate_json(
                 (file_report / receipt).read_text(),
             )
-            tm.that(state.restored_accepted, eq=True)
+            tm.ok(state.restored_accepted)
         manifest = m.Infra.PytestCollectionManifest.model_validate_json(
             (file_report / "testmon-inventory.json").read_text(),
         )
@@ -944,7 +944,7 @@ class TestsFlextInfraPytestRunner:
         )
         tm.that(len(selection.node_ids), eq=1)
         tm.that(len(inventory.node_ids), eq=2)
-        tm.that(set(selection.node_ids) < set(inventory.node_ids), eq=True)
+        tm.ok(set(selection.node_ids) < set(inventory.node_ids))
         accounting = m.Infra.TestmonRunAccounting.model_validate_json(
             (report_dir / "run-accounting.json").read_text(),
         )
@@ -1061,7 +1061,7 @@ class TestsFlextInfraPytestRunner:
             (cached_runner_project / runner.reports / "latest.txt").read_text().strip(),
             eq=contexts[-1].parent.name,
         )
-        tm.that((contexts[-1].parent / "suite-outcome.json").exists(), eq=False)
+        tm.fail((contexts[-1].parent / "suite-outcome.json").exists())
         inventory = m.Infra.PytestCollectionManifest.model_validate_json(
             (contexts[-1].parent / "testmon-inventory.json").read_text(),
         )

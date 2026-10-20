@@ -2,7 +2,7 @@ id: rewire-test-assert-guard
 snapshots:
   assert isinstance(value, (Entry, Schema)):
     fixed: |-
-      if not isinstance(value, (Entry, Schema)):
+      if not (isinstance(value, (Entry, Schema))):
           raise AssertionError
     labels:
     - source: assert isinstance(value, (Entry, Schema))
@@ -15,7 +15,7 @@ snapshots:
       end: 41
   assert isinstance(value, Entry):
     fixed: |-
-      if not isinstance(value, Entry):
+      if not (isinstance(value, Entry)):
           raise AssertionError
     labels:
     - source: assert isinstance(value, Entry)
@@ -28,7 +28,7 @@ snapshots:
       end: 31
   assert value is None:
     fixed: |-
-      if not value is None:
+      if not (value is None):
           raise AssertionError
     labels:
     - source: assert value is None
@@ -41,7 +41,7 @@ snapshots:
       end: 20
   assert value is not None:
     fixed: |-
-      if not value is not None:
+      if not (value is not None):
           raise AssertionError
     labels:
     - source: assert value is not None

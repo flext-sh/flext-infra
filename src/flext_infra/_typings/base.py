@@ -31,14 +31,8 @@ from jinja2.environment import (
     Template as _JinjaTemplate,
 )
 
-from flext_infra._typings.collections import FlextInfraTypesCollections
 
-# mypy defers a PEP 695 bound written as an attribute path and asserts in
-# the final iteration. Callers bind to this module-level name.
-type CliResultValue = t.Cli.ResultValue
-
-
-class FlextInfraTypesBase(FlextInfraTypesCollections):
+class FlextInfraTypesBase:
     """Base typings for flext-infra project."""
 
     type Path = pathlib.Path
@@ -46,6 +40,45 @@ class FlextInfraTypesBase(FlextInfraTypesCollections):
 
     type MutableSetOf[ItemT] = MutableSet[ItemT]
     "An explicitly mutable set contract for operation-owned native state."
+
+    type SettingsContainerInput = (
+        t.JsonValue | tuple[t.JsonValue | tuple[t.JsonValue, ...], ...]
+    )
+    "Native option ingress before only its declaration containers are frozen."
+
+    @staticmethod
+    def _freeze_settings_container(
+        value: FlextInfraTypesBase.SettingsContainerInput,
+    ) -> FlextInfraTypesBase.SettingsContainerInput:
+        """Freeze one YAML declaration container without rewriting its payload.
+
+        Returns:
+            The same container as a tuple when YAML supplied a list.
+
+        """
+        return tuple(value) if isinstance(value, list) else value
+
+    type SettingsPairs = Annotated[
+        tuple[
+            Annotated[
+                tuple[
+                    Annotated[
+                        str,
+                        t.StringConstraints(
+                            min_length=1,
+                            strip_whitespace=False,
+                            pattern=r"^\S+$",
+                        ),
+                    ],
+                    t.JsonValue,
+                ],
+                m.BeforeValidator(_freeze_settings_container),
+            ],
+            ...,
+        ],
+        m.BeforeValidator(_freeze_settings_container),
+    ]
+    "Ordered JSON-compatible option pairs with last-declaration precedence."
 
     @staticmethod
     def _reject_blanket_mask(rule: str) -> str:
@@ -156,6 +189,7 @@ class FlextInfraTypesBase(FlextInfraTypesCollections):
     "Mutable string set (supports .update/.intersection/etc)."
     type CanonicalValue = t.Scalar | t.StrSequence
     "Canonical governance value: scalar payload or string sequence."
+    "Scalar types admitted by declarative tooling settings."
 
     type CensusRecord = t.HeaderMapping
     "Single census record: string keys with str|int values (name, type, usages)."
@@ -253,4 +287,4 @@ class FlextInfraTypesBase(FlextInfraTypesCollections):
     "Git pathspec string (e.g. ``:(exclude)dir``)."
 
 
-__all__: list[str] = ["CliResultValue", "FlextInfraTypesBase"]
+__all__: list[str] = ["FlextInfraTypesBase"]

@@ -311,10 +311,10 @@ class TestsFlextInfraApplyRenames:
                         )
                     )
                     if not apply:
-                        tm.that(provider.is_file(), eq=True)
-                        tm.that(provider.with_name("meaningful.py").exists(), eq=False)
-                tm.that(provider.exists(), eq=False)
-                tm.that(provider.with_name("meaningful.py").is_file(), eq=True)
+                        tm.ok(provider.is_file())
+                        tm.fail(provider.with_name("meaningful.py").exists())
+                tm.fail(provider.exists())
+                tm.ok(provider.with_name("meaningful.py").is_file())
             exported_name = "FlextProvider"
         tm.that((packages[-1] / "unrelated.py").read_bytes(), eq=original_unrelated)
         TestsFlextInfraApplyRenames._verify_renamed_consumers(
@@ -380,7 +380,7 @@ class TestsFlextInfraApplyRenames:
                 ),
             )
         )
-        tm.that(u.Cli.process_succeeded(imported.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(imported.outcome))
         for project in projects:
             checked = tm.ok(
                 u.Cli.run(
@@ -402,7 +402,7 @@ class TestsFlextInfraApplyRenames:
                     ),
                 )
             )
-            tm.that(u.Cli.process_succeeded(checked.outcome), eq=True)
+            tm.ok(u.Cli.process_succeeded(checked.outcome))
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -617,13 +617,13 @@ class TestsFlextInfraApplyRenames:
         first = tm.ok(
             FlextInfraApplyRenames.run(request.model_copy(update={"apply": True})),
         )
-        tm.that(first.files_changed >= 2, eq=True)
+        tm.ok(first.files_changed >= 2)
         tm.that(first.occurrences, eq=0)
         tm.that(
             target.read_text(),
             eq="A campaign_renamed_token keeps surrounding prose.\n",
         )
-        tm.that(projection.is_symlink(), eq=True)
+        tm.ok(projection.is_symlink())
         tm.that(projection.read_bytes(), eq=target.read_bytes())
         tm.that(driver.read_bytes(), eq=original_driver)
         tm.that(other.read_bytes(), eq=original_driver)
@@ -818,7 +818,7 @@ class TestsFlextInfraApplyRenames:
         report = tm.ok(
             FlextInfraApplyRenames.run(self._request(mod_workspace, apply=True)),
         )
-        tm.that(report.files_changed >= 2, eq=True)
+        tm.ok(report.files_changed >= 2)
         tm.that(authored.read_text(), eq="campaign_renamed_token")
         tm.that(projected.read_text(), eq=generated)
 

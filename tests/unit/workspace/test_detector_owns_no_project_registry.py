@@ -110,8 +110,8 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
         )
         declarations = tm.ok(u.Infra.git_submodule_declarations(root))
 
-        tm.that(strict.failure, eq=True)
-        tm.that(isinstance(strict.exception, FileNotFoundError), eq=True)
+        tm.ok(strict.failure)
+        tm.ok(isinstance(strict.exception, FileNotFoundError))
         tm.that(pending.pending_subprojects, eq=declarations)
         tm.that(pending.subprojects, empty=True)
         tm.that(pending.external_dependency_paths, empty=True)
@@ -170,8 +170,8 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
 
         declarations = u.Infra.git_submodule_declarations(root)
 
-        tm.that(declarations.failure, eq=True)
-        tm.that(declarations.exception is not None, eq=True)
+        tm.ok(declarations.failure)
+        tm.ok(declarations.exception is not None)
 
     def test_changed_git_participation_is_observed_without_a_catalog(
         self,
@@ -208,8 +208,8 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
         )
 
         tm.that(excluded, eq=frozenset({relative.as_posix()}))
-        tm.that(member in u.Infra.discover_project_candidates(root), eq=False)
-        tm.that(member in u.Infra.discover_rope_project_roots(root), eq=False)
+        tm.fail(member in u.Infra.discover_project_candidates(root))
+        tm.fail(member in u.Infra.discover_rope_project_roots(root))
         tm.that(u.Infra.import_project_roots(member), eq=(root, member))
         tm.that(tuple(target.root for target in targets), eq=(root, root / relative))
         tm.ok(
@@ -222,8 +222,8 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
             ),
         )
         tm.that(u.Infra.repository_nonparticipant_paths(root), empty=True)
-        tm.that(member in u.Infra.discover_project_candidates(root), eq=True)
-        tm.that(member in u.Infra.discover_rope_project_roots(root), eq=True)
+        tm.ok(member in u.Infra.discover_project_candidates(root))
+        tm.ok(member in u.Infra.discover_rope_project_roots(root))
         tm.that(u.Infra.import_project_roots(member), eq=(root, member))
 
     def test_unknown_project_derives_its_own_identity(self, tmp_path: Path) -> None:

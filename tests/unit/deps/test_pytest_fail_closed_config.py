@@ -27,7 +27,7 @@ class TestsFlextInfraPytestFailClosedConfig:
     async def test_declared_async_provider_executes_coroutines() -> None:
         """Exercise the installed provider rather than merely registering a marker."""
         await asyncio.sleep(0)
-        tm.that(asyncio.current_task() is not None, eq=True)
+        tm.ok(asyncio.current_task() is not None)
 
     @staticmethod
     def test_phase_replaces_stale_collection_and_warning_policy(
@@ -35,6 +35,39 @@ class TestsFlextInfraPytestFailClosedConfig:
     ) -> None:
         """Replace ignored roots and warning filters without second-apply drift."""
         policy = config.Infra.tooling.tools.pytest
+        native = u.Infra.native_tool_settings(
+            config.Infra.tooling, "pytest.ini_options"
+        )
+        tooling = config.Infra.tooling.model_copy(
+            update={
+                "settings": {
+                    **config.Infra.tooling.settings,
+                    "pytest.ini_options": (
+                        *config.Infra.tooling.settings["pytest.ini_options"],
+                        (
+                            "python_classes",
+                            ["Spec*", *u.Tests.strings(native["python_classes"])],
+                        ),
+                        (
+                            "python_files",
+                            ["spec_*.py", *u.Tests.strings(native["python_files"])],
+                        ),
+                    ),
+                },
+                "tools": config.Infra.tooling.tools.model_copy(
+                    update={
+                        "pytest": policy.model_copy(
+                            update={
+                                "standard_markers": (
+                                    *policy.standard_markers,
+                                    "custom: stale local marker",
+                                )
+                            },
+                        ),
+                    },
+                ),
+            },
+        )
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
             u.Tests.toml_payload(
                 '[project]\nname = "flext-sample"\n'
@@ -47,7 +80,7 @@ class TestsFlextInfraPytestFailClosedConfig:
                 'testpaths = ["architecture", "guides", "tests"]\n',
             ),
         )
-        phase = FlextInfraToolTablesPhase(config.Infra.tooling)
+        phase = FlextInfraToolTablesPhase(tooling)
         pyproject = tmp_path / "flext-sample" / "pyproject.toml"
 
         first_changes = phase.apply_payload(payload, path=pyproject)
@@ -62,16 +95,33 @@ class TestsFlextInfraPytestFailClosedConfig:
         )
         tm.that(
             list(u.Tests.strings(ini["filterwarnings"])),
-            eq=sorted(policy.filter_warnings),
+            eq=list(
+                u.Infra.native_tool_setting(
+                    tooling, "pytest.ini_options", "filterwarnings", t.StrSequence
+                )
+            ),
         )
-        tm.that(list(u.Tests.strings(ini["testpaths"])), eq=sorted(policy.test_paths))
+        tm.that(
+            list(u.Tests.strings(ini["testpaths"])),
+            eq=list(
+                u.Infra.native_tool_setting(
+                    tooling, "pytest.ini_options", "testpaths", t.StrSequence
+                )
+            ),
+        )
         tm.that(
             ini["asyncio_default_fixture_loop_scope"],
-            eq=policy.asyncio_default_fixture_loop_scope,
+            eq=u.Infra.native_tool_setting(
+                tooling, "pytest.ini_options", "asyncio_default_fixture_loop_scope", str
+            ),
         )
         tm.that(
             set(u.Tests.strings(ini["addopts"])),
-            eq=set(policy.standard_addopts),
+            eq=set(
+                u.Infra.native_tool_setting(
+                    tooling, "pytest.ini_options", "addopts", t.StrSequence
+                )
+            ),
         )
         tm.that(
             set(u.Tests.strings(ini["markers"])),

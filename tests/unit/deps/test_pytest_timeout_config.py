@@ -158,7 +158,7 @@ class TestsFlextInfraPytestTimeoutConfig:
         """Only explicitly slow items carry a narrow item budget."""
         policy = config.Infra.tooling.tools.pytest
 
-        tm.that(policy.slow_timeout_seconds < policy.run_timeout_seconds, eq=True)
+        tm.ok(policy.slow_timeout_seconds < policy.run_timeout_seconds)
 
     @staticmethod
     def test_slow_budget_is_a_hard_typed_boundary() -> None:
@@ -179,7 +179,7 @@ class TestsFlextInfraPytestTimeoutConfig:
         expected = policy.run_timeout_seconds + (policy.termination_grace_seconds * 2)
 
         tm.that(policy.process_timeout_seconds, eq=expected)
-        tm.that("process-timeout-seconds" in policy.model_dump(by_alias=True), eq=False)
+        tm.fail("process-timeout-seconds" in policy.model_dump(by_alias=True))
 
     @staticmethod
     def test_project_run_budget_exceeds_the_derived_suite_stop_reserve() -> None:

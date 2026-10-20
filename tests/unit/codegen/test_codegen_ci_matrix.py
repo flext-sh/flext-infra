@@ -111,7 +111,7 @@ class TestsFlextInfraCodegenCiMatrix:
     def test_ci_matrix_workflow_emitted(rendered_project: Path) -> None:
         """Generated project carries .github/workflows/ci-matrix.yml."""
         root = rendered_project
-        tm.that((root / ".github" / "workflows" / "ci-matrix.yml").is_file(), eq=True)
+        tm.ok((root / ".github" / "workflows" / "ci-matrix.yml").is_file())
 
     @staticmethod
     def test_latest_mise_is_owned_only_by_make_setup(
@@ -135,9 +135,9 @@ class TestsFlextInfraCodegenCiMatrix:
         root = rendered_project
         makefile = (root / "Makefile").read_text(encoding="utf-8")
         tm.that(makefile, lacks="_builtin_checkpoint_")
-        tm.that((root / ".github/scripts/gate-attestation.sh").exists(), eq=False)
-        tm.that((root / ".github/workflows/gate-attestation.yml").exists(), eq=False)
-        tm.that((root / ".github/attestations/allowed_signers").exists(), eq=False)
+        tm.fail((root / ".github/scripts/gate-attestation.sh").exists())
+        tm.fail((root / ".github/workflows/gate-attestation.yml").exists())
+        tm.fail((root / ".github/attestations/allowed_signers").exists())
 
     @staticmethod
     def test_github_apps_are_not_selected_for_draft_prs(
@@ -145,8 +145,8 @@ class TestsFlextInfraCodegenCiMatrix:
     ) -> None:
         """Versioned app policy reserves external review for non-Draft PRs."""
         root = rendered_project
-        tm.that((root / "cubic.yaml").exists(), eq=False)
-        tm.that((root / ".coderabbit.yaml").exists(), eq=False)
+        tm.fail((root / "cubic.yaml").exists())
+        tm.fail((root / ".coderabbit.yaml").exists())
 
     @staticmethod
     def test_ci_workflow_uses_immutable_action_catalog(
@@ -216,7 +216,7 @@ class TestsFlextInfraCodegenCiMatrix:
         tm.that(workflow.get("permissions"), eq=None)
         permissions = u.Cli.JSON_MAPPING_ADAPTER.validate_python(ci_job["permissions"])
         tm.that(permissions["contents"], eq="read")
-        tm.that("merge-guard" in jobs, eq=False)
+        tm.fail("merge-guard" in jobs)
 
     @staticmethod
     def test_every_approval_verb_blocks_on_push_and_pull_request(
@@ -325,7 +325,7 @@ class TestsFlextInfraCodegenCiMatrix:
         tm.that(workflow, lacks="run: gh auth setup-git")
         steps_index = workflow.index("    steps:")
         setup_index = workflow.index("run: CI=Y make setup")
-        tm.that(steps_index < setup_index, eq=True)
+        tm.ok(steps_index < setup_index)
 
     @staticmethod
     def test_verify_clean_rejects_dirty_git_tree(
@@ -339,7 +339,7 @@ class TestsFlextInfraCodegenCiMatrix:
         outcome = FlextInfraGitService.verify_clean(
             m.Infra.GitStatusRequest(repo_root=repository),
         )
-        tm.that(outcome.failure, eq=True)
+        tm.ok(outcome.failure)
         tm.that(outcome.error, has="untracked.txt")
 
     @staticmethod
@@ -409,8 +409,8 @@ class TestsFlextInfraCodegenCiMatrix:
         tm.that(len(pushes), eq=len(expected))
         for hook, verb in zip(pushes, expected, strict=True):
             tm.that(hook["entry"], has=f"make {verb}")
-            tm.that(hook["pass_filenames"], eq=False)
-            tm.that(hook["always_run"], eq=True)
+            tm.fail(hook["pass_filenames"])
+            tm.ok(hook["always_run"])
 
     @staticmethod
     def test_ci_workflow_cancels_superseded_ref_runs(
@@ -672,7 +672,7 @@ class TestsFlextInfraCodegenCiMatrix:
         """Generic Python CI emits only its complete cross-platform legs."""
         root = rendered_project
         workflow = root / ".github" / "workflows" / "ci-matrix.yml"
-        tm.that(workflow.is_file(), eq=True)
+        tm.ok(workflow.is_file())
         content = u.Cli.yaml_load_mapping(workflow)
         jobs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(content["jobs"])
         for leg in ("distro-matrix", "macos", "windows"):
@@ -772,7 +772,7 @@ class TestsFlextInfraCodegenCiMatrix:
         jobs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
         ci = u.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["ci"])
         tm.that(ci["if"], has="github.event.pull_request.draft == false")
-        tm.that("merge-guard" in jobs, eq=False)
+        tm.fail("merge-guard" in jobs)
 
     @staticmethod
     def test_docs_workflow_covers_every_blocking_ci_branch(
@@ -821,7 +821,7 @@ class TestsFlextInfraCodegenCiMatrix:
                 ),
                 eq=True,
             )
-            tm.that(inputs["include-hidden-files"], eq=True)
+            tm.ok(inputs["include-hidden-files"])
             tm.that(inputs["if-no-files-found"], eq="error")
 
     @staticmethod
@@ -850,7 +850,7 @@ class TestsFlextInfraCodegenCiMatrix:
         tm.that(docs_step.get("continue-on-error"), eq=None)
         tm.that(upload["if"], eq="failure()")
         upload_with = u.Cli.JSON_MAPPING_ADAPTER.validate_python(upload["with"])
-        tm.that(upload_with["include-hidden-files"], eq=True)
+        tm.ok(upload_with["include-hidden-files"])
         tm.that(upload_with["if-no-files-found"], eq="error")
         report_paths = str(upload_with["path"]).splitlines()
         tm.that(report_paths, empty=False)
@@ -859,7 +859,7 @@ class TestsFlextInfraCodegenCiMatrix:
             eq=set(c.Infra.DOCS_STRUCTURED_REPORT_FILENAMES),
         )
         for path in report_paths:
-            tm.that(".reports" in Path(path).parts, eq=True)
+            tm.ok(".reports" in Path(path).parts)
 
     @staticmethod
     def test_docs_workflow_jobs_authenticate_toolchain_resolution(
@@ -910,7 +910,7 @@ class TestsFlextInfraCodegenCiMatrix:
         dockerfiles = list(
             (root / "tests" / "fixtures" / "ci" / "docker").glob("*.Dockerfile"),
         )
-        tm.that(len(dockerfiles) > 0, eq=True)
+        tm.ok(len(dockerfiles) > 0)
         for dockerfile in dockerfiles:
             body = dockerfile.read_text(encoding="utf-8")
             tm.that(body, has="ENV CI=Y")
@@ -945,7 +945,7 @@ class TestsFlextInfraCodegenCiMatrix:
             if item.destination == c.Infra.SONARCLOUD_PROPERTIES_FILENAME
         )
         header = rendered.split("\n\n", 1)[0]
-        tm.that(header.startswith("# @flext-regenerate: make gen\n"), eq=True)
+        tm.ok(header.startswith("# @flext-regenerate: make gen\n"))
         tm.that(header, has=tm.not_none(entry.source).as_posix())
         properties = {
             key: value
@@ -992,7 +992,7 @@ class TestsFlextInfraCodegenCiMatrix:
         rendered = (root / c.Infra.SONARCLOUD_PROPERTIES_FILENAME).read_text(
             encoding="utf-8",
         )
-        tm.that((root / c.Infra.DIR_TESTS).is_dir(), eq=True)
+        tm.ok((root / c.Infra.DIR_TESTS).is_dir())
         self._assert_sonarcloud_scope(rendered)
 
     def test_sonarcloud_tests_root_is_always_materialized_by_conform(
@@ -1011,7 +1011,7 @@ class TestsFlextInfraCodegenCiMatrix:
         u.Tests.write_standalone_workspace_manifest(root, config.Infra.name)
         # The seed ships a tests package; this case starts from a checkout without one.
         shutil.rmtree(root / c.Infra.DIR_TESTS)
-        tm.that((root / c.Infra.DIR_TESTS).exists(), eq=False)
+        tm.fail((root / c.Infra.DIR_TESTS).exists())
         request = u.Tests.conform_request(
             root,
             scope=c.Infra.CodegenConformScope.SELF,
@@ -1036,7 +1036,7 @@ class TestsFlextInfraCodegenCiMatrix:
         """Hand-maintained root .dockerignore admits clean-machine bootstrap files."""
         root = Path(__file__).resolve().parents[3]
         dockerignore = root / ".dockerignore"
-        tm.that(dockerignore.is_file(), eq=True)
+        tm.ok(dockerignore.is_file())
         content = dockerignore.read_text(encoding="utf-8")
         for marker in (
             "!Makefile",

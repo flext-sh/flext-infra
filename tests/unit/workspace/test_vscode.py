@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_infra import config
 from flext_infra.services import FlextInfraCodegenVscodeMixin
-from tests import c, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraCodegenVscode:
@@ -48,24 +48,21 @@ class TestsFlextInfraCodegenVscode:
         result = FlextInfraCodegenVscodeMixin.render_vscode_settings(project_root)
         tm.ok(result)
         doc = u.Tests.json_payload(result.value)
-        tm.that("python.analysis.typeCheckingMode" in doc, eq=False)
-        tm.that("python.analysis.diagnosticSeverityOverrides" in doc, eq=False)
+        tm.fail("python.analysis.typeCheckingMode" in doc)
+        tm.fail("python.analysis.diagnosticSeverityOverrides" in doc)
+        declared = FlextInfraCodegenVscodeMixin.vscode_settings(
+            config.Infra.codegen.vscode
+        )
         interpreter = "python.defaultInterpreterPath"
-        tm.that(
-            doc[interpreter],
-            eq=config.Infra.codegen.vscode.scalar_settings[interpreter],
-        )
+        tm.that(doc[interpreter], eq=declared[interpreter])
         search_paths_key = c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
-        tm.that(
-            doc[search_paths_key],
-            eq=config.Infra.codegen.vscode.additional_settings[search_paths_key],
-        )
+        tm.that(doc[search_paths_key], eq=declared[search_paths_key])
         excludes = u.Tests.toml_mapping(doc["files.exclude"])
-        tm.that("**/.retired-cache" in excludes, eq=False)
+        tm.fail("**/.retired-cache" in excludes)
         tm.that(excludes, eq=dict(config.Infra.codegen.vscode_files_exclude_map))
         tm.that(
             doc["python.languageServer"],
-            eq=config.Infra.codegen.vscode.scalar_settings["python.languageServer"],
+            eq=declared["python.languageServer"],
         )
 
     def test_strips_retired_keys_owning_pyright_config(self, tmp_path: Path) -> None:
@@ -90,11 +87,13 @@ class TestsFlextInfraCodegenVscode:
 
         tm.ok(result)
         doc = u.Tests.json_payload(result.value)
-        tm.that("python.analysis.typeCheckingMode" in doc, eq=False)
-        tm.that("python.analysis.diagnosticSeverityOverrides" in doc, eq=False)
+        tm.fail("python.analysis.typeCheckingMode" in doc)
+        tm.fail("python.analysis.diagnosticSeverityOverrides" in doc)
         tm.that(
             doc["python.languageServer"],
-            eq=config.Infra.codegen.vscode.scalar_settings["python.languageServer"],
+            eq=FlextInfraCodegenVscodeMixin.vscode_settings(
+                config.Infra.codegen.vscode
+            )["python.languageServer"],
         )
 
     def test_render_reaches_fixed_point(self, tmp_path: Path) -> None:
@@ -143,7 +142,9 @@ class TestsFlextInfraCodegenVscode:
         search_paths_key = c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
         tm.that(
             doc[search_paths_key],
-            eq=config.Infra.codegen.vscode.additional_settings[search_paths_key],
+            eq=FlextInfraCodegenVscodeMixin.vscode_settings(
+                config.Infra.codegen.vscode
+            )[search_paths_key],
         )
 
     def test_invalid_json_fails_without_producing_a_document(
@@ -159,3 +160,169 @@ class TestsFlextInfraCodegenVscode:
 
         tm.fail(result)
         tm.that(result.error, none=False)
+
+    def test_project_artifacts_control_all_editor_exclusions(
+        self, tmp_path: Path
+    ) -> None:
+        """Use the elected project catalog for file and directory exclusions."""
+        directory = m.Infra.CodegenArtifactSpec(
+            name="fixture-cache", analysis_exclude=True
+        )
+        file = m.Infra.CodegenArtifactSpec(
+            name="*.fixture-backup", is_dir=False, analysis_exclude=True
+        )
+        elected = config.Infra.codegen.model_copy(
+            update={"artifacts": (*config.Infra.codegen.artifacts, directory, file)}
+        )
+        rendered = tm.ok(
+            FlextInfraCodegenVscodeMixin.render_vscode_settings(
+                tmp_path, codegen=elected
+            )
+        )
+        document = u.Tests.json_payload(rendered)
+        for key, expected in (
+            ("files.exclude", elected.vscode_files_exclude_map),
+            ("search.exclude", elected.vscode_search_exclude_map),
+            ("files.watcherExclude", elected.vscode_watcher_exclude_map),
+        ):
+            tm.that(document[key], eq=dict(expected))
+        watchers = u.Tests.toml_mapping(document["files.watcherExclude"])
+        tm.that(watchers, has=f"**/{file.name}")
+        tm.that(watchers, lacks=f"**/{file.name}/**")
+        tm.that(watchers, has=f"**/{directory.name}/**")
+        tm.ok(f"**/{file.name}" in elected.analyzer_exclude_globs)
+        self._write_settings(tmp_path, rendered)
+        tm.that(
+            tm.ok(
+                FlextInfraCodegenVscodeMixin.render_vscode_settings(
+                    tmp_path, codegen=elected
+                )
+            ),
+            eq=rendered,
+        )
+
+    def test_retired_language_keys_leave_custom_preferences_intact(
+        self, tmp_path: Path
+    ) -> None:
+        """Remove obsolete owned entries without replacing language preferences."""
+        retired = config.Infra.codegen.vscode.stripped_map_keys
+        settings = {
+            language: {
+                **dict.fromkeys(keys, True),
+                "editor.rulers": [88],
+            }
+            for language, keys in retired.items()
+        }
+        self._write_settings(tmp_path, tm.ok(u.Cli.json_dumps(settings)))
+        rendered = tm.ok(FlextInfraCodegenVscodeMixin.render_vscode_settings(tmp_path))
+        document = u.Tests.json_payload(rendered)
+        for language, keys in retired.items():
+            preferences = u.Tests.toml_mapping(document[language])
+            tm.that(preferences["editor.rulers"], eq=[88])
+            tm.ok(set(keys).isdisjoint(preferences))
+
+    @staticmethod
+    def test_unfamiliar_settings_accept_recursive_json_and_preserve_array_order(
+        tmp_path: Path,
+    ) -> None:
+        """Settings remain generic JSON values with deterministic object ordering."""
+        values: t.JsonMapping = {
+            "operator.enabled": True,
+            "operator.ratio": 0.75,
+            "operator.unset": None,
+            "operator.nested": {"zeta": [3, 1], "alpha": {"second": False}},
+            "operator.items": [{"name": "second"}, {"name": "first"}],
+        }
+        specification = m.Infra.CodegenVscodeSpec.model_validate({
+            **config.Infra.codegen.vscode.model_dump(),
+            "settings": (*config.Infra.codegen.vscode.settings, *values.items()),
+        })
+        rendered = tm.ok(
+            FlextInfraCodegenVscodeMixin.render_vscode_settings(
+                tmp_path, spec=specification
+            )
+        )
+        document = u.Tests.json_payload(rendered)
+        for key, value in values.items():
+            tm.that(document[key], eq=value)
+        tm.that(list(document), eq=sorted(document))
+        nested = u.Tests.toml_mapping(document["operator.nested"])
+        tm.that(list(nested), eq=sorted(nested))
+        tm.that(
+            FlextInfraCodegenVscodeMixin.vscode_settings(specification)[
+                "operator.items"
+            ],
+            eq=values["operator.items"],
+        )
+
+    @staticmethod
+    def test_retired_setting_removal_wins_over_declared_values(
+        tmp_path: Path,
+    ) -> None:
+        """The explicit removal declaration wins even over the final setting pair."""
+        key = "operator.retiredSetting"
+        specification = m.Infra.CodegenVscodeSpec.model_validate({
+            **config.Infra.codegen.vscode.model_dump(),
+            "settings": (*config.Infra.codegen.vscode.settings, (key, True)),
+            "stripped_keys": (*config.Infra.codegen.vscode.stripped_keys, key),
+        })
+        rendered = tm.ok(
+            FlextInfraCodegenVscodeMixin.render_vscode_settings(
+                tmp_path, spec=specification
+            )
+        )
+        tm.that(u.Tests.json_payload(rendered), lacks=key)
+
+    def test_explicit_map_union_accepts_recursive_json_and_preserves_local_keys(
+        self, tmp_path: Path
+    ) -> None:
+        """An explicitly merged map supports JSON values beyond scalar options."""
+        key = "[fixture]"
+        local: t.JsonMapping = {"operator.local": [{"name": "retained"}]}
+        declared: t.JsonMapping = {
+            "operator.unset": None,
+            "operator.weight": 0.25,
+            "operator.nested": {"items": [{"name": "last"}, {"name": "first"}]},
+        }
+        self._write_settings(tmp_path, tm.ok(u.Cli.json_dumps({key: local})))
+        specification = m.Infra.CodegenVscodeSpec.model_validate({
+            **config.Infra.codegen.vscode.model_dump(),
+            "map_union_settings": {
+                **config.Infra.codegen.vscode.map_union_settings,
+                key: declared,
+            },
+        })
+        rendered = tm.ok(
+            FlextInfraCodegenVscodeMixin.render_vscode_settings(
+                tmp_path, spec=specification
+            )
+        )
+        tm.that(
+            u.Tests.json_payload(rendered)[key],
+            eq={**local, **declared},
+        )
+
+    def test_explicit_setting_pair_replaces_a_default_merged_map(
+        self, tmp_path: Path
+    ) -> None:
+        """An explicit JSON value owns its full map after default map unions."""
+        key = "[fixture]"
+        self._write_settings(
+            tmp_path,
+            tm.ok(u.Cli.json_dumps({key: {"operator.local": True}})),
+        )
+        replacement: t.JsonMapping = {"operator.items": ["second", "first"]}
+        specification = m.Infra.CodegenVscodeSpec.model_validate({
+            **config.Infra.codegen.vscode.model_dump(),
+            "settings": (*config.Infra.codegen.vscode.settings, (key, replacement)),
+            "map_union_settings": {
+                **config.Infra.codegen.vscode.map_union_settings,
+                key: {"operator.default": True},
+            },
+        })
+        rendered = tm.ok(
+            FlextInfraCodegenVscodeMixin.render_vscode_settings(
+                tmp_path, spec=specification
+            )
+        )
+        tm.that(u.Tests.json_payload(rendered)[key], eq=replacement)

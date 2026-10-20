@@ -38,7 +38,7 @@ class TestsFlextInfraRootArtifactOwnership:
             if item.destination == ".github/workflows/release.yml"
         )
 
-        tm.that(entry.requires_release_protocol, eq=True)
+        tm.ok(entry.requires_release_protocol)
 
     @staticmethod
     def test_governed_artifacts_have_one_explicit_policy() -> None:

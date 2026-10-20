@@ -81,7 +81,7 @@ class TestsFlextInfraConflictMarkerGate:
             root, m.Infra.GateContext(repository_root=root, reports_dir=root)
         )
 
-        tm.that(result.result.passed, eq=False)
+        tm.fail(result.result.passed)
         tm.that(result.issues[0].file, eq=str(source))
         tm.that(result.issues[0].line, eq=2)
         tm.that(result.issues[0].code, eq=f"{c.Infra.CONFLICT_MARKERS}-{kind}")
@@ -109,7 +109,7 @@ class TestsFlextInfraConflictMarkerGate:
         result = gate.check(
             root, m.Infra.GateContext(repository_root=root, reports_dir=root)
         )
-        tm.that(result.result.passed, eq=True)
+        tm.ok(result.result.passed)
         tm.that(result.issues, eq=())
 
     @staticmethod
@@ -129,7 +129,7 @@ class TestsFlextInfraConflictMarkerGate:
             root, m.Infra.GateContext(repository_root=root, reports_dir=root)
         )
 
-        tm.that(result.result.passed, eq=True)
+        tm.ok(result.result.passed)
         tm.that(result.issues, eq=())
         tm.that(result.raw_output, has="checked=")
 

@@ -12,9 +12,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, m, main
+from flext_infra import config, main
 from flext_infra.check import FlextInfraWorkspaceChecker
-from tests import tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

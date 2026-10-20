@@ -85,7 +85,7 @@ class TestsFlextInfraValidateCli:
         )
         # The rule engine runs ast-grep through the project's own declared
         # Mise toolchain, which every governed project carries.
-        tm.that((project / c.Infra.MISE_TOML_FILENAME).is_file(), eq=True)
+        tm.ok((project / c.Infra.MISE_TOML_FILENAME).is_file())
 
         exit_code = main([
             "validate",

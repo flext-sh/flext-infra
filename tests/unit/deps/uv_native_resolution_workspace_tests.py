@@ -255,7 +255,7 @@ class TestsFlextInfraUvNativeResolutionWorkspace:
             )
             if Requirement(line).name == member_ref.distribution
         )
-        tm.that(bool(member_requirements), eq=True)
+        tm.ok(bool(member_requirements))
         for projected in member_requirements:
             tm.that(projected.url, eq=authored.url)
             tm.that(str(projected.marker), eq=str(authored.marker))
@@ -282,7 +282,7 @@ class TestsFlextInfraUvNativeResolutionWorkspace:
             eq=member_ref.editable,
         )
         checkout.rename(root / "unavailable-member")
-        tm.that(checkout.exists(), eq=False)
+        tm.fail(checkout.exists())
         tm.that(
             TestsFlextInfraUvNativeResolutionWorkspace._resolved_portable_member(
                 standalone_directory,

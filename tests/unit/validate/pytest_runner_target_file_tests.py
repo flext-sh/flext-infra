@@ -33,14 +33,14 @@ class TestsFlextInfraPytestTargetFile:
             (True, True, "collection"),
         ],
     )
-    def test_public_make_runs_requested_file_incremental_then_complete(
+    def test_public_make_runs_complete_requested_file_once(
         provisioned_infra_checkout: t.Pair[str, Path],
         *,
         budgeted: bool,
         slow: bool,
         failure: str,
     ) -> None:
-        """Native Make runs both unbounded file phases and preserves causal failure."""
+        """Native Make runs one complete file phase and preserves causal failure."""
         _, root = provisioned_infra_checkout
         generated = tm.ok(u.Tests.run_isolated_make(["gen"], cwd=root))
         tm.that(
@@ -51,7 +51,12 @@ class TestsFlextInfraPytestTargetFile:
         make = config.Infra.codegen.make
         probe = f"file_phase_probe_{budgeted}_{slow}_{failure or 'passed'}"
         relative = Path(make.testmon_cache.target_directory) / (
-            config.Infra.tooling.tools.pytest.python_files[0].replace("*", probe)
+            u.Infra.native_tool_setting(
+                config.Infra.tooling,
+                "pytest.ini_options",
+                "python_files",
+                t.StrSequence,
+            )[0].replace("*", probe)
         )
         proof = root / f"{probe}.log"
         source, expected = TestsFlextInfraPytestTargetFile._probe_source(
@@ -86,14 +91,11 @@ class TestsFlextInfraPytestTargetFile:
             proof.read_text().splitlines() if proof.exists() else []
         )
         tm.that(
-            all(
-                observed.count(item) <= (1 if failure else 2) * expected.count(item)
-                for item in observed
-            ),
+            all(observed.count(item) <= expected.count(item) for item in observed),
             eq=True,
         )
         if expected and not failure:
-            tm.that(sorted(observed), eq=sorted(expected * 2))
+            tm.that(sorted(observed), eq=sorted(expected))
         receipts = [
             m.Infra.PytestRunContext.model_validate_json(path.read_text())
             for path in sorted(
@@ -101,9 +103,7 @@ class TestsFlextInfraPytestTargetFile:
                 key=lambda path: path.stat().st_mtime_ns,
             )
         ]
-        modes = [c.Infra.PytestExecutionMode.INCREMENTAL]
-        if not failure:
-            modes.append(c.Infra.PytestExecutionMode.FULL)
+        modes = [c.Infra.PytestExecutionMode.FULL]
         tm.that([receipt.execution_mode for receipt in receipts], eq=modes)
         tm.that(len({receipt.testmon_db for receipt in receipts}), eq=1)
         tm.that(
@@ -114,7 +114,7 @@ class TestsFlextInfraPytestTargetFile:
                 root,
                 relative,
                 proof,
-                expected * 2,
+                expected,
             )
 
     @staticmethod
@@ -213,7 +213,7 @@ class TestsFlextInfraPytestTargetFile:
                 target_file=Path("tests/missing_declared_case.py"),
             )
         except ValueError as exc:
-            tm.that("existing file" in str(exc), eq=True)
+            tm.ok("existing file" in str(exc))
             outcome = "value-error"
         tm.that(outcome, eq="value-error")
 
@@ -236,7 +236,7 @@ class TestsFlextInfraPytestTargetFile:
         runner = u.Tests.PytestRunner.runner_for(
             cached_runner_project, target_file=relative
         )
-        outcome = tm.ok(runner.execute())
+        outcome = tm.ok(runner.execute_file())
         tm.that(outcome, eq=pytest.ExitCode.OK.value)
         tm.that(
             declared.with_suffix(".executed").read_text(encoding="utf-8"),
@@ -259,7 +259,7 @@ class TestsFlextInfraPytestTargetFile:
             runner = u.Tests.PytestRunner.runner_for(
                 cached_runner_project, target_file=relative
             )
-            tm.that(tm.ok(runner.execute()), eq=pytest.ExitCode.OK.value)
+            tm.that(tm.ok(runner.execute_file()), eq=pytest.ExitCode.OK.value)
             report = u.Tests.PytestRunner.summary(
                 cached_runner_project / cache.reports_directory
             )
@@ -287,7 +287,7 @@ class TestsFlextInfraPytestTargetFile:
             runner = u.Tests.PytestRunner.runner_for(
                 cached_runner_project, target_file=relative
             )
-            tm.that(tm.ok(runner.execute()), eq=pytest.ExitCode.OK.value)
+            tm.that(tm.ok(runner.execute_file()), eq=pytest.ExitCode.OK.value)
             report = u.Tests.PytestRunner.summary(
                 cached_runner_project / cache.reports_directory
             )

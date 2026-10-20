@@ -57,7 +57,7 @@ class TestsFlextInfraPyreflyExplicitTargets:
         governed_module = project / "src" / "test_pkg" / "contract.py"
         governed_module.write_text('value: int = "governed"\n', encoding="utf-8")
         governed = gate.check(project, context)
-        tm.that(governed.result.passed, eq=False)
+        tm.fail(governed.result.passed)
         tm.that(
             all(issue.file.endswith(governed_module.name) for issue in governed.issues),
             eq=True,

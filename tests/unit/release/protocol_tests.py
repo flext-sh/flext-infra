@@ -172,7 +172,7 @@ class TestsFlextInfraReleaseProtocol:
         tm.that(result, eq=0)
         tm.that(plan.next, eq=c.Tests.RELEASE_VERSION_BASE)
         tm.that(plan.previous_tag, eq=None)
-        tm.that(plan.releasable, eq=True)
+        tm.ok(plan.releasable)
 
     def test_first_release_ships_a_final_version_unchanged(
         self,
@@ -187,7 +187,7 @@ class TestsFlextInfraReleaseProtocol:
         plan = self._plan(workspace)
         tm.that(result, eq=0)
         tm.that(plan.next, eq=c.Tests.RELEASE_VERSION_BASE)
-        tm.that(plan.releasable, eq=True)
+        tm.ok(plan.releasable)
 
     def test_declared_prerelease_finalizes_without_consulting_titles(
         self,
@@ -208,7 +208,7 @@ class TestsFlextInfraReleaseProtocol:
         tm.that(result, eq=0)
         tm.that(plan.next, eq=c.Tests.RELEASE_VERSION_BASE)
         tm.that(plan.previous_tag, eq="v0.1.0rc0")
-        tm.that(plan.releasable, eq=True)
+        tm.ok(plan.releasable)
 
     def test_plan_ignores_higher_tag_outside_integration_history(
         self,
@@ -231,7 +231,7 @@ class TestsFlextInfraReleaseProtocol:
 
         tm.that(plan.previous_tag, eq="v0.1.0")
         tm.that(plan.next, eq="0.1.1")
-        tm.that(plan.releasable, eq=True)
+        tm.ok(plan.releasable)
 
     def test_final_version_is_ahead_of_its_own_prerelease_tag(
         self,
@@ -253,7 +253,7 @@ class TestsFlextInfraReleaseProtocol:
         plan = self._planned_release(workspace)
         tm.that(plan.next, eq=c.Tests.RELEASE_VERSION_BASE)
         tm.that(plan.previous_tag, eq="v0.1.0rc2")
-        tm.that(plan.releasable, eq=True)
+        tm.ok(plan.releasable)
 
     def test_declared_version_ahead_of_the_last_tag_is_the_next_release(
         self,
@@ -282,7 +282,7 @@ class TestsFlextInfraReleaseProtocol:
         plan = self._planned_release(workspace)
         tm.that(plan.next, eq="0.2.0")
         tm.that(plan.bump, eq=c.Infra.VersionBump.NONE)
-        tm.that(plan.releasable, eq=True)
+        tm.ok(plan.releasable)
 
     def test_pull_request_titles_decide_the_bump(self, tmp_path: Path) -> None:
         """The most significant Conventional title since the last tag wins."""
@@ -314,7 +314,7 @@ class TestsFlextInfraReleaseProtocol:
 
         plan = self._planned_release(workspace)
         tm.that(plan.next, eq=plan.current)
-        tm.that(plan.releasable, eq=False)
+        tm.fail(plan.releasable)
 
     def test_default_github_merge_subject_fails_loud(self, tmp_path: Path) -> None:
         """A merged pull request without its title carries no release truth."""
@@ -368,7 +368,7 @@ class TestsFlextInfraReleaseProtocol:
 
         plan = self._planned_release(workspace)
         tm.that(plan.next, eq="0.1.1")
-        tm.that(plan.releasable, eq=False)
+        tm.fail(plan.releasable)
 
     def test_repository_declared_integration_branch_governs_the_plan(
         self,
@@ -462,7 +462,7 @@ class TestsFlextInfraReleaseProtocol:
         plan = self._planned_release(workspace)
         tm.that(plan.next, eq="0.1.1")
         tm.that(plan.bump, eq=c.Infra.VersionBump.NONE)
-        tm.that(plan.releasable, eq=False)
+        tm.fail(plan.releasable)
 
     def test_apply_opens_the_release_pull_request(self, tmp_path: Path) -> None:
         """Stamp, commit on the release lane, push it, and open the pull request."""
@@ -484,7 +484,7 @@ class TestsFlextInfraReleaseProtocol:
                 u.Infra.current_workspace_version(workspace),
                 eq=c.Tests.RELEASE_VERSION_BASE,
             )
-            tm.that((workspace / "docs" / "CHANGELOG.md").is_file(), eq=True)
+            tm.ok((workspace / "docs" / "CHANGELOG.md").is_file())
             head = tm.ok(
                 cli.capture([c.Infra.GIT, "log", "-1", "--format=%s"], cwd=workspace),
             ).strip()
@@ -581,7 +581,7 @@ class TestsFlextInfraReleaseProtocol:
             u.Infra.current_workspace_version(workspace),
             eq=c.Tests.RELEASE_VERSION_PRERELEASE,
         )
-        tm.that((workspace / "docs").exists(), eq=False)
+        tm.fail((workspace / "docs").exists())
 
     def test_dirty_checkout_is_refused(self, tmp_path: Path) -> None:
         """A release commit never absorbs unrelated working-tree changes."""

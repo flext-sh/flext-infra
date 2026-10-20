@@ -142,8 +142,8 @@ class TestsFlextInfraCodemodLoopPhases:
         )
         owner = Path(__file__).resolve().parents[3]
         binary = tm.ok(u.Infra.managed_mise_binary("ast-grep", owner))
-        tm.that(binary.is_absolute(), eq=True)
-        tm.that((project / c.Infra.MISE_TOML_FILENAME).exists(), eq=False)
+        tm.ok(binary.is_absolute())
+        tm.fail((project / c.Infra.MISE_TOML_FILENAME).exists())
         report = tm.ok(FlextInfraModGateEngine.scan(project, fix=False))
         tm.that(
             any(entry.file.name == "module.py" for entry in report.entries), eq=True
@@ -194,13 +194,13 @@ class TestsFlextInfraCodemodLoopPhases:
                         eq=next(state for state in states if state.path == plan.path),
                     )
                 else:
-                    tm.that(plan.path.exists(), eq=False)
+                    tm.fail(plan.path.exists())
             changed = phase.apply(project, preflight, rope)
 
-        tm.that(changed.failure, eq=False)
-        tm.that(changed.value, eq=True)
+        tm.fail(changed.failure)
+        tm.ok(changed.value)
         protocols_file = service_file.parent / "protocols.py"
-        tm.that(protocols_file.exists(), eq=True)
+        tm.ok(protocols_file.exists())
         tm.that(
             protocols_file.read_text(encoding="utf-8"),
             has="class ServiceContract(Protocol):",
@@ -222,8 +222,8 @@ class TestsFlextInfraCodemodLoopPhases:
 
             changed = phase.apply(project, preflight, rope)
 
-        tm.that(changed.failure, eq=False)
-        tm.that(changed.value, eq=True)
+        tm.fail(changed.failure)
+        tm.ok(changed.value)
         legacy_source = legacy_file.read_text(encoding="utf-8")
         tm.that(legacy_source, has=f"def {_REPLACEMENT_NAME}(")
         tm.that(legacy_source, lacks=f"def {_SOURCE_NAME}(")
@@ -249,8 +249,8 @@ class TestsFlextInfraCodemodLoopPhases:
 
         result = _apply_accessor(project, callback=callback)
 
-        tm.that(result.failure, eq=False)
-        tm.that(result.value, eq=True)
+        tm.fail(result.failure)
+        tm.ok(result.value)
         tm.that(legacy.read_text(encoding="utf-8"), has=f"def {_REPLACEMENT_NAME}(")
         tm.that(consumer.read_text(encoding="utf-8"), lacks=_SOURCE_NAME)
         tm.that(consumer.read_text(encoding="utf-8"), has=_REPLACEMENT_NAME)
@@ -280,7 +280,7 @@ class TestsFlextInfraCodemodLoopPhases:
 
         result = _apply_accessor(project, callback=callback)
 
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         for path, content in before.items():
             tm.that(path.read_bytes(), eq=content)
 
@@ -308,7 +308,7 @@ class TestsFlextInfraCodemodLoopPhases:
 
         result = _apply_accessor(project, callback=callback)
 
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(
             result.error, has="generated findings require canonical generator repair"
         )
@@ -375,7 +375,7 @@ class TestsFlextInfraCodemodLoopPhases:
             candidate=candidate,
         )
 
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         for path, content in before.items():
             tm.that(path.read_bytes(), eq=content)
         tm.that(added.read_bytes(), eq=added_before)
@@ -410,7 +410,7 @@ class TestsFlextInfraCodemodLoopPhases:
                 ),
             ).execute()
 
-        tm.that(result.failure, eq=False)
+        tm.fail(result.failure)
         tm.that(
             (service_file.parent / "protocols.py").exists(),
             eq=True,

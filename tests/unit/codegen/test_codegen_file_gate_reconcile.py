@@ -194,7 +194,7 @@ class TestsFlextInfraFileGateAndReconcileMakefile:
             tmp_path,
             role=c.Infra.MakeProfile.STANDALONE,
         )
-        tm.that("_builtin-file-gate: _builtin_file_gate_all" in rendered, eq=True)
+        tm.ok("_builtin-file-gate: _builtin_file_gate_all" in rendered)
         # Scope to the setup lifecycle: the bootstrap recipe legitimately
         # exports the drift signal for its own probe, so only the lifecycle
         # section proves the reconcile step is workspace-only.

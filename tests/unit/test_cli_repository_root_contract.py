@@ -83,9 +83,9 @@ class TestsFlextInfraCliRepositoryRootContract:
         tm.that(tuple(fields), has="repository_root")
         tm.that(tuple(fields), lacks="workspace")
         scope = fields["repository_root"]
-        tm.that(scope.alias is None, eq=True)
-        tm.that(scope.validation_alias is None, eq=True)
-        tm.that(scope.serialization_alias is None, eq=True)
+        tm.ok(scope.alias is None)
+        tm.ok(scope.validation_alias is None)
+        tm.ok(scope.serialization_alias is None)
         option = "--repository-root"
         tm.that(
             rendered_makefile,

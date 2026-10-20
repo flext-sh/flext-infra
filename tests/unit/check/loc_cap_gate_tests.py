@@ -48,7 +48,7 @@ class TestsFlextInfraLocCapGate:
     def test_gate_identity() -> None:
         """Test gate identity."""
         tm.that(FlextInfraLocCapGate.gate_id, eq="loc-cap")
-        tm.that(FlextInfraLocCapGate.can_fix, eq=False)
+        tm.fail(FlextInfraLocCapGate.can_fix)
 
     @pytest.mark.parametrize(
         ("code_lines", "passed"),
@@ -69,7 +69,7 @@ class TestsFlextInfraLocCapGate:
         tm.that(result.result.passed, eq=passed)
         flagged = [issue.file for issue in result.issues if issue.code == "LOC_CAP"]
         tm.that(len(flagged), eq=0 if passed else 1)
-        tm.that(all(path.endswith("sample.py") for path in flagged), eq=True)
+        tm.ok(all(path.endswith("sample.py") for path in flagged))
 
     def test_generated_source_tree_is_outside_the_cap(self, tmp_path: Path) -> None:
         """A tracked generated-source module never counts against the cap.
@@ -92,7 +92,7 @@ class TestsFlextInfraLocCapGate:
 
         result = u.Tests.run_gate_check(FlextInfraLocCapGate, tmp_path, project)
 
-        tm.that(result.result.passed, eq=True)
+        tm.ok(result.result.passed)
         tm.that(result.issues, eq=())
 
     def test_unavailable_scanner_is_not_silenced(self, tmp_path: Path) -> None:
@@ -162,7 +162,7 @@ class TestsFlextInfraLocCapGate:
 
         result = gate.check_files((module,), project, u.Tests.gate_context(tmp_path))
 
-        tm.that(result.result.passed, eq=True)
+        tm.ok(result.result.passed)
         tm.that(result.issues, eq=())
         report = m.Infra.SccReport.model_validate_json(result.raw_output, strict=True)
         scanned_paths = tuple(

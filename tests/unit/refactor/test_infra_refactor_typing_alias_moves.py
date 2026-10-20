@@ -376,9 +376,9 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
                 aliases=("Alias",),
             )
 
-        tm.that(prepared is None, eq=True)
+        tm.ok(prepared is None)
         tm.that(consumer.read_text(encoding="utf-8"), eq=consumer_source)
-        tm.that(package.joinpath("typings.py").exists(), eq=False)
+        tm.fail(package.joinpath("typings.py").exists())
 
     @pytest.mark.parametrize("exposes_alias", [False, True])
     def test_ancestor_star_import_uses_selected_export_identity(
@@ -423,7 +423,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
                 )
 
         tm.that(consumer.read_text(encoding="utf-8"), eq=original)
-        tm.that(package.joinpath("typings.py").exists(), eq=False)
+        tm.fail(package.joinpath("typings.py").exists())
 
     @pytest.mark.parametrize("separator", ["\u2028", "\u2029", "\f"])
     def test_typing_alias_plan_preserves_physical_lines_and_import_comments(
@@ -647,7 +647,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
             )
         for path, original in originals.items():
             tm.that(path.read_bytes(), eq=original)
-        tm.that((package_root / "typings.py").exists(), eq=False)
+        tm.fail((package_root / "typings.py").exists())
 
         expected = "service.value" if moved_first else "service.Alias"
         tm.that(

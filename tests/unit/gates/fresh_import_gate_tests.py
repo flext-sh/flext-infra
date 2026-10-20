@@ -53,10 +53,10 @@ class TestsFlextInfraFreshImportGate:
         project = self._project(tmp_path)
         gate = FlextInfraFreshImportGate(repository_root=project)
 
-        tm.that(gate.selected_for(project), eq=True)
+        tm.ok(gate.selected_for(project))
         result = self._execution(project).result
 
-        tm.that(result.passed, eq=False)
+        tm.fail(result.passed)
         tm.that(
             " | ".join(result.errors),
             has="fresh-import target interpreter is missing",
@@ -86,7 +86,7 @@ class TestsFlextInfraFreshImportGate:
             .result
         )
 
-        tm.that(result.passed, eq=False)
+        tm.fail(result.passed)
         tm.that(
             " | ".join(result.errors),
             has="fresh-import target interpreter is missing",

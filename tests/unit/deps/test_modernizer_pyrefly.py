@@ -139,17 +139,19 @@ class TestsFlextInfraModernizerPyrefly:
 
     def test_root_payload_receives_canonical_fields(self) -> None:
         """Root payloads receive version, default search path, and strict errors."""
-        pyrefly_policy = config.Infra.tooling.tools.pyrefly
+        pyrefly_settings = u.Infra.native_tool_settings(config.Infra.tooling, "pyrefly")
         _, pyrefly, changes = self._applied()
         tm.that(changes, empty=False)
-        tm.that(pyrefly["python-version"], eq=pyrefly_policy.python_version)
+        tm.that(pyrefly["python-version"], eq=pyrefly_settings["python-version"])
         tm.that(
             list(u.Tests.strings(pyrefly["search-path"])),
             eq=[c.Infra.DEFAULT_SRC_DIR],
         )
         tm.that(
             set(u.Tests.toml_mapping(pyrefly["errors"])),
-            eq=set(pyrefly_policy.strict_errors),
+            eq=set(
+                u.Infra.native_tool_settings(config.Infra.tooling, "pyrefly.errors")
+            ),
         )
 
     @pytest.mark.parametrize(
@@ -172,7 +174,12 @@ class TestsFlextInfraModernizerPyrefly:
         )
         errors = u.Tests.toml_mapping(pyrefly["errors"])
         tm.that(errors, lacks=stale_key)
-        tm.that(set(errors), eq=set(config.Infra.tooling.tools.pyrefly.strict_errors))
+        tm.that(
+            set(errors),
+            eq=set(
+                u.Infra.native_tool_settings(config.Infra.tooling, "pyrefly.errors")
+            ),
+        )
         tm.that(changes, has=f"tool.pyrefly.errors.{stale_key} removed")
 
     def test_phase_is_idempotent(self) -> None:
@@ -306,12 +313,16 @@ class TestsFlextInfraModernizerPyrefly:
         )
         tm.ok(u.Cli.atomic_write_text_file(request.path, source))
         tooling_runtime = tm.ok(modernizer.resolve_tooling_context(request))
+        runtime_pyrefly = tooling_runtime.tool_options["pyrefly"]
+        runtime_includes = u.Tests.strings(runtime_pyrefly[c.Infra.PROJECT_INCLUDES])
+        runtime_search = u.Tests.strings(runtime_pyrefly["search-path"])
+        runtime_excludes = u.Tests.strings(runtime_pyrefly[c.Infra.PROJECT_EXCLUDES])
 
         tm.that(
-            tooling_runtime.pyrefly_project_includes,
+            runtime_includes,
             has=f"{undeclared_env_dir}/**/*.py*",
         )
-        tm.that(tooling_runtime.pyrefly_project_includes, has=f"{source_dir}/**/*.py*")
+        tm.that(runtime_includes, has=f"{source_dir}/**/*.py*")
         rendered = tm.ok(
             modernizer.conform_source(
                 source,
@@ -322,27 +333,27 @@ class TestsFlextInfraModernizerPyrefly:
         )
         pyrefly = u.Tests.toml_table_at(rendered, c.Infra.TOOL, "pyrefly")
         tm.that(
-            list(tooling_runtime.pyrefly_project_includes),
+            list(runtime_includes),
             eq=list(u.Tests.strings(pyrefly[c.Infra.PROJECT_INCLUDES])),
             msg=(
-                f"runtime={list(tooling_runtime.pyrefly_project_includes)!r}; "
+                f"runtime={list(runtime_includes)!r}; "
                 "rendered="
                 f"{list(u.Tests.strings(pyrefly[c.Infra.PROJECT_INCLUDES]))!r}"
             ),
         )
         tm.that(
-            list(tooling_runtime.pyrefly_search_path),
+            list(runtime_search),
             eq=list(u.Tests.strings(pyrefly["search-path"])),
             msg=(
-                f"runtime={list(tooling_runtime.pyrefly_search_path)!r}; "
+                f"runtime={list(runtime_search)!r}; "
                 f"rendered={list(u.Tests.strings(pyrefly['search-path']))!r}"
             ),
         )
         tm.that(
-            list(tooling_runtime.pyrefly_project_excludes),
+            list(runtime_excludes),
             eq=list(u.Tests.strings(pyrefly[c.Infra.PROJECT_EXCLUDES])),
             msg=(
-                f"runtime={list(tooling_runtime.pyrefly_project_excludes)!r}; "
+                f"runtime={list(runtime_excludes)!r}; "
                 "rendered="
                 f"{list(u.Tests.strings(pyrefly[c.Infra.PROJECT_EXCLUDES]))!r}"
             ),

@@ -63,7 +63,7 @@ class TestsFlextInfraCodegenMakeExamples:
         declaration = next(
             verb for verb in config.Infra.codegen.make.verbs if verb.name == "examples"
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
         tm.that(result.stdout, has=declaration.description)
         tm.that(result.stdout, lacks="Nothing to be done")
         tm.that(tuple(sorted(root.rglob("*"))), eq=before)
@@ -94,16 +94,16 @@ class TestsFlextInfraCodegenMakeExamples:
                 cwd=tmp_path,
             ),
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(result.outcome))
         expected = (
             "declared module source is missing"
             if declared
             else "repository.examples_module"
         )
         tm.that(result.stderr, has=expected)
-        tm.that((root / "activation-ran").exists(), eq=False)
-        tm.that((root / "hook-ran").exists(), eq=False)
-        tm.that((tmp_path / "hook-ran").exists(), eq=False)
+        tm.fail((root / "activation-ran").exists())
+        tm.fail((root / "hook-ran").exists())
+        tm.fail((tmp_path / "hook-ran").exists())
 
     @staticmethod
     def test_selected_module_imports_the_owning_source_from_root_cwd(

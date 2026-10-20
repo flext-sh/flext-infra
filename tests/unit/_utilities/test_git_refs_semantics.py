@@ -89,8 +89,8 @@ class TestsFlextInfraGitRefsSemantics:
             ),
         )
 
-        tm.that(present.value, eq=True)
-        tm.that(absent.value, eq=False)
+        tm.ok(present.value)
+        tm.fail(absent.value)
 
     @staticmethod
     def test_check_branch_format_accepts_and_rejects(tmp_path: Path) -> None:
@@ -106,8 +106,8 @@ class TestsFlextInfraGitRefsSemantics:
             m.Infra.GitBranchRequest(repo_root=repository, branch="bad name"),
         )
 
-        tm.that(valid.value, eq=True)
-        tm.that(invalid.failure, eq=True)
+        tm.ok(valid.value)
+        tm.ok(invalid.failure)
         tm.that(invalid.error, contains="not a valid branch name")
 
     @staticmethod

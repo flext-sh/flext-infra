@@ -148,7 +148,7 @@ class TestsRopeContractFamilyRoutes:
                 ),
             ))
         )
-        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(outcome.outcome))
 
     @staticmethod
     def test_richer_foreign_facade_binding_is_unchanged(

@@ -52,7 +52,7 @@ class TestsFlextInfraMakeCredentialRedaction:
                 options=m.Cli.ProcessOptions(env=environment),
             ),
         )
-        tm.that(u.Cli.process_succeeded(configured.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(configured.outcome))
         before = TestsFlextInfraConformSupport.project_tree(root)
         configured_bytes = global_config.read_bytes()
 
@@ -80,5 +80,5 @@ class TestsFlextInfraMakeCredentialRedaction:
             TestsFlextInfraConformSupport.project_tree(root),
             eq=before,
         )
-        tm.that((root / c.Infra.ENVIRONMENT_DIRECTORY).exists(), eq=False)
+        tm.fail((root / c.Infra.ENVIRONMENT_DIRECTORY).exists())
         tm.that(global_config.read_bytes(), eq=configured_bytes)

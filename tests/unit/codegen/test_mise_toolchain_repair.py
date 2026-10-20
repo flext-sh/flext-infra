@@ -92,7 +92,7 @@ class TestsFlextInfraMiseToolchainRepair:
                 ),
             ),
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(result.outcome))
         tm.that(
             result.stdout + result.stderr,
             has="undeclared tool" if selected else name,

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, t, u
+from flext_infra import c, config, m, t, u
 
 if TYPE_CHECKING:
     from flext_infra.deps import FlextInfraExtraPathsManager
@@ -26,7 +26,6 @@ class FlextInfraEnsurePyreflyConfigPhase:
         *,
         context: m.Infra.PyprojectAnalyzerContext,
         paths_manager: FlextInfraExtraPathsManager | None,
-        stale_error_keys: t.StrSequence,
     ) -> m.Infra.DepsToml.PhaseConfig:
         """Build the canonical pyrefly phase definition.
 
@@ -34,8 +33,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
             The resulting ``m.Infra.DepsToml.PhaseConfig``.
 
         """
-        pyrefly_rules = self._tool_config.tools.pyrefly
-        path_rules = pyrefly_rules.path_rules
+        path_rules = self._tool_config.tools.pyrefly.path_rules
         project_dir = context.project_dir
         declared_python_dirs = context.declared_python_dirs
         if project_dir is not None and paths_manager is not None:
@@ -48,8 +46,8 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 is_root=context.is_root,
             )
         else:
-            expected_search = [c.Infra.DEFAULT_SRC_DIR]
-            expected_includes = [f"{c.Infra.DEFAULT_SRC_DIR}/**/*.py*"]
+            expected_search = [path_rules.source_dir]
+            expected_includes = [f"{path_rules.source_dir}/**/*.py*"]
         # Keep pre-write Pyrefly scope identical to the first
         # post-write discovery without fabricating directories on disk.
         if context.declared_python_dirs_are_complete:
@@ -78,68 +76,27 @@ class FlextInfraEnsurePyreflyConfigPhase:
             expected_includes = tuple(
                 f"{directory}/**/*.py*" for directory in declared_python_dirs
             )
+        options = u.Infra.native_tool_configuration(self._tool_config, c.Infra.PYREFLY)
+        options.update({
+            c.Infra.PYTHON_VERSION_HYPHEN: config.Infra.codegen.toolchain.python_version,
+            # Import search order is semantic and stays with the path owner.
+            c.Infra.SEARCH_PATH: list(expected_search),
+            c.Infra.PROJECT_INCLUDES: sorted(expected_includes),
+            c.Infra.PROJECT_EXCLUDES: list(
+                u.Infra.pyrefly_project_excludes(
+                    u.Infra.native_tool_setting(
+                        self._tool_config,
+                        c.Infra.PYREFLY,
+                        c.Infra.PROJECT_EXCLUDES,
+                        t.StrSequence,
+                    )
+                )
+            ),
+        })
         toml = m.Infra.DepsToml
         return toml.PhaseConfig(
             name="pyrefly",
-            table_path=(c.Infra.PYREFLY,),
-            operations=(
-                toml.SetOp(
-                    key=c.Infra.PYTHON_VERSION_HYPHEN,
-                    value=pyrefly_rules.python_version,
-                ),
-                toml.RemoveOp(key="python-interpreter-path"),
-                toml.RemoveOp(key="disable-search-path-heuristics"),
-                toml.RemoveOp(key="fallback-python-interpreter-name"),
-                # Interpreter discovery resolves PEP 660 editable siblings.
-                toml.RemoveOp(key="site-package-path"),
-                toml.RemoveOp(key="skip-interpreter-query"),
-                toml.RemoveOp(key="ignore-errors-in-generated-code"),
-                # Search-path order is semantic; never sort this operation.
-                toml.ListOp(
-                    key=c.Infra.SEARCH_PATH,
-                    values=expected_search,
-                    sort=False,
-                ),
-                (
-                    toml.SetOp(key=c.Infra.PROJECT_INCLUDES, value=[])
-                    if not expected_includes
-                    else toml.ListOp(
-                        key=c.Infra.PROJECT_INCLUDES,
-                        values=expected_includes,
-                    )
-                ),
-                toml.SetOp(
-                    key="disable-project-excludes-heuristics",
-                    value=pyrefly_rules.disable_project_excludes_heuristics,
-                ),
-                toml.SetOp(
-                    key="use-ignore-files",
-                    value=pyrefly_rules.use_ignore_files,
-                ),
-                toml.ListOp(
-                    key=c.Infra.PROJECT_EXCLUDES,
-                    values=u.Infra.pyrefly_project_excludes(
-                        pyrefly_rules.project_exclude_globs,
-                    ),
-                ),
-            ),
-            nested_tables=(
-                toml.PhaseConfig(
-                    name="pyrefly",
-                    root_path=(),
-                    table_path=("errors",),
-                    operations=(
-                        *(
-                            toml.SetOp(key=error_rule, value="error")
-                            for error_rule in pyrefly_rules.strict_errors
-                        ),
-                        *(
-                            toml.RemoveOp(key=error_rule)
-                            for error_rule in stale_error_keys
-                        ),
-                    ),
-                ),
-            ),
+            operations=(toml.SetOp(key=c.Infra.PYREFLY, value=options),),
         )
 
     def apply_payload(
@@ -155,21 +112,11 @@ class FlextInfraEnsurePyreflyConfigPhase:
             The resulting ``t.StrSequence``.
 
         """
-        configured_error_keys = frozenset(self._tool_config.tools.pyrefly.strict_errors)
-        errors_table = u.Cli.toml_mapping_path(
-            payload,
-            (c.Infra.TOOL, c.Infra.PYREFLY, "errors"),
-        )
         return u.Infra.apply_toml_phases(
             payload,
             self._phase(
                 context=context,
                 paths_manager=paths_manager,
-                stale_error_keys=tuple(
-                    key
-                    for key in errors_table or ()
-                    if key not in configured_error_keys
-                ),
             ),
         )
 

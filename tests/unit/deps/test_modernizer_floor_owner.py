@@ -143,8 +143,8 @@ class TestsFlextInfraModernizerFloorOwner:
             u.Tests.toml_strings_at(rendered, "project", "dependencies")[0]
         )
         tm.that(parsed.extras, eq=original.extras)
-        tm.that(parsed.marker == original.marker, eq=True)
-        tm.that(parsed.specifier.contains(version, prereleases=True), eq=True)
+        tm.ok(parsed.marker == original.marker)
+        tm.ok(parsed.specifier.contains(version, prereleases=True))
         tm.that(str(parsed.specifier), has=f"~={compatibility}")
         tm.that(
             u.Tests.toml_strings_at(rendered, "dependency-groups", "dev"), eq=(direct,)

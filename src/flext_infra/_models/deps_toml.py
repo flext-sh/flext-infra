@@ -65,22 +65,20 @@ class FlextInfraModelsDepsToml:
         class SetOp(m.ContractModel):
             """Set one TOML key to one JSON-compatible value."""
 
-            kind: Literal["set"] = m.Field(
-                "set",
-                description="Operation kind",
-                validate_default=True,
-            )
+            kind: Annotated[
+                Literal["set"],
+                m.Field(description="Operation kind", validate_default=True),
+            ] = "set"
             key: str = m.Field(description="TOML key name")
             value: t.JsonValue = m.Field(description="JSON-compatible value")
 
         class ListOp(m.ContractModel):
             """Set or merge one TOML string list."""
 
-            kind: Literal["list"] = m.Field(
-                "list",
-                description="Operation kind",
-                validate_default=True,
-            )
+            kind: Annotated[
+                Literal["list"],
+                m.Field(description="Operation kind", validate_default=True),
+            ] = "list"
             key: str = m.Field(description="TOML key name")
             values: t.StrSequence = m.Field(description="Expected values")
             strategy: Annotated[
@@ -95,11 +93,10 @@ class FlextInfraModelsDepsToml:
         class RemoveOp(m.ContractModel):
             """Remove one TOML key, optionally from a nested relative table."""
 
-            kind: Literal["remove"] = m.Field(
-                "remove",
-                description="Operation kind",
-                validate_default=True,
-            )
+            kind: Annotated[
+                Literal["remove"],
+                m.Field(description="Operation kind", validate_default=True),
+            ] = "remove"
             key: str = m.Field(description="Key to remove")
             table_path: Annotated[
                 t.StrSequence,

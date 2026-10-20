@@ -1399,7 +1399,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 site_packages / "sample_member-1.0.dist-info" / "direct_url.json"
             ).write_text(receipt.model_dump_json(), encoding="utf-8")
             identities.append(self._toolchain_identity(site_packages))
-        tm.that(identities[0] != identities[1], eq=True)
+        tm.ok(identities[0] != identities[1])
 
     @staticmethod
     def test_actual_cli_preserves_toml_occurrence_comments() -> None:
@@ -1733,7 +1733,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         )
         tm.that(len(installed), eq=1)
         direct_url = installed[0].read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
-        tm.that(direct_url is not None, eq=True)
+        tm.ok(direct_url is not None)
         if direct_url is None:
             pytest.fail("native editable installation has no PEP 610 receipt")
         receipt = m.Infra.DirectUrlReceipt.model_validate_json(direct_url, strict=True)
@@ -1757,7 +1757,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             eq=(root / c.PYPROJECT_FILENAME).read_bytes(),
         )
         inventory = installed[0].files
-        tm.that(inventory is not None, eq=True)
+        tm.ok(inventory is not None)
         if inventory is None:
             pytest.fail("installed editable has no file inventory")
         pth_files = tuple(
@@ -1859,7 +1859,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         )
         direct_url = site_packages / "sample_member-1.0.dist-info/direct_url.json"
         receipt = m.Infra.DirectUrlReceipt.model_validate_json(direct_url.read_bytes())
-        tm.that(receipt.dir_info is not None, eq=True)
+        tm.ok(receipt.dir_info is not None)
         if receipt.dir_info is not None:
             frozen = receipt.model_copy(
                 update={

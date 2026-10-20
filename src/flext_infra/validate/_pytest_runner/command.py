@@ -139,11 +139,13 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
         """
         digest = hashlib.sha256()
-        for state in u.Infra.snapshot_config_sources(self.root).unwrap():
+        for state in u.Infra.snapshot_config_sources(self.repository_root).unwrap():
             if state.content is None:
                 msg = f"required test configuration disappeared: {state.path}"
                 raise ValueError(msg)
-            digest.update(state.path.relative_to(self.root).as_posix().encode())
+            digest.update(
+                state.path.relative_to(self.repository_root).as_posix().encode()
+            )
             digest.update(b"\0")
             digest.update(hashlib.sha256(state.content).digest())
         return digest.hexdigest()[:8]
@@ -199,13 +201,19 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         """
         pytest = config.Infra.tooling.tools.pytest
         expression = self._marker_expression(execution_mode)
+        tool_config = (
+            u.Infra.load_tooling_inputs(self.repository_root).unwrap().document
+        )
+        fixture_scope = u.Infra.native_tool_setting(
+            tool_config, "pytest.ini_options", "asyncio_default_fixture_loop_scope", str
+        )
         return (
             "-p",
             pytest.enforcement_plugin,
             "-p",
             "no:metadata",
             "-o",
-            f"{c.Infra.ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE}={pytest.asyncio_default_fixture_loop_scope}",
+            f"{c.Infra.ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE}={fixture_scope}",
             "-o",
             (
                 f"{c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS}="
@@ -400,7 +408,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                 *self._plugin_policy_args(
                     execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
                 ),
-                f"--cov={self.root / c.Infra.DEFAULT_SRC_DIR}",
+                f"--cov={self.repository_root / c.Infra.DEFAULT_SRC_DIR}",
                 f"--cov-report=xml:{report_dir / 'coverage.xml'}",
                 "--no-cov-on-fail",
             ),

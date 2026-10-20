@@ -251,7 +251,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             ),
             eq=f"{package_name}/infra",
         )
-        tm.that("infra" in self._sdist_include(infra_git_repo), eq=True)
+        tm.ok("infra" in self._sdist_include(infra_git_repo))
 
     @pytest.mark.slow
     def test_repository_namespace_retains_its_import_path(
@@ -270,9 +270,9 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         tm.that(self._conform_self(infra_git_repo), eq=0)
 
         wheel = self._wheel_target(infra_git_repo)
-        tm.that("infra" in u.Tests.toml_list(wheel["only-include"]), eq=True)
+        tm.ok("infra" in u.Tests.toml_list(wheel["only-include"]))
         tm.that(u.Tests.toml_mapping(wheel["sources"]).get("infra"), eq="infra")
-        tm.that("infra" in self._sdist_include(infra_git_repo), eq=True)
+        tm.ok("infra" in self._sdist_include(infra_git_repo))
         output = infra_git_repo.parent / "namespace-artifacts"
         wheel_dir = output / "wheel"
         sdist_dir = output / "sdist"
@@ -313,8 +313,8 @@ class TestsFlextInfraCodegenPackagedDataWheel:
 
         tm.that(self._conform_self(infra_git_repo), eq=0)
 
-        tm.that("infra" in self._wheel_force_include(infra_git_repo), eq=False)
-        tm.that("infra" in self._sdist_include(infra_git_repo), eq=False)
+        tm.fail("infra" in self._wheel_force_include(infra_git_repo))
+        tm.fail("infra" in self._sdist_include(infra_git_repo))
 
     @pytest.mark.slow
     def test_in_package_data_dir_is_never_force_included(
@@ -328,13 +328,13 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         with ``ValueError`` at build time.
         """
         self._prepare_project(infra_git_repo, package_config=True)
-        tm.that(self._package_config_path(infra_git_repo).is_dir(), eq=True)
+        tm.ok(self._package_config_path(infra_git_repo).is_dir())
 
         applied = self._conform_self(infra_git_repo)
 
         tm.that(applied, eq=0)
         force_include = self._wheel_force_include(infra_git_repo)
-        tm.that(FIXTURE_DISTRIBUTION_DATA_DIR in force_include, eq=False)
+        tm.fail(FIXTURE_DISTRIBUTION_DATA_DIR in force_include)
         tm.that(
             FIXTURE_DISTRIBUTION_DATA_DIR in self._sdist_include(infra_git_repo),
             eq=False,
@@ -373,7 +373,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             self._sdist_force_include(infra_git_repo).get(catalog),
             eq=catalog,
         )
-        tm.that("config" in self._sdist_include(infra_git_repo), eq=False)
+        tm.fail("config" in self._sdist_include(infra_git_repo))
 
     @pytest.mark.slow
     @pytest.mark.parametrize(
@@ -528,7 +528,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             with zipfile.ZipFile(next(directory.glob("*.whl"))) as archive:
                 for name, content in expected.items():
                     tm.that(archive.read(f"{package_name}/{name}"), eq=content)
-                tm.that(f"{package_name}/{ignored}" in archive.namelist(), eq=False)
+                tm.fail(f"{package_name}/{ignored}" in archive.namelist())
                 tm.that(
                     f"{package_name}/config/workspace.yaml" in archive.namelist(),
                     eq=False,
@@ -544,8 +544,8 @@ class TestsFlextInfraCodegenPackagedDataWheel:
                 tm.that(stream, none=False)
                 with stream:
                     tm.that(stream.read(), eq=content)
-            tm.that(ignored in members, eq=False)
-            tm.that("config/workspace.yaml" in members, eq=False)
+            tm.fail(ignored in members)
+            tm.fail("config/workspace.yaml" in members)
 
     @pytest.mark.slow
     def test_scaffold_validates_data_against_planned_files(
@@ -573,9 +573,9 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.APPLY,
         )
-        tm.that(root.exists(), eq=False)
+        tm.fail(root.exists())
         tm.ok(infra.codegen_conform(request, workspace))
-        tm.that((root / "config/workspace.yaml").is_file(), eq=True)
+        tm.ok((root / "config/workspace.yaml").is_file())
         tm.that(
             self._wheel_force_include(root).get("config/workspace.yaml"),
             eq=f"{project.package_name}/config/workspace.yaml",

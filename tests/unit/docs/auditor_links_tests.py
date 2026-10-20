@@ -52,7 +52,7 @@ class TestsFlextInfraAuditorLinks:
             )
             result = u.Infra.docs_audit_markdown(scope, [issue])
             tm.that(len(result), gte=0)
-            tm.that(any("README.md" in line for line in result), eq=True)
+            tm.ok(any("README.md" in line for line in result))
 
     class TestAuditorBrokenLinks:
         """Tests for docs_broken_link_issues."""
@@ -108,8 +108,8 @@ class TestsFlextInfraAuditorLinks:
                 report_dir=tmp_path / "reports",
             )
             issues = u.Infra.docs_broken_link_issues(scope)
-            tm.that(len(issues) > 0, eq=True)
-            tm.that(any("missing.md" in issue.message for issue in issues), eq=True)
+            tm.ok(len(issues) > 0)
+            tm.ok(any("missing.md" in issue.message for issue in issues))
 
         @staticmethod
         def test_broken_link_issues_rejects_cross_project_relative_link(

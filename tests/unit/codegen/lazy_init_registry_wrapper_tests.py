@@ -57,8 +57,8 @@ class TestsFlextInfraLazyInitCleanup:
         result = u.Tests.run_lazy_init(repository_root)
 
         tm.that(result, eq=0)
-        tm.that(all(not path.exists() for path in stale_paths), eq=True)
-        tm.that((package_root / c.Infra.INIT_PY).is_file(), eq=True)
+        tm.ok(all(not path.exists() for path in stale_paths))
+        tm.ok((package_root / c.Infra.INIT_PY).is_file())
 
     def test_check_reports_sidecars_without_removing(self, tmp_path: Path) -> None:
         """Check-only records every stale sidecar and preserves all bytes."""
@@ -69,8 +69,8 @@ class TestsFlextInfraLazyInitCleanup:
 
         result = service.plan_files()
 
-        tm.that(result.success, eq=True)
-        tm.that(all(path.exists() for path in stale_paths), eq=True)
+        tm.ok(result.success)
+        tm.ok(all(path.exists() for path in stale_paths))
         tm.that(
             set(map(str, stale_paths)).issubset(set(service.modified_files)),
             eq=True,
@@ -90,8 +90,8 @@ class TestsFlextInfraLazyInitCleanup:
         result = u.Tests.run_lazy_init(repository_root)
 
         tm.that(result, eq=0)
-        tm.that(obsolete_module.exists(), eq=False)
-        tm.that(obsolete_part.exists(), eq=False)
+        tm.fail(obsolete_module.exists())
+        tm.fail(obsolete_part.exists())
         tm.that(tuple(obsolete_package.iterdir()), eq=())
 
     @staticmethod
@@ -106,9 +106,9 @@ class TestsFlextInfraLazyInitCleanup:
 
         result = service.plan_files()
 
-        tm.that(result.success, eq=True)
-        tm.that(obsolete_module.is_file(), eq=True)
-        tm.that(str(obsolete_module) in service.modified_files, eq=True)
+        tm.ok(result.success)
+        tm.ok(obsolete_module.is_file())
+        tm.ok(str(obsolete_module) in service.modified_files)
 
     @staticmethod
     def test_obsolete_root_support_cleanup_fails_closed(tmp_path: Path) -> None:
@@ -125,6 +125,6 @@ class TestsFlextInfraLazyInitCleanup:
 
         analysis = tm.ok(result)
         tm.that(analysis.files, eq=())
-        tm.that(bool(analysis.issues), eq=True)
-        tm.that(obsolete_module.is_file(), eq=True)
-        tm.that(unexpected.is_file(), eq=True)
+        tm.ok(bool(analysis.issues))
+        tm.ok(obsolete_module.is_file())
+        tm.ok(unexpected.is_file())

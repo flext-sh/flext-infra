@@ -328,7 +328,7 @@ class TestsFlextInfraCodegenConform:
                     execution_context=infra,
                     generation_only=True,
                 )
-            tm.that(raised.value is _LIFECYCLE_EXCEPTION, eq=True)
+            tm.ok(raised.value is _LIFECYCLE_EXCEPTION)
         else:
             with pytest.raises(ValueError, match="atomic source changed") as changed:
                 TestsFlextInfraCodegenConformLifecycleProbe.execute_request(
@@ -341,7 +341,7 @@ class TestsFlextInfraCodegenConform:
                 (root / ".lifecycle-source").read_bytes(),
                 eq=b"foreign source\n",
             )
-        tm.that(published.read_bytes() == original, eq=False)
+        tm.fail(published.read_bytes() == original)
         tm.that(
             published.read_bytes()
             == (root.parent / ".lifecycle-expected").read_bytes(),
@@ -351,10 +351,10 @@ class TestsFlextInfraCodegenConform:
         receipt = m.Infra.CodegenPhaseOutcome.model_validate_json(
             (root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH).read_bytes(),
         )
-        tm.that(receipt.completed, eq=False)
+        tm.fail(receipt.completed)
         tm.that(receipt.written_files, has=published)
-        tm.that(rejected in receipt.written_files, eq=False)
-        tm.that(bool(receipt.issues), eq=True)
+        tm.fail(rejected in receipt.written_files)
+        tm.ok(bool(receipt.issues))
         if scenario == "planning-issue-source-race":
             tm.that(
                 any(
@@ -383,7 +383,7 @@ class TestsFlextInfraCodegenConform:
             ),
         )
         tm.that(str(plan.exception), eq=str(_LIFECYCLE_EXCEPTION))
-        tm.that(bool(plan.issues), eq=True)
+        tm.ok(bool(plan.issues))
         evidence = m.Infra.CodegenPlanningReport.model_validate_json(
             (root / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH).read_bytes(),
         )
@@ -452,7 +452,7 @@ class TestsFlextInfraCodegenConform:
         if scenario.startswith("exception-"):
             with pytest.raises(OSError, match="raised after begin") as raised:
                 execute()
-            tm.that(raised.value is _LIFECYCLE_EXCEPTION, eq=True)
+            tm.ok(raised.value is _LIFECYCLE_EXCEPTION)
         elif scenario == "docs-failure":
             with pytest.raises(ValueError, match="Invalid JSON"):
                 execute()
@@ -471,13 +471,13 @@ class TestsFlextInfraCodegenConform:
             "failure-mixed",
         }
         tm.that(journal.exists(), eq=retained)
-        tm.that(published.read_bytes() == original, eq=False)
+        tm.fail(published.read_bytes() == original)
         if scenario == "failure-changed":
-            tm.that(journal.read_bytes().endswith(b"\n"), eq=True)
+            tm.ok(journal.read_bytes().endswith(b"\n"))
         elif scenario == "exception-replaced":
             preserved = journal.with_suffix(".preserved")
             tm.that(preserved.read_bytes(), eq=journal.read_bytes())
-            tm.that(preserved.stat().st_ino == journal.stat().st_ino, eq=False)
+            tm.fail(preserved.stat().st_ino == journal.stat().st_ino)
         elif scenario == "failure-mixed":
             tm.that(
                 tuple(path.read_bytes() for path in tmp_path.rglob("foreign.bin")),
@@ -516,8 +516,8 @@ class TestsFlextInfraCodegenConform:
                 execution_context=infra,
             )
 
-        tm.that(raised.value is _LIFECYCLE_EXCEPTION, eq=True)
-        tm.that(root.exists(), eq=False)
+        tm.ok(raised.value is _LIFECYCLE_EXCEPTION)
+        tm.fail(root.exists())
 
     @staticmethod
     def test_pyproject_plan_rejects_local_path_internal_source(
@@ -665,7 +665,11 @@ class TestsFlextInfraCodegenConform:
         ]
         tm.that(
             addopts,
-            eq=list(config.Infra.tooling.tools.pytest.standard_addopts),
+            eq=list(
+                u.Infra.native_tool_setting(
+                    config.Infra.tooling, "pytest.ini_options", "addopts", t.StrSequence
+                )
+            ),
         )
 
     @staticmethod
@@ -711,7 +715,7 @@ class TestsFlextInfraCodegenConform:
             '{"editor.wordWrap": "on"}\n',
             encoding=c.DEFAULT_ENCODING,
         )
-        tm.that((root / c.Infra.GIT_DIR).exists(), eq=False)
+        tm.fail((root / c.Infra.GIT_DIR).exists())
         # The governed tree above the scaffold carries the committed Mise
         # declaration and lock that activate its locked tools.
         u.Tests.copy_tracked_mise_seeds(tmp_path)
@@ -734,7 +738,7 @@ class TestsFlextInfraCodegenConform:
         )
         first = infra.codegen_new(service)
         first_result = tm.ok(first)
-        tm.that(first_result.plan is not None, eq=True)
+        tm.ok(first_result.plan is not None)
         first_result = m.Infra.CodegenResult.model_validate(
             first_result,
             from_attributes=True,
@@ -750,7 +754,7 @@ class TestsFlextInfraCodegenConform:
             tmp_path,
             editor_settings,
         )
-        tm.that(bool(first_result.written_files), eq=True)
+        tm.ok(bool(first_result.written_files))
         tm.that(first_result.written_files.count(root / "README.md"), eq=1)
         tm.that(
             (root / "README.md").read_text(encoding="utf-8"),
@@ -771,7 +775,7 @@ class TestsFlextInfraCodegenConform:
                 m.Infra.DocsGenerateRequest(repository_root=root),
             ),
         )
-        tm.that(all(report.changed_files == 0 for report in docs), eq=True)
+        tm.ok(all(report.changed_files == 0 for report in docs))
         tm.that(
             tuple(
                 file.path
@@ -794,9 +798,9 @@ class TestsFlextInfraCodegenConform:
         # manifest contract; later conform runs read it as input.
         (manifest,) = tm.ok(u.Infra.load_workspace_manifest(root))
         tm.that(manifest.name, eq=name)
-        tm.that((root / "config" / "beads.yaml").is_file(), eq=True)
-        tm.that((root / "pyproject.toml").is_file(), eq=True)
-        tm.that((root / ".env.example").is_file(), eq=True)
+        tm.ok((root / "config" / "beads.yaml").is_file())
+        tm.ok((root / "pyproject.toml").is_file())
+        tm.ok((root / ".env.example").is_file())
         ruff_lint = config.Infra.tooling.tools.ruff.lint
         runtime_roots = ruff_lint.flake8_type_checking.runtime_evaluated_roots
         rendered_runtime_bases = u.Tests.toml_strings_at(
@@ -846,7 +850,7 @@ class TestsFlextInfraCodegenConform:
 
         selected_process = tm.ok(selected)
         selected_output = selected_process.stdout + selected_process.stderr
-        tm.that(u.Cli.process_succeeded(selected_process.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(selected_process.outcome))
         tm.that(selected_output, has="uv --version")
         tm.that(selected_output, lacks="uv@")
         tm.that(selected_output, lacks="UV_VERSION")
@@ -1042,18 +1046,18 @@ class TestsFlextInfraCodegenConform:
             file.path.relative_to(root).as_posix(): file for file in initial_plan.files
         }
         for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
-            tm.that(u.Infra.codegen_file_requires_effect(plans[required]), eq=True)
+            tm.ok(u.Infra.codegen_file_requires_effect(plans[required]))
 
         applied = infra.codegen_conform(request)
         tm.ok(applied)
         for relative, content in create_only.items():
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
-        tm.that((root / "Makefile").is_file(), eq=True)
-        tm.that((root / ".mise.toml").is_file(), eq=True)
-        tm.that((root / ".python-version").is_file(), eq=True)
-        tm.that((root / ".gitignore").is_file(), eq=True)
-        tm.that((root / ".env.example").exists(), eq=False)
-        tm.that(root / ".env.example" in applied.value.written_files, eq=False)
+        tm.ok((root / "Makefile").is_file())
+        tm.ok((root / ".mise.toml").is_file())
+        tm.ok((root / ".python-version").is_file())
+        tm.ok((root / ".gitignore").is_file())
+        tm.fail((root / ".env.example").exists())
+        tm.fail(root / ".env.example" in applied.value.written_files)
         tm.ok(
             FlextInfraCodegenMiseArtifacts(repository_root=root).validate_artifacts(
                 root,
@@ -1109,13 +1113,19 @@ class TestsFlextInfraCodegenConform:
             "ini_options",
             "addopts",
         )
-        pytest_policy = config.Infra.tooling.tools.pytest
 
         tm.that(
             u.Tests.codegen_file_text(second_pyproject),
             eq=u.Tests.codegen_file_text(first_pyproject),
         )
-        tm.that(addopts, eq=list(pytest_policy.standard_addopts))
+        tm.that(
+            addopts,
+            eq=list(
+                u.Infra.native_tool_setting(
+                    config.Infra.tooling, "pytest.ini_options", "addopts", t.StrSequence
+                )
+            ),
+        )
         tm.that(report, lacks="fail_under")
 
     @staticmethod

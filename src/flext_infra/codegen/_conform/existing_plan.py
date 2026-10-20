@@ -13,12 +13,12 @@ from functools import partial
 from pathlib import Path
 from typing import Literal
 
-from flext_infra import FlextInfraConfig, c, m, p, r, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenProtocolModels,
 )
-from flext_infra.codegen._conform import FlextInfraCodegenConformArtifactRender
+from flext_infra.codegen._conform.editor import FlextInfraCodegenConformEditor
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.services._codegen import FlextInfraCodegenVscodeMixin
@@ -28,7 +28,7 @@ from flext_infra.workspace import (
 )
 
 
-class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRender):
+class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
     """Conformance planning for existing repositories and governed artifacts."""
 
     def _plan_existing_repository(
@@ -133,6 +133,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             the contract does not select one.
 
         """
+        if contract.destinations == self._editor_destinations(codegen):
+            return self._plan_existing_editor(target, workspace, codegen)
         if contract.destinations == frozenset({c.Infra.ENVRC_FILENAME}):
             context = m.Infra.EnvrcRenderSpec(
                 toolchain=codegen.toolchain,
@@ -493,7 +495,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 # Skip a redundant exports pass when the previous pass in this
                 # transfer iteration produced no new plans.
                 if self._skip_redundant_exports_pass(
-                    operation, operation_index, pass_produced_new_files
+                    operation,
+                    operation_index,
+                    produced_new_files=pass_produced_new_files,
                 ):
                     continue
                 with u.Infra.facade_source_project(
@@ -1471,6 +1475,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 if path.is_relative_to(root)
                 and path.suffix == c.Infra.EXT_PYTHON
                 and path.parent / c.Infra.INIT_PY in sources
+                and path.relative_to(root).parts[:1] == ("src",)
             }
             if layout is not None and layout.class_stem:
                 package_dirs.add(layout.package_dir)
@@ -1719,36 +1724,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             (completed, represented),
         )
 
-    def plan_runtime_bindings(
-        self,
-        target: m.Infra.RepositoryConformTarget,
-        codegen: m.Infra.CodegenConfigSpec,
-        *,
-        vscode_spec: m.Infra.CodegenVscodeSpec | None = None,
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Plan only bindings selected by their declared artifact policy.
-
-        Returns:
-            Runtime-local file plans, including missing declared bindings.
-
-        """
-        planned = self._represent_ungoverned_artifacts(
-            target
-            if vscode_spec is None
-            else target.model_copy(
-                update={"vscode_spec": vscode_spec},
-            ),
-            codegen,
-            {
-                item.path: item
-                for item in codegen.managed_file_specs
-                if item.runtime_binding
-            },
-        )
-        if planned.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
-        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(planned.value)
-
     def _represent_ungoverned_artifacts(
         self,
         target: m.Infra.RepositoryConformTarget,
@@ -1785,11 +1760,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                 continue
             if not self._governed_entry_reachable(codegen, profile, relative):
                 continue
-            if (
-                not path.exists()
-                and not governed.runtime_binding
-                and governed.policy != "merge"
-            ):
+            if not path.exists() and governed.policy != "merge":
                 continue
             current = self._governed_current_text(path)
             if current.failure:
@@ -1880,11 +1851,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             return special
         if special.value[0] is not None:
             return special
-        if request.governed.runtime_binding and not special.value[1]:
-            return r[t.Pair[m.Infra.CodegenFilePlan | None, bool]].fail(
-                "runtime binding has no declared renderer: "
-                f"{request.governed.owner} {request.relative}",
-            )
         result_type = r[t.Pair[m.Infra.CodegenFilePlan | None, bool]]
         current_plan = cls.file_plan(
             request.root,

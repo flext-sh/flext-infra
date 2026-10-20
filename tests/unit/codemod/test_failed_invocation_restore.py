@@ -248,7 +248,7 @@ class TestsFlextInfraFailedInvocationProgress:
                 cwd=mod_workspace,
             )
         )
-        tm.that(u.Cli.process_succeeded(runtime.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(runtime.outcome))
         tm.that(runtime.stdout.strip(), eq="after before")
         tm.that(runtime.stderr, eq="")
 
@@ -297,7 +297,7 @@ class TestsFlextInfraFailedInvocationProgress:
         )
         entries = tuple(entry for entry in evidence.entries if entry.rule_id == rule_id)
         tm.that(len(entries), eq=1)
-        tm.that(entries[0].actionable, eq=False)
+        tm.fail(entries[0].actionable)
         tm.that(
             entries[0].classification, eq=c.Infra.ModScanFindingClass.DETECTION_ONLY
         )
@@ -359,7 +359,7 @@ class TestsFlextInfraFailedInvocationProgress:
             before_paths[0].read_bytes()
         )
         tm.that(before.totals_by_rule.get(rule_id), eq=1)
-        tm.that(before_paths[0].with_name("after.json").exists(), eq=False)
+        tm.fail(before_paths[0].with_name("after.json").exists())
 
     @staticmethod
     @pytest.mark.slow

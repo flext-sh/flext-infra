@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.deps import FlextInfraDependencyDetectionRunnersMixin
 
 
@@ -112,9 +112,16 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
 
         """
         key = c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS
-        governed = config.Infra.tooling.tools.mypy.boolean_settings.get(
-            key,
-            c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS_DEFAULT,
+        selected = u.Infra.load_tooling_inputs(project_path)
+        if selected.failure:
+            return r[bool].from_failure(selected)
+        options = u.Infra.native_tool_settings(selected.value.document, c.Infra.MYPY)
+        governed = (
+            u.Infra.native_tool_setting(
+                selected.value.document, c.Infra.MYPY, key, bool
+            )
+            if key in options
+            else c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS_DEFAULT
         )
         table = self._project_table(project_path)
         if table.failure:
@@ -122,7 +129,10 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         pyproject, data = table.value
         tool = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(data.get(c.Infra.TOOL, {}))
         mypy = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(tool.get(c.Infra.MYPY, {}))
-        declared = mypy.get(key, c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS_DEFAULT)
+        declared = u.type_adapter(bool).validate_python(
+            mypy.get(key, c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS_DEFAULT),
+            strict=True,
+        )
         if declared != governed:
             return r[bool].fail(
                 f"mypy {key} policy conflict in {pyproject}: the project declares "

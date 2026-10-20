@@ -214,16 +214,6 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             t.NonEmptyStr,
             m.Field(description="Configured uv installation link mode"),
         ]
-        ruff_extend_exclude: Annotated[
-            t.StrSequence,
-            m.Field(
-                description=(
-                    "Workspace exclusions added to Ruff's defaults: the "
-                    "provider-owned tool-home projections stay outside the "
-                    "member lint scope"
-                ),
-            ),
-        ]
         make_profile: Annotated[
             c.Infra.MakeProfile,
             m.Field(description="Generated Make execution profile"),

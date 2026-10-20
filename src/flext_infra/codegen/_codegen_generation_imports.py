@@ -37,7 +37,6 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
         indent: str,
         mod: str,
         parts: t.StrSequence,
-        local_package_root: str | None = None,
     ) -> t.StrSequence:
         """Emit one Ruff-canonical import statement within the configured width.
 
@@ -49,25 +48,13 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
 
         """
         compact = f"{indent}from {mod} import {', '.join(parts)}"
-        line_length = config.Infra.tooling.tools.ruff.line_length
+        line_length = u.Infra.native_tool_setting(
+            config.Infra.tooling, "ruff", "line-length", int
+        )
         if len(compact) <= line_length:
             return (compact,)
-        # When the wrapped form's opening line still exceeds the limit, shorten
-        # the module path by using a relative import of the module's last
-        # component, which is always valid because TYPE_CHECKING imports are
-        # within the same package.
         wrapped_open = f"{indent}from {mod} import ("
         if len(wrapped_open) > line_length:
-            _, _, child = mod.rpartition(".")
-            if child:
-                relative_open = f"{indent}from .{child} import ("
-                if len(relative_open) <= line_length:
-                    nested_indent = f"{indent}    "
-                    return (
-                        f"{indent}from .{child} import (",
-                        *(f"{nested_indent}{part}," for part in parts),
-                        f"{indent})",
-                    )
             message = (
                 f"Absolute import owner {mod!r} exceeds Ruff line length "
                 f"{line_length}; select its canonical public package export."
@@ -102,7 +89,9 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
             compact = (
                 f"{indent}from {parent_mod or '.'} import {child_name} as {export_name}"
             )
-            line_length = config.Infra.tooling.tools.ruff.line_length
+            line_length = u.Infra.native_tool_setting(
+                config.Infra.tooling, "ruff", "line-length", int
+            )
             if len(compact) <= line_length:
                 return (compact,)
             nested_indent = f"{indent}    "

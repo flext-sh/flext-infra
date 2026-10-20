@@ -18,13 +18,13 @@ class TestsFlextInfraInfraPaths:
     def test_resolve_repository_root_with_current_directory() -> None:
         """Test resolve repository root with current directory."""
         result = u.Infra.resolve_repository_root_or_cwd(None)
-        tm.that(result.is_absolute(), eq=True)
+        tm.ok(result.is_absolute())
 
     @staticmethod
     def test_resolve_repository_root_with_absolute_path(tmp_path: Path) -> None:
         """Test resolve repository root with absolute path."""
         result = u.Infra.resolve_repository_root_or_cwd(tmp_path)
-        tm.that(result.is_absolute(), eq=True)
+        tm.ok(result.is_absolute())
 
     @staticmethod
     def test_resolve_repository_root_returns_resolved_path(

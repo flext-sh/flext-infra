@@ -39,8 +39,8 @@ class TestsFlextInfraExtendedProjectRunners:
         # 'format' is not a check gate: 73887691 gave each tool one owner and
         # moved ruff format to the 'fmt' verb, so the check registry carries
         # lint/pyrefly and never reports a format gate here.
-        tm.that({"lint", "pyrefly"} <= set(result.value[0].gates), eq=True)
-        tm.that("format" in set(result.value[0].gates), eq=False)
+        tm.ok({"lint", "pyrefly"} <= set(result.value[0].gates))
+        tm.fail("format" in set(result.value[0].gates))
 
     @staticmethod
     @pytest.mark.parametrize("gate_method", ["lint", "format"])

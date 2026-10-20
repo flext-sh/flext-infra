@@ -101,8 +101,8 @@ class TestsFlextInfraCodegenLayoutGitignore:
         tracked = u.Cli.capture([c.Infra.GIT, "ls-files"], cwd=project)
         tm.ok(tracked)
         tracked_names = set(tracked.value.split())
-        tm.that("docs/guides/intro.md" in tracked_names, eq=True)
-        tm.that("guides/intro.md" in tracked_names, eq=False)
+        tm.ok("docs/guides/intro.md" in tracked_names)
+        tm.fail("guides/intro.md" in tracked_names)
         tm.that(
             f"{archive_root()}/{project.name}/output.log" in tracked_names,
             eq=False,
@@ -150,7 +150,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
             [c.Infra.GIT, "check-ignore", str(source.relative_to(tmp_path))],
             cwd=tmp_path,
         )
-        tm.that(tracked.failure, eq=True)
+        tm.ok(tracked.failure)
 
     @classmethod
     @pytest.mark.slow
@@ -245,5 +245,5 @@ class TestsFlextInfraCodegenLayoutGitignore:
         report = layout_engine(tmp_path, apply_changes=False).plan_project(project)
 
         paths = {finding.path for finding in report.findings}
-        tm.that(local.name in paths, eq=False)
-        tm.that(tracked.name in paths, eq=True)
+        tm.fail(local.name in paths)
+        tm.ok(tracked.name in paths)

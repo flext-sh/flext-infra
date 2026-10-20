@@ -94,6 +94,31 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         return normal_import
 
     @classmethod
+    def import_statement(
+        cls,
+        import_info: p.Infra.RopeImportInfo,
+        start_line: int,
+        end_line: int,
+        source: str,
+    ) -> p.Infra.RopeImportStatement:
+        """Construct a native statement from an authenticated Rope AST span.
+
+        Returns:
+            The native import statement with its original source coordinates.
+
+        Raises:
+            TypeError: If Rope returns a record outside its statement contract.
+
+        """
+        statement = cls.runtime_callable(
+            "rope.refactor.importutils.importinfo", "ImportStatement"
+        )(import_info, start_line, end_line, source)
+        if not isinstance(statement, p.Infra.RopeImportStatement):
+            msg = "rope ImportStatement does not satisfy p.Infra.RopeImportStatement"
+            raise TypeError(msg)
+        return statement
+
+    @classmethod
     def native_module_source(cls, module_name: str) -> p.Result[Path]:
         """Authenticate native module election without calling an upper service.
 

@@ -74,7 +74,7 @@ class TestsFlextInfraReleaseArchiveBoundary:
             result = u.Infra.materialize_tar_tree(archive, stage_path)
 
         tm.ok(result)
-        tm.that((stage_path / "pkg-1.0").is_dir(), eq=True)
+        tm.ok((stage_path / "pkg-1.0").is_dir())
         tm.that(
             (stage_path / "pkg-1.0" / "README.md").read_text(encoding="utf-8"),
             eq="hello\n",
@@ -126,4 +126,4 @@ class TestsFlextInfraReleaseArchiveBoundary:
             result = u.Infra.materialize_tar_tree(archive, stage_path)
 
         tm.fail(result)
-        tm.that(stage_path.exists(), eq=False)
+        tm.fail(stage_path.exists())

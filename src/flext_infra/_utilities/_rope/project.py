@@ -1267,7 +1267,10 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                 ):
                     self._consume_effect(retired)
             return sorted(
-                name for name in set(names) if directory / name not in self._retired
+                name
+                for name in set(names)
+                if directory / name not in self._retired
+                and not self._is_generated_artifact(directory / name)
             )
 
         def _directory_chain(self, directory: Path) -> m.Cli.AtomicDirectoryChainPlan:
@@ -1400,9 +1403,21 @@ class FlextInfraRopeProject(_RopeProjectSourceAccessMixin, Project):
                 The predicate value authenticated by the parent inventory or
                 absence witness.
 
+            Raises:
+                NotADirectoryError: If native ancestry conflicts with a declared
+                    directory.
+
             """
             parent = candidate.parent
-            inventory = self._inventory(parent)
+            try:
+                inventory = self._inventory(parent)
+            except NotADirectoryError:
+                if self.query(str(parent), "isdir"):
+                    raise
+                self._query_witnesses[candidate, predicate] = self._query_witnesses[
+                    parent, "isdir"
+                ]
+                return False
             if inventory is None:
                 self._record_parent_witness(candidate, predicate)
                 return False

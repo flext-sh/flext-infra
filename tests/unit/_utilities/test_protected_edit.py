@@ -61,7 +61,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         executed = u.Cli.run_raw(command, cwd=tmp_path, timeout=1)
         receipt = u.Infra.lint_gate_result(c.Infra.RUFF, executed)
         tm.that(receipt.errors, eq=())
-        tm.that(receipt.execution_error is not None, eq=True)
+        tm.ok(receipt.execution_error is not None)
         tm.that(
             u.Infra.lint_execution_errors({receipt.tool_name: receipt}), empty=False
         )
@@ -79,7 +79,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             if executed.exception is not None:
                 tm.that(receipt.error_traceback or "", has=str(executed.exception))
         else:
-            tm.that(receipt.output is not None, eq=True)
+            tm.ok(receipt.output is not None)
             if receipt.output is not None:
                 tm.that(
                     receipt.output.outcome.model_dump(),
@@ -110,7 +110,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         recovered = u.Infra.lint_snapshot(py_file, tmp_path, gates=(c.Infra.RUFF,))
         tm.that(u.Infra.lint_execution_errors(recovered), eq=())
         tm.that(recovered[c.Infra.RUFF].errors, eq=())
-        tm.that(recovered[c.Infra.RUFF].output is not None, eq=True)
+        tm.ok(recovered[c.Infra.RUFF].output is not None)
 
     @staticmethod
     @pytest.mark.parametrize("inherited", [False, True])
@@ -158,9 +158,9 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         receipt = snapshot[c.Infra.RUFF]
         tm.that(receipt.errors, empty=False)
         tm.that(receipt.execution_error, eq=None)
-        tm.that(receipt.output is not None, eq=True)
+        tm.ok(receipt.output is not None)
         if receipt.output is not None:
-            tm.that(u.Cli.process_succeeded(receipt.output.outcome), eq=False)
+            tm.fail(u.Cli.process_succeeded(receipt.output.outcome))
         tm.that(u.Infra.lint_new_errors(snapshot, snapshot), eq={})
 
     @staticmethod
@@ -220,7 +220,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             RuntimeError, match="protected edit callback failed"
         ) as caught:
             protected_write()
-        tm.that(caught.value is failure, eq=True)
+        tm.ok(caught.value is failure)
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=updated)
 
     @staticmethod
@@ -264,7 +264,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
                 ),
             )
         )
-        tm.that(result[0], eq=False)
+        tm.fail(result[0])
         tm.that(" ".join(result[1]), has="invalid")
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=updated)
 
@@ -344,7 +344,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             ),
         )
 
-        tm.that(result[0], eq=True)
+        tm.ok(result[0])
         tm.that(result[1], empty=True)
         tm.that(
             py_file.read_text(encoding=c.DEFAULT_ENCODING).rstrip("\n"),
@@ -391,7 +391,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             gates=(gate,),
         )
 
-        tm.that(result[0], eq=True)
+        tm.ok(result[0])
         tm.that(result[1], empty=True)
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=original_source)
         tm.that(py_file.stat().st_mtime_ns, eq=before_modified_ns)
@@ -414,7 +414,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             candidates: t.MappingKV[Path, Path],
         ) -> t.Triple[str, str, int]:
             candidate = candidates[py_file.resolve()]
-            tm.that(candidate.is_relative_to(view_root), eq=True)
+            tm.ok(candidate.is_relative_to(view_root))
             return (
                 candidate.read_text(encoding=c.DEFAULT_ENCODING),
                 py_file.read_text(encoding=c.DEFAULT_ENCODING),
@@ -453,7 +453,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             candidates: t.MappingKV[Path, Path],
         ) -> str:
             candidate = candidates[py_file.resolve()]
-            tm.that(candidate.is_relative_to(view_root), eq=True)
+            tm.ok(candidate.is_relative_to(view_root))
             content = candidate.read_text(encoding=c.DEFAULT_ENCODING)
             compile(content, str(candidate), "exec")
             return content
@@ -544,10 +544,10 @@ class TestsFlextInfraUtilitiesProtectedEdit:
                     gates=(),
                 ),
             )
-        tm.that(result[0], eq=False)
+        tm.fail(result[0])
         tm.that(result[1], empty=False)
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=updated)
-        tm.that(marker.exists(), eq=False)
+        tm.fail(marker.exists())
         if collectable and profile_directory is not None:
             tm.that(
                 set(profile_directory.glob("*.pstats")) - previous_profiles,
@@ -573,7 +573,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             ),
         )
 
-        tm.that(result[0], eq=True)
+        tm.ok(result[0])
         tm.that(result[1], empty=True)
         tm.that(
             (

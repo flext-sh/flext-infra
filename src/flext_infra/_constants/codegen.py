@@ -54,6 +54,7 @@ class FlextInfraConstantsCodegen(
     ] = SELF_SCOPE_SURFACES | frozenset((
         FlextInfraConfigVocabulary.CodegenConformSurface.MAKEFILE,
         FlextInfraConfigVocabulary.CodegenConformSurface.PYPROJECT,
+        FlextInfraConfigVocabulary.CodegenConformSurface.EDITOR,
     ))
     "Self-owned configuration is planned against the declared repository target."
 
@@ -67,10 +68,9 @@ class FlextInfraConstantsCodegen(
     PARTIAL_PLAN_SURFACES: ClassVar[
         frozenset[FlextInfraConfigVocabulary.CodegenConformSurface]
     ] = ALLOW_UNPROVISIONED_SURFACES | frozenset((
-        FlextInfraConfigVocabulary.CodegenConformSurface.RUNTIME_BINDINGS,
         FlextInfraConfigVocabulary.CodegenConformSurface.WORKFLOWS,
     ))
-    "Partial rendering also includes provisioned runtime and workflow bindings."
+    "Partial rendering also includes provisioned workflow bindings."
 
     MISE_ARTIFACTS_STATE_DIRECTORY: ClassVar[Path] = Path(".state") / "mise-artifacts"
 

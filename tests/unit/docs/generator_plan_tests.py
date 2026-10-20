@@ -81,7 +81,7 @@ class TestsFlextInfraDocsGeneratorPlan:
                 project / "docs/api-reference/generated/modules/api/v1",
             ),
         )
-        tm.that(all(not path.exists() for path in result.value), eq=True)
+        tm.ok(all(not path.exists() for path in result.value))
 
     @staticmethod
     def test_required_directories_reject_duplicate_targets(
@@ -126,7 +126,7 @@ class TestsFlextInfraDocsGeneratorPlan:
 
         tm.ok(required)
         tm.that(_directories(), eq=directories_before)
-        tm.that(any(not directory.exists() for directory in required.value), eq=True)
+        tm.ok(any(not directory.exists() for directory in required.value))
         for directory in required.value:
             if not directory.exists():
                 directory.mkdir()
@@ -162,7 +162,7 @@ class TestsFlextInfraDocsGeneratorPlan:
             all(plan.desired_mode == c.Infra.DOCS_ARTIFACT_MODE for plan in plans),
             eq=True,
         )
-        tm.that(all(plan.source_states for plan in plans), eq=True)
+        tm.ok(all(plan.source_states for plan in plans))
         tm.that(
             {
                 path: path.read_bytes()
@@ -171,7 +171,7 @@ class TestsFlextInfraDocsGeneratorPlan:
             },
             eq=before,
         )
-        tm.that((workspace / ".reports").exists(), eq=False)
+        tm.fail((workspace / ".reports").exists())
 
     @staticmethod
     def test_generate_publishes_and_reaches_an_unchanged_second_run(
@@ -190,7 +190,7 @@ class TestsFlextInfraDocsGeneratorPlan:
         request = m.Infra.DocsGenerateRequest(repository_root=workspace)
         first = generator.generate(request)
         tm.ok(first)
-        tm.that(any(report.generated for report in first.value), eq=True)
+        tm.ok(any(report.generated for report in first.value))
         tm.that(changed.path.read_bytes(), eq=changed.desired_content)
         second = generator.generate(request)
         tm.ok(second)
@@ -214,12 +214,12 @@ class TestsFlextInfraDocsGeneratorPlan:
 
         stale_plan = next(plan for plan in plans if plan.path == stale)
         tm.that(stale_plan.desired_content, eq=None)
-        tm.that(u.Infra.codegen_file_requires_effect(stale_plan), eq=True)
+        tm.ok(u.Infra.codegen_file_requires_effect(stale_plan))
         tm.that(
             tm.ok(u.Infra.codegen_file_before_state(stale_plan)).content,
             eq=b"stale\n",
         )
-        tm.that(stale.exists(), eq=True)
+        tm.ok(stale.exists())
 
     @staticmethod
     def test_scope_failure_is_not_normalized_to_empty_aggregate(

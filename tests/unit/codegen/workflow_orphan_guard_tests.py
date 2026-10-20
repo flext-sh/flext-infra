@@ -64,7 +64,7 @@ class TestsFlextInfraWorkflowOrphanGuard:
         check, so it stays out of the governed surface until the entitlement
         is an explicit, funded decision.
         """
-        tm.that("codeql.yml" in self._declared_workflows(), eq=False)
+        tm.fail("codeql.yml" in self._declared_workflows())
 
     @staticmethod
     def test_ci_matrix_uses_only_canonical_profiles() -> None:

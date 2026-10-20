@@ -62,7 +62,7 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
             ]
         )
 
-        tm.that(policy.allow_public_targets, eq=True)
+        tm.ok(policy.allow_public_targets)
 
     @staticmethod
     def test_standalone_stays_private_only() -> None:
@@ -73,7 +73,7 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
             ]
         )
 
-        tm.that(policy.allow_public_targets, eq=False)
+        tm.fail(policy.allow_public_targets)
 
     @staticmethod
     def test_validator_honours_the_permissions_it_is_given() -> None:
@@ -96,8 +96,8 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
         )
         validate = FlextInfraCodegenConform.validate_custom_make
 
-        tm.that(validate(content, strict).failure, eq=True)
-        tm.that(validate(content, permissive).success, eq=True)
+        tm.ok(validate(content, strict).failure)
+        tm.ok(validate(content, permissive).success)
 
     @staticmethod
     def test_policy_keys_are_normalised_to_profile_values() -> None:
@@ -115,4 +115,4 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
         profile: c.Infra.MakeProfile = c.Infra.MakeProfile.WORKSPACE
 
         tm.that(set(policies), eq={member.value for member in c.Infra.MakeProfile})
-        tm.that(policies[profile] is policies[profile.value], eq=True)
+        tm.ok(policies[profile] is policies[profile.value])

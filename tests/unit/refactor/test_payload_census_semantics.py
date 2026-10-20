@@ -108,11 +108,11 @@ class TestsFlextInfraPayloadCensusSemantics:
             if item.scope_path in {"InputHolder.Input", "OutputHolder.Output"}
         )
         tm.that(len(objects), eq=2)
-        tm.that(all(item.payload_fingerprint for item in objects), eq=True)
+        tm.ok(all(item.payload_fingerprint for item in objects))
         groups = FlextInfraRefactorCensus.duplicate_groups((objects,))
         candidates = tuple(group for group in groups if group.semantic_candidate)
         tm.that(bool(candidates), eq=expected_candidate)
-        tm.that(all(not group.value_identical for group in candidates), eq=True)
+        tm.ok(all(not group.value_identical for group in candidates))
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
         if expected_candidate:
             observed = tm.ok(
@@ -134,7 +134,7 @@ class TestsFlextInfraPayloadCensusSemantics:
                     options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(root)}),
                 ),
             )
-            tm.that(u.Cli.process_succeeded(observed.outcome), eq=True)
+            tm.ok(u.Cli.process_succeeded(observed.outcome))
 
     @staticmethod
     def test_non_pydantic_homonyms_have_no_payload_candidate(
@@ -158,7 +158,7 @@ class TestsFlextInfraPayloadCensusSemantics:
             include_local_scopes=False,
             include_references=False,
         )
-        tm.that(any(item.payload_fingerprint for item in objects), eq=False)
+        tm.fail(any(item.payload_fingerprint for item in objects))
         tm.that(
             any(
                 group.semantic_candidate

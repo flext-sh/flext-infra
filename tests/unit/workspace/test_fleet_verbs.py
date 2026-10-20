@@ -99,10 +99,10 @@ class TestsFlextInfraWorkspaceFleetVerbs:
                 ),
             )
             outcome = tm.not_none(receipt.outcome)
-            tm.that(u.Cli.process_succeeded(outcome), eq=True)
-            tm.that(receipt.applicable, eq=True)
+            tm.ok(u.Cli.process_succeeded(outcome))
+            tm.ok(receipt.applicable)
             tm.that(receipt.error, eq=None)
-            tm.that(receipt.output_file.is_file(), eq=True)
+            tm.ok(receipt.output_file.is_file())
 
     def test_native_formatter_failure_preserves_unreached_consumers(
         self,
@@ -116,14 +116,14 @@ class TestsFlextInfraWorkspaceFleetVerbs:
         invalid = "def invalid( ->:\n"
         source.write_text(invalid, encoding=c.DEFAULT_ENCODING)
 
-        tm.that(self._run(root, c.Infra.FleetVerb.FMT) != 0, eq=True)
+        tm.ok(self._run(root, c.Infra.FleetVerb.FMT) != 0)
 
         report = self._report(root)
         tm.that(report.scope, eq=tuple(root / member.path for member in members))
         tm.that(len(report.receipts), eq=len(members))
         failed, unreached = report.receipts
         outcome = tm.not_none(failed.outcome)
-        tm.that(u.Cli.process_succeeded(outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(outcome))
         tm.that(failed.error, empty=False)
         tm.that(failed.output_file.read_text(encoding=c.DEFAULT_ENCODING), empty=False)
         tm.that(unreached.repository_root, eq=root / consumer.path)
@@ -144,7 +144,7 @@ class TestsFlextInfraWorkspaceFleetVerbs:
         before = report_path.read_bytes() if report_path.exists() else None
         (root / members[-1].path / c.Infra.MAKEFILE_FILENAME).unlink()
 
-        tm.that(self._run(root, c.Infra.FleetVerb.FMT) != 0, eq=True)
+        tm.ok(self._run(root, c.Infra.FleetVerb.FMT) != 0)
 
         after = report_path.read_bytes() if report_path.exists() else None
         tm.that(after, eq=before)
@@ -157,7 +157,7 @@ class TestsFlextInfraWorkspaceFleetVerbs:
         root = native_fleet_signal_hook
         members = self._members(root)
 
-        tm.that(self._run(root, c.Infra.FleetVerb.FMT) != 0, eq=True)
+        tm.ok(self._run(root, c.Infra.FleetVerb.FMT) != 0)
 
         report = self._report(root)
         tm.that(report.scope, eq=tuple(root / member.path for member in members))
@@ -165,7 +165,7 @@ class TestsFlextInfraWorkspaceFleetVerbs:
         outcome = tm.not_none(failed.outcome)
         tm.that(outcome.raw_return_code, eq=-int(SIGTERM))
         tm.that(outcome.forwarded_signal, eq=None)
-        tm.that(outcome.timed_out, eq=False)
+        tm.fail(outcome.timed_out)
         tm.that(failed.error, empty=False)
         tm.that(
             failed.output_file.read_text(encoding=c.DEFAULT_ENCODING),
@@ -213,5 +213,5 @@ class TestsFlextInfraWorkspaceFleetVerbs:
     ) -> None:
         """An actual provisioned standalone consumer has no fleet mutation scope."""
         root = installed_artifact_consumer
-        tm.that(self._run(root, c.Infra.FleetVerb.FMT) != 0, eq=True)
-        tm.that((root / c.Infra.FLEET_REPORT_RELATIVE_PATH).exists(), eq=False)
+        tm.ok(self._run(root, c.Infra.FleetVerb.FMT) != 0)
+        tm.fail((root / c.Infra.FLEET_REPORT_RELATIVE_PATH).exists())

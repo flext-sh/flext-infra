@@ -11,19 +11,26 @@ from typing import TYPE_CHECKING
 
 from flext_core import FlextRuntime
 
-from flext_infra import c, config, m, t, u
+from flext_infra import c, config, m, r, t, u
+from flext_infra.deps import FlextInfraExtraPathsManager
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
-    from flext_infra.deps import FlextInfraExtraPathsManager
+    from flext_infra import p
 
 
 class FlextInfraEnsurePyrightConfigPhase:
     """Ensure standard Pyright configuration for strict type checking."""
 
-    def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
+    def __init__(
+        self,
+        tool_config: m.Infra.ToolConfigDocument,
+        *,
+        codegen: m.Infra.CodegenConfigSpec | None = None,
+    ) -> None:
         """Initialize the phase with the canonical tool configuration."""
         self._tool_config = tool_config
+        self._codegen = config.Infra.codegen if codegen is None else codegen
 
     def _report_private_usage_for_env(
         self,
@@ -167,6 +174,77 @@ class FlextInfraEnsurePyrightConfigPhase:
         rules = self._tool_config.tools.pyright.path_rules
         return f"{prefix}/{rules.source_dir}" if prefix else rules.source_dir
 
+    def _workspace_member_roots(
+        self, repository_root: Path
+    ) -> t.SequenceOf[t.Pair[str, t.StrSequence]]:
+        """Discover each declared member's owned Python roots independently.
+
+        Returns:
+            Member-relative paths paired with their owned Python targets.
+
+        """
+        return tuple(
+            (
+                member,
+                u.Infra.analyzer_python_roots(
+                    repository_root / member,
+                    (),
+                    workspace_excluded_top_dirs=(
+                        FlextInfraWorkspaceDetector.analysis_excluded_top_dirs(
+                            repository_root / member
+                        ).unwrap()
+                    ),
+                ),
+            )
+            for member in u.Infra.workspace_project_paths(repository_root)
+        )
+
+    def _workspace_member_envs(
+        self, repository_root: Path
+    ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
+        """Share one analyzer while keeping member package resolution local.
+
+        Returns:
+            Specific member environments followed by each member's root.
+
+        """
+        rules = self._tool_config.tools.pyright.path_rules
+        environments: list[m.Infra.PyrightConfig.ExecutionEnvironment] = []
+        for member, roots in self._workspace_member_roots(repository_root):
+            source = self._project_source_path(prefix=member)
+            environments.extend(
+                self._diagnostic_override_envs(
+                    project_dir=repository_root / member,
+                    root_prefix=Path(member),
+                    source_path=source,
+                )
+            )
+            environments.extend(
+                self._env_entry(
+                    env_dir=env_dir,
+                    root=f"{member}/{env_dir}",
+                    extra_paths=self._extra_paths_for_env(
+                        env_dir=env_dir,
+                        source_path=source,
+                        project_root=member,
+                        source_dir=rules.source_dir,
+                    ),
+                    rules=rules,
+                )
+                for env_dir in roots
+                if (repository_root / member / env_dir).is_dir()
+            )
+            # Top-level modules such as conftest.py still belong to this member.
+            environments.append(
+                self._env_entry(
+                    env_dir=rules.project_root,
+                    root=member,
+                    extra_paths=(member, source),
+                    rules=rules,
+                )
+            )
+        return tuple(environments)
+
     def _expected_envs(
         self,
         *,
@@ -197,9 +275,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 ),
             )
         rules = self._tool_config.tools.pyright.path_rules
-        expected_envs: t.MutableSequenceOf[
-            m.Infra.PyrightConfig.ExecutionEnvironment
-        ] = []
+        expected_envs = list(self._workspace_member_envs(repository_root))
         root_source_path = self._project_source_path()
         member_src_paths = tuple(
             f"{member}/src"
@@ -251,8 +327,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
         return tuple(self._environment_payload(item) for item in environments)
 
-    @staticmethod
-    def _declared_environment_dirs(env_dirs: t.StrSequence) -> t.StrSequence:
+    def _declared_environment_dirs(self, env_dirs: t.StrSequence) -> t.StrSequence:
         """Apply canonical Python discovery exclusions to pre-write declarations.
 
         Returns:
@@ -264,7 +339,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         return tuple(
             env_dir
             for env_dir in env_dirs
-            if env_dir not in config.Infra.codegen.analysis_excluded_dirs
+            if env_dir not in self._codegen.analysis_excluded_dirs
         )
 
     @staticmethod
@@ -303,7 +378,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         provided_exclusions = () if analysis_exclusions is None else analysis_exclusions
         return sorted({
             *rules.default_excludes,
-            *config.Infra.codegen.generated_source_globs,
+            *self._codegen.analyzer_exclude_globs,
             *workspace_excludes,
             *provided_exclusions,
         })
@@ -435,6 +510,16 @@ class FlextInfraEnsurePyrightConfigPhase:
         # Include every Python target owned by the selected project manifest.
         expected_includes = list(expected_roots)
         stub_rules = self._tool_config.tools.pyright.path_rules
+        if (
+            is_root
+            and repository_root is not None
+            and (repository_root / c.Infra.GITMODULES).is_file()
+        ):
+            expected_includes.extend(
+                f"{member}/{root}"
+                for member, roots in self._workspace_member_roots(repository_root)
+                for root in roots
+            )
         expected_stub_path: str | None = (
             stub_rules.root_typings_paths[0]
             if is_root and stub_rules.root_typings_paths
@@ -486,8 +571,9 @@ class FlextInfraEnsurePyrightConfigPhase:
                 operations.append(toml.RemoveOp(key="stubPath"))
         else:
             operations.append(toml.RemoveOp(key="stubPath"))
-        # Runtime bindings belong to the tooling request's declared environment.
-        # This analyzer-path phase preserves them rather than choosing an owner.
+        # Make and the editor bind their interpreter at execution time. A tracked
+        # analyzer manifest must not depend on the generating checkout's venv.
+        operations.extend((toml.RemoveOp(key="venv"), toml.RemoveOp(key="venvPath")))
         operations.append(
             toml.SetOp(
                 key="executionEnvironments",
@@ -499,17 +585,11 @@ class FlextInfraEnsurePyrightConfigPhase:
                 ],
             ),
         )
-        operations.extend(
-            toml.SetOp(key=key, value=value)
-            for settings in (
-                self._tool_config.tools.pyright.strict_settings,
-                self._tool_config.tools.pyright.extended_settings,
+        operations.append(
+            toml.SetOp(
+                key="pythonVersion", value=self._codegen.toolchain.python_version
             )
-            for key, value in settings.items()
         )
-        # Runtime environment binding (venv/venvPath) is owned by the tooling
-        # request's declared environment_dir and projected through pyright_settings.
-        # This analyzer-path phase must not overwrite or strip that binding.
         return toml.PhaseConfig(
             name="pyright",
             table_path=(c.Infra.PYRIGHT,),
@@ -530,14 +610,85 @@ class FlextInfraEnsurePyrightConfigPhase:
             The resulting ``t.StrSequence``.
 
         """
-        return u.Infra.apply_toml_phases(
-            payload,
+        desired: t.MutableJsonMapping = {
+            c.Infra.TOOL: {
+                c.Infra.PYRIGHT: u.Infra.native_tool_configuration(
+                    self._tool_config, c.Infra.PYRIGHT
+                )
+            }
+        }
+        u.Infra.apply_toml_phases(
+            desired,
             self._phase(
                 context=context,
                 paths_manager=paths_manager,
                 analysis_exclusions=analysis_exclusions,
             ),
         )
+        table = u.Cli.toml_mapping_path(desired, (c.Infra.TOOL, c.Infra.PYRIGHT))
+        if table is None:
+            msg = "Pyright owner produced no native table"
+            raise ValueError(msg)
+        return u.Infra.apply_toml_phases(
+            payload,
+            m.Infra.DepsToml.PhaseConfig(
+                name=c.Infra.PYRIGHT,
+                table_path=(),
+                operations=(
+                    m.Infra.DepsToml.SetOp(
+                        key=c.Infra.PYRIGHT,
+                        value=FlextRuntime.normalize_to_json_value(table),
+                    ),
+                ),
+            ),
+        )
+
+    def render_source(
+        self,
+        source: str,
+        *,
+        context: m.Infra.PyprojectAnalyzerContext,
+    ) -> p.Result[str]:
+        """Project only the analyzer table, preserving the rest of the document.
+
+        Returns:
+            TOML with the same configuration emitted by full modernization.
+
+        """
+        parsed = u.Cli.toml_mapping_from_text_result(source)
+        if parsed.failure:
+            return r[str].from_failure(parsed)
+        payload: t.MutableJsonMapping = dict(parsed.value)
+        project_root = (
+            context.repository_root if context.is_root else context.project_dir
+        )
+        self.apply_payload(
+            payload,
+            context=context,
+            paths_manager=(
+                FlextInfraExtraPathsManager(repository_root=project_root)
+                if project_root is not None
+                else None
+            ),
+        )
+        document = u.Cli.toml_parse_text(source)
+        if document is None:
+            return r[str].fail(
+                "validated TOML could not be parsed for round-trip editing"
+            )
+        tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
+        expected = u.Cli.toml_mapping_path(payload, (c.Infra.TOOL, c.Infra.PYRIGHT))
+        if expected is None:
+            return r[str].fail("Pyright projection produced no analyzer table")
+        ordered = u.Cli.json_dumps(
+            FlextRuntime.normalize_to_json_value(expected), sort_keys=True
+        )
+        if ordered.failure:
+            return r[str].from_failure(ordered)
+        # This table is generated in full. Replacing its value also normalizes
+        # nested object keys while retaining semantic list order.
+        tool[c.Infra.PYRIGHT] = u.json_mapping_adapter().validate_json(ordered.value)
+        return r[str].ok(u.Cli.toml_dumps(document))
 
 
 __all__: list[str] = ["FlextInfraEnsurePyrightConfigPhase"]

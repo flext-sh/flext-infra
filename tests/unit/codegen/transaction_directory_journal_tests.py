@@ -109,7 +109,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
             TestsFlextInfraConformSupport.project_tree(root),
             eq=before,
         )
-        tm.that((root / ".state").exists(), eq=False)
+        tm.fail((root / ".state").exists())
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
         tm.that(
             FlextInfraMiseWorkspacePlanner.journal_path(identity).exists(),
@@ -230,7 +230,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
                         ),
                     },
                 )
-            tm.that(snapshot.mode is not None, eq=True)
+            tm.ok(snapshot.mode is not None)
             if snapshot.mode is None:
                 pytest.fail("the observed journal snapshot has no physical mode")
             tm.ok(
@@ -276,13 +276,13 @@ class TestsFlextInfraTransactionDirectoryJournal:
         if delivery == "raise":
             with pytest.raises(ValueError, match="source dependenc") as propagated:
                 owner.run_files_locked(roots, publish)
-            tm.that(propagated.value is original_errors[0], eq=True)
+            tm.ok(propagated.value is original_errors[0])
         else:
             rejected = owner.run_files_locked(roots, publish)
             tm.fail(rejected, has="source dependenc")
-            tm.that(rejected.exception is original_errors[0], eq=True)
+            tm.ok(rejected.exception is original_errors[0])
             tm.that(rejected.error_data, none=False)
-            tm.that(bool(rejected.error_data["cleanup_error"]), eq=True)
+            tm.ok(bool(rejected.error_data["cleanup_error"]))
         tm.that(target.read_bytes(), eq=before.content)
         tm.that(source_path.read_bytes(), eq=source.content)
 
@@ -309,7 +309,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         observed = FlextInfraMiseArtifactsVerification.live(owner, plan)
 
         tm.that(tm.fail(observed), eq=tm.fail(baseline))
-        tm.that(config_path.is_dir(), eq=True)
+        tm.ok(config_path.is_dir())
         tm.that(preserved.read_bytes(), eq=plan.projects[0].config.before.content)
 
     @staticmethod
@@ -512,8 +512,8 @@ class TestsFlextInfraTransactionDirectoryJournal:
                 tm.ok(u.Cli.atomic_read_binary_file_state(config_path, required=True)),
                 eq=before_state,
             )
-        tm.that(layout.journal_path.exists(), eq=False)
-        tm.that(layout.state_root.exists(), eq=False)
+        tm.fail(layout.journal_path.exists())
+        tm.fail(layout.state_root.exists())
         tm.that(stat.S_IMODE(config_path.stat().st_mode), eq=desired_mode)
 
     @staticmethod
@@ -572,7 +572,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
                 root, transactions[-1]
             )
         }
-        tm.that((True, tuple(targets.values())) in completed, eq=True)
+        tm.ok((True, tuple(targets.values())) in completed)
         tm.that(
             (root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH).exists(),
             eq=False,
@@ -651,15 +651,15 @@ class TestsFlextInfraTransactionDirectoryJournal:
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
         journal = FlextInfraMiseWorkspacePlanner.journal_path(identity)
         # Staging cleanup retires its cursor without removing generated outputs.
-        tm.that(journal.exists(), eq=False)
+        tm.fail(journal.exists())
         if foreign_change:
             tm.that(target.read_bytes(), eq=b"foreign content\n")
-            tm.that((root / "docs").exists(), eq=True)
-            tm.that((root / "docs/generated").exists(), eq=True)
+            tm.ok((root / "docs").exists())
+            tm.ok((root / "docs/generated").exists())
         else:
             tm.that(target.read_bytes(), eq=b"first phase\n")
-        tm.that((root / ".state").exists(), eq=False)
-        tm.that(journal.with_name(f"{journal.name}.lock").is_file(), eq=True)
+        tm.fail((root / ".state").exists())
+        tm.ok(journal.with_name(f"{journal.name}.lock").is_file())
 
     @staticmethod
     @pytest.mark.slow
@@ -735,7 +735,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         if raises:
             with pytest.raises(OSError, match="raised after begin") as failure:
                 owner.run_files_locked(roots, publish)
-            tm.that(failure.value is cause, eq=True)
+            tm.ok(failure.value is cause)
         else:
             tm.fail(
                 owner.run_files_locked(roots, publish),
@@ -810,9 +810,9 @@ class TestsFlextInfraTransactionDirectoryJournal:
         failed = owner.run_files_locked(roots, replace_parent)
 
         tm.fail(failed, has="generation destination parent differs from journal")
-        tm.that(target.exists(), eq=False)
-        tm.that(target.parent.is_dir(), eq=True)
-        tm.that(preserved.is_dir(), eq=True)
+        tm.fail(target.exists())
+        tm.ok(target.parent.is_dir())
+        tm.ok(preserved.is_dir())
 
     def test_file_begin_preserves_residue_created_after_reconciliation(
         self,
@@ -925,11 +925,11 @@ class TestsFlextInfraTransactionDirectoryJournal:
             tm.that(phase_root.stat().st_ino, eq=identity.st_ino)
             if with_foreign_file:
                 tm.that((phase_root / "foreign.bin").read_bytes(), eq=b"preserve")
-            tm.that(session.journal_state.path.exists(), eq=True)
+            tm.ok(session.journal_state.path.exists())
             return failed
 
         tm.fail(owner.run_files_locked(roots, stage))
-        tm.that(target.exists(), eq=False)
+        tm.fail(target.exists())
 
     @staticmethod
     @pytest.mark.parametrize("operation", ["append", "commit"])
@@ -991,7 +991,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
             return r[bool].ok(value=True)
 
         tm.ok(owner.run_files_locked(roots, replace_journal))
-        tm.that(target.exists(), eq=False)
+        tm.fail(target.exists())
 
     @staticmethod
     def _layout(root: Path) -> m.Infra.MiseToolchainWorkspaceLayout:
@@ -1081,7 +1081,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         planned = FlextInfraMiseArtifactsState.plan_transaction_directories(layout)
 
         directories = tm.ok(planned)
-        tm.that((layout.scope_root / ".state").exists(), eq=False)
+        tm.fail((layout.scope_root / ".state").exists())
         directories = self._materialize(layout, directories)
         transaction_root = layout.projects[0].transaction_root
         tm.that(transaction_root, none=False)
@@ -1095,8 +1095,8 @@ class TestsFlextInfraTransactionDirectoryJournal:
         )
 
         tm.ok(cleaned, eq=True)
-        tm.that(transaction_root.exists(), eq=False)
-        tm.that(layout.state_root.exists(), eq=False)
+        tm.fail(transaction_root.exists())
+        tm.fail(layout.state_root.exists())
 
     def test_nonempty_generated_directory_is_preserved_and_rejected(
         self,
@@ -1148,7 +1148,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         )
 
         tm.fail(cleaned)
-        tm.that((transaction_root / "alias").is_symlink(), eq=True)
+        tm.ok((transaction_root / "alias").is_symlink())
 
     def test_replaced_generated_directory_identity_is_preserved_and_rejected(
         self,
@@ -1177,8 +1177,8 @@ class TestsFlextInfraTransactionDirectoryJournal:
         )
 
         tm.fail(cleaned)
-        tm.that(target.is_dir(), eq=True)
-        tm.that(original.is_dir(), eq=True)
+        tm.ok(target.is_dir())
+        tm.ok(original.is_dir())
 
     def test_foreign_file_after_manifest_is_preserved_and_rejected(
         self,
@@ -1229,7 +1229,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         )
 
         tm.fail(cleaned, has="missing")
-        tm.that(transaction_root.is_dir(), eq=True)
+        tm.ok(transaction_root.is_dir())
 
     def test_crash_before_identity_persistence_preserves_unbound_tree(
         self,

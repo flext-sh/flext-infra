@@ -86,7 +86,7 @@ class TestsFlextInfraGitFacet:
                 ),
             ),
         )
-        tm.that(removed.value, eq=False)
+        tm.fail(removed.value)
         native_tree = tm.ok(
             u.Cli.run((c.Infra.GIT, "write-tree"), cwd=repository),
         ).stdout.strip()
@@ -320,7 +320,7 @@ class TestsFlextInfraGitFacet:
             ).execute(),
             has="authoritative Beads ownership",
         )
-        tm.that(lane.exists(), eq=False)
+        tm.fail(lane.exists())
         tm.that(self._lane_bytes(repository), eq=before)
 
     @pytest.mark.parametrize("integrated", [False, True])
@@ -472,7 +472,7 @@ class TestsFlextInfraGitFacet:
         # deletion stays (rm --cached), the ignored file stays (force-indexed),
         # and the untracked file never enters the inventory.
         tm.that(set(paths), eq={tracked, raw_name, removed, destination})
-        tm.that(untracked in paths, eq=False)
+        tm.fail(untracked in paths)
 
     @staticmethod
     def test_tracked_scope_propagates_corrupt_index_failure(
@@ -503,7 +503,7 @@ class TestsFlextInfraGitFacet:
         corrupted = u.Infra.git_identity(request)
 
         tm.fail(corrupted)
-        tm.that(corrupted.error_code == c.Infra.GIT_UNBORN_HEAD_ERROR_CODE, eq=False)
+        tm.fail(corrupted.error_code == c.Infra.GIT_UNBORN_HEAD_ERROR_CODE)
         tm.not_none(corrupted.exception)
 
     @staticmethod
@@ -514,7 +514,7 @@ class TestsFlextInfraGitFacet:
         result = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=repository))
 
         tm.fail(result)
-        tm.that(result.error_code == c.Infra.GIT_UNBORN_HEAD_ERROR_CODE, eq=False)
+        tm.fail(result.error_code == c.Infra.GIT_UNBORN_HEAD_ERROR_CODE)
         tm.not_none(result.exception)
 
     @staticmethod
@@ -801,7 +801,7 @@ class TestsFlextInfraGitFacet:
             u.Tests.git_capture(real_git_repo, "rev-parse", c.Infra.GIT_HEAD),
             eq=head,
         )
-        tm.that(tm.ok(u.Infra.git_status(request)).dirty, eq=False)
+        tm.fail(tm.ok(u.Infra.git_status(request)).dirty)
 
     @staticmethod
     def test_verify_clean_propagates_stash_probe_failure(
@@ -815,7 +815,7 @@ class TestsFlextInfraGitFacet:
             encoding="utf-8",
         )
         request = m.Infra.GitStatusRequest(repo_root=real_git_repo)
-        tm.that(tm.ok(u.Infra.git_status(request)).dirty, eq=False)
+        tm.fail(tm.ok(u.Infra.git_status(request)).dirty)
         probe = u.Infra.git_stash_oids(
             m.Infra.GitRepoRequest(repo_root=real_git_repo),
         )
@@ -926,7 +926,7 @@ class TestsFlextInfraGitFacet:
         """The public facet refreshes the Git binary it will then use."""
         refreshed = u.Infra.refresh_binary()
         tm.ok(refreshed)
-        tm.that(refreshed.value, eq=True)
+        tm.ok(refreshed.value)
 
     def test_remove_clean_worktree_refuses_missing_lifecycle_proof(
         self,
@@ -1067,9 +1067,9 @@ class TestsFlextInfraGitFacet:
             ),
         )
 
-        tm.that(ancestor.value, eq=True)
-        tm.that(reverse.value, eq=False)
-        tm.that(defaulted.value, eq=True)
+        tm.ok(ancestor.value)
+        tm.fail(reverse.value)
+        tm.ok(defaulted.value)
 
     @staticmethod
     def test_is_ancestor_fails_on_unknown_commitish(tmp_path: Path) -> None:
@@ -1092,15 +1092,15 @@ class TestsFlextInfraGitFacet:
         repository = u.Tests.git_repository(tmp_path)
         request = m.Infra.GitRepoRequest(repo_root=repository)
 
-        tm.that(tm.ok(u.Infra.git_has_staged_changes(request)).value, eq=False)
+        tm.fail(tm.ok(u.Infra.git_has_staged_changes(request)).value)
 
         (repository / "staged.txt").write_text("staged\n", encoding="utf-8")
-        tm.that(tm.ok(u.Infra.git_has_staged_changes(request)).value, eq=False)
+        tm.fail(tm.ok(u.Infra.git_has_staged_changes(request)).value)
 
         tm.ok(
             u.Cli.run_checked([c.Infra.GIT, "add", "staged.txt"], cwd=repository),
         )
-        tm.that(tm.ok(u.Infra.git_has_staged_changes(request)).value, eq=True)
+        tm.ok(tm.ok(u.Infra.git_has_staged_changes(request)).value)
 
         tm.ok(
             u.Cli.run_checked(
@@ -1108,4 +1108,4 @@ class TestsFlextInfraGitFacet:
                 cwd=repository,
             ),
         )
-        tm.that(tm.ok(u.Infra.git_has_staged_changes(request)).value, eq=False)
+        tm.fail(tm.ok(u.Infra.git_has_staged_changes(request)).value)

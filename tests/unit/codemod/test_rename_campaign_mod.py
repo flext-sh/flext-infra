@@ -181,7 +181,7 @@ class TestsFlextInfraRenameCampaignMod:
                 ),
             ),
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(result.outcome))
         tm.that(
             result.stderr,
             has="CSV campaign path must be relative and non-escaping",
@@ -236,7 +236,7 @@ class TestsFlextInfraRenameCampaignMod:
                 ),
             ),
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(result.outcome))
         # The preflight refusal is a typed command failure, which the CLI
         # renders on stdout; config-validation errors escape on stderr.
         tm.that(result.stdout, has=expected)

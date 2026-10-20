@@ -877,7 +877,17 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 The resolved declaration identity.
 
             """
-            module = self._project.get_module(target)
+            try:
+                module = self._project.get_module(target)
+            except Exception as exc:
+                try:
+                    importlib.import_module(target)
+                except ImportError:
+                    raise exc
+                # Rope cannot resolve stdlib/builtin modules that are not
+                # present in the project's source tree.  Fall back to a
+                # synthetic identity so generation does not abort.
+                return ".".join((target, *attributes))
             resource = self._project.find_module(target)
             if resource is not None and not isinstance(
                 module,

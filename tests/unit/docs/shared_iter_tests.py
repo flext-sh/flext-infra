@@ -30,7 +30,7 @@ class TestsFlextInfraDocsSharedIter:
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "README.md").write_text("# Test\n")
         files = u.Infra.iter_markdown_files(tmp_path)
-        tm.that(len(files) > 0, eq=True)
+        tm.ok(len(files) > 0)
 
     @staticmethod
     def test_excludes_hidden(tmp_path: Path) -> None:
@@ -41,7 +41,7 @@ class TestsFlextInfraDocsSharedIter:
         hidden_dir.mkdir(parents=True, exist_ok=True)
         (hidden_dir / "test.md").write_text("# Hidden\n")
         files = u.Infra.iter_markdown_files(tmp_path)
-        tm.that(not any(".hidden" in str(f) for f in files), eq=True)
+        tm.ok(not any(".hidden" in str(f) for f in files))
 
     @staticmethod
     def test_hidden_workspace_ancestor_does_not_exclude_docs(
@@ -68,7 +68,7 @@ class TestsFlextInfraDocsSharedIter:
         nested_dir.mkdir(parents=True, exist_ok=True)
         (nested_dir / "guide.md").write_text("# Guide\n")
         files = u.Infra.iter_markdown_files(tmp_path)
-        tm.that(len(files) > 0, eq=True)
+        tm.ok(len(files) > 0)
 
     @staticmethod
     def test_returns_sorted_list(tmp_path: Path) -> None:
@@ -95,7 +95,7 @@ class TestsFlextInfraDocsSharedIter:
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("# Test")
         files = u.Infra.iter_markdown_files(tmp_path)
-        tm.that(len(files) > 0, eq=True)
+        tm.ok(len(files) > 0)
 
     @staticmethod
     def test_excludes_node_modules(tmp_path: Path) -> None:
@@ -106,7 +106,7 @@ class TestsFlextInfraDocsSharedIter:
         nm_dir.mkdir(parents=True, exist_ok=True)
         (nm_dir / "test.md").write_text("# Test")
         files = u.Infra.iter_markdown_files(tmp_path)
-        tm.that(not any("node_modules" in str(f) for f in files), eq=True)
+        tm.ok(not any("node_modules" in str(f) for f in files))
 
     @staticmethod
     def test_excludes_archived_markdown(tmp_path: Path) -> None:
@@ -122,8 +122,8 @@ class TestsFlextInfraDocsSharedIter:
 
         files = u.Infra.iter_markdown_files(tmp_path)
 
-        tm.that(backup_named in files, eq=True)
-        tm.that(archived in files, eq=False)
+        tm.ok(backup_named in files)
+        tm.fail(archived in files)
 
     @staticmethod
     def test_excludes_generated_crg_reports(tmp_path: Path) -> None:
@@ -137,8 +137,8 @@ class TestsFlextInfraDocsSharedIter:
 
         files = u.Infra.iter_markdown_files(tmp_path)
 
-        tm.that(maintained in files, eq=True)
-        tm.that(generated in files, eq=False)
+        tm.ok(maintained in files)
+        tm.fail(generated in files)
 
     @staticmethod
     def test_excludes_immutable_plan_collection_revisions(tmp_path: Path) -> None:
@@ -152,5 +152,5 @@ class TestsFlextInfraDocsSharedIter:
 
         files = u.Infra.iter_markdown_files(tmp_path)
 
-        tm.that(current in files, eq=True)
-        tm.that(incoming in files, eq=False)
+        tm.ok(current in files)
+        tm.fail(incoming in files)

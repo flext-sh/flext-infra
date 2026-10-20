@@ -116,6 +116,7 @@ class FlextInfraExtraPathsSyncMixin:
         *,
         project_dir: Path,
         is_root: bool,
+        mypy_search_paths: t.StrSequence | None = None,
     ) -> t.StrSequence:
         """Apply computed extra paths to one normalized TOML payload.
 
@@ -148,7 +149,11 @@ class FlextInfraExtraPathsSyncMixin:
         if mypy_table is not None and u.Cli.toml_mapping_sync_string_list(
             u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.MYPY)),
             "mypy_path",
-            self.mypy_search_paths(project_dir=project_dir, is_root=is_root),
+            (
+                self.mypy_search_paths(project_dir=project_dir, is_root=is_root)
+                if mypy_search_paths is None
+                else mypy_search_paths
+            ),
         ):
             changes.append("synchronized mypy mypy_path")
         return changes

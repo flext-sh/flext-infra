@@ -158,7 +158,7 @@ class TestsFlextInfraLazyInitHelpers:
         generated = self._generated_init(package_root)
         has_all, exports = u.Tests.extract_lazy_init_exports(generated)
 
-        tm.that(has_all, eq=True)
+        tm.ok(has_all)
         tm.that(exports, eq=("FlextDemoConstants", "FlextDemoLazy", "c"))
         tm.that(generated, lacks="FlextDemoConstantsEnforcement")
         tm.that(generated, lacks="FlextDemoLazyAttribute")
@@ -262,7 +262,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         conversion_path.unlink()
         check_service = u.Tests.create_lazy_init_service(repository_root)
-        tm.that(check_service.plan_files().success, eq=True)
+        tm.ok(check_service.plan_files().success)
         tm.that(self._generated_init(package_root), eq=generated)
 
     def test_private_subpackage_facade_never_becomes_root_public(
@@ -419,7 +419,7 @@ class TestsFlextInfraLazyInitHelpers:
         # scripts): the tests root is a generated PEP 562 facade too.
         tm.that(init_content, has="install_lazy_exports(")
         tm.that(init_content, has='"TestsFlextDemoConstants"')
-        tm.that(tests_root.joinpath("__unit__.py").exists(), eq=False)
+        tm.fail(tests_root.joinpath("__unit__.py").exists())
         compile(init_content, "tests/__init__.py", "exec")
         check_service = u.Tests.create_lazy_init_service(repository_root)
         tm.that(
@@ -501,7 +501,7 @@ class TestsFlextInfraLazyInitHelpers:
         for alias_name in ruff_ordered_aliases:
             tm.that(init_content, has=f'    "{alias_name}",')
         has_all, public_exports = u.Tests.extract_lazy_init_exports(init_content)
-        tm.that(has_all, eq=True)
+        tm.ok(has_all)
         # __all__ follows RUF022; dependency order remains
         # exclusively in the static facade imports.
         alias_positions = tuple(
@@ -695,7 +695,7 @@ class TestsFlextInfraLazyInitHelpers:
         generated = self._generated_init(package_root)
         has_all, public_exports = u.Tests.extract_lazy_init_exports(generated)
 
-        tm.that(has_all, eq=True)
+        tm.ok(has_all)
         for alias_name in c.Infra.ALIAS_NAMES:
             tm.that(public_exports, has=alias_name)
         tm.that(
@@ -782,7 +782,7 @@ class TestsFlextInfraLazyInitHelpers:
         for undeclared_name in set(c.Infra.TEST_RUNTIME_ALIAS_TARGETS) - {"c", "m"}:
             tm.that(init_content, lacks=f'"{undeclared_name}"')
         tm.that(init_content, lacks="FlextDemoResult")
-        tm.that(tests_unit_root.joinpath("__unit__.py").exists(), eq=False)
+        tm.fail(tests_unit_root.joinpath("__unit__.py").exists())
 
     def test_root_rejects_symbols_from_deep_descendant_packages(
         self,

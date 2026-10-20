@@ -175,7 +175,7 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             str(failure.value),
             eq=f"Unsupported class binding mutation in guard_provider: {mutation}",
         )
-        tm.that("guard_provider" in sys.modules, eq=False)
+        tm.fail("guard_provider" in sys.modules)
 
     @pytest.mark.parametrize("replacement_model", [False, True])
     def test_provider_class_member_write_updates_exact_aliased_owner(
@@ -283,8 +283,8 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
                 )),
             ),
         )
-        tm.that(root.exists(), eq=False)
-        tm.that("unpublished_contract" in sys.modules, eq=False)
+        tm.fail(root.exists())
+        tm.fail("unpublished_contract" in sys.modules)
 
     def test_import_aliases_relative_generic_bases_and_planned_disk_convergence(
         self,
@@ -432,7 +432,7 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
                 )),
             ),
         )
-        tm.that("generated_contract" in sys.modules, eq=False)
+        tm.fail("generated_contract" in sys.modules)
 
     @pytest.mark.parametrize(
         ("target", "values"),
@@ -547,7 +547,7 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             u.Tests.runtime_evaluated_roots(),
         )
         tm.that(aliased, eq=direct)
-        tm.that(set(u.Tests.runtime_evaluated_roots()).issubset(aliased), eq=True)
+        tm.ok(set(u.Tests.runtime_evaluated_roots()).issubset(aliased))
 
     def test_value_shadowing_is_a_visible_invalid_base(self, tmp_path: Path) -> None:
         source = u.Tests.runtime_root_import() + (
@@ -614,8 +614,8 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
                 )),
             ),
         )
-        tm.that(package.exists(), eq=False)
-        tm.that(f"{module}.{parts}.document" in sys.modules, eq=False)
+        tm.fail(package.exists())
+        tm.fail(f"{module}.{parts}.document" in sys.modules)
 
     def test_missing_planned_private_module_is_not_a_similarly_named_provider(
         self,

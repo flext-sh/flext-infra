@@ -191,7 +191,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
                 ),
             )
         )
-        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(consumer.outcome))
 
     @staticmethod
     @pytest.mark.parametrize("accepted", [False, True])
@@ -274,7 +274,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
         )
         if accepted:
             tm.ok(result)
-            tm.that(tm.ok(consume(root)), eq=True)
+            tm.ok(tm.ok(consume(root)))
             with infra.rope_workspace(root) as rope:
                 tm.that(
                     tm.ok(
@@ -310,7 +310,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
                     ),
                 )
             )
-            tm.that(u.Cli.process_succeeded(original.outcome), eq=True)
+            tm.ok(u.Cli.process_succeeded(original.outcome))
 
     @staticmethod
     def test_real_scan_selects_the_immutable_declaration_phase(tmp_path: Path) -> None:
@@ -450,7 +450,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
         )
         tm.that(len(unresolved), eq=1)
         tm.that(unresolved[0].expected_owner, eq=f"{stem}UtilitiesPayload")
-        tm.that(bool(unresolved[0].reason), eq=True)
+        tm.ok(bool(unresolved[0].reason))
         tm.that(
             all(
                 finding.file_path in sources and finding.reason for finding in findings
@@ -600,7 +600,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
                 ),
             ),
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
 
     @staticmethod
     @pytest.mark.parametrize("competing", [False, True])

@@ -12,12 +12,10 @@ import pytest
 
 from flext_infra import config, main
 from flext_infra.deps import FlextInfraPyprojectModernizer
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from tests import t
 
 
 class TestsFlextInfraDepsModernizerWorkspace:
@@ -124,7 +122,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         )
 
         tm.that(tm.ok(formatted), eq='name = "demo"\n')
-        tm.that((tmp_path / c.Infra.MISE_LOCK_FILENAME).exists(), eq=False)
+        tm.fail((tmp_path / c.Infra.MISE_LOCK_FILENAME).exists())
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -202,7 +200,9 @@ class TestsFlextInfraDepsModernizerWorkspace:
         package_init.parent.mkdir(parents=True)
         package_init.write_text("", encoding="utf-8")
         expected_order = (
-            config.Infra.tooling.tools.tomlsort.sort_first
+            u.Infra.native_tool_setting(
+                config.Infra.tooling, "tomlsort", "sort_first", t.StrSequence
+            )
             if sort_first is None
             else sort_first
         )

@@ -281,8 +281,8 @@ class TestsFlextInfraCodemodDuplicateApply:
                     root, tm.ok(FlextInfraModGateEngine.scan(root, fix=False)), rope
                 ),
             )
-        tm.that(first, eq=True)
-        tm.that(second, eq=False)
+        tm.ok(first)
+        tm.fail(second)
         tm.that(core.read_text(encoding=c.DEFAULT_ENCODING), has=_CORE_CONSTANT)
         tm.that(side.read_text(encoding=c.DEFAULT_ENCODING), lacks=_SIDE_CONSTANT)
 

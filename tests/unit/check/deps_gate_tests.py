@@ -150,7 +150,7 @@ class TestsFlextInfraDepsGate:
             m.Infra.GateContext(repository_root=root, reports_dir=tmp_path / "reports"),
         )
 
-        tm.that(result.result.passed, eq=False)
+        tm.fail(result.result.passed)
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
         tm.that(
             result.issues, truth=True, msg="undeclared import must produce an issue"
@@ -177,10 +177,10 @@ class TestsFlextInfraDepsGate:
             m.Infra.GateContext(repository_root=root, reports_dir=tmp_path / "reports"),
         )
 
-        tm.that(result.result.passed, eq=True)
+        tm.ok(result.result.passed)
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.CLEAN)
         tm.that(result.issues, eq=())
-        tm.that((root / ".reports").exists(), eq=False)
+        tm.fail((root / ".reports").exists())
 
     @staticmethod
     def test_fix_requires_target_supplier_provenance(tmp_path: Path) -> None:
@@ -200,7 +200,7 @@ class TestsFlextInfraDepsGate:
         )
 
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.ERROR)
-        tm.that(result.result.passed, eq=False)
+        tm.fail(result.result.passed)
         tm.that(pyproject.read_bytes(), eq=before)
         tm.that(
             any(issue.code.startswith(f"{c.Infra.DEPS}-") for issue in result.issues),
@@ -232,14 +232,14 @@ class TestsFlextInfraDepsGate:
             json_output_path=report_path,
         )
 
-        tm.that(u.Cli.process_succeeded(scan.native.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(scan.native.outcome))
         tm.that(scan.report.root, eq=())
         tm.that(
             tuple(source.root.path for source in scan.source),
             eq=(root / c.Infra.DEFAULT_SRC_DIR,),
         )
         tm.that(scan.report_sha256, eq=u.Cli.sha256_bytes(before))
-        tm.that(reused.failure, eq=True)
+        tm.ok(reused.failure)
         tm.that(reused.error, has="already exists")
         tm.that(report_path.read_bytes(), eq=before)
 
@@ -339,7 +339,7 @@ class TestsFlextInfraDepsGate:
             json_output_path=tmp_path / "empty-native.json",
         )
 
-        tm.that(scan.failure, eq=True)
+        tm.ok(scan.failure)
         tm.that(scan.error, has="native scan coverage")
         tm.that(scan.error, has="Scanning 0 file")
 
@@ -386,8 +386,8 @@ class TestsFlextInfraDepsGate:
             ),
         )
         tm.that(checked.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
-        tm.that(checked.result.passed, eq=False)
-        tm.that(any(issue.code.endswith("DEP004") for issue in checked.issues), eq=True)
+        tm.fail(checked.result.passed)
+        tm.ok(any(issue.code.endswith("DEP004") for issue in checked.issues))
         tm.that(pyproject.read_bytes(), eq=before)
         tm.that(inputs.lock.path.read_bytes(), eq=before_lock)
         tm.that(inputs.providers, eq=(provider,))
@@ -485,7 +485,7 @@ class TestsFlextInfraDepsGate:
                 encoding="utf-8",
             )
             rejected = u.Infra.publish_runtime_dependency_plan(plan)
-            tm.that(rejected.failure, eq=True)
+            tm.ok(rejected.failure)
             tm.that(rejected.error, has="source changed")
         else:
             supplier = inputs.providers[0]
@@ -498,7 +498,7 @@ class TestsFlextInfraDepsGate:
                 scan,
                 inputs.model_copy(update={"providers": (invalid,)}),
             )
-            tm.that(rejected.failure, eq=True)
+            tm.ok(rejected.failure)
             tm.that(rejected.error, has="selected lock")
         tm.that(scan.settings.path.read_bytes(), eq=before)
 
@@ -544,7 +544,7 @@ class TestsFlextInfraDepsGate:
         )
 
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
-        tm.that(result.result.passed, eq=False)
+        tm.fail(result.result.passed)
         tm.that(any("requests" in issue.message for issue in result.issues), truth=True)
 
     @staticmethod
@@ -558,7 +558,7 @@ class TestsFlextInfraDepsGate:
             m.Infra.GateContext(repository_root=root, reports_dir=tmp_path),
         )
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.ERROR)
-        tm.that(result.result.passed, eq=False)
+        tm.fail(result.result.passed)
         tm.that(result.issues, truth=True)
 
     @staticmethod
@@ -594,10 +594,10 @@ class TestsFlextInfraDepsGate:
                 },
             ),
         ).unwrap()
-        tm.that(u.Cli.process_succeeded(executed.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(executed.outcome))
         result = m.Infra.GateExecution.model_validate_json(executed.stdout)
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.ERROR)
-        tm.that(result.result.passed, eq=False)
+        tm.fail(result.result.passed)
         tm.that(result.issues, truth=True)
         tm.that(c.Infra.DEPTRY in result.issues[0].message, truth=True)
 
@@ -617,7 +617,7 @@ class TestsFlextInfraDepsGate:
             m.Infra.GateContext(repository_root=root, reports_dir=tmp_path),
         )
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.ERROR)
-        tm.that(result.result.passed, eq=False)
+        tm.fail(result.result.passed)
         tm.that(result.issues, truth=True)
         tm.that(stale.read_text(encoding="utf-8"), eq="[]")
 

@@ -25,54 +25,19 @@ class FlextInfraConfigModelsTemplates:
     class CodegenVscodeSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed editor declarations shared by target and artifact planning."""
 
-        scalar_settings: Annotated[
-            Mapping[str, str | bool | int],
-            m.Field(description="VS Code scalar keys enforced on every project"),
-        ]
-        list_settings: Annotated[
-            Mapping[str, t.VariadicTuple[str]],
-            m.Field(description="VS Code list keys enforced on every project"),
-        ]
+        model_config = m.ConfigDict(extra="forbid")
+
+        settings: Annotated[
+            t.Infra.SettingsPairs,
+            m.Field(description="Ordered VS Code key/value pairs; the last key wins"),
+        ] = ()
         map_union_settings: Annotated[
-            Mapping[str, Mapping[str, str | bool | int]],
-            m.Field(description="VS Code map keys union-merged over project settings"),
-        ]
-        additional_settings: Annotated[
-            t.JsonMapping,
-            m.Field(description="Portable project-owned extension declarations"),
+            Mapping[str, t.JsonMapping],
+            m.Field(description="VS Code objects union-merged over project settings"),
         ] = m.Field(
-            default_factory=flext_core.u.empty(TypeForm(t.JsonMapping)),
+            default_factory=flext_core.u.empty(TypeForm(Mapping[str, t.JsonMapping])),
             validate_default=True,
         )
-
-        @m.field_validator("additional_settings")
-        @classmethod
-        def _dedupe_additional_settings_lists(
-            cls,
-            value: t.JsonMapping,
-        ) -> t.JsonMapping:
-            """Deduplicate list values in order-declared extension settings.
-
-            Library defaults, runtime projections, and local overlays can
-            declare the same portable list key; layer composition concatenates
-            those declarations, so identical entries collapse here and a local
-            redeclaration of a default stays idempotent.
-
-            Returns:
-                The normalized additional settings mapping.
-
-            """
-            normalized: t.JsonDict = {}
-            for key, entry in value.items():
-                if isinstance(entry, list):
-                    seen: t.JsonValueList = []
-                    for item in entry:
-                        if item not in seen:
-                            seen.append(item)
-                    normalized[key] = seen
-                else:
-                    normalized[key] = entry
-            return normalized
 
         stripped_keys: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
@@ -85,29 +50,45 @@ class FlextInfraConfigModelsTemplates:
             ),
         ] = ()
 
+        stripped_map_keys: Annotated[
+            Mapping[str, t.VariadicTuple[str]],
+            m.Field(description="Retired keys inside language-specific setting maps"),
+        ] = m.Field(
+            default_factory=flext_core.u.empty(
+                TypeForm(Mapping[str, t.VariadicTuple[str]])
+            ),
+            validate_default=True,
+        )
+
         @m.model_validator(mode="after")
-        def _validate_setting_ownership(self) -> Self:
-            """Reject extension declarations that compete with managed ownership.
+        def _validate_setting_keys(self) -> Self:
+            """Validate setting-key grammar without an extension-option registry.
 
             Returns:
-                The editor specification with one owner per setting.
+                The declaration with valid ordinary or language-override keys.
 
             Raises:
-                ValueError: If an additional setting redeclares a managed key.
+                ValueError: If a declared key contains invalid setting syntax.
 
             """
-            managed = (
-                set(self.scalar_settings)
-                | set(self.list_settings)
-                | set(self.map_union_settings)
-                | set(self.stripped_keys)
+            keys = (
+                *(key for key, _value in self.settings),
+                *self.map_union_settings,
+                *self.stripped_keys,
+                *self.stripped_map_keys,
             )
-            conflicting = managed.intersection(self.additional_settings)
-            if conflicting:
-                msg = "additional editor settings duplicate managed keys: " + ", ".join(
-                    sorted(conflicting),
+            for key in keys:
+                ordinary = key.split(".")
+                languages = key.removeprefix("[").removesuffix("]").split("][")
+                segments = (
+                    languages if key.startswith("[") and key.endswith("]") else ordinary
                 )
-                raise ValueError(msg)
+                if not all(
+                    segment and all(char.isalnum() or char in "_-+" for char in segment)
+                    for segment in segments
+                ):
+                    msg = f"invalid VS Code setting key: {key}"
+                    raise ValueError(msg)
             return self
 
     class CodegenVscodeDeclarationDelta(
@@ -219,12 +200,6 @@ class FlextInfraConfigModelsTemplates:
             Literal["versioned", "runtime-local"],
             m.Field(description="Versioned declaration or checkout-local projection"),
         ] = "versioned"
-        runtime_binding: Annotated[
-            bool,
-            m.Field(
-                description="Project this local artifact during runtime provisioning",
-            ),
-        ] = False
         policy: Annotated[
             Literal["full", "merge"],
             m.Field(
@@ -283,7 +258,7 @@ class FlextInfraConfigModelsTemplates:
                 The validated artifact declaration.
 
             Raises:
-                ValueError: If a path escapes its repository or a binding is versioned.
+                ValueError: If a path escapes its repository.
 
             """
             if (
@@ -292,9 +267,6 @@ class FlextInfraConfigModelsTemplates:
                 or self.path == Path()
             ):
                 msg = f"managed artifact path must be repository-relative: {self.path}"
-                raise ValueError(msg)
-            if self.runtime_binding and self.tracking != "runtime-local":
-                msg = f"runtime binding must be runtime-local: {self.path}"
                 raise ValueError(msg)
             return self
 

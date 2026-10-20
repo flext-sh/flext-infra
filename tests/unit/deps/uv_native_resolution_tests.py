@@ -641,7 +641,7 @@ class TestsFlextInfraUvNativeResolution:
                         eq=True,
                     )
                 else:
-                    tm.that(entry in observed, eq=True)
+                    tm.ok(entry in observed)
 
     @staticmethod
     def _internal_requirement_document(
@@ -777,7 +777,7 @@ class TestsFlextInfraUvNativeResolution:
             )
             for requirement in runtime:
                 provider = Requirement(requirement).name
-                tm.that(order.index(provider) < order.index(name), eq=True)
+                tm.ok(order.index(provider) < order.index(name))
         for mode in ("local", "standalone"):
             directory = tmp_path / mode
             directory.mkdir()
@@ -810,7 +810,7 @@ class TestsFlextInfraUvNativeResolution:
                 "package",
             )
             locked_names = tuple(package["name"] for package in locked)
-            tm.that(all(name in locked_names for name in packages), eq=True)
+            tm.ok(all(name in locked_names for name in packages))
         tm.that(
             {name: u.Cli.toml_dumps(document) for name, document in complete.items()},
             eq=original,
@@ -1016,7 +1016,7 @@ class TestsFlextInfraUvNativeResolution:
                 process.stdout + process.stderr,
                 has=expected_error,
             )
-            tm.that((root / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
+            tm.fail((root / c.Infra.UV_LOCK_FILENAME).exists())
             return
         locked = u.Tests.toml_tables_at(
             (resolution_root / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8"),

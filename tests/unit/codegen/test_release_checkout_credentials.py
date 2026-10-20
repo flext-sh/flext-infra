@@ -78,6 +78,6 @@ class TestsFlextInfraReleaseCheckoutCredentials:
         document = self.render_release()
         jobs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(document["jobs"])
 
-        tm.that(self.checkout_credentials(jobs["identity"]), eq=False)
-        tm.that(self.checkout_credentials(jobs["version"]), eq=True)
-        tm.that(self.checkout_credentials(jobs["publish"]), eq=True)
+        tm.fail(self.checkout_credentials(jobs["identity"]))
+        tm.ok(self.checkout_credentials(jobs["version"]))
+        tm.ok(self.checkout_credentials(jobs["publish"]))

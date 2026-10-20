@@ -1,7 +1,7 @@
 {# Config and settings expose the same direct namespace data protocol shape. -#}
 {%- macro namespace_protocol(kind) -%}
 {%- set namespace_line = "        " ~ ns ~ ": p." ~ ns ~ "." ~ kind ~ "Namespace" -%}
-{%- set namespace_declaration = namespace_line if namespace_line | length <= tooling.tools.ruff.line_length else "        " ~ ns ~ ": (\n            p." ~ ns ~ "." ~ kind ~ "Namespace\n        )" -%}
+{%- set namespace_declaration = namespace_line if namespace_line | length <= tooling_runtime.tool_options["ruff"]["line-length"] else "        " ~ ns ~ ": (\n            p." ~ ns ~ "." ~ kind ~ "Namespace\n        )" -%}
 """Structural {{ kind | lower }} declarations for {{ package_name }}.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.

@@ -55,7 +55,7 @@ class TestsFlextInfraDepsLockIntegrity:
         )
         result = self._verifier(tmp_path).execute()
         tm.ok(result)
-        tm.that(result.value, eq=True)
+        tm.ok(result.value)
 
     def test_duplicated_sections_fail_with_file_and_keys(self, tmp_path: Path) -> None:
         """A merge-concatenated lock fails naming the file and duplicated keys."""

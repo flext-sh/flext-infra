@@ -102,7 +102,7 @@ class TestsFlextInfraInfraMaintenancePythonVersion:
         """Test verbose mode."""
         svc = self._svc(self._ws(tmp_path / "ws"))
         tm.ok(svc.execute(check_only=True, verbose=True))
-        tm.that(svc.verbose, eq=True)
+        tm.ok(svc.verbose)
 
     def test_failure_on_workspace_mismatch(self, tmp_path: Path) -> None:
         """Test failure on workspace mismatch."""

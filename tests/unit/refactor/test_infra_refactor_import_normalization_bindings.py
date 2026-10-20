@@ -409,7 +409,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
                 cwd=project,
             ),
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
         tm.that(result.stdout.strip(), eq=expected)
         tm.that(
             FlextInfraImportNormalization.normalize_source(
@@ -455,7 +455,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
             ),
         )
-        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(outcome.outcome))
         tm.that(outcome.stdout.strip(), eq="validated-value")
         tm.that(
             FlextInfraImportNormalization.normalize_source(
@@ -527,7 +527,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
             ),
         )
-        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(outcome.outcome))
         tm.that(outcome.stdout.splitlines(), eq=["local-value", "provider-value"])
         tm.that(
             FlextInfraImportNormalization.normalize_source(

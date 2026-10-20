@@ -50,9 +50,9 @@ class TestsFlextInfraAuditorCodeblocks:
 
         tm.that(u.Infra.docs_python_codeblock_issues(scope), eq=[])
         snippet.write_text(f"```python\n{first}\n{third}```\n", encoding="utf-8")
-        tm.that(bool(u.Infra.docs_python_codeblock_issues(scope)), eq=True)
+        tm.ok(bool(u.Infra.docs_python_codeblock_issues(scope)))
 
-        tm.that(bool(u.Infra.docs_fix_python_codeblocks(scope, apply=True)), eq=True)
+        tm.ok(bool(u.Infra.docs_fix_python_codeblocks(scope, apply=True)))
         tm.that(u.Infra.docs_python_codeblock_issues(scope), eq=[])
         tm.that(u.Infra.docs_fix_python_codeblocks(scope, apply=True), eq=[])
 

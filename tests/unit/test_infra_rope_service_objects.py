@@ -277,7 +277,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
 
             snapshot = rope.refresh()
 
-            tm.that(rope.rope_project is project, eq=True)
+            tm.ok(rope.rope_project is project)
             tm.that(snapshot.workspace_index.package_dirs, has=destination_dir)
             module = tm.not_none(rope.module(destination_path))
             tm.that(module.module_name, eq="flext_demo.services.service")
@@ -412,21 +412,21 @@ class TestsFlextInfraInfraRopeServiceObjects:
             )
 
             preserved_index = rope.name_index()
-            tm.that(snapshot.workspace_index is original_workspace_index, eq=True)
-            tm.that(rope.projects() is original_projects, eq=True)
-            tm.that(rope.layout(repository_root) is original_layout, eq=True)
+            tm.ok(snapshot.workspace_index is original_workspace_index)
+            tm.ok(rope.projects() is original_projects)
+            tm.ok(rope.layout(repository_root) is original_layout)
             tm.that(
                 rope.import_dependents(import_target) is original_dependents,
                 eq=True,
             )
-            tm.that(preserved_index is original_index, eq=True)
+            tm.ok(preserved_index is original_index)
             tm.that(preserved_index, lacks="second")
 
             module_path.write_text(changed_source, encoding="utf-8")
             rope.refresh()
 
             rebuilt_index = rope.name_index()
-            tm.that(rebuilt_index is not original_index, eq=True)
+            tm.ok(rebuilt_index is not original_index)
             tm.that(rebuilt_index, has="second")
 
     @staticmethod
@@ -568,8 +568,8 @@ class TestsFlextInfraInfraRopeServiceObjects:
 
         objects = self._module_objects_by_name(repository_root, module_path)
 
-        tm.that(objects["FlextDemoModels"].is_facade_member, eq=False)
-        tm.that(objects["m"].is_facade_member, eq=False)
+        tm.fail(objects["FlextDemoModels"].is_facade_member)
+        tm.fail(objects["m"].is_facade_member)
 
     def test_workspace_dsl_skips_reference_scan_for_private_names(
         self,

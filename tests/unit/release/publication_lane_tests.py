@@ -151,10 +151,10 @@ class TestsFlextInfraReleasePublicationLane:
 
             tm.fail(result)
             tm.that(result.error or "", has="new lane refused")
-            tm.that(u.Tests.git_ref_exists(repo, f"refs/heads/{self.LANE}"), eq=False)
+            tm.fail(u.Tests.git_ref_exists(repo, f"refs/heads/{self.LANE}"))
             tm.that(self._published(tmp_path), eq="")
             tm.that(u.Tests.git_capture(repo, "rev-parse", "HEAD").strip(), eq=head)
-            tm.that(gh_log.exists(), eq=False)
+            tm.fail(gh_log.exists())
 
     def test_dirty_checkout_is_refused(self, tmp_path: Path) -> None:
         """A lane never absorbs changes it did not produce."""
@@ -162,18 +162,18 @@ class TestsFlextInfraReleasePublicationLane:
             (repo / "stray.txt").write_text("wip\n", encoding="utf-8")
 
             tm.fail(u.Infra.git_publish_lane(request, self._produce(repo)))
-            tm.that(u.Tests.git_ref_exists(repo, f"refs/heads/{self.LANE}"), eq=False)
-            tm.that(gh_log.exists(), eq=False)
+            tm.fail(u.Tests.git_ref_exists(repo, f"refs/heads/{self.LANE}"))
+            tm.fail(gh_log.exists())
 
     def test_checkout_off_its_base_is_refused(self, tmp_path: Path) -> None:
         """A lane starts only from the branch its pull request targets."""
         with self._lane(tmp_path) as (repo, request, _):
-            tm.that(u.Tests.git_run(repo, "switch", "--create", "elsewhere"), eq=True)
+            tm.ok(u.Tests.git_run(repo, "switch", "--create", "elsewhere"))
 
             result = u.Infra.git_publish_lane(request, self._produce(repo))
 
             tm.fail(result)
-            tm.that(u.Tests.git_ref_exists(repo, f"refs/heads/{self.LANE}"), eq=False)
+            tm.fail(u.Tests.git_ref_exists(repo, f"refs/heads/{self.LANE}"))
 
     def test_failed_production_publishes_nothing(self, tmp_path: Path) -> None:
         """The first failure of the producing step ends the lane unpushed."""
@@ -185,7 +185,7 @@ class TestsFlextInfraReleasePublicationLane:
 
             tm.fail(result)
             tm.that(self._published(tmp_path), eq="")
-            tm.that(gh_log.exists(), eq=False)
+            tm.fail(gh_log.exists())
 
     def test_refused_lane_never_runs_the_producer(self, tmp_path: Path) -> None:
         """Admission refuses before production: no byte is written or staged."""
@@ -203,7 +203,7 @@ class TestsFlextInfraReleasePublicationLane:
             tm.fail(result)
             tm.that(result.error or "", has="new lane refused")
             tm.that(calls, eq=[])
-            tm.that(produced.exists(), eq=False)
+            tm.fail(produced.exists())
             tm.that(
                 u.Tests.git_capture(repo, "status", "--porcelain").strip(),
                 eq="",
@@ -212,4 +212,4 @@ class TestsFlextInfraReleasePublicationLane:
                 u.Tests.git_capture(repo, "rev-parse", "HEAD").strip(),
                 eq=original_head,
             )
-            tm.that(gh_log.exists(), eq=False)
+            tm.fail(gh_log.exists())

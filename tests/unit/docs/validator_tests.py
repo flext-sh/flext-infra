@@ -33,7 +33,7 @@ class TestsFlextInfraDocsValidator:
 
         tm.that(report.result, eq="FAIL")
         tm.that(report.missing_adr_skills, eq=["rules-docs"])
-        tm.that(report.todo_written, eq=False)
+        tm.fail(report.todo_written)
 
     @staticmethod
     def test_validate_workspace_fails_before_generated_files_exist(
@@ -50,7 +50,7 @@ class TestsFlextInfraDocsValidator:
         )
 
         tm.ok(result)
-        tm.that(any(report.result == "FAIL" for report in result.value), eq=True)
+        tm.ok(any(report.result == "FAIL" for report in result.value))
 
     @staticmethod
     def test_validate_workspace_passes_after_generation(tmp_path: Path) -> None:
@@ -72,7 +72,7 @@ class TestsFlextInfraDocsValidator:
         )
 
         tm.ok(result)
-        tm.that(all(report.result == "OK" for report in result.value), eq=True)
+        tm.ok(all(report.result == "OK" for report in result.value))
 
     @staticmethod
     def test_standalone_manifest_keeps_project_docs_and_validates(
@@ -96,8 +96,8 @@ class TestsFlextInfraDocsValidator:
         )
 
         tm.ok(result)
-        tm.that(all(report.result == "OK" for report in result.value), eq=True)
-        tm.that((repository / "docs/projects/generated/catalog.md").exists(), eq=False)
+        tm.ok(all(report.result == "OK" for report in result.value))
+        tm.fail((repository / "docs/projects/generated/catalog.md").exists())
 
     @staticmethod
     def test_validate_workspace_does_not_write_project_todo(
@@ -120,4 +120,4 @@ class TestsFlextInfraDocsValidator:
         )
 
         tm.ok(result)
-        tm.that((workspace / "flext-a/TODOS.md").exists(), eq=False)
+        tm.fail((workspace / "flext-a/TODOS.md").exists())

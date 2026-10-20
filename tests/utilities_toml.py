@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
+from typing import cast
 
 from flext_infra import config, u
 from tests import c, m, p, r, t, tm
@@ -56,13 +57,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
             "tools",
             tool,
         )[0]
-        version = entry["version"]
-        tm.that(
-            isinstance(version, str),
-            truth=True,
-            msg=f"mise.lock pins no {tool} version: {entry!r}",
-        )
-        return version
+        return u.type_adapter(str).validate_python(entry["version"], strict=True)
 
     @staticmethod
     def seed_locked_taplo(root: Path) -> None:
@@ -112,7 +107,9 @@ class TestsFlextInfraUtilitiesTomlMixin:
             TestsFlextInfraUtilitiesTomlMixin.toml_doc(content),
         )
         for segment in path:
-            current = TestsFlextInfraUtilitiesTomlMixin.toml_mapping(current[segment])
+            current = TestsFlextInfraUtilitiesTomlMixin.toml_mapping(
+                cast("t.JsonMapping", current[segment]),
+            )
         return current
 
     @staticmethod

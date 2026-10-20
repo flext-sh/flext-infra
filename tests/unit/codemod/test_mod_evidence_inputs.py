@@ -30,6 +30,7 @@ class TestsFlextInfraModEvidenceInputs:
         tm.that(capture.end_byte, eq=len(capture.text.encode("utf-8")))
 
     @staticmethod
+    @pytest.mark.parametrize("newline", ["\n", "\r\n", "\r"])
     @pytest.mark.parametrize(
         ("declarations", "expected_lines"),
         [
@@ -66,10 +67,32 @@ class TestsFlextInfraModEvidenceInputs:
                 ),
                 ((4, 7), (7, 8)),
             ),
+            (
+                (
+                    "try:\n"
+                    "    pass\n"
+                    "except* Exception:\n"
+                    "    import first_owner\n"
+                    "match 0:\n"
+                    "    case 0:\n"
+                    "        import second_owner\n"
+                ),
+                ((6, 7), (9, 10)),
+            ),
+            (
+                (
+                    "class Holder:\n"
+                    "    import first_owner\n"
+                    "    def method(self):\n"
+                    "        import second_owner\n"
+                ),
+                ((4, 5), (6, 7)),
+            ),
         ],
     )
     def test_binding_snapshot_captures_all_native_import_scopes(
         mod_workspace: Path,
+        newline: str,
         declarations: str,
         expected_lines: tuple[tuple[int, int], ...],
     ) -> None:
@@ -87,26 +110,46 @@ class TestsFlextInfraModEvidenceInputs:
         decoy = mod_workspace / "decoy_owner.py"
         tm.ok(u.Cli.atomic_write_text_file(decoy, "class Value:\n    pass\n"))
         consumer = mod_workspace / "consumer.py"
+        source = (
+            "# import decoy_owner\n"
+            "message = 'from decoy_owner import Value'\n" + declarations
+        ).replace("\n", newline)
         tm.ok(
             u.Cli.atomic_write_text_file(
                 consumer,
-                "# import decoy_owner\n"
-                "message = 'from decoy_owner import Value'\n" + declarations,
+                source,
             ),
         )
         state = tm.ok(u.Cli.atomic_read_binary_file_state(consumer, required=True))
         snapshot = u.Infra.codemod_binding_snapshot(mod_workspace, (state,))
         captured = {item.path for item in snapshot.states}
         tm.that(set(owners).issubset(captured))
-        tm.that(decoy in captured, eq=False)
+        tm.fail(decoy in captured)
         with infra.rope_workspace(mod_workspace) as workspace:
             statements = u.Infra.source_import_statements(
                 workspace.rope_project,
-                consumer.read_text(encoding=c.DEFAULT_ENCODING),
+                source,
             )
         tm.that(
             tuple((item.start_line, item.end_line) for item in statements),
             eq=expected_lines,
+        )
+
+    @staticmethod
+    def test_import_inventory_keeps_repeated_native_declarations(
+        mod_workspace: Path,
+    ) -> None:
+        """Reading a native import table does not organize or deduplicate it."""
+        source = "import first_owner\nimport first_owner\nimport second_owner\n"
+        with infra.rope_workspace(mod_workspace) as workspace:
+            statements = u.Infra.source_import_statements(
+                workspace.rope_project, source
+            )
+        tm.that(
+            tuple(
+                statement.import_info.get_import_statement() for statement in statements
+            ),
+            eq=("import first_owner", "import first_owner", "import second_owner"),
         )
 
     @staticmethod
@@ -268,7 +311,7 @@ class TestsFlextInfraModEvidenceInputs:
             destination = tmp_path / f"conflicting-native-{index}"
             with pytest.raises(ValueError, match="native codemod rule IDs"):
                 u.Infra.codemod_stage_scan_ruleset(conflicting, destination)
-            tm.that(destination.exists(), eq=False)
+            tm.fail(destination.exists())
         before = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
         resource = rules[0].resource
         declaration = tm.ok(u.Cli.yaml_safe_load(resource))

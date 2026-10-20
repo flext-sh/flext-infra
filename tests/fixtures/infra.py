@@ -420,8 +420,8 @@ def _provision_consumer_template(
             u.Tests.git_bootstrap(root, ("add", "-A"))
             u.Tests.git_bootstrap(root, ("commit", "-q", "-m", "upg: resolved locks"))
     environment = u.Infra.runtime_environment_dir(root)
-    tm.that(environment.is_symlink(), eq=False)
-    tm.that((environment / "pyvenv.cfg").is_file(), eq=True)
+    tm.fail(environment.is_symlink())
+    tm.ok((environment / "pyvenv.cfg").is_file())
     return root
 
 
@@ -535,7 +535,7 @@ for target in reversed(targets):
     )
     custom = member_root / c.Infra.CUSTOM_MAKE_FILENAME
     content = custom.read_text(encoding=c.DEFAULT_ENCODING) if custom.exists() else ""
-    tm.that("pre-fmt:" in content, eq=False)
+    tm.fail("pre-fmt:" in content)
     makefile = quote(str(member_root / c.Infra.MAKEFILE_FILENAME))
     custom.write_text(
         content
@@ -870,7 +870,7 @@ def provisioned_infra_checkout(
         msg=setup.stdout + setup.stderr,
     )
     root = parent / config.Infra.name
-    tm.that((u.Infra.runtime_environment_dir(root) / "pyvenv.cfg").is_file(), eq=True)
+    tm.ok((u.Infra.runtime_environment_dir(root) / "pyvenv.cfg").is_file())
     return scenario, root
 
 

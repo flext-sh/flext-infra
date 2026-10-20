@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra import config
 from tests import m, tm, u
 
 if TYPE_CHECKING:
@@ -44,13 +45,14 @@ class TestsFlextInfraDocsRenderGuidesIndex:
         rendered = u.Infra.docs_guides_index(
             self._scope(tmp_path),
             guide_paths=(guides_dir / "topology-conform.md",),
+            width=u.Infra.docs_markdown_line_length(config.Infra.tooling),
         )
 
         tm.that(rendered, has="(topology-conform.md)")
         # The index never links itself.
-        tm.that("(README.md)" in rendered, eq=False)
+        tm.fail("(README.md)" in rendered)
         tm.that(rendered, lacks="(stale.md)")
-        tm.that((guides_dir / "topology-conform.md").exists(), eq=False)
+        tm.fail((guides_dir / "topology-conform.md").exists())
 
     def test_guides_index_omits_links_when_no_guide_exists(
         self,
@@ -59,7 +61,11 @@ class TestsFlextInfraDocsRenderGuidesIndex:
         """A project without curated guides renders no unresolvable link."""
         (tmp_path / "docs" / "guides").mkdir(parents=True)
 
-        rendered = u.Infra.docs_guides_index(self._scope(tmp_path), guide_paths=())
+        rendered = u.Infra.docs_guides_index(
+            self._scope(tmp_path),
+            guide_paths=(),
+            width=u.Infra.docs_markdown_line_length(config.Infra.tooling),
+        )
 
-        tm.that("(topology-conform.md)" in rendered, eq=False)
+        tm.fail("(topology-conform.md)" in rendered)
         tm.that(rendered, has="(../api-reference/README.md)")

@@ -79,10 +79,10 @@ class TestsPyprojectDependencyGroups:
             for requirement in u.Tests.toml_strings(groups["dev"])
         )
         actual_requirements = set(actual_entries)
-        tm.that(Requirement(authored) in actual_requirements, eq=True)
+        tm.ok(Requirement(authored) in actual_requirements)
         tm.that(actual_entries.count(Requirement(authored)), eq=2)
-        tm.that(Requirement(floor) in actual_requirements, eq=True)
-        tm.that(Requirement(f"{own}[feature]") in actual_requirements, eq=True)
+        tm.ok(Requirement(floor) in actual_requirements)
+        tm.ok(Requirement(f"{own}[feature]") in actual_requirements)
         tm.that(groups["examples"], eq=[{"include-group": "dev"}])
         project = u.Tests.toml_mapping(actual["project"])
         tm.that(project["dependencies"], eq=[])
@@ -414,7 +414,7 @@ class TestsPyprojectDependencyGroups:
             for entry in u.Tests.toml_list(groups[dev])
             if isinstance(entry, str)
         )
-        tm.that(authored_requirement in observed_requirements, eq=True)
+        tm.ok(authored_requirement in observed_requirements)
         tm.that(
             tm.ok(
                 self._conform(conformed, role, required_dev_dependencies=(floor,)),
@@ -491,7 +491,7 @@ class TestsPyprojectDependencyGroups:
             self._source(groups),
             c.Infra.MakeProfile.STANDALONE,
         )
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
 
     def test_optional_dependencies_keep_pep508_string_grammar(self) -> None:
         """PEP 735 inclusion tables never become PEP 621 runtime or extra entries."""
@@ -505,7 +505,7 @@ class TestsPyprojectDependencyGroups:
             ),
             c.Infra.MakeProfile.STANDALONE,
         )
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
 
     def test_runtime_dependencies_keep_pep508_string_grammar(self) -> None:
         """PEP 621 runtime dependency arrays reject PEP 735 inclusion tables."""
@@ -514,7 +514,7 @@ class TestsPyprojectDependencyGroups:
             'dependencies = [{include-group = "dev"}]',
         )
         result = self._conform(source, c.Infra.MakeProfile.STANDALONE)
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
 
     @pytest.mark.parametrize(
         "entry",

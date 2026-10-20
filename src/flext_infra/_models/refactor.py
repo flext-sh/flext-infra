@@ -200,8 +200,10 @@ class FlextInfraModelsRefactor(
 
         decisions: t.VariadicTuple[FlextInfraModelsRefactor.SemanticRenameDecision] = (
             m.Field(
-                min_length=1,
-                description="Resolved declarations and their domain naming decisions",
+                description=(
+                    "Resolved declarations and their domain naming decisions; "
+                    "empty for an authenticated automatic phase seed"
+                ),
             )
         )
         edits: t.VariadicTuple[FlextInfraModelsTransformers.SemanticMigrationEdit] = (

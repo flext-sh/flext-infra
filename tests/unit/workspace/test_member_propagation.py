@@ -230,7 +230,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
             ).strip()
             tm.that(subject, eq=c.Infra.PROPAGATION_COMMIT_SUBJECT)
             tm.that(self._published(tmp_path, self.CHANGED), ne="")
-            tm.that(self._on_clean_base(changed), eq=True)
+            tm.ok(self._on_clean_base(changed))
             tm.that(
                 u.Tests.git_ref_exists(
                     settled,
@@ -239,11 +239,11 @@ class TestsFlextInfraWorkspaceMemberPropagation:
                 eq=False,
             )
             tm.that(self._published(tmp_path, self.SETTLED), eq="")
-            tm.that(self._on_clean_base(settled), eq=True)
+            tm.ok(self._on_clean_base(settled))
             help_output = tm.ok(
                 u.Cli.run_raw([c.Infra.MAKE, "help"], cwd=settled),
             )
-            tm.that(u.Cli.process_succeeded(help_output.outcome), eq=True)
+            tm.ok(u.Cli.process_succeeded(help_output.outcome))
             tm.that(help_output.stdout, lacks="propagate")
             recorded = gh_log.read_text(encoding="utf-8")
             tm.that(recorded.count("pr create"), eq=1)
@@ -274,7 +274,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
             tm.that(self._lane_commits(root / self.CHANGED), eq="1")
             tm.that(self._published(tmp_path, self.CHANGED), eq=first)
             tm.that(self._published(tmp_path, self.SETTLED), eq="")
-            tm.that(self._on_clean_base(root / self.CHANGED), eq=True)
+            tm.ok(self._on_clean_base(root / self.CHANGED))
 
     def test_failing_member_stops_the_run(
         self,
@@ -300,7 +300,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
                     eq=False,
                 )
                 tm.that(self._published(tmp_path, name), eq="")
-            tm.that(gh_log.exists(), eq=False)
+            tm.fail(gh_log.exists())
 
     def test_external_consumer_lane_runs_its_own_verbs(
         self,
@@ -339,7 +339,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
 
             lane = self._published(tmp_path, "consumer")
             tm.that(lane, ne="")
-            tm.that(self._on_clean_base(consumer_root), eq=True)
+            tm.ok(self._on_clean_base(consumer_root))
             verbs_ran = u.Tests.git_capture(
                 consumer_root,
                 "show",

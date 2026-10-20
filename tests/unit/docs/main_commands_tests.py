@@ -58,7 +58,7 @@ class TestsFlextInfraDocsMainCommands:
                 u.Infra.docs_run_mkdocs(scope)
         else:
             report = u.Infra.docs_run_mkdocs(scope)
-            tm.that(report.passed, eq=True)
+            tm.ok(report.passed)
             html = Path(report.site_dir) / "index.html"
             tm.that(
                 html.read_text(encoding=c.DEFAULT_ENCODING), has="Public build proof"
@@ -116,8 +116,8 @@ class TestsFlextInfraDocsMainCommands:
             workspace / "docs/projects/generated/catalog.md" in planned_paths,
             eq=True,
         )
-        tm.that(workspace / "flext-a/README.md" in planned_paths, eq=True)
-        tm.that(workspace / "flext-b/README.md" not in planned_paths, eq=True)
+        tm.ok(workspace / "flext-a/README.md" in planned_paths)
+        tm.ok(workspace / "flext-b/README.md" not in planned_paths)
 
     @staticmethod
     def test_validator_execute_fails_before_generation_and_succeeds_after(
@@ -146,7 +146,7 @@ class TestsFlextInfraDocsMainCommands:
             (workspace / "flext-a/.reports/docs/validate-report.md").exists(),
             eq=True,
         )
-        tm.that((workspace / "flext-a/TODOS.md").exists(), eq=False)
+        tm.fail((workspace / "flext-a/TODOS.md").exists())
 
     @staticmethod
     def test_builder_execute_fails_when_mkdocs_is_missing(tmp_path: Path) -> None:
@@ -156,7 +156,7 @@ class TestsFlextInfraDocsMainCommands:
         result = FlextInfraDocBuilder(repository_root=workspace).execute()
 
         tm.fail(result)
-        tm.that((workspace / ".reports/docs/build-report.md").exists(), eq=True)
+        tm.ok((workspace / ".reports/docs/build-report.md").exists())
 
     @staticmethod
     def test_builder_execute_fails_with_invalid_mkdocs_config(

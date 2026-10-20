@@ -78,7 +78,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             with project.source_consumption() as consumption, Profile() as profile:
                 for _ in range(3):
                     repeated = u.Infra.publication_policy(source, rope_project=project)
-            tm.that(repeated == original, eq=True)
+            tm.ok(repeated == original)
             tm.that(
                 any(state.path == source for state in consumption.receipt().inputs),
                 eq=True,
@@ -218,7 +218,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         (tmp_path / "pyproject.toml").touch()
         result = service.find_all_pyproject_files(tmp_path)
         tm.ok(result)
-        tm.that(len(result.value) >= 1, eq=True)
+        tm.ok(len(result.value) >= 1)
 
     @staticmethod
     def test_discover_projects_skips_no_pyproject_no_gomod(
@@ -235,7 +235,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         )
         result = service.discover_projects(repository_root)
         tm.ok(result)
-        tm.that(not result.value, eq=True)
+        tm.ok(not result.value)
 
     @staticmethod
     def test_find_all_pyproject_files_skips_unreadable_subdir(

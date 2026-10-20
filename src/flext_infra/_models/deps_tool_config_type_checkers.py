@@ -115,14 +115,14 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     alias="root-typings-paths",
                     description="Typings paths used in workspace settings.",
                 ),
-            ]
+            ] = ()
             project_typings_paths: Annotated[
                 t.StrSequence,
                 m.Field(
                     alias="project-typings-paths",
                     description="Typings paths used in declared_repository configs.",
                 ),
-            ]
+            ] = ()
             ignored_diagnostic_globs: Annotated[
                 t.StrSequence,
                 m.Field(
@@ -132,7 +132,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                         "search paths but must not emit diagnostics."
                     ),
                 ),
-            ]
+            ] = ()
             diagnostic_path_overrides: Annotated[
                 t.VariadicTuple[
                     FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.DiagnosticPathOverride
@@ -172,22 +172,22 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ),
             ]
 
-        strict_settings: Annotated[
-            t.StrMapping,
-            m.Field(
-                alias="strict-settings",
-                description="Pyright strict baseline options.",
-            ),
-        ]
-        extended_settings: Annotated[
-            t.StrMapping,
-            m.Field(
-                alias="extended-settings",
-                description="Pyright extended settings options.",
-            ),
-        ]
         path_rules: Annotated[
             FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.PathRulesConfig,
+            m.BeforeValidator(
+                lambda value: {
+                    "source-dir": "src",
+                    "project-root": ".",
+                    "env-dirs": [],
+                    "test-like-dirs": [],
+                    "default-excludes": [],
+                    "root-typings-paths": [],
+                    "project-typings-paths": [],
+                    "ignored-diagnostic-globs": [],
+                    "diagnostic-path-overrides": [],
+                    **(value or {}),
+                }
+            ),
             m.Field(
                 alias="path-rules",
                 description="Pyright path resolution and execution-env rules.",
@@ -195,7 +195,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
         ]
 
     class PyreflyConfig(m.ArbitraryTypesModel):
-        """Pyrefly strict settings loaded from YAML."""
+        """Pyrefly execution and path policy; native options live in settings."""
 
         findings_exit_codes: Annotated[
             t.VariadicTuple[int],
@@ -228,14 +228,14 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     alias="root-typings-paths",
                     description="Typings paths used in workspace settings.",
                 ),
-            ]
+            ] = ()
             project_typings_paths: Annotated[
                 t.StrSequence,
                 m.Field(
                     alias="project-typings-paths",
                     description="Typings paths used in declared_repository configs.",
                 ),
-            ]
+            ] = ()
             env_dirs: Annotated[
                 t.StrSequence,
                 m.Field(
@@ -268,61 +268,21 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ),
             ]
 
-        python_version: Annotated[
-            str,
-            m.Field(
-                alias="python-version",
-                description="Pyrefly python-version baseline.",
-            ),
-        ]
-        disable_project_excludes_heuristics: Annotated[
-            bool,
-            m.Field(
-                alias="disable-project-excludes-heuristics",
-                description="Disable implicit project-exclude heuristics in pyrefly.",
-            ),
-        ]
-        use_ignore_files: Annotated[
-            bool,
-            m.Field(
-                alias="use-ignore-files",
-                description="Whether pyrefly should apply .gitignore/.ignore files.",
-            ),
-        ]
-        strict_errors: Annotated[
-            t.StrSequence,
-            m.Field(
-                alias="strict-errors",
-                description="Pyrefly errors enabled as strict defaults.",
-            ),
-        ]
-
-        @m.field_validator("strict_errors")
-        @classmethod
-        def reject_duplicate_strict_errors(cls, errors: t.StrSequence) -> t.StrSequence:
-            """Require one declaration for each rendered diagnostic key.
-
-            Returns:
-                The declared diagnostic sequence without deduplication or reordering.
-
-            Raises:
-                ValueError: If a diagnostic would overwrite another TOML value.
-
-            """
-            if len(errors) != len(set(errors)):
-                msg = "Pyrefly strict-errors rejects duplicate diagnostic declarations"
-                raise ValueError(msg)
-            return errors
-
-        project_exclude_globs: Annotated[
-            t.StrSequence,
-            m.Field(
-                alias="project-exclude-globs",
-                description="Globs excluded from pyrefly project checking.",
-            ),
-        ]
         path_rules: Annotated[
             FlextInfraModelsDepsToolConfigTypeCheckers.PyreflyConfig.PathRulesConfig,
+            m.BeforeValidator(
+                lambda value: {
+                    "source-dir": "src",
+                    "project-root": ".",
+                    "env-dirs": [],
+                    "root-typings-paths": [],
+                    "project-typings-paths": [],
+                    "workspace-include-children": False,
+                    "workspace-include-child-env-dirs": [],
+                    "project-shared-search-paths": [],
+                    **(value or {}),
+                }
+            ),
             m.Field(alias="path-rules", description="Pyrefly search-path rules."),
         ]
 

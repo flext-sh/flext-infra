@@ -56,7 +56,7 @@ class TestsFlextInfraScannerHelpers:
         untracked_file.write_text("")
         add_result = u.Cli.run_raw(["git", "add", "tracked.py"], cwd=tmp_path)
         tm.ok(add_result)
-        tm.that(u.Cli.process_succeeded(add_result.value.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(add_result.value.outcome))
 
         files = u.Infra.iter_matching_files(tmp_path, includes=["*.py"])
 
@@ -69,7 +69,7 @@ class TestsFlextInfraScannerHelpers:
         """An ignored nested scope cannot bypass its ancestor repository policy."""
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
         tm.ok(init_result)
-        tm.that(u.Cli.process_succeeded(init_result.value.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(init_result.value.outcome))
         (tmp_path / ".gitignore").write_text("scratch/\n", encoding="utf-8")
         scope = tmp_path / "scratch" / "project"
         scope.mkdir(parents=True)
@@ -87,7 +87,7 @@ class TestsFlextInfraScannerHelpers:
         """A long-running pipeline observes files created after its first scan."""
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
         tm.ok(init_result)
-        tm.that(u.Cli.process_succeeded(init_result.value.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(init_result.value.outcome))
         source = tmp_path / "src"
         source.mkdir()
         first = source / "first.py"
@@ -112,7 +112,7 @@ class TestsFlextInfraScannerHelpers:
 
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
         tm.ok(init_result)
-        tm.that(u.Cli.process_succeeded(init_result.value.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(init_result.value.outcome))
 
         tm.that(u.Infra.git_tracked_scope_paths(source), eq=[unmanaged])
 
@@ -123,7 +123,7 @@ class TestsFlextInfraScannerHelpers:
         """A valid empty Git scope stays distinct from an external scope."""
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
         tm.ok(init_result)
-        tm.that(u.Cli.process_succeeded(init_result.value.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(init_result.value.outcome))
         scope = tmp_path / "empty"
         scope.mkdir()
 

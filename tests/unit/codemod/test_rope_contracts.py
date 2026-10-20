@@ -295,7 +295,7 @@ class TestsFlextInfraRopeContracts:
         after = runpy.run_path(str(path))["evidence"]
         tm.that(after[:3], eq=before[:3])
         if not changes:
-            tm.that(after[3] is before[3], eq=True)
+            tm.ok(after[3] is before[3])
         tm.that(
             tm.ok(
                 u.Infra.plan_semantic_cutover(
@@ -679,8 +679,8 @@ class TestsFlextInfraRopeContracts:
         u.Tests.prove_contract_migration(rope_contract_consumer, source)
         _workspace, path = rope_contract_consumer
         updated = path.read_text(encoding=c.DEFAULT_ENCODING)
-        tm.that("TypeAdapter" not in updated, eq=True)
-        tm.that("contract_factory=lambda: TypeForm(" in updated, eq=True)
+        tm.ok("TypeAdapter" not in updated)
+        tm.ok("contract_factory=lambda: TypeForm(" in updated)
 
     @staticmethod
     @pytest.mark.parametrize("alias", [False, True])
@@ -1146,7 +1146,7 @@ class TestsFlextInfraRopeContracts:
             namespace = runpy.run_path(str(path))
             tm.that(namespace["evidence"], eq=("evaluated",))
             tm.that(stream.getvalue(), contains="worker ready")
-            tm.that("filtered" in stream.getvalue(), eq=False)
+            tm.fail("filtered" in stream.getvalue())
         finally:
             u.configure_structlog(
                 settings=original_options, runtime_settings=original_settings
@@ -1164,7 +1164,7 @@ class TestsFlextInfraRopeContracts:
         )
         # The retired native factory import had a real use before this cut.
         # No wholesale unused-import sweep is part of the contract planner.
-        tm.that(declaration in updated, eq=False)
+        tm.fail(declaration in updated)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -1453,8 +1453,8 @@ class TestsFlextInfraRopeContracts:
         updated = edits[0].updated_source
         tm.that(updated, contains="from flext_cli import u")
         tm.that(updated, contains="import logging as diagnostics")
-        tm.that("from logging import getLogger" in updated, eq=False)
-        tm.that("from flext_core import u" in updated, eq=False)
+        tm.fail("from logging import getLogger" in updated)
+        tm.fail("from flext_core import u" in updated)
 
     @staticmethod
     def test_logging_factory_refuses_a_shadowed_destination(

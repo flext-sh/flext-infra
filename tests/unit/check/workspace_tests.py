@@ -11,9 +11,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, main, r
+from flext_infra import main
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests import tm, u
+from tests import c, r, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -165,7 +165,7 @@ class TestsFlextInfraWorkspaceChecker:
         reports_dir = tmp_path / "reports"
         result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
         tm.ok(result)
-        tm.that(reports_dir.exists(), eq=True)
+        tm.ok(reports_dir.exists())
 
     @staticmethod
     def test_lint_returns_gate_result(

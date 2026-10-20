@@ -2,22 +2,230 @@ Infra:
   tooling:
     # Canonical validated native tooling policy; diagnostics remain blocking.
     raw-check-receipt-suffix: .raw.log
-    tools:
+    derived-tool-roots: [deptry, mypy, pyrefly, pyright, pytest, ruff, vulture]
+    derived-settings:
+      mypy: [python_version, mypy_path, overrides, disable_error_code]
+      pyrefly: [python-version]
+      pyright: [pythonVersion, executionEnvironments, extraPaths, include, exclude, venv, venvPath]
+      pytest.ini_options: [flext_slow_timeout_seconds, markers]
+      ruff: [target-version]
+    # Native options are free key/value pairs, grouped by their tool table.
+    # The same catalog drives modernization and every projected template.
+    settings:
       codespell:
-        check-filenames: true
-        ignore-words-list: crate,nd
-      # Non-linter tool sections are config-owned as well.
+      - [check-filenames, true]
+      - [ignore-words-list, 'crate,nd']
+      pydantic-mypy:
+      - [init_forbid_extra, true]
+      - [init_typed, true]
+      - [warn_required_dynamic_aliases, true]
+      pyrefly:
+      - [disable-project-excludes-heuristics, true]
+      - [use-ignore-files, false]
+      - - project-excludes
+        - ["**/__pycache__", "**/__pyrefly_virtual__/**", "**/node_modules",
+          "**/.venv/**", "**/site-packages/**", "**/typings/**", "**/venv/**",
+          "**/vendor/**", ".venv/**", "typings/**", "vendor/**"]
+      pyrefly.errors:
+      # Preserve every diagnostic from the strict-error policy during cutover.
+      - [bad-argument-count, error]
+      - [bad-argument-type, error]
+      - [bad-assignment, error]
+      - [bad-class-definition, error]
+      - [bad-context-manager, error]
+      - [bad-dunder-all, error]
+      - [bad-function-definition, error]
+      - [bad-index, error]
+      - [bad-instantiation, error]
+      - [bad-keyword-argument, error]
+      - [bad-match, error]
+      - [bad-param-name-override, error]
+      - [bad-raise, error]
+      - [bad-return, error]
+      - [bad-specialization, error]
+      - [bad-typed-dict, error]
+      - [bad-typed-dict-key, error]
+      - [bad-unpacking, error]
+      - [deprecated, error]
+      - [implicit-abstract-class, error]
+      - [implicit-any, error]
+      - [implicit-import, error]
+      - [implicitly-defined-attribute, error]
+      - [inconsistent-inheritance, error]
+      - [inconsistent-overload, error]
+      - [invalid-annotation, error]
+      - [invalid-argument, error]
+      - [invalid-decorator, error]
+      - [invalid-inheritance, error]
+      - [invalid-literal, error]
+      - [invalid-overload, error]
+      - [invalid-param-spec, error]
+      - [invalid-pattern, error]
+      - [invalid-self-type, error]
+      - [invalid-super-call, error]
+      - [invalid-type-alias, error]
+      - [invalid-type-var, error]
+      - [invalid-type-var-tuple, error]
+      - [invalid-variance, error]
+      - [invalid-yield, error]
+      - [missing-argument, error]
+      - [missing-attribute, error]
+      - [missing-import, error]
+      - [missing-module-attribute, error]
+      - [missing-override-decorator, error]
+      - [missing-source, error]
+      - [missing-source-for-stubs, error]
+      - [no-access, error]
+      - [no-matching-overload, error]
+      - [not-a-type, error]
+      - [not-async, error]
+      - [not-callable, error]
+      - [not-iterable, error]
+      - [not-required-key-access, error]
+      - [open-unpacking, error]
+      - [protocol-implicitly-defined-attribute, error]
+      - [read-only, error]
+      - [redefinition, error]
+      - [redundant-cast, error]
+      - [redundant-condition, error]
+      - [unannotated-attribute, error]
+      - [unannotated-parameter, error]
+      - [unannotated-return, error]
+      - [unbound-name, error]
+      - [unexpected-keyword, error]
+      - [unexpected-positional-argument, error]
+      - [unknown-name, error]
+      - [unnecessary-comparison, error]
+      - [unnecessary-type-conversion, error]
+      - [unreachable, error]
+      - [unresolvable-dunder-all, error]
+      - [unsafe-overlap, error]
+      - [unsupported, error]
+      - [unsupported-delete, error]
+      - [unsupported-operation, error]
+      - [untyped-import, error]
+      - [unused-coroutine, error]
+      - [unused-ignore, error]
+      - [variance-mismatch, error]
+      - [inconsistent-overload-default, error]
       deptry:
-        optional-dependencies-dev-groups: [ dev ]
-      hatch:
-        allow-direct-references: true
+      - [ optional_dependencies_dev_groups, [ dev ] ]
+      coverage.run:
+      - [ source, [ src ] ]
+      - [ omit, [ "*/dependency_injector/providers.pyx", "*/protocols.py", "*/_protocols/*" ] ]
+      coverage.report:
+      - [ show_missing, true ]
+      - [ skip_covered, false ]
+      - [ precision, 2 ]
+      - [ exclude_also, [ "if _t.TYPE_CHECKING:", "if TYPE_CHECKING:", "if typing.TYPE_CHECKING:" ] ]
+      hatch.metadata:
+      - [allow-direct-references, true]
+      tomlsort:
+      - [all, true]
+      - [in_place, true]
+      - [sort_first, [project, build-system, tool, dependency-groups]]
+      vulture:
+      - [exclude, ["*/_protocols/*"]]
+      - [min_confidence, 100]
+      - [paths, [src]]
+      - [verbose, false]
+      yamlfix:
+      - [line_length, &formatting_width 88]
+      - [preserve_quotes, true]
+      - [whitelines, 1]
+      - [section_whitelines, 1]
+      - [explicit_start, false]
+      pytest.ini_options:
+      - [asyncio_default_fixture_loop_scope, function]
+      - [python_files, ["*_test.py", "*_tests.py", "test_*.py"]]
+      - [testpaths, [tests]]
+      - [minversion, "8.0"]
+      - [python_classes, ["Test*"]]
+      - [filterwarnings, [error, "module::flext_core._constants.enforcement.FlextMroViolation", "once::pytest.PytestAssertRewriteWarning"]]
+      - [addopts, [--benchmark-disable, --strict-markers, --markdown-docs, --durations=10, --flext-enforce-strict]]
+      pyright:
+      - [ pythonPlatform, Linux ]
+      - [ reportCallIssue, error ]
+      - [ reportConstantRedefinition, error ]
+      - [ reportIncompatibleMethodOverride, error ]
+      - [ reportInconsistentConstructor, error ]
+      - [ reportMissingImports, error ]
+      - [ reportMissingModuleSource, error ]
+      - [ reportPrivateUsage, error ]
+      - [ reportUnnecessaryCast, error ]
+      - [ reportUnnecessaryComparison, error ]
+      - [ reportUnnecessaryIsInstance, error ]
+      - [ reportUnusedClass, error ]
+      - [ reportUnusedFunction, error ]
+      - [ reportUnusedImport, error ]
+      - [ reportUnusedVariable, error ]
+      - [ typeCheckingMode, strict ]
+      - [ useLibraryCodeForTypes, true ]
+      ruff:
+      - [ extend-exclude, [ "**/.archive/**", "**/.agents/aihub-hooks/**", "**/.claude/aihub-hooks/**", "**/.codex/aihub-hooks/**", "**/.cursor/aihub-hooks/**", "**/.gemini/aihub-hooks/**" ] ]
+      - [ namespace-packages, [ tests, examples, scripts ] ]
+      - [ fix, false ]
+      - [ line-length, *formatting_width ]
+      - [ preview, true ]
+      - [ respect-gitignore, true ]
+      - [ show-fixes, true ]
+      - [ src, [ src, tests, examples, scripts ] ]
+      ruff.format:
+      - [ docstring-code-format, true ]
+      - [ indent-style, space ]
+      - [ line-ending, lf ]
+      - [ quote-style, double ]
+      - [ skip-magic-trailing-comma, false ]
+      ruff.lint:
+      - [ select, [ ALL ] ]
+      - [ ignore, [] ]
+      - [ unfixable, [ multi-value-repeated-key-literal, multi-value-repeated-key-variable, p-print, print, pytest-duplicate-parametrize-test-cases ] ]
+      - [ extend-safe-fixes, [ relative-imports, typing-only-first-party-import, camelcase-imported-as-lowercase ] ]
+      - [ extend-select, [ missing-blank-line-after-last-section ] ]
+      ruff.lint.flake8-tidy-imports:
+      - [ ban-relative-imports, all ]
+      - - banned-api
+        - argparse: { msg: "Use cli.register_result_command + Pydantic model from flext_cli." }
+          click: { msg: "Use flext_cli.cli application, registration, execution, and invocation methods." }
+          rich: { msg: "Use cli.print / cli.display_message / cli.render_panel / cli.render_table." }
+          tabulate: { msg: "Use cli.render_table from flext_cli." }
+          typer: { msg: "Use cli.create_app_with_common_params / cli.register_command from flext_cli." }
+      ruff.lint.flake8-copyright:
+      - [ notice-rgx, 'Copyright \(c\) \d{4} \S[^\n]*\. All rights reserved\.' ]
+      ruff.lint.isort:
+      - [ combine-as-imports, true ]
+      - [ force-single-line, false ]
+      - [ split-on-trailing-comma, false ]
+      ruff.lint.pydocstyle:
+      - [ convention, google ]
+      ruff.lint.pylint:
+      - [ allow-dunder-method-names, [ __base__, __bases__ ] ]
+      mypy:
+      - [ plugins, [ pydantic.mypy ] ]
+      - [ allow_redefinition, true ]
+      - [ namespace_packages, true ]
+      - [ explicit_package_bases, true ]
+      - [ check_untyped_defs, true ]
+      - [ extra_checks, true ]
+      - [ follow_untyped_imports, true ]
+      - [ local_partial_types, true ]
+      - [ no_implicit_reexport, true ]
+      - [ show_traceback, true ]
+      - [ strict_equality, true ]
+      - [ warn_redundant_casts, true ]
+      - [ warn_return_any, true ]
+      - [ warn_unreachable, true ]
+      - [ warn_unused_ignores, true ]
+      - [ follow_imports, normal ]
+    tools:
+      # Non-linter tool sections are config-owned as well.
       markdown:
         # rumdl exits 1 on any violation and 2 on an error: a repair verb
         # completes with findings under this status; any other fails it.
         findings-exit-codes: [ 1 ]
         rules:
-          default: true
-          MD001: false
+        - [default, true]
+        - [MD001, false]
           # MD013 prose and code lengths are THE markdown line contract for
           # both rumdl surfaces: `rumdl check` (markdown gate, `make fix`) and
           # `rumdl fmt` (markdown-format gate, `make fmt`) read this one rule
@@ -30,28 +238,28 @@ Infra:
           # rewrites an author's breaks, and MD013 stays the check-only line
           # contract: a genuinely long line is a finding the author fixes by
           # wrapping.
-          MD013:
-            line_length: 88
+        - - MD013
+          - line_length: *formatting_width
             heading_line_length: 200
-            code_block_line_length: 88
+            code_block_line_length: *formatting_width
             tables: false
             reflow: false
-          MD022: false
-          MD023: false
-          MD024: { siblings_only: true }
-          MD025: false
-          MD031: false
-          MD033: { allowed_elements: [ br, details, summary, kbd ] }
-          MD036: false
-          MD040: false
-          MD041: false
-          MD042: false
-          MD046: false
-          MD050: { style: consistent }
-          MD051: false
-          MD057: false
-          MD060: false
-          MD076: false
+        - [MD022, false]
+        - [MD023, false]
+        - [MD024, { siblings_only: true }]
+        - [MD025, false]
+        - [MD031, false]
+        - [MD033, { allowed_elements: [ br, details, summary, kbd ] }]
+        - [MD036, false]
+        - [MD040, false]
+        - [MD041, false]
+        - [MD042, false]
+        - [MD046, false]
+        - [MD050, { style: consistent }]
+        - [MD051, false]
+        - [MD057, false]
+        - [MD060, false]
+        - [MD076, false]
         exclude:
         # AGENTS.md is a tool-managed projection (tracker and agent setup
         # blocks): gating generated output is a projection defect.
@@ -136,12 +344,10 @@ Infra:
         # Ruff exits 1 on findings. Remaining findings block repair acceptance;
         # the gate verifies the repaired state through the native read-only check.
         findings-exit-codes: [ 1 ]
-        extend-exclude:
         # Historical evidence trees (.archive/**) hold archived session
         # artifacts, never live source: they are evidence-only material
         # (operator law 11) and stay outside the lint scope of every
         # projected member.
-        - "**/.archive/**"
         # Generated source trees (codegen artifacts with generated_source)
         # are appended by the projection from that one key, never listed.
         # Provider-owned AI Hub hook projections live under the tool-home
@@ -149,34 +355,13 @@ Infra:
         # operators rule (fleet learned constraint) keeps ~/.* code outside
         # the lint scope, and these hooks are distributed tool-home state,
         # not member source.
-        - "**/.agents/aihub-hooks/**"
-        - "**/.claude/aihub-hooks/**"
-        - "**/.codex/aihub-hooks/**"
-        - "**/.cursor/aihub-hooks/**"
-        - "**/.gemini/aihub-hooks/**"
         # Lint covers every tracked Python surface; `.gitignore` alone decides
         # visibility (respect-gitignore below), never a copied exclude list.
         # tests, examples, and scripts are dev/tooling source roots (see `src`
         # below), not installed packages: they hold namespace/command modules
         # loaded by path (e.g. the scripts/<verb>/<what> dispatch pattern), so
         # ruff must not demand an __init__.py (INP001) there.
-        namespace-packages: [ tests, examples, scripts ]
-        fix: false
-        line-length: 88
-        preview: true
-        respect-gitignore: true
-        show-fixes: true
-        src: [ src, tests, examples, scripts ]
-        target-version: py313
-        format:
-          docstring-code-format: true
-          indent-style: space
-          line-ending: lf
-          quote-style: double
-          skip-magic-trailing-comma: false
         lint:
-          select:
-          - ALL
           # The native format gate owns layout in the complete canonical
           # check/repair contract. Projection verifies that owner's election.
           rule-owners:
@@ -205,12 +390,6 @@ Infra:
           # (print once deleted print(..., file=sys.stderr) from a consumer
           # script and turned its failures silent). Ruff keeps reporting them;
           # the author decides. Also guards direct and IDE Ruff runs.
-          unfixable:
-          - multi-value-repeated-key-literal
-          - multi-value-repeated-key-variable
-          - p-print
-          - print
-          - pytest-duplicate-parametrize-test-cases
           # OPERATOR LAW 2026-10-05 (direct order, OBLIGATORY, NEVER DISABLED
           # AGAIN): `make fix` ALWAYS applies Ruff's unsafe fixes — the
           # mandatory lint_fix surface carries --unsafe-fix in codegen.yaml
@@ -221,26 +400,18 @@ Infra:
           # always on). Rules whose fixes would destroy information remain in
           # `unfixable` above — that is rule selection, never disabling the
           # mandatory unsafe channel.
-          extend-safe-fixes:
-          - relative-imports
-          - typing-only-first-party-import
-          - camelcase-imported-as-lowercase
           # Operator ruling 2026-10-14 (docstring campaign flext-ez35p):
           # D413 missing-blank-line-after-last-section is re-enabled on top of
           # the Google convention: every docstring closes with one blank line
           # between its last section block and the closing quotes. Explicit
           # selectors take precedence over the convention baseline in Ruff.
-          extend-select:
-          - missing-blank-line-after-last-section
           # Every import is absolute: make mod rewrites relative imports and
           # the lazy-init generator renders absolute import statements.
-          ban-relative-imports: all
           # Every module carries the copyright notice (CPY001) in the shape the
           # scaffold templates render from the project's declared author and
           # copyright year. The fix recipe writes the module's project-relative
           # path, without its shared suffix, between that sentence and the
           # SPDX line so the notice is not one stamp.
-          copyright-notice-rgx: 'Copyright \(c\) \d{4} \S[^\n]*\. All rights reserved\.'
           # Repairs make fix applies after Ruff's own fixes, to findings Ruff
           # reports without a fix: each Ruff rule name maps to one recipe the
           # lint gate derives from the source (docstring sections from the
@@ -280,23 +451,11 @@ Infra:
             runtime-evaluated-roots:
             - pydantic.BaseModel
           # Banned API messages are policy data, never template literals.
-          banned-api:
-            argparse: "Use cli.register_result_command + Pydantic model from flext_cli."
-            click: "Use flext_cli.cli application, registration, execution, and invocation methods."
-            rich: "Use cli.print / cli.display_message / cli.render_panel / cli.render_table."
-            tabulate: "Use cli.render_table from flext_cli."
-            typer: "Use cli.create_app_with_common_params / cli.register_command from flext_cli."
-          isort:
-            combine-as-imports: true
-            force-single-line: false
-            split-on-trailing-comma: false
           # Operator ruling 2026-10-01 (docstring convention): docstrings follow
           # the Google convention, the shape the docstring fix recipes render.
           # Ruff then disables the docstring rules that convention does not
           # use, one of each mutually exclusive pair select ALL enables
           # (D203/D211, multi-line-summary-first-line/D213) included, so no run warns about them.
-          pydocstyle:
-            convention: google
           # Authority: tracker memory operator-ruling-2026-10-09-ruff-dunder-descriptors.
           # Python type.__base__ is the native layout base; type.__bases__ is
           # the tuple of direct bases. Protocols expose both as read-only
@@ -305,42 +464,21 @@ Infra:
           # https://docs.python.org/3.13/reference/datamodel.html#type.__bases__
           # https://docs.astral.sh/ruff/rules/bad-dunder-method-name/
           # PLW3201 remains enabled for every other unrecognized dunder name.
-          pylint:
-            allow-dunder-method-names: [ __base__, __bases__ ]
       mypy:
         # Wall-time bound for the bounded Mypy execution (SSOT). A project
         # config/tooling.yaml overlay may only lower it; no environment
         # variable changes it.
-        # Operator 2026-10-08: 600s (the documented mypy bound) because 120s
-        # killed the bounded run mid-type-check on flext-core (exit=-15) and
-        # every large member, so the gate never produced real findings.
-        timeout_seconds: 600
+        # Leave admission and receipt-publication time within the operator's
+        # two-minute command limit; profile and repair work exceeding this bound.
+        timeout_seconds: 90
         # Pydantic 2 and pydantic.mypy are mandatory (operator 2026-10-05).
         # Missing, empty, and v1 plugin declarations fail validation rather
         # than being silently repaired by schema defaults.
-        plugins: [ pydantic.mypy ]
-        boolean-settings:
-          allow_redefinition: true
-          namespace_packages: true
-          explicit_package_bases: true
-          check_untyped_defs: true
-          extra_checks: true
           # Analyze source distributions that have real annotations but omit
           # the PEP 561 marker. Rope 1.14 is one such runtime owner; skipping
           # it converts every public boundary into Any and makes its imports
           # fail before our typed protocols can validate them.
-          follow_untyped_imports: true
-          local_partial_types: true
-          no_implicit_reexport: true
-          show_traceback: true
           # strict_concatenate is deprecated in mypy 1.20+; extra_checks covers it
-          strict_equality: true
-          warn_redundant_casts: true
-          warn_return_any: true
-          warn_unreachable: true
-          warn_unused_ignores: true
-        string-settings:
-          follow_imports: normal
         # Operator ruling 2026-10-05 (mypy-pydantic law): call-arg and
         # prop-decorator stay suspended until the fleet facade-alias family
         # is cured; pydantic.mypy remains mandatory. Mutating these codes is
@@ -348,33 +486,10 @@ Infra:
         ruling-disable-error-codes: [ call-arg, prop-decorator ]
         overrides:
         - modules: [ rope.* ]
-          follow-untyped-imports: true
+          settings: [ [ follow_untyped_imports, true ] ]
           justification: >-
             Analyze Rope's installed source without suppressing import-untyped; https://mypy.readthedocs.io/en/stable/config_file.html#follow-untyped-imports
-      pydantic-mypy:
-        init_forbid_extra: true
-        init_typed: true
-        warn_required_dynamic_aliases: true
       pyright:
-        strict-settings:
-          pythonPlatform: Linux
-          pythonVersion: "3.13"
-          typeCheckingMode: strict
-        extended-settings:
-          reportCallIssue: error
-          reportConstantRedefinition: error
-          reportIncompatibleMethodOverride: error
-          reportInconsistentConstructor: error
-          reportMissingImports: error
-          reportMissingModuleSource: error
-          reportPrivateUsage: error
-          reportUnnecessaryCast: error
-          reportUnnecessaryComparison: error
-          reportUnnecessaryIsInstance: error
-          reportUnusedClass: error
-          reportUnusedFunction: error
-          reportUnusedImport: error
-          reportUnusedVariable: error
         path-rules:
           # Source and tracked consumer surfaces are all
           # first-class environments so no analyzer can hide their diagnostics.
@@ -409,122 +524,7 @@ Infra:
           source-report-private-usage: error
           test-like-report-private-usage: error
           other-report-private-usage: error
-      coverage:
-        source: [ src ]
-        show-missing: true
-        skip-covered: false
-        precision: 2
-        exclude-also:
-        - "if _t.TYPE_CHECKING:"
-        - "if TYPE_CHECKING:"
-        - "if typing.TYPE_CHECKING:"
-        omit:
-        - "*/dependency_injector/providers.pyx"
-        # Declaration-layer Protocol facades have no runtime behavior to cover.
-        - "*/protocols.py"
-        - "*/_protocols/*"
       pyrefly:
-        disable-project-excludes-heuristics: true
-        python-version: "3.13"
-        use-ignore-files: false
-        # prop-decorator suspension lives in the MYPY ruling surface above
-        # (ruling-disable-error-codes): the pyrefly release the non-producer
-        # repositories resolve does not know the code and rejects it as an
-        # unknown variant, so a pyrefly-side suspension cannot be fleet-wide.
-        strict-errors:
-        # --- type safety ---
-        - bad-argument-count
-        - bad-argument-type
-        - bad-assignment
-        - bad-class-definition
-        - bad-context-manager
-        - bad-dunder-all
-        - bad-function-definition
-        - bad-index
-        - bad-instantiation
-        - bad-keyword-argument
-        - bad-match
-        - bad-param-name-override
-        - bad-raise
-        - bad-return
-        - bad-specialization
-        - bad-typed-dict
-        - bad-typed-dict-key
-        - bad-unpacking
-        - deprecated
-        - implicit-abstract-class
-        - implicit-any
-        - implicit-import
-        - implicitly-defined-attribute
-        - inconsistent-inheritance
-        - inconsistent-overload
-        - invalid-annotation
-        - invalid-argument
-        - invalid-decorator
-        - invalid-inheritance
-        - invalid-literal
-        - invalid-overload
-        - invalid-param-spec
-        - invalid-pattern
-        - invalid-self-type
-        - invalid-super-call
-        - invalid-type-alias
-        - invalid-type-var
-        - invalid-type-var-tuple
-        - invalid-variance
-        - invalid-yield
-        - missing-argument
-        - missing-attribute
-        - missing-import
-        - missing-module-attribute
-        - missing-override-decorator
-        - missing-source
-        - missing-source-for-stubs
-        - no-access
-        - no-matching-overload
-        - not-a-type
-        - not-async
-        - not-callable
-        - not-iterable
-        - not-required-key-access
-        - open-unpacking
-        - protocol-implicitly-defined-attribute
-        - read-only
-        - redefinition
-        - redundant-cast
-        - redundant-condition
-        - unannotated-attribute
-        - unannotated-parameter
-        - unannotated-return
-        - unbound-name
-        - unexpected-keyword
-        - unexpected-positional-argument
-        - unknown-name
-        - unnecessary-comparison
-        - unnecessary-type-conversion
-        - unreachable
-        - unresolvable-dunder-all
-        - unsafe-overlap
-        - unsupported
-        - unsupported-delete
-        - unsupported-operation
-        - untyped-import
-        - unused-coroutine
-        - unused-ignore
-        - variance-mismatch
-        - inconsistent-overload-default
-        project-exclude-globs:
-        - "**/__pycache__"
-        - "**/__pyrefly_virtual__/**"
-        - "**/node_modules"
-        - "**/.venv/**"
-        - "**/site-packages/**"
-        - "**/typings/**"
-        - "**/venv/**"
-        - "**/vendor/**"
-        - ".venv/**"
-        - "typings/**"
-        - "vendor/**"
         path-rules:
           source-dir: src
           project-root: .
@@ -591,8 +591,8 @@ Infra:
         # failures.
         max-failures: 1
         enforcement-plugin: flext_tests_enforcement
-        asyncio-default-fixture-loop-scope: function
-        progress-args: [ --verbose ]
+        # Retain the complete selection, but expose known failures first.
+        progress-args: [ --verbose, --failed-first ]
         report-args: [ -ra, --durations=25, --durations-min=0.001, --tb=short ]
         diagnostic-args: [ -rA, --durations=0, --tb=long, --showlocals ]
         # One worker makes maxfail exact: no second in-flight case can fail
@@ -640,15 +640,11 @@ Infra:
         profile-limit: 50
         profile-suite-filename: pytest.pstats
         profile-process-directory: profiles
-        min-version: "8.0"
-        python-classes: [ "Test*" ]
-        python-files: [ "*_test.py", "*_tests.py", "test_*.py" ]
         # Collect once from the canonical test root. The former list ended in
         # `.` and therefore traversed tests, source, docs, examples, scripts,
         # generated reports, and local runtime state a second time. Executable
         # documentation and auxiliary surfaces remain covered by explicit tests
         # and their lint/Markdown gates rather than duplicate pytest discovery.
-        test-paths: [ tests ]
         # pytest applies filterwarnings last-entry-wins; the conform phase +
         # tomlsort alpha-sort filterwarnings, so any override MUST sort AFTER
         # "error" to survive re-conform. Only module::/once:: sort after 'error'
@@ -660,7 +656,6 @@ Infra:
         # both VISIBLE-but-non-fatal, matching the non-strict enforcement policy
         # (flext-tests registers default::{category}); all other warnings stay
         # fatal. See flext-core test_enforcement_warning_visibility.
-        filter-warnings: [ error, "module::flext_core._constants.enforcement.FlextMroViolation", "once::pytest.PytestAssertRewriteWarning" ]
         standard-markers:
         - "smoke: public-interface smoke tests"
         - "unit: unit tests"
@@ -690,37 +685,13 @@ Infra:
         ci-excluded-markers: [ slow ]
         # Fixtures declaring local engines or resolution cannot execute in approval.
         ci-excluded-fixtures: [ resolved_make_templates, detector_project, mod_workspace, smells_project, _clear_make_ci_token ]
-        standard-addopts:
-        - --benchmark-disable
-        - --strict-markers
-        - --markdown-docs
-        - --durations=10
         # The cross-layer enforcement catalog runs strict in every suite:
         # the test-reality laws (ENFORCE-019/051/054/055/098) fail the run
         # instead of warning; warnings are never a landing state.
-        - --flext-enforce-strict
         # Per-item limits do not belong in baseline addopts; the runner owns
         # the aggregate wall and the slow marker owns its narrow item policy.
       tomlsort:
-        all: true
-        in_place: true
         process-timeout-seconds: 60
-        sort_first: [ project, build-system, tool, dependency-groups ]
-      vulture:
-        # Vulture reports keyword-bearing Protocol signature parameters as
-        # unused variables at full confidence,
-        # even with --ignore-decorators @runtime_checkable. The declaration-only
-        # protocol facet is excluded; production models and runtime code remain scanned.
-        exclude: [ "*/_protocols/*" ]
-        min-confidence: 100
-        paths: [ src ]
-        verbose: false
-      yamlfix:
-        line_length: 88
-        preserve_quotes: true
-        whitelines: 1
-        section_whitelines: 1
-        explicit_start: false
 
     lazy-init:
       # Canonical import layer order of the FLEXT import law

@@ -40,7 +40,7 @@ class TestsFlextInfraBuilderScope:
             all(report.result == c.Infra.ResultStatus.FAIL for report in result.value),
             eq=True,
         )
-        tm.that(all(not report.passed for report in result.value), eq=True)
+        tm.ok(all(not report.passed for report in result.value))
 
     @staticmethod
     def test_build_uses_custom_output_dir(tmp_path: Path) -> None:
@@ -54,8 +54,8 @@ class TestsFlextInfraBuilderScope:
         )
 
         tm.ok(result)
-        tm.that((workspace / ".custom-docs/build-report.md").exists(), eq=True)
-        tm.that((workspace / "flext-a/.custom-docs/build-report.md").exists(), eq=True)
+        tm.ok((workspace / ".custom-docs/build-report.md").exists())
+        tm.ok((workspace / "flext-a/.custom-docs/build-report.md").exists())
 
     @staticmethod
     def test_build_missing_settings_failure_has_empty_site_dir(
@@ -68,5 +68,5 @@ class TestsFlextInfraBuilderScope:
 
         tm.ok(result)
         tm.that(result.value[0].result, eq=c.Infra.ResultStatus.FAIL)
-        tm.that(result.value[0].passed, eq=False)
+        tm.fail(result.value[0].passed)
         tm.that(result.value[0].site_dir, eq="")

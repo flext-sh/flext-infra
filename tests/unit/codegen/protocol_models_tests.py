@@ -198,7 +198,7 @@ def _verify_supplier_sources() -> t.Pair[t.DirectoryPath, str]:
         for module in supplier_modules
     )
     for source in supplier_states:
-        tm.that(source.path.is_relative_to(supplier_root), eq=True)
+        tm.ok(source.path.is_relative_to(supplier_root))
     supplier_identities = tuple(
         tm.ok(
             u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=source.path.parent))
@@ -382,8 +382,8 @@ def _install_member_runtime(
             msg=provisioned.stdout + provisioned.stderr,
         )
     environment = u.Infra.runtime_environment_dir(root)
-    tm.that(environment.is_symlink(), eq=False)
-    tm.that((environment / "pyvenv.cfg").is_file(), eq=True)
+    tm.fail(environment.is_symlink())
+    tm.ok((environment / "pyvenv.cfg").is_file())
 
 
 def _verify_member_runtime(root: t.DirectoryPath, supplier_receipt: str) -> None:

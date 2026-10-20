@@ -73,7 +73,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
         group = tm.not_none(projected.dependency_group)
         tm.that(metadata.dependency_group, eq=group)
         tm.that(projected.before, eq=before)
-        tm.that(b".removed" in tm.not_none(projected.desired_content), eq=False)
+        tm.fail(b".removed" in tm.not_none(projected.desired_content))
         cohort = tuple(file for file in plan.files if file.dependency_group == group)
         candidate = tm.ok(
             FlextInfraStagedPackage.plan_sources(
@@ -125,8 +125,8 @@ class TestsFlextInfraCodegenConformPublicSurface:
                 mode=c.Infra.CodegenConformMode.APPLY,
             ),
         )
-        tm.that(result.failure, eq=True)
-        tm.that(root.exists(), eq=False)
+        tm.ok(result.failure)
+        tm.fail(root.exists())
 
     @staticmethod
     @pytest.mark.parametrize("surface", tuple(c.Infra.CodegenConformSurface))
@@ -150,8 +150,8 @@ class TestsFlextInfraCodegenConformPublicSurface:
         restored = m.Infra.CodegenGenerateRequest.model_validate_json(
             request.model_dump_json(),
         )
-        tm.that(restored.what is surface, eq=True)
-        tm.that(restored.scope is request.scope, eq=True)
+        tm.ok(restored.what is surface)
+        tm.ok(restored.scope is request.scope)
         if surface is c.Infra.CodegenConformSurface.FACADES:
             with pytest.raises(ValueError, match=r"requires.*--module"):
                 m.Infra.CodegenGenerateRequest(root=tmp_path, what=surface)
@@ -202,7 +202,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
             repository_root=root,
             kind=conflicting,
         ).execute()
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(own.read_bytes(), eq=before)
 
     @staticmethod
@@ -240,7 +240,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
                     mode=c.Infra.CodegenConformMode.CHECK,
                 ),
             )
-            tm.that(rejected.failure, eq=True)
+            tm.ok(rejected.failure)
             tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
 
     @staticmethod
@@ -284,7 +284,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
             repository_root=root,
             check_only=True,
         ).execute()
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(receipt_path, required=True)),
             eq=before,
@@ -301,7 +301,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
             root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
         )
-        tm.that(local_layer.exists(), eq=False)
+        tm.fail(local_layer.exists())
         tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
         receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
             c.Infra.CodegenConformSurface.MAKEFILE
@@ -321,7 +321,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
             tm.ok(u.Cli.atomic_read_binary_file_state(receipt_path, required=True)),
             eq=before,
         )
-        tm.that(observed.failure, eq=True)
+        tm.ok(observed.failure)
 
     @staticmethod
     def test_bootstrap_check_authenticates_imported_template_resources(
@@ -356,7 +356,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
             for state in tm.ok(u.Cli.template_capture_sources((source,)))
             if state.path != source
         )
-        tm.that(bool(imported), eq=True)
+        tm.ok(bool(imported))
         resource = imported[0]
         tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
         receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
@@ -378,7 +378,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
             tm.ok(u.Cli.atomic_read_binary_file_state(receipt_path, required=True)),
             eq=before,
         )
-        tm.that(observed.failure, eq=True)
+        tm.ok(observed.failure)
 
     @staticmethod
     def test_complete_fleet_receipt_covers_the_observed_root_subset(
@@ -418,7 +418,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
                 file for file in repeated.files if file.path == root / relative
             )
             tm.that(len(matches), eq=1)
-            tm.that(matches[0].desired_content is not None, eq=True)
+            tm.ok(matches[0].desired_content is not None)
         receipt_path = root / c.Infra.CODEGEN_PUBLICATION_REPORT_RELATIVE_PATH
         before = tm.ok(
             u.Cli.atomic_read_binary_file_state(receipt_path, required=True),
@@ -535,7 +535,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
         tm.that(result.written_files, eq=(destination,))
         tm.that(stat.S_IMODE(destination.stat().st_mode), eq=desired_mode)
         payload = u.Cli.toml_mapping_from_text(destination.read_text(encoding="utf-8"))
-        tm.that(payload is not None, eq=True)
+        tm.ok(payload is not None)
         tools = u.Tests.toml_table_at(destination.read_text(encoding="utf-8"), "tools")
         tm.that(
             set(tools),
@@ -628,7 +628,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
 
         plan = tm.ok(service.plan(request))
 
-        tm.that(bool(plan.issues), eq=True)
+        tm.ok(bool(plan.issues))
         cause = tm.not_none(plan.exception)
         tm.that(str(cause), has="cannot resolve package name")
         tm.that(str(cause), has=str(root / member.path))
@@ -741,7 +741,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
                     for requirement in tm.ok(u.Infra.document_requirement_lines(parsed))
                     if u.Infra.dep_name(requirement) == u.Infra.dep_name(declared)
                 )
-                tm.that(bool(selected), eq=True)
+                tm.ok(bool(selected))
                 for requirement in selected:
                     tm.that(
                         tm.ok(u.Infra.declared_git_source(requirement)),

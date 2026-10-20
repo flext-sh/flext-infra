@@ -106,7 +106,7 @@ class TestsFlextInfraDeclarationRelocation:
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
             ),
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
 
     @staticmethod
     def test_own_reexport_rebinds_to_its_real_external_provider(
@@ -153,7 +153,7 @@ class TestsFlextInfraDeclarationRelocation:
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
             ),
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
         tm.that(result.stdout.strip(), eq="real-value")
 
     @staticmethod
@@ -163,7 +163,7 @@ class TestsFlextInfraDeclarationRelocation:
         """Resolve the actual external provider without treating it as local WIP."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         provider = Path(flext_tests.__file__).resolve()
-        tm.that(provider.is_relative_to(root), eq=False)
+        tm.fail(provider.is_relative_to(root))
         consumer = package / "_settings.py"
         source = "from flext_tests import tm\nclass Settings:\n    matcher = tm\n"
         consumer.write_text(source, encoding="utf-8")
@@ -309,7 +309,7 @@ class TestsFlextInfraDeclarationRelocation:
                 ),
             ),
         )
-        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(consumer.outcome))
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -573,4 +573,4 @@ class TestsFlextInfraDeclarationRelocation:
                 ),
             ),
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))

@@ -216,9 +216,9 @@ class TestsFlextInfraPlanCollection:
         tm.that(len(bundle.revisions), eq=1)
         tm.that(bundle.revisions[0].attachments, eq=("research.md",))
         captured = {state.path for state in bundle.source_states}
-        tm.that(tmp_path / "input" / "design.md" in captured, eq=True)
-        tm.that(tmp_path / "input" / "design" / "research.md" in captured, eq=True)
-        tm.that((tmp_path / config.canonical_dir).exists(), eq=False)
+        tm.ok(tmp_path / "input" / "design.md" in captured)
+        tm.ok(tmp_path / "input" / "design" / "research.md" in captured)
+        tm.fail((tmp_path / config.canonical_dir).exists())
         repeated = u.Infra.docs_collect_plan_files(tmp_path, config)
         tm.that(repeated.revisions[0].digest, eq=bundle.revisions[0].digest)
 
@@ -240,7 +240,7 @@ class TestsFlextInfraPlanCollection:
         second = u.Infra.docs_collect_plan_files(tmp_path, config)
 
         tm.that(second.revisions[0].identity, eq=first.revisions[0].identity)
-        tm.that(second.revisions[0].digest != first.revisions[0].digest, eq=True)
+        tm.ok(second.revisions[0].digest != first.revisions[0].digest)
         plan = next(item for item in second.files if item.path == canonical)
         tm.that(plan.desired_content, eq=curated.encode())
         tm.that(canonical.read_text(), eq=curated)
@@ -272,7 +272,7 @@ class TestsFlextInfraPlanCollection:
 
         plan = next(item for item in repaired.files if item.path == generated)
         tm.that(plan.desired_content, eq=source.read_bytes())
-        tm.that(u.Infra.codegen_file_requires_effect(plan), eq=True)
+        tm.ok(u.Infra.codegen_file_requires_effect(plan))
 
     def test_disabled_collection_plans_manifest_owned_pruning(
         self,
@@ -291,14 +291,14 @@ class TestsFlextInfraPlanCollection:
 
         pruning = u.Infra.docs_collect_plan_files(tmp_path, disabled)
 
-        tm.that(bool(pruning.files), eq=True)
+        tm.ok(bool(pruning.files))
         tm.that(pruning.revisions, eq=())
         tm.that(pruning.coverage, eq=())
         tm.that(pruning.inventories, eq=())
-        tm.that(bool(pruning.prunable_directories), eq=True)
+        tm.ok(bool(pruning.prunable_directories))
         for plan in pruning.files:
             tm.that(plan.desired_content, eq=None)
-            tm.that(plan.path.is_relative_to(tmp_path / "docs" / "plans"), eq=True)
+            tm.ok(plan.path.is_relative_to(tmp_path / "docs" / "plans"))
 
     def test_private_inventory_never_publishes_session_contents(
         self,
@@ -330,7 +330,7 @@ class TestsFlextInfraPlanCollection:
         tm.that(bundle.coverage[0].status, eq="private-inventory")
         tm.that(bundle.coverage[0].private_paths, eq=(session,))
         tm.that(bundle.revisions, eq=())
-        tm.that(any(state.path == session for state in bundle.source_states), eq=False)
+        tm.fail(any(state.path == session for state in bundle.source_states))
         for plan in bundle.files:
             tm.that(
                 private_session_text.encode() not in (plan.desired_content or b""),
@@ -354,10 +354,10 @@ class TestsFlextInfraPlanCollection:
         bundle = u.Infra.docs_collect_plan_files(tmp_path, config)
 
         projected = tuple(item for item in bundle.files if item.project == projection)
-        tm.that(bool(projected), eq=True)
+        tm.ok(bool(projected))
         for item in projected:
-            tm.that(item.path.is_relative_to(projection), eq=True)
-        tm.that(projection.exists(), eq=False)
+            tm.ok(item.path.is_relative_to(projection))
+        tm.fail(projection.exists())
 
     def test_second_collection_ignores_unchanged_projection_but_detects_home_edit(
         self,
@@ -377,7 +377,7 @@ class TestsFlextInfraPlanCollection:
 
         tm.that(second.revisions, eq=first.revisions)
         for plan in second.files:
-            tm.that(u.Infra.codegen_file_requires_effect(plan), eq=False)
+            tm.fail(u.Infra.codegen_file_requires_effect(plan))
         imported = first.revisions[0]
         home_copy = projection / imported.canonical_path.name
         edited = "# Home amendment requiring semantic review\n"
@@ -387,7 +387,7 @@ class TestsFlextInfraPlanCollection:
 
         tm.that(len(third.revisions), eq=1)
         tm.that(third.revisions[0].identity, eq=imported.identity)
-        tm.that(third.revisions[0].digest != imported.digest, eq=True)
+        tm.ok(third.revisions[0].digest != imported.digest)
         tm.that(
             any(item.desired_content == edited.encode() for item in third.files),
             eq=True,
@@ -402,7 +402,7 @@ class TestsFlextInfraPlanCollection:
         fourth = u.Infra.docs_collect_plan_files(tmp_path, config)
         tm.that(fourth.revisions, eq=third.revisions)
         for plan in fourth.files:
-            tm.that(u.Infra.codegen_file_requires_effect(plan), eq=False)
+            tm.fail(u.Infra.codegen_file_requires_effect(plan))
 
     def test_source_topology_change_fails_publication_preflight(
         self,
@@ -452,7 +452,7 @@ class TestsFlextInfraPlanCollection:
         bundle = u.Infra.docs_collect_plan_files(tmp_path, self._config())
 
         tm.that(bundle.revisions[0].source_updated_at, eq=expected)
-        tm.that(bundle.revisions[0].source_updated_at_original is not None, eq=True)
+        tm.ok(bundle.revisions[0].source_updated_at_original is not None)
         if value in {"2026-09-14", "2026-09-14T14:20:28"}:
             tm.that(bundle.revisions[0].source_updated_at_utc, eq=None)
 
@@ -494,7 +494,7 @@ class TestsFlextInfraPlanCollection:
         changed = u.Infra.docs_collect_plan_files(tmp_path, config)
 
         tm.that(changed.revisions[0].identity, eq=revision.identity)
-        tm.that(changed.revisions[0].digest != revision.digest, eq=True)
+        tm.ok(changed.revisions[0].digest != revision.digest)
         tm.that(
             any(plan.desired_content == amendment.encode() for plan in changed.files),
             eq=True,
@@ -507,7 +507,7 @@ class TestsFlextInfraPlanCollection:
         stable = u.Infra.docs_collect_plan_files(tmp_path, config)
         tm.that(stable.revisions, eq=changed.revisions)
         for plan in stable.files:
-            tm.that(u.Infra.codegen_file_requires_effect(plan), eq=False)
+            tm.fail(u.Infra.codegen_file_requires_effect(plan))
 
     def test_concurrent_canonical_edit_rejects_stale_plan(self, tmp_path: Path) -> None:
         """Test concurrent canonical edit rejects stale plan."""
@@ -543,10 +543,10 @@ class TestsFlextInfraPlanCollection:
 
         tm.that(relocated.revisions, eq=first.revisions)
         for revision in relocated.revisions:
-            tm.that(revision.canonical_path.is_absolute(), eq=False)
-            tm.that(revision.source_path.is_absolute(), eq=False)
+            tm.fail(revision.canonical_path.is_absolute())
+            tm.fail(revision.source_path.is_absolute())
         for plan in relocated.files:
-            tm.that(u.Infra.codegen_file_requires_effect(plan), eq=False)
+            tm.fail(u.Infra.codegen_file_requires_effect(plan))
             tm.that(
                 str(first_root).encode() not in (plan.desired_content or b""),
                 eq=True,

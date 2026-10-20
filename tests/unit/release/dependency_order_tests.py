@@ -56,8 +56,8 @@ class TestsFlextInfraReleaseDependencyOrder:
         )
 
         flattened = [name for wave in waves for name in wave]
-        tm.that(flattened.index("flext-core") < flattened.index("flext-cli"), eq=True)
-        tm.that(flattened.index("flext-cli") < flattened.index("flext-ldap"), eq=True)
+        tm.ok(flattened.index("flext-core") < flattened.index("flext-cli"))
+        tm.ok(flattened.index("flext-cli") < flattened.index("flext-ldap"))
 
     def test_project_without_internal_dependency_lands_in_first_wave(
         self,
@@ -76,8 +76,8 @@ class TestsFlextInfraReleaseDependencyOrder:
             )),
         )
 
-        tm.that("flext-meltano" in waves[0], eq=True)
-        tm.that("flext-core" in waves[0], eq=True)
+        tm.ok("flext-meltano" in waves[0])
+        tm.ok("flext-core" in waves[0])
 
     def test_every_selected_project_appears_exactly_once(self, tmp_path: Path) -> None:
         """Emit each selected project once so no upload is skipped or repeated."""
@@ -107,7 +107,7 @@ class TestsFlextInfraReleaseDependencyOrder:
             ("flext-beta", tmp_path / "flext-beta"),
         ))
 
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(result.error or "", has="flext-alpha")
         tm.that(result.error or "", has="flext-beta")
 

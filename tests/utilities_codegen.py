@@ -10,6 +10,8 @@ import os
 import sys
 from pathlib import Path
 
+from typing_extensions import TypeForm
+
 from flext_infra import config, r, u
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.codegen import (
@@ -56,7 +58,6 @@ class TestsFlextInfraUtilitiesCodegenMixin:
 
         """
         ruff_cfg = config.Infra.tooling.tools.ruff
-        select = ", ".join(f'"{rule}"' for rule in sorted(ruff_cfg.lint.select))
         delegated = FlextInfraGateRegistry.default().delegated_lint_rules(
             ruff_cfg.lint.rule_owners,
             check_gates=config.Infra.codegen.make.check_gates_default,
@@ -65,24 +66,24 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                 *config.Infra.codegen.make.fmt_gates,
             ),
         )
-        ignore = ", ".join(f'"{rule}"' for rule in delegated)
-        isort = ruff_cfg.lint.isort
-        src = ", ".join(f'"{root}"' for root in ruff_cfg.src)
-        # Why: without the fleet's isort settings (combine-as-imports in
-        # particular), a fixture-generated `X, X as alias` combined import —
-        # the real lazy-facade pattern flext-infra's own __init__.py uses —
-        # fails ruff's default isort split, unlike production.
-        return (
-            f"[tool.ruff]\nsrc = [{src}]\n"
-            f"preview = {str(ruff_cfg.preview).lower()}\n\n"
-            f"[tool.ruff.lint]\nselect = [{select}]\nignore = [{ignore}]\n\n"
-            "[tool.ruff.lint.pydocstyle]\n"
-            f'convention = "{ruff_cfg.lint.pydocstyle.convention}"\n\n'
-            "[tool.ruff.lint.isort]\n"
-            f"combine-as-imports = {str(isort.combine_as_imports).lower()}\n"
-            f"force-single-line = {str(isort.force_single_line).lower()}\n"
-            f"split-on-trailing-comma = "
-            f"{str(isort.split_on_trailing_comma).lower()}\n\n"
+        options = u.Infra.native_tool_configuration(config.Infra.tooling, "ruff")
+        options["target-version"] = (
+            "py" + config.Infra.codegen.toolchain.python_version.replace(".", "")
+        )
+        lint = u.Cli.toml_mapping_ensure_table(options, "lint")
+        u.Cli.toml_mapping_sync_string_list(
+            lint,
+            "ignore",
+            sorted({
+                *delegated,
+                *ruff_cfg.lint.ruling_disabled_rules,
+                *u.Infra.native_tool_setting(
+                    config.Infra.tooling, "ruff.lint", "ignore", TypeForm(t.StrSequence)
+                ),
+            }),
+        )
+        return u.Cli.toml_dumps(
+            u.Cli.toml_document_from_mapping({"tool": {"ruff": options}})
         )
 
     @staticmethod
@@ -120,7 +121,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
 
         """
         request = TestsFlextInfraUtilitiesCodegenMixin.conform_request(root, what=what)
-        return tm.ok(
+        return (
             FlextInfraCodegenConform(
                 repository_root=root,
                 state=m.Infra.CodegenConformState(
@@ -128,7 +129,9 @@ class TestsFlextInfraUtilitiesCodegenMixin:
                     request=request,
                     initial_workspace=workspace,
                 ),
-            ).plan(request),
+            )
+            .plan(request)
+            .unwrap()
         )
 
     @staticmethod
@@ -525,20 +528,41 @@ class TestsFlextInfraUtilitiesCodegenMixin:
             if result.failure:
                 return r[bool].from_failure(result)
         for project in sorted({plan.project for plan in changed}):
-            if (project / ".git").exists():
-                TestsFlextInfraUtilitiesGitMixin.git_bootstrap(
-                    project,
-                    (
-                        "add",
-                        "--",
-                        *(
-                            str(plan.path.relative_to(project))
-                            for plan in changed
-                            if plan.project == project
-                        ),
-                    ),
-                )
+            TestsFlextInfraUtilitiesCodegenMixin._stage_changed_codegen_plans(
+                changed, project
+            )
         return r[bool].ok(value=True)
+
+    @staticmethod
+    def _stage_changed_codegen_plans(
+        changed: tuple[m.Infra.CodegenFilePlan, ...],
+        project: Path,
+    ) -> None:
+        if not (project / ".git").exists():
+            return
+        visible = frozenset(tm.not_none(u.Infra.git_source_scope_paths(project)))
+        targets: list[str] = []
+        for plan in changed:
+            if plan.project != project:
+                continue
+            relative = plan.path.relative_to(project).as_posix()
+            if plan.path not in visible and plan.desired_content is not None:
+                continue
+            if plan.path not in visible and plan.desired_content is None:
+                tracked = tm.ok(
+                    u.Infra.git_is_tracked(
+                        m.Infra.GitRelativePathRequest(
+                            repo_root=project, relative_path=relative
+                        )
+                    )
+                )
+                if not tracked.value:
+                    continue
+            targets.append(relative)
+        if targets:
+            TestsFlextInfraUtilitiesGitMixin.git_bootstrap(
+                project, ("add", "--", *targets)
+            )
 
     @staticmethod
     def create_lazy_init_service(repository_root: Path) -> FlextInfraCodegenLazyInit:

@@ -105,7 +105,7 @@ class TestsFlextInfraFreshImport:
             runtime_root=tmp_path,
         )
         report = tm.ok(validator.build_report(packages=("flext_core",)))
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)
         tm.that(report.violations[0], has="No module named 'flext_core'")
 
     @staticmethod
@@ -125,14 +125,14 @@ class TestsFlextInfraFreshImport:
         """Test empty package list passes."""
         report: m.Infra.ValidationReport = tm.ok(v.build_report(packages=()))
         tm.that(report, is_=m.Infra.ValidationReport)
-        tm.that(report.passed, eq=True)
+        tm.ok(report.passed)
         tm.that(report.violations, length=0)
 
     @staticmethod
     def test_stdlib_package_passes(v: FlextInfraValidateFreshImport) -> None:
         """Test stdlib package passes."""
         report: m.Infra.ValidationReport = tm.ok(v.build_report(packages=("sys",)))
-        tm.that(report.passed, eq=True)
+        tm.ok(report.passed)
         tm.that(report.violations, length=0)
 
     @staticmethod
@@ -141,7 +141,7 @@ class TestsFlextInfraFreshImport:
         report: m.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("nonexistent_pkg_xyz_abc_123",)),
         )
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)
         tm.that(report.violations, length=1)
         tm.that(report.violations[0], has="nonexistent_pkg_xyz_abc_123")
 
@@ -153,7 +153,7 @@ class TestsFlextInfraFreshImport:
         report: m.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("sys", "nonexistent_xyz_qqq", "os")),
         )
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)
         tm.that(report.violations, length=1)
         tm.that(report.violations[0], has="nonexistent_xyz_qqq")
 
@@ -304,7 +304,7 @@ class TestsFlextInfraFreshImport:
             ),
         )
 
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)
         tm.that(report.violations[0], has="missing_export")
         tm.that(report.violations[0], has="Traceback")
 
@@ -338,7 +338,7 @@ class TestsFlextInfraFreshImport:
             publications=(publication,),
             repository_roots=(tmp_path,),
         )
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)
         tm.that(report.violations, length=1)
         tm.that(report.violations[0], has="scripts/probe=")
         tm.that(report.violations[0], has="Traceback")
@@ -371,7 +371,7 @@ class TestsFlextInfraFreshImport:
             publications=(publication,),
             repository_roots=(tmp_path,),
         )
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)
         tm.that(report.violations[0], has="ImportError")
 
     @staticmethod
@@ -384,7 +384,7 @@ class TestsFlextInfraFreshImport:
             encoding=c.DEFAULT_ENCODING,
         )
         report = _probe_report(tmp_path, packages=(package.name,))
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)
         tm.that(report.violations[0], has="missing_export")
         tm.that(report.violations[0], has="Traceback")
 
@@ -488,7 +488,7 @@ class TestsFlextInfraFreshImport:
             publications=(publication,),
             repository_roots=(tmp_path,),
         )
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)
         tm.that(report.violations[0], has="ImportError")
         tm.that(report.violations[0], has=f"{package.name}.dependency")
         tm.that(report.violations[0], has=str(package))
@@ -535,7 +535,7 @@ class TestsFlextInfraFreshImport:
                 repository_roots=(tmp_path,),
             ),
         )
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)
         tm.that(report.violations[0], has="ImportError")
         tm.that(report.violations[0], has=f"{package.name}.dependency")
         tm.that(report.violations[0], has=str(package))

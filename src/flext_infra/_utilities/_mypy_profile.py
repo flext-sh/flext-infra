@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import cProfile
+import signal
 import sys
 
 from mypy import api
@@ -28,6 +29,7 @@ class FlextInfraMypyProfiler:
 
         Raises:
             ValueError: If Mypy profiling requires an output destination.
+            RuntimeError: If the native termination handler cannot be observed.
 
         """
         destination = invocation.profile_output
@@ -35,12 +37,18 @@ class FlextInfraMypyProfiler:
             msg = "Mypy profiling requires an output destination"
             raise ValueError(msg)
         profile = cProfile.Profile()
+        previous = signal.getsignal(signal.SIGTERM)
+        if previous is None:
+            msg = "cannot observe native profiler termination handler"
+            raise RuntimeError(msg)
+        FlextInfraPytestClock.register_signal_checkpoint(profile, destination.resolve())
         try:
             stdout, stderr, status = profile.runcall(
                 api.run,
                 list(FlextInfraUtilitiesResourceLimits.mypy_arguments(invocation)),
             )
         finally:
+            signal.signal(signal.SIGTERM, previous)
             # Preserve partial evidence when the bounded checker is interrupted.
             FlextInfraPytestClock.publish_profile(profile, destination.resolve())
         sys.stdout.write(stdout)

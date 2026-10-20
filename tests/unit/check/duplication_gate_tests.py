@@ -38,7 +38,7 @@ def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
     def test_registry_exposes_the_canonical_gate() -> None:
         """Test registry exposes the canonical gate."""
         gate = FlextInfraGateRegistry.default().create("duplication", Path.cwd())
-        tm.that(isinstance(gate, FlextInfraDuplicationGate), eq=True)
+        tm.ok(isinstance(gate, FlextInfraDuplicationGate))
 
     def test_empty_workspace_scope_is_a_blocking_failure(self, tmp_path: Path) -> None:
         """Test empty workspace scope is a blocking failure."""
@@ -50,7 +50,7 @@ def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
             self._ctx(tmp_path),
         )
 
-        tm.that(execution.result.passed, eq=False)
+        tm.fail(execution.result.passed)
         tm.that(len(execution.issues), eq=1)
         tm.that(execution.issues[0].message, has="the scanned scope is empty")
         tm.that(execution.issues[0].severity, eq=str(c.Infra.GateSeverity.ERROR.value))
@@ -132,7 +132,7 @@ def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
 
         execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
 
-        tm.that(execution.result.passed, eq=False)
+        tm.fail(execution.result.passed)
         tm.that(
             tuple(issue.file for issue in execution.issues),
             has="charts/values.yaml",
@@ -144,7 +144,7 @@ def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
 
         execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
 
-        tm.that(execution.result.passed, eq=True)
+        tm.ok(execution.result.passed)
         tm.that(execution.issues, eq=())
 
     @staticmethod
@@ -203,7 +203,7 @@ def normalize_records(records: list[str]) -> t.VariadicTuple[str]:
 
         execution = FlextInfraDuplicationGate(root).check(own, self._ctx(root))
 
-        tm.that(execution.result.passed, eq=True)
+        tm.ok(execution.result.passed)
         tm.that(execution.issues, eq=())
 
     _PYTHON_BEHAVIOR_BLOCK = """\
@@ -273,7 +273,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
 
         execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
 
-        tm.that(execution.result.passed, eq=False)
+        tm.fail(execution.result.passed)
         tm.that(execution.issues, empty=False)
         report = m.Infra.JscpdReport.model_validate_json(
             (
@@ -282,7 +282,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         )
         tm.that(report.duplicates, empty=False)
         for duplicate in report.duplicates:
-            tm.that(duplicate.first_file == duplicate.second_file, eq=False)
+            tm.fail(duplicate.first_file == duplicate.second_file)
         tm.that(
             tuple(issue.file for issue in execution.issues),
             has="charts/values.yaml",
@@ -294,8 +294,8 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
 
         execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
 
-        tm.that(execution.result.passed, eq=False)
-        tm.that(len(execution.issues) >= 1, eq=True)
+        tm.fail(execution.result.passed)
+        tm.ok(len(execution.issues) >= 1)
 
     def test_intra_file_clone_is_reported(self, tmp_path: Path) -> None:
         """A file that duplicates a block inside itself is a finding.
@@ -308,7 +308,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
 
         execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
 
-        tm.that(execution.result.passed, eq=False)
+        tm.fail(execution.result.passed)
         tm.that(
             {issue.file for issue in execution.issues},
             eq={"src/fixture_python_clone/duplicated.py"},
@@ -375,7 +375,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
 
         execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
 
-        tm.that(execution.result.passed, eq=False)
+        tm.fail(execution.result.passed)
         text = " ".join(f"{issue.file} {issue.message}" for issue in execution.issues)
         tm.that(text, has="peer-alpha")
         tm.that(text, has="peer-beta")

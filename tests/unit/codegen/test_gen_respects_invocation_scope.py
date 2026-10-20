@@ -115,9 +115,9 @@ class TestsFlextInfraGenRespectsInvocationScope:
         tm.that(len(generation_lines), eq=1)
         tm.that(generation_lines[0], has='--root "$(PROJECT_ROOT)"')
         tm.that(generation_lines[0], has='--scope "$$scope"')
-        tm.that(any("codegen conform" in line for line in body), eq=False)
-        tm.that(any("deps modernize" in line for line in body), eq=False)
-        tm.that(any("deps extra-paths" in line for line in body), eq=False)
+        tm.fail(any("codegen conform" in line for line in body))
+        tm.fail(any("deps modernize" in line for line in body))
+        tm.fail(any("deps extra-paths" in line for line in body))
 
     def test_gen_init_uses_the_provisioned_owner_route(
         self,
@@ -134,7 +134,7 @@ class TestsFlextInfraGenRespectsInvocationScope:
             ),
             eq=True,
         )
-        tm.that(any("codegen conform" in line for line in init_lines), eq=False)
+        tm.fail(any("codegen conform" in line for line in init_lines))
         rendered_lines = rendered_makefile.splitlines()
         for verb in config.Infra.codegen.make.verbs:
             if (

@@ -31,7 +31,7 @@ class TestsFlextInfraDocsContractTocPlacement:
         updated, changed = u.Infra.docs_contract_update_toc(content)
 
         first_meaningful = next(line for line in updated.splitlines() if line.strip())
-        tm.that(first_meaningful.startswith("<!-- AUTO-GENERATED"), eq=True)
+        tm.ok(first_meaningful.startswith("<!-- AUTO-GENERATED"))
         tm.that(
             updated.index("# cosmos_charts.constants")
             < updated.index("<!-- TOC START -->"),

@@ -93,7 +93,7 @@ class TestsFlextInfraSymbolicTextCutover:
                         ast.parse(expected, mode="eval").body,
                     ),
                 )
-                tm.that(u.Infra.same_name(provider, actual), eq=True)
+                tm.ok(u.Infra.same_name(provider, actual))
 
     @classmethod
     @pytest.mark.parametrize(
@@ -403,7 +403,7 @@ class TestsFlextInfraSymbolicTextCutover:
         report = tm.ok(FlextInfraModGateEngine.scan(mod_workspace, fix=False))
         findings = tuple(entry for entry in report.entries if entry.rule_id == rule_id)
         tm.that(len(findings), eq=1)
-        tm.that(findings[0].actionable, eq=True)
+        tm.ok(findings[0].actionable)
         captured = tuple(state.path for state in findings[0].binding_states)
         tm.that(captured, has=outcome.resolve(), lacks=unused.resolve())
         if builtin_subscript:
@@ -481,7 +481,7 @@ class TestsFlextInfraSymbolicTextCutover:
         captured = {state.path: state.content for state in snapshot.states}
         tm.that(captured[owner], eq=owner.read_bytes())
         tm.that(captured[dependency], eq=dependency.read_bytes())
-        tm.that(unrelated in captured, eq=False)
+        tm.fail(unrelated in captured)
 
     @staticmethod
     def test_snapshot_preserves_imports_in_nested_statement_suites(
@@ -673,7 +673,7 @@ class TestsFlextInfraSymbolicTextCutover:
             if entry.rule_id == "codegen-test-public-utility-binding-required"
         )
         tm.that(len(binding_findings), eq=0 if binding == "same" else 1)
-        tm.that(all(not entry.actionable for entry in binding_findings), eq=True)
+        tm.ok(all(not entry.actionable for entry in binding_findings))
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)
         tm.ok(FlextInfraModReplacements.publish(mod_workspace, selected))
         published = consumer.read_bytes()

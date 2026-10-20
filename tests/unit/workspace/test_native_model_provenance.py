@@ -129,7 +129,7 @@ admission = FlextInfraValidateFreshImport.capture_producer(
 if mutation == 'none':
     producer = admission.unwrap()
     reference = producer.generator_reference
-    assert reference is not None
+    tm.not_none(reference)
     sources = {
         Path(origin).resolve() for _, origin, _ in reference.sources
     }
@@ -183,7 +183,7 @@ module = importlib.import_module('source_provider')
 assert module.operation() == 'original'
 admission = FlextInfraValidateFreshImport.capture_producer(
     runtime_root, entrypoint=module.operation).unwrap()
-assert admission.generator_reference is not None
+tm.not_none(admission.generator_reference)
 sources = {
     Path(source).resolve()
     for _, source, _ in admission.generator_reference.sources

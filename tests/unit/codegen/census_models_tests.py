@@ -22,7 +22,7 @@ class TestsFlextInfraCodegenCensusModels:
         match = c.Infra.VIOLATION_PATTERN.match(
             "[ban-cyclic-import] src/file.py:10 — msg",
         )
-        tm.that(match is not None, eq=True)
+        tm.ok(match is not None)
         if match is not None:
             tm.that(set(match.groupdict()), eq={"rule", "module", "line", "message"})
 
@@ -40,7 +40,7 @@ class TestsFlextInfraCodegenCensusModels:
         tm.that(v.rule, eq="NS-001")
         tm.that(v.line, eq=10)
         tm.that(v.message, eq="Test message")
-        tm.that(v.fixable, eq=True)
+        tm.ok(v.fixable)
 
     @staticmethod
     def test_empty_report() -> None:
@@ -101,10 +101,10 @@ class TestsFlextInfraCodegenCensusModels:
         first.skip(module="src/second.py", rule="example", line=2, message="skipped")
         first.files_modified.add("src/first.py")
 
-        tm.that(first.has_changes, eq=True)
+        tm.ok(first.has_changes)
         tm.that(len(first.violations_fixed), eq=1)
         tm.that(len(first.violations_skipped), eq=1)
-        tm.that(second.has_changes, eq=False)
+        tm.fail(second.has_changes)
         tm.that(second.violations_fixed, empty=True)
         tm.that(second.violations_skipped, empty=True)
         tm.that(second.files_modified, empty=True)

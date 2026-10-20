@@ -40,6 +40,7 @@ from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesIterationDirectory,
+    FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeModulePatch,
     FlextInfraUtilitiesRopeRuntime,
@@ -481,8 +482,12 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 if path.parent == directory and path.suffix == c.Infra.EXT_PYTHON
             )
         )
-        if actual != expected:
-            message = f"native facade source membership differs: {directory}"
+        if expected and actual != expected:
+            message = (
+                f"native facade source membership differs: {directory}; "
+                f"added={sorted(set(actual) - set(expected))}; "
+                f"removed={sorted(set(expected) - set(actual))}"
+            )
             raise ValueError(message)
         return actual
 
@@ -2149,7 +2154,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         )
         if (
             any(base.lineno != namespace.lineno for base in namespace.bases)
-            or header_length > config.Infra.tooling.tools.ruff.line_length
+            or header_length
+            > FlextInfraUtilitiesProjectManagedArtifacts.native_tool_setting(
+                config.Infra.tooling, "ruff", "line-length", int
+            )
         ):
             wrapped: list[t.Infra.CstArgument] = []
             for index, arg in enumerate(arguments):

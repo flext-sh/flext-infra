@@ -40,7 +40,7 @@ class TestsFlextInfraDepsDetectorReport:
             eq=True,
             msg=f"{outcome.stdout}\n{outcome.stderr}",
         )
-        tm.that(destination.is_file(), eq=True)
+        tm.ok(destination.is_file())
         report = u.Cli.json_as_mapping(tm.ok(u.Cli.json_read(destination)))
         tm.that(u.Cli.json_as_mapping(report.get("projects")), keys=[root.name])
 
@@ -60,5 +60,5 @@ class TestsFlextInfraDepsDetectorReport:
                 str(blocked / "report.json"),
             ),
         )
-        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(outcome.outcome))
         tm.that(outcome.stdout + outcome.stderr, has="json_write failed")

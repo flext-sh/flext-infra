@@ -95,7 +95,7 @@ class TestsFlextInfraModelAliasRetirement:
             )
             updated = dict(sources)
             updated.update((edit.file_path, edit.updated_source) for edit in edits)
-            tm.that(len(edits) >= 2, eq=True)
+            tm.ok(len(edits) >= 2)
             tm.that(
                 tm.ok(
                     u.Infra.plan_semantic_cutover(
@@ -109,12 +109,12 @@ class TestsFlextInfraModelAliasRetirement:
             )
         for path, source in updated.items():
             if source != sources[path]:
-                tm.that(source.startswith(c.Infra.AUTOGEN_HEADERS), eq=False)
+                tm.fail(source.startswith(c.Infra.AUTOGEN_HEADERS))
                 path.write_text(source, encoding="utf-8")
         package = next(path.parent for path in sources if path.name == "consumer.py")
         consumer = (package / "consumer.py").read_text(encoding="utf-8")
-        tm.that('PAYLOAD = "RedundantRelay.First"' in consumer, eq=True)
-        tm.that('Literal["RedundantRelay.Second"]' in consumer, eq=True)
+        tm.ok('PAYLOAD = "RedundantRelay.First"' in consumer)
+        tm.ok('Literal["RedundantRelay.Second"]' in consumer)
         result = tm.ok(
             u.Cli.run((
                 sys.executable,
@@ -134,7 +134,7 @@ class TestsFlextInfraModelAliasRetirement:
                 ),
             ))
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
 
     @pytest.mark.parametrize(
         "consumer",

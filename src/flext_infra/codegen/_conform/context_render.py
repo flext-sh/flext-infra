@@ -118,6 +118,11 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             return r[m.Infra.MakeRenderContext].fail(
                 "Make rendering requires resolved tooling context",
             )
+        tooling = tooling_runtime.document
+        if tooling is None:
+            return r[m.Infra.MakeRenderContext].fail(
+                "Make rendering requires the elected tooling document",
+            )
         subprojects = (
             tuple(workspace.subprojects)
             if profile is c.Infra.MakeProfile.WORKSPACE
@@ -134,7 +139,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         )
         try:
             delegated_rules = FlextInfraGateRegistry.default().delegated_lint_rules(
-                config.Infra.tooling.tools.ruff.lint.rule_owners,
+                tooling.tools.ruff.lint.rule_owners,
                 check_gates=codegen.make.check_gates_default,
                 repair_gates=(
                     *codegen.make.check_gates_fixable,
@@ -145,7 +150,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             return r[m.Infra.MakeRenderContext].fail(str(exc))
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
-                pytest=config.Infra.tooling.tools.pytest,
+                pytest=tooling.tools.pytest,
                 make=codegen.make,
                 mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
                 timeout_command=c.Infra.TIMEOUT_COMMAND,
@@ -156,7 +161,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 examples_module=repository.examples_module,
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=self.link_mode(repository, codegen.toolchain),
-                ruff_extend_exclude=(),
                 ruff_delegated_rules=delegated_rules,
                 make_profile=profile,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
@@ -459,6 +463,11 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         make_context = self.make_render_context(render_inputs)
         if make_context.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(make_context)
+        tooling = make_context.value.tooling_runtime.document
+        if tooling is None:
+            return r[m.Infra.ProjectRenderContext].fail(
+                "Project rendering requires the elected tooling document",
+            )
         integration = self._integration_facts(render_inputs)
         if integration.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(integration)
@@ -480,9 +489,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 docs_audit=workspace.docs_audit,
                 **make_context.value.model_dump(
                     by_alias=True,
-                    exclude={
-                        "ruff_extend_exclude",
-                    },
                     exclude_computed_fields=True,
                 ),
                 scaffold=codegen.scaffold,
@@ -500,11 +506,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 ),
                 project_dependencies=project_dependencies,
                 development_dependencies=tuple(development_dependencies),
-                tooling=config.Infra.tooling,
-                ruff_extend_exclude=(
-                    *config.Infra.tooling.tools.ruff_extend_exclude,
-                    *codegen.generated_source_globs,
-                ),
+                tooling=tooling,
                 environment_path_prepends=(codegen.toolchain.environment_path_prepends),
                 beads=workspace.beads,
                 canonical_project_name=target.canonical_project_name,

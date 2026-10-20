@@ -110,7 +110,7 @@ class TestsFlextInfraSymbolicBindingPublication:
             ),
             eq=True,
         )
-        tm.that(all(not entry.actionable for entry in findings), eq=True)
+        tm.ok(all(not entry.actionable for entry in findings))
         tm.ok(
             FlextInfraModReplacements.publish(
                 root, FlextInfraModGateEngine.recounted(findings)
@@ -175,7 +175,7 @@ class TestsFlextInfraSymbolicBindingPublication:
             ),
             eq=1,
         )
-        tm.that(all(not entry.actionable for entry in findings), eq=True)
+        tm.ok(all(not entry.actionable for entry in findings))
         tm.ok(
             FlextInfraModReplacements.publish(
                 root, FlextInfraModGateEngine.recounted(findings)
@@ -229,7 +229,7 @@ class TestsFlextInfraSymbolicBindingPublication:
         published = FlextInfraModReplacements.publish(
             root, FlextInfraModGateEngine.recounted(findings)
         )
-        tm.that(published.failure, eq=True)
+        tm.ok(published.failure)
         tm.that(tuple(path.read_bytes() for path in consumers), eq=before)
         tm.that(initializer.read_text(encoding="utf-8"), eq=changed)
         runtime = tm.ok(

@@ -193,7 +193,7 @@ class TestsFlextInfraRepositoryLocalTopology:
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         tm.that(workspace.name, eq=observed.name)
         tm.that(workspace.beads, none=True)
-        tm.that(workspace.gascity_enabled, eq=False)
+        tm.fail(workspace.gascity_enabled)
 
     def test_overlay_omitting_beads_policy_keeps_beads_enabled(
         self,
@@ -536,8 +536,8 @@ class TestsFlextInfraRepositoryLocalTopology:
         tm.that(after.external_dependency_paths, empty=True)
         tm.that(second.repositories, eq=first.repositories)
         tm.that(second.files, eq=first.files)
-        tm.that((member / c.PYPROJECT_FILENAME).exists(), eq=False)
-        tm.that((member / c.Infra.GIT_DIR).exists(), eq=False)
+        tm.fail((member / c.PYPROJECT_FILENAME).exists())
+        tm.fail((member / c.Infra.GIT_DIR).exists())
 
     def test_declared_content_member_remains_governed_without_checkout(
         self,
@@ -569,7 +569,7 @@ class TestsFlextInfraRepositoryLocalTopology:
 
         tm.that(workspace.subprojects, eq=declared)
         tm.that(workspace.external_dependency_paths, empty=True)
-        tm.that((member / c.Infra.GIT_DIR).exists(), eq=False)
+        tm.fail((member / c.Infra.GIT_DIR).exists())
 
     def test_explicitly_unmanaged_content_member_remains_external(
         self,
@@ -691,7 +691,7 @@ class TestsFlextInfraRepositoryLocalTopology:
         # workspace right now is the Git fact carried by ``editable``.
         tm.that(workspace.repository.path, eq=Path())
         tm.that(workspace.repository.role, eq=c.Infra.MakeProfile.STANDALONE)
-        tm.that(workspace.repository.editable, eq=True)
+        tm.ok(workspace.repository.editable)
         tm.that(tm.not_none(workspace.beads).workspace, eq="parent-workspace")
 
     def test_composed_self_load_accepts_a_self_coordinate_manifest(
@@ -779,7 +779,7 @@ class TestsFlextInfraRepositoryLocalTopology:
             tm.that(beads.workspace, eq="root-workspace")
             tm.that(beads.database, eq="root-database")
             tm.that(beads.issue_prefix, eq="root-prefix")
-            tm.that((root / project_name / ".beads").is_symlink(), eq=True)
+            tm.ok((root / project_name / ".beads").is_symlink())
 
     @staticmethod
     def test_workspace_excludes_governed_non_python_gitlinks_from_codegen(

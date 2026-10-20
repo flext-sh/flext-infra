@@ -440,11 +440,11 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
             ),
         )
         if rejected_capture:
-            tm.that(u.Cli.process_succeeded(executed.outcome), eq=False)
+            tm.fail(u.Cli.process_succeeded(executed.outcome))
             tm.that(executed.stderr, has="AttributeError")
             tm.fail(planned, has="public facade alias u is shadowed")
             return
-        tm.that(u.Cli.process_succeeded(executed.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(executed.outcome))
         tm.that(executed.stderr, eq="")
 
     def test_accepts_alias_owned_by_removed_private_import(

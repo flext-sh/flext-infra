@@ -12,6 +12,7 @@ import runpy
 import shutil
 from collections.abc import Mapping
 from pathlib import Path
+from typing import cast
 
 from flext_infra import config, infra, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
@@ -614,7 +615,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                     epic_lane,
                 ),
             )
-            tm.that(lane.exists(), eq=False)
+            tm.that(lane.exists(), truth=False)
             tm.that(
                 (
                     tm.ok(u.Cli.capture([c.Infra.GIT, "show-ref"], cwd=repository)),
@@ -968,8 +969,8 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                 "issue_prefix": issue_prefix,
             }
             if custom_issue_types:
-                custom_types: list[t.JsonValue] = [*custom_issue_types]
-                payload["custom_issue_types"] = custom_types
+                custom_types: list[str] = [*custom_issue_types]
+                payload["custom_issue_types"] = cast("t.JsonValue", custom_types)
             tm.ok(u.Cli.yaml_dump(path, payload))
             return path
 

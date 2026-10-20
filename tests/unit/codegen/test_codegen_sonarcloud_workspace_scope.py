@@ -66,7 +66,7 @@ class TestsFlextInfraCodegenSonarcloudWorkspaceScope:
         """The root render excludes each declared member; a member render does not."""
         root = tmp_path / "workspace"
         member = u.Tests.WorktreeFixture.governed_workspace_with_member(root)
-        tm.that((root / c.Infra.GITMODULES).is_file(), eq=True)
+        tm.ok((root / c.Infra.GITMODULES).is_file())
         sonarcloud = config.Infra.codegen.sonarcloud
         # Tracked generated-source trees join the declared exclusions from
         # their one codegen artifact key (flext-gknfx).

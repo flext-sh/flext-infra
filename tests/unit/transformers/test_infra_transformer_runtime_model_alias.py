@@ -88,8 +88,8 @@ class TestsFlextInfraRuntimeModelAlias:
             c.Infra.PKG_CORE_UNDERSCORE,
             "t",
         )
-        tm.that(_MODULE_IMPORT in updated, eq=True)
-        tm.that(f"    {_MODULE_IMPORT}" in updated, eq=False)
+        tm.ok(_MODULE_IMPORT in updated)
+        tm.fail(f"    {_MODULE_IMPORT}" in updated)
         (tmp_path / "runtime_model.py").write_text(updated, encoding="utf-8")
         probe = (
             "from runtime_model import _Row\n"
@@ -108,8 +108,8 @@ class TestsFlextInfraRuntimeModelAlias:
             c.Infra.PKG_CORE_UNDERSCORE,
             "t",
         )
-        tm.that(f"    {_MODULE_IMPORT}" in updated, eq=True)
-        tm.that(f"\n{_MODULE_IMPORT}" in updated, eq=False)
+        tm.ok(f"    {_MODULE_IMPORT}" in updated)
+        tm.fail(f"\n{_MODULE_IMPORT}" in updated)
 
     @staticmethod
     def test_plain_class_body_alias_keeps_the_deferred_import() -> None:
@@ -119,7 +119,7 @@ class TestsFlextInfraRuntimeModelAlias:
             c.Infra.PKG_CORE_UNDERSCORE,
             "t",
         )
-        tm.that(f"    {_MODULE_IMPORT}" in updated, eq=True)
+        tm.ok(f"    {_MODULE_IMPORT}" in updated)
 
     @staticmethod
     def test_missing_block_is_created_instead_of_a_runtime_import() -> None:
@@ -129,7 +129,7 @@ class TestsFlextInfraRuntimeModelAlias:
             c.Infra.PKG_CORE_UNDERSCORE,
             "t",
         )
-        tm.that("if TYPE_CHECKING:" in updated, eq=True)
-        tm.that(f"    {_MODULE_IMPORT}" in updated, eq=True)
-        tm.that(f"\n{_MODULE_IMPORT}" in updated, eq=False)
-        tm.that("from typing import TYPE_CHECKING" in updated, eq=True)
+        tm.ok("if TYPE_CHECKING:" in updated)
+        tm.ok(f"    {_MODULE_IMPORT}" in updated)
+        tm.fail(f"\n{_MODULE_IMPORT}" in updated)
+        tm.ok("from typing import TYPE_CHECKING" in updated)

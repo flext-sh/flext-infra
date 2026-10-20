@@ -101,7 +101,7 @@ class TestsFlextInfraCodegenMakeVerbs:
             shape=u.Tests.MakeEnvironmentShape(package=True),
         )
         makefile = (project_root / "Makefile").read_text(encoding="utf-8")
-        tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
+        tm.ok('$(UV) build --project "$(PROJECT_ROOT)"' in makefile)
         tm.that(makefile, lacks="package=false (content-only root)")
 
     @staticmethod
@@ -127,7 +127,7 @@ class TestsFlextInfraCodegenMakeVerbs:
             shape=u.Tests.MakeEnvironmentShape(package=False),
         )
         makefile = (project_root / "Makefile").read_text(encoding="utf-8")
-        tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=False)
+        tm.fail('$(UV) build --project "$(PROJECT_ROOT)"' in makefile)
         tm.that(makefile, has="package=false (content-only root)")
         # The noop verb itself exists with one body in both profiles.
         tm.that(makefile, has="_builtin-build: _builtin_build_artifacts")
@@ -253,8 +253,8 @@ class TestsFlextInfraCodegenMakeVerbs:
         )
         process = _run_make_help(project_root)
         tm.that(process.stdout, has=description)
-        tm.that((project_root / "make-effect").exists(), eq=False)
-        tm.that((project_root / "shell-effect").exists(), eq=False)
+        tm.fail((project_root / "make-effect").exists())
+        tm.fail((project_root / "shell-effect").exists())
 
     @staticmethod
     def test_generated_make_ignores_forbidden_makeflags_overrides(
@@ -327,9 +327,9 @@ class TestsFlextInfraCodegenMakeVerbs:
             encoding="utf-8",
         )
         makefile = (project_root / "Makefile").read_text(encoding="utf-8")
-        tm.that("_builtin-sync:" in makefile, eq=True)
-        tm.that("scripts/dispatch.py" in makefile, eq=True)
-        tm.that("sync" in makefile, eq=True)
+        tm.ok("_builtin-sync:" in makefile)
+        tm.ok("scripts/dispatch.py" in makefile)
+        tm.ok("sync" in makefile)
 
     @staticmethod
     def test_arbitrary_unknown_command_line_variable_is_ignored(

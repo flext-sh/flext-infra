@@ -24,8 +24,8 @@ class TestsFlextInfraServiceBaseAlias:
         infra_report = u.check(FlextInfraServiceBase)
         cli_report = u.check(s)
 
-        tm.that(not infra_report.violations, eq=True)
-        tm.that(not cli_report.violations, eq=True)
+        tm.ok(not infra_report.violations)
+        tm.ok(not cli_report.violations)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -130,7 +130,7 @@ class TestsFlextInfraServiceBaseAlias:
         tm.that(second.apply_changes, eq=apply)
         tm.that(second.effective_dry_run, eq=expected)
         tm.that(first.fail_fast, eq=c.Infra.SERVICE_FAIL_FAST)
-        tm.that(first.log is first.logger, eq=True)
+        tm.ok(first.log is first.logger)
 
     @staticmethod
     def test_command_aliases_payload_and_serialization(tmp_path: t.Infra.Path) -> None:
@@ -172,9 +172,9 @@ class TestsFlextInfraServiceBaseAlias:
         tm.that(serialized["namespace"], eq=service.target_namespace)
         tm.that(serialized["root"], eq=str(service.root))
         tm.that(serialized["effective_dry_run"], eq=service.effective_dry_run)
-        tm.that("project_filter" not in serialized, eq=True)
-        tm.that("report_path" not in serialized, eq=True)
-        tm.that("output_dir" not in serialized, eq=True)
+        tm.ok("project_filter" not in serialized)
+        tm.ok("report_path" not in serialized)
+        tm.ok("output_dir" not in serialized)
         schema = service.model_json_schema()
         context_schema = m.Infra.CommandContext.model_json_schema()
         for name in ("repository_root", "apply", "check", "module", "namespace"):

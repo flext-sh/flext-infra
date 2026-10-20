@@ -33,10 +33,10 @@ class TestsFlextInfraCodegenGenActivation:
             u.Tests.run_isolated_make(["--no-print-directory", "gen"], cwd=root),
         )
 
-        tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(process.outcome))
         tm.that(process.stderr, has="missing environment interpreter")
-        tm.that((root / "gen-lifecycle.log").exists(), eq=False)
-        tm.that((root / ".venv").exists(), eq=False)
+        tm.fail((root / "gen-lifecycle.log").exists())
+        tm.fail((root / ".venv").exists())
         tm.that(envrc.read_text(encoding="utf-8"), eq=broken_activation)
 
     @staticmethod
@@ -111,7 +111,7 @@ class TestsFlextInfraCodegenGenActivation:
             tm.that(process.stderr, has="SyntaxError")
             tm.that(envrc.read_text(encoding="utf-8"), eq=broken_activation)
             return
-        tm.that(envrc.read_text(encoding="utf-8") == broken_activation, eq=False)
+        tm.fail(envrc.read_text(encoding="utf-8") == broken_activation)
         expected = ["pre"]
         if scenario == "custom":
             expected.append("custom")

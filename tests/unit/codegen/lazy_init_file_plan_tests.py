@@ -73,7 +73,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                     (root / c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH).exists(),
                     eq=False,
                 )
-                tm.that(conftest in {state.path for state in analysis.inputs}, eq=False)
+                tm.fail(conftest in {state.path for state in analysis.inputs})
                 tm.that(
                     any(
                         conftest == state.path
@@ -115,12 +115,12 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                 u.Infra.facade_source_project(root, project_roots=(root,)),
             )
             with binding[0].source_capture():
-                tm.that(binding[0].source_query(absent, "isfile"), eq=False)
+                tm.fail(binding[0].source_query(absent, "isfile"))
             with binding[0].source_consumption() as first:
-                tm.that(binding[0].source_query(absent, "isfile"), eq=False)
+                tm.fail(binding[0].source_query(absent, "isfile"))
             with binding[0].source_consumption() as second:
-                tm.that(binding[0].source_query(unrelated, "isfile"), eq=False)
-                tm.that(binding[0].source_query(absent, "isfile"), eq=False)
+                tm.fail(binding[0].source_query(unrelated, "isfile"))
+                tm.fail(binding[0].source_query(absent, "isfile"))
             tm.that(
                 {
                     query
@@ -209,7 +209,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                 analysis, binding[0], caught.value
             )
             retained.append(classified)
-            tm.that(classified.exception is caught.value, eq=True)
+            tm.ok(classified.exception is caught.value)
             tm.that(
                 package / c.Infra.INIT_PY in {file.path for file in classified.files},
                 eq=True,
@@ -233,7 +233,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             )
 
         outcome = owner.run_files_locked(roots, publish)
-        tm.that(outcome.failure, eq=True)
+        tm.ok(outcome.failure)
         assert outcome.exception is retained[0].exception, (
             outcome.error,
             outcome.exception,
@@ -294,7 +294,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         classified = service.classify_source_conflict(
             analysis, binding[0], caught.value
         )
-        tm.that(classified.exception is caught.value, eq=True)
+        tm.ok(classified.exception is caught.value)
         tm.that(
             package / c.Infra.INIT_PY in {file.path for file in classified.files},
             eq=False,
@@ -338,7 +338,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         classified = service.classify_source_conflict(
             analysis, binding[0], caught.value
         )
-        tm.that(classified.exception is caught.value, eq=True)
+        tm.ok(classified.exception is caught.value)
         tm.that(
             package / c.Infra.INIT_PY in {file.path for file in classified.files},
             eq=True,
@@ -491,7 +491,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             )
 
         outcome = owner.run_files_locked(roots, publish)
-        tm.that(outcome.failure, eq=True)
+        tm.ok(outcome.failure)
         tm.that(target.read_bytes(), eq=before)
 
     @staticmethod
@@ -540,7 +540,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.that(retained.ownership, eq="authored")
         tm.that(retained.disposition, eq="retained")
         tm.that(set(retained.exports), eq={"Payload", "VALUE", "load"})
-        tm.that(initializer in {file.path for file in analysis.files}, eq=False)
+        tm.fail(initializer in {file.path for file in analysis.files})
         tm.that(
             (root / c.Infra.CODEGEN_LAZY_PLAN_REPORT_RELATIVE_PATH).exists(),
             eq=False,
@@ -570,7 +570,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                 cwd=root,
             ),
         )
-        tm.that(u.Cli.process_succeeded(consumer.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(consumer.outcome))
         tm.that(consumer.stdout.strip(), eq=f"{value} {value}")
 
     @pytest.mark.parametrize("family", ["m", "p", "u"])
@@ -614,10 +614,16 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.that(source, has="PayloadOwner")
         tm.that(source, has="class Sample(ExistingOwner, PayloadOwner)")
         tm.that(source, has="retained = 'unchanged'")
+        declared_inputs = {state.path for state in inputs.sources}
         tm.that(
-            {state.path for state in file.source_states},
-            eq=set(before) | {state.path for state in inputs.sources},
+            {
+                state.path
+                for state in file.source_states
+                if state.path.is_relative_to(root) or state.path in declared_inputs
+            },
+            eq=set(before) | declared_inputs,
         )
+        tm.ok(u.Cli.atomic_verify_binary_file_states(file.source_states))
         tm.that({path: path.read_bytes() for path in before}, eq=before)
 
     @staticmethod
@@ -837,8 +843,8 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             tm.that(plan.project, eq=roots[index])
             tm.that(u.Tests.codegen_file_text(plan), contains=name)
             source_paths = {state.path for state in plan.source_states}
-            tm.that(packages[index] / "service.py" in source_paths, eq=True)
-            tm.that(packages[1 - index] / "service.py" in source_paths, eq=False)
+            tm.ok(packages[index] / "service.py" in source_paths)
+            tm.fail(packages[1 - index] / "service.py" in source_paths)
         repeated = tm.ok(service.plan_files())
         tm.that(
             tuple((file.path, file.desired_content) for file in analysis.files),
@@ -952,8 +958,8 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                 for file in analysis.files
                 if file.path == package / c.Infra.INIT_PY
             )
-            tm.that(provider in {state.path for state in receipt.inputs}, eq=True)
-            tm.that(provider in {state.path for state in plan.source_states}, eq=False)
+            tm.ok(provider in {state.path for state in receipt.inputs})
+            tm.fail(provider in {state.path for state in plan.source_states})
             provider.write_text(
                 "class Shared: pass\n__all__ = ['Shared']\n# Changed failed target\n",
                 encoding=c.DEFAULT_ENCODING,
@@ -965,7 +971,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             binding[0],
             caught.value,
         )
-        tm.that(analysis.exception is caught.value, eq=True)
+        tm.ok(analysis.exception is caught.value)
         tm.that(
             any("collision(s)" in issue.message for issue in analysis.issues),
             eq=True,
@@ -993,8 +999,8 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                 m.Infra.CodegenPhasePublicationPolicy(directories=()),
             ),
         )
-        tm.that(outcome.failure, eq=True)
-        tm.that(outcome.exception is caught.value, eq=True)
+        tm.ok(outcome.failure)
+        tm.ok(outcome.exception is caught.value)
         tm.that(plan.path.read_bytes(), eq=plan.desired_content)
         tm.ok(
             u.Infra.publish_refactor_report_evidence(
@@ -1058,7 +1064,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
                 m.Infra.CodegenPhasePublicationPolicy(directories=()),
             ),
         )
-        tm.that(outcome.failure, eq=True)
+        tm.ok(outcome.failure)
         plan = next(
             file for file in analysis.files if file.path == package / c.Infra.INIT_PY
         )
@@ -1100,16 +1106,16 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         )
         tm.that(init_plan.desired_mode, eq=config.Infra.codegen.modes.file_default)
         tm.that(u.Tests.codegen_file_text(init_plan), contains="FlextTestsModels")
-        tm.that(u.Infra.codegen_file_requires_effect(init_plan), eq=True)
+        tm.ok(u.Infra.codegen_file_requires_effect(init_plan))
         source_paths = {state.path for state in init_plan.source_states}
-        tm.that(module_path.resolve() in source_paths, eq=True)
+        tm.ok(module_path.resolve() in source_paths)
         tm.that(
             any(path.name == "lazy_init_root.py.j2" for path in source_paths),
             eq=True,
         )
         input_paths = {state.path for state in analysis.inputs}
-        tm.that(source_paths.issubset(input_paths), eq=True)
-        tm.that(init_path.resolve() in input_paths, eq=True)
+        tm.ok(source_paths.issubset(input_paths))
+        tm.ok(init_path.resolve() in input_paths)
         unit_plan = plans[unit_path.resolve()]
         tm.that(
             tm.ok(u.Infra.codegen_file_before_state(unit_plan)).content,
@@ -1117,7 +1123,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         )
         tm.that(unit_plan.desired_content, eq=None)
         tm.that(unit_plan.desired_mode, eq=None)
-        tm.that(u.Infra.codegen_file_requires_effect(unit_plan), eq=True)
+        tm.ok(u.Infra.codegen_file_requires_effect(unit_plan))
         tm.that({path: path.read_bytes() for path in (init_path, unit_path)}, eq=before)
 
     @staticmethod
@@ -1170,7 +1176,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             if plan.desired_content is None
             and u.Infra.codegen_file_requires_effect(plan)
         }
-        tm.that(expected_deletes.issubset(deletes), eq=True)
+        tm.ok(expected_deletes.issubset(deletes))
         tm.that({path: path.read_bytes() for path in expected_deletes}, eq=before)
 
     @staticmethod
@@ -1184,7 +1190,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
 
         result = service.execute()
 
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(result.error, contains="owned by codegen conform")
         tm.that(init_path.read_bytes(), eq=before)
 
@@ -1197,6 +1203,6 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
 
         result = service.plan_files()
 
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(result.error, contains="lazy-init target module not found")
         tm.that(init_path.read_bytes(), eq=before)

@@ -124,7 +124,11 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
 
     @staticmethod
     def _bind_child_profile(report_dir: Path, profile: Path) -> None:
-        """Bind one completed child profile to this run's receipt by digest."""
+        """Bind one reaped child's native profile to this run by digest.
+
+        A checkpoint from an interrupted child is diagnostic evidence; binding
+        it never changes the separately recorded native process outcome.
+        """
         context = m.Infra.PytestRunContext.model_validate_json(
             (report_dir / "run-context.json").read_text(encoding="utf-8"),
         )
@@ -292,7 +296,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
 
         """
         extractor = FlextInfraPytestDiagExtractor(
-            repository_root=self.root,
+            repository_root=self.repository_root,
             junit=report_dir / "junit.xml",
             log_path=report_dir / "pytest.log",
             report_log=report_dir / "events.jsonl",

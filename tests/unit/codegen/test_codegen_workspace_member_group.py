@@ -34,14 +34,14 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
                     for line in rendered.splitlines()
                     if line.startswith(f"{verb.name}:")
                 )
-                tm.that("_builtin_require_interpreter" in prerequisite, eq=True)
-                tm.that("_builtin_require_environment" in prerequisite, eq=False)
-        tm.that("LOCAL_EDITABLE_FLAGS" in rendered, eq=False)
+                tm.ok("_builtin_require_interpreter" in prerequisite)
+                tm.fail("_builtin_require_environment" in prerequisite)
+        tm.fail("LOCAL_EDITABLE_FLAGS" in rendered)
         environment = rendered.split("_builtin_require_environment:", 1)[1].split(
             "\nendif", 1
         )[0]
-        tm.that("pip install" in environment, eq=False)
-        tm.that("sync --project" in environment, eq=False)
+        tm.fail("pip install" in environment)
+        tm.fail("sync --project" in environment)
         lifecycle = rendered.split("_upg_lifecycle:", 1)[1].split(
             "\n_upg_install_runtime:", 1
         )[0]
@@ -49,12 +49,7 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
             lifecycle.index("--what pyproject") < lifecycle.index("lock --project"),
             eq=True,
         )
-        tm.that("PROJECT_INFRA_PYTHONPATH" in rendered, eq=False)
-        setup = rendered.split("SETUP_ENVIRONMENT_RECIPE = ", 1)[1].split("\n\n", 1)[0]
-        tm.that(
-            setup.index("sync-environment") < setup.index("--what runtime-bindings"),
-            eq=True,
-        )
+        tm.fail("PROJECT_INFRA_PYTHONPATH" in rendered)
 
     @staticmethod
     @pytest.mark.slow

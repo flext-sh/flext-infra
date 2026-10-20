@@ -24,6 +24,9 @@ class FlextInfraProfileEntry:
     def run() -> int:
         """Retain the profile even when the CLI raises or is interrupted.
 
+        Signal checkpoints update the elected report input and preserve the
+        previous artifact. They describe work up to interruption, not success.
+
         Returns:
             The canonical CLI exit status.
 
@@ -36,7 +39,10 @@ class FlextInfraProfileEntry:
         status: int | None = None
 
         FlextInfraPytestClock.register_signal_checkpoint(
-            profiler, immutable_output.with_suffix(".checkpoint.pstats")
+            profiler,
+            output,
+            immutable_output=immutable_output.with_suffix(".checkpoint.pstats"),
+            previous_output=previous_output.with_suffix(".checkpoint.pstats"),
         )
         profiler.enable()
         try:
@@ -53,7 +59,6 @@ class FlextInfraProfileEntry:
                     immutable_output=immutable_output,
                     previous_output=previous_output,
                 )
-                profiler.print_stats(sort="cumtime")
             except BaseException as publication_failure:
                 if primary is not None:
                     primary.add_note(

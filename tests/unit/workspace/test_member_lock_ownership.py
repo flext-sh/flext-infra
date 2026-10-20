@@ -56,7 +56,7 @@ class TestsFlextInfraWorkspaceMemberLockOwnership:
             has=str(context.lock_path),
         )
 
-        tm.that(context.lock_path.exists(), eq=False)
+        tm.fail(context.lock_path.exists())
         tm.that(legacy.read_text(encoding="utf-8"), eq="package = []\n")
 
     @pytest.mark.parametrize("attached", [False, True])
@@ -87,7 +87,7 @@ class TestsFlextInfraWorkspaceMemberLockOwnership:
                 ),
             ),
         )
-        tm.that(bool(generated.written_files), eq=True)
+        tm.ok(bool(generated.written_files))
         tm.that(tuple(path.read_bytes() for path in paths), eq=before)
 
     @pytest.mark.parametrize("attached", [False, True])
@@ -103,7 +103,7 @@ class TestsFlextInfraWorkspaceMemberLockOwnership:
                 checkout / c.Infra.UV_LOCK_FILENAME for checkout in (root, project)
             ),
         )
-        tm.that(any(path.exists() for path in locks), eq=False)
+        tm.fail(any(path.exists() for path in locks))
         tm.ok(
             infra.codegen_conform(
                 u.Tests.conform_request(
@@ -113,4 +113,4 @@ class TestsFlextInfraWorkspaceMemberLockOwnership:
                 ),
             ),
         )
-        tm.that(any(path.exists() for path in locks), eq=False)
+        tm.fail(any(path.exists() for path in locks))

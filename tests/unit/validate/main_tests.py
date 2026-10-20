@@ -36,7 +36,7 @@ class TestsFlextInfraValidateMain:
     def test_success(tmp_path: Path) -> None:
         """Inventory succeeds with empty workspace."""
         result = FlextInfraInventoryService(repository_root=tmp_path).execute()
-        tm.that(result.success, eq=True)
+        tm.ok(result.success)
 
     @staticmethod
     def test_with_output_dir(tmp_path: Path) -> None:
@@ -45,7 +45,7 @@ class TestsFlextInfraValidateMain:
         output.mkdir()
         result = FlextInfraInventoryService(repository_root=tmp_path, output_dir=output)
         result = result.execute()
-        tm.that(result.success, eq=True)
+        tm.ok(result.success)
 
     @staticmethod
     def test_no_violations(tmp_path: Path) -> None:
@@ -59,7 +59,7 @@ class TestsFlextInfraValidateMain:
             match=c.Infra.MatchMode.PRESENT,
         )
         result = result.execute()
-        tm.that(result.success, eq=True)
+        tm.ok(result.success)
 
     @staticmethod
     def test_with_violations(tmp_path: Path) -> None:
@@ -73,7 +73,7 @@ class TestsFlextInfraValidateMain:
             match=c.Infra.MatchMode.PRESENT,
         )
         result = result.execute()
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
 
     def test_help_flag(self) -> None:
         """--help returns 0."""

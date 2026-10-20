@@ -31,6 +31,7 @@ from flext_infra.codegen._lazy_init_planner_exports import (
 from flext_infra.codegen._lazy_init_planner_parents import (
     FlextInfraCodegenLazyInitPlannerParentsMixin,
 )
+from flext_infra.workspace import FlextInfraRopeWorkspace
 
 
 class FlextInfraCodegenLazyInitPlanner(
@@ -69,6 +70,11 @@ class FlextInfraCodegenLazyInitPlanner(
     )
     _plan_receipts: MutableMapping[str, m.Infra.CodegenPhaseAnalysis] = m.PrivateAttr(
         default_factory=dict[str, m.Infra.CodegenPhaseAnalysis],
+    )
+    _ancestry_receipts: MutableMapping[
+        tuple[Path, int], m.Infra.CodegenPhaseAnalysis
+    ] = m.PrivateAttr(
+        default_factory=dict[tuple[Path, int], m.Infra.CodegenPhaseAnalysis],
     )
     _parent_package_cache: MutableMapping[str, t.StrSequence] = m.PrivateAttr(
         default_factory=dict[str, t.StrSequence],
@@ -162,42 +168,35 @@ class FlextInfraCodegenLazyInitPlanner(
     ) -> t.Pair[m.Infra.LazyInitPlan, m.Infra.CodegenPhaseAnalysis]:
         """Resolve one artifact with fresh native and planner caches in the same epoch.
 
-        Structural indexes are rebuilt until their live selection owner can supply
-        an authenticated, content-free reusable inventory. No semantic cache is copied.
+        Reuse the structural index with its original selection receipt, while
+        keeping native semantic caches local to the publication.
 
         Returns:
             The isolated plan bound to its original consumption receipt.
 
         """
         project = self.rope_workspace.rope_project
-        with project.source_consumption() as consumption:
-            # Reuse the existing workspace instead of creating a new one per
-            # package; the consumer context above already isolates this pass's
-            # source observations while the shared workspace avoids repeated
-            # Rope indexing and cache reconstruction.
-            workspace = self.rope_workspace
+        workspace_index = self.rope_workspace.workspace_index
+        index_receipt = self.rope_workspace.source_index_receipt
+        with (
+            project.source_consumption() as consumption,
+            project.source_consumer() as consumer,
+            FlextInfraRopeWorkspace.open_workspace(
+                self.rope_workspace.repository_root,
+                rope_repository_root=self.rope_workspace.rope_repository_root,
+                source_project=consumer,
+                workspace_index=workspace_index,
+                index_receipt=index_receipt,
+            ) as workspace,
+        ):
             planner = type(self)(rope_workspace=workspace, lazy_init=self.lazy_init)
             planner.seed_source_plans(self._source_plan_cache, self._plan_receipts)
-            # Seed every planner cache so identical structural and alias
-            # analysis is never repeated across the 57+ package passes.
-            planner._module_exports_cache.update(self._module_exports_cache)
-            planner._package_exports_cache.update(self._package_exports_cache)
-            planner._source_exports_cache.update(self._source_exports_cache)
-            planner._parent_package_cache.update(self._parent_package_cache)
-            planner._module_file_by_name.update(self._module_file_by_name)
-            planner._project_layout_cache.update(self._project_layout_cache)
-            planner._collision_count = self._collision_count
+            planner.ancestry_receipts.update(self._ancestry_receipts)
             plan = planner.build_plan(pkg_dir, dir_exports=dir_exports)
             self._collision_count += planner.collision_count
-            # Propagate newly populated caches back to the shared parent.
-            self._module_exports_cache.update(planner._module_exports_cache)
-            self._package_exports_cache.update(planner._package_exports_cache)
-            self._source_exports_cache.update(planner._source_exports_cache)
-            self._source_plan_cache.update(planner._source_plan_cache)
-            self._plan_receipts.update(planner._plan_receipts)
-            self._parent_package_cache.update(planner._parent_package_cache)
-            self._module_file_by_name.update(planner._module_file_by_name)
-            self._project_layout_cache.update(planner._project_layout_cache)
+            self._source_plan_cache.update(planner.source_plans)
+            self._plan_receipts.update(planner.source_receipts)
+            self._ancestry_receipts.update(planner.ancestry_receipts)
         receipt = consumption.receipt()
         return plan.model_copy(
             update={
@@ -212,6 +211,13 @@ class FlextInfraCodegenLazyInitPlanner(
         """The export collisions observed by this isolated planner."""
         return self._collision_count
 
+    @property
+    def ancestry_receipts(
+        self,
+    ) -> t.MutableMappingKV[tuple[Path, int], m.Infra.CodegenPhaseAnalysis]:
+        """Share sealed same-epoch evidence without native semantic cache objects."""
+        return self._ancestry_receipts
+
     def seed_source_plans(
         self,
         plans: t.MappingKV[str, m.Infra.LazyInitPlan],
@@ -225,6 +231,11 @@ class FlextInfraCodegenLazyInitPlanner(
     def source_plans(self) -> t.MappingKV[str, m.Infra.LazyInitPlan]:
         """Expose immutable decisions, never native semantic cache objects."""
         return self._source_plan_cache
+
+    @property
+    def source_receipts(self) -> t.MappingKV[str, m.Infra.CodegenPhaseAnalysis]:
+        """Expose only sealed decisions, excluding the package still being planned."""
+        return self._plan_receipts
 
     def source_receipt(self, package_dir: Path) -> m.Infra.CodegenPhaseAnalysis:
         """Return only the sealed receipt minted for an actual package decision.
@@ -527,14 +538,43 @@ class FlextInfraCodegenLazyInitPlanner(
             if binding is not None:
                 pending.append(binding.get_object())
         visited: set[int] = set()
-        while pending:
-            owner = pending.pop()
-            if u.Infra.instance_object(owner):
-                owner = owner.get_type()
-            if not u.Infra.abstract_class(owner) or id(owner) in visited:
-                continue
-            visited.add(id(owner))
-            pending.extend(owner.get_superclasses())
+        for owner in pending:
+            self._consume_class_bases(owner, visited)
+
+    def _consume_class_bases(
+        self, owner: p.Infra.RopePyObject, visited: set[int]
+    ) -> None:
+        """Reuse ancestry evidence only within this publication's native consumer."""
+        if u.Infra.instance_object(owner):
+            owner = owner.get_type()
+        if not u.Infra.abstract_class(owner):
+            return
+        module = owner.get_module()
+        resource = module.get_resource() if module is not None else None
+        scope = (
+            owner.get_scope()
+            if resource is not None and isinstance(owner, p.Infra.RopeSourceDefinition)
+            else None
+        )
+        key = (
+            (Path(resource.real_path), scope.get_start())
+            if resource is not None and scope is not None
+            else None
+        )
+        project = self.rope_workspace.rope_project
+        if key is not None and key in self._ancestry_receipts:
+            project.replay_source_consumption(self._ancestry_receipts[key])
+            return
+        if id(owner) in visited:
+            return
+        visited.add(id(owner))
+        with project.source_consumption() as consumption:
+            if resource is not None:
+                project.source_state(Path(resource.real_path))
+            for base in owner.get_superclasses():
+                self._consume_class_bases(base, visited)
+        if key is not None:
+            self._ancestry_receipts[key] = consumption.receipt()
 
     @override
     def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext:

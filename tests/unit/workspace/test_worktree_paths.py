@@ -44,7 +44,7 @@ class TestsFlextInfraWorktreePaths(u.Tests.WorktreeFixture):
         branch = "feature/example"
         lane = self.native_lane(repository, branch)
 
-        tm.that(lane.is_relative_to(repository), eq=False)
+        tm.fail(lane.is_relative_to(repository))
         tm.that(
             tm.ok(
                 u.Infra.git_list_worktrees(
@@ -62,7 +62,7 @@ class TestsFlextInfraWorktreePaths(u.Tests.WorktreeFixture):
         ).execute()
 
         tm.fail(refused, has="retirement refused")
-        tm.that(lane.is_dir(), eq=True)
+        tm.ok(lane.is_dir())
 
     def test_lane_path_escapes_a_dirty_outer_project_ancestor(
         self,
@@ -81,8 +81,8 @@ class TestsFlextInfraWorktreePaths(u.Tests.WorktreeFixture):
 
         lane = self.native_lane(repository, "feature/outer-isolation")
 
-        tm.that(lane.is_dir(), eq=True)
-        tm.that(lane.is_relative_to(outer_project), eq=False)
+        tm.ok(lane.is_dir())
+        tm.fail(lane.is_relative_to(outer_project))
         tm.that(
             (outer_project / "pyproject.toml").read_text(encoding="utf-8"),
             eq='[dependency-groups]\ndescription = "dirty outer WIP"\n',
@@ -111,5 +111,5 @@ class TestsFlextInfraWorktreePaths(u.Tests.WorktreeFixture):
         second_lane = self.native_lane(second, branch)
 
         tm.that(first.name, eq=second.name)
-        tm.that(first_lane != second_lane, eq=True)
-        tm.that(first_lane.parent.parent != second_lane.parent.parent, eq=True)
+        tm.ok(first_lane != second_lane)
+        tm.ok(first_lane.parent.parent != second_lane.parent.parent)

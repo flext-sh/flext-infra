@@ -12,10 +12,21 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config
-from tests import tm, u
+from tests import m, tm, u
 
 
 class TestsFlextInfraUtilitiesformatting:
+    @staticmethod
+    def test_missing_native_width_never_invents_a_formatting_policy(
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
+        """Missing owned configuration fails instead of fabricating a width."""
+        document = tool_config_document.model_copy(
+            update={"settings": {**tool_config_document.settings, "ruff": ()}}
+        )
+        with pytest.raises(KeyError, match="line-length"):
+            u.Infra.native_tool_setting(document, "ruff", "line-length", int)
+
     @staticmethod
     @pytest.mark.parametrize("width_factor", [1, 2])
     def test_staged_formatting_uses_destination_policy_without_publication(
@@ -23,7 +34,12 @@ class TestsFlextInfraUtilitiesformatting:
         width_factor: int,
     ) -> None:
         """Format and execute candidate bytes without replacing their live receipt."""
-        width = config.Infra.tooling.tools.ruff.line_length * width_factor
+        width = (
+            u.Infra.native_tool_setting(
+                config.Infra.tooling, "ruff", "line-length", int
+            )
+            * width_factor
+        )
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         pyproject = root / c.PYPROJECT_FILENAME
         tm.ok(
@@ -40,7 +56,7 @@ class TestsFlextInfraUtilitiesformatting:
         values = tuple(range(width))
         candidate = "import sys\n\nvalues = [" + ", ".join(map(str, values)) + "]\n"
         preserved = tm.ok(u.Infra.normalize_source(root, path, candidate))
-        tm.that("import sys" in preserved, eq=False)
+        tm.fail("import sys" in preserved)
         normalized = tm.ok(
             u.Infra.normalize_source(
                 root,
@@ -49,9 +65,9 @@ class TestsFlextInfraUtilitiesformatting:
                 before_source=candidate + "print(sys.version)\n",
             )
         )
-        tm.that("import sys" in normalized, eq=False)
+        tm.fail("import sys" in normalized)
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
-        tm.that(all(len(line) <= width for line in normalized.splitlines()), eq=True)
+        tm.ok(all(len(line) <= width for line in normalized.splitlines()))
         tm.that(
             tm.ok(u.Infra.normalize_source(root, path, normalized)),
             eq=normalized,
@@ -99,10 +115,10 @@ class TestsFlextInfraUtilitiesformatting:
         tm.ok(u.Cli.atomic_write_text_file(path, "import sys\n\nvalues=[1,2]\n"))
         u.Infra.normalize_touched_files((path, path, missing), root)
         normalized = path.read_text(encoding=c.DEFAULT_ENCODING)
-        tm.that("import sys" in normalized, eq=False)
+        tm.fail("import sys" in normalized)
         u.Infra.normalize_touched_files((path, missing), root)
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=normalized)
-        tm.that(missing.exists(), eq=False)
+        tm.fail(missing.exists())
         output = tm.ok(
             u.Cli.run((sys.executable, "-c", normalized + "print(sum(values))\n"))
         )

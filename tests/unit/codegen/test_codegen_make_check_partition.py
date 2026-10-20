@@ -98,7 +98,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         active_type_checkers = c.Infra.TYPE_CHECKER_GATES & set(
             make.check_gates_default,
         )
-        tm.that(bool(active_type_checkers), eq=True)
+        tm.ok(bool(active_type_checkers))
         local = frozenset(make.ci.local_check_gates)
         tm.that(
             active_type_checkers & local <= set(make.check_gates_local),
@@ -149,8 +149,8 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         positions = [commands.index(approval) for approval in approvals]
         tm.that(positions, eq=sorted(positions))
         local = f"{make.ci.variable}={make.ci.local_value} make"
-        tm.that(any(local in command for command in commands), eq=False)
-        tm.that(any("make pre-commit" in command for command in commands), eq=False)
+        tm.fail(any(local in command for command in commands))
+        tm.fail(any("make pre-commit" in command for command in commands))
 
     @staticmethod
     def test_pre_commit_uses_the_ci_validation_workflow() -> None:

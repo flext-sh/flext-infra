@@ -70,8 +70,8 @@ class TestsFlextInfraRopeRuntimePymodule:
                 ),
                 eq=((start, start + len("r")),),
             )
-            tm.that(module.get_ast() is tree, eq=True)
-            tm.that(module.get_attribute("r") is binding, eq=True)
+            tm.ok(module.get_ast() is tree)
+            tm.ok(module.get_attribute("r") is binding)
             tm.that(module.source_code, eq=source)
 
     @staticmethod

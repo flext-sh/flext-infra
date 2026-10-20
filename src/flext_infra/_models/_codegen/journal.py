@@ -51,23 +51,21 @@ class FlextInfraModelsCodegenJournalModels:
             m.Field(description="Exact staged state, or None for a planned deletion"),
         ] = None
         source_states: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
+            tuple[m.Cli.AtomicFileState, ...],
             m.Field(
                 exclude=True,
                 description="Exact dependencies consumed by this destination",
             ),
         ] = ()
-        source_directories: t.VariadicTuple[m.Cli.AtomicDirectoryInventory] = m.Field(
+        source_directories: tuple[m.Cli.AtomicDirectoryInventory, ...] = m.Field(
             default=(),
             strict=True,
             description="Native directory queries consumed by this target",
         )
-        source_query_topology: t.VariadicTuple[m.Cli.AtomicDirectoryChainPlan] = (
-            m.Field(
-                default=(),
-                strict=True,
-                description="Physical ancestry of queried source directories",
-            )
+        source_query_topology: tuple[m.Cli.AtomicDirectoryChainPlan, ...] = m.Field(
+            default=(),
+            strict=True,
+            description="Physical ancestry of queried source directories",
         )
         tracking: Annotated[
             Literal["versioned", "runtime-local"],
@@ -78,7 +76,7 @@ class FlextInfraModelsCodegenJournalModels:
             m.Field(description="Captured index entry authorized for retirement"),
         ] = None
         tracking_dependencies: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(
                 description="Portable declaration prerequisites of index retirement"
             ),
@@ -565,17 +563,17 @@ class FlextInfraModelsCodegenJournalModels:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         source_paths: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(
                 description="Authenticated source identities consumed by this entry"
             ),
         ] = ()
-        source_directory_paths: t.VariadicTuple[Path] = m.Field(
+        source_directory_paths: tuple[Path, ...] = m.Field(
             default=(),
             strict=True,
             description="Phase-bound native directory query receipt references",
         )
-        source_query_topology_paths: t.VariadicTuple[Path] = m.Field(
+        source_query_topology_paths: tuple[Path, ...] = m.Field(
             default=(),
             strict=True,
             description="Phase-bound source query ancestry receipt references",
@@ -589,7 +587,7 @@ class FlextInfraModelsCodegenJournalModels:
             m.Field(description="Immutable index preimage authorized for retirement"),
         ] = None
         tracking_dependencies: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(description="Declaration destinations required before retirement"),
         ] = ()
         phase: Annotated[

@@ -87,7 +87,7 @@ class TestsFlextInfraCodegenLayout:
         # inside the default per-test budget.
         baseline = layout_engine(project).check_project(project)
         baseline_paths = {finding.path for finding in baseline.findings}
-        tm.that(set(candidates) <= baseline_paths, eq=True)
+        tm.ok(set(candidates) <= baseline_paths)
         override = m.Infra.LayoutProjectOverrideSpec(
             keep_root_files=candidates[:keep_count],
         )
@@ -111,7 +111,7 @@ class TestsFlextInfraCodegenLayout:
             project,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
         )
-        tm.that(local_overlay.is_relative_to(tmp_path), eq=True)
+        tm.ok(local_overlay.is_relative_to(tmp_path))
         local_overlay.parent.mkdir(exist_ok=True)
         tm.ok(u.Cli.yaml_dump(local_overlay, overlay))
 
@@ -152,7 +152,7 @@ class TestsFlextInfraCodegenLayout:
         gitignore = [
             finding for finding in report.findings if finding.rule == "gitignore"
         ]
-        tm.that(bool(gitignore), eq=True)
+        tm.ok(bool(gitignore))
         tm.that(gitignore[0].target, eq=f"{archive_root()}/")
 
     @staticmethod
@@ -178,14 +178,14 @@ class TestsFlextInfraCodegenLayout:
         first = engine.execute()
 
         tm.ok(first)
-        tm.that((project / "docs" / "guides" / "intro.md").is_file(), eq=True)
-        tm.that((project / "docs" / "index.md").is_file(), eq=True)
+        tm.ok((project / "docs" / "guides" / "intro.md").is_file())
+        tm.ok((project / "docs" / "index.md").is_file())
         archived = project / archive_root() / project.name / "output.log"
-        tm.that(archived.is_file(), eq=True)
+        tm.ok(archived.is_file())
         tm.that(archived.read_text(encoding="utf-8"), eq="log-line\n")
-        tm.that((project / "guides").exists(), eq=False)
-        tm.that((project / "output.log").exists(), eq=False)
-        tm.that((project / "loose.txt").is_file(), eq=True)
+        tm.fail((project / "guides").exists())
+        tm.fail((project / "output.log").exists())
+        tm.ok((project / "loose.txt").is_file())
         second = engine.execute()
         tm.ok(second)
         tm.that(second.value, has="0 applied")
@@ -209,9 +209,9 @@ class TestsFlextInfraCodegenLayout:
         tm.ok(result)
         tm.that((existing / "intro.md").read_text(encoding="utf-8"), eq="canonical\n")
         archived = project / archive_root() / project.name / "guides" / "intro.md"
-        tm.that(archived.is_file(), eq=True)
+        tm.ok(archived.is_file())
         tm.that(archived.read_text(encoding="utf-8"), eq="intro\n")
-        tm.that((project / "guides").exists(), eq=False)
+        tm.fail((project / "guides").exists())
 
     @staticmethod
     def test_apply_override_move_then_archives_emptied_dir(
@@ -235,8 +235,8 @@ class TestsFlextInfraCodegenLayout:
         result = engine.execute()
 
         tm.ok(result)
-        tm.that((project / "profiles.yml").is_file(), eq=True)
-        tm.that((project / "profiles").exists(), eq=False)
+        tm.ok((project / "profiles.yml").is_file())
+        tm.fail((project / "profiles").exists())
         tm.that(
             (project / archive_root() / project.name / "profiles").is_dir(),
             eq=True,
@@ -254,8 +254,8 @@ class TestsFlextInfraCodegenLayout:
 
         execution = gate.check(project, ctx)
 
-        tm.that(execution.result.passed, eq=False)
-        tm.that(bool(execution.issues), eq=True)
+        tm.fail(execution.result.passed)
+        tm.ok(bool(execution.issues))
         tm.that(
             {issue.severity for issue in execution.issues},
             eq={c.Infra.GateSeverity.ERROR.value},
@@ -298,8 +298,8 @@ class TestsFlextInfraCodegenLayout:
         report = engine.check_project(project)
 
         paths = {finding.path for finding in report.findings}
-        tm.that("data" in paths, eq=False)
-        tm.that("external-docs" in paths, eq=False)
+        tm.fail("data" in paths)
+        tm.fail("external-docs" in paths)
 
     @staticmethod
     def test_infrastructure_root_is_canonical(tmp_path: Path) -> None:
@@ -313,7 +313,7 @@ class TestsFlextInfraCodegenLayout:
         report = engine.check_project(project)
 
         paths = {finding.path for finding in report.findings}
-        tm.that("infra" in paths, eq=False)
+        tm.fail("infra" in paths)
 
     @staticmethod
     def test_declared_repositories_are_canonical_root_entries(
@@ -336,7 +336,7 @@ class TestsFlextInfraCodegenLayout:
         report = engine.check_project(tmp_path)
 
         findings = {finding.path: finding for finding in report.findings}
-        tm.that(declared_name in findings, eq=False)
+        tm.fail(declared_name in findings)
         tm.that(findings[undeclared_name].rule, eq="review")
 
     @staticmethod
@@ -355,6 +355,6 @@ class TestsFlextInfraCodegenLayout:
         tm.ok(result)
         tm.that((docs / "index.md").read_text(encoding="utf-8"), eq="canonical-index\n")
         archived = project / archive_root() / project.name / "index.md"
-        tm.that(archived.is_file(), eq=True)
+        tm.ok(archived.is_file())
         tm.that(archived.read_text(encoding="utf-8"), eq="index\n")
-        tm.that((project / "index.md").exists(), eq=False)
+        tm.fail((project / "index.md").exists())

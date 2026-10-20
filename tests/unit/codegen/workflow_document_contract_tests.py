@@ -44,13 +44,13 @@ class TestsFlextInfraWorkflowDocumentContract:
             if item.path.parent == workflow_directory
             and item.desired_content is not None
         )
-        tm.that(bool(workflows), eq=True)
+        tm.ok(bool(workflows))
         for item in workflows:
             item.path.parent.mkdir(parents=True, exist_ok=True)
             item.path.write_bytes(tm.not_none(item.desired_content))
             document = u.Cli.yaml_load_mapping(item.path)
             jobs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(document["jobs"])
-            tm.that(bool(jobs), eq=True)
+            tm.ok(bool(jobs))
             for raw_job in jobs.values():
                 job = u.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_job)
-                tm.that("steps" in job or "uses" in job, eq=True)
+                tm.ok("steps" in job or "uses" in job)

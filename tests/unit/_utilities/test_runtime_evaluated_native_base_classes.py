@@ -215,7 +215,7 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 ))
             ),
         )
-        tm.that("metadata_provider" in sys.modules, eq=False)
+        tm.fail("metadata_provider" in sys.modules)
 
     @pytest.mark.parametrize(
         "mutation",
@@ -411,7 +411,7 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 ))
             ),
         )
-        tm.that("declared_provider" in sys.modules, eq=False)
+        tm.fail("declared_provider" in sys.modules)
 
     def test_planned_reexport_overrides_an_installed_provider(
         self,
@@ -628,8 +628,8 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 sorted((*u.Tests.runtime_evaluated_roots(), "planned_bridge.Contract"))
             ),
         )
-        tm.that(package.exists(), eq=False)
-        tm.that("planned_bridge" in sys.modules, eq=False)
+        tm.fail(package.exists())
+        tm.fail("planned_bridge" in sys.modules)
 
     def test_true_planned_reexport_cycle_fails_at_its_binding(
         self,

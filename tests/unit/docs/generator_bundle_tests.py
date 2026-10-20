@@ -114,7 +114,7 @@ resources = tuple(
         source_scope=prepared.source_scope,
     )
 )
-tm.that(bool(resources), eq=True)
+tm.ok(bool(resources))
 receipts: list[m.Infra.CodegenPhaseOutcome] = []
 tm.ok(generator.publish_batch(prepared, publication_receipts=receipts))
 tm.that(len(receipts), eq=1)
@@ -167,7 +167,7 @@ _, _, local_layer = FlextInfraConfig.config_layer_paths_for_repository(
     workspace,
     filename=c.Infra.CODEGEN_CONFIG_FILENAME,
 )
-tm.that(local_layer.exists(), eq=False)
+tm.fail(local_layer.exists())
 generator = case._generator(workspace)
 prepared = tm.ok(generator.prepare_bundle())
 captured = next(state for state in prepared.source_states if state.path == local_layer)
@@ -485,9 +485,9 @@ prepared = generator.prepare_bundle()
 tm.ok(prepared)
 source_paths = {state.path for state in prepared.value.source_states}
 source_names = {path.name for path in source_paths}
-tm.that(guide in source_paths, eq=True)
-tm.that(c.Infra.TEMPLATE_MKDOCS_PROJECT in source_names, eq=True)
-tm.that(c.Infra.TEMPLATE_MKDOCS_ROOT in source_names, eq=True)
+tm.ok(guide in source_paths)
+tm.ok(c.Infra.TEMPLATE_MKDOCS_PROJECT in source_names)
+tm.ok(c.Infra.TEMPLATE_MKDOCS_ROOT in source_names)
 """,
             str(Path(__file__).resolve().parents[3]),
             str(tmp_path),

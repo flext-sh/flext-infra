@@ -151,7 +151,7 @@ class TestsFlextInfraCodegenMain:
                 str(repository),
             ])
             tm.that(result, ne=0)
-            tm.that(makefile.exists(), eq=False)
+            tm.fail(makefile.exists())
             tm.that(pyproject.read_bytes(), eq=before)
 
         @staticmethod
@@ -299,8 +299,8 @@ class TestsFlextInfraCodegenMain:
             tm.ok(checked)
             tm.that(checked.value.outcome.raw_return_code, eq=1)
             tm.that(pyproject.read_bytes(), eq=before)
-            tm.that(journal.exists(), eq=False)
-            tm.that(transaction.exists(), eq=False)
+            tm.fail(journal.exists())
+            tm.fail(transaction.exists())
 
         @staticmethod
         def test_managed_conflict_is_published_atomically_to_a_fixed_point(
@@ -334,10 +334,17 @@ class TestsFlextInfraCodegenMain:
             )
             tm.that(
                 ini_options["addopts"],
-                eq=list(config.Infra.tooling.tools.pytest.standard_addopts),
+                eq=list(
+                    u.Infra.native_tool_setting(
+                        config.Infra.tooling,
+                        "pytest.ini_options",
+                        "addopts",
+                        t.StrSequence,
+                    )
+                ),
             )
-            tm.that(journal.exists(), eq=False)
-            tm.that(transaction.exists(), eq=False)
+            tm.fail(journal.exists())
+            tm.fail(transaction.exists())
 
             published = pyproject.read_bytes()
             fixed_point = u.Cli.run_raw([*command, "apply"], cwd=root)
@@ -348,8 +355,8 @@ class TestsFlextInfraCodegenMain:
                 msg=fixed_point.value.stderr or fixed_point.value.stdout,
             )
             tm.that(pyproject.read_bytes(), eq=published)
-            tm.that(journal.exists(), eq=False)
-            tm.that(transaction.exists(), eq=False)
+            tm.fail(journal.exists())
+            tm.fail(transaction.exists())
 
         @staticmethod
         def test_unknown_command_surfaces_root_cause_via_subprocess() -> None:

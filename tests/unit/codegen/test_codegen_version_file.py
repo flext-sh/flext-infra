@@ -79,7 +79,7 @@ class TestsFlextInfraCodegenVersionFile:
 
         tm.ok(result)
         version_file = pkg / "__version__.py"
-        tm.that(version_file.exists(), eq=True)
+        tm.ok(version_file.exists())
 
     def test_generated_file_contains_class_name(self, tmp_path: Path) -> None:
         """Test generated file contains class name."""
@@ -112,7 +112,7 @@ class TestsFlextInfraCodegenVersionFile:
 
         svc.execute()
 
-        tm.that(not (pkg / "__version__.py").exists(), eq=True)
+        tm.ok(not (pkg / "__version__.py").exists())
 
     def test_dry_run_does_not_write_file(self, tmp_path: Path) -> None:
         """Test dry run does not write file."""
@@ -124,7 +124,7 @@ class TestsFlextInfraCodegenVersionFile:
 
         svc.execute()
 
-        tm.that(not (pkg / "__version__.py").exists(), eq=True)
+        tm.ok(not (pkg / "__version__.py").exists())
 
     def test_idempotent_when_file_already_correct(self, tmp_path: Path) -> None:
         """Test idempotent when file already correct."""

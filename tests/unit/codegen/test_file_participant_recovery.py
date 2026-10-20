@@ -196,12 +196,12 @@ class TestsFlextInfraFileParticipantRecovery:
         if failure_kind == "exception":
             with pytest.raises(RuntimeError) as raised:
                 owner.run_files_locked(roots, publish)
-            tm.that(raised.value is cause, eq=True)
+            tm.ok(raised.value is cause)
         else:
             failed = owner.run_files_locked(roots, publish)
             tm.fail(failed)
             if failure_kind == "validator":
-                tm.that(failed.exception is cause, eq=True)
+                tm.ok(failed.exception is cause)
         TestsFlextInfraFileParticipantRecovery._verified_retained_receipts(
             receipts, originals, targets, failure_kind, deleted=deleted
         )
@@ -513,7 +513,7 @@ class TestsFlextInfraFileParticipantRecovery:
         tm.that(outcome.issues, len=1)
         tm.that(outcome.issues[0].file, eq=str(rejected))
         tm.that(outcome.issues[0].code, eq=c.Infra.ToolOutcome.ERROR.value)
-        tm.that(rejected.is_symlink(), eq=True)
+        tm.ok(rejected.is_symlink())
         tm.that(foreign.read_bytes(), eq=b"preserved\n")
         for path in outcome.written_files:
             tm.that(path.read_bytes(), eq=b"generated\n")
@@ -568,11 +568,11 @@ class TestsFlextInfraFileParticipantRecovery:
             if invalid_later_plan == "participant"
             else f"generation output differs from its authenticated preimage: {second}",
         )
-        tm.that(first.exists(), eq=False)
+        tm.fail(first.exists())
         if invalid_later_plan == "destination":
             tm.that(second.read_bytes(), eq=b"concurrent content\n")
         else:
-            tm.that(second.exists(), eq=False)
+            tm.fail(second.exists())
         # A fresh public transaction entry authenticates and reconciles the tree;
         # the previous implementation refuses its unregistered phase directory.
         tm.ok(owner.run_files_locked(roots, lambda _scope: r[bool].ok(value=True)))
@@ -661,7 +661,7 @@ class TestsFlextInfraFileParticipantRecovery:
         )
 
         tm.ok(recovered)
-        tm.that(recovered.value, eq=True)
+        tm.ok(recovered.value)
 
     @staticmethod
     @pytest.mark.parametrize("foreign_change", ["none", "extra", "replaced"])
@@ -705,13 +705,13 @@ class TestsFlextInfraFileParticipantRecovery:
         if foreign_change == "none":
             tm.ok(recovered)
             tm.that(target.read_bytes(), eq=b"owned publication\n")
-            tm.that(staging.exists(), eq=False)
-            tm.that(session.journal_state.path.exists(), eq=False)
+            tm.fail(staging.exists())
+            tm.fail(session.journal_state.path.exists())
         else:
             tm.fail(recovered)
             tm.that((staging / "foreign.bin").read_bytes(), eq=b"preserve")
             tm.that(target.read_bytes(), eq=b"owned publication\n")
-            tm.that(session.journal_state.path.exists(), eq=True)
+            tm.ok(session.journal_state.path.exists())
 
     @staticmethod
     @pytest.mark.parametrize("operation", ["replace", "create", "delete"])
@@ -815,7 +815,7 @@ class TestsFlextInfraFileParticipantRecovery:
             FlextInfraCodegenMiseArtifacts(repository_root=root),
         ).run_files_locked(roots, lambda _scope: r[bool].ok(value=True))
         tm.ok(recovered)
-        tm.that(session.journal_state.path.exists(), eq=False)
+        tm.fail(session.journal_state.path.exists())
         tm.that(
             session.plan.layout.file_participants[0].transaction_root.exists(),
             eq=False,
@@ -866,7 +866,7 @@ class TestsFlextInfraFileParticipantRecovery:
                 ),
                 has="generation authenticated state changed",
             )
-            tm.that(session.journal_state.path.exists(), eq=True)
+            tm.ok(session.journal_state.path.exists())
             tm.that(
                 session.plan.layout.file_participants[0].transaction_root.exists(),
                 eq=True,
@@ -990,8 +990,8 @@ class TestsFlextInfraFileParticipantRecovery:
                 tm.ok(u.Cli.atomic_read_binary_file_state(targets[1], required=True)),
                 eq=foreign[0],
             )
-            tm.that(entry.recover_group, eq=True)
-            tm.that(session.journal_state.path.exists(), eq=True)
+            tm.ok(entry.recover_group)
+            tm.ok(session.journal_state.path.exists())
             tm.that(
                 session.plan.layout.file_participants[0].transaction_root.exists(),
                 eq=True,
@@ -1000,7 +1000,7 @@ class TestsFlextInfraFileParticipantRecovery:
 
         failed = owner.run_files_locked(roots, publish)
         tm.fail(failed)
-        tm.that(failed.exception is failures[0].exception, eq=True)
+        tm.ok(failed.exception is failures[0].exception)
         tm.that(failed.error, eq=failures[0].error)
         tm.that(tm.ok(owner.inspect_journal()).journal_state, eq="prepared")
         recovered = FlextInfraCodegenTransaction(
@@ -1050,12 +1050,12 @@ class TestsFlextInfraFileParticipantRecovery:
             failure = r[bool].fail("consumer failed")
             rejected = owner.abort_locked(foreign, failure)
             tm.fail(rejected)
-            tm.that(session.journal_state.path.is_file(), eq=True)
+            tm.ok(session.journal_state.path.is_file())
             tm.that(live.read_text(encoding=c.DEFAULT_ENCODING), eq="preserve")
             tm.that(live.stat().st_mtime_ns, eq=modified_ns)
             retired = owner.abort_locked(session, failure)
             tm.fail(retired)
-            tm.that(session.journal_state.path.exists(), eq=False)
+            tm.fail(session.journal_state.path.exists())
             return r[bool].ok(value=True)
 
         tm.ok(owner.run_files_locked(roots, exercise))
@@ -1114,11 +1114,11 @@ class TestsFlextInfraFileParticipantRecovery:
         if with_foreign_file:
             tm.fail(recovered)
             tm.that((staging / "foreign.bin").read_bytes(), eq=b"not journaled")
-            tm.that(session.journal_state.path.exists(), eq=True)
+            tm.ok(session.journal_state.path.exists())
         else:
             tm.ok(recovered)
-            tm.that(staging.exists(), eq=False)
-            tm.that(session.journal_state.path.exists(), eq=False)
+            tm.fail(staging.exists())
+            tm.fail(session.journal_state.path.exists())
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -1183,7 +1183,7 @@ class TestsFlextInfraFileParticipantRecovery:
                         initial,
                         lambda _initial: fail_validator(),
                     )
-                tm.that(raised.value is cause, eq=True)
+                tm.ok(raised.value is cause)
             else:
                 failed = (
                     owner.abort_locked(session, original)
@@ -1198,7 +1198,7 @@ class TestsFlextInfraFileParticipantRecovery:
                     tm.that(failed.error, eq="consumer rejected")
                 else:
                     tm.that(failed.error, eq=original.error)
-                    tm.that(failed.exception is cause, eq=True)
+                    tm.ok(failed.exception is cause)
                     tm.that(failed.error_code, eq=original.error_code)
                     tm.that(
                         tm.not_none(failed.error_data)["consumer"],
@@ -1212,10 +1212,10 @@ class TestsFlextInfraFileParticipantRecovery:
                     eq=journal_change != "unchanged",
                 )
             if journal_change == "unchanged":
-                tm.that(journal.exists(), eq=False)
+                tm.fail(journal.exists())
                 tm.that(target.read_bytes(), eq=b"prepared publication\n")
             elif journal_change == "directory":
-                tm.that(journal.is_dir(), eq=True)
+                tm.ok(journal.is_dir())
                 tm.that(target.read_bytes(), eq=before.content)
             else:
                 foreign = tm.not_none(foreign)
@@ -1256,7 +1256,7 @@ class TestsFlextInfraFileParticipantRecovery:
             )
             tm.that(tm.ok(u.Cli.atomic_inventory_physical_tree(staging)), eq=before)
             tm.fail(owner.abort_locked(session, r[bool].fail(None)))
-            tm.that(session.journal_state.path.exists(), eq=False)
+            tm.fail(session.journal_state.path.exists())
             return r[bool].ok(value=True)
 
         tm.ok(owner.run_files_locked(roots, exercise))

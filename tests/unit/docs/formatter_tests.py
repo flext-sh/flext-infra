@@ -62,14 +62,14 @@ class TestsFlextInfraDocsFormatter:
         check = formatter.format(workspace, apply=False)
         tm.ok(check)
         tm.that(check.value[0].result, eq=c.Infra.ResultStatus.FAIL)
-        tm.that(check.value[0].passed, eq=False)
+        tm.fail(check.value[0].passed)
         tm.that(check.value[0].reason, eq="pending:1")
-        tm.that((workspace / ".reports/docs/fmt-report.md").exists(), eq=True)
+        tm.ok((workspace / ".reports/docs/fmt-report.md").exists())
 
         applied = formatter.format(workspace, apply=True)
         tm.ok(applied)
         tm.that(applied.value[0].result, eq=c.Infra.ResultStatus.OK)
-        tm.that(applied.value[0].passed, eq=True)
+        tm.ok(applied.value[0].passed)
         tm.that(
             (workspace / "docs/README.md").read_text(encoding="utf-8"),
             has="# Docs\n",
@@ -78,7 +78,7 @@ class TestsFlextInfraDocsFormatter:
         fixed_point = formatter.format(workspace, apply=False)
         tm.ok(fixed_point)
         tm.that(fixed_point.value[0].result, eq=c.Infra.ResultStatus.OK)
-        tm.that(fixed_point.value[0].passed, eq=True)
+        tm.ok(fixed_point.value[0].passed)
         tm.that(fixed_point.value[0].reason, eq="pending:0")
 
     def test_toc_fix_and_format_keep_literal_code_symbols(self, tmp_path: Path) -> None:
@@ -109,7 +109,7 @@ class TestsFlextInfraDocsFormatter:
         tm.that(second_fix.value[0].changed_files, eq=0)
         second_format = formatter.format(workspace, apply=True)
         tm.ok(second_format)
-        tm.that(second_format.value[0].passed, eq=True)
+        tm.ok(second_format.value[0].passed)
         tm.that(second_format.value[0].changed_files, eq=0)
         tm.that(document.read_text(encoding="utf-8"), eq=formatted)
 
@@ -135,5 +135,5 @@ class TestsFlextInfraDocsFormatter:
         result = self._formatter().format(workspace, apply=False)
 
         tm.ok(result)
-        tm.that(result.value[0].passed, eq=False)
+        tm.fail(result.value[0].passed)
         tm.that(result.value[0].result, eq=c.Infra.ResultStatus.FAIL)

@@ -55,9 +55,9 @@ class TestsFlextInfraExtraPathsSearchPaths:
         result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
         includes = manager.pyrefly_project_includes(project_dir=tmp_path, is_root=True)
 
-        tm.that("scripts" in result, eq=True)
-        tm.that(result.index("scripts") < result.index("."), eq=True)
-        tm.that("scripts/**/*.py*" in includes, eq=True)
+        tm.ok("scripts" in result)
+        tm.ok(result.index("scripts") < result.index("."))
+        tm.ok("scripts/**/*.py*" in includes)
 
     """Verify productive, existing Pyrefly search roots."""
 

@@ -180,12 +180,12 @@ class TestsFlextInfraAuditor:
     @staticmethod
     def test_report_frozen() -> None:
         """Test report frozen."""
-        tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
+        tm.ok(m.Infra.DocsPhaseReport.model_config.get("frozen"))
 
     @staticmethod
     def test_issue_frozen() -> None:
         """Test issue frozen."""
-        tm.that(m.Infra.AuditIssue.model_config.get("frozen"), eq=True)
+        tm.ok(m.Infra.AuditIssue.model_config.get("frozen"))
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -241,7 +241,7 @@ class TestsFlextInfraAuditor:
             else f"{scheme}:payload"
         )
 
-        tm.that(is_external(target), eq=True)
+        tm.ok(is_external(target))
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -267,4 +267,4 @@ class TestsFlextInfraAuditor:
         is_external: Callable[[str], bool],
     ) -> None:
         """Test repository paths are not external."""
-        tm.that(is_external("path/to/file.md"), eq=False)
+        tm.fail(is_external("path/to/file.md"))

@@ -534,7 +534,7 @@ class FlextInfraUtilitiesCodegenNamespace:
                 if owner is not None and owner[0] in declared_exports:
                     expected_alias, expected_family = owner
         family_tokens: t.StrSequence = (expected_family,) if expected_family else ()
-        return family_alias, expected_family, expected_alias, family_tokens
+        return (family_alias, expected_family, expected_alias, family_tokens)
 
     @classmethod
     def _resolve_module_flags(

@@ -123,7 +123,7 @@ class TestsFlextInfraGitSweepSemantics:
 
         tm.that(local.heads[integration], eq=head)
         tm.that(remote.heads[integration], eq=head)
-        tm.that(c.Infra.GIT_HEAD in remote.heads, eq=False)
+        tm.fail(c.Infra.GIT_HEAD in remote.heads)
 
     def test_legacy_stash_ref_does_not_block_durable_recovery(
         self, tmp_path: Path
@@ -201,7 +201,7 @@ class TestsFlextInfraGitSweepSemantics:
         tm.that(index.read_bytes(), eq=before)
         tm.that(readme.read_text(encoding="utf-8"), eq="working layer\n")
         tm.that((repository / "dirty.txt").read_text(encoding="utf-8"), eq="kept\n")
-        tm.that(duplicate.failure, eq=True)
+        tm.ok(duplicate.failure)
         tm.that(
             u.Tests.git_capture(repository, "rev-parse", "refs/heads/preserve"),
             eq=checkpoint.worktree_commit,
@@ -226,7 +226,7 @@ class TestsFlextInfraGitSweepSemantics:
         )
 
         tm.that(branch.text, eq="existing")
-        tm.that(unknown.failure, eq=True)
+        tm.ok(unknown.failure)
 
     def test_push_source_is_proven_by_the_live_remote_and_deleted_on_lease(
         self,
@@ -253,7 +253,7 @@ class TestsFlextInfraGitSweepSemantics:
 
         tm.that(absent.text, eq="")
         tm.that(published.text, eq=oid)
-        tm.that(stale.failure, eq=True)
+        tm.ok(stale.failure)
         tm.that(deleted.text, eq="")
         tm.ok(
             u.Infra.git_verify_worktree_checkpoint_publication(checkpoint, publication)
@@ -338,8 +338,8 @@ class TestsFlextInfraGitSweepSemantics:
             ),
         )
 
-        tm.that(squashed.value, eq=True)
-        tm.that(pending.value, eq=False)
+        tm.ok(squashed.value)
+        tm.fail(pending.value)
 
     def test_merge_ff_only_advances_and_refuses_divergence(
         self,
@@ -366,7 +366,7 @@ class TestsFlextInfraGitSweepSemantics:
         )
 
         tm.that(head, eq=ahead)
-        tm.that(diverged.failure, eq=True)
+        tm.ok(diverged.failure)
 
     @staticmethod
     def test_last_activity_is_not_older_than_the_head_commit(tmp_path: Path) -> None:
@@ -380,7 +380,7 @@ class TestsFlextInfraGitSweepSemantics:
             u.Infra.git_last_activity(m.Infra.GitRepoRequest(repo_root=repository)),
         )
 
-        tm.that(activity.epoch_seconds >= committed, eq=True)
+        tm.ok(activity.epoch_seconds >= committed)
 
     @staticmethod
     def test_commit_rejected_by_a_hook_is_a_failure(tmp_path: Path) -> None:
@@ -398,7 +398,7 @@ class TestsFlextInfraGitSweepSemantics:
             m.Infra.GitCommitRequest(repo_root=repository, message="gated"),
         )
 
-        tm.that(gated.failure, eq=True)
+        tm.ok(gated.failure)
         tm.that(
             u.Tests.git_capture(repository, "rev-parse", c.Infra.GIT_HEAD),
             eq=head,

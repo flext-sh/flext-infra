@@ -113,7 +113,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             u.Tests.gate_context(tmp_path),
         )
 
-        tm.that(result.result.passed, eq=False)
+        tm.fail(result.result.passed)
 
     def test_format_gate_fix_is_the_single_writer(self, tmp_path: Path) -> None:
         """`make fmt` drives `rumdl fmt` once and the tree reaches green."""
@@ -132,7 +132,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
 
         result = FlextInfraMarkdownFormatGate(tmp_path).fix(project_dir, context)
 
-        tm.that(result.result.passed, eq=True)
+        tm.ok(result.result.passed)
         tm.that(readme.read_text(encoding="utf-8"), eq=self.FORMATTED_LIST)
         _ = u.Tests.check_gate_asserting(
             FlextInfraMarkdownFormatGate,
@@ -156,7 +156,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             project_dir,
         )
 
-        tm.that(result.result.passed, eq=False)
+        tm.fail(result.result.passed)
         tm.that(len(result.issues), eq=1)
         tm.that(result.issues[0].message, has="make gen")
 
@@ -200,7 +200,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
 
         result = FlextInfraMarkdownCodeGate(tmp_path).fix(project_dir, context)
 
-        tm.that(result.result.passed, eq=True)
+        tm.ok(result.result.passed)
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.CLEAN)
         tm.that(result.issues, empty=True)
         tm.that(readme.read_text(encoding="utf-8"), eq=self.FORMATTED)
@@ -223,7 +223,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
 
         result = FlextInfraMarkdownCodeGate(tmp_path).fix(project_dir, context)
 
-        tm.that(result.result.passed, eq=True)
+        tm.ok(result.result.passed)
         tm.that(readme.read_text(encoding="utf-8"), eq=self.FRAGMENT_THEN_FORMATTED)
 
     def test_code_gate_fix_preserves_fragment_for_syntax_owner(
@@ -331,6 +331,33 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         tm.that(result.issues[0].file, eq="src/widget.py")
 
     @staticmethod
+    def test_code_gate_keeps_examples_from_multiple_docstrings(
+        tmp_path: Path,
+    ) -> None:
+        """A later formatted example cannot hide an earlier unformatted one."""
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-code-docstrings")
+        source_dir = project_dir / c.Infra.DEFAULT_SRC_DIR
+        source_dir.mkdir()
+        (source_dir / "widget.py").write_text(
+            '"""Module.\n\n>>> first=1\n\n"""\n\n'
+            "def sample() -> None:\n"
+            '    """Function.\n\n    >>> second = 2\n\n    """\n',
+            encoding="utf-8",
+        )
+        sources = FlextInfraMarkdownCodeSources.docstring_sources(project_dir)
+        tm.that(len(sources), eq=2)
+        tm.that(len({name for name, _, _ in sources}), eq=2)
+
+        result = u.Tests.check_gate_asserting(
+            FlextInfraMarkdownCodeGate,
+            tmp_path,
+            project_dir,
+            passed=False,
+            issues_len=1,
+        )
+        tm.that(result.issues[0].file, eq="src/widget.py")
+
+    @staticmethod
     def test_code_gate_is_not_selected_without_embedded_code(
         tmp_path: Path,
     ) -> None:
@@ -339,7 +366,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         (project_dir / "README.md").write_text("# Prose only\n", encoding="utf-8")
         gate = FlextInfraMarkdownCodeGate(tmp_path)
 
-        tm.that(gate.selected_for(project_dir), eq=False)
+        tm.fail(gate.selected_for(project_dir))
         tm.that(
             gate.check(project_dir, u.Tests.gate_context(tmp_path)).result.passed,
             eq=False,
@@ -350,4 +377,4 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-present")
         (project_dir / "README.md").write_text(self.FORMATTED, encoding="utf-8")
 
-        tm.that(FlextInfraMarkdownCodeGate(tmp_path).selected_for(project_dir), eq=True)
+        tm.ok(FlextInfraMarkdownCodeGate(tmp_path).selected_for(project_dir))

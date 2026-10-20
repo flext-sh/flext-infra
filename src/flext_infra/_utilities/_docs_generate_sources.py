@@ -12,7 +12,10 @@ from pathlib import Path
 from flext_cli import u as cli_u
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesDocsScope
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDocsScope,
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 
 
 class FlextInfraUtilitiesDocsGenerateSourcesMixin:
@@ -219,6 +222,16 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
             if elected.failure:
                 return r[t.VariadicTuple[Path]].from_failure(elected)
             paths.update(elected.value)
+            tooling = FlextInfraUtilitiesProjectManagedArtifacts.load_tooling_inputs(
+                root
+            )
+            if tooling.failure:
+                return r[t.VariadicTuple[Path]].from_failure(tooling)
+            paths.update(
+                state.path
+                for state in tooling.value.sources
+                if state.content is not None
+            )
         templates_root = FlextInfraConfig.ssot_config_dir().parent / "templates"
         templates = cli_u.Cli.template_capture_sources((
             templates_root / c.Infra.TEMPLATE_MKDOCS_PROJECT,

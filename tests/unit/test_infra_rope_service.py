@@ -440,7 +440,7 @@ class TestsFlextInfraInfraRopeService:
             )
             tm.that(rope.module(module_path), none=False)
             tm.that(rope.module(sibling_module_path), none=True)
-            tm.that(sibling_root in rope.rope_repository_root.parents, eq=False)
+            tm.fail(sibling_root in rope.rope_repository_root.parents)
 
     @staticmethod
     def test_unrelated_ancestor_workspace_does_not_capture_project(

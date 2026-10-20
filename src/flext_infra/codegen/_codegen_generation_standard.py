@@ -146,7 +146,9 @@ class FlextInfraCodegenGenerationStandardMixin(
         indent = "        "
         if values[1] in {f'"{name}"', '""'}:
             compact = f'{indent}"{name}": {values[0]},'
-            if len(compact) <= config.Infra.tooling.tools.ruff.line_length:
+            if len(compact) <= u.Infra.native_tool_setting(
+                config.Infra.tooling, "ruff", "line-length", int
+            ):
                 return (compact,)
             return (
                 f'{indent}"{name}": (',
@@ -155,7 +157,9 @@ class FlextInfraCodegenGenerationStandardMixin(
             )
         inner = ", ".join(values)
         compact = f'{indent}"{name}": ({inner}),'
-        if len(compact) <= config.Infra.tooling.tools.ruff.line_length:
+        if len(compact) <= u.Infra.native_tool_setting(
+            config.Infra.tooling, "ruff", "line-length", int
+        ):
             return (compact,)
         value_indent = f"{indent}    "
         return (
@@ -178,9 +182,10 @@ class FlextInfraCodegenGenerationStandardMixin(
         if len(exports) == 1:
             inner = f"{inner},"
         compact = f"({inner})"
-        if (
-            len("__all__: tuple[str, ...] = ") + len(compact)
-            <= config.Infra.tooling.tools.ruff.line_length
+        if len("__all__: tuple[str, ...] = ") + len(
+            compact
+        ) <= u.Infra.native_tool_setting(
+            config.Infra.tooling, "ruff", "line-length", int
         ):
             return compact
         # A wrapped export set renders exactly as Ruff formats it (one name per
@@ -208,7 +213,9 @@ class FlextInfraCodegenGenerationStandardMixin(
             for name, (module, attr) in entries
         )
         compact = f"    MappingProxyType({{{inner}}}),"
-        if len(compact) <= config.Infra.tooling.tools.ruff.line_length:
+        if len(compact) <= u.Infra.native_tool_setting(
+            config.Infra.tooling, "ruff", "line-length", int
+        ):
             return compact
         lines: t.MutableSequenceOf[str] = ["    MappingProxyType({"]
         for name, (module, attr) in entries:

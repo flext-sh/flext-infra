@@ -117,7 +117,7 @@ class TestsLiveEditableProvenance:
         )
         lines = observation.stdout.splitlines()
         tm.that(lines[0], eq=expected)
-        tm.that(Path(lines[1]).is_relative_to(member.resolve()), eq=True)
+        tm.ok(Path(lines[1]).is_relative_to(member.resolve()))
 
     def test_live_member_commit_does_not_invalidate_correct_editable_origin(
         self,
@@ -149,7 +149,7 @@ class TestsLiveEditableProvenance:
         module.write_text(f"LIVE_VALUE = {value!r}\n", encoding=c.DEFAULT_ENCODING)
         u.Tests.commit_git_changes(member, "advance live editable code")
         member_head = u.Tests.git_capture(member, "rev-parse", c.Infra.GIT_HEAD).strip()
-        tm.that(member_head == gitlink_before, eq=False)
+        tm.fail(member_head == gitlink_before)
         self._import(root, member, value)
         tm.that(
             u.Tests.git_capture(
@@ -197,7 +197,7 @@ class TestsLiveEditableProvenance:
             )
         elif defect == "backpointer":
             marker = member / c.Infra.GIT_DIR
-            tm.that(marker.is_file(), eq=True)
+            tm.ok(marker.is_file())
             marker.write_text(
                 f"gitdir: {tmp_path / 'missing-git-metadata'}\n",
                 encoding=c.DEFAULT_ENCODING,
@@ -228,5 +228,5 @@ class TestsLiveEditableProvenance:
                 ),
             )
         result = self._verify(root)
-        tm.that(result.outcome.raw_return_code != 0, eq=True)
-        tm.that(bool(result.stderr.strip() or result.stdout.strip()), eq=True)
+        tm.ok(result.outcome.raw_return_code != 0)
+        tm.ok(bool(result.stderr.strip() or result.stdout.strip()))

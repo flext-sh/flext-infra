@@ -72,7 +72,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
             self._read(bounded / "suite-outcome.json"),
         )
         tm.that(outcome.raw_return_code, eq=expected_raw_exit.value)
-        tm.that(outcome.timed_out, eq=False)
+        tm.fail(outcome.timed_out)
         tm.that(outcome.forwarded_signal, none=True)
         selected = m.Infra.PytestCollectionManifest.model_validate_json(
             self._read(bounded / "testmon-selection.json"),
@@ -110,15 +110,15 @@ class TestsFlextInfraPytestRunnerSuiteStop:
             tm.ok(u.Cli.files_read_text(outcome_path)),
         )
         tm.that(outcome.raw_return_code, eq=pytest.ExitCode.INTERRUPTED.value)
-        tm.that(outcome.timed_out, eq=False)
+        tm.fail(outcome.timed_out)
         tm.that(outcome.forwarded_signal, none=True)
         tm.that(
             tm.ok(u.Cli.files_read_text(outcome_path.parent / "pytest.log")),
             has=abort_message,
         )
-        tm.that((outcome_path.parent / "junit.xml").exists(), eq=False)
-        tm.that((outcome_path.parent / "summary.txt").exists(), eq=False)
-        tm.that((outcome_path.parent / "run-accounting.json").exists(), eq=False)
+        tm.fail((outcome_path.parent / "junit.xml").exists())
+        tm.fail((outcome_path.parent / "summary.txt").exists())
+        tm.fail((outcome_path.parent / "run-accounting.json").exists())
 
     @staticmethod
     def test_ordinary_stop_reserve_is_independent_of_dispatch(
@@ -168,7 +168,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
 
         workers_index = list(multi_command).index("-n") + 1
         budget = runner.parallel_worker_budget(policy)
-        tm.that(budget > 1, eq=True)
+        tm.ok(budget > 1)
         tm.that(list(multi_command)[workers_index], eq=str(min(budget, len(multi))))
         tm.that(
             stop_value(multi_command),
@@ -283,7 +283,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
                 )
             }
         tm.that(len(persisted), eq=executed)
-        tm.that(persisted <= set(selected), eq=True)
+        tm.ok(persisted <= set(selected))
 
     @pytest.mark.slow
     def test_stop_instant_after_the_last_selected_test_completes_the_run(

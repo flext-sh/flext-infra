@@ -80,7 +80,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
             ignore=shutil.ignore_patterns("__pycache__"),
         )
         u.Tests.initialize_git_repo(root)
-        tm.that(u.Infra.runtime_environment_dir(root).exists(), eq=False)
+        tm.fail(u.Infra.runtime_environment_dir(root).exists())
 
     @staticmethod
     def _setup(root: Path) -> p.Cli.CommandOutput:
@@ -113,8 +113,8 @@ class TestsFlextInfraCodegenSetupSubmodules:
             msg=process.stdout + process.stderr,
         )
         environment = u.Infra.runtime_environment_dir(root)
-        tm.that((environment / "pyvenv.cfg").is_file(), eq=True)
-        tm.that(environment.is_symlink(), eq=False)
+        tm.ok((environment / "pyvenv.cfg").is_file())
+        tm.fail(environment.is_symlink())
         tm.that(process.stdout, has="installed-runtime-verified")
         return process
 
@@ -236,11 +236,11 @@ class TestsFlextInfraCodegenSetupSubmodules:
             "content-type": "text/plain",
         }
         tm.ok(u.Cli.atomic_write_text_file(pyproject, u.Cli.toml_dumps(document)))
-        tm.that(direct_marker.exists(), eq=False)
+        tm.fail(direct_marker.exists())
 
         self._assert_setup(project)
         self._assert_detached_recorded_gitlink(project)
-        tm.that(nested_marker.exists(), eq=False)
+        tm.fail(nested_marker.exists())
 
     def test_setup_is_repeatable_with_managed_submodule(
         self,
@@ -301,7 +301,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         self._assert_setup(project)
 
         tm.that(self._git(checkout, "rev-parse", "HEAD"), eq=recorded)
-        tm.that((checkout / "nested/marker.txt").exists(), eq=False)
+        tm.fail((checkout / "nested/marker.txt").exists())
 
     def test_setup_is_repeatable_without_gitmodules(
         self,
@@ -325,7 +325,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
 
         self._assert_setup(project)
 
-        tm.that((project / "vendor/upstream/marker.txt").exists(), eq=False)
+        tm.fail((project / "vendor/upstream/marker.txt").exists())
 
     def test_content_only_submodule_config_and_wip_are_never_mutated(
         self,
@@ -380,7 +380,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
 
         result = self._assert_setup(project)
 
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
         tm.that(result.stderr, lacks="conflicting branch")
         tm.that(
             self._git(project / "vendor/source", "branch", "--show-current"),
@@ -413,7 +413,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
             self._git(project / "vendor/source", "branch", "--show-current"),
             eq="divergent",
         )
-        tm.that((project / ".venv").exists(), eq=False)
+        tm.fail((project / ".venv").exists())
 
     def test_lane_branch_keeps_head_and_dirty_work(
         self,
@@ -434,7 +434,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
 
         result = self._assert_setup(project)
 
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
         tm.that(result.stderr, lacks="fetch origin")
         tm.that(self._git(checkout, "branch", "--show-current"), eq="feature/lane")
         tm.that(self._git(checkout, "rev-parse", "HEAD"), eq=head)
@@ -470,7 +470,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         tm.that(result.stderr, has="does not contain recorded gitlink")
         tm.that(result.stderr, lacks="fetch origin")
         tm.that(self._git(checkout, "branch", "--show-current"), eq="feature/lane")
-        tm.that((project / ".venv").exists(), eq=False)
+        tm.fail((project / ".venv").exists())
 
     def test_local_changes_are_preserved_on_declared_branch(
         self,
@@ -487,7 +487,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
         marker.write_text("local change", encoding="utf-8")
         result = self._assert_setup(project)
 
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
         tm.that(marker.read_text(encoding="utf-8"), eq="local change")
 
     def test_declared_branch_ahead_of_gitlink_is_preserved(
@@ -592,6 +592,6 @@ class TestsFlextInfraCodegenSetupSubmodules:
         dirty.write_text("preserve me", encoding="utf-8")
         result = self._assert_setup(project)
 
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.outcome))
         tm.that(dirty.read_text(encoding="utf-8"), eq="preserve me")
         tm.that(self._git(checkout, "branch", "--show-current"), eq="declared-dev")

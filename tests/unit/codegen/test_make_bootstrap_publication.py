@@ -142,7 +142,7 @@ class TestsMakeBootstrapPublication:
         root, members = self.workspace(tmp_path)
 
         for path in (root, *members):
-            tm.that(u.Cli.process_succeeded(self._run(path).outcome), eq=True)
+            tm.ok(u.Cli.process_succeeded(self._run(path).outcome))
             receipt = self._receipt(path)
             tm.that(receipt.scope_roots, eq=(path,))
             tm.that(receipt.surface, eq=c.Infra.CodegenConformSurface.MAKEFILE)
@@ -250,7 +250,7 @@ class TestsMakeBootstrapPublication:
 
         result = self._run(root)
 
-        tm.that(result.outcome.raw_return_code != 0, eq=True)
+        tm.ok(result.outcome.raw_return_code != 0)
         tm.that(result.stderr + result.stdout, has="expected=1 actual=2")
 
     def test_workspace_bootstrap_rejects_a_foreign_metadata_prefix(
@@ -273,7 +273,7 @@ class TestsMakeBootstrapPublication:
 
         result = self._run(root)
 
-        tm.that(result.outcome.raw_return_code != 0, eq=True)
+        tm.ok(result.outcome.raw_return_code != 0)
         tm.that(result.stderr + result.stdout, has="outside the elected environment")
 
     def test_member_failure_cannot_publish_completed_workspace_coverage(
@@ -282,7 +282,7 @@ class TestsMakeBootstrapPublication:
     ) -> None:
         """A failed member request cannot overwrite another target's receipt."""
         root, members = self.workspace(tmp_path)
-        tm.that(u.Cli.process_succeeded(self._run(root).outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(self._run(root).outcome))
         receipt_path = root / FlextInfraMiseArtifactsVerification.publication_receipt(
             c.Infra.CodegenConformSurface.MAKEFILE,
         )
@@ -293,7 +293,7 @@ class TestsMakeBootstrapPublication:
         target.symlink_to(foreign)
 
         result = self._run(members[-1])
-        tm.that(result.outcome.raw_return_code != 0, eq=True)
+        tm.ok(result.outcome.raw_return_code != 0)
         tm.that(result.stderr + result.stdout, has=str(target))
         tm.that(receipt_path.read_bytes(), eq=root_before)
 
@@ -330,7 +330,7 @@ class TestsMakeBootstrapPublication:
 
         result = self._run(root)
 
-        tm.that(result.outcome.raw_return_code != 0, eq=True)
+        tm.ok(result.outcome.raw_return_code != 0)
         tm.that(result.stderr + result.stdout, has="direct_url mismatch")
 
     @pytest.mark.parametrize("hosted", [False, True])

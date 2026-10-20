@@ -119,9 +119,13 @@ class TestsFlextInfraDepsDetectorMain:
     ) -> None:
         """Test apply typings follows governed policy and preserves source."""
         root = real_detector_project
-        followed = config.Infra.tooling.tools.mypy.boolean_settings.get(
-            c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS,
-            c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS_DEFAULT,
+        tooling = tm.ok(u.Infra.load_tooling_inputs(root)).document
+        followed = u.type_adapter(bool).validate_python(
+            u.Infra.native_tool_settings(tooling, "mypy").get(
+                c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS,
+                c.Infra.MYPY_FOLLOW_UNTYPED_IMPORTS_DEFAULT,
+            ),
+            strict=True,
         )
         before = u.Tests.toml_payload((root / "pyproject.toml").read_text())
         expected = {"pytz": "types-pytz", "six": "types-six"}
@@ -281,8 +285,8 @@ class TestsFlextInfraDepsDetectorMain:
                 repository_root=member,
             ),
         )
-        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(outcome.outcome))
         tm.that(outcome.stdout + outcome.stderr, has="Deptry executable not found")
-        tm.that((member / ".venv").exists(), eq=False)
+        tm.fail((member / ".venv").exists())
         tm.that((root / "pyproject.toml").read_bytes(), eq=parent_before)
         tm.that((member / "pyproject.toml").read_bytes(), eq=member_before)

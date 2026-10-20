@@ -60,7 +60,7 @@ class TestsFlextInfraWorkspaceLifecycle:
                 )
             else:
                 tm.that(receipt.command[:-1], eq=(c.Infra.MAKE,))
-        tm.that((root / c.Infra.LIFECYCLE_REPORT_RELATIVE_PATH).exists(), eq=False)
+        tm.fail((root / c.Infra.LIFECYCLE_REPORT_RELATIVE_PATH).exists())
 
     def test_standalone_plan_has_the_same_public_acceptance_boundary(
         self,
@@ -85,7 +85,7 @@ class TestsFlextInfraWorkspaceLifecycle:
     ) -> None:
         """A real unprovisioned fixture has no Makefile; native Make rejects it."""
         root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "unprovisioned")
-        tm.that((root / c.Infra.MAKEFILE_FILENAME).exists(), eq=False)
+        tm.fail((root / c.Infra.MAKEFILE_FILENAME).exists())
         with u.Tests.env_vars_context(env_vars={"MAKEFLAGS": "-n -j8"}):
             result = FlextInfraWorkspaceLifecycle.execute_request(self._request(root))
 
@@ -94,12 +94,12 @@ class TestsFlextInfraWorkspaceLifecycle:
             (root / c.Infra.LIFECYCLE_REPORT_RELATIVE_PATH).read_bytes(),
         )
         first, *unreached = report.receipts
-        tm.that(first.outcome is not None, eq=True)
+        tm.ok(first.outcome is not None)
         if first.outcome is not None:
-            tm.that(u.Cli.process_succeeded(first.outcome), eq=False)
-        tm.that(first.applicable, eq=True)
+            tm.fail(u.Cli.process_succeeded(first.outcome))
+        tm.ok(first.applicable)
         tm.that(first.error, empty=False)
-        tm.that(first.output_file.is_file(), eq=True)
+        tm.ok(first.output_file.is_file())
         tm.that(first.before_files, eq=first.after_files)
         tm.that(
             tuple(item.path for item in first.before_files),
@@ -116,7 +116,7 @@ class TestsFlextInfraWorkspaceLifecycle:
             ),
             eq=True,
         )
-        tm.that(all(not row.output_file.exists() for row in unreached), eq=True)
+        tm.ok(all(not row.output_file.exists() for row in unreached))
         tm.that(report.executed_commands, eq=1)
         tm.that(report.failed_commands, eq=1)
         tm.that(
@@ -143,7 +143,7 @@ class TestsFlextInfraWorkspaceLifecycle:
             tm.that(receipt.execution_context, eq="ci")
             tm.that(receipt.outcome, eq=None)
             if "ci" not in step.contexts:
-                tm.that(receipt.applicable, eq=False)
+                tm.fail(receipt.applicable)
                 tm.that(receipt.applicability_reason, empty=False)
             else:
                 tm.that(receipt.applicable, eq=None)
@@ -168,7 +168,7 @@ class TestsFlextInfraWorkspaceLifecycle:
             != 0,
             eq=True,
         )
-        tm.that((root / c.Infra.LIFECYCLE_REPORT_RELATIVE_PATH).exists(), eq=False)
+        tm.fail((root / c.Infra.LIFECYCLE_REPORT_RELATIVE_PATH).exists())
 
     def test_ci_targets_only_the_invoking_root_without_electing_member_effects(
         self,
@@ -187,7 +187,7 @@ class TestsFlextInfraWorkspaceLifecycle:
         )
         tm.that(member_rows, empty=False)
         for row in member_rows:
-            tm.that(row.applicable, eq=False)
+            tm.fail(row.applicable)
             tm.that(row.applicability_reason, empty=False)
             tm.that(row.outcome, eq=None)
         tm.that(report.executed_commands, eq=0)

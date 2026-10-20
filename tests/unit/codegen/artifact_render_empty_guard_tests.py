@@ -108,7 +108,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             )
         )
         plan = tm.ok(refused)
-        tm.that(bool(plan.issues), eq=True)
+        tm.ok(bool(plan.issues))
         diagnostic = "\n".join(issue.message for issue in plan.issues)
         tm.that(
             diagnostic,
@@ -120,8 +120,8 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         )
         tm.that(diagnostic, has="render produced no content")
         tm.that(diagnostic, has="consumer declaration error")
-        tm.that(any(file.path == destination for file in plan.files), eq=False)
-        tm.that(destination.exists(), eq=False)
+        tm.fail(any(file.path == destination for file in plan.files))
+        tm.fail(destination.exists())
 
     @staticmethod
     def test_whitespace_render_fails_loud_with_template_stage_prefix(
@@ -133,13 +133,13 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             "  \n\t\n",
         )
         plan = tm.ok(refused)
-        tm.that(bool(plan.issues), eq=True)
+        tm.ok(bool(plan.issues))
         diagnostic = "\n".join(issue.message for issue in plan.issues)
         tm.that(diagnostic, has="stage=templates ")
         tm.that(diagnostic, has="repository=")
         tm.that(diagnostic, has="publishing a 0-byte artifact is forbidden")
-        tm.that(any(file.path == destination for file in plan.files), eq=False)
-        tm.that(destination.exists(), eq=False)
+        tm.fail(any(file.path == destination for file in plan.files))
+        tm.fail(destination.exists())
 
     @staticmethod
     def test_rendered_content_passes_through_verbatim(
@@ -151,11 +151,11 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             tmp_path,
             content,
         )
-        tm.that(kept.failure, eq=False)
+        tm.fail(kept.failure)
         plan = tm.ok(kept)
-        tm.that(bool(plan.issues), eq=False)
+        tm.fail(bool(plan.issues))
         tm.that(u.Tests.planned_text(plan, destination.name), eq=content)
-        tm.that(destination.exists(), eq=False)
+        tm.fail(destination.exists())
 
     @staticmethod
     def test_semantic_output_is_prepared_under_planned_policy_and_idempotent(
@@ -200,16 +200,16 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             )
         )
         emitted = tm.not_none(prepared[1].desired_content)
-        tm.that(destination.exists(), eq=False)
+        tm.fail(destination.exists())
         tm.that(metadata.read_text(encoding=c.DEFAULT_ENCODING), eq=before_metadata)
         tm.that(emitted.decode(c.DEFAULT_ENCODING), eq="values = dict(answer=42)\n")
-        tm.that("import os" in emitted.decode(c.DEFAULT_ENCODING), eq=False)
+        tm.fail("import os" in emitted.decode(c.DEFAULT_ENCODING))
         receipt = tm.not_none(prepared[0].prepared_sources)
         if not isinstance(receipt, m.Infra.StageSourcePlan):
             pytest.fail("Preparation did not return the canonical source receipt")
-        tm.that(all(plan.prepared_sources is receipt for plan in prepared), eq=True)
-        tm.that(bool(receipt.source_query_topology), eq=True)
-        tm.that(bool(receipt.source_directories), eq=True)
+        tm.ok(all(plan.prepared_sources is receipt for plan in prepared))
+        tm.ok(bool(receipt.source_query_topology))
+        tm.ok(bool(receipt.source_directories))
         tm.that(
             dict(receipt.prepared_hashes),
             eq={
@@ -222,7 +222,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             tuple(plan.desired_content for plan in repeated),
             eq=tuple(plan.desired_content for plan in prepared),
         )
-        tm.that(all(plan.prepared_sources is receipt for plan in repeated), eq=True)
+        tm.ok(all(plan.prepared_sources is receipt for plan in repeated))
 
         def configured_check(view: Path) -> p.Result[bool]:
             tm.that(
@@ -269,10 +269,10 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             dict(receipt.prepared_hashes)[destination],
             eq=u.Cli.sha256_bytes(tm.not_none(proposal.desired_content)),
         )
-        tm.that(bool(receipt.source_query_topology), eq=True)
+        tm.ok(bool(receipt.source_query_topology))
         repeated = tm.ok(FlextInfraCodegenStaging.prepare_python_plans(root, prepared))
         tm.that(repeated[0].desired_content, eq=proposal.desired_content)
-        tm.that(repeated[0].prepared_sources is receipt, eq=True)
+        tm.ok(repeated[0].prepared_sources is receipt)
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(destination, required=False)),
             eq=before,
@@ -300,7 +300,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             ),
             prepare=u.Infra.normalize_source_plan,
         )
-        tm.that(rejected.failure, eq=True)
+        tm.ok(rejected.failure)
         tm.that(str(rejected.error), has="undeclared_supplier")
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(destination, required=False)),
@@ -328,9 +328,9 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             return r[bool].fail(str(original), exception=original)
 
         rejected = FlextInfraStagedPackage.consume_sources(plan, reject)
-        tm.that(rejected.failure, eq=True)
-        tm.that(rejected.exception is original, eq=True)
-        tm.that(destination.exists(), eq=False)
+        tm.ok(rejected.failure)
+        tm.ok(rejected.exception is original)
+        tm.fail(destination.exists())
 
     @staticmethod
     def test_admission_refuses_candidate_mutation_instead_of_resealing(
@@ -355,7 +355,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             return r[bool].ok(value=True)
 
         rejected = FlextInfraStagedPackage.consume_sources(plan, mutate)
-        tm.that(rejected.failure, eq=True)
+        tm.ok(rejected.failure)
         tm.that(str(rejected.error), has="changed during read-only admission")
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(destination, required=True)),
@@ -367,8 +367,8 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         """The public CLI payload never exposes a physical runtime override."""
         schema = m.Infra.RunCommand.model_json_schema(by_alias=True)
         properties = schema["properties"]
-        tm.that("runtime_root" in properties, eq=False)
-        tm.that("runtime-root" in properties, eq=False)
+        tm.fail("runtime_root" in properties)
+        tm.fail("runtime-root" in properties)
 
     @staticmethod
     def test_project_preparation_does_not_merge_independent_policy_contexts(
@@ -416,14 +416,14 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         )
         by_path = {plan.path: plan for plan in prepared}
         first, second = (by_path[path] for path in destinations)
-        tm.that(b"import os" in tm.not_none(first.desired_content), eq=False)
-        tm.that(b"import os" in tm.not_none(second.desired_content), eq=True)
+        tm.fail(b"import os" in tm.not_none(first.desired_content))
+        tm.ok(b"import os" in tm.not_none(second.desired_content))
         for local, foreign_metadata in (
             (first, metadata_paths[1]),
             (second, metadata_paths[0]),
         ):
             receipt = tm.not_none(local.prepared_sources)
-            tm.that(foreign_metadata in receipt.updates, eq=False)
+            tm.fail(foreign_metadata in receipt.updates)
             for source in local.source_states:
                 if source.path == foreign_metadata:
                     tm.that(source.content, eq=foreign_metadata.read_bytes())
@@ -431,14 +431,14 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             tuple(plan.dependency_group for plan in prepared),
             eq=tuple(plan.dependency_group for plan in plans),
         )
-        tm.that(any(path.exists() for path in destinations), eq=False)
+        tm.fail(any(path.exists() for path in destinations))
         updates = {
             plan.path: tm.not_none(plan.desired_content).decode(c.DEFAULT_ENCODING)
             for plan in prepared
         }
         unselected = tm.ok(FlextInfraStagedPackage.plan_sources(workspace, updates))
         rejected = FlextInfraStagedPackage.project_layouts(unselected, first.project)
-        tm.that(rejected.failure, eq=True)
+        tm.ok(rejected.failure)
         tm.that(str(rejected.error), has="no original source authority")
         joint = tm.ok(
             FlextInfraStagedPackage.plan_sources(
@@ -450,8 +450,8 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             )
         )
         elected = tm.ok(FlextInfraStagedPackage.project_layouts(joint, first.project))
-        tm.that(first.project in {layout.project_root for layout in elected}, eq=True)
-        tm.that(second.project in {layout.project_root for layout in elected}, eq=False)
+        tm.ok(first.project in {layout.project_root for layout in elected})
+        tm.fail(second.project in {layout.project_root for layout in elected})
 
     @staticmethod
     def test_candidate_checker_requires_original_physical_environment(
@@ -480,6 +480,6 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
                 summary="Original physical runtime is absent; admission has not run",
             ),
         )
-        tm.that(rejected.failure, eq=True)
+        tm.ok(rejected.failure)
         tm.that(str(rejected.error), has=str(u.Infra.runtime_environment_dir(root)))
-        tm.that(destination.exists(), eq=False)
+        tm.fail(destination.exists())

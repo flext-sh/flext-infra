@@ -9,9 +9,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import config
-from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-from tests import t, tm, u
+from flext_infra.deps import FlextInfraConfigFixer, FlextInfraExtraPathsManager
+from tests import c, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -228,10 +227,16 @@ class TestsFlextInfraExtendedConfigFixer:
             # codegen artifact key: the one exclusion every analyzer shares.
             tm.that(
                 pyrefly["project-excludes"],
-                eq=sorted({
-                    *config.Infra.tooling.tools.pyrefly.project_exclude_globs,
-                    *config.Infra.codegen.generated_source_globs,
-                }),
+                eq=list(
+                    u.Infra.pyrefly_project_excludes(
+                        u.Infra.native_tool_setting(
+                            config.Infra.tooling,
+                            c.Infra.PYREFLY,
+                            c.Infra.PROJECT_EXCLUDES,
+                            t.StrSequence,
+                        ),
+                    )
+                ),
             )
 
     class TestConfigFixerRun:

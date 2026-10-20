@@ -686,6 +686,8 @@ class FlextInfraUtilitiesPyproject:
             ValueError: If ``declared.failure``.
 
         """
+        if not (repository_root / c.Infra.GITMODULES).exists(follow_symlinks=False):
+            return ()
         declared = FlextInfraUtilitiesGit.git_submodule_declarations(repository_root)
         if declared.failure:
             msg = declared.error or f"invalid workspace topology: {repository_root}"

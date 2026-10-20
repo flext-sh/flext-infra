@@ -174,7 +174,7 @@ class TestsFlextInfraWorktreeRegistryIdentity:
             )
 
         tm.fail(u.Infra.git_list_worktrees(m.Infra.GitRepoRequest(repo_root=linked)))
-        tm.that(linked.is_dir(), eq=True)
+        tm.ok(linked.is_dir())
 
     @pytest.mark.parametrize("bare", [False, True])
     def test_regular_and_bare_registries_preserve_native_identity(

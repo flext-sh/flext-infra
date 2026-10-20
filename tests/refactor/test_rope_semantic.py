@@ -90,7 +90,7 @@ class TestsFlextInfraRefactorRopeSemantic:
         """Test nonexistent class returns empty."""
         proj, _ = semantic_rope_workspace
         bases = u.Infra.resolve_class_bases(proj, models_resource, "DoesNotExist")
-        tm.that(not bases, eq=True)
+        tm.ok(not bases)
 
     @staticmethod
     def test_returns_public_methods(

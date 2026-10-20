@@ -15,6 +15,7 @@ import stat
 import sys
 import tempfile
 import time
+import traceback
 from pathlib import Path
 from types import FrameType
 from typing import ClassVar
@@ -98,6 +99,9 @@ class FlextInfraPytestClock:
             immutable_output: Optional invocation-owned link to the staged inode.
             previous_output: Optional retained link to the previous completed artifact.
 
+        Raises:
+            OSError: If staging identity or atomic publication fails.
+
         """
         descriptor, name = tempfile.mkstemp(
             dir=output.parent,
@@ -137,12 +141,17 @@ class FlextInfraPytestClock:
         cls,
         profile: cProfile.Profile,
         output: Path,
+        *,
+        immutable_output: Path | None = None,
+        previous_output: Path | None = None,
     ) -> None:
         """Persist measured progress before preserving native termination handling.
 
         Args:
             profile: The real profiler elected by the invocation.
             output: The profile artifact elected by the canonical launcher.
+            immutable_output: Invocation-owned link to the interrupted profile.
+            previous_output: Retained link to the previously published profile.
 
         Raises:
             RuntimeError: If the native termination handler cannot be observed.
@@ -156,13 +165,23 @@ class FlextInfraPytestClock:
         def checkpoint(signum: int, frame: FrameType | None) -> None:
             """Persist the profiler, then delegate the original signal unchanged."""
             try:
-                cls.publish_profile(profile, output)
+                if frame is not None:
+                    traceback.print_stack(frame)
+                cls.publish_profile(
+                    profile,
+                    output,
+                    immutable_output=immutable_output,
+                    previous_output=previous_output,
+                )
             finally:
                 signal.signal(signum, previous)
                 if callable(previous):
                     previous(signum, frame)
                 else:
                     signal.raise_signal(signum)
+                # create_stats() disables profiling; returning handlers keep
+                # the command alive and must keep measuring its remaining work.
+                profile.enable()
 
         signal.signal(signal.SIGTERM, checkpoint)
 

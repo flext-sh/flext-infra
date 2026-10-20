@@ -12,6 +12,10 @@ from flext_infra import m, p, r, t, u
 from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
 
 
+def _relocate_generation_directory_error(error: str) -> str:
+    return f"relocate generation directory: {error}"
+
+
 class FlextInfraMiseArtifactsJournalRelocation:
     """Rebind paths only after proving the journal's unchanged physical owners."""
 
@@ -331,7 +335,7 @@ class FlextInfraMiseArtifactsJournalRelocation:
                 "created": created,
                 "manifest": manifest,
             },
-        ).map_error(lambda error: f"relocate generation directory: {error}")
+        ).map_error(_relocate_generation_directory_error)
 
     @classmethod
     def _recorded_scope_root(

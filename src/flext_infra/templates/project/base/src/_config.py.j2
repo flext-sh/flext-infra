@@ -7,11 +7,11 @@
    ``config/{{ ns }}.yaml`` owner declares and ``cli.py`` reads; the class stem
    here would split the namespace in two and hand cli.py a raw dict. -#}
 {%- set base_import_line = "from " ~ config_base_module ~ " import " ~ config_base_class ~ ", m" -%}
-{%- set base_import = base_import_line if base_import_line | length <= tooling.tools.ruff.line_length else "from " ~ config_base_module ~ " import (\n    " ~ config_base_class ~ ",\n    m,\n)" -%}
+{%- set base_import = base_import_line if base_import_line | length <= tooling_runtime.tool_options["ruff"]["line-length"] else "from " ~ config_base_module ~ " import (\n    " ~ config_base_class ~ ",\n    m,\n)" -%}
 {%- set config_class_line = "class " ~ class_stem ~ "Config(" ~ config_base_class ~ "):" -%}
-{%- set config_class_declaration = config_class_line if config_class_line | length <= tooling.tools.ruff.line_length else "class " ~ class_stem ~ "Config(\n    " ~ config_base_class ~ "\n):" -%}
+{%- set config_class_declaration = config_class_line if config_class_line | length <= tooling_runtime.tool_options["ruff"]["line-length"] else "class " ~ class_stem ~ "Config(\n    " ~ config_base_class ~ "\n):" -%}
 {%- set namespace_field_line = "    " ~ ns ~ ": Annotated[" -%}
-{%- set namespace_field = namespace_field_line if namespace_field_line | length <= tooling.tools.ruff.line_length else "    " ~ ns ~ ": Annotated[" -%}
+{%- set namespace_field = namespace_field_line if namespace_field_line | length <= tooling_runtime.tool_options["ruff"]["line-length"] else "    " ~ ns ~ ": Annotated[" -%}
 """{{ class_stem }}Config — frozen config singleton for {{ package_name }} (ADR-005 §7).
 
 Business rules live in ``config/*.yaml`` under the ``{{ ns }}:`` key.

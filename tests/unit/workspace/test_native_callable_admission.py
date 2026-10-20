@@ -61,10 +61,10 @@ after = native.capture(selection).unwrap()
 assert native.compare(before, after).unwrap() is True
 assert module.Consumer.execute(4) == 15
 module.Consumer.mode = 'changed'
-assert native.compare(before, native.capture(selection).unwrap()).failure
+tm.fail(native.compare(before, native.capture(selection).unwrap()))
 module.Consumer.mode = 'original'
 module.update_consumer.__code__ = module.replacement.__code__
-assert native.compare(before, native.capture(selection).unwrap()).failure
+tm.fail(native.compare(before, native.capture(selection).unwrap()))
 """,
             python_paths=(str(root),),
             cwd=real_python_package,
@@ -320,7 +320,7 @@ repeated = native.capture(selection).unwrap()
 assert native.compare(original, repeated).unwrap() is True
 module.operation = module.{replacement}
 observed = native.capture(selection).unwrap()
-assert native.compare(original, observed).failure
+tm.fail(native.compare(original, observed))
 assert {expression} == {changed}
 """,
             python_paths=(str(root),),

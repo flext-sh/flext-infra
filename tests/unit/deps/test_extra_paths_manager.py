@@ -41,8 +41,8 @@ class TestsFlextInfraExtraPathsManager:
         doc["project"] = {"name": "test"}
         pyproject.write_text(doc.as_string(), encoding="utf-8")
         result = TestsFlextInfraExtraPathsSupport.manager().sync_one(pyproject)
-        tm.that(result.success, eq=True)
-        tm.that(result.value, eq=False)
+        tm.ok(result.success)
+        tm.fail(result.value)
 
     @staticmethod
     def test_sync_one_no_pyright_section(tmp_path: Path) -> None:
@@ -54,8 +54,8 @@ class TestsFlextInfraExtraPathsManager:
         doc["tool"] = tool
         pyproject.write_text(doc.as_string(), encoding="utf-8")
         result = TestsFlextInfraExtraPathsSupport.manager().sync_one(pyproject)
-        tm.that(result.success, eq=True)
-        tm.that(result.value, eq=False)
+        tm.ok(result.success)
+        tm.fail(result.value)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -79,7 +79,7 @@ class TestsFlextInfraExtraPathsManager:
             pyproject,
             is_root="pyrefly" not in tool_doc,
         )
-        tm.that(result.success, eq=True)
+        tm.ok(result.success)
 
     @staticmethod
     def test_sync_one_dry_run(tmp_path: Path) -> None:
@@ -137,4 +137,4 @@ class TestsFlextInfraExtraPathsManager:
     def test_base_constants() -> None:
         """Verify base constants."""
         manager = TestsFlextInfraExtraPathsSupport.manager()
-        tm.that(manager.root.is_absolute(), eq=True)
+        tm.ok(manager.root.is_absolute())

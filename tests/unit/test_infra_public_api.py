@@ -165,4 +165,4 @@ class TestsFlextInfraPublicApi:
                 ),
             ),
         )
-        tm.that(root.exists(), eq=False)
+        tm.fail(root.exists())

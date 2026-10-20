@@ -227,7 +227,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             tm.that(isinstance(fixed, str), truth=True)
             _ = ast.parse(source)
             _ = ast.parse(fixed)
-        tm.that((tmp_path / c.Infra.CODEMOD_CONFIG_RELPATH).exists(), eq=False)
+        tm.fail((tmp_path / c.Infra.CODEMOD_CONFIG_RELPATH).exists())
 
     @pytest.mark.slow
     def test_contract_review_fixtures_preserve_assertions_and_syntax(
@@ -272,7 +272,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         for source, snapshot in snapshots.items():
             tm.that(isinstance(source, str), truth=True)
             tm.that(isinstance(snapshot, Mapping), truth=True)
-            tm.that("fixed" in snapshot, eq=False)
+            tm.fail("fixed" in snapshot)
             _ = ast.parse(source)
             tm.ok(u.Cli.atomic_write_text_file(sample, source))
             report = tm.ok(
@@ -915,7 +915,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             ),
         )
         tm.that(preview, eq=(f"created {self._snapshot(tmp_path)}",))
-        tm.that(self._snapshot(tmp_path).exists(), eq=False)
+        tm.fail(self._snapshot(tmp_path).exists())
         tm.fail(FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, (rule,)))
 
         applied = tm.ok(
@@ -927,7 +927,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         )
 
         tm.that(applied, eq=preview)
-        tm.that(self._snapshot(tmp_path).exists(), eq=True)
+        tm.ok(self._snapshot(tmp_path).exists())
         tm.ok(FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, (rule,)))
         tm.that(
             tm.ok(
@@ -1026,7 +1026,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         route = ["refactor", "mod-snapshots", "--repository-root", str(mod_workspace)]
 
         tm.that(main(route), ne=0)
-        tm.that(snapshot.exists(), eq=False)
+        tm.fail(snapshot.exists())
         tm.that(main([*route, "--apply"]), eq=0)
-        tm.that(snapshot.exists(), eq=True)
+        tm.ok(snapshot.exists())
         tm.that(main(route), eq=0)

@@ -51,9 +51,9 @@ class TestsFlextInfraUtilitiesResourceLimits:
                 },
                 eq=before,
             )
-            tm.that(cache.is_relative_to(tmp_path), eq=False)
-            tm.that(cache.is_dir(), eq=True)
-            tm.that(any(path.is_file() for path in cache.rglob("*")), eq=True)
+            tm.fail(cache.is_relative_to(tmp_path))
+            tm.ok(cache.is_dir())
+            tm.ok(any(path.is_file() for path in cache.rglob("*")))
 
     @staticmethod
     @pytest.mark.requires_engine("mypy")
@@ -72,7 +72,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
         result = u.Cli.run_raw(command, timeout=u.Infra.mypy_runner_timeout(limit))
 
         tm.ok(result)
-        tm.that(u.Cli.process_succeeded(result.value.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.value.outcome))
 
     @staticmethod
     @pytest.mark.requires_engine("mypy")
@@ -92,7 +92,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
             timeout=u.Infra.mypy_runner_timeout(),
         )
         tm.ok(result)
-        tm.that(u.Cli.process_succeeded(result.value.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(result.value.outcome))
         tm.that(
             bool(pstats.Stats(str(profile)).get_stats_profile().func_profiles),
             eq=True,
@@ -103,7 +103,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
             timeout=u.Infra.mypy_runner_timeout(),
         )
         tm.ok(repeated)
-        tm.that(u.Cli.process_succeeded(repeated.value.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(repeated.value.outcome))
         for output in (result.value, repeated.value):
             tm.that(output.stderr, has=f"Parsing {project.targets[0]}")
 
@@ -235,8 +235,8 @@ class TestsFlextInfraUtilitiesResourceLimits:
                 any(str(limit.memory_limit_bytes) in part for part in command[:-1]),
                 eq=True,
             )
-            tm.that(u.Cli.process_succeeded(result.value.outcome), eq=False)
-            tm.that(result.value.outcome.timed_out, eq=False)
+            tm.fail(u.Cli.process_succeeded(result.value.outcome))
+            tm.fail(result.value.outcome.timed_out)
             # The configured bound itself must cause the stop: only a
             # resource-exhaustion outcome (memory marker or signal) yields the
             # public diagnostic, so an unrelated checker failure after the
@@ -303,7 +303,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
         )
         tm.ok(result)
         tm.that(result.value.outcome.raw_return_code, eq=expected)
-        tm.that(bool(result.value.stdout.splitlines()), eq=True)
+        tm.ok(bool(result.value.stdout.splitlines()))
         pid = int(result.value.stdout.splitlines()[0])
         tm.that(int(pid_file.read_text(encoding=c.DEFAULT_ENCODING)), eq=pid)
         tm.that(error_file.read_text(encoding=c.DEFAULT_ENCODING), empty=True)
@@ -314,12 +314,12 @@ class TestsFlextInfraUtilitiesResourceLimits:
         tm.ok(remaining)
         state = remaining.value.stdout.strip()
         if sys.platform == "darwin":
-            tm.that(not state or state.startswith("Z"), eq=True)
+            tm.ok(not state or state.startswith("Z"))
         # GNU timeout reaps the resistant group when it stops the leader at
         # the deadline; on a clean leader exit the group outlives the
         # wrapper, so pytest teardown reaps its own descendant instead.
         elif not leader_exits:
-            tm.that(not state, eq=True)
+            tm.ok(not state)
 
     @staticmethod
     def test_resource_limit_stops_workload_on_termination(tmp_path: Path) -> None:
@@ -408,7 +408,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
             ),
         )
         tm.ok(result)
-        tm.that(u.Cli.process_succeeded(result.value.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(result.value.outcome))
         tm.that(result.value.stderr, has=f"{c.Infra.MYPY_MEMORY_LIMIT_MB_ENV} must be")
 
     @staticmethod
@@ -502,4 +502,4 @@ class TestsFlextInfraUtilitiesResourceLimits:
         (lane / c.Infra.UV_LOCK_FILENAME).write_text("rotated\n", encoding="utf-8")
         tm.that(u.Infra.mypy_cache_directory(lane), eq=shared)
         # Distinct projects never share one tests package namespace.
-        tm.that(u.Infra.mypy_cache_directory(other) != shared, eq=True)
+        tm.ok(u.Infra.mypy_cache_directory(other) != shared)

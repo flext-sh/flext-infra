@@ -95,7 +95,7 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
         )
 
         for rendered in (empty, populated):
-            tm.that(rendered.endswith("\n") and not rendered.endswith("\n\n"), eq=True)
+            tm.ok(rendered.endswith("\n") and not rendered.endswith("\n\n"))
 
     def test_dependabot_projects_devcontainers_only_when_one_exists(self) -> None:
         """Test dependabot projects devcontainers only when one exists."""

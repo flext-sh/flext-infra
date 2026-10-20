@@ -31,21 +31,25 @@ class TestsFlextInfraClassNestingSuiteScope:
 
         """
         root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
-        policy = config.Infra.tooling.tools.pytest
+        native = u.Infra.native_tool_settings(
+            config.Infra.tooling, "pytest.ini_options"
+        )
+        python_files = u.Tests.strings(native["python_files"])
+        python_classes = u.Tests.strings(native["python_classes"])
         project = root / c.PYPROJECT_FILENAME
         project.write_text(
             project.read_text(encoding=c.Infra.ENCODING_DEFAULT)
             + "\n[tool.pytest.ini_options]\n"
-            + f"python_files = {list(policy.python_files)!r}\n"
-            + f"python_classes = {list(policy.python_classes)!r}\n"
+            + f"python_files = {list(python_files)!r}\n"
+            + f"python_classes = {list(python_classes)!r}\n"
             + "python_functions = ['test_*', 'check_*']\n"
             + "asyncio_default_fixture_loop_scope = "
-            + f"{policy.asyncio_default_fixture_loop_scope!r}\n",
+            + f"{native['asyncio_default_fixture_loop_scope']!r}\n",
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         directory = root / c.Infra.DIR_TESTS
         directory.mkdir(exist_ok=True)
-        path = directory / policy.python_files[0].replace("*", "native_suite")
+        path = directory / python_files[0].replace("*", "native_suite")
         path.write_text(source, encoding=c.Infra.ENCODING_DEFAULT)
         return root, path
 
@@ -208,9 +212,9 @@ class TestsFlextInfraClassNestingSuiteScope:
                 ],
             )
         else:
-            tm.that(all("::Tests" in node for node in new_nodes), eq=True)
-        tm.that("\npytestmark =" in published, eq=True)
-        tm.that("\npytest_plugins =" in published, eq=True)
+            tm.ok(all("::Tests" in node for node in new_nodes))
+        tm.ok("\npytestmark =" in published)
+        tm.ok("\npytest_plugins =" in published)
         TestsFlextInfraClassNestingSuiteScope._cold_pytest(root, path, "-q")
         tm.that(
             (path.parent / "session.log").read_text().splitlines(),
@@ -422,11 +426,11 @@ class TestsFlextInfraClassNestingSuiteScope:
         loaded = self._load(published, tmp_path)
         holder_cls = getattr(loaded, holder)
         payload_cls = getattr(loaded, payload)
-        tm.that(isinstance(holder_cls, type), eq=True)
-        tm.that(isinstance(payload_cls, type), eq=True)
+        tm.ok(isinstance(holder_cls, type))
+        tm.ok(isinstance(payload_cls, type))
         tm.that(holder_cls.payload, eq=payload_cls)
-        tm.that(f"\nclass {holder}:" in published, eq=True)
-        tm.that(f"\nclass {payload}:" in published, eq=True)
+        tm.ok(f"\nclass {holder}:" in published)
+        tm.ok(f"\nclass {payload}:" in published)
 
     def test_inherited_siblings_still_nest_and_import(
         self,
@@ -451,10 +455,10 @@ class TestsFlextInfraClassNestingSuiteScope:
         published = self._publish(tmp_path, source)
         loaded = self._load(published, tmp_path)
         owner = getattr(loaded, owner_name)
-        tm.that(isinstance(owner, type), eq=True)
+        tm.ok(isinstance(owner, type))
         nested_child = getattr(owner, child)
         nested_base = getattr(owner, base)
-        tm.that(issubclass(nested_child, nested_base), eq=True)
+        tm.ok(issubclass(nested_child, nested_base))
 
     def test_nested_view_keeps_a_module_level_base_importable(
         self,
@@ -485,8 +489,8 @@ class TestsFlextInfraClassNestingSuiteScope:
         holder_cls = getattr(loaded, holder)
         payload_cls = getattr(loaded, payload)
         tm.that(owner.View.item, eq=holder_cls)
-        tm.that(issubclass(holder_cls, payload_cls), eq=True)
-        tm.that(f"\nclass {holder}({payload}):" in published, eq=True)
+        tm.ok(issubclass(holder_cls, payload_cls))
+        tm.ok(f"\nclass {holder}({payload}):" in published)
 
     def test_nested_class_decorator_keeps_a_moved_helper_bare(
         self,
@@ -510,12 +514,12 @@ class TestsFlextInfraClassNestingSuiteScope:
             f"{alias} = {owner_name}\n"
         )
         published = self._publish(tmp_path, source)
-        tm.that(f"{owner_name}._field" in published, eq=False)
+        tm.fail(f"{owner_name}._field" in published)
         tm.that(u.Infra.definition_time_name_errors(published), eq=())
         owner = getattr(self._load(published, tmp_path), owner_name)
         specifiers = owner.BaseModel.__dataclass_transform__["field_specifiers"]
         tm.that(len(specifiers), eq=1)
-        tm.that(specifiers[0] is vars(owner)["_field"], eq=True)
+        tm.ok(specifiers[0] is vars(owner)["_field"])
 
     def test_method_decorator_reference_stays_at_module_level(
         self,
@@ -547,8 +551,8 @@ class TestsFlextInfraClassNestingSuiteScope:
         tm.that(u.Infra.definition_time_name_errors(published), eq=())
         loaded = self._load(published, tmp_path)
         tm.that(getattr(loaded, holder).value(), eq=1)
-        tm.that(f"\nclass {holder}:" in published, eq=True)
-        tm.that("\ndef _size() -> int:" in published, eq=True)
+        tm.ok(f"\nclass {holder}:" in published)
+        tm.ok("\ndef _size() -> int:" in published)
 
     def test_semantic_apply_refuses_a_plan_that_breaks_import(
         self,

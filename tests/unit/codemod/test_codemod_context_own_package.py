@@ -146,7 +146,7 @@ class TestsFlextInfraCodemodContextOwnPackage:
                 project=rope_project,
                 sources=sources,
             )
-        tm.that(admitted, eq=False)
+        tm.fail(admitted)
 
     def test_declared_installed_runtime_package_is_admitted(
         self,
@@ -194,7 +194,7 @@ class TestsFlextInfraCodemodContextOwnPackage:
                 project=rope_project,
                 sources=sources,
             )
-        tm.that(admitted, eq=True)
+        tm.ok(admitted)
 
     @pytest.mark.parametrize(
         ("relative", "admitted"),

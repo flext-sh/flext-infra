@@ -13,10 +13,7 @@ from typing import Annotated, ClassVar, Literal
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models import (
-    FlextInfraModelsDepsToolConfig,
-    FlextInfraModelsMiseToolchain,
-)
+from flext_infra._models import FlextInfraModelsMiseToolchain
 from flext_infra._models._config import (
     FlextInfraConfigModelsContexts,
     FlextInfraConfigModelsContract,
@@ -403,9 +400,13 @@ class FlextInfraModelsCodegenRender:
             strict=True,
         )
 
-        tooling: Annotated[
-            FlextInfraModelsDepsToolConfig.ToolConfigDocument,
-            m.Field(description="Canonical validated tooling policy."),
+        rules: Annotated[
+            t.JsonMapping,
+            m.Field(description="Elected native Markdown rules."),
+        ]
+        exclude: Annotated[
+            t.StrTuple,
+            m.Field(description="Declared non-documentation path patterns."),
         ]
 
     class QltyRenderSpec(m.ContractModel):

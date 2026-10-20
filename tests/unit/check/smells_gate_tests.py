@@ -92,7 +92,7 @@ class TestsFlextInfraSmellsGate:
                 else False,
             }
             if variation == "raised" and selected["enabled"] is True:
-                tm.that(type(selected["threshold"]) is int, eq=True)
+                tm.ok(type(selected["threshold"]) is int)
                 changed["threshold"] = tm.ok(u.parse(selected["threshold"], int)) * 2
             overrides[rule] = changed
         if variation == "raised":
@@ -105,7 +105,7 @@ class TestsFlextInfraSmellsGate:
                     config.data,
                     ("smells", "duplication", "nodes_threshold"),
                 )
-            tm.that(type(nodes) is int, eq=True)
+            tm.ok(type(nodes) is int)
             overrides["duplication"] = {
                 "nodes_threshold": tm.ok(u.parse(nodes, int)) * 2,
             }
@@ -155,7 +155,7 @@ class TestsFlextInfraSmellsGate:
                 ("smells", "duplication", "nodes_threshold"),
             ),
         )
-        tm.that(all(type(limit) is int for limit in limits), eq=True)
+        tm.ok(all(type(limit) is int for limit in limits))
         statements = max(tm.ok(u.parse(limit, int)) for limit in limits) + 1
         body = "\n".join(f"    value += {index}" for index in range(statements))
         for index, name in enumerate(("first.py", "second.py")):
@@ -223,7 +223,7 @@ class TestsFlextInfraSmellsGate:
     def test_registry_exposes_the_canonical_gate() -> None:
         """Test registry exposes the canonical gate."""
         gate = FlextInfraGateRegistry.default().get("smells")
-        tm.that(gate is FlextInfraSmellsGate, eq=True)
+        tm.ok(gate is FlextInfraSmellsGate)
 
     def test_missing_project_configuration_is_a_blocking_failure(
         self,
@@ -236,7 +236,7 @@ class TestsFlextInfraSmellsGate:
             self._ctx(tmp_path),
         )
 
-        tm.that(execution.result.passed, eq=False)
+        tm.fail(execution.result.passed)
         tm.that(len(execution.issues), eq=1)
         tm.that(execution.issues[0].severity, eq=str(c.Infra.GateSeverity.ERROR.value))
         tm.that(
@@ -272,7 +272,7 @@ class TestsFlextInfraSmellsGate:
             self._ctx(tmp_path),
         )
 
-        tm.that(execution.result.passed, eq=True)
+        tm.ok(execution.result.passed)
         tm.that(len(execution.issues), eq=0)
 
     def test_finding_states_the_concrete_problem_and_the_fix(
@@ -295,11 +295,11 @@ class TestsFlextInfraSmellsGate:
             self._ctx(tmp_path),
         )
 
-        tm.that(execution.result.passed, eq=False)
+        tm.fail(execution.result.passed)
         messages = [issue.message for issue in execution.issues]
-        tm.that(any("wide" in message for message in messages), eq=True)
-        tm.that(any("{" in message for message in messages), eq=False)
-        tm.that(all(" Fix: " in message for message in messages), eq=True)
+        tm.ok(any("wide" in message for message in messages))
+        tm.fail(any("{" in message for message in messages))
+        tm.ok(all(" Fix: " in message for message in messages))
 
     def test_qlty_scan_does_not_run_runtime_census(
         self,
@@ -315,7 +315,7 @@ class TestsFlextInfraSmellsGate:
             self._ctx(tmp_path),
         )
 
-        tm.that(execution.result.passed, eq=True)
+        tm.ok(execution.result.passed)
         tm.that(execution.issues, length=0)
 
     @pytest.mark.parametrize(
@@ -365,7 +365,7 @@ class TestsFlextInfraSmellsGate:
             for result in u.Cli.json_deep_mapping_list(run, "results")
         )
         if comparison_enabled:
-            tm.that(bool(native_results), eq=True)
+            tm.ok(bool(native_results))
             tm.that(
                 any(
                     u.Cli.json_deep_mapping_list(result, "relatedLocations")

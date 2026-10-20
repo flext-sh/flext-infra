@@ -10,18 +10,20 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, m, main
-from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.gates.mypy import FlextInfraMypyGate
-from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
-from flext_infra.gates.pyright import FlextInfraPyrightGate
-from tests import tm, u
+from flext_infra import config, main
+from flext_infra._utilities import FlextInfraUtilitiesResourceLimits
+from flext_infra.check import FlextInfraWorkspaceChecker
+from flext_infra.gates import (
+    FlextInfraMypyGate,
+    FlextInfraPyreflyGate,
+    FlextInfraPyrightGate,
+)
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.gates.base_gate import FlextInfraGate
+    from flext_infra.gates import FlextInfraGate
 
 
 class TestsFlextInfraTypeGates:
@@ -96,7 +98,7 @@ class TestsFlextInfraTypeGates:
                         encoding="utf-8",
                     )
                     execution = gate.check(root, context)
-                    tm.that(execution.result.passed, eq=True)
+                    tm.ok(execution.result.passed)
                     tm.that(
                         [
                             line.partition("Cache Dir:")[2].strip()
@@ -105,9 +107,9 @@ class TestsFlextInfraTypeGates:
                         ],
                         eq=[str(cache)],
                     )
-                    tm.that(cache.is_dir(), eq=True)
-                    tm.that(any(path.is_file() for path in cache.rglob("*")), eq=True)
-                tm.that((root / ".mypy_cache").exists(), eq=False)
+                    tm.ok(cache.is_dir())
+                    tm.ok(any(path.is_file() for path in cache.rglob("*")))
+                tm.fail((root / ".mypy_cache").exists())
             tm.that(
                 {path.name for path in shared_root.iterdir()},
                 eq={"fixture-alpha", "fixture-beta"},
@@ -167,7 +169,7 @@ class TestsFlextInfraTypeGates:
 
         result = FlextInfraMypyGate(project).check(project, checker_context)
 
-        tm.that(result.result.passed, eq=False)
+        tm.fail(result.result.passed)
         tm.that(
             tuple(issue.code for issue in result.issues),
             has=c.Infra.ToolOutcome.ERROR,
@@ -241,11 +243,12 @@ class TestsFlextInfraTypeGates:
         """The mandatory plugin accepts payloads and reports native bound errors."""
         project = checker_context.repository_root
         pyproject = project / c.PYPROJECT_FILENAME
+        tooling = tm.ok(u.Infra.load_tooling_inputs(project)).document
+        plugins = u.Infra.native_tool_setting(tooling, "mypy", "plugins", t.StrSequence)
         pyproject.write_text(
             pyproject.read_text(encoding=c.DEFAULT_ENCODING).replace(
                 "[tool.mypy]\n",
-                "[tool.mypy]\n"
-                f"plugins = {list(config.Infra.tooling.tools.mypy.plugins)!r}\n",
+                f"[tool.mypy]\nplugins = {list(plugins)!r}\n",
             ),
             encoding=c.DEFAULT_ENCODING,
         )
@@ -300,7 +303,7 @@ class TestsFlextInfraTypeGates:
 
         result = FlextInfraMypyGate(project).check(project, checker_context)
 
-        tm.that(result.result.passed, eq=False)
+        tm.fail(result.result.passed)
         messages = "\n".join(issue.message for issue in result.issues)
         tm.that(messages, has=["Expected", "Actual", "def size", "int", "str"])
 
@@ -475,7 +478,7 @@ class TestsFlextInfraTypeGates:
         gate_class: type[FlextInfraGate],
     ) -> None:
         """Detected Python content, not a pass receipt, selects the type gates."""
-        tm.that(gate_class(tmp_path).selected_for(tmp_path), eq=False)
+        tm.fail(gate_class(tmp_path).selected_for(tmp_path))
         tm.that(
             gate_class(real_python_package).selected_for(real_python_package),
             eq=True,

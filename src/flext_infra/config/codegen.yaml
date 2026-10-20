@@ -139,7 +139,7 @@ Infra:
       # The fork release repairs region coverage for try/else/finally matching;
       # stale transitive metadata must not select the earlier broken source.
       uv_override_dependencies:
-      - rope @ git+https://github.com/marlon-costa-dc/rope.git@1.15.0%2Bdc.4
+      - rope @ git+https://github.com/marlon-costa-dc/rope.git@2bf3ad55a32cc117f5321e1467695eba540be97b
       # Moving selectors consumed by generated .mise.toml and CI. Only
       # `make upg` resolves them to the newest release and writes mise.lock;
       # setup installs exactly what the committed lock pins, and only these
@@ -742,7 +742,7 @@ Infra:
         description: Run incremental tests first, then the complete eligible suite using the same persistent testmon database, without a time limit.
       - name: test-file
         arguments: [ FILE ]
-        description: Run one declared test file incremental then complete, slow items included, with the same persistent testmon cache (FILE=<repository-relative path>).
+        description: Run one complete declared test file once, slow items included, with the same persistent testmon cache (FILE=<repository-relative path>).
       - name: file-gate
         arguments: [ FILE ]
         description: Run configured canonical read-only gates on one literal FILE=<repository-relative path>; invalid selection and missing gate owners fail loud.
@@ -767,6 +767,11 @@ Infra:
         description: Profile the complete read-only rule diagnostic and retain its native failure outcome.
       - name: profile-mod-rules-report
         description: Render the profile of the complete read-only rule diagnostic.
+      - name: profile-codemod
+        arguments: [ FILE ]
+        description: Profile the canonical read-only codemod gate for one literal FILE, preserving native findings and interruption evidence.
+      - name: profile-codemod-report
+        description: Render the retained profile of the canonical read-only codemod gate.
       - name: fmt
         description: Apply ruff format --preview and every declared formatter gate. Ruff is the rule; change code, never ruff.
       - name: fix
@@ -804,6 +809,12 @@ Infra:
         requires_activation: false
       - name: gen-footprint
         description: Inspect the pending generation journal and physical effect footprint without generation planning, participant leases, recovery, or publication.
+        requires_activation: false
+      - name: gen-pyproject
+        description: Regenerate this project's analyzer and dependency metadata through guarded publication.
+        requires_activation: false
+      - name: gen-editor
+        description: Project editor settings, analyzer configuration, and Git ignores without generating Python facades.
         requires_activation: false
       - name: initialize
         description: Bootstrap this target's own declaration and canonical Makefile.
@@ -856,19 +867,19 @@ Infra:
     # consuming projections. Ordering reproduces the historical derived maps.
     artifacts:
     - { name: __pycache__, source_scan_ignore: true, analysis_exclude: true }
-    - { name: __pyrefly_virtual__ }
+    - { name: __pyrefly_virtual__, analysis_exclude: true }
     # Governance content (.agents/.claude) and direnv runtime state stay
     # visible to the editor and watcher; source_scan keeps its dotdir skip.
     - { name: .agents, source_scan_ignore: true, vscode_exclude: false, watch_exclude: false }
     - { name: .beads, source_scan_ignore: true }
-    - { name: .benchmarks }
+    - { name: .benchmarks, analysis_exclude: true }
     # Historical evidence trees (AGENTS.md law: archives are evidence only,
     # never live authority) are not production input to any analyzer.
     # Archive-not-delete target for the layout engine; the generated
     # .gitignore projection must never track archived loose files.
-    - { name: .archive, source_scan_ignore: true }
-    - { name: .bkp }
-    - { name: .cache, source_scan_ignore: true }
+    - { name: .archive, source_scan_ignore: true, analysis_exclude: true }
+    - { name: .bkp, analysis_exclude: true }
+    - { name: .cache, source_scan_ignore: true, analysis_exclude: true }
     # Agent worktrees are duplicate repositories, never production input.
     - { name: .claude, source_scan_ignore: true, vscode_exclude: false, watch_exclude: false }
     # .direnv keeps the source-scan skip (order-sensitive, after .claude).
@@ -883,7 +894,7 @@ Infra:
     - { name: .mimosa, source_scan_ignore: true }
     - { name: .mypy_cache, source_scan_ignore: true, analysis_exclude: true }
     - { name: .omo }
-    - { name: .pylance_cache, vscode_exclude: false }
+    - { name: .pylance_cache, analysis_exclude: true }
     - { name: .pytest_cache, source_scan_ignore: true, analysis_exclude: true }
     - { name: .reports, source_scan_ignore: true, analysis_exclude: true }
     - { name: .ropeproject }
@@ -896,19 +907,19 @@ Infra:
     - { name: .trash }
     - { name: .turbo }
     - { name: .venv, source_scan_ignore: true, analysis_exclude: true }
-    - { name: .venv.* }
-    - { name: "*.egg-info", vscode_exclude: false }
+    - { name: .venv.*, analysis_exclude: true }
+    - { name: "*.egg-info", analysis_exclude: true }
     # Transient extraction scratch (e.g. legacy _tmp_mdpy_* fenced-block and
     # docstring sources) must never become tracked candidates even if a gate
     # regression drops it into the worktree; the markdown-code gate itself
     # writes only under runner-managed temp roots.
-    - { name: "_tmp_*" }
+    - { name: "_tmp_*", analysis_exclude: true }
     # Editor/patch droppings: never production input, never tracked, whatever
     # wrote them.
-    - { name: "*.bak" }
-    - { name: "*.orig" }
-    - { name: "*.rej" }
-    - { name: "*.swp" }
+    - { name: "*.bak", is_dir: false, analysis_exclude: true }
+    - { name: "*.orig", is_dir: false, analysis_exclude: true }
+    - { name: "*.rej", is_dir: false, analysis_exclude: true }
+    - { name: "*.swp", is_dir: false, analysis_exclude: true }
     - { name: build, source_scan_ignore: true, analysis_exclude: true }
     - { name: dist, source_scan_ignore: true, analysis_exclude: true }
     - { name: node_modules, source_scan_ignore: true, analysis_exclude: true }
@@ -916,10 +927,10 @@ Infra:
     # imported as a regular package, never first-party code. generated_source
     # is the one key every analyzer exclusion, scan, and init derives from.
     - { name: protos, generated_source: true }
-    - { name: site, watch_exclude: false }
-    - { name: target }
-    - { name: .pyrefly_cache, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
-    - { name: .tox, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
+    - { name: site, analysis_exclude: true }
+    - { name: target, analysis_exclude: true }
+    - { name: .pyrefly_cache, source_scan_ignore: true, analysis_exclude: true }
+    - { name: .tox, source_scan_ignore: true, analysis_exclude: true }
     - { name: dist-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true, analysis_exclude: true }
     - { name: legado, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
     - { name: site-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true, analysis_exclude: true }
@@ -927,7 +938,7 @@ Infra:
     # npm's lockfile emission: the resolver owns sibling-shared resolved
     # dependency lines; clone detection never reads it (resolver_owned).
     - { name: package-lock.json, is_dir: false, vscode_exclude: false, watch_exclude: false, gitignore: false, resolver_owned: true }
-    - { name: venv, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true, analysis_exclude: true }
+    - { name: venv, source_scan_ignore: true, analysis_exclude: true }
     # Gitignore-only entries; they feed no other projection.
     - { name: .flext-sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: .sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
@@ -1002,117 +1013,109 @@ Infra:
       helper_modules:
       - _cov.py
     vscode:
-      # Portable defaults shared by attached and standalone repositories.
-      # VS Code resolves tokens against the opened folder, never another checkout.
-      additional_settings:
-        python-envs.workspaceSearchPaths:
-        - ./.venv
-        - ./*/.venv
-        terminal.integrated.env.linux:
-          PATH: ${workspaceFolder}/.venv/bin:${env:PATH}
-          VIRTUAL_ENV: ${workspaceFolder}/.venv
-        ruff.interpreter:
-        - ${workspaceFolder}/.venv/bin/python
-        ruff.path:
-        - ${workspaceFolder}/.venv/bin/ruff
-      # Canonical .vscode/settings.json content injected with owner semantics:
-      # scalar/list keys and artifact maps are exact; explicitly declared
-      # non-artifact maps retain project extensions. Recursive "**" venv search
-      # globs are forbidden: they make
-      # the Python Environments locator (pet) walk entire repository trees and
-      # hang interpreter discovery on large monorepos.
-      scalar_settings:
-        files.autoSave: afterDelay
-        python.analysis.autoFormatStrings: true
-        python.analysis.autoImportCompletions: true
-        python.analysis.completeFunctionParens: true
-        python.analysis.diagnosticMode: workspace
-        python.analysis.findRefsInBackgroundThread: false
-        python.analysis.generateWithTypeAnnotation: true
-        python.analysis.gotoOverrideCodeLens: false
-        python.analysis.includeAliasesFromUserFiles: false
-        python.analysis.includeExtraPathSymbolsInSymbolSearch: false
-        python.analysis.includeVenvInWorkspaceSymbols: false
-        # Each project's nearest Pyright configuration owns its import roots.
-        # Attached projects retain the opened workspace's shared interpreter.
-        python.analysis.useNearestConfiguration: true
-        python.analysis.usePerProjectEnvironments: false
-        python.analysis.userFileIndexingLimit: 2000
-        python.defaultInterpreterPath: ${workspaceFolder}/.venv/bin/python
-        python.languageServer: Pylance
-        python.pyrefly.diagnosticMode: workspace
-        python.pyrefly.disableLanguageServices: true
-        python.pyrefly.disableTypeErrors: false
-        python.pyrefly.syncNotebooks: false
-        python.testing.pytestEnabled: false
-        python.testing.unittestEnabled: false
-        python.terminal.activateEnvInCurrentTerminal: true
-        python.terminal.activateEnvironment: true
-        python.useEnvironmentsExtension: false
-        ruff.configurationPreference: filesystemFirst
-        ruff.format.preview: true
-        ruff.importStrategy: fromEnvironment
-        ruff.lint.preview: true
-        pyrefly.lspPath: ${workspaceFolder}/.venv/bin/pyrefly
-        markdownlint.configFile: .markdownlint.json
-        shellcheck.useWorkspaceRootAsCwd: true
-        shellcheck.useRepositoryRootAsCwd: true
-        git.autoRepositoryDetection: subFolders
-        git.detectSubmodules: true
-        git.detectSubmodulesLimit: 100
-        git.openRepositoryInParentFolders: always
-        git.repositoryScanMaxDepth: 2
-        githubPullRequests.autoRepositoryDetection: true
-        githubPullRequests.ignoreSubmodules: false
-      list_settings:
-        markdownlint.lintWorkspaceGlobs:
-        - "!**/.git/**"
-        - "!**/.planning/**"
-        - "!**/.reports/**"
-        - "!**/.venv/**"
-        - "!**/*.code-search"
-        - "!**/bower_components/**"
-        - "!**/build/**"
-        - "!**/dist/**"
-        - "!**/node_modules/**"
-        - "!**/output/**"
-        - "!**/tmp/**"
-        - "!**/vendor/**"
-        - "**/*.{md,mkd,mdwn,mdown,markdown,markdn,mdtxt,mdtext,workbook}"
-        yaml.disableSchemaDetection:
-        - "**/.github/workflows/*.yml"
-        - "**/.github/workflows/*.yaml"
-        - "**/.gitea/workflows/*.yml"
-        - "**/.gitea/workflows/*.yaml"
-        - "**/.forgejo/workflows/*.yml"
-        - "**/.forgejo/workflows/*.yaml"
+      # Ordered key/value pairs accept every extension setting and JSON value.
+      # Layer composition appends pairs; the final occurrence replaces the whole value.
+      # Environment tokens resolve against the opened workspace or standalone checkout.
+      settings:
+      - [python-envs.workspaceSearchPaths, [./.venv]]
+      - [terminal.integrated.env.linux, {PATH: '${workspaceFolder}/.venv/bin:${env:PATH}', VIRTUAL_ENV: '${workspaceFolder}/.venv'}]
+      - [ruff.interpreter, ['${workspaceFolder}/.venv/bin/python']]
+      - [ruff.path, ['${workspaceFolder}/.venv/bin/ruff']]
+      - [editor.mouseWheelZoom, true]
+      - [explorer.excludeGitIgnore, true]
+      - [files.autoSave, afterDelay]
+      - [search.useIgnoreFiles, true]
+      - [search.useGlobalIgnoreFiles, false]
+      - [search.useParentIgnoreFiles, false]
+      - [telemetry.feedback.enabled, false]
+      - [python.analysis.addExtraPathsForPythonProjects, false]
+      - [python.analysis.autoFormatStrings, true]
+      - [python.analysis.autoImportCompletions, true]
+      - [python.analysis.completeFunctionParens, true]
+      - [python.analysis.diagnosticMode, workspace]
+      - [python.analysis.diagnosticsSource, Pylance + Pyright]
+      - [python.analysis.displayEnglishDiagnostics, true]
+      - [python.analysis.enableAsyncProgram, false]
+      - [python.analysis.enableExternalTypeServer, false]
+      - [python.analysis.enableParallelIndexing, false]
+      - [python.analysis.enablePydanticSupport, true]
+      - [python.analysis.enablePyreflyShadowExperiment, false]
+      - [python.analysis.enablePyreflyNotification, false]
+      - [python.analysis.enablePyreflyNotificationForAll, false]
+      - [python.analysis.enableSnippetExtraTelemetry, false]
+      - [python.analysis.findRefsInBackgroundThread, false]
+      - [python.analysis.generateWithTypeAnnotation, true]
+      - [python.analysis.gotoOverrideCodeLens, true]
+      - [python.analysis.includeAliasesFromUserFiles, true]
+      - [python.analysis.includeExtraPathSymbolsInSymbolSearch, true]
+      - [python.analysis.includeVenvInWorkspaceSymbols, false]
+      - [python.analysis.indexing, true]
+      - [python.analysis.inlayHints.callArgumentNames, all]
+      - [python.analysis.inlayHints.functionReturnTypes, true]
+      - [python.analysis.inlayHints.pytestParameters, true]
+      - [python.analysis.inlayHints.variableTypes, true]
+      - [python.analysis.languageServerBackend, default]
+      - [python.analysis.languageServerMode, default]
+      - [python.analysis.logLevel, Information]
+      - [python.analysis.pyrightVersion, fromEnvironment]
+      - [python.analysis.referencesCodeLens, true]
+      - [python.analysis.renameInDocstrings, true]
+      - [python.analysis.showOnlyDirectDependenciesInAutoImport, false]
+      - [python.analysis.supportDocstringTemplate, true]
+      - [python.analysis.useDefaultExcludes, true]
+      - [python.analysis.useNearestConfiguration, false]
+      - [python.analysis.usePerProjectEnvironments, false]
+      - [python.analysis.userFileIndexingLimit, -1]
+      - [python.defaultInterpreterPath, '${workspaceFolder}/.venv/bin/python']
+      - [python.languageServer, Pylance]
+      - [python.pyrefly.diagnosticMode, workspace]
+      - [python.pyrefly.disableLanguageServices, true]
+      - [python.pyrefly.disableTypeErrors, false]
+      - [python.pyrefly.syncNotebooks, false]
+      - [python.testing.pytestEnabled, false]
+      - [python.testing.unittestEnabled, false]
+      - [python.terminal.activateEnvInCurrentTerminal, true]
+      - [python.terminal.activateEnvironment, true]
+      - [python.useEnvironmentsExtension, true]
+      - [ruff.configurationPreference, filesystemFirst]
+      - [ruff.format.preview, true]
+      - [ruff.importStrategy, fromEnvironment]
+      - [ruff.lint.preview, true]
+      - [pyrefly.lspPath, '${workspaceFolder}/.venv/bin/pyrefly']
+      - [markdownlint.configFile, .markdownlint.json]
+      - [shellcheck.useWorkspaceRootAsCwd, true]
+      - [shellcheck.useRepositoryRootAsCwd, true]
+      - [git.autoRepositoryDetection, subFolders]
+      - [git.detectSubmodules, true]
+      - [git.detectSubmodulesLimit, 100]
+      - [git.openRepositoryInParentFolders, always]
+      - [git.repositoryScanMaxDepth, 2]
+      - [githubPullRequests.autoRepositoryDetection, true]
+      - [githubPullRequests.ignoreSubmodules, false]
+      - [markdownlint.lintWorkspaceGlobs, ['!**/.git/**', '!**/.planning/**', '!**/.reports/**', '!**/.venv/**',
+          '!**/*.code-search', '!**/bower_components/**', '!**/build/**', '!**/dist/**', '!**/node_modules/**',
+          '!**/output/**', '!**/tmp/**', '!**/vendor/**', '**/*.{md,mkd,mdwn,mdown,markdown,markdn,mdtxt,mdtext,workbook}']]
+      - [yaml.disableSchemaDetection, ['**/.github/workflows/*.yml', '**/.github/workflows/*.yaml', '**/.gitea/workflows/*.yml',
+          '**/.gitea/workflows/*.yaml', '**/.forgejo/workflows/*.yml', '**/.forgejo/workflows/*.yaml']]
       map_union_settings:
-        "[python]":
+        '[python]':
           diffEditor.ignoreTrimWhitespace: true
           editor.defaultFormatter: charliermarsh.ruff
-          editor.formatOnSave: true
-          editor.codeActionsOnSave.source.organizeImports: explicit
-        # rumdl owns markdown formatting (markdown-format gate: `rumdl fmt`);
-        # the editor extension reads the same generated .markdownlint.json.
-        # Save stays manual: the canonical mutation surface is `make fmt`.
-        "[markdown]":
+          editor.formatOnSave: false
+        '[markdown]':
           editor.defaultFormatter: rvben.rumdl
           editor.formatOnSave: false
       stripped_keys:
-      # Pylance emits settingsNotOverridable diagnostics (severity=warning) when
-      # these keys appear in .vscode/settings.json alongside a [tool.pyright] section
-      # in pyproject.toml. Each key below is owned canonically by [tool.pyright]
-      # in every governed package; the codegen actively strips them from the
-      # settings projection so the file stays green with no warnings.
       - python.analysis.typeCheckingMode
       - python.analysis.diagnosticSeverityOverrides
-      # The current Ruff extension always uses its native server.
+      - python.analysis.include
+      - python.analysis.exclude
+      - python.analysis.extraPaths
+      - python.analysis.useLibraryCodeForTypes
       - ruff.nativeServer
-
-      # Declarative project-layout SSOT consumed by
-      # the layout engine (codegen/layout.py) and the layout quality gate. Every
-      # move/archive/gitignore decision derives from this section — the engine
-      # carries zero hardcoded layout knowledge. Every violation fails the check.
+      stripped_map_keys:
+        '[python]':
+        - editor.codeActionsOnSave.source.organizeImports
     layout:
       version: 1
       # Archive-not-delete root: archived entries land in <archive_root>/<project>/.

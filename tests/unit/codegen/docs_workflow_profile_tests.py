@@ -53,7 +53,7 @@ class TestsFlextInfraCodegenDocsWorkflowProfile:
         """A standalone project receives the generated docs workflow."""
         docs = self._artifact(self._DOCS_DESTINATION)
 
-        tm.that("standalone" in docs.profiles, eq=True)
+        tm.ok("standalone" in docs.profiles)
 
     @staticmethod
     def test_docs_setup_keeps_the_minted_app_token_on_github_fetches() -> None:
@@ -103,4 +103,4 @@ class TestsFlextInfraCodegenDocsWorkflowProfile:
             tm.that(job, lacks="app-id:")
             tm.that(job, has=f"repositories: {','.join(granted)}")
             tm.that(job, has=marker)
-            tm.that(job.index(marker) < job.index("run: make setup"), eq=True)
+            tm.ok(job.index(marker) < job.index("run: make setup"))

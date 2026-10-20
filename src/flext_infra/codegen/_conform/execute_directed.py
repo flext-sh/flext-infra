@@ -18,7 +18,9 @@ from flext_infra.codegen import (
     FlextInfraMiseArtifactsVerification,
     FlextInfraStagedPackage,
 )
-from flext_infra.codegen._conform import FlextInfraCodegenConformExecuteScaffold
+from flext_infra.codegen._conform.execute_scaffold import (
+    FlextInfraCodegenConformExecuteScaffold,
+)
 from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 from flext_infra.validate import FlextInfraValidateFreshImport
 

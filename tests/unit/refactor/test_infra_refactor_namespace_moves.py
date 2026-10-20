@@ -126,13 +126,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 parent = snapshot.get_resource(
                     target.parent.relative_to(root).as_posix(),
                 )
-                tm.that(parent.is_folder(), eq=True)
-                tm.that(parent.exists(), eq=True)
+                tm.ok(parent.is_folder())
+                tm.ok(parent.exists())
                 published = u.Infra.require_file_resource(
                     snapshot.get_resource(target.relative_to(root).as_posix()),
                     target,
                 )
-                tm.that(published.exists(), eq=True)
+                tm.ok(published.exists())
                 tm.that(published.read(), eq=content.decode(c.DEFAULT_ENCODING))
                 tm.that(
                     u.Infra.resolve_pymodule(snapshot, published).source_code,
@@ -149,7 +149,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                     )
             finally:
                 snapshot.close()
-        tm.that(target.parent.parent.exists(), eq=False)
+        tm.fail(target.parent.parent.exists())
         for state in states:
             tm.that(state.path.read_bytes(), eq=state.content)
 
@@ -218,7 +218,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 ),
                 eq=True,
             )
-        tm.that(target.parent.exists(), eq=False)
+        tm.fail(target.parent.exists())
         for state in states:
             tm.that(state.path.read_bytes(), eq=state.content)
         tm.that(
@@ -236,7 +236,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 options=m.Infra.SemanticPublicationOptions(projection_roots=(root,)),
             ),
         )
-        tm.that(source.exists(), eq=False)
+        tm.fail(source.exists())
         tm.that(
             u.Tests.run_lazy_init_probe(
                 f"from {package.name} import consumer\n"
@@ -279,7 +279,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             ),
         )
         tm.that(source.read_bytes(), eq=newer)
-        tm.that(target.parent.exists(), eq=False)
+        tm.fail(target.parent.exists())
         for state in states:
             if state.path != source:
                 tm.that(state.path.read_bytes(), eq=state.content)
@@ -315,7 +315,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                     sources=sources,
                     source_states=states,
                 )
-        tm.that(target.parent.exists(), eq=False)
+        tm.fail(target.parent.exists())
 
     @staticmethod
     def test_class_move_preview_leaves_absent_destination_uncreated(
@@ -344,7 +344,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 ),
             )
         tm.that(target, eq=destination)
-        tm.that(destination.parent.exists(), eq=False)
+        tm.fail(destination.parent.exists())
         tm.that(
             (source.read_bytes(), (package / c.Infra.INIT_PY).read_bytes()),
             eq=originals,
@@ -385,7 +385,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                     apply=apply,
                 ),
             )
-        tm.that(destination.parent.exists(), eq=False)
+        tm.fail(destination.parent.exists())
         tm.that(source.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
 
     @staticmethod
@@ -415,7 +415,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 ),
                 sources={source: original},
             )
-        tm.that(destination.parent.exists(), eq=False)
+        tm.fail(destination.parent.exists())
         tm.that(source.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
 
     @staticmethod
@@ -454,7 +454,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             ]),
             eq=0,
         )
-        tm.that(source.exists(), eq=False)
+        tm.fail(source.exists())
         tm.that(
             package.joinpath("owned.py").read_text(encoding="utf-8"), eq=source_text
         )

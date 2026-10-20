@@ -15,7 +15,10 @@ from urllib.parse import urlsplit
 from flext_cli import u
 
 from flext_infra import c, config, m, t
-from flext_infra._utilities import FlextInfraUtilitiesDocs
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDocs,
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
 
 
@@ -25,7 +28,7 @@ class FlextInfraUtilitiesDocsRender:
     _MIN_REPO_PARTS: ClassVar[int] = 2
 
     @staticmethod
-    def docs_markdown_line_length() -> int:
+    def docs_markdown_line_length(tool_config: m.Infra.ToolConfigDocument) -> int:
         """Read the same prose width used by the formatter and Markdown gate.
 
         Returns:
@@ -36,7 +39,9 @@ class FlextInfraUtilitiesDocsRender:
             ValueError: If MD013 line_length must be a positive integer.
 
         """
-        rule = config.Infra.tooling.tools.markdown.rules["MD013"]
+        rule = FlextInfraUtilitiesProjectManagedArtifacts.configuration_pairs(
+            tool_config.tools.markdown.rules
+        )["MD013"]
         if not isinstance(rule, dict):
             msg = "MD013 must declare the generated prose line length"
             raise TypeError(msg)
@@ -73,14 +78,13 @@ class FlextInfraUtilitiesDocsRender:
         return "/".join(parts[-FlextInfraUtilitiesDocsRender._MIN_REPO_PARTS :])
 
     @staticmethod
-    def _wrap_markdown_line(line: str) -> t.SequenceOf[str]:
+    def _wrap_markdown_line(line: str, *, width: int) -> t.SequenceOf[str]:
         """Wrap one generated prose line without changing Markdown structure.
 
         Returns:
             The resulting ``t.SequenceOf[str]``.
 
         """
-        width = FlextInfraUtilitiesDocsRender.docs_markdown_line_length()
         if len(line) <= width:
             return (line,)
         stripped = line.lstrip()
@@ -114,7 +118,7 @@ class FlextInfraUtilitiesDocsRender:
         return tuple(wrapper.wrap(body)) or (line,)
 
     @staticmethod
-    def _render_markdown(lines: t.SequenceOf[str]) -> str:
+    def _render_markdown(lines: t.SequenceOf[str], *, width: int) -> str:
         """Render generated Markdown with bounded prose and verbatim code blocks.
 
         Returns:
@@ -131,7 +135,9 @@ class FlextInfraUtilitiesDocsRender:
             elif in_fence:
                 rendered.append(line)
             else:
-                rendered.extend(FlextInfraUtilitiesDocsRender._wrap_markdown_line(line))
+                rendered.extend(
+                    FlextInfraUtilitiesDocsRender._wrap_markdown_line(line, width=width)
+                )
         return "\n".join(rendered)
 
     @staticmethod
@@ -282,7 +288,7 @@ class FlextInfraUtilitiesDocsRender:
         return ["exclude_docs: |", *[f"  {pattern}" for pattern in patterns], ""]
 
     @staticmethod
-    def docs_directive_page(title: str, dotted_path: str) -> str:
+    def docs_directive_page(title: str, dotted_path: str, *, width: int) -> str:
         """Return a mkdocstrings page for a module path.
 
         Returns:
@@ -299,6 +305,7 @@ class FlextInfraUtilitiesDocsRender:
                 "      show_root_full_path: false",
                 "      show_source: false",
             ],
+            width=width,
         )
 
     _LINK_PREFIX_DOCS_INDEX: ClassVar[str] = c.Infra.GITHUB_REPO_URL
@@ -455,7 +462,9 @@ class FlextInfraUtilitiesDocsRender:
         return declared or default
 
     @staticmethod
-    def docs_project_index(scope: m.Infra.DocScope, contract: t.JsonMapping) -> str:
+    def docs_project_index(
+        scope: m.Infra.DocScope, contract: t.JsonMapping, *, width: int
+    ) -> str:
         """Return the standard ``<project>/docs/index.md`` landing page.
 
         Returns:
@@ -509,10 +518,13 @@ class FlextInfraUtilitiesDocsRender:
                     link_prefix=link_prefix,
                 ),
             ],
+            width=width,
         )
 
     @staticmethod
-    def docs_project_readme(scope: m.Infra.DocScope, contract: t.JsonMapping) -> str:
+    def docs_project_readme(
+        scope: m.Infra.DocScope, contract: t.JsonMapping, *, width: int
+    ) -> str:
         """Return the canonical ``<project>/README.md`` (8-section structure).
 
         Auto-generated from ``pyproject.toml`` + package exports + the canonical
@@ -534,83 +546,84 @@ class FlextInfraUtilitiesDocsRender:
         )
         facades = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades")
         link_prefix = FlextInfraUtilitiesDocsRender._LINK_PREFIX_README
-        return FlextInfraUtilitiesDocsRender._render_markdown([
-            f"# {scope.name}",
-            "",
-            c.Infra.GENERATED_HEADER,
-            "",
-            (
-                f"**Version**: `{version}` | **Python**: 3.13+ | "
-                f"**Project class**: `{scope.project_class}`"
-            ),
-            "",
-            (
-                "> **Alpha (0.12.0).** This package is alpha quality. Every "
-                "package in the workspace must be re-checked and re-validated "
-                "at 0.12.0 before any promotion beyond alpha; treat interfaces "
-                "as unstable."
-            ),
-            "",
-            "## Purpose",
-            "",
-            description,
-            "",
-            "## Module Map",
-            "",
-            *FlextInfraUtilitiesDocsRender._public_surface_lines(scope),
-            "",
-            *FlextInfraUtilitiesDocsRender._collection_rules_lines(
-                scope,
-                link_prefix=link_prefix,
-            ),
-            "",
-            "## Operation Flow",
-            "",
-            (
-                "- Public surface: see [`docs/index.md`](docs/index.md) and "
-                "[`docs/api-reference/README.md`](docs/api-reference/README.md)."
-            ),
-            (
-                "- Generated module overview: "
-                "[`docs/api-reference/generated/overview.md`](docs/api-reference/generated/overview.md)."
-            ),
-            (
-                "- Settings env prefix: see project `pyproject.toml` "
-                "`[tool.flext]` and `FlextSettings` ConfigDict."
-            ),
-            "",
-            "## Integration Points",
-            "",
-            (
-                "- Parent FLEXT chain: read this project's `pyproject.toml` "
-                "`dependencies` array filtered by `flext-*`. The FLEXT cascade "
-                "is encoded in the inheritance lists of the facade classes "
-                "listed under Module Map above."
-            ),
-            (
-                "- Public extensions exposed by this project: "
-                f"{FlextInfraUtilitiesDocsRender._preview(facades)}."
-            ),
-            "- Library abstraction boundaries: see AGENTS.md §2.7.",
-            "",
-            *FlextInfraUtilitiesDocsRender._quality_gates_lines(
-                scope,
-                link_prefix=link_prefix,
-            ),
-            "",
-            *FlextInfraUtilitiesDocsRender._governance_pointer_lines(
-                scope,
-                link_prefix=link_prefix,
-            ),
-            "- Full project portal: [`docs/index.md`](docs/index.md).",
-            "",
-        ])
+        return FlextInfraUtilitiesDocsRender._render_markdown(
+            [
+                f"# {scope.name}",
+                "",
+                c.Infra.GENERATED_HEADER,
+                "",
+                (
+                    f"**Version**: `{version}` | **Python**: 3.13+ | "
+                    f"**Project class**: `{scope.project_class}`"
+                ),
+                "",
+                (
+                    "> **Alpha (0.12.0).** This package is alpha quality. Every "
+                    "package in the workspace must be re-checked and re-validated "
+                    "at 0.12.0 before any promotion beyond alpha; treat interfaces "
+                    "as unstable."
+                ),
+                "",
+                "## Purpose",
+                "",
+                description,
+                "",
+                "## Module Map",
+                "",
+                *FlextInfraUtilitiesDocsRender._public_surface_lines(scope),
+                "",
+                *FlextInfraUtilitiesDocsRender._collection_rules_lines(
+                    scope,
+                    link_prefix=link_prefix,
+                ),
+                "",
+                "## Operation Flow",
+                "",
+                (
+                    "- Public surface: see [`docs/index.md`](docs/index.md) and "
+                    "[`docs/api-reference/README.md`](docs/api-reference/README.md)."
+                ),
+                (
+                    "- Generated module overview: "
+                    "[`docs/api-reference/generated/overview.md`](docs/api-reference/generated/overview.md)."
+                ),
+                (
+                    "- Settings env prefix: see project `pyproject.toml` "
+                    "`[tool.flext]` and `FlextSettings` ConfigDict."
+                ),
+                "",
+                "## Integration Points",
+                "",
+                (
+                    "- Parent FLEXT chain: read this project's `pyproject.toml` "
+                    "`dependencies` array filtered by `flext-*`. The FLEXT cascade "
+                    "is encoded in the inheritance lists of the facade classes "
+                    "listed under Module Map above."
+                ),
+                (
+                    "- Public extensions exposed by this project: "
+                    f"{FlextInfraUtilitiesDocsRender._preview(facades)}."
+                ),
+                "- Library abstraction boundaries: see AGENTS.md §2.7.",
+                "",
+                *FlextInfraUtilitiesDocsRender._quality_gates_lines(
+                    scope,
+                    link_prefix=link_prefix,
+                ),
+                "",
+                *FlextInfraUtilitiesDocsRender._governance_pointer_lines(
+                    scope,
+                    link_prefix=link_prefix,
+                ),
+                "- Full project portal: [`docs/index.md`](docs/index.md).",
+                "",
+            ],
+            width=width,
+        )
 
     @staticmethod
     def docs_guides_index(
-        scope: m.Infra.DocScope,
-        *,
-        guide_paths: t.SequenceOf[Path],
+        scope: m.Infra.DocScope, *, guide_paths: t.SequenceOf[Path], width: int
     ) -> str:
         """Index the planned guide inventory, including retained custom guides.
 
@@ -622,27 +635,32 @@ class FlextInfraUtilitiesDocsRender:
             f"- [{path.stem.replace('-', ' ').capitalize()}]({path.name})"
             for path in sorted(guide_paths)
         ]
-        return FlextInfraUtilitiesDocsRender._render_markdown([
-            f"# {scope.name} Guides",
-            "",
-            c.Infra.GENERATED_HEADER,
-            "",
-            (
-                "Curated operational guides live here. Keep API behavior in "
-                "generated reference pages sourced from code and docstrings."
-            ),
-            "",
-            *entries,
-            "- [Back to project docs](../index.md)",
-            "- [API Reference](../api-reference/README.md)",
-            "",
-        ])
+        return FlextInfraUtilitiesDocsRender._render_markdown(
+            [
+                f"# {scope.name} Guides",
+                "",
+                c.Infra.GENERATED_HEADER,
+                "",
+                (
+                    "Curated operational guides live here. Keep API behavior in "
+                    "generated reference pages sourced from code and docstrings."
+                ),
+                "",
+                *entries,
+                "- [Back to project docs](../index.md)",
+                "- [API Reference](../api-reference/README.md)",
+                "",
+            ],
+            width=width,
+        )
 
     @staticmethod
     def docs_api_readme(
         scope: m.Infra.DocScope,
         contract: t.JsonMapping,
         modules: t.SequenceOf[str],
+        *,
+        width: int,
     ) -> str:
         """Return the standard API readme for a project.
 
@@ -655,37 +673,40 @@ class FlextInfraUtilitiesDocsRender:
         """
         data = contract
         facades = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades")
-        return FlextInfraUtilitiesDocsRender._render_markdown([
-            f"# {scope.name} API Reference",
-            "",
-            c.Infra.GENERATED_HEADER,
-            "",
-            "This section is generated from public exports and real docstrings.",
-            "",
-            "## Source of Truth",
-            "",
-            "1. `pyproject.toml` metadata",
-            f"2. `src/{scope.package_name}/__init__.py` exports",
-            "3. Module docstrings",
-            "4. Class and function docstrings",
-            "",
-            "## Generated Pages",
-            "",
-            "- [Overview](generated/overview.md)",
-            "- [Public API](generated/public-api.md)",
-            "- [Module Index](generated/modules/index.md)",
-            "",
-            "## Surface Summary",
-            "",
-            f"- Primary facades: {FlextInfraUtilitiesDocsRender._preview(facades)}",
-            f"- Generated module pages: `{len(modules)}`",
-            "",
-            "Back to [project docs](../index.md).",
-            "",
-        ])
+        return FlextInfraUtilitiesDocsRender._render_markdown(
+            [
+                f"# {scope.name} API Reference",
+                "",
+                c.Infra.GENERATED_HEADER,
+                "",
+                "This section is generated from public exports and real docstrings.",
+                "",
+                "## Source of Truth",
+                "",
+                "1. `pyproject.toml` metadata",
+                f"2. `src/{scope.package_name}/__init__.py` exports",
+                "3. Module docstrings",
+                "4. Class and function docstrings",
+                "",
+                "## Generated Pages",
+                "",
+                "- [Overview](generated/overview.md)",
+                "- [Public API](generated/public-api.md)",
+                "- [Module Index](generated/modules/index.md)",
+                "",
+                "## Surface Summary",
+                "",
+                f"- Primary facades: {FlextInfraUtilitiesDocsRender._preview(facades)}",
+                f"- Generated module pages: `{len(modules)}`",
+                "",
+                "Back to [project docs](../index.md).",
+                "",
+            ],
+            width=width,
+        )
 
     @staticmethod
-    def _generated_page(title: str, body: t.SequenceOf[str]) -> str:
+    def _generated_page(title: str, body: t.SequenceOf[str], *, width: int) -> str:
         """Compose a generated markdown page with the canonical header + title.
 
         SSOT for the ``["# title", "", GENERATED_HEADER, "", ...body, ""]``
@@ -697,14 +718,17 @@ class FlextInfraUtilitiesDocsRender:
             The resulting ``str``.
 
         """
-        return FlextInfraUtilitiesDocsRender._render_markdown([
-            f"# {title}",
-            "",
-            c.Infra.GENERATED_HEADER,
-            "",
-            *body,
-            "",
-        ])
+        return FlextInfraUtilitiesDocsRender._render_markdown(
+            [
+                f"# {title}",
+                "",
+                c.Infra.GENERATED_HEADER,
+                "",
+                *body,
+                "",
+            ],
+            width=width,
+        )
 
     @staticmethod
     def _render_block(lines: t.SequenceOf[str]) -> str:
@@ -806,6 +830,8 @@ class FlextInfraUtilitiesDocsRender:
         scope: m.Infra.DocScope,
         contract: t.JsonMapping,
         modules: t.SequenceOf[str],
+        *,
+        width: int,
     ) -> str:
         """Return the generated overview page for a project API.
 
@@ -852,33 +878,38 @@ class FlextInfraUtilitiesDocsRender:
             "doc_summary",
             "_not declared_",
         )
-        return FlextInfraUtilitiesDocsRender._render_markdown([
-            f"# {site_title} API Overview",
-            "",
-            c.Infra.GENERATED_HEADER,
-            "",
-            f"- Package: `{scope.package_name}`",
-            f"- Version: `{data.get('version', '')}`",
-            f"- Description: {description}",
-            f"- Doc summary: {doc_summary}",
-            f"- Classifiers: {classifiers}",
-            f"- Project class: `{scope.project_class}`",
-            f"- Keywords: {keywords}",
-            f"- Main facades: {facades}",
-            f"- Alias exports: {aliases}",
-            f"- Public symbol exports: {exports}",
-            f"- Exported module shortcuts: {module_exports}",
-            f"- Generated module pages: `{len(modules)}`",
-            "",
-            "## Next Pages",
-            "",
-            "- [Public API](public-api.md)",
-            "- [Module Index](modules/index.md)",
-            "",
-        ])
+        return FlextInfraUtilitiesDocsRender._render_markdown(
+            [
+                f"# {site_title} API Overview",
+                "",
+                c.Infra.GENERATED_HEADER,
+                "",
+                f"- Package: `{scope.package_name}`",
+                f"- Version: `{data.get('version', '')}`",
+                f"- Description: {description}",
+                f"- Doc summary: {doc_summary}",
+                f"- Classifiers: {classifiers}",
+                f"- Project class: `{scope.project_class}`",
+                f"- Keywords: {keywords}",
+                f"- Main facades: {facades}",
+                f"- Alias exports: {aliases}",
+                f"- Public symbol exports: {exports}",
+                f"- Exported module shortcuts: {module_exports}",
+                f"- Generated module pages: `{len(modules)}`",
+                "",
+                "## Next Pages",
+                "",
+                "- [Public API](public-api.md)",
+                "- [Module Index](modules/index.md)",
+                "",
+            ],
+            width=width,
+        )
 
     @staticmethod
-    def docs_modules_index(scope: m.Infra.DocScope, modules: t.SequenceOf[str]) -> str:
+    def docs_modules_index(
+        scope: m.Infra.DocScope, modules: t.SequenceOf[str], *, width: int
+    ) -> str:
         """Return the generated module index page for one project.
 
         Returns:
@@ -895,7 +926,7 @@ class FlextInfraUtilitiesDocsRender:
         ]
         if not modules:
             lines.extend(["_No public modules discovered._", ""])
-            return FlextInfraUtilitiesDocsRender._render_markdown(lines)
+            return FlextInfraUtilitiesDocsRender._render_markdown(lines, width=width)
         for module_name in modules:
             relative_path = FlextInfraUtilitiesDocsRender._module_relative_doc_path(
                 scope.package_name,
@@ -903,7 +934,7 @@ class FlextInfraUtilitiesDocsRender:
             )
             lines.append(f"- [{module_name}]({relative_path})")
         lines.append("")
-        return FlextInfraUtilitiesDocsRender._render_markdown(lines)
+        return FlextInfraUtilitiesDocsRender._render_markdown(lines, width=width)
 
     @staticmethod
     def _site_title(data: t.JsonMapping) -> str:
@@ -991,6 +1022,7 @@ class FlextInfraUtilitiesDocsRender:
         *,
         project_count: int,
         class_counts: t.SequenceOf[m.Infra.DocsClassCount],
+        width: int,
     ) -> str:
         """Return the generated root API overview page.
 
@@ -1011,31 +1043,34 @@ class FlextInfraUtilitiesDocsRender:
             "description",
             "_not declared_",
         )
-        return FlextInfraUtilitiesDocsRender._render_markdown([
-            f"# {FlextInfraUtilitiesDocsRender._site_title(data)} API Overview",
-            "",
-            c.Infra.GENERATED_HEADER,
-            "",
-            f"- Version: `{version}`",
-            f"- Description: {description}",
-            f"- Governed projects: `{project_count}`",
-            f"- Project classes: {classes}",
-            "",
-            (
-                "Generated from workspace discovery, `pyproject.toml`, "
-                "public exports, and docstrings."
-            ),
-            "",
-            "## Next Pages",
-            "",
-            "- [Workspace Module Pages](projects/index.md)",
-            "- [Project Catalog](../../projects/generated/catalog.md)",
-            "",
-        ])
+        return FlextInfraUtilitiesDocsRender._render_markdown(
+            [
+                f"# {FlextInfraUtilitiesDocsRender._site_title(data)} API Overview",
+                "",
+                c.Infra.GENERATED_HEADER,
+                "",
+                f"- Version: `{version}`",
+                f"- Description: {description}",
+                f"- Governed projects: `{project_count}`",
+                f"- Project classes: {classes}",
+                "",
+                (
+                    "Generated from workspace discovery, `pyproject.toml`, "
+                    "public exports, and docstrings."
+                ),
+                "",
+                "## Next Pages",
+                "",
+                "- [Workspace Module Pages](projects/index.md)",
+                "- [Project Catalog](../../projects/generated/catalog.md)",
+                "",
+            ],
+            width=width,
+        )
 
     @staticmethod
     def docs_root_projects_index(
-        entries: t.SequenceOf[m.Infra.DocsProjectIndexEntry],
+        entries: t.SequenceOf[m.Infra.DocsProjectIndexEntry], *, width: int
     ) -> str:
         """Return the generated root index of per-project module pages.
 
@@ -1053,20 +1088,21 @@ class FlextInfraUtilitiesDocsRender:
         ]
         if not entries:
             lines.extend(["_No projects discovered._", ""])
-            return FlextInfraUtilitiesDocsRender._render_markdown(lines)
+            return FlextInfraUtilitiesDocsRender._render_markdown(lines, width=width)
         for entry in entries:
             lines.append(
                 f"- [{entry.name}]({entry.name}/modules/index.md)"
                 f" — `{entry.module_count}` modules",
             )
         lines.append("")
-        return FlextInfraUtilitiesDocsRender._render_markdown(lines)
+        return FlextInfraUtilitiesDocsRender._render_markdown(lines, width=width)
 
     @staticmethod
     def docs_project_catalog_page(
         entries: t.SequenceOf[m.Infra.DocsCatalogEntry],
         *,
         exclude_docs: t.SequenceOf[str] | None = None,
+        width: int,
     ) -> str:
         """Return the generated workspace project catalog page.
 
@@ -1092,21 +1128,24 @@ class FlextInfraUtilitiesDocsRender:
                 for pattern in exclude_patterns
             )
         ]
-        return FlextInfraUtilitiesDocsRender._render_markdown([
-            "# FLEXT Project Catalog",
-            "",
-            c.Infra.GENERATED_HEADER,
-            "",
-            (
-                "Project links resolve to the generated root API reference "
-                "for each governed FLEXT package."
-            ),
-            "",
-            "| project | class | package | description |",
-            "|---|---|---|---|",
-            *rows,
-            "",
-        ])
+        return FlextInfraUtilitiesDocsRender._render_markdown(
+            [
+                "# FLEXT Project Catalog",
+                "",
+                c.Infra.GENERATED_HEADER,
+                "",
+                (
+                    "Project links resolve to the generated root API reference "
+                    "for each governed FLEXT package."
+                ),
+                "",
+                "| project | class | package | description |",
+                "|---|---|---|---|",
+                *rows,
+                "",
+            ],
+            width=width,
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsRender"]

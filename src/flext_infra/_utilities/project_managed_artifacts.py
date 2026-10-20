@@ -15,14 +15,14 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_core.config_sources import FlextStrictYamlConfigSource
-from pydantic import ValidationError
 
 from flext_infra import c, m, p, r, t
 from flext_infra._config import FlextInfraConfig
 from flext_infra._utilities import FlextInfraUtilitiesGit
+from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooling
 
 
-class FlextInfraUtilitiesProjectManagedArtifacts:
+class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeTooling):
     """Single owner for ``ManagedArtifacts`` across ``config/*.yaml`` files."""
 
     @classmethod
@@ -57,6 +57,49 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         return result_type.ok(
             m.Infra.CodegenInputs(
                 spec=loaded.value,
+                sources=document.value.sources,
+            ),
+        )
+
+    @classmethod
+    def load_tooling_inputs(
+        cls,
+        repository_root: Path,
+        *,
+        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> p.Result[m.Infra.ToolingInputs]:
+        """Elect tooling policy and capture every consulted configuration layer.
+
+        Returns:
+            The project-specific document and unchanged source snapshots.
+
+        """
+        result_type = r[m.Infra.ToolingInputs]
+        document = cls.load_config_document_inputs(
+            repository_root,
+            filename="tooling.yaml",
+            projections=projections,
+            source_project=source_project,
+        )
+        if document.failure:
+            return result_type.from_failure(document)
+        section = u.validate_value(
+            m.Infra.ToolConfigDocument,
+            u.Cli.json_walk_path(document.value.values, ("Infra", "tooling")),
+        )
+        if section.failure:
+            return result_type.from_failure(section)
+        verified = (
+            cls._verify_unchanged_snapshots(document.value.sources)
+            if source_project is None
+            else r[bool].ok(value=True)
+        )
+        if verified.failure:
+            return result_type.from_failure(verified)
+        return result_type.ok(
+            m.Infra.ToolingInputs(
+                document=section.value,
                 sources=document.value.sources,
             ),
         )
@@ -352,7 +395,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         codegen = u.Cli.json_walk_path(document, ("Infra", "codegen"))
         try:
             return m.Infra.CodegenConfigSpec.model_validate(codegen)
-        except ValidationError as error:
+        except m.ValidationError as error:
             # Config-authoring failures surface as the service contract's own
             # error type, never as a raw third-party validation exception.
             raise ValueError(str(error)) from error
@@ -841,12 +884,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             return r[m.Infra.ProjectManagedArtifactsFragment].ok(
                 m.Infra.ProjectManagedArtifactsFragment(),
             )
-        project_config = m.Infra.ProjectConfigDocument.model_validate({
-            "ManagedArtifacts": managed,
-        })
-        return r[m.Infra.ProjectManagedArtifactsFragment].ok(
-            project_config.ManagedArtifacts,
-        )
+        return u.validate_value(
+            m.Infra.ProjectConfigDocument,
+            {"ManagedArtifacts": managed},
+        ).map(lambda document: document.ManagedArtifacts)
 
     @staticmethod
     def _merge_unique_keys[V](

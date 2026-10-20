@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import cProfile
 import io
 import pstats
 import sys
@@ -19,6 +20,83 @@ from tests import c, m, t, tm, u
 
 class TestsFlextInfraCProfileReport:
     """Prove real pstats artifacts render through the typed owner."""
+
+    @staticmethod
+    @pytest.mark.parametrize("exit_code", [0, 1])
+    @pytest.mark.parametrize("stage", ["selection", "inventory"])
+    def test_selection_profile_without_plan_requires_failed_receipt(
+        tmp_path: Path,
+        exit_code: int,
+        stage: str,
+    ) -> None:
+        """Render failed selection evidence without accepting an incomplete success."""
+        directory = tmp_path / c.Infra.REPORTS_DIR_NAME / "selection"
+        directory.mkdir(parents=True)
+        profile = directory / "parent.pstats"
+        measured = cProfile.Profile()
+        measured.runcall(sum, range(3))
+        measured.dump_stats(str(profile))
+        selection = directory / (
+            c.Infra.PYTEST_INVENTORY_PROFILE_FILENAME
+            if stage == "inventory"
+            else c.Infra.PYTEST_SELECTION_PROFILE_FILENAME
+        )
+        selection.write_bytes(profile.read_bytes())
+        context = m.Infra.PytestRunContext(
+            execution_mode=c.Infra.PytestExecutionMode.INCREMENTAL,
+            testmon_db=None,
+            deadline_monotonic=None,
+            report_directory=directory,
+        )
+        (directory / "run-context.json").write_text(
+            context.model_dump_json(),
+            encoding=c.DEFAULT_ENCODING,
+        )
+        receipt = context.model_copy(
+            update={
+                "profile_sha256": u.Cli.sha256_bytes(profile.read_bytes()),
+            }
+        )
+        for artifact in (profile, selection):
+            artifact.with_suffix(".pstats.json").write_text(
+                receipt.model_dump_json(),
+                encoding=c.DEFAULT_ENCODING,
+            )
+        process = tm.ok(
+            u.Cli.run_raw(
+                (sys.executable, "-c", f"raise SystemExit({exit_code})"),
+                cwd=tmp_path,
+            )
+        )
+        (directory / f"{stage}-outcome.json").write_text(
+            process.outcome.model_dump_json(),
+            encoding=c.DEFAULT_ENCODING,
+        )
+        if stage == "inventory":
+            selected = tm.ok(
+                u.Cli.run_raw(
+                    (sys.executable, "-c", "raise SystemExit(0)"),
+                    cwd=tmp_path,
+                )
+            )
+            (directory / "selection-outcome.json").write_text(
+                selected.outcome.model_dump_json(),
+                encoding=c.DEFAULT_ENCODING,
+            )
+        output = directory / "profile.txt"
+        result = validate.FlextInfraCProfileReport(
+            repository_root=tmp_path,
+            profile=profile,
+            output=output,
+            sort=config.Infra.tooling.tools.pytest.profile_sort,
+            limit=config.Infra.tooling.tools.pytest.profile_limit,
+            run_receipt=profile.with_suffix(".pstats.json"),
+        ).execute()
+        if exit_code:
+            tm.ok(result)
+            tm.that(output.read_text(encoding=c.DEFAULT_ENCODING), has=str(selection))
+        else:
+            tm.fail(result)
 
     @staticmethod
     def test_cli_profiles_retain_each_run_and_measure_startup(tmp_path: Path) -> None:
@@ -44,7 +122,7 @@ class TestsFlextInfraCProfileReport:
                 original = profiles[0].read_bytes()
             else:
                 tm.that(len(profiles), eq=2)
-                tm.that(original in (path.read_bytes() for path in profiles), eq=True)
+                tm.ok(original in (path.read_bytes() for path in profiles))
                 previous = tuple(tmp_path.glob("profile.previous-*.pstats"))
                 tm.that(len(previous), eq=1)
                 tm.that(previous[0].read_bytes(), eq=original)
@@ -90,7 +168,7 @@ class TestsFlextInfraCProfileReport:
         tm.that(profiled.stderr, has="NotADirectoryError")
         tm.that(profiled.stderr, has=str(blocked))
         if u.Cli.process_succeeded(reference.outcome):
-            tm.that(u.Cli.process_succeeded(profiled.outcome), eq=False)
+            tm.fail(u.Cli.process_succeeded(profiled.outcome))
         else:
             tm.that(
                 profiled.outcome.raw_return_code, eq=reference.outcome.raw_return_code
@@ -131,7 +209,7 @@ class TestsFlextInfraCProfileReport:
                 cwd=tmp_path,
             )
         )
-        tm.that(u.Cli.process_succeeded(reference.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(reference.outcome))
         tm.that(
             profiled.outcome.raw_return_code,
             eq=reference.outcome.raw_return_code,
@@ -139,7 +217,7 @@ class TestsFlextInfraCProfileReport:
         )
         tm.that(reference.stderr, lacks="KeyboardInterrupt")
         for executed in (reference, profiled):
-            tm.that(executed.outcome.timed_out, eq=False)
+            tm.fail(executed.outcome.timed_out)
             tm.that(executed.outcome.forwarded_signal, eq=None)
         tm.that(reference.stderr, has="ValueError: I/O operation on closed file.")
         primary_trace, secondary_trace = profiled.stderr.split(

@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 import pytest
+from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, r, t, u
 from flext_infra.validate._pytest_runner import (
@@ -44,7 +45,7 @@ class FlextInfraPytestRunnerExecution(
 
         """
         return FlextInfraTestmonDbInspector(
-            repository_root=self.root,
+            repository_root=self.repository_root,
             db_path=self.testmon_db,
             pre_run_digest=digest,
         ).execute()
@@ -72,10 +73,10 @@ class FlextInfraPytestRunnerExecution(
             c.Infra.PYTEST_ENV_TESTMON_DATAFILE,
         )
         coverage = execution_mode == c.Infra.PytestExecutionMode.COVERAGE
-        source_root = self.root
+        source_root = self.repository_root
         if self.target_file is not None:
             target_root = u.Infra.nearest_project_root(
-                self.root, self.root / self.target_file
+                self.repository_root, self.repository_root / self.target_file
             )
             if target_root is None:
                 msg = "test target has no declared project owner"
@@ -195,7 +196,7 @@ class FlextInfraPytestRunnerExecution(
         outcome = u.Cli.run_to_file(
             command,
             selection_log,
-            cwd=self.root,
+            cwd=self.repository_root,
             options=self._selection_process_options(execution_mode=execution_mode),
         ).unwrap()
         self._record_process_outcome(
@@ -207,7 +208,10 @@ class FlextInfraPytestRunnerExecution(
         # Exit code 5 is pytest's "no tests ran": testmon selected nothing.
         # For a zero-test project (no test module under the config-owned
         # roots) rc=5 is the DECLARED inventory outcome in both phases.
-        owns_no_tests = self._owns_no_tests()
+        owns_no_tests = (
+            outcome.raw_return_code == pytest.ExitCode.NO_TESTS_COLLECTED
+            and self._owns_no_tests()
+        )
         # A slow phase may own no slow item, and a declared file may sit
         # entirely outside this phase's marker. Both are empty scopes. A
         # whole-suite budgeted inventory that collects nothing stays a failure.
@@ -284,14 +288,21 @@ class FlextInfraPytestRunnerExecution(
             Whether the project owns zero test files by design.
 
         """
-        pytest_settings = config.Infra.tooling.tools.pytest
         # The module patterns are the pytest SSOT's own python-files: a
         # project whose suites use another declared form (``*_tests.py``)
         # still owns its tests, and a hardcoded copy of the list here would
         # answer "owns no tests" for a live suite again.
-        patterns = pytest_settings.python_files
-        for root in pytest_settings.test_paths:
-            base = self.root / root
+        tool_config = (
+            u.Infra.load_tooling_inputs(self.repository_root).unwrap().document
+        )
+        patterns = u.Infra.native_tool_setting(
+            tool_config, "pytest.ini_options", "python_files", TypeForm(t.StrSequence)
+        )
+        roots = u.Infra.native_tool_setting(
+            tool_config, "pytest.ini_options", "testpaths", TypeForm(t.StrSequence)
+        )
+        for root in roots:
+            base = self.repository_root / root
             if not base.is_dir():
                 continue
             for pattern in patterns:
@@ -334,7 +345,7 @@ class FlextInfraPytestRunnerExecution(
         ).unwrap()
         capture = u.Infra.git_begin_gate_capture(
             m.Infra.GateCaptureBeginRequest(
-                repository_root=self.root,
+                repository_root=self.repository_root,
                 gate=c.Infra.VERB_TEST,
                 command=command,
                 intent=m.Infra.GateExecutionIntent(
@@ -350,7 +361,7 @@ class FlextInfraPytestRunnerExecution(
                 ),
                 runtime_identity=self.testmon_environment(execution_mode),
             ),
-            inputs=u.Infra.load_codegen_inputs(self.root).unwrap(),
+            inputs=u.Infra.load_codegen_inputs(self.repository_root).unwrap(),
         )
         u.Cli.atomic_write_text_file(
             report_dir / c.Infra.GATE_CAPTURE_START_FILENAME,
@@ -359,21 +370,28 @@ class FlextInfraPytestRunnerExecution(
         outcome = u.Cli.run_to_file(
             command,
             report_dir / "pytest.log",
-            cwd=self.root,
+            cwd=self.repository_root,
             options=self._selection_process_options(
                 execution_mode=execution_mode,
                 live=True,
             ),
         ).unwrap()
         self._record_process_outcome(report_dir, "suite", outcome)
-        if self.profile_enabled and (
-            u.Cli.process_succeeded(outcome)
-            or self._completed_failure(outcome, report_dir)
-        ):
-            self._bind_child_profile(
-                report_dir,
-                report_dir / config.Infra.tooling.tools.pytest.profile_suite_filename,
-            )
+        if self.profile_enabled:
+            policy = config.Infra.tooling.tools.pytest
+            suite_profile = report_dir / policy.profile_suite_filename
+            # The process owner has reaped the child before binding its native
+            # checkpoints. An interrupted run retains its failure and real data.
+            if (
+                suite_profile.is_file()
+                or u.Cli.process_succeeded(outcome)
+                or self._completed_failure(outcome, report_dir)
+            ):
+                self._bind_child_profile(report_dir, suite_profile)
+            for profile in sorted(
+                (report_dir / policy.profile_process_directory).glob("*.pstats")
+            ):
+                self._bind_child_profile(report_dir, profile)
         return outcome
 
     @staticmethod
@@ -639,7 +657,7 @@ class FlextInfraPytestRunnerExecution(
                 report_root=report_dir,
                 runtime_identity=self.testmon_environment(selection.execution_mode),
             ),
-            inputs=u.Infra.load_codegen_inputs(self.root),
+            inputs=u.Infra.load_codegen_inputs(self.repository_root),
         ).unwrap()
 
     @staticmethod
@@ -706,6 +724,21 @@ class FlextInfraPytestRunnerExecution(
             pytest.ExitCode.NO_TESTS_COLLECTED,
         }:
             return r.ok(incremental_exit)
+        return self._execute_testmon(complete=True)
+
+    def execute_file(self) -> p.Result[int]:
+        """Run the complete declared file once through its persistent database.
+
+        Returns:
+            The native status of the complete file execution.
+
+        Raises:
+            ValueError: If no single-file target was declared.
+
+        """
+        if self.target_file is None:
+            msg = "complete file execution requires a declared target file"
+            raise ValueError(msg)
         return self._execute_testmon(complete=True)
 
     def _execute_testmon(self, *, complete: bool) -> p.Result[int]:

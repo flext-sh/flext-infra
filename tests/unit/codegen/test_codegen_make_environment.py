@@ -50,7 +50,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
         )
         tm.that(checked.outcome.raw_return_code, eq=2)
         tm.that(checked.stdout + checked.stderr, lacks=credential)
-        tm.that(bool(checked.stderr.strip()), eq=True)
+        tm.ok(bool(checked.stderr.strip()))
         tm.that(global_config.read_text(encoding="utf-8"), eq=source)
 
     def test_make_hands_the_selected_credential_to_the_real_mise_child(
@@ -155,7 +155,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
                 has=["missing environment interpreter", "make setup"],
             )
         tm.that(output, lacks="authentication is required")
-        tm.that((project_root / ".venv").exists(), eq=False)
+        tm.fail((project_root / ".venv").exists())
 
     @staticmethod
     @pytest.mark.parametrize("failure_return", [None, 37])
@@ -171,8 +171,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
         )
         runtime_environment = u.Infra.runtime_environment_dir(project_root)
         tm.ok(u.Tests.create_python_environment(project_root))
-        tm.that(runtime_environment.is_symlink(), eq=False)
-        tm.that((runtime_environment / "bin" / "python").is_symlink(), eq=True)
+        tm.fail(runtime_environment.is_symlink())
+        tm.ok((runtime_environment / "bin" / "python").is_symlink())
         (project_root / ".envrc.local").write_text(
             "printf 'activated\\n' >> activation.log\n"
             'export MAKE_ACTIVATION_PROOF="$PROJECT_ROOT"\n'
@@ -205,8 +205,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.that(activation.is_file(), eq=True, msg=process.stdout + process.stderr)
         tm.that(activation.read_text(), eq="activated\n")
         if failure_return is not None:
-            tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
-            tm.that((project_root / "dispatch.log").exists(), eq=False)
+            tm.fail(u.Cli.process_succeeded(process.outcome))
+            tm.fail((project_root / "dispatch.log").exists())
         else:
             tm.that(
                 u.Cli.process_succeeded(process.outcome),
@@ -265,13 +265,13 @@ class TestsFlextInfraCodegenMakeEnvironment:
             eq=True,
             msg=process.stdout + process.stderr,
         )
-        tm.that(effect.exists(), eq=False)
-        tm.that(borrowed.is_symlink(), eq=True)
+        tm.fail(effect.exists())
+        tm.ok(borrowed.is_symlink())
         if not broken:
             tm.that(marker.read_text(encoding="utf-8"), eq="foreign workspace")
             tm.that(tuple(foreign.iterdir()), eq=(marker,))
         else:
-            tm.that(foreign.exists(), eq=False)
+            tm.fail(foreign.exists())
 
     @staticmethod
     @pytest.mark.parametrize("command_line", [False, True])
@@ -431,10 +431,10 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.that(source_marker.read_text(encoding="utf-8"), eq="preserve project source")
         if provisioned:
             tm.that(setup.stdout, has="setup: replacing environment for Python")
-            tm.that(previous_environment_marker.exists(), eq=False)
+            tm.fail(previous_environment_marker.exists())
         runtime_bin = runtime_environment / "bin"
         runtime_python = runtime_bin / "python"
-        tm.that(runtime_python.is_file(), eq=True)
+        tm.ok(runtime_python.is_file())
         hostile_python, hostile_bin, active_env = (
             TestsFlextInfraCodegenMakeEnvironment._hostile_interpreter_probe(tmp_path)
         )
@@ -462,7 +462,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
         # the environment at all, and that entry is not the hostile venv.
         path_entries = output[3].removeprefix("PATH=").split(os.pathsep)
         tm.that(path_entries[0], eq=str(runtime_bin))
-        tm.that(str(hostile_bin) in path_entries, eq=False)
+        tm.fail(str(hostile_bin) in path_entries)
         surviving = iter(path_entries[1:])
         orig_path = os.environ["PATH"].split(os.pathsep)
         [e for e in orig_path if e not in list(path_entries[1:])]
@@ -475,8 +475,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
         )
         tm.that(output[4], eq=str(runtime_python))
         tm.that(output[5:], eq=[str(runtime_environment)] * 2)
-        tm.that(hostile_python.exists(), eq=False)
-        tm.that((project_root.parent / ".venv").exists(), eq=False)
+        tm.fail(hostile_python.exists())
+        tm.fail((project_root.parent / ".venv").exists())
 
     def _assert_lockless_setup_provisions(
         self,
@@ -500,7 +500,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
         output = lockless.stdout + lockless.stderr
         tm.that(u.Cli.process_succeeded(lockless.outcome), eq=True, msg=output)
         tm.that(output, lacks=["WARN:", "mise WARN", "[warn]"])
-        tm.that((project_root / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
+        tm.fail((project_root / c.Infra.UV_LOCK_FILENAME).exists())
         tm.that(
             (u.Infra.runtime_environment_dir(project_root) / "pyvenv.cfg").is_file(),
             eq=True,
@@ -528,7 +528,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
         for reported, selected in tool_receipts:
             tm.that(reported, eq=selected)
         for lock in (c.Infra.UV_LOCK_FILENAME, c.Infra.MISE_LOCK_FILENAME):
-            tm.that((template / lock).is_file(), eq=True)
+            tm.ok((template / lock).is_file())
         tm.that(
             (u.Infra.runtime_environment_dir(template) / "pyvenv.cfg").is_file(),
             eq=True,
@@ -539,8 +539,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
             eq="untouched\n",
         )
         tm.that(tuple((template_hostile / "bin").iterdir()), eq=())
-        tm.that((template_hostile / "pyvenv.cfg").exists(), eq=False)
-        tm.that((template_hostile.parent / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
+        tm.fail((template_hostile / "pyvenv.cfg").exists())
+        tm.fail((template_hostile.parent / c.Infra.UV_LOCK_FILENAME).exists())
 
     @staticmethod
     def _assert_cold_storage_ci(
@@ -715,7 +715,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
         hostile_venv = tmp_path / c.Tests.MAKE_TEMPLATE_HOSTILE_VENV
         (hostile_venv / "bin").mkdir(parents=True)
         active_env = u.Tests.hostile_uv_environment(hostile_venv)
-        tm.that(u.Infra.runtime_environment_dir(project_root).exists(), eq=False)
+        tm.fail(u.Infra.runtime_environment_dir(project_root).exists())
         self._assert_lockless_setup_provisions(project_root, active_env)
 
         template = resolved_make_templates[profile]
@@ -797,7 +797,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
         # Template uses `override UV := "$(SETUP_MISE)" -C "$(PROJECT_ROOT)"
         # exec -- uv`;
         # there is no bare `UV ?= uv` assignment.
-        tm.that("UV ?= uv" in makefile, eq=False)
+        tm.fail("UV ?= uv" in makefile)
         # UV_RUN's environment binding is exercised by the real runtime test
         # above, including a parent uv workspace with a different default venv.
         # Make never accepts a caller-selected database path: it derives the
@@ -813,7 +813,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
                 cwd=project_root,
             ),
         )
-        tm.that(u.Cli.process_succeeded(environment.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(environment.outcome))
         # Primary standalone checkouts retain their local environment;
         # linked Git worktrees are exercised separately above.
         checkout_venv = project_root.resolve() / c.Infra.ENVIRONMENT_DIRECTORY
@@ -861,9 +861,9 @@ class TestsFlextInfraCodegenMakeEnvironment:
             '--gates "$$gates"' in makefile,
             eq=True,
         )
-        tm.that("$(UV_RUN) actionlint" in makefile, eq=False)
-        tm.that('$(UV) sync --project "$(UV_PROJECT)"' in makefile, eq=True)
-        tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
+        tm.fail("$(UV_RUN) actionlint" in makefile)
+        tm.ok('$(UV) sync --project "$(UV_PROJECT)"' in makefile)
+        tm.ok('$(UV) build --project "$(PROJECT_ROOT)"' in makefile)
         envrc = (project_root / ".envrc").read_text(encoding="utf-8")
         for forced in ("PYTHONPYCACHEPREFIX", "export TMPDIR", "PROJECT_STATE_ROOT"):
             tm.that(envrc, lacks=forced)

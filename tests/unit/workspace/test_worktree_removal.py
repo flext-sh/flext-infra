@@ -48,8 +48,8 @@ class TestsFlextInfraWorktreeRemoval(u.Tests.WorktreeFixture):
         tm.fail(refused, has="while children are registered")
         tm.fail(refused, has=str(child))
         tm.fail(self._remove(repository, child_branch), has="retirement refused")
-        tm.that(child.is_dir(), eq=True)
-        tm.that(epic.is_dir(), eq=True)
+        tm.ok(child.is_dir())
+        tm.ok(epic.is_dir())
 
     def test_child_add_with_an_unregistered_epic_lane_is_refused(
         self,
@@ -67,4 +67,4 @@ class TestsFlextInfraWorktreeRemoval(u.Tests.WorktreeFixture):
 
         _ = self.refused_lane(repository, "feature/child-orphan", epic_lane=missing)
 
-        tm.that(missing.exists(), eq=False)
+        tm.fail(missing.exists())

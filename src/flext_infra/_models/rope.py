@@ -228,15 +228,17 @@ class FlextInfraModelsRope:
             ),
         ] = False
         definitions: Annotated[
-            MutableMapping[str, FlextInfraModelsRope.SourceClassDefinition],
-            m.SkipValidation,
+            m.InstanceOf[
+                MutableMapping[str, FlextInfraModelsRope.SourceClassDefinition]
+            ],
             m.Field(
                 description="Cross-module definition inventory the walk extends",
             ),
         ]
         lexical: Annotated[
-            MutableMapping[str, FlextInfraModelsRope.SourceClassReference | None],
-            m.SkipValidation,
+            m.InstanceOf[
+                MutableMapping[str, FlextInfraModelsRope.SourceClassReference | None]
+            ],
             m.Field(
                 description="Module-scope bindings visible to every nested base",
             ),
@@ -247,7 +249,6 @@ class FlextInfraModelsRope:
 
         project: Annotated[
             t.Infra.RopeProject,
-            m.SkipValidation,
             m.Field(description="Open Rope project scoped to the analysis roots"),
         ]
         module: Annotated[

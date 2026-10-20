@@ -69,14 +69,14 @@ class TestsFlextInfraDepsDetectionModels:
             to_remove=[],
             untyped_imports_followed=True,
         )
-        tm.that(report.untyped_imports_followed, eq=True)
+        tm.ok(report.untyped_imports_followed)
         tm.that(report.required_packages, empty=True)
         tm.that(report.hinted, empty=True)
         tm.that(report.missing_modules, empty=True)
         tm.that(report.current, empty=True)
         tm.that(report.to_add, empty=True)
         tm.that(report.to_remove, empty=True)
-        tm.that(not report.limits_applied, eq=True)
+        tm.ok(not report.limits_applied)
         tm.that(report.python_version, eq=None)
 
     @staticmethod

@@ -146,7 +146,7 @@ class TestsFlextInfraApiAliasCutover:
                 ),
             ))
         )
-        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(outcome.outcome))
 
     @staticmethod
     @pytest.mark.parametrize(

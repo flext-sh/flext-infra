@@ -72,7 +72,7 @@ def test_settings_isolation(settings: FlextTestsSettings) -> None:
     """The fixture settings stay distinct from the global singleton."""
     settings.debug = True
     # The settings plugin resets runtime singletons between test functions.
-    tm.that(FlextSettings.fetch_global() is settings, eq=False)
+    tm.fail(FlextSettings.fetch_global() is settings)
 ```
 
 ## Resetting singletons manually
@@ -113,7 +113,7 @@ def safe_divide(a: float, b: float) -> p.Result[float]:
 def test_safe_divide() -> None:
     """Division succeeds for a nonzero divisor and fails for zero."""
     quotient = tm.ok(safe_divide(10, 2))
-    tm.that(isclose(quotient, 5.0), eq=True)
+    tm.ok(isclose(quotient, 5.0))
     tm.fail(safe_divide(10, 0))
 ```
 
@@ -160,7 +160,7 @@ def test_settings_override() -> None:
     try:
         settings = FlextSettings.fetch_global()
         settings.debug = True
-        tm.that(settings.debug, eq=True)
+        tm.ok(settings.debug)
     finally:
         FlextSettings.reset_for_testing()
 ```

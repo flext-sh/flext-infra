@@ -57,15 +57,15 @@ class TestsFlextInfraRopeSnapshot:
             try:
                 source.unlink()
                 late_source.write_text(content, encoding="utf-8")
-                tm.that(snapshot.authenticated_sources, eq=False)
-                tm.that(snapshot.source_query(source, "exists"), eq=True)
-                tm.that(snapshot.source_query(source, "isfile"), eq=True)
-                tm.that(snapshot.source_query(late_source, "exists"), eq=False)
-                tm.that(snapshot.source_query(late_source, "isfile"), eq=False)
-                tm.that(snapshot.source_query(source, "isdir"), eq=False)
-                tm.that(snapshot.source_query(package, "exists"), eq=True)
-                tm.that(snapshot.source_query(package, "isdir"), eq=True)
-                tm.that(snapshot.source_query(package, "isfile"), eq=False)
+                tm.fail(snapshot.authenticated_sources)
+                tm.ok(snapshot.source_query(source, "exists"))
+                tm.ok(snapshot.source_query(source, "isfile"))
+                tm.fail(snapshot.source_query(late_source, "exists"))
+                tm.fail(snapshot.source_query(late_source, "isfile"))
+                tm.fail(snapshot.source_query(source, "isdir"))
+                tm.ok(snapshot.source_query(package, "exists"))
+                tm.ok(snapshot.source_query(package, "isdir"))
+                tm.fail(snapshot.source_query(package, "isfile"))
                 with pytest.raises(
                     TypeError, match="does not own authenticated live reads"
                 ):
@@ -78,7 +78,7 @@ class TestsFlextInfraRopeSnapshot:
         """A native physical project is not an authenticated source inventory."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         with FlextInfraRopeWorkspace.open_workspace(root) as rope:
-            tm.that(rope.rope_project.authenticated_sources, eq=False)
+            tm.fail(rope.rope_project.authenticated_sources)
             with pytest.raises(
                 TypeError, match="does not own authenticated live reads"
             ):
@@ -211,7 +211,7 @@ class TestsFlextInfraRopeSnapshot:
                 )
                 rendered = tm.not_none(initializer.desired_content).decode("utf-8")
                 tm.that(rendered, has=planned_name)
-                tm.that(physical_name in rendered, eq=False)
+                tm.fail(physical_name in rendered)
                 tm.that(
                     tuple(state for state in receipts()[0] if state.path == source),
                     eq=(original,),
@@ -257,9 +257,9 @@ class TestsFlextInfraRopeSnapshot:
                 tuple(folder.real_path for folder in project.get_source_folders()),
                 eq=source_roots,
             )
-            tm.that(str(unrelated) in source_roots, eq=False)
+            tm.fail(str(unrelated) in source_roots)
             package = tm.not_none(project.find_module("unrelated"))
-            tm.that(package.is_folder(), eq=True)
+            tm.ok(package.is_folder())
             tm.that(package.real_path, eq=str(unrelated))
             resource = tm.not_none(project.find_module("flext_demo.declared"))
             tm.that(resource.real_path, eq=str(module_path))
@@ -270,7 +270,7 @@ class TestsFlextInfraRopeSnapshot:
                     eq=source_roots,
                 )
                 captured_package = tm.not_none(snapshot.find_module("unrelated"))
-                tm.that(captured_package.is_folder(), eq=True)
+                tm.ok(captured_package.is_folder())
                 tm.that(captured_package.real_path, eq=package.real_path)
                 captured = u.Infra.require_file_resource(
                     tm.not_none(snapshot.find_module("flext_demo.declared")),
@@ -357,4 +357,4 @@ class TestsFlextInfraRopeSnapshot:
         ):
             u.Infra.snapshot_project(rope.rope_project, sources)
 
-        tm.that(str(outsider.resolve()) in str(guard_error.value), eq=True)
+        tm.ok(str(outsider.resolve()) in str(guard_error.value))

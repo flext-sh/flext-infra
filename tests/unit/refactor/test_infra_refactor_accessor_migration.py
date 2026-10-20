@@ -132,8 +132,8 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             apply_changes=False,
         ).execute()
 
-        tm.that(limited.failure, eq=False)
-        tm.that(complete.failure, eq=False)
+        tm.fail(limited.failure)
+        tm.fail(complete.failure)
         tm.that(len(limited.value.files), eq=1)
         tm.that(
             limited.value.automated_change_count,
@@ -167,9 +167,9 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
 
         tm.that(complete.failure, eq=False, msg=complete.error)
         tm.that(root_only.failure, eq=False, msg=root_only.error)
-        tm.that(complete.value.automated_change_count > 0, eq=True)
+        tm.ok(complete.value.automated_change_count > 0)
         tm.that(root_only.value.automated_change_count, eq=0)
-        tm.that(complete.value.files_scanned > root_only.value.files_scanned, eq=True)
+        tm.ok(complete.value.files_scanned > root_only.value.files_scanned)
         tm.that(origin_file.read_text(encoding="utf-8"), eq=_legacy_module_source())
 
     @staticmethod
@@ -271,7 +271,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
                 )
             for state in states:
                 tm.that(state.path.read_bytes(), eq=state.content)
-            tm.that(phase.apply(project, preflight, rope).unwrap(), eq=True)
+            tm.ok(phase.apply(project, preflight, rope).unwrap())
         program += (
             "names = ('literal_name',)\n"
             "assert consumer.optional("
@@ -291,7 +291,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             eq="consumer_verified\n",
         )
         with infra.rope_workspace(project) as rope:
-            tm.that(phase.apply(project, preflight, rope).unwrap(), eq=False)
+            tm.fail(phase.apply(project, preflight, rope).unwrap())
         planned = (
             FlextInfraAccessorMigrationOrchestrator(
                 source_preview=infra.source_preview(workspace),
@@ -390,9 +390,9 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
 
         result = orchestrator.execute()
 
-        tm.that(result.failure, eq=False)
-        tm.that(result.value.dry_run, eq=True)
-        tm.that(result.value.automated_change_count > 0, eq=True)
+        tm.fail(result.failure)
+        tm.ok(result.value.dry_run)
+        tm.ok(result.value.automated_change_count > 0)
         tm.that(origin_file.read_text(encoding="utf-8"), eq=source_before)
 
     @staticmethod
@@ -411,9 +411,9 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         receipt = (
             workspace / c.Infra.ACCESSOR_MIGRATION_REPORT_RELATIVE_PATH
         ).resolve()
-        tm.that(receipt.exists(), eq=True)
+        tm.ok(receipt.exists())
         published = json.loads(receipt.read_text(encoding="utf-8"))
-        tm.that(published["dry_run"], eq=True)
+        tm.ok(published["dry_run"])
         tm.that(published["workspace"], eq=str(workspace))
 
     @staticmethod
@@ -430,8 +430,8 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
 
         result = orchestrator.execute()
 
-        tm.that(result.failure, eq=False)
-        tm.that(result.value.dry_run, eq=False)
+        tm.fail(result.failure)
+        tm.fail(result.value.dry_run)
         origin_source = origin_file.read_text(encoding="utf-8")
         tm.that(origin_source, has=f"def {_REPLACEMENT_NAME}(")
         tm.that(origin_source, has=f"= {_REPLACEMENT_NAME}(True)")
@@ -479,7 +479,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             repository_root=workspace,
             apply_changes=False,
         ).execute()
-        tm.that(unfiltered.failure, eq=False)
+        tm.fail(unfiltered.failure)
 
         filtered = FlextInfraAccessorMigrationOrchestrator(
             source_preview=infra.source_preview(workspace),
@@ -488,12 +488,12 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             target_module="flext_core.legacy",
         ).execute()
 
-        tm.that(filtered.failure, eq=False)
+        tm.fail(filtered.failure)
         tm.that(
             filtered.value.files_scanned,
             eq=unfiltered.value.files_scanned,
         )
-        tm.that(filtered.value.files_scanned > 0, eq=True)
+        tm.ok(filtered.value.files_scanned > 0)
 
     @staticmethod
     def test_manual_warnings_preserve_real_sdk_overrides(
@@ -531,7 +531,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
 
         result = orchestrator.execute()
 
-        tm.that(result.failure, eq=False)
+        tm.fail(result.failure)
         advisory_source = advisory_file.read_text(encoding="utf-8")
         tm.that(advisory_source, has="def get_value(self) -> int:")
         tm.that(advisory_source, has="def get_source_folders(self):")
@@ -557,7 +557,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             c.ENFORCEMENT_PREDICATE_SPECS["no_accessor_methods"]["params"]
         )
         name = f"{next(iter(policy.forbidden_prefixes))}owned_probe"
-        tm.that(name in c.ENFORCEMENT_ACCESSOR_RENAMES, eq=False)
+        tm.fail(name in c.ENFORCEMENT_ACCESSOR_RENAMES)
         source = (
             f"class Owned:\n    {decorator}def {name}(self) -> bool:\n"
             "        return True\n"
@@ -571,7 +571,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             apply_changes=False,
         ).execute()
 
-        tm.that(result.failure, eq=False)
+        tm.fail(result.failure)
         findings = tuple(
             warning
             for file in result.value.files
@@ -662,7 +662,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             apply_changes=False,
         ).execute()
 
-        tm.that(result.failure, eq=False)
+        tm.fail(result.failure)
         changes = tuple(
             change
             for file in result.value.files
@@ -788,7 +788,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             apply_changes=True,
         ).execute()
 
-        tm.that(result.failure, eq=False)
+        tm.fail(result.failure)
         tm.that(owned_file.read_text(encoding="utf-8"), has=f"def {_REPLACEMENT_NAME}(")
         tm.that(
             consumer.read_text(encoding="utf-8"), has=f"u().{_REPLACEMENT_NAME}(True)"

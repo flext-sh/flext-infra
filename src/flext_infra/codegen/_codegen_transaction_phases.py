@@ -262,7 +262,8 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                         str(path) for path in published.value.written_files
                     ),
                     "issues": tuple(
-                        issue.model_dump() for issue in published.value.issues
+                        issue.model_dump(mode="json")
+                        for issue in published.value.issues
                     ),
                 },
             )
@@ -1323,7 +1324,9 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
                         "written_files": tuple(
                             str(path) for path in session.written_files
                         ),
-                        "issues": tuple(issue.model_dump() for issue in session.issues),
+                        "issues": tuple(
+                            issue.model_dump(mode="json") for issue in session.issues
+                        ),
                         "settlement_error": settled.error,
                     },
                 )
@@ -1393,7 +1396,9 @@ class FlextInfraCodegenTransactionPhases(FlextInfraCodegenTransactionRecovery):
             exception=session.exception,
             error_data={
                 "written_files": tuple(str(path) for path in session.written_files),
-                "issues": tuple(issue.model_dump() for issue in session.issues),
+                "issues": tuple(
+                    issue.model_dump(mode="json") for issue in session.issues
+                ),
             },
         )
 

@@ -162,7 +162,7 @@ class TestsFlextInfraCodegenMakeAuthentication:
                 cwd=project_root,
             ),
         )
-        tm.that(u.Cli.process_succeeded(process.outcome), eq=True)
+        tm.ok(u.Cli.process_succeeded(process.outcome))
         if verb == "status":
             tm.that(process.stdout, has="github-auth source=gh extraction-exit=")
             tm.that(process.stdout, has="present=no ci=unset")
@@ -202,7 +202,7 @@ class TestsFlextInfraCodegenMakeAuthentication:
                 env={ci.variable: ci.local_value} if local_ci else None,
             ),
         )
-        tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(process.outcome))
         diagnostic = next(
             line
             for line in process.stdout.splitlines()
@@ -231,9 +231,9 @@ class TestsFlextInfraCodegenMakeAuthentication:
         receipt = report.receipts[0]
         tm.that(receipt.stage, eq="network-auth")
         tm.that(receipt.native_exit_code, eq=int(extraction_exit))
-        tm.that(receipt.completed, eq=False)
+        tm.fail(receipt.completed)
         tm.that(receipt.files, eq=())
         tm.that(receipt.root, eq=Path())
-        tm.that(u.Infra.runtime_environment_dir(project_root).exists(), eq=False)
+        tm.fail(u.Infra.runtime_environment_dir(project_root).exists())
         for path, content in locks.items():
             tm.that(path.read_bytes(), eq=content)

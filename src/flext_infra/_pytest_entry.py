@@ -25,7 +25,7 @@ class FlextInfraPytestEntry:
         selects coverage alone; the default is the incremental operation. The
         ``slow`` operation runs the incremental phase over the slow marker
         only, as its own bounded process outside the budgeted clock. The
-        ``file`` runs the declared target incremental then complete without a
+        ``file`` runs the complete declared target once without a
         deadline, including slow items. ``file-slow`` retains its bounded
         incremental operation. Both require Make to export the single-file target.
         ``full-slow`` runs the full slow phase without the incremental budget.
@@ -69,7 +69,9 @@ class FlextInfraPytestEntry:
             raise ValueError(msg)
         if mode == "coverage":
             status = runner.execute_coverage().unwrap()
-        elif mode in {"full", "full-slow", "file"}:
+        elif mode == "file":
+            status = runner.execute_file().unwrap()
+        elif mode in {"full", "full-slow"}:
             status = runner.execute_full().unwrap()
         elif mode in {"", "slow", "file-slow"}:
             status = runner.execute().unwrap()

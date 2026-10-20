@@ -213,7 +213,7 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
             match = u.Infra.docs_parse_github_doc_url(
                 "https://github.com/flext-sh/flext/blob/main/README.md",
             )
-            tm.that(match is not None, eq=True)
+            tm.ok(match is not None)
             if match is not None:
                 tm.that(match.group("org"), eq="flext-sh")
                 tm.that(match.group("repo"), eq="flext")
@@ -226,7 +226,7 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
             match = u.Infra.docs_parse_github_doc_url(
                 "https://github.com/example-org/example-repo/tree/feature-line/src/",
             )
-            tm.that(match is not None, eq=True)
+            tm.ok(match is not None)
             if match is not None:
                 tm.that(match.group("kind"), eq="tree")
                 tm.that(match.group("refpath"), eq="feature-line/src/")
@@ -266,4 +266,4 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
             match = u.Infra.docs_parse_github_doc_url(
                 "  https://github.com/flext-sh/flext/blob/main/README.md  ",
             )
-            tm.that(match is not None, eq=True)
+            tm.ok(match is not None)

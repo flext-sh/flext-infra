@@ -363,9 +363,9 @@ class TestsFlextInfraBindingInstall:
                 assert yaml_origin.is_relative_to(declared_sources[yaml_package])
             source = u.Cli.files_read_text(root / c.PYPROJECT_FILENAME).unwrap()
             document = u.Cli.toml_parse_text(source)
-            assert document is not None
+            tm.not_none(document)
             groups = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
-            assert groups is not None
+            tm.not_none(groups)
             comments = u.Cli.toml_array_item_comments(groups, str(c.Infra.DEV))
             values = u.Cli.toml_as_string_list(
                 u.Cli.toml_value(groups, str(c.Infra.DEV))
@@ -388,7 +388,7 @@ class TestsFlextInfraBindingInstall:
                     ).unwrap(),
                 ),
             ).unwrap()
-            assert u.Cli.toml_parse_text(rendered) is not None
+            tm.not_none(u.Cli.toml_parse_text(rendered))
             builder_type = dataclass(init=False, unsafe_hash=True)(core_models.Base)
             builder_type.Recursive = builder_type
             state = core_models.ContractModel.model_validate({})

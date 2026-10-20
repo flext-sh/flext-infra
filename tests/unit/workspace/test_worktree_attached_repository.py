@@ -126,4 +126,4 @@ class TestsFlextInfraAttachedRepositoryWorktree(u.Tests.WorktreeFixture):
             ).execute(),
             has="Git submodule branch is missing: attached",
         )
-        tm.that(expected_lane.is_dir(), eq=True)
+        tm.ok(expected_lane.is_dir())

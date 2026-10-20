@@ -56,8 +56,10 @@ class TestsFlextInfraFacadeAuthoredRuntime:
 
     @staticmethod
     @pytest.mark.parametrize("directory", [False, True])
+    @pytest.mark.parametrize("descendant", ["child.py", "nested/child.py"])
     def test_negative_query_below_original_file_uses_native_ancestor_proof(
         tmp_path: Path,
+        descendant: str,
         *,
         directory: bool,
     ) -> None:
@@ -80,7 +82,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 )
                 for predicate in predicates:
                     tm.that(
-                        project.source_query(source / "child.py", predicate), eq=False
+                        project.source_query(source / descendant, predicate), eq=False
                     )
             tm.that(scope.receipt().inputs, eq=())
             tm.that(
@@ -138,8 +140,8 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         ) as binding:
             project = binding[0]
             with project.source_consumption() as scope:
-                tm.that(project.source_query(source, "isfile"), eq=False)
-                tm.that(source in project.source_children(package), eq=False)
+                tm.fail(project.source_query(source, "isfile"))
+                tm.fail(source in project.source_children(package))
                 tm.that(project.source_bytes(binary), eq=b"\xff\x00")
             states = {state.path: state for state in scope.receipt().inputs}
             tm.that(states[source], eq=original)
@@ -251,12 +253,12 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         root, _ = u.Tests.create_lazy_init_workspace(tmp_path)
         with u.Infra.facade_source_project(root) as (project, _, _):
             with project.source_consumption() as first:
-                tm.that(project.root.has_child("missing.py"), eq=False)
+                tm.fail(project.root.has_child("missing.py"))
             with project.source_consumption():
-                tm.that(project.root.has_child("other.py"), eq=False)
+                tm.fail(project.root.has_child("other.py"))
                 project.root.get_children()
             with project.source_consumption() as repeated:
-                tm.that(project.root.has_child("missing.py"), eq=False)
+                tm.fail(project.root.has_child("missing.py"))
             with project.source_consumption() as cached:
                 project.replay_source_consumption(first.receipt())
             for scope in (first, repeated, cached):
@@ -267,7 +269,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 )
                 tm.that(len(inventories), eq=1)
                 tm.that(inventories[0].queries, eq=(("missing.py", "exists"),))
-                tm.that(inventories[0].membership_queried, eq=False)
+                tm.fail(inventories[0].membership_queried)
 
     @staticmethod
     @pytest.mark.parametrize("absent_parent", [False, True])
@@ -281,10 +283,10 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         parent = package / "absent" if absent_parent else package
         with u.Infra.facade_source_project(root) as (project, _, _):
             with project.source_consumption() as first:
-                tm.that(project.source_query(parent / "first.py", "exists"), eq=False)
+                tm.fail(project.source_query(parent / "first.py", "exists"))
             with project.source_consumption() as separate:
-                tm.that(project.source_query(parent / "second.py", "isfile"), eq=False)
-                tm.that(project.source_query(parent / "first.py", "isdir"), eq=False)
+                tm.fail(project.source_query(parent / "second.py", "isfile"))
+                tm.fail(project.source_query(parent / "first.py", "isdir"))
                 if absent_parent:
                     with pytest.raises(FileNotFoundError):
                         project.source_children(parent)
@@ -292,7 +294,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                     project.source_children(parent)
             with project.source_consumption() as repeated:
                 project.replay_source_consumption(first.receipt())
-                tm.that(project.source_query(parent / "first.py", "exists"), eq=False)
+                tm.fail(project.source_query(parent / "first.py", "exists"))
             for scope in (first, repeated):
                 receipts = (
                     tuple(
@@ -309,7 +311,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 )
                 tm.that(len(receipts), eq=1)
                 tm.that(receipts[0].queries, eq=(("first.py", "exists"),))
-                tm.that(receipts[0].membership_queried, eq=False)
+                tm.fail(receipts[0].membership_queried)
             aggregate = (
                 tuple(
                     item
@@ -332,7 +334,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                     ("second.py", "isfile"),
                 ),
             )
-            tm.that(aggregate[0].membership_queried, eq=True)
+            tm.ok(aggregate[0].membership_queried)
             separate_receipts = (
                 separate.receipt().source_query_topology
                 if absent_parent
@@ -371,7 +373,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
 
             with pytest.raises(RuntimeError, match="consumer failed") as caught:
                 fail_consumer()
-            tm.that(caught.value is failure, eq=True)
+            tm.ok(caught.value is failure)
             with pytest.raises(ValueError, match="no completed receipt"):
                 scopes[0].receipt()
 
@@ -387,7 +389,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 project.source_consumption() as inner,
             ):
                 project.source_state(source)
-                tm.that(project.root.has_child("missing.py"), eq=False)
+                tm.fail(project.root.has_child("missing.py"))
             tm.that(outer.receipt().inputs, eq=inner.receipt().inputs)
             tm.that(
                 outer.receipt().source_directories,
@@ -452,9 +454,9 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             with u.Infra.facade_source_project(root) as (project, _, _):
                 with project.source_consumption() as provider:
                     expected = project.source_state(source)
-                    tm.that(project.source_query(source, "isfile"), eq=True)
+                    tm.ok(project.source_query(source, "isfile"))
                 with project.source_consumption():
-                    tm.that(project.source_query(source, "exists"), eq=True)
+                    tm.ok(project.source_query(source, "exists"))
                 inventories = tuple(
                     item
                     for item in project.consumed_source_directories()
@@ -471,9 +473,10 @@ class TestsFlextInfraFacadeAuthoredRuntime:
                 with project.source_consumption():
                     project.replay_source_consumption(provider.receipt())
 
-        with pytest.raises(ValueError, match="atomic source changed") as rejected:
+        with pytest.raises(
+            ValueError, match=escape(f"atomic source changed: {source}")
+        ):
             diverge()
-        tm.that("content_changed=True" in str(rejected.value), eq=True)
 
     @staticmethod
     def test_negative_query_receipts_keep_original_absent_topology(
@@ -486,7 +489,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             project, _, _ = contexts.enter_context(u.Infra.facade_source_project(root))
             folder = project.get_folder(missing.relative_to(root).as_posix())
             with project.source_consumption() as provider:
-                tm.that(folder.has_child("provider.py"), eq=False)
+                tm.fail(folder.has_child("provider.py"))
             with project.source_consumption() as consumer:
                 project.replay_source_consumption(provider.receipt())
             witnesses = tuple(
@@ -520,7 +523,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         *,
         relative: bool,
     ) -> None:
-        """Execute short own imports alongside ancestor and external imports."""
+        """Execute elected own imports alongside ancestor and external imports."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         children = (segment,) * depth
         child = package.joinpath(*children)
@@ -533,23 +536,31 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             )
         )
         provider = child / "provider.py"
-        tm.ok(
-            u.Cli.atomic_write_text_file(provider, "LOCAL_SENTINEL = 'native-child'\n")
+        tm.ok(u.Cli.atomic_write_text_file(provider, "LOCAL_SENTINEL = object()\n"))
+        groups = {
+            (
+                f"{'.' * (depth + 1)}sibling" if relative else f"{package.name}.sibling"
+            ): (("sibling", ""),),
+            "pathlib": (("Path", "Path"),),
+            f"{namespace}.{provider.stem}": (("LOCAL_SENTINEL", "LOCAL_SENTINEL"),),
+        }
+        width = u.Infra.native_tool_setting(
+            config.Infra.tooling, "ruff", "line-length", int
         )
+        if len(f"    from {namespace}.{provider.stem} import (") > width:
+            with pytest.raises(ValueError, match="Absolute import owner"):
+                FlextInfraCodegenGeneration.generate_type_checking(
+                    groups,
+                    include_flext_types=False,
+                    local_package_root=namespace,
+                )
+            tm.fail((child / c.Infra.INIT_PY).exists())
+            return
         imports = FlextInfraCodegenGeneration.generate_type_checking(
-            {
-                (
-                    f"{'.' * (depth + 1)}sibling"
-                    if relative
-                    else f"{package.name}.sibling"
-                ): (("sibling", ""),),
-                "pathlib": (("Path", "Path"),),
-                f"{namespace}.{provider.stem}": (("LOCAL_SENTINEL", "LOCAL_SENTINEL"),),
-            },
+            groups,
             include_flext_types=False,
             local_package_root=namespace,
         )
-        tm.that("\n".join(imports), has=f"from .{provider.stem} import LOCAL_SENTINEL")
         tm.ok(
             u.Cli.atomic_write_text_file(
                 child / c.Infra.INIT_PY,
@@ -559,10 +570,11 @@ class TestsFlextInfraFacadeAuthoredRuntime:
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
             "import pathlib\n"
+            f"import {namespace}.{provider.stem} as provider\n"
             f"from {namespace} import LOCAL_SENTINEL, Path, sibling\n"
             "assert Path is pathlib.Path\n"
             "assert sibling.SENTINEL == 'native-sibling'\n"
-            "assert LOCAL_SENTINEL == 'native-child'\n",
+            "assert LOCAL_SENTINEL is provider.LOCAL_SENTINEL\n",
             cwd=root,
         )
 
@@ -598,7 +610,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             root, declared_files=analysis.files
         ) as binding:
             project, consumed, sources = binding
-            tm.that(any(path.is_relative_to(generated) for path in sources), eq=False)
+            tm.fail(any(path.is_relative_to(generated) for path in sources))
             planned = {
                 file.path: file.desired_content.decode(c.DEFAULT_ENCODING)
                 for file in analysis.files

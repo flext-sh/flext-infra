@@ -46,7 +46,7 @@ class TestsFlextInfraManagedConflictRecovery:
 
         recovered = tm.ok(u.Infra.pyproject_regeneration_source(corrupt))
 
-        tm.that(u.Cli.toml_mapping_from_text(custom) is not None, eq=True)
+        tm.ok(u.Cli.toml_mapping_from_text(custom) is not None)
         tm.that(recovered, eq=custom)
         tm.that(
             u.Cli.toml_mapping_from_text(recovered),
@@ -83,8 +83,8 @@ class TestsFlextInfraManagedConflictRecovery:
         the superproject merge unresolvable through the canonical surface.
         """
         pyproject = tm.ok(u.Infra.pyproject_managed_file())
-        tm.that("tool.uv" in pyproject.conflict_sections, eq=True)
-        tm.that("build-system" in pyproject.conflict_sections, eq=True)
+        tm.ok("tool.uv" in pyproject.conflict_sections)
+        tm.ok("build-system" in pyproject.conflict_sections)
         tm.that(pyproject.preserve_project_keys, empty=False)
         tm.that(pyproject.overwrite_project_keys, empty=False)
         tm.that(
@@ -184,6 +184,40 @@ class TestsFlextInfraManagedConflictRecovery:
         )
 
         tm.that(recovered, eq=content)
+
+    @staticmethod
+    def test_recovery_tracks_content_and_section_ownership_changes() -> None:
+        """Repeated reads never reuse validity or recovery for different inputs."""
+        clean = '[tool.fixture]\nvalue = "first"\n'
+        duplicated = clean + 'value = "first"\n'
+        for _ in range(2):
+            tm.that(
+                tm.ok(
+                    u.Infra.recover_managed_toml(
+                        clean,
+                        conflict_sections=("tool.fixture",),
+                    )
+                ),
+                eq=clean,
+            )
+            tm.that(
+                tm.ok(
+                    u.Infra.recover_managed_toml(
+                        duplicated,
+                        conflict_sections=("tool.fixture",),
+                    )
+                ),
+                eq=clean,
+            )
+            tm.that(
+                tm.ok(
+                    u.Infra.recover_managed_toml(
+                        duplicated,
+                        conflict_sections=("tool.other",),
+                    )
+                ),
+                eq=duplicated,
+            )
 
     @staticmethod
     def test_recovers_identical_managed_multiline_assignments() -> None:

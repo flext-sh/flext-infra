@@ -134,7 +134,7 @@ class TestsFlextInfraModernizerSourceReferences:
         poetry_source = cast("t.JsonMapping", poetry_source)
         tm.that(poetry_source["git"], eq=remote)
         tm.that(poetry_source["rev"], eq=new_ref)
-        tm.that(poetry_source["optional"], eq=True)
+        tm.ok(poetry_source["optional"])
         tm.that(poetry_source["extras"], eq=["feature"])
         tm.that(
             u.Tests.toml_mapping(payload["build-system"])["build-backend"],

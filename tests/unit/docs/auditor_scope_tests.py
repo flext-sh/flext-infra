@@ -150,7 +150,7 @@ class TestsFlextInfraAuditorScope:
             scope,
             params=m.Infra.AuditScopeParams(check="all"),
         )
-        tm.that(report.passed, eq=True)
+        tm.ok(report.passed)
         tm.that(report.result, eq=c.Infra.ResultStatus.OK)
 
     @staticmethod
@@ -167,11 +167,11 @@ class TestsFlextInfraAuditorScope:
             scope,
             params=m.Infra.AuditScopeParams(check="links"),
         )
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)
         tm.that(report.result, eq=c.Infra.ResultStatus.FAIL)
         tm.that(report.reason, eq="issues:1")
         tm.that(report.items[0].issue_type, eq="broken_link")
-        tm.that(report.strict, eq=True)
+        tm.ok(report.strict)
         summary = u.Tests.json_payload(
             (scope.report_dir / "audit-summary.json").read_text(encoding="utf-8"),
         )
@@ -207,7 +207,7 @@ class TestsFlextInfraAuditorScope:
             params=m.Infra.AuditScopeParams(check=check),
         )
         tm.that(report.phase, eq="audit")
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)
         tm.that(report.result, eq=c.Infra.ResultStatus.FAIL)
         tm.that(report.items, empty=False)
 
@@ -231,7 +231,7 @@ class TestsFlextInfraAuditorScope:
         )
         tm.that(report.phase, eq="audit")
         tm.that(report.scope, eq=scope_name)
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)
         tm.that(report.result, eq=c.Infra.ResultStatus.FAIL)
 
     @staticmethod

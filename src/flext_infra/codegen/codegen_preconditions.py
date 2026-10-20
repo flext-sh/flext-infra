@@ -23,13 +23,15 @@ from typing import TYPE_CHECKING
 
 from packaging.utils import canonicalize_name
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import c, config, m, p, r, t
+from flext_infra._utilities import FlextInfraUtilitiesCodegenFilePlan
 from flext_infra.codegen import (
     FlextInfraMiseArtifactsComparison,
     FlextInfraMiseArtifactsFiles,
     FlextInfraMiseArtifactsJournalRelocation,
     FlextInfraMiseArtifactsVerification,
 )
+from flext_infra.utilities import FlextInfraUtilities as u
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
@@ -40,7 +42,7 @@ if TYPE_CHECKING:
     from importlib.metadata import Distribution
 
 
-class FlextInfraCodegenPreconditions:
+class FlextInfraCodegenPreconditions(FlextInfraUtilitiesCodegenFilePlan):
     """Validate source consistency and receipt ownership before publishing."""
 
     @classmethod
@@ -1888,49 +1890,6 @@ class FlextInfraCodegenPreconditions:
                 }
             )
         )
-
-    @staticmethod
-    def unique_states(
-        states: t.VariadicTuple[m.Cli.AtomicFileState],
-    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
-        """Preserve the first identity per path and refuse conflicting snapshots.
-
-        Returns:
-            The authenticated ordered union or its first identity conflict.
-
-        """
-        result_type = r[tuple[m.Cli.AtomicFileState, ...]]
-        by_path: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
-        for file_state in states:
-            previous = by_path.setdefault(file_state.path, file_state)
-            if previous != file_state:
-                first_hash = (
-                    u.Cli.sha256_bytes(previous.content)
-                    if previous.content is not None
-                    else None
-                )
-                observed_hash = (
-                    u.Cli.sha256_bytes(file_state.content)
-                    if file_state.content is not None
-                    else None
-                )
-                details = (
-                    f" first={previous.model_dump_json(exclude={'content'})}"
-                    f" observed={file_state.model_dump_json(exclude={'content'})}"
-                    f" first_sha256={first_hash}"
-                    f" observed_sha256={observed_hash}"
-                )
-                if previous.model_dump() == file_state.model_dump():
-                    details += (
-                        f" first_type={type(previous).__module__}."
-                        f"{type(previous).__qualname__}"
-                        f" observed_type={type(file_state).__module__}."
-                        f"{type(file_state).__qualname__}"
-                    )
-                return result_type.fail(
-                    f"planner observed two states for {file_state.path};{details}"
-                )
-        return result_type.ok(tuple(by_path.values()))
 
     @staticmethod
     def prepublication_barriers(

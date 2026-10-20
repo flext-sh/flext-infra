@@ -30,14 +30,14 @@ class TestsFlextInfraDepsModernizerComments:
         rendered = "[project]\nname = 'test'"
         result, changes = FlextInfraInjectCommentsPhase().apply(rendered)
         tm.that(result, starts=c.Infra.BANNER)
-        tm.that(any("banner" in change for change in changes), eq=True)
+        tm.ok(any("banner" in change for change in changes))
 
     @staticmethod
     def test_inject_comments_injects_markers() -> None:
         """Report managed section marker injection."""
         rendered = "[project]\nname = 'test'\n[tool.pytest]"
         _, changes = FlextInfraInjectCommentsPhase().apply(rendered)
-        tm.that(any("marker" in change for change in changes), eq=True)
+        tm.ok(any("marker" in change for change in changes))
 
     @staticmethod
     def test_inject_comments_marks_project_keys_from_ssot() -> None:
@@ -67,15 +67,15 @@ class TestsFlextInfraDepsModernizerComments:
         """Remove unsupported dependency-group sections."""
         rendered = "[group.dev.dependencies]\npytest = '^7.0'"
         result, changes = FlextInfraInjectCommentsPhase().apply(rendered)
-        tm.that("[group.dev.dependencies]" not in result, eq=True)
-        tm.that(any("broken" in change for change in changes), eq=True)
+        tm.ok("[group.dev.dependencies]" not in result)
+        tm.ok(any("broken" in change for change in changes))
 
     @staticmethod
     def test_inject_comments_handles_optional_dependencies_dev() -> None:
         """Preserve development dependencies content."""
         rendered = "[project.optional-dependencies]\ndev = ['pytest']"
         result, changes = FlextInfraInjectCommentsPhase().apply(rendered)
-        tm.that(("dev" in result) or (changes), eq=True)
+        tm.ok(("dev" in result) or (changes))
 
     def test_inject_comments_preserves_existing_markers(self) -> None:
         """Restamp a managed section from the SSOT, not a frozen phrase."""
@@ -103,7 +103,7 @@ class TestsFlextInfraDepsModernizerComments:
         """Report removal of an invalid dependency-group section."""
         rendered = '[group.dev.dependencies]\nrequests = "*"\n[project]\n'
         result, changes = FlextInfraInjectCommentsPhase().apply(rendered)
-        tm.that("[group.dev.dependencies]" not in result, eq=True)
+        tm.ok("[group.dev.dependencies]" not in result)
         tm.that(changes, has="broken [group.dev.dependencies] section removed")
 
     @staticmethod
@@ -114,7 +114,7 @@ class TestsFlextInfraDepsModernizerComments:
             "optional-dependencies.dev = ['pytest', 'coverage']\n"
         )
         result, changes = FlextInfraInjectCommentsPhase().apply(rendered)
-        tm.that(("optional-dependencies.dev" in result) or (changes), eq=True)
+        tm.ok(("optional-dependencies.dev" in result) or (changes))
 
     def test_inject_comments_phase_repositions_marker_before_section(self) -> None:
         """Position a managed marker immediately before its section."""
@@ -140,7 +140,7 @@ class TestsFlextInfraDepsModernizerComments:
         )
         result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
         tm.that(result, starts=c.Infra.BANNER)
-        tm.that("[AUTO]" in result, eq=False)
+        tm.fail("[AUTO]" in result)
 
     def test_inject_comments_phase_marks_pytest_and_coverage_subtables(self) -> None:
         """Annotate governed pytest and coverage subtables from the SSOT."""

@@ -24,7 +24,7 @@ class TestsFlextInfraLocDelta:
             insertions=10,
             deletions=3,
         )
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
 
     @staticmethod
     def test_refactor_negative_delta_passes() -> None:
@@ -34,7 +34,7 @@ class TestsFlextInfraLocDelta:
             insertions=3,
             deletions=20,
         )
-        tm.that(result.success, eq=True)
+        tm.ok(result.success)
 
     @staticmethod
     def test_refactor_zero_delta_passes() -> None:
@@ -44,7 +44,7 @@ class TestsFlextInfraLocDelta:
             insertions=5,
             deletions=5,
         )
-        tm.that(result.success, eq=True)
+        tm.ok(result.success)
 
     @staticmethod
     def test_non_labelled_subject_is_exempt() -> None:
@@ -54,4 +54,4 @@ class TestsFlextInfraLocDelta:
             insertions=120,
             deletions=0,
         )
-        tm.that(result.success, eq=True)
+        tm.ok(result.success)

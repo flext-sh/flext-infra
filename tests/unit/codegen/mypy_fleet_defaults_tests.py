@@ -9,22 +9,47 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import pytest
-from flext_core import e
+from pathlib import Path
 
-from flext_infra import config, m, t
-from tests import tm
+import pytest
+
+from flext_infra import config
+from flext_infra.deps import (
+    FlextInfraExtraPathsManager,
+    FlextInfraPyprojectModernizer,
+    FlextInfraToolTablesPhase,
+)
+from tests import e, m, t, tm, u
 
 
 class TestsMypyFleetMandatoryDefaults:
     """The selected SSOT policy survives validation and rejects weakening."""
 
     @staticmethod
+    def _document_payload(
+        *entries: t.Pair[str, t.JsonValue],
+    ) -> t.JsonMapping:
+        """Supply native option deltas through the same document production reads."""
+        document = config.Infra.tooling
+        return {
+            **document.model_dump(by_alias=True, exclude_computed_fields=True),
+            "settings": {
+                **document.settings,
+                "mypy": (*document.settings["mypy"], *entries),
+            },
+        }
+
+    @staticmethod
     def test_selected_policy_round_trips() -> None:
         """The same typed SSOT supplies production and expected policy values."""
-        policy = config.Infra.tooling.tools.mypy
-        validated = m.Infra.MypyConfig.model_validate(policy.model_dump(by_alias=True))
-        tm.that(tuple(validated.plugins), eq=tuple(policy.plugins))
+        document = config.Infra.tooling
+        validated = m.Infra.ToolConfigDocument.model_validate(
+            document.model_dump(by_alias=True, exclude_computed_fields=True)
+        )
+        tm.that(
+            u.Infra.native_tool_settings(validated, "mypy"),
+            eq=u.Infra.native_tool_settings(document, "mypy"),
+        )
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -34,94 +59,98 @@ class TestsMypyFleetMandatoryDefaults:
         field: str,
     ) -> None:
         """No suppression catalog can return through the owned typed boundary."""
-        payload = config.Infra.tooling.tools.mypy.model_dump(by_alias=True)
-        payload[field] = []
+        document = config.Infra.tooling
+        policy = document.tools.mypy.model_dump(
+            by_alias=True, exclude_computed_fields=True
+        )
+        policy[field] = []
+        payload = {
+            **document.model_dump(by_alias=True, exclude_computed_fields=True),
+            "tools": {
+                **document.tools.model_dump(
+                    by_alias=True, exclude_computed_fields=True
+                ),
+                "mypy": policy,
+            },
+        }
         with pytest.raises(e.PydanticValidationError, match=field):
-            m.Infra.MypyConfig.model_validate(payload)
+            m.Infra.ToolConfigDocument.model_validate(payload)
 
-    @staticmethod
     @pytest.mark.parametrize(
-        ("section", "option", "value"),
+        ("option", "value"),
         [
-            ("string-settings", "plugins", "pydantic.v1.mypy"),
-            ("string-settings", "disable_error_code", "assignment"),
-            ("string-settings", "disable-error-code", "assignment"),
-            ("string-settings", "plugins ", "pydantic.v1.mypy"),
-            ("string-settings", "python_version", "0.0"),
-            ("string-settings", "python-version", "0.0"),
-            ("string-settings", "mypy_path", "untrusted"),
-            ("boolean-settings", "plugins", False),
-            ("boolean-settings", "disable_error_code", False),
-            ("boolean-settings", "enable_error_code", True),
-            ("boolean-settings", "enable-error-code", True),
-            ("boolean-settings", "overrides", False),
-            ("boolean-settings", "ignore_errors", True),
-            ("string-settings", "ignore_errors", "true"),
+            ("plugins", "pydantic.v1.mypy"),
+            ("disable_error_code", "assignment"),
+            ("disable-error-code", "assignment"),
+            ("plugins ", "pydantic.v1.mypy"),
+            ("python_version", "0.0"),
+            ("python-version", "0.0"),
+            ("mypy_path", "untrusted"),
+            ("plugins", False),
+            ("disable_error_code", False),
+            ("enable_error_code", True),
+            ("enable-error-code", True),
+            ("overrides", False),
+            ("ignore_errors", True),
+            ("ignore_errors", "true"),
         ],
     )
     def test_generic_options_cannot_shadow_typed_policy(
-        section: str,
+        self,
         option: str,
         value: t.Scalar,
     ) -> None:
         """Generic options cannot bypass the dedicated plugin and code fields."""
-        payload = config.Infra.tooling.tools.mypy.model_dump(by_alias=True)
-        payload[section] = {option: value}
-        with pytest.raises(e.PydanticValidationError, match="Mypy policy"):
-            m.Infra.MypyConfig.model_validate(payload)
+        payload = self._document_payload((option, value))
+        with pytest.raises(e.PydanticValidationError, match="[Mm]ypy"):
+            m.Infra.ToolConfigDocument.model_validate(payload)
 
-    @staticmethod
-    @pytest.mark.parametrize("option", ["follow_imports", "follow-imports"])
-    def test_generic_options_reject_cross_map_collisions(option: str) -> None:
-        """An option cannot silently prefer the string map over the boolean map."""
-        payload = config.Infra.tooling.tools.mypy.model_dump(by_alias=True)
-        payload["boolean-settings"] = {option: True}
-        payload["string-settings"] = {"follow_imports": "normal"}
-        with pytest.raises(e.PydanticValidationError, match="duplicate generic"):
-            m.Infra.MypyConfig.model_validate(payload)
+    @pytest.mark.parametrize("option", ["follow-imports", "follow_imports "])
+    def test_generic_options_reject_option_alias_collisions(self, option: str) -> None:
+        """An alias cannot shadow the canonical native option from another layer."""
+        payload = self._document_payload(
+            ("follow_imports", "normal"),
+            (option, "error"),
+        )
+        with pytest.raises(e.PydanticValidationError):
+            m.Infra.ToolConfigDocument.model_validate(payload)
 
-    @staticmethod
-    def test_generic_options_reject_alias_collisions_within_a_map() -> None:
-        """Aliases cannot introduce two declarations of one generic option."""
-        payload = config.Infra.tooling.tools.mypy.model_dump(by_alias=True)
-        payload["string-settings"] = {
-            "follow_imports": "normal",
-            "follow-imports": "error",
-        }
-        with pytest.raises(e.PydanticValidationError, match="duplicate generic"):
-            m.Infra.MypyConfig.model_validate(payload)
+    def test_generic_option_pairs_elect_the_last_complete_value(self) -> None:
+        """Exact repeated keys use the common last-pair-wins configuration contract."""
+        payload = self._document_payload(
+            ("follow_imports", "silent"),
+            ("follow_imports", "normal"),
+        )
+        validated = m.Infra.ToolConfigDocument.model_validate(payload)
+        tm.that(
+            u.Infra.native_tool_settings(validated, "mypy")["follow_imports"],
+            eq="normal",
+        )
 
-    @staticmethod
-    def test_generic_options_allow_enabling_an_unsuspended_error() -> None:
+    def test_generic_options_allow_enabling_an_unsuspended_error(self) -> None:
         """Valid unrelated diagnostic settings remain supported without masking."""
-        policy = config.Infra.tooling.tools.mypy
-        payload = policy.model_dump(by_alias=True)
-        payload["string-settings"] = {
-            **policy.string_settings,
-            "enable_error_code": "arg-type",
-        }
-        payload["boolean-settings"] = {
-            **policy.boolean_settings,
-            "ignore_errors": False,
-        }
-        validated = m.Infra.MypyConfig.model_validate(payload)
-        tm.that(validated.string_settings["enable_error_code"], eq="arg-type")
-        tm.that(validated.boolean_settings["ignore_errors"], eq=False)
-        tm.that(tuple(validated.plugins), eq=tuple(policy.plugins))
+        payload = self._document_payload(
+            ("enable_error_code", "arg-type"),
+            ("ignore_errors", False),
+        )
+        validated = m.Infra.ToolConfigDocument.model_validate(payload)
+        options = u.Infra.native_tool_settings(validated, "mypy")
+        tm.that(options["enable_error_code"], eq="arg-type")
+        tm.that(options["ignore_errors"], eq=False)
+        tm.that(
+            options["plugins"],
+            eq=u.Infra.native_tool_settings(config.Infra.tooling, "mypy")["plugins"],
+        )
 
-    @staticmethod
-    def test_generic_options_allow_enabling_formerly_suspended_codes() -> None:
+    def test_generic_options_allow_enabling_formerly_suspended_codes(self) -> None:
         """A stricter native diagnostic selection never suppresses another code."""
-        policy = config.Infra.tooling.tools.mypy
-        payload = policy.model_dump(by_alias=True)
-        payload["string-settings"] = {
-            **policy.string_settings,
-            "enable_error_code": "arg-type, call-arg",
-        }
-        validated = m.Infra.MypyConfig.model_validate(payload)
-        tm.that(validated.string_settings["enable_error_code"], eq="arg-type, call-arg")
+        payload = self._document_payload(("enable_error_code", "arg-type, call-arg"))
+        validated = m.Infra.ToolConfigDocument.model_validate(payload)
+        tm.that(
+            u.Infra.native_tool_settings(validated, "mypy")["enable_error_code"],
+            eq="arg-type, call-arg",
+        )
 
-    @staticmethod
     @pytest.mark.parametrize(
         "option",
         [
@@ -130,9 +159,105 @@ class TestsMypyFleetMandatoryDefaults:
             "follow-imports",
         ],
     )
-    def test_generic_options_reject_toml_key_syntax(option: str) -> None:
+    def test_generic_options_reject_toml_key_syntax(self, option: str) -> None:
         """A generic key is one option, never a quoted or injected TOML statement."""
-        payload = config.Infra.tooling.tools.mypy.model_dump(by_alias=True)
-        payload["string-settings"] = {option: "normal"}
-        with pytest.raises(e.PydanticValidationError, match="plain option names"):
-            m.Infra.MypyConfig.model_validate(payload)
+        payload = self._document_payload((option, "normal"))
+        with pytest.raises(e.PydanticValidationError):
+            m.Infra.ToolConfigDocument.model_validate(payload)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("option", "value"),
+        [
+            ("ignore_errors", True),
+            ("disable_error_code", ["assignment"]),
+        ],
+    )
+    def test_override_options_cannot_hide_diagnostics(
+        option: str,
+        value: t.JsonValue,
+    ) -> None:
+        """Free native override options cannot bypass the diagnostic policy."""
+        document = config.Infra.tooling
+        mypy = document.tools.mypy.model_dump(
+            by_alias=True, exclude_computed_fields=True
+        )
+        mypy["overrides"] = [
+            {
+                "modules": ["arbitrary_dependency.*"],
+                "settings": [(option, value)],
+                "justification": "https://mypy.readthedocs.io/en/stable/config_file.html",
+            }
+        ]
+        payload = {
+            **document.model_dump(by_alias=True, exclude_computed_fields=True),
+            "tools": {
+                **document.tools.model_dump(
+                    by_alias=True, exclude_computed_fields=True
+                ),
+                "mypy": mypy,
+            },
+        }
+        with pytest.raises(e.PydanticValidationError, match="[Mm]ypy"):
+            m.Infra.ToolConfigDocument.model_validate(payload)
+
+    @staticmethod
+    def test_mypy_path_projection_converges_before_path_sync(tmp_path: Path) -> None:
+        """The table phase retains elected roots before sync and repeated conformance."""
+        tooling = config.Infra.tooling
+        source_dir = tooling.tools.pyrefly.path_rules.source_dir
+        package = tmp_path / source_dir / "arbitrary_package"
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text("", encoding="utf-8")
+        path = tmp_path / "pyproject.toml"
+        source = (
+            '[project]\nname = "arbitrary-project"\ndependencies = []\n'
+            '[tool.mypy]\nmypy_path = ["retired-root"]\n'
+        )
+        path.write_text(source, encoding="utf-8")
+        manager = FlextInfraExtraPathsManager(repository_root=tmp_path)
+        expected = manager.mypy_search_paths(project_dir=tmp_path, is_root=True)
+        topology = m.Infra.PyprojectDeclaredTopology(
+            declared_python_dirs=(source_dir,),
+            declared_python_dirs_are_complete=True,
+        )
+        modernizer = FlextInfraPyprojectModernizer(repository_root=tmp_path)
+        first = tm.ok(
+            modernizer.conform_source(
+                source,
+                path=path,
+                format_source=False,
+                topology=topology,
+            )
+        )
+        payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
+            u.Tests.toml_payload(first)
+        )
+        mypy = u.Tests.toml_mapping(u.Tests.toml_mapping(payload["tool"])["mypy"])
+        tm.that(mypy["mypy_path"], eq=list(expected))
+        tm.that(
+            FlextInfraToolTablesPhase(tooling).apply_payload(
+                payload, path=path, mypy_search_paths=expected
+            ),
+            empty=True,
+        )
+        tm.that(
+            manager.sync_payload(
+                payload,
+                project_dir=tmp_path,
+                is_root=True,
+                mypy_search_paths=expected,
+            ),
+            empty=True,
+        )
+        tm.that(
+            tm.ok(
+                modernizer.conform_source(
+                    first,
+                    path=path,
+                    format_source=False,
+                    topology=topology,
+                )
+            ),
+            eq=first,
+        )

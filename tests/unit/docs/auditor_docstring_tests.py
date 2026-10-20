@@ -79,9 +79,9 @@ __all__ = ["documented_fn", "undocumented_fn"]
 
         coverage = u.Infra.docstring_coverage(project, contract)
 
-        tm.that(coverage.checked > 0, eq=True)
-        tm.that(coverage.documented > 0, eq=True)
-        tm.that(coverage.documented < coverage.checked, eq=True)
+        tm.ok(coverage.checked > 0)
+        tm.ok(coverage.documented > 0)
+        tm.ok(coverage.documented < coverage.checked)
         tm.that(
             coverage.percent,
             eq=round(100.0 * coverage.documented / coverage.checked, 1),
@@ -123,7 +123,7 @@ __all__ = ["documented_fn", "undocumented_fn"]
             scope,
             params=m.Infra.AuditScopeParams(check="docstrings"),
         )
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)
         tm.that(report.items, empty=False)
 
         markdown = (report_dir / "audit-report.md").read_text(encoding="utf-8")
@@ -138,8 +138,8 @@ __all__ = ["documented_fn", "undocumented_fn"]
         percent = metric["percent"]
         tm.that(isinstance(checked, int), truth=True)
         tm.that(isinstance(percent, float), truth=True)
-        tm.that(checked > 0, eq=True)
-        tm.that(0.0 <= percent < self._FULL_COVERAGE_PERCENT, eq=True)
+        tm.ok(checked > 0)
+        tm.ok(0.0 <= percent < self._FULL_COVERAGE_PERCENT)
 
     def test_checks_docstrings_runs_only_that_check(self, tmp_path: Path) -> None:
         """Test checks docstrings runs only that check."""
@@ -160,7 +160,7 @@ __all__ = ["documented_fn", "undocumented_fn"]
         coverage = u.Tests.toml_mapping(summary["docstring_coverage"])
         checked = coverage["checked"]
         tm.that(isinstance(checked, int), truth=True)
-        tm.that(checked > 0, eq=True)
+        tm.ok(checked > 0)
 
     def test_default_checks_runs_full_suite(self, tmp_path: Path) -> None:
         """Test default checks runs full suite."""

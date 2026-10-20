@@ -103,7 +103,7 @@ class TestsFlextInfraDepsModernizerHelpers:
             tm.that(right, none=False)
             if left is None or right is None:
                 pytest.fail("deduplicated dependency names must be present")
-            tm.that(left < right, eq=True)
+            tm.ok(left < right)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -173,7 +173,7 @@ class TestsFlextInfraDepsModernizerHelpers:
             existing = u.Cli.toml_table()
             parent["key"] = existing
             ensured = u.Cli.toml_ensure_table(parent, "key")
-            tm.that(ensured is existing, eq=True)
+            tm.ok(ensured is existing)
             return
         if mode == "replace-non-table":
             parent["key"] = "string_value"
@@ -230,7 +230,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         )
         tm.that(result, length=expected_length)
         if expect_pytest:
-            tm.that(any("pytest" in item for item in result), eq=True)
+            tm.ok(any("pytest" in item for item in result))
 
     @staticmethod
     def test_declared_dependency_names_collects_all_supported_groups() -> None:
@@ -260,8 +260,8 @@ class TestsFlextInfraDepsModernizerHelpers:
     def test_resolved_dependency_versions_excludes_editable_distribution() -> None:
         """Registry versions exclude editable source distributions."""
         versions = u.Infra.resolved_dependency_versions()
-        tm.that(bool(versions), eq=True)
-        tm.that("flext-infra" in versions, eq=False)
+        tm.ok(bool(versions))
+        tm.fail("flext-infra" in versions)
 
     @staticmethod
     def test_rewrite_requirement_constraint_preserves_extras_and_markers() -> None:
@@ -276,7 +276,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         parsed = Requirement(rewritten)
         original = Requirement("httpx[socks]>=0.1; python_version < '3.14'")
         tm.that(parsed.extras, eq=original.extras)
-        tm.that(parsed.marker == original.marker, eq=True)
+        tm.ok(parsed.marker == original.marker)
         tm.that(str(parsed.specifier), eq=f">={locked_version}")
 
     @staticmethod
@@ -307,7 +307,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         parsed = Requirement(rewritten)
         tm.that(parsed.name, eq=original.name)
         tm.that(parsed.extras, eq=original.extras)
-        tm.that(parsed.marker == original.marker, eq=True)
+        tm.ok(parsed.marker == original.marker)
         for candidate in ("1.4.4", "1.4.6", floor, "1.4.8", "1.5", "1.6", "2"):
             tm.that(
                 parsed.specifier.contains(candidate),

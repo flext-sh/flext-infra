@@ -164,14 +164,14 @@ class TestsFlextInfraMisePinBootstrap:
                 ["setup"], cwd=tmp_path, env=self.environment(tmp_path)
             )
         )
-        tm.that(u.Cli.process_succeeded(setup.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(setup.outcome))
         tm.that(
             setup.stderr,
             has="pins no",
             msg=setup.stderr + "\n" + (tmp_path / "Makefile").read_text(),
         )
-        tm.that((tmp_path / "mise.lock").exists(), eq=False)
-        tm.that((tmp_path / "recovered.txt").exists(), eq=False)
+        tm.fail((tmp_path / "mise.lock").exists())
+        tm.fail((tmp_path / "recovered.txt").exists())
         report = m.Infra.WorkspaceOperationReport.model_validate_json(
             (tmp_path / c.Infra.WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH).read_bytes()
         )
@@ -179,8 +179,8 @@ class TestsFlextInfraMisePinBootstrap:
         tm.that(len(report.receipts), eq=1)
         receipt = report.receipts[0]
         tm.that(receipt.root, eq=Path())
-        tm.that(receipt.executed, eq=True)
-        tm.that(receipt.completed, eq=False)
+        tm.ok(receipt.executed)
+        tm.fail(receipt.completed)
         tm.that(receipt.native_exit_code, eq=2)
         tm.that(receipt.stage, eq="lock-pin")
         tm.that(receipt.files, eq=())
@@ -195,7 +195,7 @@ class TestsFlextInfraMisePinBootstrap:
         else:
             tm.that(report.candidate_sha, eq=None)
             tm.not_none(report.candidate_read_exit_code)
-            tm.that(report.candidate_read_exit_code != 0, eq=True)
+            tm.ok(report.candidate_read_exit_code != 0)
 
     @staticmethod
     @pytest.mark.parametrize("enabled", [False, True])
@@ -230,12 +230,12 @@ class TestsFlextInfraMisePinBootstrap:
             settings["locked_verify_provenance"],
             eq=toolchain.mise_locked_verify_provenance,
         )
-        tm.that("locked" in settings, eq=False)
+        tm.fail("locked" in settings)
         tm.that(
             settings["disable_update_warning"],
             eq=toolchain.mise_disable_update_warning,
         )
-        tm.that("tool_config" in document, eq=False)
+        tm.fail("tool_config" in document)
 
     @staticmethod
     def test_native_http_source_options_survive_the_public_toml_consumer() -> None:
@@ -317,7 +317,7 @@ class TestsFlextInfraMisePinBootstrap:
             eq=True,
             msg=upgrade.stdout + upgrade.stderr,
         )
-        tm.that((tmp_path / "mise.lock").exists(), eq=True)
+        tm.ok((tmp_path / "mise.lock").exists())
         tm.that((tmp_path / "recovered.txt").read_text(), eq="recovered")
         pin = u.Tests.pinned_mise_version(
             (tmp_path / "mise.lock").read_text(encoding=c.DEFAULT_ENCODING),
@@ -345,7 +345,7 @@ class TestsFlextInfraMisePinBootstrap:
         cached.parent.mkdir(parents=True)
         native = Path(tm.not_none(shutil.which("mise"))).resolve().read_bytes()
         damaged = native[:16]
-        tm.that(b"\x00" in damaged, eq=True)
+        tm.ok(b"\x00" in damaged)
         cached.write_bytes(damaged)
         cached.chmod(0o755)
         probe = tm.ok(
@@ -354,7 +354,7 @@ class TestsFlextInfraMisePinBootstrap:
                 cwd=tmp_path,
             ),
         )
-        tm.that(u.Cli.process_succeeded(probe.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(probe.outcome))
 
         setup = tm.ok(
             u.Tests.run_isolated_make(
@@ -364,7 +364,7 @@ class TestsFlextInfraMisePinBootstrap:
             ),
         )
 
-        tm.that(u.Cli.process_succeeded(setup.outcome), eq=False)
+        tm.fail(u.Cli.process_succeeded(setup.outcome))
         report = m.Infra.WorkspaceOperationReport.model_validate_json(
             (tmp_path / c.Infra.WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH).read_bytes(),
         )
@@ -375,7 +375,7 @@ class TestsFlextInfraMisePinBootstrap:
         tm.that(report.receipts[0].stage, eq="release-verification")
         tm.that(setup.stderr, has=str(cached))
         tm.that(cached.read_bytes(), eq=damaged)
-        tm.that((tmp_path / "recovered.txt").exists(), eq=False)
+        tm.fail((tmp_path / "recovered.txt").exists())
 
     @pytest.mark.slow
     def test_locked_setup_runs_without_host_mise_from_cold_and_warm_cache(
@@ -403,7 +403,7 @@ class TestsFlextInfraMisePinBootstrap:
             msg=cold.stdout + cold.stderr,
         )
         executable = Path((tmp_path / "runtime-mise-path.txt").read_text().strip())
-        tm.that(executable.is_relative_to(tmp_path), eq=True)
+        tm.ok(executable.is_relative_to(tmp_path))
         before = tm.ok(u.Cli.atomic_read_binary_file_state(executable, required=True))
 
         warm = tm.ok(
@@ -461,7 +461,7 @@ class TestsFlextInfraMisePinBootstrap:
         published = github_path.read_text(encoding=c.DEFAULT_ENCODING).splitlines()
         tm.that(published, len=1)
         farm = Path(published[0])
-        tm.that(farm.is_relative_to(tmp_path / "cache"), eq=True)
+        tm.ok(farm.is_relative_to(tmp_path / "cache"))
         tm.that(shutil.which("mise", path=str(farm)), none=False)
 
     @pytest.mark.slow

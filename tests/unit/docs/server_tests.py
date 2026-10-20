@@ -77,8 +77,8 @@ class TestsFlextInfraDocServer:
         """The public request model ships production-safe serve defaults."""
         server = FlextInfraDocServer()
         tm.that(server.dev_addr, eq="127.0.0.1:8000")
-        tm.that(server.livereload, eq=True)
-        tm.that(server.strict, eq=True)
+        tm.ok(server.livereload)
+        tm.ok(server.strict)
 
     @staticmethod
     def test_output_dir_default_matches_docs_pipeline() -> None:
@@ -106,4 +106,4 @@ class TestsFlextInfraDocServer:
 
         tm.that(report.phase, eq="serve")
         tm.that(report.result, eq=c.Infra.ResultStatus.FAIL)
-        tm.that(report.passed, eq=False)
+        tm.fail(report.passed)

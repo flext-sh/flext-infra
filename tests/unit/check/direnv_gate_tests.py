@@ -57,7 +57,7 @@ class TestsFlextInfraDirenvGate:
             root,
             u.Tests.gate_context(root),
         )
-        tm.that(execution.result.passed, eq=False)
+        tm.fail(execution.result.passed)
         tm.that(TestsFlextInfraDirenvGate.issue_codes(execution), eq=[code])
         return execution
 
@@ -121,7 +121,7 @@ class TestsFlextInfraDirenvGate:
                 )
             )
             tm.that(len(violations), eq=1)
-            tm.that("absent.envrc" in violations[0].message, eq=True)
+            tm.ok("absent.envrc" in violations[0].message)
 
         @staticmethod
         def test_dynamic_targets_are_skipped(tmp_path: Path) -> None:
@@ -172,7 +172,7 @@ class TestsFlextInfraDirenvGate:
                 ".flext-infra-contract-absent-marker" in violations[0].message,
                 eq=True,
             )
-            tm.that("/./" not in violations[0].message, eq=True)
+            tm.ok("/./" not in violations[0].message)
 
     class TestsEnvrcLocalContracts:
         """Local overrides never carry generated activation residue."""
@@ -257,7 +257,7 @@ class TestsFlextInfraDirenvGate:
                 tmp_path,
                 u.Tests.gate_context(tmp_path),
             )
-            tm.that(execution.result.passed, eq=False)
+            tm.fail(execution.result.passed)
             tm.that(
                 set(TestsFlextInfraDirenvGate.issue_codes(execution)),
                 eq={"DIRENV_CONTRACT"},
@@ -275,7 +275,7 @@ class TestsFlextInfraDirenvGate:
                 encoding="utf-8",
             )
             execution = TestsFlextInfraDirenvGate.allowed_check(tmp_path)
-            tm.that(execution.result.passed, eq=True)
+            tm.ok(execution.result.passed)
 
     class TestsDirenvGate:
         """Fail-closed gate behavior over the two enforcement stages."""
@@ -287,7 +287,7 @@ class TestsFlextInfraDirenvGate:
                 tmp_path,
                 u.Tests.gate_context(tmp_path),
             )
-            tm.that(execution.result.passed, eq=False)
+            tm.fail(execution.result.passed)
             tm.that(
                 execution.result.errors,
                 eq=["direnv: no check targets were collected"],
@@ -310,7 +310,7 @@ class TestsFlextInfraDirenvGate:
                 encoding="utf-8",
             )
             execution = TestsFlextInfraDirenvGate.allowed_check(tmp_path)
-            tm.that(execution.result.passed, eq=True)
+            tm.ok(execution.result.passed)
             tm.that(execution.issues, eq=())
 
         @staticmethod

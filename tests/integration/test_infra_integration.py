@@ -95,7 +95,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
                 if item.name == name
             )
 
-        tm.that(item.reference_evidence_collected, eq=True)
+        tm.ok(item.reference_evidence_collected)
         tm.that(
             {
                 (site.file_path, site.line, site.offset, site.surface)
@@ -173,7 +173,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
             {site.file_path for site in item.all_reference_sites},
             eq={str(consumer.resolve())},
         )
-        tm.that(item.reference_evidence_collected, eq=True)
+        tm.ok(item.reference_evidence_collected)
         tm.that(item.references_count, eq=0)
         tm.that(item.runtime_reference_sites, eq=())
         tm.that(item.script_reference_sites, eq=())
@@ -214,10 +214,10 @@ class TestsFlextInfraIntegrationInfraIntegration:
                 if item.name == "helper"
             )
         tm.that(collected.all_reference_sites, eq=())
-        tm.that(collected.reference_evidence_collected, eq=True)
+        tm.ok(collected.reference_evidence_collected)
         tm.that(collected.references_count, eq=0)
         tm.that(disabled.all_reference_sites, eq=())
-        tm.that(disabled.reference_evidence_collected, eq=False)
+        tm.fail(disabled.reference_evidence_collected)
 
     @staticmethod
     def test_census_facade_evidence_does_not_become_runtime_reachability(
@@ -251,8 +251,8 @@ class TestsFlextInfraIntegrationInfraIntegration:
         )
         with infra.rope_workspace(root) as rope:
             item = next(item for item in rope.objects(definition) if item.name == alias)
-        tm.that(item.is_facade_member, eq=True)
-        tm.that(item.reference_evidence_collected, eq=True)
+        tm.ok(item.is_facade_member)
+        tm.ok(item.reference_evidence_collected)
         tm.that(
             {
                 site.line
@@ -324,8 +324,8 @@ class TestsFlextInfraIntegrationInfraIntegration:
         )
         tm.that(function.kind, eq="function")
         tm.that(parameter.kind, eq="parameter")
-        tm.that(function.reference_evidence_collected, eq=True)
-        tm.that(parameter.reference_evidence_collected, eq=True)
+        tm.ok(function.reference_evidence_collected)
+        tm.ok(parameter.reference_evidence_collected)
         tm.that(
             [
                 (site.file_path, site.line, site.offset)
@@ -369,7 +369,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         parameter = next(
             item for item in objects if item.scope_path == "_helper._helper"
         )
-        tm.that(helper.reference_evidence_collected, eq=True)
+        tm.ok(helper.reference_evidence_collected)
         tm.that(
             [
                 (site.file_path, site.line, site.offset)
@@ -383,7 +383,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
                 ),
             ],
         )
-        tm.that(parameter.reference_evidence_collected, eq=False)
+        tm.fail(parameter.reference_evidence_collected)
         tm.that(parameter.all_reference_sites, empty=True)
         tm.that(parameter.references_count, eq=0)
 
@@ -405,7 +405,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
 
         # Valid trailing-space repair remains published; MD041 still fails
         # this invocation with the same diagnostic as the read-only check.
-        tm.that(execution.result.passed, eq=False)
+        tm.fail(execution.result.passed)
         tm.that(document.read_text(encoding="utf-8"), eq="not a heading\n")
         tm.that(execution.issues[0].code, eq="MD041")
         tm.that(
@@ -444,7 +444,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
             m.Infra.GateContext(repository_root=tmp_path, reports_dir=tmp_path),
         )
 
-        tm.that(execution.result.passed, eq=False)
+        tm.fail(execution.result.passed)
         tm.that(execution.issues[0].code, eq="MD013")
 
     @staticmethod

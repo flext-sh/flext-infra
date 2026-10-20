@@ -44,7 +44,7 @@ class TestsFlextInfraStubChain:
             selected_projects=["alpha"],
             all_projects=True,
         )
-        tm.that(chain.project_dirs is None, eq=True)
+        tm.ok(chain.project_dirs is None)
 
     @staticmethod
     def test_build_report_fails_for_missing_workspace(tmp_path: Path) -> None:

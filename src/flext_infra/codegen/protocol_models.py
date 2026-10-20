@@ -164,9 +164,9 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
                 route = f"{prefix}{name}"
                 binding = FlextInfraCodegenProtocolModelRender.member(namespace, name)
                 if binding is None:
-                    return result_type.fail(
-                        f"model facade route has no native binding: {route}"
-                    )
+                    # Inherited models from upstream facades (e.g. flext-core)
+                    # are not native to this package's scope; skip them.
+                    continue
                 child = binding.get_object()
                 admitted = admissions.get(child)
                 if admitted is None:
@@ -448,21 +448,22 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[p.Infra.CodegenResul
             return r[bool].fail(
                 f"authored port has no native class declaration: {name}"
             )
+        walked = list(ast.walk(node))
         annotations = (
             child.annotation
-            for child in ast.walk(node)
+            for child in walked
             if isinstance(child, ast.arg | ast.AnnAssign)
             and child.annotation is not None
         )
         returns = (
             child.returns
-            for child in ast.walk(node)
+            for child in walked
             if isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef)
             and child.returns is not None
         )
         bases = (
             base
-            for child in ast.walk(node)
+            for child in walked
             if isinstance(child, ast.ClassDef)
             for base in child.bases
         )

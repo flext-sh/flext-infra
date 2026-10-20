@@ -38,7 +38,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         )
         tm.that(line.base_url, eq=u.Tests.provider().base_url)
         tm.that(line.branch, eq=u.Tests.provider_branch())
-        tm.that(root.exists(), eq=False)
+        tm.fail(root.exists())
 
     @staticmethod
     def test_invalid_scaffold_source_fails_before_filesystem_effects(
@@ -69,12 +69,12 @@ class TestsFlextInfraCodegenCatalogExtensions:
             ),
             initial_workspace=workspace,
         )
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(
             result.error,
             has=f"must be the {config.Infra.codegen.infra_repository.distribution}",
         )
-        tm.that(root.exists(), eq=False)
+        tm.fail(root.exists())
 
     @staticmethod
     def _repository(
@@ -380,7 +380,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
             encoding="utf-8",
         )
         result = u.Infra.flext_integration_line(codegen=codegen, repository_root=root)
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(result.error, has="conflicting flext-* line sources")
 
     @staticmethod
@@ -430,7 +430,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
             tm.that(line.branch, eq=branch)
             tm.that(line.base_url, eq=provider.base_url)
         else:
-            tm.that(result.failure, eq=True)
+            tm.ok(result.failure)
             tm.that(result.error, has="outside owner-declared TOML sections")
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=content)
 
@@ -452,7 +452,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
             repository_root=root,
         )
 
-        tm.that(result.failure, eq=True)
+        tm.ok(result.failure)
         tm.that(result.error, has="is undeclared by this checkout")
 
     @staticmethod
