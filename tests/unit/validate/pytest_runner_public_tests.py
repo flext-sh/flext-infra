@@ -217,7 +217,10 @@ class TestsFlextInfraPytestRunner:
             "--testmon-env" not in runner.build_coverage_command(report), truth=True
         )
         # Rebuilding any argv reuses the same cached fingerprint.
-        tm.that(runner.build_command(report)[suite_command.index("--testmon-env") + 1], eq=names[-1])
+        tm.that(
+            runner.build_command(report)[suite_command.index("--testmon-env") + 1],
+            eq=names[-1],
+        )
 
     @staticmethod
     @pytest.mark.slow
@@ -268,7 +271,10 @@ class TestsFlextInfraPytestRunner:
             (reports / latest / "run-accounting.json").read_text(),
         )
         tm.that(accounting.executed_count == accounting.reported_count, truth=True)
-        tm.that(accounting.executed_count + accounting.deselected_count, eq=accounting.inventory_count)
+        tm.that(
+            accounting.executed_count + accounting.deselected_count,
+            eq=accounting.inventory_count,
+        )
 
     @staticmethod
     def test_declared_project_uses_its_configured_run_wall(
@@ -345,7 +351,10 @@ class TestsFlextInfraPytestRunner:
             profile = reports_root / warm_name / f"{phase}.pstats"
             tm.that(profile.is_file() == profile_collection, truth=True)
             if profile_collection:
-                tm.that(pstats.Stats(str(profile)).get_stats_profile().func_profiles, truth=True)
+                tm.that(
+                    pstats.Stats(str(profile)).get_stats_profile().func_profiles,
+                    truth=True,
+                )
         for receipt in ("cache-before.json", "cache-after.json"):
             warm_state = m.Infra.TestmonCacheState.model_validate_json(
                 tm.ok(u.Cli.files_read_text(reports_root / warm_name / receipt)),
@@ -446,7 +455,10 @@ class TestsFlextInfraPytestRunner:
             "def test_third():\n    assert isinstance(answer(), int)\n",
             encoding="utf-8",
         )
-        tm.that(tm.ok(u.Tests.PytestRunner.runner_for(cached_runner_project).execute()), eq=0)
+        tm.that(
+            tm.ok(u.Tests.PytestRunner.runner_for(cached_runner_project).execute()),
+            eq=0,
+        )
         worker_action = (
             "    items.pop()\n"
             if omit_case
@@ -472,7 +484,10 @@ class TestsFlextInfraPytestRunner:
         if omit_case:
             tm.that(exit_code != 0, truth=True)
             logs = [path.read_text() for path in reports_root.glob("*/pytest.log")]
-            tm.that(any("Runner collection differs from selection" in log for log in logs), truth=True)
+            tm.that(
+                any("Runner collection differs from selection" in log for log in logs),
+                truth=True,
+            )
             return
         tm.that(exit_code == 0, truth=True)
         tm.that(

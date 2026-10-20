@@ -325,7 +325,10 @@ class TestsFlextInfraTypeGates:
         assert failed.result.passed is False
         tm.that(failed.issues, truth=True)
         tm.that(failed.result.errors, truth=True)
-        tm.that(any(issue.severity.lower() == "error" for issue in failed.issues), truth=True)
+        tm.that(
+            any(issue.severity.lower() == "error" for issue in failed.issues),
+            truth=True,
+        )
 
         source.write_text("value: int = 1\n", encoding="utf-8")
         repaired = gate.check(project, ctx)
@@ -373,7 +376,10 @@ class TestsFlextInfraTypeGates:
             m.Infra.GateContext(repository_root=project, reports_dir=reports),
         )
         assert result.result.passed is False
-        tm.that(any(issue.severity in {"warn", "warning"} for issue in result.issues), truth=True)
+        tm.that(
+            any(issue.severity in {"warn", "warning"} for issue in result.issues),
+            truth=True,
+        )
 
     @staticmethod
     @pytest.mark.slow
@@ -389,7 +395,12 @@ class TestsFlextInfraTypeGates:
         tm.that(first.result.passed, truth=True, msg=first)
         native_reports = tuple(reports.glob("*-pyrefly.json"))
         tm.that(len(native_reports) == 1, truth=True)
-        tm.that(m.Infra.PyreflyReport.model_validate_json(native_reports[0].read_text(encoding="utf-8"), strict=True).errors, truth=False)
+        tm.that(
+            m.Infra.PyreflyReport.model_validate_json(
+                native_reports[0].read_text(encoding="utf-8"), strict=True
+            ).errors,
+            truth=False,
+        )
         pyproject.write_text("[tool.pyrefly\n", encoding="utf-8")
         failed = gate.check(project, checker_context)
         assert failed.result.passed is False
@@ -420,11 +431,19 @@ class TestsFlextInfraTypeGates:
 
         selected_error = gate.check_files([unselected], project, checker_context)
         assert selected_error.result.passed is False, selected_error
-        tm.that(any(issue.file.endswith(unselected.name) for issue in selected_error.issues), truth=True)
+        tm.that(
+            any(
+                issue.file.endswith(unselected.name) for issue in selected_error.issues
+            ),
+            truth=True,
+        )
 
         full_project = gate.check(project, checker_context)
         assert full_project.result.passed is False, full_project
-        tm.that(any(issue.file.endswith(unselected.name) for issue in full_project.issues), truth=True)
+        tm.that(
+            any(issue.file.endswith(unselected.name) for issue in full_project.issues),
+            truth=True,
+        )
 
     @staticmethod
     @pytest.mark.parametrize(

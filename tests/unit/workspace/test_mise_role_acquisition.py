@@ -72,9 +72,23 @@ class TestsMiseRoleAcquisition:
         tm.that(result.plan.lock.sha256, eq=plan.lock.sha256)
         binary = result.executables["node"]
         tm.that(isinstance(binary, p.Cli.AtomicFileReceipt), truth=True)
-        tm.that(Path(binary.path).is_relative_to(request.target_root / "data"), truth=True)
-        tm.that(binary.sha256, eq=tm.ok(u.Cli.atomic_read_binary_file_receipt(binary.path, required=True)).sha256)
-        tm.that(tm.ok(u.Cli.atomic_read_binary_file_receipt(request.reader.path, required=True)), eq=request.reader)
+        tm.that(
+            Path(binary.path).is_relative_to(request.target_root / "data"), truth=True
+        )
+        tm.that(
+            binary.sha256,
+            eq=tm.ok(
+                u.Cli.atomic_read_binary_file_receipt(binary.path, required=True)
+            ).sha256,
+        )
+        tm.that(
+            tm.ok(
+                u.Cli.atomic_read_binary_file_receipt(
+                    request.reader.path, required=True
+                )
+            ),
+            eq=request.reader,
+        )
 
     def test_changed_declaration_is_denied_before_target_creation(
         self, tmp_path: Path
@@ -121,4 +135,6 @@ class TestsMiseRoleAcquisition:
             FlextInfraCodegenMiseToolchainProof.acquire_role(plan),
             has="source identity changed",
         )
-        tm.that((request.target_root / "data" / "installs" / "node").exists(), truth=False)
+        tm.that(
+            (request.target_root / "data" / "installs" / "node").exists(), truth=False
+        )

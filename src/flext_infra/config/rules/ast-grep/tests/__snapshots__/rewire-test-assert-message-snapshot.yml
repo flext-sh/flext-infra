@@ -2,7 +2,7 @@ id: rewire-test-assert-message
 snapshots:
   assert result.success, result.error:
     fixed: |-
-      if not result.success:
+      if not (result.success):
           raise AssertionError(result.error)
     labels:
     - source: assert result.success, result.error
@@ -11,7 +11,7 @@ snapshots:
       end: 35
   assert value == expected, f"Unexpected value {value!r}":
     fixed: |-
-      if not value == expected:
+      if not (value == expected):
           raise AssertionError(f"Unexpected value {value!r}")
     labels:
     - source: assert value == expected, f"Unexpected value {value!r}"
@@ -20,7 +20,7 @@ snapshots:
       end: 55
   assert value is not None, "A value is required":
     fixed: |-
-      if not value is not None:
+      if not (value is not None):
           raise AssertionError("A value is required")
     labels:
     - source: assert value is not None, "A value is required"

@@ -1003,7 +1003,7 @@ Infra:
       - _cov.py
     vscode:
       # Portable defaults shared by attached and standalone repositories.
-      # The editor owner binds environment tokens to the checkout runtime.
+      # VS Code resolves tokens against the opened folder, never another checkout.
       additional_settings:
         python-envs.workspaceSearchPaths:
         - ./.venv
@@ -1033,10 +1033,10 @@ Infra:
         python.analysis.includeAliasesFromUserFiles: false
         python.analysis.includeExtraPathSymbolsInSymbolSearch: false
         python.analysis.includeVenvInWorkspaceSymbols: false
-        # Attached projects share one physical workspace environment. Avoid
-        # virtual workspaces isolating sources from the native Pyright context.
+        # Each project's nearest Pyright configuration owns its import roots.
+        # Attached projects retain the opened workspace's shared interpreter.
         python.analysis.useNearestConfiguration: true
-        python.analysis.usePerProjectEnvironments: true
+        python.analysis.usePerProjectEnvironments: false
         python.analysis.userFileIndexingLimit: 2000
         python.defaultInterpreterPath: ${workspaceFolder}/.venv/bin/python
         python.languageServer: Pylance
@@ -1398,8 +1398,7 @@ Infra:
     - path: .vscode/settings.json
       owner: vscode
       policy: merge
-      tracking: runtime-local
-      runtime_binding: true
+      tracking: versioned
     # Release build policies: fully generated fleet-wide bytes. The release
     # policy phase renders build constraints at build time from
     # config.Infra.release.build_constraints; no repository copy exists.

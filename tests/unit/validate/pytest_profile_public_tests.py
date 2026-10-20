@@ -521,7 +521,9 @@ class TestsFlextInfraPytestProfile:
         tm.that(result.outcome.forwarded_signal, none=True)
         if expected_exit == pytest.ExitCode.USAGE_ERROR:
             tm.that(arguments[0] in result.stderr, truth=True)
-        tm.that(pstats.Stats(str(profile)).get_stats_profile().func_profiles, truth=True)
+        tm.that(
+            pstats.Stats(str(profile)).get_stats_profile().func_profiles, truth=True
+        )
 
     @staticmethod
     @pytest.mark.slow
@@ -613,7 +615,13 @@ class TestsFlextInfraPytestProfile:
             ),
             eq=True,
         )
-        tm.that(any("_pytest" in function.file_name for function in stats.get_stats_profile().func_profiles.values()), truth=True)
+        tm.that(
+            any(
+                "_pytest" in function.file_name
+                for function in stats.get_stats_profile().func_profiles.values()
+            ),
+            truth=True,
+        )
         parent_stats = pstats.Stats(str(parent_profile)).get_stats_profile()
         # The class body runs on import, unlike its methods: this proves the
         # public runner was first imported while the parent profiler was active.
@@ -708,7 +716,10 @@ class TestsFlextInfraPytestProfile:
                 reports_root,
                 latest_name,
             )
-        tm.that((reports_root / latest_name / "testmon-inventory.pstats").exists(), truth=False)
+        tm.that(
+            (reports_root / latest_name / "testmon-inventory.pstats").exists(),
+            truth=False,
+        )
         summary = tm.ok(
             u.Cli.files_read_text(reports_root / latest_name / "summary.txt"),
         )

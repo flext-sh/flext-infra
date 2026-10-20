@@ -14,7 +14,7 @@ files:
 rule:
   pattern: "assert $COND, $MSG"
 fix: |-
-  if not $COND:
+  if not ($COND):
       raise AssertionError($MSG)
 message: Preserve the lazy assertion message through an explicit native failure.
 ---
@@ -40,6 +40,6 @@ rule:
           - pattern: "$VALUE is not None"
           - pattern: "isinstance($VALUE, $TYPE)"
 fix: |-
-  if not $COND:
+  if not ($COND):
       raise AssertionError
 message: Preserve the native guard through an explicit failure.

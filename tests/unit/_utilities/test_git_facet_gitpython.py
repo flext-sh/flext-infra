@@ -964,8 +964,23 @@ class TestsFlextInfraGitFacet:
             (repository / ".gitmodules").read_text(encoding="utf-8") == gitmodules,
             truth=True,
         )
-        tm.that(tm.ok(u.Cli.capture((c.Infra.GIT, "ls-files", "--stage", "member"), cwd=repository)), eq=gitlink)
-        tm.that(tm.ok(u.Cli.capture((c.Infra.GIT, "config", "--get", "submodule.member.url"), cwd=repository)), eq=configured)
+        tm.that(
+            tm.ok(
+                u.Cli.capture(
+                    (c.Infra.GIT, "ls-files", "--stage", "member"), cwd=repository
+                )
+            ),
+            eq=gitlink,
+        )
+        tm.that(
+            tm.ok(
+                u.Cli.capture(
+                    (c.Infra.GIT, "config", "--get", "submodule.member.url"),
+                    cwd=repository,
+                )
+            ),
+            eq=configured,
+        )
 
     def test_remove_clean_worktree_refuses_dirty_nested_submodule(
         self,

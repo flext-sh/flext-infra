@@ -24,6 +24,71 @@ class TestsFlextInfraPyrightPublicContract:
 
     @staticmethod
     @pytest.mark.slow
+    @pytest.mark.parametrize("selected", ["first", "second"])
+    def test_homonymous_test_facades_resolve_in_their_own_project(
+        tmp_path: Path,
+        tool_config_document: m.Infra.ToolConfigDocument,
+        selected: str,
+    ) -> None:
+        """Identical facade imports resolve distinct inherited member contracts."""
+        rules = tool_config_document.tools.pyright.path_rules
+        projects = (
+            ("first", "int", "7"),
+            ("second", "str", "'second'"),
+        )
+        for name, annotation, value in projects:
+            root = tmp_path / name
+            tests = root / "tests"
+            tests.mkdir(parents=True)
+            (root / rules.source_dir).mkdir(parents=True, exist_ok=True)
+            (tests / "__init__.py").write_text(
+                "from typing import TYPE_CHECKING\n"
+                "if TYPE_CHECKING:\n"
+                "    from tests.constants import c as c\n",
+                encoding="utf-8",
+            )
+            (tests / "constants.py").write_text(
+                "from typing import ClassVar\n"
+                "class Rules:\n"
+                f"    RULES_CATALOG_BASIC: ClassVar[{annotation}] = {value}\n"
+                "class Constants:\n"
+                "    class Tests(Rules):\n"
+                "        pass\n"
+                "c = Constants\n",
+                encoding="utf-8",
+            )
+            (tests / "consumer.py").write_text(
+                "from tests import c\n"
+                f"def catalog() -> {annotation}:\n"
+                "    return c.Tests.RULES_CATALOG_BASIC\n",
+                encoding="utf-8",
+            )
+            payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
+            FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply_payload(
+                payload,
+                context=m.Infra.PyprojectAnalyzerContext(
+                    is_root=False,
+                    project_dir=root,
+                    declared_python_dirs=(rules.source_dir, "tests"),
+                    declared_python_dirs_are_complete=True,
+                ),
+            )
+            (root / "pyproject.toml").write_text(
+                u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
+                encoding="utf-8",
+            )
+        project = tmp_path / selected
+        context = m.Infra.GateContext(
+            repository_root=project,
+            reports_dir=project / ".reports",
+        )
+        result = FlextInfraPyrightGate(project).check(project, context)
+
+        tm.that(result.result.passed, eq=True, msg=result.raw_output)
+        tm.that(result.issues, eq=(), msg=result.raw_output)
+
+    @staticmethod
+    @pytest.mark.slow
     @pytest.mark.parametrize(
         ("consumer", "private"),
         [

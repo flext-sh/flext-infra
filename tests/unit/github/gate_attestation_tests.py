@@ -208,7 +208,10 @@ class TestsFlextInfraGithubGateAttestation:
         tm.that(first.process.raw_return_code != 0, truth=True)
         tm.that(first.issues, truth=False)
         for report in first_evidence.reports:
-            tm.that(report.path.is_relative_to(first.receipt.parent.relative_to(tmp_path)), truth=True)
+            tm.that(
+                report.path.is_relative_to(first.receipt.parent.relative_to(tmp_path)),
+                truth=True,
+            )
             digest = cli_u.Cli.sha256_bytes((tmp_path / report.path).read_bytes())
             tm.that(report.digest == f"sha256:{digest}", truth=True)
 
@@ -476,7 +479,12 @@ class TestsFlextInfraGithubGateAttestation:
                 )
             )
             tm.that(captured.receipt, none=False)
-            tm.that(captured.receipt.is_relative_to(tmp_path / inputs.spec.make.gate_receipts_directory), truth=True)
+            tm.that(
+                captured.receipt.is_relative_to(
+                    tmp_path / inputs.spec.make.gate_receipts_directory
+                ),
+                truth=True,
+            )
             evidence = m.Infra.GateCommandEvidence.model_validate_json(
                 captured.receipt.read_bytes(),
             )

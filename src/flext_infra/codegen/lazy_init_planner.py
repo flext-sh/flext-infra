@@ -31,7 +31,6 @@ from flext_infra.codegen._lazy_init_planner_exports import (
 from flext_infra.codegen._lazy_init_planner_parents import (
     FlextInfraCodegenLazyInitPlannerParentsMixin,
 )
-from flext_infra.workspace import FlextInfraRopeWorkspace
 
 
 class FlextInfraCodegenLazyInitPlanner(
@@ -171,10 +170,7 @@ class FlextInfraCodegenLazyInitPlanner(
 
         """
         project = self.rope_workspace.rope_project
-        with (
-            project.source_consumption() as consumption,
-            project.source_consumer() as consumer,
-        ):
+        with project.source_consumption() as consumption:
             # Reuse the existing workspace instead of creating a new one per
             # package; the consumer context above already isolates this pass's
             # source observations while the shared workspace avoids repeated
