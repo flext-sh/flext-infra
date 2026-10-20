@@ -85,6 +85,16 @@ class FlextInfraConfigModelsTemplates:
             ),
         ] = ()
 
+        stripped_map_keys: Annotated[
+            Mapping[str, t.VariadicTuple[str]],
+            m.Field(description="Retired keys inside language-specific setting maps"),
+        ] = m.Field(
+            default_factory=flext_core.u.empty(
+                TypeForm(Mapping[str, t.VariadicTuple[str]])
+            ),
+            validate_default=True,
+        )
+
         @m.model_validator(mode="after")
         def _validate_setting_ownership(self) -> Self:
             """Reject extension declarations that compete with managed ownership.
@@ -219,12 +229,6 @@ class FlextInfraConfigModelsTemplates:
             Literal["versioned", "runtime-local"],
             m.Field(description="Versioned declaration or checkout-local projection"),
         ] = "versioned"
-        runtime_binding: Annotated[
-            bool,
-            m.Field(
-                description="Project this local artifact during runtime provisioning",
-            ),
-        ] = False
         policy: Annotated[
             Literal["full", "merge"],
             m.Field(
@@ -283,7 +287,7 @@ class FlextInfraConfigModelsTemplates:
                 The validated artifact declaration.
 
             Raises:
-                ValueError: If a path escapes its repository or a binding is versioned.
+                ValueError: If a path escapes its repository.
 
             """
             if (
@@ -292,9 +296,6 @@ class FlextInfraConfigModelsTemplates:
                 or self.path == Path()
             ):
                 msg = f"managed artifact path must be repository-relative: {self.path}"
-                raise ValueError(msg)
-            if self.runtime_binding and self.tracking != "runtime-local":
-                msg = f"runtime binding must be runtime-local: {self.path}"
                 raise ValueError(msg)
             return self
 

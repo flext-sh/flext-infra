@@ -171,8 +171,39 @@ class FlextInfraUtilitiesBase:
             None,
         )
 
-    @staticmethod
+    # Pre-computed merge-conflict token sets for O(1) dispatch (avoids
+    # repeated isinstance/encode calls in the 1M+ hot path).
+    _MERGE_CONFLICT_SEPARATOR_BYTES = frozenset(
+        token.encode(c.Infra.MERGE_CONFLICT_ENCODING)
+        for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
+        if kind == c.Infra.MergeConflictControl.SEPARATOR
+    )
+    _MERGE_CONFLICT_SEPARATOR_STR = frozenset(
+        token
+        for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
+        if kind == c.Infra.MergeConflictControl.SEPARATOR
+    )
+    _MERGE_CONFLICT_PREFIX_BYTES: tuple[
+        tuple[bytes, c.Infra.MergeConflictControl], ...
+    ] = tuple(
+        (
+            token.encode(c.Infra.MERGE_CONFLICT_ENCODING),
+            kind,
+        )
+        for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
+        if kind != c.Infra.MergeConflictControl.SEPARATOR
+    )
+    _MERGE_CONFLICT_PREFIX_STR: tuple[tuple[str, c.Infra.MergeConflictControl], ...] = (
+        tuple(
+            (token, kind)
+            for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
+            if kind != c.Infra.MergeConflictControl.SEPARATOR
+        )
+    )
+
+    @classmethod
     def merge_conflict_control(
+        cls,
         line: str | bytes,
     ) -> c.Infra.MergeConflictControl | None:
         """Classify one Git merge-control line from the protocol SSOT.
@@ -181,33 +212,25 @@ class FlextInfraUtilitiesBase:
             The matching typed Git control, or ``None``.
 
         """
-        return next(
-            (
-                kind
-                for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
-                if (
-                    (
-                        line.rstrip(
-                            c.Infra.MERGE_CONFLICT_LINE_TERMINATORS.encode(
-                                c.Infra.MERGE_CONFLICT_ENCODING,
-                            )
-                        )
-                        == token.encode(c.Infra.MERGE_CONFLICT_ENCODING)
-                        if kind == c.Infra.MergeConflictControl.SEPARATOR
-                        else line.startswith(
-                            token.encode(c.Infra.MERGE_CONFLICT_ENCODING)
-                        )
-                    )
-                    if isinstance(line, bytes)
-                    else (
-                        line.rstrip(c.Infra.MERGE_CONFLICT_LINE_TERMINATORS) == token
-                        if kind == c.Infra.MergeConflictControl.SEPARATOR
-                        else line.startswith(token)
-                    )
+        if isinstance(line, bytes):
+            stripped = line.rstrip(
+                c.Infra.MERGE_CONFLICT_LINE_TERMINATORS.encode(
+                    c.Infra.MERGE_CONFLICT_ENCODING,
                 )
-            ),
-            None,
-        )
+            )
+            if stripped in FlextInfraUtilitiesBase._MERGE_CONFLICT_SEPARATOR_BYTES:
+                return c.Infra.MergeConflictControl.SEPARATOR
+            for token, kind in FlextInfraUtilitiesBase._MERGE_CONFLICT_PREFIX_BYTES:
+                if line.startswith(token):
+                    return kind
+            return None
+        stripped = line.rstrip(c.Infra.MERGE_CONFLICT_LINE_TERMINATORS)
+        if stripped in FlextInfraUtilitiesBase._MERGE_CONFLICT_SEPARATOR_STR:
+            return c.Infra.MergeConflictControl.SEPARATOR
+        for token, kind in FlextInfraUtilitiesBase._MERGE_CONFLICT_PREFIX_STR:
+            if line.startswith(token):
+                return kind
+        return None
 
     @staticmethod
     def ast_grep_scan_command(

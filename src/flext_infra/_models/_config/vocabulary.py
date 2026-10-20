@@ -90,13 +90,13 @@ class FlextInfraConfigVocabulary:
         ALL = "all"
         DEPENDENCIES = "dependencies"
         DOCS_CONFIG = "docs-config"
+        EDITOR = "editor"
         ENVRC = "envrc"
         FACADES = "facades"
         LAZY_INIT = "lazy-init"
         MAKEFILE = "makefile"
         MISE_CONFIG = "mise-config"
         PYPROJECT = "pyproject"
-        RUNTIME_BINDINGS = "runtime-bindings"
         WORKFLOWS = "workflows"
 
 

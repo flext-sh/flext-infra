@@ -27,6 +27,34 @@ class TestsFlextInfraDepsModernizerPyright:
     """Declarative tests for generated Pyright configuration."""
 
     @staticmethod
+    def test_editor_projection_preserves_other_tables_and_converges(
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> None:
+        """The small editor projection uses the normal phase without venv bindings."""
+        source = (
+            "# Project-owned metadata\n"
+            "[project]\nname='fixture'\nversion='0.1.0'\n"
+            "[tool.unrelated]\nkeep='yes'\n"
+            "[tool.pyright]\n"
+            "venv='old-environment'\nvenvPath='../old-checkout'\n"
+            "typeCheckingMode='off'\n"
+        )
+        phase = FlextInfraEnsurePyrightConfigPhase(tool_config_document)
+        context = m.Infra.PyprojectAnalyzerContext(is_root=False)
+        first = tm.ok(phase.render_source(source, context=context))
+        second = tm.ok(phase.render_source(first, context=context))
+        tm.that(second, eq=first)
+        document = tm.ok(u.Cli.toml_mapping_from_text_result(first))
+        tools = u.Tests.toml_mapping(document["tool"])
+        tm.that(tools["unrelated"], eq={"keep": "yes"})
+        tm.that(document["project"], eq={"name": "fixture", "version": "0.1.0"})
+        pyright = u.Tests.toml_mapping(tools["pyright"])
+        tm.that(pyright, lacks="venv")
+        tm.that(pyright, lacks="venvPath")
+        for key, value in tool_config_document.tools.pyright.strict_settings.items():
+            tm.that(pyright[key], eq=value)
+
+    @staticmethod
     def _applied(
         tool_config_document: m.Infra.ToolConfigDocument,
         context: m.Infra.PyprojectAnalyzerContext,
@@ -175,7 +203,7 @@ class TestsFlextInfraDepsModernizerPyright:
             sorted(u.Tests.toml_strings(pyright["exclude"])),
             eq=sorted({
                 *rules.default_excludes,
-                *config.Infra.codegen.generated_source_globs,
+                *config.Infra.codegen.analyzer_exclude_globs,
             }),
         )
         if rules.ignored_diagnostic_globs:
@@ -186,9 +214,29 @@ class TestsFlextInfraDepsModernizerPyright:
         else:
             tm.that(pyright, lacks="ignore")
         tm.that(
-            list(u.Tests.toml_strings(pyright["include"])),
-            eq=[rules.source_dir, *root_modules],
+            sorted(u.Tests.toml_strings(pyright["include"])),
+            eq=sorted([
+                rules.source_dir,
+                *root_modules,
+                *(
+                    f"{member}/{pattern}"
+                    for member in u.Infra.workspace_project_paths(tmp_path)
+                    for pattern in rules.workspace_config_discovery_globs
+                ),
+            ]),
         )
+        discovered_files = {
+            path.relative_to(tmp_path).as_posix()
+            for pattern in u.Tests.toml_strings(pyright["include"])
+            for path in tmp_path.glob(pattern)
+            if path.is_file()
+        }
+        tm.that(
+            {"flext-core/pyproject.toml", "flext-api/pyproject.toml"}
+            <= discovered_files,
+            eq=True,
+        )
+        tm.that("flext-core/tests/test_smoke.py" in discovered_files, eq=False)
         tm.that(
             pyright["executionEnvironments"],
             eq=[
@@ -340,7 +388,7 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(
             set(u.Tests.toml_strings(pyright["exclude"])).issuperset({
                 *rules.default_excludes,
-                *config.Infra.codegen.generated_source_globs,
+                *config.Infra.codegen.analyzer_exclude_globs,
             }),
             eq=True,
         )
@@ -562,7 +610,13 @@ class TestsFlextInfraDepsModernizerPyright:
         )
 
         tm.that(declared, eq=fleet)
-        tm.that(declared, lacks="include")
+        tm.that(
+            list(u.Tests.toml_strings(declared["include"])),
+            eq=[
+                f"flext-core/{pattern}"
+                for pattern in rules.workspace_config_discovery_globs
+            ],
+        )
         tm.that(declared["executionEnvironments"], eq=[])
 
     def test_expected_envs_cover_every_analyzer_python_root(

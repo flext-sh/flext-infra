@@ -1294,12 +1294,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             t.Pair[list[m.Infra.CodegenFilePlan], list[m.Infra.CodegenFilePlan]]
         ]
         config_spec = inputs.spec
-        if contract.runtime_bindings:
-            repository_plan = self.plan_runtime_bindings(
-                target,
-                config_spec,
-            )
-        elif scaffold:
+        if scaffold:
             repository_plan = self._plan_scaffold_repository(
                 target=target,
                 workspace=local_workspace,

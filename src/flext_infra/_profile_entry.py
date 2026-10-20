@@ -36,7 +36,10 @@ class FlextInfraProfileEntry:
         status: int | None = None
 
         FlextInfraPytestClock.register_signal_checkpoint(
-            profiler, immutable_output.with_suffix(".checkpoint.pstats")
+            profiler,
+            output,
+            immutable_output=immutable_output.with_suffix(".checkpoint.pstats"),
+            previous_output=previous_output.with_suffix(".checkpoint.pstats"),
         )
         profiler.enable()
         try:

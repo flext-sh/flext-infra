@@ -146,9 +146,12 @@ class FlextInfraCodegenLazyInit(
             One complete immutable lazy-init analysis receipt.
 
         """
-        # Preserve cross-call caches keyed by root/identity; each entry is
-        # validated through adopt_source_consumption before reuse. Clearing
-        # them here discarded every cached index and receipt between plans.
+        # Receipts belong to this invocation's authority. Only authenticated
+        # successors within _plan_in_workspace may adopt and reuse them.
+        self._source_plans.clear()
+        self._source_receipts.clear()
+        self._source_indexes.clear()
+        self._file_plan_cache.clear()
         self._modified_files.clear()
         if not (
             self.repository_root.is_dir()
@@ -337,9 +340,20 @@ class FlextInfraCodegenLazyInit(
                 )
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(manifests)
         composed += manifests.value
+        publications = tuple(
+            plan for analysis in analyses for plan in analysis.publications
+        )
         directories, topology = u.Cli.atomic_merge_directory_query_receipts(
-            tuple(item for file in composed for item in file.source_directories),
-            tuple(item for file in composed for item in file.source_query_topology),
+            tuple(
+                item
+                for dependency in (*composed, *publications)
+                for item in dependency.source_directories
+            ),
+            tuple(
+                item
+                for dependency in (*composed, *publications)
+                for item in dependency.source_query_topology
+            ),
         )
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
@@ -347,14 +361,14 @@ class FlextInfraCodegenLazyInit(
                 files=composed,
                 inputs=m.Infra.CodemodBindingSnapshot(
                     states=tuple(
-                        state for file in composed for state in file.source_states
+                        state
+                        for dependency in (*composed, *publications)
+                        for state in dependency.source_states
                     ),
                 ).states,
                 source_directories=directories,
                 source_query_topology=topology,
-                publications=tuple(
-                    plan for analysis in analyses for plan in analysis.publications
-                ),
+                publications=publications,
                 failed_targets=tuple(
                     target
                     for analysis in analyses

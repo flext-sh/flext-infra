@@ -517,7 +517,11 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
 
             """
             return {
-                f"**/{artifact.name}/**": True
+                (
+                    f"**/{artifact.name}/**"
+                    if artifact.is_dir
+                    else f"**/{artifact.name}"
+                ): True
                 for artifact in self.artifacts
                 if artifact.watch_exclude
             }
@@ -576,6 +580,30 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
 
         @m.computed_field
         @property
+        def analyzer_exclude_globs(self) -> t.VariadicTuple[str]:
+            """Project declared artifacts and walker exclusions into analyzer globs.
+
+            Returns:
+                File patterns and recursive directory patterns, in stable order.
+
+            """
+            return tuple(
+                sorted(
+                    {
+                        (
+                            f"**/{artifact.name}/**"
+                            if artifact.is_dir
+                            else f"**/{artifact.name}"
+                        )
+                        for artifact in self.artifacts
+                        if artifact.analysis_exclude or artifact.generated_source
+                    }
+                    | {f"**/{name}/**" for name in self.check_excluded_dirs}
+                )
+            )
+
+        @m.computed_field
+        @property
         def analysis_excluded_dirs(self) -> t.VariadicTuple[str]:
             """Derived base directory exclusion set every walker composes.
 
@@ -593,7 +621,7 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
                     {
                         artifact.name
                         for artifact in self.artifacts
-                        if artifact.analysis_exclude
+                        if artifact.analysis_exclude and artifact.is_dir
                     }
                     | set(self.exclusions.tool_state)
                     | {c.Infra.GIT_DIR, c.Infra.WORKTREES_DIRNAME},
@@ -1024,10 +1052,6 @@ class FlextInfraConfigModelsArtifact(FlextInfraConfigModelsRefactorCampaigns):
         complete_governed: Annotated[
             bool,
             m.Field(description="Whether every governed output is represented"),
-        ] = False
-        runtime_bindings: Annotated[
-            bool,
-            m.Field(description="Select only declared checkout-local runtime bindings"),
         ] = False
         delegates: Annotated[
             bool,

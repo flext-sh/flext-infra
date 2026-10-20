@@ -708,6 +708,21 @@ class FlextInfraPytestRunnerExecution(
             return r.ok(incremental_exit)
         return self._execute_testmon(complete=True)
 
+    def execute_file(self) -> p.Result[int]:
+        """Run the complete declared file once through its persistent database.
+
+        Returns:
+            The native status of the complete file execution.
+
+        Raises:
+            ValueError: If no single-file target was declared.
+
+        """
+        if self.target_file is None:
+            msg = "complete file execution requires a declared target file"
+            raise ValueError(msg)
+        return self._execute_testmon(complete=True)
+
     def _execute_testmon(self, *, complete: bool) -> p.Result[int]:
         """Execute one selected testmon phase without resetting shared state.
 

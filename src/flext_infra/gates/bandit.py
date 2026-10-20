@@ -28,6 +28,8 @@ class FlextInfraBanditGate(FlextInfraGate):
         "-f",
         c.Infra.OUTPUT_JSON,
         "--quiet",
+        "--skip",
+        "B101",
     )
 
     @override

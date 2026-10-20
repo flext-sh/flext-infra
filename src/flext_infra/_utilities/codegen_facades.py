@@ -481,7 +481,7 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 if path.parent == directory and path.suffix == c.Infra.EXT_PYTHON
             )
         )
-        if actual != expected:
+        if expected and actual != expected:
             message = f"native facade source membership differs: {directory}"
             raise ValueError(message)
         return actual

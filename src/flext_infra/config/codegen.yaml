@@ -139,7 +139,7 @@ Infra:
       # The fork release repairs region coverage for try/else/finally matching;
       # stale transitive metadata must not select the earlier broken source.
       uv_override_dependencies:
-      - rope @ git+https://github.com/marlon-costa-dc/rope.git@1.15.0%2Bdc.4
+      - rope @ git+https://github.com/marlon-costa-dc/rope.git@2bf3ad55a32cc117f5321e1467695eba540be97b
       # Moving selectors consumed by generated .mise.toml and CI. Only
       # `make upg` resolves them to the newest release and writes mise.lock;
       # setup installs exactly what the committed lock pins, and only these
@@ -742,7 +742,7 @@ Infra:
         description: Run incremental tests first, then the complete eligible suite using the same persistent testmon database, without a time limit.
       - name: test-file
         arguments: [ FILE ]
-        description: Run one declared test file incremental then complete, slow items included, with the same persistent testmon cache (FILE=<repository-relative path>).
+        description: Run one complete declared test file once, slow items included, with the same persistent testmon cache (FILE=<repository-relative path>).
       - name: file-gate
         arguments: [ FILE ]
         description: Run configured canonical read-only gates on one literal FILE=<repository-relative path>; invalid selection and missing gate owners fail loud.
@@ -805,6 +805,12 @@ Infra:
       - name: gen-footprint
         description: Inspect the pending generation journal and physical effect footprint without generation planning, participant leases, recovery, or publication.
         requires_activation: false
+      - name: gen-pyproject
+        description: Regenerate this project's analyzer and dependency metadata through guarded publication.
+        requires_activation: false
+      - name: gen-editor
+        description: Project editor settings, analyzer configuration, and Git ignores without generating Python facades.
+        requires_activation: false
       - name: initialize
         description: Bootstrap this target's own declaration and canonical Makefile.
       - name: project-new
@@ -856,19 +862,19 @@ Infra:
     # consuming projections. Ordering reproduces the historical derived maps.
     artifacts:
     - { name: __pycache__, source_scan_ignore: true, analysis_exclude: true }
-    - { name: __pyrefly_virtual__ }
+    - { name: __pyrefly_virtual__, analysis_exclude: true }
     # Governance content (.agents/.claude) and direnv runtime state stay
     # visible to the editor and watcher; source_scan keeps its dotdir skip.
     - { name: .agents, source_scan_ignore: true, vscode_exclude: false, watch_exclude: false }
     - { name: .beads, source_scan_ignore: true }
-    - { name: .benchmarks }
+    - { name: .benchmarks, analysis_exclude: true }
     # Historical evidence trees (AGENTS.md law: archives are evidence only,
     # never live authority) are not production input to any analyzer.
     # Archive-not-delete target for the layout engine; the generated
     # .gitignore projection must never track archived loose files.
-    - { name: .archive, source_scan_ignore: true }
-    - { name: .bkp }
-    - { name: .cache, source_scan_ignore: true }
+    - { name: .archive, source_scan_ignore: true, analysis_exclude: true }
+    - { name: .bkp, analysis_exclude: true }
+    - { name: .cache, source_scan_ignore: true, analysis_exclude: true }
     # Agent worktrees are duplicate repositories, never production input.
     - { name: .claude, source_scan_ignore: true, vscode_exclude: false, watch_exclude: false }
     # .direnv keeps the source-scan skip (order-sensitive, after .claude).
@@ -883,7 +889,7 @@ Infra:
     - { name: .mimosa, source_scan_ignore: true }
     - { name: .mypy_cache, source_scan_ignore: true, analysis_exclude: true }
     - { name: .omo }
-    - { name: .pylance_cache, vscode_exclude: false }
+    - { name: .pylance_cache, analysis_exclude: true }
     - { name: .pytest_cache, source_scan_ignore: true, analysis_exclude: true }
     - { name: .reports, source_scan_ignore: true, analysis_exclude: true }
     - { name: .ropeproject }
@@ -896,19 +902,19 @@ Infra:
     - { name: .trash }
     - { name: .turbo }
     - { name: .venv, source_scan_ignore: true, analysis_exclude: true }
-    - { name: .venv.* }
-    - { name: "*.egg-info", vscode_exclude: false }
+    - { name: .venv.*, analysis_exclude: true }
+    - { name: "*.egg-info", analysis_exclude: true }
     # Transient extraction scratch (e.g. legacy _tmp_mdpy_* fenced-block and
     # docstring sources) must never become tracked candidates even if a gate
     # regression drops it into the worktree; the markdown-code gate itself
     # writes only under runner-managed temp roots.
-    - { name: "_tmp_*" }
+    - { name: "_tmp_*", analysis_exclude: true }
     # Editor/patch droppings: never production input, never tracked, whatever
     # wrote them.
-    - { name: "*.bak" }
-    - { name: "*.orig" }
-    - { name: "*.rej" }
-    - { name: "*.swp" }
+    - { name: "*.bak", is_dir: false, analysis_exclude: true }
+    - { name: "*.orig", is_dir: false, analysis_exclude: true }
+    - { name: "*.rej", is_dir: false, analysis_exclude: true }
+    - { name: "*.swp", is_dir: false, analysis_exclude: true }
     - { name: build, source_scan_ignore: true, analysis_exclude: true }
     - { name: dist, source_scan_ignore: true, analysis_exclude: true }
     - { name: node_modules, source_scan_ignore: true, analysis_exclude: true }
@@ -916,10 +922,10 @@ Infra:
     # imported as a regular package, never first-party code. generated_source
     # is the one key every analyzer exclusion, scan, and init derives from.
     - { name: protos, generated_source: true }
-    - { name: site, watch_exclude: false }
-    - { name: target }
-    - { name: .pyrefly_cache, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
-    - { name: .tox, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
+    - { name: site, analysis_exclude: true }
+    - { name: target, analysis_exclude: true }
+    - { name: .pyrefly_cache, source_scan_ignore: true, analysis_exclude: true }
+    - { name: .tox, source_scan_ignore: true, analysis_exclude: true }
     - { name: dist-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true, analysis_exclude: true }
     - { name: legado, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true }
     - { name: site-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true, analysis_exclude: true }
@@ -927,7 +933,7 @@ Infra:
     # npm's lockfile emission: the resolver owns sibling-shared resolved
     # dependency lines; clone detection never reads it (resolver_owned).
     - { name: package-lock.json, is_dir: false, vscode_exclude: false, watch_exclude: false, gitignore: false, resolver_owned: true }
-    - { name: venv, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true, analysis_exclude: true }
+    - { name: venv, source_scan_ignore: true, analysis_exclude: true }
     # Gitignore-only entries; they feed no other projection.
     - { name: .flext-sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: .sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
@@ -1007,7 +1013,6 @@ Infra:
       additional_settings:
         python-envs.workspaceSearchPaths:
         - ./.venv
-        - ./*/.venv
         terminal.integrated.env.linux:
           PATH: ${workspaceFolder}/.venv/bin:${env:PATH}
           VIRTUAL_ENV: ${workspaceFolder}/.venv
@@ -1022,22 +1027,54 @@ Infra:
       # the Python Environments locator (pet) walk entire repository trees and
       # hang interpreter discovery on large monorepos.
       scalar_settings:
+        editor.mouseWheelZoom: true
+        explorer.excludeGitIgnore: true
         files.autoSave: afterDelay
+        search.useIgnoreFiles: true
+        search.useGlobalIgnoreFiles: false
+        search.useParentIgnoreFiles: false
+        telemetry.feedback.enabled: false
+        python.analysis.addExtraPathsForPythonProjects: false
         python.analysis.autoFormatStrings: true
         python.analysis.autoImportCompletions: true
         python.analysis.completeFunctionParens: true
         python.analysis.diagnosticMode: workspace
+        python.analysis.diagnosticsSource: Pylance + Pyright
+        python.analysis.displayEnglishDiagnostics: true
+        python.analysis.enableAsyncProgram: false
+        python.analysis.enableExternalTypeServer: false
+        python.analysis.enableParallelIndexing: false
+        python.analysis.enablePydanticSupport: true
+        python.analysis.enablePyreflyShadowExperiment: false
+        python.analysis.enablePyreflyNotification: false
+        python.analysis.enablePyreflyNotificationForAll: false
+        python.analysis.enableSnippetExtraTelemetry: false
         python.analysis.findRefsInBackgroundThread: false
         python.analysis.generateWithTypeAnnotation: true
-        python.analysis.gotoOverrideCodeLens: false
-        python.analysis.includeAliasesFromUserFiles: false
-        python.analysis.includeExtraPathSymbolsInSymbolSearch: false
+        python.analysis.gotoOverrideCodeLens: true
+        python.analysis.includeAliasesFromUserFiles: true
+        python.analysis.includeExtraPathSymbolsInSymbolSearch: true
         python.analysis.includeVenvInWorkspaceSymbols: false
+        python.analysis.indexing: true
+        python.analysis.inlayHints.callArgumentNames: all
+        python.analysis.inlayHints.functionReturnTypes: true
+        python.analysis.inlayHints.pytestParameters: true
+        python.analysis.inlayHints.variableTypes: true
+        python.analysis.languageServerBackend: default
+        python.analysis.languageServerMode: default
+        python.analysis.logLevel: Information
+        python.analysis.pyrightVersion: fromEnvironment
+        python.analysis.referencesCodeLens: true
+        python.analysis.renameInDocstrings: true
+        python.analysis.showOnlyDirectDependenciesInAutoImport: false
+        python.analysis.supportDocstringTemplate: true
+        python.analysis.useDefaultExcludes: true
+        python.analysis.useLibraryCodeForTypes: true
         # Each project's nearest Pyright configuration owns its import roots.
         # Attached projects retain the opened workspace's shared interpreter.
         python.analysis.useNearestConfiguration: true
         python.analysis.usePerProjectEnvironments: false
-        python.analysis.userFileIndexingLimit: 2000
+        python.analysis.userFileIndexingLimit: -1
         python.defaultInterpreterPath: ${workspaceFolder}/.venv/bin/python
         python.languageServer: Pylance
         python.pyrefly.diagnosticMode: workspace
@@ -1048,7 +1085,7 @@ Infra:
         python.testing.unittestEnabled: false
         python.terminal.activateEnvInCurrentTerminal: true
         python.terminal.activateEnvironment: true
-        python.useEnvironmentsExtension: false
+        python.useEnvironmentsExtension: true
         ruff.configurationPreference: filesystemFirst
         ruff.format.preview: true
         ruff.importStrategy: fromEnvironment
@@ -1090,8 +1127,7 @@ Infra:
         "[python]":
           diffEditor.ignoreTrimWhitespace: true
           editor.defaultFormatter: charliermarsh.ruff
-          editor.formatOnSave: true
-          editor.codeActionsOnSave.source.organizeImports: explicit
+          editor.formatOnSave: false
         # rumdl owns markdown formatting (markdown-format gate: `rumdl fmt`);
         # the editor extension reads the same generated .markdownlint.json.
         # Save stays manual: the canonical mutation surface is `make fmt`.
@@ -1106,8 +1142,14 @@ Infra:
       # settings projection so the file stays green with no warnings.
       - python.analysis.typeCheckingMode
       - python.analysis.diagnosticSeverityOverrides
+      - python.analysis.include
+      - python.analysis.exclude
+      - python.analysis.extraPaths
       # The current Ruff extension always uses its native server.
       - ruff.nativeServer
+      stripped_map_keys:
+        "[python]":
+        - editor.codeActionsOnSave.source.organizeImports
 
       # Declarative project-layout SSOT consumed by
       # the layout engine (codegen/layout.py) and the layout quality gate. Every

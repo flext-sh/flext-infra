@@ -33,14 +33,14 @@ class TestsFlextInfraPytestTargetFile:
             (True, True, "collection"),
         ],
     )
-    def test_public_make_runs_requested_file_incremental_then_complete(
+    def test_public_make_runs_complete_requested_file_once(
         provisioned_infra_checkout: t.Pair[str, Path],
         *,
         budgeted: bool,
         slow: bool,
         failure: str,
     ) -> None:
-        """Native Make runs both unbounded file phases and preserves causal failure."""
+        """Native Make runs one complete file phase and preserves causal failure."""
         _, root = provisioned_infra_checkout
         generated = tm.ok(u.Tests.run_isolated_make(["gen"], cwd=root))
         tm.that(
@@ -86,14 +86,11 @@ class TestsFlextInfraPytestTargetFile:
             proof.read_text().splitlines() if proof.exists() else []
         )
         tm.that(
-            all(
-                observed.count(item) <= (1 if failure else 2) * expected.count(item)
-                for item in observed
-            ),
+            all(observed.count(item) <= expected.count(item) for item in observed),
             eq=True,
         )
         if expected and not failure:
-            tm.that(sorted(observed), eq=sorted(expected * 2))
+            tm.that(sorted(observed), eq=sorted(expected))
         receipts = [
             m.Infra.PytestRunContext.model_validate_json(path.read_text())
             for path in sorted(
@@ -101,9 +98,7 @@ class TestsFlextInfraPytestTargetFile:
                 key=lambda path: path.stat().st_mtime_ns,
             )
         ]
-        modes = [c.Infra.PytestExecutionMode.INCREMENTAL]
-        if not failure:
-            modes.append(c.Infra.PytestExecutionMode.FULL)
+        modes = [c.Infra.PytestExecutionMode.FULL]
         tm.that([receipt.execution_mode for receipt in receipts], eq=modes)
         tm.that(len({receipt.testmon_db for receipt in receipts}), eq=1)
         tm.that(
@@ -114,7 +109,7 @@ class TestsFlextInfraPytestTargetFile:
                 root,
                 relative,
                 proof,
-                expected * 2,
+                expected,
             )
 
     @staticmethod

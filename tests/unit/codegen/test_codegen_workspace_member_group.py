@@ -50,11 +50,6 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
             eq=True,
         )
         tm.that("PROJECT_INFRA_PYTHONPATH" in rendered, eq=False)
-        setup = rendered.split("SETUP_ENVIRONMENT_RECIPE = ", 1)[1].split("\n\n", 1)[0]
-        tm.that(
-            setup.index("sync-environment") < setup.index("--what runtime-bindings"),
-            eq=True,
-        )
 
     @staticmethod
     @pytest.mark.slow

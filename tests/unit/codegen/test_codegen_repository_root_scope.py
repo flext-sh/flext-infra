@@ -219,13 +219,12 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         self,
         tmp_path: Path,
     ) -> None:
-        """`make test` stays bounded; `test-file` runs both phases without a deadline.
+        """`make test` stays bounded; `test-file` runs one complete file phase.
 
         `make test` runs in CI and pre-commit, so slow-marked items stay out of
         it (operator 2026-10-01: nothing slow in CI or pre-commit). `test-file`
         is the sole single-file path and runs only locally, so its one ``file``
-        entry runs incremental then complete on the declared file, including slow
-        items;
+        entry runs the complete declared file once, including slow items;
         a file whose items are all slow-marked never ends the verb
         with zero executed tests. Neither recipe appends the full suite.
         """

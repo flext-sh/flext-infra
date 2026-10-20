@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 
 from flext_core import FlextRuntime
 
-from flext_infra import c, config, m, r, t, u
+from flext_infra import c, m, r, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -62,6 +62,9 @@ class FlextInfraCodegenVscodeMixin:
 
         """
         result_type = r[m.Infra.CodegenVscodeDeclarationDelta]
+        loaded = u.Infra.load_codegen_inputs(repository_root)
+        if loaded.failure:
+            return result_type.from_failure(loaded)
         original = indexed
         current = live
         retired = {
@@ -71,7 +74,7 @@ class FlextInfraCodegenVscodeMixin:
             and key not in spec.list_settings
             and key not in spec.map_union_settings
             and key not in spec.stripped_keys
-            and key not in cls._artifact_settings()
+            and key not in cls._artifact_settings(loaded.value.spec)
         }
         if retired:
             error = ValueError(
@@ -104,15 +107,21 @@ class FlextInfraCodegenVscodeMixin:
 
         """
         result_type = r[m.Infra.CodegenVscodeDeclarationDelta]
+        loaded = u.Infra.load_codegen_inputs(repository_root)
+        if loaded.failure:
+            return result_type.from_failure(loaded)
         expected: t.MutableJsonMapping = {}
         generated = cls._apply_canonical_settings(
             expected,
             repository_root,
             spec=spec,
+            codegen=loaded.value.spec,
         )
         if generated.failure:
             return result_type.from_failure(generated)
-        deltas = cls._portable_vscode_deltas(settings, spec, expected)
+        deltas = cls._portable_vscode_deltas(
+            settings, spec, expected, loaded.value.spec
+        )
         if deltas.failure:
             return result_type.from_failure(deltas)
         delta = m.Infra.CodegenVscodeDeclarationDelta(values=deltas.value)
@@ -127,6 +136,7 @@ class FlextInfraCodegenVscodeMixin:
         portable: t.JsonMapping,
         spec: m.Infra.CodegenVscodeSpec,
         expected: t.JsonMapping,
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.MutableJsonMapping]:
         """Classify portable settings into the four representable delta buckets.
 
@@ -134,7 +144,7 @@ class FlextInfraCodegenVscodeMixin:
             The minimal override buckets the canonical merge can reproduce.
 
         """
-        artifact_settings = cls._artifact_settings()
+        artifact_settings = cls._artifact_settings(codegen)
         buckets: dict[str, dict[str, t.JsonValue]] = {
             "scalar_settings": {},
             "list_settings": {},
@@ -253,6 +263,7 @@ class FlextInfraCodegenVscodeMixin:
         repository_root: Path,
         *,
         spec: m.Infra.CodegenVscodeSpec | None = None,
+        codegen: m.Infra.CodegenConfigSpec | None = None,
     ) -> p.Result[str]:
         """Return the canonical-merged ``settings.json`` document for one root.
 
@@ -274,15 +285,18 @@ class FlextInfraCodegenVscodeMixin:
             key: FlextRuntime.normalize_to_json_value(value)
             for key, value in read_result.value.items()
         }
-        if spec is None:
-            selected = cls.load_vscode_spec(repository_root)
+        if codegen is None:
+            selected = u.Infra.load_codegen_inputs(repository_root)
             if selected.failure:
                 return r[str].from_failure(selected)
-            spec = selected.value
+            codegen = selected.value.spec
+        if spec is None:
+            spec = codegen.vscode
         applied = cls._apply_canonical_settings(
             settings,
             repository_root,
             spec=spec,
+            codegen=codegen,
         )
         if applied.failure:
             return r[str].from_failure(applied)
@@ -445,6 +459,7 @@ class FlextInfraCodegenVscodeMixin:
         repository_root: Path,
         *,
         spec: m.Infra.CodegenVscodeSpec | None = None,
+        codegen: m.Infra.CodegenConfigSpec | None = None,
     ) -> p.Result[bool]:
         """Merge canonical codegen VS Code settings into one settings mapping.
 
@@ -452,7 +467,12 @@ class FlextInfraCodegenVscodeMixin:
             The resulting ``p.Result[bool]``.
 
         """
-        spec = config.Infra.codegen.vscode if spec is None else spec
+        if codegen is None:
+            loaded = u.Infra.load_codegen_inputs(repository_root)
+            if loaded.failure:
+                return r[bool].from_failure(loaded)
+            codegen = loaded.value.spec
+        spec = codegen.vscode if spec is None else spec
         additional_changed = False
         for key, value in spec.additional_settings.items():
             normalized = FlextRuntime.normalize_to_json_value(value)
@@ -471,7 +491,7 @@ class FlextInfraCodegenVscodeMixin:
         # Replacing them removes retired artifacts instead of preserving stale
         # generated keys forever. Only explicitly declared non-artifact maps use
         # merge semantics.
-        artifact_maps = cls._artifact_settings()
+        artifact_maps = cls._artifact_settings(codegen)
         artifacts_changed = False
         for key, canonical_map in artifact_maps.items():
             canonical = {
@@ -487,6 +507,17 @@ class FlextInfraCodegenVscodeMixin:
         # warnings. Actively delete every retired key so existing files converge
         # to a warning-free projection.
         stripped_changed = cls._strip_retired_keys(settings, spec.stripped_keys)
+        for key, retired in spec.stripped_map_keys.items():
+            current = settings.get(key)
+            if isinstance(current, Mapping):
+                retained = {
+                    name: value
+                    for name, value in current.items()
+                    if name not in retired
+                }
+                if retained != current:
+                    settings[key] = FlextRuntime.normalize_to_json_value(retained)
+                    stripped_changed = True
         return r[bool].ok(
             cls._apply_union_settings(settings, spec.map_union_settings)
             or artifacts_changed
@@ -496,14 +527,15 @@ class FlextInfraCodegenVscodeMixin:
         )
 
     @staticmethod
-    def _artifact_settings() -> t.MappingKV[str, t.MappingKV[str, str | bool]]:
+    def _artifact_settings(
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> t.MappingKV[str, t.MappingKV[str, str | bool]]:
         """Project the declared artifact maps through their single editor owner.
 
         Returns:
             Complete derived maps consumed by rendering and migration.
 
         """
-        codegen = config.Infra.codegen
         return {
             "files.exclude": dict(codegen.vscode_files_exclude_map),
             "files.watcherExclude": dict(codegen.vscode_watcher_exclude_map),

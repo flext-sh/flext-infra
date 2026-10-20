@@ -137,12 +137,17 @@ class FlextInfraPytestClock:
         cls,
         profile: cProfile.Profile,
         output: Path,
+        *,
+        immutable_output: Path | None = None,
+        previous_output: Path | None = None,
     ) -> None:
         """Persist measured progress before preserving native termination handling.
 
         Args:
             profile: The real profiler elected by the invocation.
             output: The profile artifact elected by the canonical launcher.
+            immutable_output: Invocation-owned link to the interrupted profile.
+            previous_output: Retained link to the previously published profile.
 
         Raises:
             RuntimeError: If the native termination handler cannot be observed.
@@ -156,13 +161,19 @@ class FlextInfraPytestClock:
         def checkpoint(signum: int, frame: FrameType | None) -> None:
             """Persist the profiler, then delegate the original signal unchanged."""
             try:
-                cls.publish_profile(profile, output)
+                cls.publish_profile(
+                    profile,
+                    output,
+                    immutable_output=immutable_output,
+                    previous_output=previous_output,
+                )
             finally:
                 signal.signal(signum, previous)
                 if callable(previous):
                     previous(signum, frame)
                 else:
                     signal.raise_signal(signum)
+                profile.enable()
 
         signal.signal(signal.SIGTERM, checkpoint)
 

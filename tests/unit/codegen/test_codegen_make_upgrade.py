@@ -612,9 +612,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
             [step for step in steps[installed:] if "$(SELF_MAKE) gen" in step],
             empty=True,
         )
-        # Setup leaves a runtime-bindings receipt behind; a standalone gen
-        # activation would read it and never cover the gen request. Activation
-        # belongs only to the full gen verb, after it republishes its receipt.
+        # Provisioning never authorizes generation activation. Activation belongs
+        # to the full gen verb after it publishes that request's own receipt.
         tm.that(
             [step for step in steps if "$(call RUN_PUBLIC_ACTIVATE,gen)" in step],
             empty=True,

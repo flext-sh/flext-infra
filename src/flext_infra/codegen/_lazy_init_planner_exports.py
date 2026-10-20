@@ -198,6 +198,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         policy = u.Infra.publication_policy(
             py_file,
             rope_project=self.rope_workspace.rope_project,
+            current_pkg=module_path.rpartition(".")[0],
         )
         alias = policy.expected_alias
         if alias is not None:

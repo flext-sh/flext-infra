@@ -11,7 +11,7 @@ from functools import partial
 from pathlib import Path
 from typing import Self, override
 
-from flext_infra import FlextInfraConfig, c, config, m, p, r, t, u
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenMiseArtifacts,
@@ -846,37 +846,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformExecuteDirected):
                 },
             )
         expected_paths = set(expected_owners)
-        dependencies = {
-            path
-            for file in plan.files
-            if file.index_before is not None
-            for path in file.tracking_dependencies
-        }
-        if dependencies:
-            permitted = {
-                path
-                for repository in plan.repositories
-                for path in FlextInfraConfig.config_layer_paths_for_repository(
-                    (request.root.expanduser().resolve() / repository.path).resolve(),
-                    filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-                )[1:]
-            }
-            if (
-                surface is not c.Infra.CodegenConformSurface.RUNTIME_BINDINGS
-                or not dependencies.issubset(permitted)
-            ):
-                error = ValueError(
-                    "runtime tracking dependencies escape declared config layers"
-                )
-                return result_type.fail(str(error), exception=error)
-            expected_paths.update(dependencies)
-            expected_owners.update(
-                {
-                    dependency: file.project
-                    for file in plan.files
-                    for dependency in file.tracking_dependencies
-                },
-            )
         return result_type.ok(
             (expected_paths, expected_owners),
         )

@@ -200,15 +200,6 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         match surface:
             case c.Infra.CodegenConformSurface.ALL:
                 contract = m.Infra.CodegenConformSurfaceContract(complete_governed=True)
-            case c.Infra.CodegenConformSurface.RUNTIME_BINDINGS:
-                contract = m.Infra.CodegenConformSurfaceContract(
-                    destinations=cls._runtime_binding_destinations(codegen),
-                    runtime_bindings=True,
-                    delegates=False,
-                    pyproject=False,
-                    templates=False,
-                    custom=False,
-                )
             case (
                 c.Infra.CodegenConformSurface.LAZY_INIT
                 | c.Infra.CodegenConformSurface.FACADES
@@ -224,6 +215,15 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
                     destinations=cls._pyproject_destinations(codegen),
                     delegates=False,
                     templates=False,
+                    custom=False,
+                )
+            case c.Infra.CodegenConformSurface.EDITOR:
+                contract = m.Infra.CodegenConformSurfaceContract(
+                    destinations=cls._editor_destinations(codegen),
+                    delegates=False,
+                    pyproject=False,
+                    templates=False,
+                    tooling=False,
                     custom=False,
                 )
             case c.Infra.CodegenConformSurface.DEPENDENCIES:
@@ -288,23 +288,24 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         return contract
 
     @staticmethod
-    def _runtime_binding_destinations(
+    def _editor_destinations(
         codegen: m.Infra.CodegenConfigSpec,
     ) -> frozenset[str]:
-        """Collect the managed runtime binding destinations.
-
-        Args:
-            codegen: The codegen configuration owning managed file specs.
+        """Select the existing owners of editor, analyzer and ignore projections.
 
         Returns:
-            The managed runtime binding paths as POSIX strings.
+            The governed paths published by the editor surface.
 
         """
-        return frozenset(
-            item.path.as_posix()
-            for item in codegen.managed_file_specs
-            if item.runtime_binding
-        )
+        return frozenset({
+            c.PYPROJECT_FILENAME,
+            c.Infra.GITIGNORE,
+            *(
+                item.path.as_posix()
+                for item in codegen.managed_file_specs
+                if item.owner == c.Infra.CODEGEN_OWNER_VSCODE
+            ),
+        })
 
     @staticmethod
     def _pyproject_destinations(

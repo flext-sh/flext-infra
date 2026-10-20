@@ -79,13 +79,13 @@ class FlextInfraConstantsConfig:
         ALL = "all"
         DEPENDENCIES = "dependencies"
         DOCS_CONFIG = "docs-config"
+        EDITOR = "editor"
         ENVRC = "envrc"
         FACADES = "facades"
         LAZY_INIT = "lazy-init"
         MAKEFILE = "makefile"
         MISE_CONFIG = "mise-config"
         PYPROJECT = "pyproject"
-        RUNTIME_BINDINGS = "runtime-bindings"
         WORKFLOWS = "workflows"
 
     FILE_ONLY_SURFACES: ClassVar[frozenset[CodegenConformSurface]] = frozenset({
@@ -99,7 +99,11 @@ class FlextInfraConstantsConfig:
     # Root metadata can be planned directly, before conform-target detection.
     DECLARED_TARGET_SURFACES: ClassVar[frozenset[CodegenConformSurface]] = (
         SELF_SCOPE_SURFACES
-        | {CodegenConformSurface.MAKEFILE, CodegenConformSurface.PYPROJECT}
+        | {
+            CodegenConformSurface.MAKEFILE,
+            CodegenConformSurface.PYPROJECT,
+            CodegenConformSurface.EDITOR,
+        }
     )
     # Docs still resolve a conform target, but do not require provisioned members.
     ALLOW_UNPROVISIONED_SURFACES: ClassVar[frozenset[CodegenConformSurface]] = (

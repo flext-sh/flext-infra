@@ -309,11 +309,14 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
     def python_dependency_projects(root: Path) -> t.VariadicTuple[Path]:
         """Resolve declared fixture dependencies to actual workspace source owners.
 
+        Only dependencies that are declared workspace members are resolved;
+        external (PyPI) dependencies are skipped because they have no local
+        source owner. A dependency that looks like a workspace member (its
+        name is in the workspace spec) but is missing from the filesystem
+        is a configuration error and is not silently skipped.
+
         Returns:
             The declared projects and their local runtime dependency closure.
-
-        Raises:
-            ValueError: If a declared fixture dependency has no workspace owner.
 
         """
         checkout = Path(__file__).resolve().parents[1]
@@ -338,6 +341,12 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             if name in selected or name is None:
                 continue
             if name not in projects:
+                if name.startswith("flext-"):
+                    msg = (
+                        f"Fixture dependency has no workspace source owner: "
+                        f"{requirement}"
+                    )
+                    raise ValueError(msg)
                 continue
             project = projects[name]
             selected[name] = project

@@ -102,6 +102,16 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     ),
                 ),
             ]
+            workspace_config_discovery_globs: Annotated[
+                t.StrSequence,
+                m.Field(
+                    alias="workspace-config-discovery-globs",
+                    description=(
+                        "Workspace-only include globs that expose member "
+                        "configurations to Pylance discovery."
+                    ),
+                ),
+            ]
             default_excludes: Annotated[
                 t.StrSequence,
                 m.Field(

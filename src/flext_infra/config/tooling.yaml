@@ -382,6 +382,10 @@ Infra:
           project-root: .
           env-dirs: [ src, tests, examples, scripts ]
           test-like-dirs: [ tests, examples, scripts ]
+          # Pylance discovers nested configurations while enumerating include
+          # roots. Visit member manifests without adding their Python sources
+          # to the workspace root's analysis scope.
+          workspace-config-discovery-globs: [ "*.toml", "pyrightconfig.json*" ]
           default-excludes:
           - "**/node_modules"
           - "**/__pycache__"

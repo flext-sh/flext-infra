@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_infra import config
 from flext_infra.services import FlextInfraCodegenVscodeMixin
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraCodegenVscode:
@@ -159,3 +159,63 @@ class TestsFlextInfraCodegenVscode:
 
         tm.fail(result)
         tm.that(result.error, none=False)
+
+    def test_project_artifacts_control_all_editor_exclusions(
+        self, tmp_path: Path
+    ) -> None:
+        """Use the elected project catalog for file and directory exclusions."""
+        directory = m.Infra.CodegenArtifactSpec(
+            name="fixture-cache", analysis_exclude=True
+        )
+        file = m.Infra.CodegenArtifactSpec(
+            name="*.fixture-backup", is_dir=False, analysis_exclude=True
+        )
+        elected = config.Infra.codegen.model_copy(
+            update={"artifacts": (*config.Infra.codegen.artifacts, directory, file)}
+        )
+        rendered = tm.ok(
+            FlextInfraCodegenVscodeMixin.render_vscode_settings(
+                tmp_path, codegen=elected
+            )
+        )
+        document = u.Tests.json_payload(rendered)
+        for key, expected in (
+            ("files.exclude", elected.vscode_files_exclude_map),
+            ("search.exclude", elected.vscode_search_exclude_map),
+            ("files.watcherExclude", elected.vscode_watcher_exclude_map),
+        ):
+            tm.that(document[key], eq=dict(expected))
+        watchers = u.Tests.toml_mapping(document["files.watcherExclude"])
+        tm.that(watchers, has=f"**/{file.name}")
+        tm.that(watchers, lacks=f"**/{file.name}/**")
+        tm.that(watchers, has=f"**/{directory.name}/**")
+        tm.that(f"**/{file.name}" in elected.analyzer_exclude_globs, eq=True)
+        self._write_settings(tmp_path, rendered)
+        tm.that(
+            tm.ok(
+                FlextInfraCodegenVscodeMixin.render_vscode_settings(
+                    tmp_path, codegen=elected
+                )
+            ),
+            eq=rendered,
+        )
+
+    def test_retired_language_keys_leave_custom_preferences_intact(
+        self, tmp_path: Path
+    ) -> None:
+        """Remove obsolete owned entries without replacing language preferences."""
+        retired = config.Infra.codegen.vscode.stripped_map_keys
+        settings = {
+            language: {
+                **dict.fromkeys(keys, True),
+                "editor.rulers": [88],
+            }
+            for language, keys in retired.items()
+        }
+        self._write_settings(tmp_path, tm.ok(u.Cli.json_dumps(settings)))
+        rendered = tm.ok(FlextInfraCodegenVscodeMixin.render_vscode_settings(tmp_path))
+        document = u.Tests.json_payload(rendered)
+        for language, keys in retired.items():
+            preferences = u.Tests.toml_mapping(document[language])
+            tm.that(preferences["editor.rulers"], eq=[88])
+            tm.that(set(keys).isdisjoint(preferences), eq=True)
